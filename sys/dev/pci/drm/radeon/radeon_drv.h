@@ -31,9 +31,6 @@
 #ifndef __RADEON_DRV_H__
 #define __RADEON_DRV_H__
 
-#include <dev/pci/drm/drm_legacy.h>
-
-#include <dev/pci/drm/ati_pcigart.h>
 #include "radeon_family.h"
 
 /* General customization:
