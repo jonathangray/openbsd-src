@@ -59,7 +59,7 @@ void radeon_atom_copy_swap(u8 *dst, u8 *src, u8 num_bytes, bool to_le)
 #ifdef __BIG_ENDIAN
 	u32 src_tmp[5], dst_tmp[5];
 	int i;
-	u8 align_num_bytes = ALIGN(num_bytes, 4);
+	u8 align_num_bytes = roundup2(num_bytes, 4);
 
 	if (to_le) {
 		memcpy(src_tmp, src, num_bytes);

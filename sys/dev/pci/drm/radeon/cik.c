@@ -2005,7 +2005,7 @@ static int cik_init_microcode(struct radeon_device *rdev)
 		mc_req_size = BONAIRE_MC_UCODE_SIZE * 4;
 		mc2_req_size = BONAIRE_MC2_UCODE_SIZE * 4;
 		sdma_req_size = CIK_SDMA_UCODE_SIZE * 4;
-		smc_req_size = ALIGN(BONAIRE_SMC_UCODE_SIZE, 4);
+		smc_req_size = roundup2(BONAIRE_SMC_UCODE_SIZE, 4);
 		num_fw = 8;
 		break;
 	case CHIP_HAWAII:
@@ -2019,7 +2019,7 @@ static int cik_init_microcode(struct radeon_device *rdev)
 		mc_req_size = HAWAII_MC_UCODE_SIZE * 4;
 		mc2_req_size = HAWAII_MC2_UCODE_SIZE * 4;
 		sdma_req_size = CIK_SDMA_UCODE_SIZE * 4;
-		smc_req_size = ALIGN(HAWAII_SMC_UCODE_SIZE, 4);
+		smc_req_size = roundup2(HAWAII_SMC_UCODE_SIZE, 4);
 		num_fw = 8;
 		break;
 	case CHIP_KAVERI:

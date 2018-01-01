@@ -81,7 +81,7 @@ set_render_target(drm_radeon_private_t *dev_priv, int format, int w, int h, u64 
 	RING_LOCALS;
 	DRM_DEBUG("\n");
 
-	h = ALIGN(h, 8);
+	h = roundup2(h, 8);
 	if (h < 8)
 		h = 8;
 
