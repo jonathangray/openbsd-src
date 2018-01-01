@@ -28,9 +28,6 @@
  *    Christian König <christian.koenig@amd.com>
  */
 
-#include <linux/firmware.h>
-#include <linux/module.h>
-#include <linux/mmu_notifier.h>
 #include <dev/pci/drm/drmP.h>
 #include <dev/pci/drm/drm.h>
 

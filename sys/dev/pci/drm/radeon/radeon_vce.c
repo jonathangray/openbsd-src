@@ -25,8 +25,6 @@
  * Authors: Christian König <christian.koenig@amd.com>
  */
 
-#include <linux/firmware.h>
-#include <linux/module.h>
 #include <dev/pci/drm/drmP.h>
 #include <dev/pci/drm/drm.h>
 

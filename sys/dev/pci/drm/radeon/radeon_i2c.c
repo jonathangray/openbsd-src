@@ -23,7 +23,6 @@
  * Authors: Dave Airlie
  *          Alex Deucher
  */
-#include <linux/export.h>
 
 #include <dev/pci/drm/drmP.h>
 #include <dev/pci/drm/drm_edid.h>

@@ -21,10 +21,6 @@
  *
  */
 
-#include <linux/pci.h>
-#include <linux/acpi.h>
-#include <linux/slab.h>
-#include <linux/power_supply.h>
 #include <acpi/video.h>
 #include <dev/pci/drm/drmP.h>
 #include <dev/pci/drm/drm_crtc_helper.h>

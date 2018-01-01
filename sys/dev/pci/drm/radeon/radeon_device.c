@@ -25,14 +25,9 @@
  *          Alex Deucher
  *          Jerome Glisse
  */
-#include <linux/console.h>
-#include <linux/slab.h>
 #include <dev/pci/drm/drmP.h>
 #include <dev/pci/drm/drm_crtc_helper.h>
 #include <dev/pci/drm/radeon_drm.h>
-#include <linux/vgaarb.h>
-#include <linux/vga_switcheroo.h>
-#include <linux/efi.h>
 #include "radeon_reg.h"
 #include "radeon.h"
 #include "atom.h"

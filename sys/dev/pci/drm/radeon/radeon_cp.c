@@ -31,7 +31,6 @@
  * ------------------------ This file is DEPRECATED! -------------------------
  */
 
-#include <linux/module.h>
 
 #include <dev/pci/drm/drmP.h>
 #include <dev/pci/drm/radeon_drm.h>

@@ -33,7 +33,6 @@
 #include "radeon_audio.h"
 #include "atom.h"
 
-#include <linux/pm_runtime.h>
 
 static int radeon_dp_handle_hpd(struct drm_connector *connector)
 {
