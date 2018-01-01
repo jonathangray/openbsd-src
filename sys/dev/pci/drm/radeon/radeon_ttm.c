@@ -34,8 +34,8 @@
 #include <ttm/ttm_placement.h>
 #include <ttm/ttm_module.h>
 #include <ttm/ttm_page_alloc.h>
-#include <drm/drmP.h>
-#include <drm/radeon_drm.h>
+#include <dev/pci/drm/drmP.h>
+#include <dev/pci/drm/radeon_drm.h>
 #include <linux/seq_file.h>
 #include <linux/slab.h>
 #include <linux/swiotlb.h>

@@ -27,9 +27,9 @@
  */
 #include <linux/console.h>
 #include <linux/slab.h>
-#include <drm/drmP.h>
-#include <drm/drm_crtc_helper.h>
-#include <drm/radeon_drm.h>
+#include <dev/pci/drm/drmP.h>
+#include <dev/pci/drm/drm_crtc_helper.h>
+#include <dev/pci/drm/radeon_drm.h>
 #include <linux/vgaarb.h>
 #include <linux/vga_switcheroo.h>
 #include <linux/efi.h>

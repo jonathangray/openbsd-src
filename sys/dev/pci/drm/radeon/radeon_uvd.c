@@ -30,8 +30,8 @@
 
 #include <linux/firmware.h>
 #include <linux/module.h>
-#include <drm/drmP.h>
-#include <drm/drm.h>
+#include <dev/pci/drm/drmP.h>
+#include <dev/pci/drm/drm.h>
 
 #include "radeon.h"
 #include "r600d.h"

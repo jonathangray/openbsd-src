@@ -29,16 +29,16 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <drm/drmP.h>
-#include <drm/radeon_drm.h>
+#include <dev/pci/drm/drmP.h>
+#include <dev/pci/drm/radeon_drm.h>
 #include "radeon_drv.h"
 
-#include <drm/drm_pciids.h>
+#include <dev/pci/drm/drm_pciids.h>
 #include <linux/console.h>
 #include <linux/module.h>
 #include <linux/pm_runtime.h>
 #include <linux/vga_switcheroo.h>
-#include <drm/drm_gem.h>
+#include <dev/pci/drm/drm_gem.h>
 
 #include "drm_crtc_helper.h"
 #include "radeon_kfd.h"

@@ -33,9 +33,9 @@
 
 #include <linux/firmware.h>
 #include <linux/platform_device.h>
-#include <drm/drm_legacy.h>
+#include <dev/pci/drm/drm_legacy.h>
 
-#include <drm/ati_pcigart.h>
+#include <dev/pci/drm/ati_pcigart.h>
 #include "radeon_family.h"
 
 /* General customization:
@@ -311,7 +311,7 @@ typedef struct drm_radeon_private {
 	int r600_npipes;
 	int r600_nbanks;
 
-	struct mutex cs_mutex;
+	struct rwlock cs_mutex;
 	u32 cs_id_scnt;
 	u32 cs_id_wcnt;
 	/* r6xx/r7xx drm blit vertex buffer */

@@ -30,14 +30,12 @@
 #ifndef RADEON_MODE_H
 #define RADEON_MODE_H
 
-#include <drm/drm_crtc.h>
-#include <drm/drm_edid.h>
-#include <drm/drm_dp_helper.h>
-#include <drm/drm_dp_mst_helper.h>
-#include <drm/drm_fixed.h>
-#include <drm/drm_crtc_helper.h>
-#include <linux/i2c.h>
-#include <linux/i2c-algo-bit.h>
+#include <dev/pci/drm/drm_crtc.h>
+#include <dev/pci/drm/drm_edid.h>
+#include <dev/pci/drm/drm_dp_helper.h>
+#include <dev/pci/drm/drm_dp_mst_helper.h>
+#include <dev/pci/drm/drm_fixed.h>
+#include <dev/pci/drm/drm_crtc_helper.h>
 
 struct radeon_bo;
 struct radeon_device;
@@ -199,11 +197,13 @@ struct radeon_pll {
 struct radeon_i2c_chan {
 	struct i2c_adapter adapter;
 	struct drm_device *dev;
+#ifdef __linux__
 	struct i2c_algo_bit_data bit;
+#endif
 	struct radeon_i2c_bus_rec rec;
 	struct drm_dp_aux aux;
 	bool has_aux;
-	struct mutex mutex;
+	struct rwlock mutex;
 };
 
 /* mostly for macs, but really any system without connector tables */
