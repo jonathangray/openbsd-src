@@ -1185,7 +1185,7 @@ int radeon_vm_init(struct radeon_device *rdev, struct radeon_vm *vm)
 	}
 	rw_init(&vm->mutex, "vmlk");
 	vm->va = RB_ROOT;
-	spin_lock_init(&vm->status_lock);
+	mtx_init(&vm->status_lock, IPL_TTY);
 	INIT_LIST_HEAD(&vm->invalidated);
 	INIT_LIST_HEAD(&vm->freed);
 	INIT_LIST_HEAD(&vm->cleared);
