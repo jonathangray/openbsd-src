@@ -1242,7 +1242,11 @@ schedule_timeout(long timeout, wait_queue_head_t **wait)
 }
 
 struct reservation_object;
+
 struct seq_file;
+
+static inline void
+seq_printf(struct seq_file *m, const char *fmt, ...) {};
 
 struct fence_ops {
 };
