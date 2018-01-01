@@ -21,7 +21,7 @@
  *
  */
 
-#include "drmP.h"
+#include <dev/pci/drm/drmP.h>
 #include "radeon.h"
 #include "radeon_asic.h"
 #include "trinityd.h"
