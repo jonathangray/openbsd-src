@@ -21,11 +21,11 @@
  *
  * Authors: Alex Deucher
  */
-#include <drm/drmP.h>
+#include <dev/pci/drm/drmP.h>
 #include "radeon.h"
 #include "radeon_asic.h"
 #include "radeon_audio.h"
-#include <drm/radeon_drm.h>
+#include <dev/pci/drm/radeon_drm.h>
 #include "sid.h"
 #include "atom.h"
 #include "si_blit_shaders.h"

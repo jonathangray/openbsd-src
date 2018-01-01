@@ -28,7 +28,6 @@
 #include "radeon.h"
 
 #include "atom.h"
-#include <asm/div64.h>
 
 #include <dev/pci/drm/drm_crtc_helper.h>
 #include <dev/pci/drm/drm_plane_helper.h>
