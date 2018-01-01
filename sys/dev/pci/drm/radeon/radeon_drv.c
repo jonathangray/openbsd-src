@@ -34,9 +34,8 @@
 #include "radeon_drv.h"
 
 #include <dev/pci/drm/drm_pciids.h>
-#include <dev/pci/drm/drm_gem.h>
 
-#include "drm_crtc_helper.h"
+#include <dev/pci/drm/drm_crtc_helper.h>
 #include "radeon_kfd.h"
 
 /*
