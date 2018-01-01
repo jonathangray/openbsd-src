@@ -199,7 +199,7 @@ static struct radeon_mn *radeon_mn_get(struct radeon_device *rdev)
 	rmn->rdev = rdev;
 	rmn->mm = mm;
 	rmn->mn.ops = &radeon_mn_ops;
-	mutex_init(&rmn->lock);
+	rw_init(&rmn->lock, "rmn");
 	rmn->objects = RB_ROOT;
 	
 	r = __mmu_notifier_register(&rmn->mn, mm);

@@ -1183,7 +1183,7 @@ int radeon_vm_init(struct radeon_device *rdev, struct radeon_vm *vm)
 		vm->ids[i].flushed_updates = NULL;
 		vm->ids[i].last_id_use = NULL;
 	}
-	mutex_init(&vm->mutex);
+	rw_init(&vm->mutex, "vmlk");
 	vm->va = RB_ROOT;
 	spin_lock_init(&vm->status_lock);
 	INIT_LIST_HEAD(&vm->invalidated);
