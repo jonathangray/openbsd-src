@@ -1498,7 +1498,7 @@ static bool radeon_legacy_ext_dac_detect(struct drm_encoder *encoder,
 		if (!drm_can_sleep())
 			mdelay(1);
 		else
-			msleep(1);
+			drm_msleep(1);
 	}
 
 	/* restore the regs we used */
