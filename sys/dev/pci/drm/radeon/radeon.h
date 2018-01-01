@@ -358,9 +358,7 @@ struct radeon_fence_driver {
 };
 
 struct radeon_fence {
-#ifdef __linux__
 	struct fence		base;
-#endif
 
 	struct radeon_device	*rdev;
 	uint64_t		seq;
@@ -2452,7 +2450,9 @@ struct radeon_device {
 	u32 cg_flags;
 	u32 pg_flags;
 
+#ifdef __linux__
 	struct dev_pm_domain vga_pm_domain;
+#endif
 	bool have_disp_power_ref;
 	u32 px_quirk_flags;
 

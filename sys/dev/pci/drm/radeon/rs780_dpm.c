@@ -29,7 +29,6 @@
 #include "r600_dpm.h"
 #include "rs780_dpm.h"
 #include "atom.h"
-#include <linux/seq_file.h>
 
 static struct igp_ps *rs780_get_ps(struct radeon_ps *rps)
 {

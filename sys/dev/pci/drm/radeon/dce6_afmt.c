@@ -20,7 +20,7 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  *
  */
-#include <linux/hdmi.h>
+#include <dev/pci/drm/hdmi.h>
 #include <dev/pci/drm/drmP.h>
 #include "radeon.h"
 #include "radeon_audio.h"

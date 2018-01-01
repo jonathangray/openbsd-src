@@ -23,8 +23,7 @@
  *
  * Authors: Christian König
  */
-#include <linux/hdmi.h>
-#include <linux/gcd.h>
+#include <dev/pci/drm/hdmi.h>
 #include <dev/pci/drm/drmP.h>
 #include <dev/pci/drm/radeon_drm.h>
 #include "radeon.h"
