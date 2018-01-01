@@ -548,7 +548,7 @@ static int radeon_ttm_tt_pin_userptr(struct ttm_tt *ttm)
 	do {
 		unsigned num_pages = ttm->num_pages - pinned;
 		uint64_t userptr = gtt->userptr + pinned * PAGE_SIZE;
-		struct page **pages = ttm->pages + pinned;
+		struct vm_page **pages = ttm->pages + pinned;
 
 		r = get_user_pages(current, current->mm, userptr, num_pages,
 				   write, 0, pages, NULL);
@@ -601,7 +601,7 @@ static void radeon_ttm_tt_unpin_userptr(struct ttm_tt *ttm)
 	dma_unmap_sg(rdev->dev, ttm->sg->sgl, ttm->sg->nents, direction);
 
 	for_each_sg_page(ttm->sg->sgl, &sg_iter, ttm->sg->nents, 0) {
-		struct page *page = sg_page_iter_page(&sg_iter);
+		struct vm_page *page = sg_page_iter_page(&sg_iter);
 		if (!(gtt->userflags & RADEON_GEM_USERPTR_READONLY))
 			set_page_dirty(page);
 
@@ -670,7 +670,7 @@ static struct ttm_backend_func radeon_backend_func = {
 
 static struct ttm_tt *radeon_ttm_tt_create(struct ttm_bo_device *bdev,
 				    unsigned long size, uint32_t page_flags,
-				    struct page *dummy_read_page)
+				    struct vm_page *dummy_read_page)
 {
 	struct radeon_device *rdev;
 	struct radeon_ttm_tt *gtt;
@@ -1106,7 +1106,7 @@ static ssize_t radeon_ttm_gtt_read(struct file *f, char __user *buf,
 		loff_t p = *pos / PAGE_SIZE;
 		unsigned off = *pos & ~PAGE_MASK;
 		size_t cur_size = min_t(size_t, size, PAGE_SIZE - off);
-		struct page *page;
+		struct vm_page *page;
 		void *ptr;
 
 		if (p >= rdev->gart.num_cpu_pages)
