@@ -1985,7 +1985,7 @@ int r600_do_init_cp(struct drm_device *dev, drm_radeon_init_t *init,
 
 	DRM_DEBUG("\n");
 
-	mutex_init(&dev_priv->cs_mutex);
+	rw_init(&dev_priv->cs_mutex, "r600cs");
 	r600_cs_legacy_init();
 	/* if we require new memory map but we don't have it fail */
 	if ((dev_priv->flags & RADEON_NEW_MEMMAP) && !dev_priv->new_memmap) {

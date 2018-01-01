@@ -926,7 +926,7 @@ struct radeon_i2c_chan *radeon_i2c_create(struct drm_device *dev,
 	i2c->adapter.dev.parent = &dev->pdev->dev;
 	i2c->dev = dev;
 	i2c_set_adapdata(&i2c->adapter, i2c);
-	mutex_init(&i2c->mutex);
+	rw_init(&i2c->mutex, "riic");
 	if (rec->mm_i2c ||
 	    (rec->hw_capable &&
 	     radeon_hw_i2c &&
