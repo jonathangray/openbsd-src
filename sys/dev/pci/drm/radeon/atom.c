@@ -217,7 +217,11 @@ static uint32_t atom_get_src_int(atom_exec_context *ctx, uint8_t attr,
 		(*ptr)++;
 		/* get_unaligned_le32 avoids unaligned accesses from atombios
 		 * tables, noticed on a DEC Alpha. */
+#ifdef notyet
 		val = get_unaligned_le32((u32 *)&ctx->ps[idx]);
+#else
+		val = le32_to_cpu(ctx->ps[idx]);
+#endif
 		if (print)
 			DEBUG("PS[0x%02X,0x%04X]", idx, val);
 		break;
@@ -663,7 +667,7 @@ static void atom_op_delay(atom_exec_context *ctx, int *ptr, int arg)
 	else if (!drm_can_sleep())
 		mdelay(count);
 	else
-		msleep(count);
+		drm_msleep(count);
 }
 
 static void atom_op_div(atom_exec_context *ctx, int *ptr, int arg)
