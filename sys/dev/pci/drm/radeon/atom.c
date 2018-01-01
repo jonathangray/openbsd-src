@@ -1,4 +1,3 @@
-/*	$OpenBSD: atom.c,v 1.9 2015/09/23 23:12:12 kettenis Exp $	*/
 /*
  * Copyright 2008 Advanced Micro Devices, Inc.
  *
@@ -22,6 +21,11 @@
  *
  * Author: Stanislaw Skowronek
  */
+
+#include <linux/module.h>
+#include <linux/sched.h>
+#include <linux/slab.h>
+#include <asm/unaligned.h>
 
 #define ATOM_DEBUG
 
@@ -88,12 +92,8 @@ static void debug_print_spaces(int n)
 		printk("   ");
 }
 
-#ifdef DEBUG
-#undef DEBUG
-#endif
-
-#define DEBUG(...) do if (atom_debug) { printk(__FILE__ __VA_ARGS__); } while (0)
-#define SDEBUG(...) do if (atom_debug) { printk(__FILE__); debug_print_spaces(debug_depth); printf(__VA_ARGS__); } while (0)
+#define DEBUG(...) do if (atom_debug) { printk(KERN_DEBUG __VA_ARGS__); } while (0)
+#define SDEBUG(...) do if (atom_debug) { printk(KERN_DEBUG); debug_print_spaces(debug_depth); printk(__VA_ARGS__); } while (0)
 #else
 #define DEBUG(...) do { } while (0)
 #define SDEBUG(...) do { } while (0)
@@ -222,11 +222,7 @@ static uint32_t atom_get_src_int(atom_exec_context *ctx, uint8_t attr,
 		(*ptr)++;
 		/* get_unaligned_le32 avoids unaligned accesses from atombios
 		 * tables, noticed on a DEC Alpha. */
-#ifdef notyet
 		val = get_unaligned_le32((u32 *)&ctx->ps[idx]);
-#else
-		val = le32_to_cpu(ctx->ps[idx]);
-#endif
 		if (print)
 			DEBUG("PS[0x%02X,0x%04X]", idx, val);
 		break;
@@ -672,7 +668,7 @@ static void atom_op_delay(atom_exec_context *ctx, int *ptr, int arg)
 	else if (!drm_can_sleep())
 		mdelay(count);
 	else
-		drm_msleep(count);
+		msleep(count);
 }
 
 static void atom_op_div(atom_exec_context *ctx, int *ptr, int arg)
@@ -1221,7 +1217,7 @@ free:
 	return ret;
 }
 
-int atom_execute_table(struct atom_context *ctx, int index, uint32_t * params)
+int atom_execute_table_scratch_unlocked(struct atom_context *ctx, int index, uint32_t * params)
 {
 	int r;
 
@@ -1242,11 +1238,22 @@ int atom_execute_table(struct atom_context *ctx, int index, uint32_t * params)
 	return r;
 }
 
+int atom_execute_table(struct atom_context *ctx, int index, uint32_t * params)
+{
+	int r;
+	mutex_lock(&ctx->scratch_mutex);
+	r = atom_execute_table_scratch_unlocked(ctx, index, params);
+	mutex_unlock(&ctx->scratch_mutex);
+	return r;
+}
+
 static int atom_iio_len[] = { 1, 2, 3, 3, 3, 3, 4, 4, 4, 3 };
 
 static void atom_index_iio(struct atom_context *ctx, int base)
 {
 	ctx->iio = kzalloc(2 * 256, GFP_KERNEL);
+	if (!ctx->iio)
+		return;
 	while (CU8(base) == ATOM_IIO_START) {
 		ctx->iio[CU8(base + 1)] = base + 2;
 		base += 2;
@@ -1261,11 +1268,9 @@ struct atom_context *atom_parse(struct card_info *card, void *bios)
 	int base;
 	struct atom_context *ctx =
 	    kzalloc(sizeof(struct atom_context), GFP_KERNEL);
-#ifdef DRMDEBUG
 	char *str;
 	char name[512];
 	int i;
-#endif
 
 	if (!ctx)
 		return NULL;
@@ -1298,8 +1303,11 @@ struct atom_context *atom_parse(struct card_info *card, void *bios)
 	ctx->cmd_table = CU16(base + ATOM_ROM_CMD_PTR);
 	ctx->data_table = CU16(base + ATOM_ROM_DATA_PTR);
 	atom_index_iio(ctx, CU16(ctx->data_table + ATOM_DATA_IIO_PTR) + 4);
+	if (!ctx->iio) {
+		atom_destroy(ctx);
+		return NULL;
+	}
 
-#ifdef DRMDEBUG
 	str = CSTR(CU16(base + ATOM_ROM_MSG_PTR));
 	while (*str && ((*str == '\n') || (*str == '\r')))
 		str++;
@@ -1312,7 +1320,6 @@ struct atom_context *atom_parse(struct card_info *card, void *bios)
 		}
 	}
 	printk(KERN_INFO "ATOM BIOS: %s\n", name);
-#endif
 
 	return ctx;
 }
@@ -1348,8 +1355,7 @@ int atom_asic_init(struct atom_context *ctx)
 
 void atom_destroy(struct atom_context *ctx)
 {
-	if (ctx->iio)
-		kfree(ctx->iio);
+	kfree(ctx->iio);
 	kfree(ctx);
 }
 

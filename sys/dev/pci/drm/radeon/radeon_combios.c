@@ -1,4 +1,3 @@
-/*	$OpenBSD: radeon_combios.c,v 1.11 2017/10/09 09:30:26 patrick Exp $	*/
 /*
  * Copyright 2004 ATI Technologies Inc., Markham, Ontario
  * Copyright 2007-8 Advanced Micro Devices, Inc.
@@ -25,26 +24,18 @@
  * Authors: Dave Airlie
  *          Alex Deucher
  */
-#include <dev/pci/drm/drmP.h>
-#include <dev/pci/drm/radeon_drm.h>
+#include <drm/drmP.h>
+#include <drm/radeon_drm.h>
 #include "radeon.h"
 #include "atom.h"
 
-/* from radeon_encoder.c */
-extern uint32_t
-radeon_get_encoder_enum(struct drm_device *dev, uint32_t supported_device,
-			uint8_t dac);
-extern void radeon_link_encoder_connector(struct drm_device *dev);
-
-/* from radeon_connector.c */
-extern void
-radeon_add_legacy_connector(struct drm_device *dev,
-			    uint32_t connector_id,
-			    uint32_t supported_device,
-			    int connector_type,
-			    struct radeon_i2c_bus_rec *i2c_bus,
-			    uint16_t connector_object_id,
-			    struct radeon_hpd *hpd);
+#ifdef CONFIG_PPC_PMAC
+/* not sure which of these are needed */
+#include <asm/machdep.h>
+#include <asm/pmac_feature.h>
+#include <asm/prom.h>
+#include <asm/pci-bridge.h>
+#endif /* CONFIG_PPC_PMAC */
 
 /* from radeon_legacy_encoder.c */
 extern void
@@ -125,7 +116,7 @@ enum radeon_combios_connector {
 	CONNECTOR_UNSUPPORTED_LEGACY
 };
 
-const int legacy_connector_convert[] = {
+static const int legacy_connector_convert[] = {
 	DRM_MODE_CONNECTOR_Unknown,
 	DRM_MODE_CONNECTOR_DVID,
 	DRM_MODE_CONNECTOR_VGA,
@@ -364,11 +355,13 @@ static uint16_t combios_get_table_offset(struct drm_device *dev,
 		}
 		break;
 	default:
+		check_offset = 0;
 		break;
 	}
 
 	size = RBIOS8(rdev->bios_header_start + 0x6);
-	if (table < COMBIOS_ASIC_INIT_3_TABLE && check_offset < size)
+	/* check absolute offset tables */
+	if (table < COMBIOS_ASIC_INIT_3_TABLE && check_offset && check_offset < size)
 		offset = RBIOS16(rdev->bios_header_start + check_offset);
 
 	return offset;
@@ -419,17 +412,10 @@ radeon_bios_get_hardcoded_edid(struct radeon_device *rdev)
 	return NULL;
 }
 
-#ifdef __clang__
-static inline struct radeon_i2c_bus_rec combios_setup_i2c_bus(struct radeon_device *rdev,
-							      enum radeon_combios_ddc ddc,
-							      u32 clk_mask,
-							      u32 data_mask)
-#else
 static struct radeon_i2c_bus_rec combios_setup_i2c_bus(struct radeon_device *rdev,
 						       enum radeon_combios_ddc ddc,
 						       u32 clk_mask,
 						       u32 data_mask)
-#endif
 {
 	struct radeon_i2c_bus_rec i2c;
 	int ddc_line = 0;
@@ -1269,10 +1255,15 @@ struct radeon_encoder_lvds *radeon_combios_get_lvds_info(struct radeon_encoder
 
 			if ((RBIOS16(tmp) == lvds->native_mode.hdisplay) &&
 			    (RBIOS16(tmp + 2) == lvds->native_mode.vdisplay)) {
+				u32 hss = (RBIOS16(tmp + 21) - RBIOS16(tmp + 19) - 1) * 8;
+
+				if (hss > lvds->native_mode.hdisplay)
+					hss = (10 - 1) * 8;
+
 				lvds->native_mode.htotal = lvds->native_mode.hdisplay +
 					(RBIOS16(tmp + 17) - RBIOS16(tmp + 19)) * 8;
 				lvds->native_mode.hsync_start = lvds->native_mode.hdisplay +
-					(RBIOS16(tmp + 21) - RBIOS16(tmp + 19) - 1) * 8;
+					hss;
 				lvds->native_mode.hsync_end = lvds->native_mode.hsync_start +
 					(RBIOS8(tmp + 23) * 8);
 
@@ -1466,7 +1457,7 @@ bool radeon_get_legacy_connector_info_from_table(struct drm_device *dev)
 
 	rdev->mode_info.connector_table = radeon_connector_table;
 	if (rdev->mode_info.connector_table == CT_NONE) {
-#ifdef __macppc__
+#ifdef CONFIG_PPC_PMAC
 		if (of_machine_is_compatible("PowerBook3,3")) {
 			/* powerbook with VGA */
 			rdev->mode_info.connector_table = CT_POWERBOOK_VGA;
@@ -1532,7 +1523,7 @@ bool radeon_get_legacy_connector_info_from_table(struct drm_device *dev)
 			/* SAM440ep RV250 embedded board */
 			rdev->mode_info.connector_table = CT_SAM440EP;
 		} else
-#endif /* __macppc__ */
+#endif /* CONFIG_PPC_PMAC */
 #ifdef CONFIG_PPC64
 		if (ASIC_IS_RN50(rdev))
 			rdev->mode_info.connector_table = CT_RN50_POWER;
@@ -2635,13 +2626,11 @@ bool radeon_get_legacy_connector_info_from_bios(struct drm_device *dev)
 	return true;
 }
 
-#ifdef DRMDEBUG
 static const char *thermal_controller_names[] = {
 	"NONE",
 	"lm63",
 	"adm1032",
 };
-#endif
 
 void radeon_combios_get_power_modes(struct radeon_device *rdev)
 {
@@ -2704,7 +2693,6 @@ void radeon_combios_get_power_modes(struct radeon_device *rdev)
 			else
 				i2c_bus = combios_setup_i2c_bus(rdev, gpio, 0, 0);
 			rdev->pm.i2c_bus = radeon_i2c_lookup(rdev, &i2c_bus);
-#ifdef notyet
 			if (rdev->pm.i2c_bus) {
 				struct i2c_board_info info = { };
 				const char *name = thermal_controller_names[thermal_controller];
@@ -2712,7 +2700,6 @@ void radeon_combios_get_power_modes(struct radeon_device *rdev)
 				strlcpy(info.type, name, sizeof(info.type));
 				i2c_new_device(&rdev->pm.i2c_bus->adapter, &info);
 			}
-#endif
 		}
 	} else {
 		/* boards with a thermal chip, but no overdrive table */
@@ -2723,7 +2710,6 @@ void radeon_combios_get_power_modes(struct radeon_device *rdev)
 		    (dev->pdev->subsystem_device == 0xc002)) {
 			i2c_bus = combios_setup_i2c_bus(rdev, DDC_MONID, 0, 0);
 			rdev->pm.i2c_bus = radeon_i2c_lookup(rdev, &i2c_bus);
-#ifdef notyet
 			if (rdev->pm.i2c_bus) {
 				struct i2c_board_info info = { };
 				const char *name = "f75375";
@@ -2733,7 +2719,6 @@ void radeon_combios_get_power_modes(struct radeon_device *rdev)
 				DRM_INFO("Possible %s thermal controller at 0x%02x\n",
 					 name, info.addr);
 			}
-#endif
 		}
 	}
 
@@ -3401,6 +3386,21 @@ void radeon_combios_asic_init(struct drm_device *dev)
 	    rdev->pdev->subsystem_vendor == 0x103c &&
 	    rdev->pdev->subsystem_device == 0x30ae)
 		return;
+
+	/* quirk for rs4xx HP Compaq dc5750 Small Form Factor to make it resume
+	 * - it hangs on resume inside the dynclk 1 table.
+	 */
+	if (rdev->family == CHIP_RS480 &&
+	    rdev->pdev->subsystem_vendor == 0x103c &&
+	    rdev->pdev->subsystem_device == 0x280a)
+		return;
+	/* quirk for rs4xx Toshiba Sattellite L20-183 latop to make it resume
+	 * - it hangs on resume inside the dynclk 1 table.
+	 */
+	if (rdev->family == CHIP_RS400 &&
+	    rdev->pdev->subsystem_vendor == 0x1179 &&
+	    rdev->pdev->subsystem_device == 0xff31)
+	        return;
 
 	/* DYN CLK 1 */
 	table = combios_get_table_offset(dev, COMBIOS_DYN_CLK_1_TABLE);
