@@ -49,7 +49,7 @@ static __pure uint32_t int2float(uint32_t x)
 	if (!x) return 0;
 
 	/* Get location of the most significant bit */
-	msb = __fls(x);
+	msb = fls(x);
 
 	/*
 	 * Use a rotate instead of a shift because that works both leftwards

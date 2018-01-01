@@ -2315,7 +2315,16 @@ struct radeon_device {
 	struct device			*dev;
 	struct drm_device		*ddev;
 	struct pci_dev			*pdev;
-	struct rwlock		exclusive_lock;
+	struct rwlock			exclusive_lock;
+
+	pci_chipset_tag_t		pc;
+	pcitag_t			pa_tag;
+	pci_intr_handle_t		intrh;
+	bus_space_tag_t			iot;
+	bus_space_tag_t			memt;
+	bus_dma_tag_t			dmat;
+	void				*irqh;
+
 	/* ASIC */
 	union radeon_asic_config	config;
 	enum radeon_family		family;
@@ -2521,10 +2530,14 @@ static inline struct radeon_fence *to_radeon_fence(struct fence *f)
 /*
  * Registers read & write functions.
  */
-#define RREG8(reg) readb((rdev->rmmio) + (reg))
-#define WREG8(reg, v) writeb(v, (rdev->rmmio) + (reg))
-#define RREG16(reg) readw((rdev->rmmio) + (reg))
-#define WREG16(reg, v) writew(v, (rdev->rmmio) + (reg))
+#define RREG8(reg) \
+	bus_space_read_1(rdev->memt, rdev->rmmio, (reg))
+#define WREG8(reg, v) \
+	bus_space_write_1(rdev->memt, rdev->rmmio, (reg), (v))
+#define RREG16(reg) \
+	bus_space_read_2(rdev->memt, rdev->rmmio, (reg))
+#define WREG16(reg, v) \
+	bus_space_write_2(rdev->memt, rdev->rmmio, (reg), (v))
 #define RREG32(reg) r100_mm_rreg(rdev, (reg), false)
 #define RREG32_IDX(reg) r100_mm_rreg(rdev, (reg), true)
 #define DREG32(reg) printk(KERN_INFO "REGISTER: " #reg " : 0x%08X\n", r100_mm_rreg(rdev, (reg), false))

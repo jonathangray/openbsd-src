@@ -28,7 +28,9 @@
 #ifndef RADEON_KFD_H_INCLUDED
 #define RADEON_KFD_H_INCLUDED
 
+#ifdef notyet
 #include "kgd_kfd_interface.h"
+#endif
 
 struct radeon_device;
 

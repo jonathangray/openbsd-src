@@ -39,8 +39,6 @@
 #include "r300_reg.h"
 #include "drm_buffer.h"
 
-#include <asm/unaligned.h>
-
 #define R300_SIMULTANEOUS_CLIPRECTS		4
 
 /* Values for R300_RE_CLIPRECT_CNTL depending on the number of cliprects
