@@ -145,7 +145,6 @@ file	dev/pci/drm/radeon/evergreen_dma.c		radeondrm
 file	dev/pci/drm/radeon/evergreen_hdmi.c		radeondrm
 file	dev/pci/drm/radeon/kv_dpm.c			radeondrm
 file	dev/pci/drm/radeon/kv_smc.c			radeondrm
-file	dev/pci/drm/radeon/mkregtable.c			radeondrm
 file	dev/pci/drm/radeon/ni.c				radeondrm
 file	dev/pci/drm/radeon/ni_dma.c			radeondrm
 file	dev/pci/drm/radeon/ni_dpm.c			radeondrm
