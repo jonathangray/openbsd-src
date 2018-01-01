@@ -211,8 +211,13 @@ void radeon_atom_backlight_init(struct radeon_encoder *radeon_encoder,
 	memset(&props, 0, sizeof(props));
 	props.max_brightness = RADEON_MAX_BL_LEVEL;
 	props.type = BACKLIGHT_RAW;
+#ifdef notyet
 	snprintf(bl_name, sizeof(bl_name),
 		 "radeon_bl%d", dev->primary->index);
+#else
+	snprintf(bl_name, sizeof(bl_name),
+		 "radeon_bl%d", 0);
+#endif
 	bd = backlight_device_register(bl_name, drm_connector->kdev,
 				       pdata, &radeon_atom_backlight_ops, &props);
 	if (IS_ERR(bd)) {
