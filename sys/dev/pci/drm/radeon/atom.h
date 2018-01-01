@@ -25,8 +25,8 @@
 #ifndef ATOM_H
 #define ATOM_H
 
-#include <linux/types.h>
-#include <drm/drmP.h>
+#include <sys/types.h>
+#include <dev/pci/drm/drmP.h>
 
 #define ATOM_BIOS_MAGIC		0xAA55
 #define ATOM_ATI_MAGIC_PTR	0x30
@@ -124,8 +124,8 @@ struct card_info {
 
 struct atom_context {
 	struct card_info *card;
-	struct mutex mutex;
-	struct mutex scratch_mutex;
+	struct rwlock mutex;
+	struct rwlock scratch_mutex;
 	void *bios;
 	uint32_t cmd_table, data_table;
 	uint16_t *iio;

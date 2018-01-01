@@ -26,7 +26,7 @@
  *          Jerome Glisse
  *          Christian König
  */
-#include <drm/drmP.h>
+#include <dev/pci/drm/drmP.h>
 #include "radeon.h"
 
 /*

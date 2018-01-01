@@ -60,21 +60,15 @@
  *                          are considered as fatal)
  */
 
-#include <linux/atomic.h>
-#include <linux/wait.h>
-#include <linux/list.h>
-#include <linux/kref.h>
-#include <linux/interval_tree.h>
-#include <linux/hashtable.h>
-#include <linux/fence.h>
+#include <dev/pci/drm/drm_linux.h>
 
-#include <ttm/ttm_bo_api.h>
-#include <ttm/ttm_bo_driver.h>
-#include <ttm/ttm_placement.h>
-#include <ttm/ttm_module.h>
-#include <ttm/ttm_execbuf_util.h>
+#include <dev/pci/drm/ttm/ttm_bo_api.h>
+#include <dev/pci/drm/ttm/ttm_bo_driver.h>
+#include <dev/pci/drm/ttm/ttm_placement.h>
+#include <dev/pci/drm/ttm/ttm_module.h>
+#include <dev/pci/drm/ttm/ttm_execbuf_util.h>
 
-#include <drm/drm_gem.h>
+#include <dev/pci/drm/drmP.h>
 
 #include "radeon_family.h"
 #include "radeon_mode.h"
@@ -364,7 +358,9 @@ struct radeon_fence_driver {
 };
 
 struct radeon_fence {
+#ifdef __linux__
 	struct fence		base;
+#endif
 
 	struct radeon_device	*rdev;
 	uint64_t		seq;
@@ -372,7 +368,9 @@ struct radeon_fence {
 	unsigned		ring;
 	bool			is_vm_update;
 
+#ifdef __linux__
 	wait_queue_t		fence_wake;
+#endif
 };
 
 int radeon_fence_driver_start_ring(struct radeon_device *rdev, int ring);
@@ -472,7 +470,9 @@ struct radeon_bo_va {
 	unsigned			ref_count;
 
 	/* protected by vm mutex */
+#ifdef __linux__
 	struct interval_tree_node	it;
+#endif
 	struct list_head		vm_status;
 
 	/* constant after initialization */
@@ -485,7 +485,9 @@ struct radeon_bo {
 	struct list_head		list;
 	/* Protected by tbo.reserved */
 	u32				initial_domain;
+#ifdef notyet
 	struct ttm_place		placements[4];
+#endif
 	struct ttm_placement		placement;
 	struct ttm_buffer_object	tbo;
 	struct ttm_bo_kmap_obj		kmap;
@@ -565,7 +567,7 @@ struct radeon_sa_bo {
  * GEM objects.
  */
 struct radeon_gem {
-	struct mutex		mutex;
+	struct rwlock		mutex;
 	struct list_head	objects;
 };
 
@@ -928,7 +930,7 @@ struct radeon_vm_id {
 };
 
 struct radeon_vm {
-	struct mutex		mutex;
+	struct rwlock		mutex;
 
 	struct rb_root		va;
 
@@ -1600,9 +1602,9 @@ void radeon_dpm_enable_uvd(struct radeon_device *rdev, bool enable);
 void radeon_dpm_enable_vce(struct radeon_device *rdev, bool enable);
 
 struct radeon_pm {
-	struct mutex		mutex;
+	struct rwlock		mutex;
 	/* write locked while reprogramming mclk */
-	struct rw_semaphore	mclk_lock;
+	struct rwlock	mclk_lock;
 	u32			active_crtcs;
 	int			active_crtc_count;
 	int			req_vblank;
@@ -2315,7 +2317,7 @@ struct radeon_device {
 	struct device			*dev;
 	struct drm_device		*ddev;
 	struct pci_dev			*pdev;
-	struct rw_semaphore		exclusive_lock;
+	struct rwlock		exclusive_lock;
 	/* ASIC */
 	union radeon_asic_config	config;
 	enum radeon_family		family;
@@ -2378,7 +2380,7 @@ struct radeon_device {
 	struct radeon_fence_driver	fence_drv[RADEON_NUM_RINGS];
 	wait_queue_head_t		fence_queue;
 	unsigned			fence_context;
-	struct mutex			ring_lock;
+	struct rwlock			ring_lock;
 	struct radeon_ring		ring[RADEON_NUM_RINGS];
 	bool				ib_pool_ready;
 	struct radeon_sa_manager	ring_tmp_bo;
@@ -2419,7 +2421,7 @@ struct radeon_device {
 	struct work_struct dp_work;
 	struct work_struct audio_work;
 	int num_crtc; /* number of crtcs */
-	struct mutex dc_hw_i2c_mutex; /* display controller hw i2c mutex */
+	struct rwlock dc_hw_i2c_mutex; /* display controller hw i2c mutex */
 	bool has_uvd;
 	struct r600_audio audio; /* audio stuff */
 	struct notifier_block acpi_nb;
@@ -2433,7 +2435,7 @@ struct radeon_device {
 	unsigned 		debugfs_count;
 	/* virtual memory */
 	struct radeon_vm_manager	vm_manager;
-	struct mutex			gpu_clock_mutex;
+	struct rwlock			gpu_clock_mutex;
 	/* memory stats */
 	atomic64_t			vram_usage;
 	atomic64_t			gtt_usage;
@@ -2443,9 +2445,9 @@ struct radeon_device {
 	struct radeon_atif		atif;
 	struct radeon_atcs		atcs;
 	/* srbm instance registers */
-	struct mutex			srbm_mutex;
+	struct rwlock			srbm_mutex;
 	/* GRBM index mutex. Protects concurrents access to GRBM index */
-	struct mutex			grbm_idx_mutex;
+	struct rwlock			grbm_idx_mutex;
 	/* clock, powergating flags */
 	u32 cg_flags;
 	u32 pg_flags;
@@ -2461,7 +2463,7 @@ struct radeon_device {
 	/* amdkfd interface */
 	struct kfd_dev		*kfd;
 
-	struct mutex	mn_lock;
+	struct rwlock	mn_lock;
 	DECLARE_HASHTABLE(mn_hash, 7);
 };
 

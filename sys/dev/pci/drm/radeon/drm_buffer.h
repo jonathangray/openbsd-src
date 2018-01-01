@@ -35,7 +35,7 @@
 #ifndef _DRM_BUFFER_H_
 #define _DRM_BUFFER_H_
 
-#include <drm/drmP.h>
+#include <dev/pci/drm/drmP.h>
 
 struct drm_buffer {
 	int iterator;

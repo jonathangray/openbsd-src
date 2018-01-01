@@ -21,8 +21,8 @@
  *
  * Authors: Dave Airlie
  */
-#include <drm/drmP.h>
-#include <drm/radeon_drm.h>
+#include <dev/pci/drm/drmP.h>
+#include <dev/pci/drm/radeon_drm.h>
 #include "radeon.h"
 #include "nid.h"
 
