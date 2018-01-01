@@ -281,7 +281,7 @@ void radeon_gart_unbind(struct radeon_device *rdev, unsigned offset,
  * Returns 0 for success, -EINVAL for failure.
  */
 int radeon_gart_bind(struct radeon_device *rdev, unsigned offset,
-		     int pages, struct page **pagelist, dma_addr_t *dma_addr,
+		     int pages, struct vm_page **pagelist, dma_addr_t *dma_addr,
 		     uint32_t flags)
 {
 	unsigned t;
