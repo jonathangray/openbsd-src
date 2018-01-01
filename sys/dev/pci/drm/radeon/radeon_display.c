@@ -30,12 +30,10 @@
 #include "atom.h"
 #include <asm/div64.h>
 
-#include <linux/pm_runtime.h>
 #include <dev/pci/drm/drm_crtc_helper.h>
 #include <dev/pci/drm/drm_plane_helper.h>
 #include <dev/pci/drm/drm_edid.h>
 
-#include <linux/gcd.h>
 
 static void avivo_crtc_load_lut(struct drm_crtc *crtc)
 {

@@ -28,8 +28,6 @@
  *    Christian König <deathsimple@vodafone.de>
  */
 
-#include <linux/firmware.h>
-#include <linux/module.h>
 #include <dev/pci/drm/drmP.h>
 #include <dev/pci/drm/drm.h>
 

@@ -32,7 +32,6 @@
 #include "radeon.h"
 #include "atom.h"
 
-#include <linux/pm_runtime.h>
 
 #define RADEON_WAIT_IDLE_TIMEOUT 200
 

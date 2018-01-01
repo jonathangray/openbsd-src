@@ -23,9 +23,6 @@
  * Authors:
  *     David Airlie
  */
-#include <linux/module.h>
-#include <linux/slab.h>
-#include <linux/fb.h>
 
 #include <dev/pci/drm/drmP.h>
 #include <dev/pci/drm/drm_crtc.h>
@@ -35,7 +32,6 @@
 
 #include <dev/pci/drm/drm_fb_helper.h>
 
-#include <linux/vga_switcheroo.h>
 
 /* object hierarchy -
    this contains a helper + a radeon fb

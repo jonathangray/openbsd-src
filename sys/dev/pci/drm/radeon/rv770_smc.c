@@ -22,7 +22,6 @@
  * Authors: Alex Deucher
  */
 
-#include <linux/firmware.h>
 #include <dev/pci/drm/drmP.h>
 #include "radeon.h"
 #include "rv770d.h"

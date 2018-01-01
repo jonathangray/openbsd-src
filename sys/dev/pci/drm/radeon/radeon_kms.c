@@ -30,9 +30,6 @@
 #include <dev/pci/drm/radeon_drm.h>
 #include "radeon_asic.h"
 
-#include <linux/vga_switcheroo.h>
-#include <linux/slab.h>
-#include <linux/pm_runtime.h>
 
 #include "radeon_kfd.h"
 

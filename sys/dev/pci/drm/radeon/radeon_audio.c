@@ -22,7 +22,6 @@
  * Authors: Slava Grigorev <slava.grigorev@amd.com>
  */
 
-#include <linux/gcd.h>
 #include <dev/pci/drm/drmP.h>
 #include <dev/pci/drm/drm_crtc.h>
 #include "radeon.h"

@@ -28,7 +28,6 @@
 #include <dev/pci/drm/radeon_drm.h>
 #include "radeon.h"
 #include "atom.h"
-#include <linux/backlight.h>
 #ifdef CONFIG_PMAC_BACKLIGHT
 #include <asm/backlight.h>
 #endif

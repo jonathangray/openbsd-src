@@ -34,10 +34,6 @@
 #include "radeon_drv.h"
 
 #include <dev/pci/drm/drm_pciids.h>
-#include <linux/console.h>
-#include <linux/module.h>
-#include <linux/pm_runtime.h>
-#include <linux/vga_switcheroo.h>
 #include <dev/pci/drm/drm_gem.h>
 
 #include "drm_crtc_helper.h"

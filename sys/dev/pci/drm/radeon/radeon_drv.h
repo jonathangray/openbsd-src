@@ -31,8 +31,6 @@
 #ifndef __RADEON_DRV_H__
 #define __RADEON_DRV_H__
 
-#include <linux/firmware.h>
-#include <linux/platform_device.h>
 #include <dev/pci/drm/drm_legacy.h>
 
 #include <dev/pci/drm/ati_pcigart.h>

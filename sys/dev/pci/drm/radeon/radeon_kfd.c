@@ -20,16 +20,12 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <linux/module.h>
-#include <linux/fdtable.h>
-#include <linux/uaccess.h>
 #include <dev/pci/drm/drmP.h>
 #include "radeon.h"
 #include "cikd.h"
 #include "cik_reg.h"
 #include "radeon_kfd.h"
 #include "radeon_ucode.h"
-#include <linux/firmware.h>
 #include "cik_structs.h"
 
 #define CIK_PIPE_PER_MEC	(4)
