@@ -2733,7 +2733,7 @@ static void evergreen_blank_dp_output(struct radeon_device *rdev,
 	stream_ctrl = RREG32(EVERGREEN_DP_VID_STREAM_CNTL +
 			     evergreen_dp_offsets[dig_fe]);
 	while (counter < 32 && stream_ctrl & EVERGREEN_DP_VID_STREAM_STATUS) {
-		msleep(1);
+		drm_msleep(1);
 		counter++;
 		stream_ctrl = RREG32(EVERGREEN_DP_VID_STREAM_CNTL +
 				     evergreen_dp_offsets[dig_fe]);
