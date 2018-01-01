@@ -1104,7 +1104,7 @@ static ssize_t radeon_ttm_gtt_read(struct file *f, char __user *buf,
 
 	while (size) {
 		loff_t p = *pos / PAGE_SIZE;
-		unsigned off = *pos & ~PAGE_MASK;
+		unsigned off = *pos & PAGE_MASK;
 		size_t cur_size = min_t(size_t, size, PAGE_SIZE - off);
 		struct vm_page *page;
 		void *ptr;
