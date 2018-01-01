@@ -1241,6 +1241,16 @@ schedule_timeout(long timeout, wait_queue_head_t **wait)
 	return -msleep(*wait, &(*wait)->lock, PZERO, "schto", timeout);
 }
 
+struct reservation_object;
+struct seq_file;
+
+struct fence_ops {
+};
+
+struct fence {
+	struct fence_ops *ops;
+};
+
 struct idr_entry {
 	SPLAY_ENTRY(idr_entry) entry;
 	int id;
