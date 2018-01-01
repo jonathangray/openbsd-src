@@ -318,7 +318,9 @@ void dce4_hdmi_set_color_depth(struct drm_encoder *encoder, u32 offset, int bpc)
 {
 	struct drm_device *dev = encoder->dev;
 	struct radeon_device *rdev = dev->dev_private;
+#ifdef DRMDEBUG
 	struct drm_connector *connector = radeon_get_connector_for_encoder(encoder);
+#endif
 	uint32_t val;
 
 	val = RREG32(HDMI_CONTROL + offset);
