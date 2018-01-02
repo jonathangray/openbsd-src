@@ -45,8 +45,8 @@
 
 #include <linux/atomic.h>
 
-#include <drm/ttm/ttm_bo_driver.h>
-#include <drm/ttm/ttm_page_alloc.h>
+#include <dev/pci/drm/ttm/ttm_bo_driver.h>
+#include <dev/pci/drm/ttm/ttm_page_alloc.h>
 
 #ifdef TTM_HAS_AGP
 #include <asm/agp.h>
