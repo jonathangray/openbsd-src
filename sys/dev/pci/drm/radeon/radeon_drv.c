@@ -126,13 +126,14 @@ extern int radeon_get_crtc_scanoutpos(struct drm_device *dev, unsigned int crtc,
 extern bool radeon_is_px(struct drm_device *dev);
 extern const struct drm_ioctl_desc radeon_ioctls_kms[];
 extern int radeon_max_kms_ioctl;
-int radeon_mmap(struct file *filp, struct vm_area_struct *vma);
+extern struct uvm_object *radeon_mmap(struct drm_device *, voff_t, vsize_t);
 int radeon_mode_dumb_mmap(struct drm_file *filp,
 			  struct drm_device *dev,
 			  uint32_t handle, uint64_t *offset_p);
 int radeon_mode_dumb_create(struct drm_file *file_priv,
 			    struct drm_device *dev,
 			    struct drm_mode_create_dumb *args);
+#ifdef notyet
 struct sg_table *radeon_gem_prime_get_sg_table(struct drm_gem_object *obj);
 struct drm_gem_object *radeon_gem_prime_import_sg_table(struct drm_device *dev,
 							struct dma_buf_attachment *,
@@ -142,6 +143,7 @@ void radeon_gem_prime_unpin(struct drm_gem_object *obj);
 struct reservation_object *radeon_gem_prime_res_obj(struct drm_gem_object *);
 void *radeon_gem_prime_vmap(struct drm_gem_object *obj);
 void radeon_gem_prime_vunmap(struct drm_gem_object *obj, void *vaddr);
+#endif
 extern long radeon_kms_compat_ioctl(struct file *filp, unsigned int cmd,
 				    unsigned long arg);
 
@@ -155,8 +157,10 @@ void radeon_debugfs_cleanup(struct drm_minor *minor);
 void radeon_register_atpx_handler(void);
 void radeon_unregister_atpx_handler(void);
 #else
+#ifdef notyet
 static inline void radeon_register_atpx_handler(void) {}
 static inline void radeon_unregister_atpx_handler(void) {}
+#endif
 #endif
 
 int radeon_no_wb;
@@ -280,7 +284,7 @@ module_param_named(auxch, radeon_auxch, int, 0444);
 MODULE_PARM_DESC(mst, "DisplayPort MST experimental support (1 = enable, 0 = disable)");
 module_param_named(mst, radeon_mst, int, 0444);
 
-static struct pci_device_id pciidlist[] = {
+const struct drm_pcidev radeondrm_pciidlist[] = {
 	radeon_PCI_IDS
 };
 
@@ -368,8 +372,11 @@ static struct drm_driver driver_old = {
 
 #endif
 
+#ifdef notyet
 static struct drm_driver kms_driver;
+#endif
 
+#ifdef notyet
 static int radeon_kick_out_firmware_fb(struct pci_dev *pdev)
 {
 	struct apertures_struct *ap;
@@ -390,7 +397,9 @@ static int radeon_kick_out_firmware_fb(struct pci_dev *pdev)
 
 	return 0;
 }
+#endif
 
+#ifdef __linux__
 static int radeon_pci_probe(struct pci_dev *pdev,
 			    const struct pci_device_id *ent)
 {
@@ -556,19 +565,25 @@ static const struct file_operations radeon_driver_kms_fops = {
 	.compat_ioctl = radeon_kms_compat_ioctl,
 #endif
 };
+#endif /* __linux__ */
 
+#ifdef notyet
 static struct drm_driver kms_driver = {
 	.driver_features =
 	    DRIVER_USE_AGP |
 	    DRIVER_HAVE_IRQ | DRIVER_IRQ_SHARED | DRIVER_GEM |
 	    DRIVER_PRIME | DRIVER_RENDER,
+#ifdef notyet
 	.load = radeon_driver_load_kms,
+#endif
 	.open = radeon_driver_open_kms,
 	.preclose = radeon_driver_preclose_kms,
 	.postclose = radeon_driver_postclose_kms,
 	.lastclose = radeon_driver_lastclose_kms,
+#ifdef notyet
 	.set_busid = drm_pci_set_busid,
 	.unload = radeon_driver_unload_kms,
+#endif
 	.get_vblank_counter = radeon_get_vblank_counter_kms,
 	.enable_vblank = radeon_enable_vblank_kms,
 	.disable_vblank = radeon_disable_vblank_kms,
@@ -589,6 +604,7 @@ static struct drm_driver kms_driver = {
 	.dumb_create = radeon_mode_dumb_create,
 	.dumb_map_offset = radeon_mode_dumb_mmap,
 	.dumb_destroy = drm_gem_dumb_destroy,
+#ifdef notyet
 	.fops = &radeon_driver_kms_fops,
 
 	.prime_handle_to_fd = drm_gem_prime_handle_to_fd,
@@ -602,6 +618,7 @@ static struct drm_driver kms_driver = {
 	.gem_prime_import_sg_table = radeon_gem_prime_import_sg_table,
 	.gem_prime_vmap = radeon_gem_prime_vmap,
 	.gem_prime_vunmap = radeon_gem_prime_vunmap,
+#endif
 
 	.name = DRIVER_NAME,
 	.desc = DRIVER_DESC,
@@ -612,6 +629,8 @@ static struct drm_driver kms_driver = {
 };
 
 static struct drm_driver *driver;
+#endif /* notyet */
+#ifdef __linux__
 static struct pci_driver *pdriver;
 
 #ifdef CONFIG_DRM_RADEON_UMS
@@ -628,7 +647,9 @@ static struct pci_driver radeon_kms_pci_driver = {
 	.remove = radeon_pci_remove,
 	.driver.pm = &radeon_pm_ops,
 };
+#endif /* __linux__ */
 
+#ifdef notyet
 static int __init radeon_init(void)
 {
 #ifdef CONFIG_VGA_CONSOLE
@@ -644,7 +665,9 @@ static int __init radeon_init(void)
 	if (radeon_modeset == 1) {
 		DRM_INFO("radeon kernel modesetting enabled.\n");
 		driver = &kms_driver;
+#ifdef __linux__
 		pdriver = &radeon_kms_pci_driver;
+#endif
 		driver->driver_features |= DRIVER_MODESET;
 		driver->num_ioctls = radeon_max_kms_ioctl;
 		radeon_register_atpx_handler();
@@ -665,15 +688,24 @@ static int __init radeon_init(void)
 	radeon_kfd_init();
 
 	/* let modprobe override vga console setting */
+#ifdef notyet
 	return drm_pci_init(driver, pdriver);
+#else
+	STUB();
+	return -ENOSYS;
+#endif
 }
 
 static void __exit radeon_exit(void)
 {
+	STUB();
 	radeon_kfd_fini();
+#ifdef notyet
 	drm_pci_exit(driver, pdriver);
+#endif
 	radeon_unregister_atpx_handler();
 }
+#endif
 
 module_init(radeon_init);
 module_exit(radeon_exit);
