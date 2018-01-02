@@ -42,7 +42,7 @@
 #include <linux/kref.h>
 #include <linux/rcupdate.h>
 #include <linux/dma-buf.h>
-#include <ttm/ttm_memory.h>
+#include <dev/pci/drm/ttm/ttm_memory.h>
 
 /**
  * enum ttm_ref_type

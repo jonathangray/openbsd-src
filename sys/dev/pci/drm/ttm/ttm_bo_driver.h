@@ -30,10 +30,10 @@
 #ifndef _TTM_BO_DRIVER_H_
 #define _TTM_BO_DRIVER_H_
 
-#include <ttm/ttm_bo_api.h>
-#include <ttm/ttm_memory.h>
-#include <ttm/ttm_module.h>
-#include <ttm/ttm_placement.h>
+#include <dev/pci/drm/ttm/ttm_bo_api.h>
+#include <dev/pci/drm/ttm/ttm_memory.h>
+#include <dev/pci/drm/ttm/ttm_module.h>
+#include <dev/pci/drm/ttm/ttm_placement.h>
 #include <dev/pci/drm/drm_mm.h>
 #include <dev/pci/drm/drm_global.h>
 #include <dev/pci/drm/drm_vma_manager.h>
