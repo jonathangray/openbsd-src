@@ -5865,6 +5865,8 @@ void evergreen_fini(struct radeon_device *rdev)
 
 void evergreen_pcie_gen2_enable(struct radeon_device *rdev)
 {
+	STUB();
+#ifdef notyet
 	u32 link_width_cntl, speed_cntl;
 
 	if (radeon_pcie_gen2 == 0)
@@ -5880,13 +5882,9 @@ void evergreen_pcie_gen2_enable(struct radeon_device *rdev)
 	if (ASIC_IS_X2(rdev))
 		return;
 
-#ifdef notyet
 	if ((rdev->pdev->bus->max_bus_speed != PCIE_SPEED_5_0GT) &&
 		(rdev->pdev->bus->max_bus_speed != PCIE_SPEED_8_0GT))
 		return;
-#else
-	printf("%s todo bus speed test\n", __func__);
-#endif
 
 	speed_cntl = RREG32_PCIE_PORT(PCIE_LC_SPEED_CNTL);
 	if (speed_cntl & LC_CURRENT_DATA_RATE) {
@@ -5928,6 +5926,7 @@ void evergreen_pcie_gen2_enable(struct radeon_device *rdev)
 			link_width_cntl &= ~LC_UPCONFIGURE_DIS;
 		WREG32_PCIE_PORT(PCIE_LC_LINK_WIDTH_CNTL, link_width_cntl);
 	}
+#endif
 }
 
 void evergreen_program_aspm(struct radeon_device *rdev)

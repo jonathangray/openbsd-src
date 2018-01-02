@@ -4437,6 +4437,8 @@ int r600_get_pcie_lanes(struct radeon_device *rdev)
 
 static void r600_pcie_gen2_enable(struct radeon_device *rdev)
 {
+	STUB();
+#ifdef noyet
 	u32 link_width_cntl, lanes, speed_cntl, training_cntl, tmp;
 	u16 link_cntl2;
 
@@ -4547,6 +4549,7 @@ static void r600_pcie_gen2_enable(struct radeon_device *rdev)
 			link_width_cntl &= ~LC_UPCONFIGURE_DIS;
 		WREG32_PCIE_PORT(PCIE_LC_LINK_WIDTH_CNTL, link_width_cntl);
 	}
+#endif
 }
 
 /**
