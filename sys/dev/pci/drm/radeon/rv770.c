@@ -1970,6 +1970,8 @@ void rv770_fini(struct radeon_device *rdev)
 
 static void rv770_pcie_gen2_enable(struct radeon_device *rdev)
 {
+	STUB();
+#ifdef notyet
 	u32 link_width_cntl, lanes, speed_cntl, tmp;
 	u16 link_cntl2;
 
@@ -2047,4 +2049,5 @@ static void rv770_pcie_gen2_enable(struct radeon_device *rdev)
 			link_width_cntl &= ~LC_UPCONFIGURE_DIS;
 		WREG32_PCIE_PORT(PCIE_LC_LINK_WIDTH_CNTL, link_width_cntl);
 	}
+#endif
 }
