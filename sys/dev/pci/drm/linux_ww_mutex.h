@@ -236,6 +236,7 @@ ww_mutex_destroy(struct ww_mutex *lock) {
 
 struct reservation_object_list {
 	uint32_t shared_count;
+	struct fence *shared[];
 };
 
 struct reservation_object {
@@ -278,6 +279,27 @@ reservation_object_held(struct reservation_object *obj)
 static inline long
 reservation_object_wait_timeout_rcu(struct reservation_object *obj,
     bool wait_all, bool intr, unsigned long timeout)
+{
+	panic("%s not implemented", __func__);
+	return 0;
+}
+
+static inline void
+reservation_object_add_excl_fence(struct reservation_object *obj,
+    struct fence *fence)
+{
+	panic("%s not implemented", __func__);
+}
+
+static inline void
+reservation_object_add_shared_fence(struct reservation_object *obj,
+    struct fence *fence)
+{
+	panic("%s not implemented", __func__);
+}
+
+static inline int
+reservation_object_reserve_shared(struct reservation_object *obj)
 {
 	panic("%s not implemented", __func__);
 	return 0;
