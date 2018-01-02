@@ -37,11 +37,8 @@
 #ifndef _TTM_OBJECT_H_
 #define _TTM_OBJECT_H_
 
-#include <linux/list.h>
+#include <dev/pci/drm/drm_linux.h>
 #include <dev/pci/drm/drm_hashtab.h>
-#include <linux/kref.h>
-#include <linux/rcupdate.h>
-#include <linux/dma-buf.h>
 #include <dev/pci/drm/ttm/ttm_memory.h>
 
 /**
@@ -123,7 +120,9 @@ struct ttm_object_device;
  */
 
 struct ttm_base_object {
+#ifdef notyet
 	struct rcu_head rhead;
+#endif
 	struct drm_hash_item hash;
 	enum ttm_object_type object_type;
 	bool shareable;
@@ -303,10 +302,12 @@ extern void ttm_object_file_release(struct ttm_object_file **p_tfile);
  * data structures needed for ttm base and ref objects.
  */
 
+#ifdef notyet
 extern struct ttm_object_device *
 ttm_object_device_init(struct ttm_mem_global *mem_glob,
 		       unsigned int hash_order,
 		       const struct dma_buf_ops *ops);
+#endif
 
 /**
  * ttm_object_device_release - release data held by a ttm_object_device

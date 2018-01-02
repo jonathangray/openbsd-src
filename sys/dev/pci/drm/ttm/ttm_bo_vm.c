@@ -37,6 +37,7 @@
 
 #define TTM_BO_VM_NUM_PREFAULT 16
 
+#ifdef notyet
 static int ttm_bo_vm_fault_idle(struct ttm_buffer_object *bo,
 				struct vm_area_struct *vma,
 				struct vm_fault *vmf)
@@ -370,3 +371,4 @@ int ttm_fbdev_mmap(struct vm_area_struct *vma, struct ttm_buffer_object *bo)
 	return 0;
 }
 EXPORT_SYMBOL(ttm_fbdev_mmap);
+#endif

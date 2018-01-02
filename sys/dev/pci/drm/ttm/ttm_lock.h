@@ -50,8 +50,7 @@
 #define _TTM_LOCK_H_
 
 #include <dev/pci/drm/ttm/ttm_object.h>
-#include <linux/wait.h>
-#include <linux/atomic.h>
+#include <dev/pci/drm/drm_linux.h>
 
 /**
  * struct ttm_lock
