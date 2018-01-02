@@ -1553,6 +1553,9 @@ EXPORT_SYMBOL(ttm_bo_unmap_virtual);
 int ttm_bo_wait(struct ttm_buffer_object *bo,
 		bool lazy, bool interruptible, bool no_wait)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct reservation_object_list *fobj;
 	struct reservation_object *resv;
 	struct fence *excl;
@@ -1595,6 +1598,7 @@ int ttm_bo_wait(struct ttm_buffer_object *bo,
 	reservation_object_add_excl_fence(resv, NULL);
 	clear_bit(TTM_BO_PRIV_FLAG_MOVING, &bo->priv_flags);
 	return 0;
+#endif
 }
 EXPORT_SYMBOL(ttm_bo_wait);
 

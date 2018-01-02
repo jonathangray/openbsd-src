@@ -32,9 +32,6 @@
 #include <dev/pci/drm/ttm/ttm_bo_driver.h>
 #include <dev/pci/drm/ttm/ttm_placement.h>
 #include <dev/pci/drm/drm_mm.h>
-#include <linux/slab.h>
-#include <linux/spinlock.h>
-#include <linux/module.h>
 
 /**
  * Currently we use a spinlock for the lock, but a mutex *may* be
