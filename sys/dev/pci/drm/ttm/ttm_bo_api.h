@@ -33,13 +33,7 @@
 
 #include <dev/pci/drm/drm_hashtab.h>
 #include <dev/pci/drm/drm_vma_manager.h>
-#include <linux/kref.h>
-#include <linux/list.h>
-#include <linux/wait.h>
-#include <linux/mutex.h>
-#include <linux/mm.h>
-#include <linux/bitmap.h>
-#include <linux/reservation.h>
+#include <dev/pci/drm/drm_linux.h>
 
 struct ttm_bo_device;
 
