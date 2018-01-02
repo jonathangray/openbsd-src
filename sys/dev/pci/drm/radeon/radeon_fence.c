@@ -102,6 +102,8 @@ static u32 radeon_fence_read(struct radeon_device *rdev, int ring)
  */
 static void radeon_fence_schedule_check(struct radeon_device *rdev, int ring)
 {
+	STUB();
+#ifdef notyet
 	/*
 	 * Do not reset the timer here with mod_delayed_work,
 	 * this can livelock in an interaction with TTM delayed destroy.
@@ -109,6 +111,7 @@ static void radeon_fence_schedule_check(struct radeon_device *rdev, int ring)
 	queue_delayed_work(system_power_efficient_wq,
 			   &rdev->fence_drv[ring].lockup_work,
 			   RADEON_FENCE_JIFFIES_TIMEOUT);
+#endif
 }
 
 /**
@@ -151,6 +154,7 @@ int radeon_fence_emit(struct radeon_device *rdev,
  * for the fence locking itself, so unlocked variants are used for
  * fence_signal, and remove_wait_queue.
  */
+#ifdef notyet
 static int radeon_fence_check_signaled(wait_queue_t *wait, unsigned mode, int flags, void *key)
 {
 	struct radeon_fence *fence;
@@ -178,6 +182,7 @@ static int radeon_fence_check_signaled(wait_queue_t *wait, unsigned mode, int fl
 		FENCE_TRACE(&fence->base, "pending\n");
 	return 0;
 }
+#endif
 
 /**
  * radeon_fence_activity - check for fence activity
@@ -261,6 +266,8 @@ static bool radeon_fence_activity(struct radeon_device *rdev, int ring)
  */
 static void radeon_fence_check_lockup(struct work_struct *work)
 {
+	STUB();
+#ifdef notyet
 	struct radeon_fence_driver *fence_drv;
 	struct radeon_device *rdev;
 	int ring;
@@ -301,6 +308,7 @@ static void radeon_fence_check_lockup(struct work_struct *work)
 		wake_up_all(&rdev->fence_queue);
 	}
 	up_read(&rdev->exclusive_lock);
+#endif
 }
 
 /**
@@ -348,6 +356,9 @@ static bool radeon_fence_seq_signaled(struct radeon_device *rdev,
 
 static bool radeon_fence_is_signaled(struct fence *f)
 {
+	STUB();
+	return false;
+#ifdef notyet
 	struct radeon_fence *fence = to_radeon_fence(f);
 	struct radeon_device *rdev = fence->rdev;
 	unsigned ring = fence->ring;
@@ -366,6 +377,7 @@ static bool radeon_fence_is_signaled(struct fence *f)
 		}
 	}
 	return false;
+#endif
 }
 
 /**
@@ -378,6 +390,9 @@ static bool radeon_fence_is_signaled(struct fence *f)
  */
 static bool radeon_fence_enable_signaling(struct fence *f)
 {
+	STUB();
+	return false;
+#ifdef notyet
 	struct radeon_fence *fence = to_radeon_fence(f);
 	struct radeon_device *rdev = fence->rdev;
 
@@ -413,6 +428,7 @@ static bool radeon_fence_enable_signaling(struct fence *f)
 
 	FENCE_TRACE(&fence->base, "armed on ring %i!\n", fence->ring);
 	return true;
+#endif
 }
 
 /**
@@ -450,6 +466,7 @@ bool radeon_fence_signaled(struct radeon_fence *fence)
  * Returns true if any has signaled (current value is >= requested value)
  * or false if it has not. Helper function for radeon_fence_wait_seq.
  */
+#ifdef notyet
 static bool radeon_fence_any_seq_signaled(struct radeon_device *rdev, u64 *seq)
 {
 	unsigned i;
@@ -460,6 +477,7 @@ static bool radeon_fence_any_seq_signaled(struct radeon_device *rdev, u64 *seq)
 	}
 	return false;
 }
+#endif
 
 /**
  * radeon_fence_wait_seq_timeout - wait for a specific sequence numbers
@@ -478,6 +496,7 @@ static bool radeon_fence_any_seq_signaled(struct radeon_device *rdev, u64 *seq)
  * the wait timeout, or an error for all other cases.
  * -EDEADLK is returned when a GPU lockup has been detected.
  */
+#ifdef notyet
 static long radeon_fence_wait_seq_timeout(struct radeon_device *rdev,
 					  u64 *target_seq, bool intr,
 					  long timeout)
@@ -520,6 +539,7 @@ static long radeon_fence_wait_seq_timeout(struct radeon_device *rdev,
 
 	return r;
 }
+#endif
 
 /**
  * radeon_fence_wait - wait for a fence to signal
@@ -534,6 +554,9 @@ static long radeon_fence_wait_seq_timeout(struct radeon_device *rdev,
  */
 int radeon_fence_wait(struct radeon_fence *fence, bool intr)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	uint64_t seq[RADEON_NUM_RINGS] = {};
 	long r;
 
@@ -556,6 +579,7 @@ int radeon_fence_wait(struct radeon_fence *fence, bool intr)
 	if (!r)
 		FENCE_TRACE(&fence->base, "signaled from fence_wait\n");
 	return 0;
+#endif
 }
 
 /**
@@ -575,6 +599,9 @@ int radeon_fence_wait_any(struct radeon_device *rdev,
 			  struct radeon_fence **fences,
 			  bool intr)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	uint64_t seq[RADEON_NUM_RINGS];
 	unsigned i, num_rings = 0;
 	long r;
@@ -599,6 +626,7 @@ int radeon_fence_wait_any(struct radeon_device *rdev,
 		return r;
 	}
 	return 0;
+#endif
 }
 
 /**
@@ -613,6 +641,9 @@ int radeon_fence_wait_any(struct radeon_device *rdev,
  */
 int radeon_fence_wait_next(struct radeon_device *rdev, int ring)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	uint64_t seq[RADEON_NUM_RINGS] = {};
 	long r;
 
@@ -626,6 +657,7 @@ int radeon_fence_wait_next(struct radeon_device *rdev, int ring)
 	if (r < 0)
 		return r;
 	return 0;
+#endif
 }
 
 /**
@@ -640,6 +672,9 @@ int radeon_fence_wait_next(struct radeon_device *rdev, int ring)
  */
 int radeon_fence_wait_empty(struct radeon_device *rdev, int ring)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	uint64_t seq[RADEON_NUM_RINGS] = {};
 	long r;
 
@@ -656,6 +691,7 @@ int radeon_fence_wait_empty(struct radeon_device *rdev, int ring)
 			ring, r);
 	}
 	return 0;
+#endif
 }
 
 /**
@@ -1020,16 +1056,19 @@ static const char *radeon_fence_get_timeline_name(struct fence *f)
 	}
 }
 
+#ifdef notyet
 static inline bool radeon_test_signaled(struct radeon_fence *fence)
 {
 	return test_bit(FENCE_FLAG_SIGNALED_BIT, &fence->base.flags);
 }
+#endif
 
 struct radeon_wait_cb {
 	struct fence_cb base;
 	struct task_struct *task;
 };
 
+#ifdef notyet
 static void
 radeon_fence_wait_cb(struct fence *fence, struct fence_cb *cb)
 {
@@ -1038,10 +1077,14 @@ radeon_fence_wait_cb(struct fence *fence, struct fence_cb *cb)
 
 	wake_up_process(wait->task);
 }
+#endif
 
 static signed long radeon_fence_default_wait(struct fence *f, bool intr,
 					     signed long t)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct radeon_fence *fence = to_radeon_fence(f);
 	struct radeon_device *rdev = fence->rdev;
 	struct radeon_wait_cb cb;
@@ -1079,6 +1122,7 @@ static signed long radeon_fence_default_wait(struct fence *f, bool intr,
 	fence_remove_callback(f, &cb.base);
 
 	return t;
+#endif
 }
 
 const struct fence_ops radeon_fence_ops = {

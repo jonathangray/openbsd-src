@@ -366,9 +366,7 @@ struct radeon_fence {
 	unsigned		ring;
 	bool			is_vm_update;
 
-#ifdef __linux__
 	wait_queue_t		fence_wake;
-#endif
 };
 
 int radeon_fence_driver_start_ring(struct radeon_device *rdev, int ring);
