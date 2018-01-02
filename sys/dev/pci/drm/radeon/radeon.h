@@ -2325,6 +2325,9 @@ struct radeon_device {
 	bus_dma_tag_t			dmat;
 	void				*irqh;
 
+	unsigned long			fb_aper_offset;
+	unsigned long			fb_aper_size;
+
 	/* ASIC */
 	union radeon_asic_config	config;
 	enum radeon_family		family;

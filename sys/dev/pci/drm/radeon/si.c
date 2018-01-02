@@ -4240,8 +4240,8 @@ static int si_mc_init(struct radeon_device *rdev)
 	}
 	rdev->mc.vram_width = numchan * chansize;
 	/* Could aper size report 0 ? */
-	rdev->mc.aper_base = pci_resource_start(rdev->pdev, 0);
-	rdev->mc.aper_size = pci_resource_len(rdev->pdev, 0);
+	rdev->mc.aper_base = rdev->fb_aper_offset;
+	rdev->mc.aper_size = rdev->fb_aper_size;
 	/* size in MB on si */
 	tmp = RREG32(CONFIG_MEMSIZE);
 	/* some boards may have garbage in the upper 16 bits */
