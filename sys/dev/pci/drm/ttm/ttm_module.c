@@ -28,11 +28,8 @@
  * Authors: Thomas Hellstrom <thellstrom-at-vmware-dot-com>
  * 	    Jerome Glisse
  */
-#include <linux/module.h>
-#include <linux/device.h>
-#include <linux/sched.h>
+#include <dev/pci/drm/drm_linux.h>
 #include <dev/pci/drm/ttm/ttm_module.h>
-#include <dev/pci/drm/drm_sysfs.h>
 
 static DECLARE_WAIT_QUEUE_HEAD(exit_q);
 static atomic_t device_released;
