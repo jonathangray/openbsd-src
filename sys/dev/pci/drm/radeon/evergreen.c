@@ -1270,6 +1270,8 @@ int evergreen_set_uvd_clocks(struct radeon_device *rdev, u32 vclk, u32 dclk)
 
 void evergreen_fix_pci_max_read_req_size(struct radeon_device *rdev)
 {
+	STUB();
+#ifdef notyet
 	int readrq;
 	u16 v;
 
@@ -1280,6 +1282,7 @@ void evergreen_fix_pci_max_read_req_size(struct radeon_device *rdev)
 	 */
 	if ((v == 0) || (v == 6) || (v == 7))
 		pcie_set_readrq(rdev->pdev, 512);
+#endif
 }
 
 void dce4_program_fmt(struct drm_encoder *encoder)
@@ -5877,9 +5880,13 @@ void evergreen_pcie_gen2_enable(struct radeon_device *rdev)
 	if (ASIC_IS_X2(rdev))
 		return;
 
+#ifdef notyet
 	if ((rdev->pdev->bus->max_bus_speed != PCIE_SPEED_5_0GT) &&
 		(rdev->pdev->bus->max_bus_speed != PCIE_SPEED_8_0GT))
 		return;
+#else
+	printf("%s todo bus speed test\n", __func__);
+#endif
 
 	speed_cntl = RREG32_PCIE_PORT(PCIE_LC_SPEED_CNTL);
 	if (speed_cntl & LC_CURRENT_DATA_RATE) {
