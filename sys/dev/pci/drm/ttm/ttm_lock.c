@@ -44,7 +44,7 @@
 
 void ttm_lock_init(struct ttm_lock *lock)
 {
-	spin_lock_init(&lock->lock);
+	mtx_init(&lock->lock, IPL_NONE);
 	init_waitqueue_head(&lock->queue);
 	lock->rw = 0;
 	lock->flags = 0;

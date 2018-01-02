@@ -608,7 +608,7 @@ static struct dma_pool *ttm_dma_pool_init(struct device *dev, gfp_t flags,
 	INIT_LIST_HEAD(&pool->free_list);
 	INIT_LIST_HEAD(&pool->inuse_list);
 	INIT_LIST_HEAD(&pool->pools);
-	spin_lock_init(&pool->lock);
+	mtx_init(&pool->lock, IPL_TTY);
 	pool->dev = dev;
 	pool->npages_free = pool->npages_in_use = 0;
 	pool->nfrees = 0;
@@ -1089,7 +1089,7 @@ int ttm_dma_page_alloc_init(struct ttm_mem_global *glob, unsigned max_pages)
 	if (!_manager)
 		goto err;
 
-	mutex_init(&_manager->lock);
+	rw_init(&_manager->lock, "ttm_manager");
 	INIT_LIST_HEAD(&_manager->pools);
 
 	_manager->options.max_size = max_pages;

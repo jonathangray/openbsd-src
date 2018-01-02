@@ -115,7 +115,7 @@ static int ttm_bo_man_init(struct ttm_mem_type_manager *man,
 		return -ENOMEM;
 
 	drm_mm_init(&rman->mm, 0, p_size);
-	spin_lock_init(&rman->lock);
+	mtx_init(&rman->lock, IPL_NONE);
 	man->priv = rman;
 	return 0;
 }
