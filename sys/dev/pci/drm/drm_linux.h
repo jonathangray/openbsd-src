@@ -560,8 +560,21 @@ _spin_unlock_irqrestore(struct mutex *mtxp, __unused unsigned long flags
 #define free_irq(irq, dev)
 #define synchronize_irq(x)
 
-#define fence_wait(x, y)
 #define fence_put(x)
+
+static inline struct fence *
+fence_get(struct fence *fence)
+{
+	panic("%s not implemented", __func__);
+	return NULL;
+}
+
+static inline long
+fence_wait(struct fence *fence, bool intr)
+{
+	STUB();
+	return 0;
+}
 
 struct wait_queue_head {
 	struct mutex lock;
@@ -1271,6 +1284,12 @@ fence_is_signaled(struct fence *fence)
 
 static inline long
 fence_wait_timeout(struct fence *fence, bool intr, signed long timeout)
+{
+	panic("%s not implemented\n", __func__);
+	return 0;
+}
+
+unsigned fence_context_alloc(unsigned num)
 {
 	panic("%s not implemented\n", __func__);
 	return 0;
