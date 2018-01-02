@@ -251,7 +251,7 @@ struct ttm_buffer_object {
 
 	struct reservation_object *resv;
 	struct reservation_object ttm_resv;
-	struct mutex wu_mutex;
+	struct rwlock wu_mutex;
 };
 
 /**
