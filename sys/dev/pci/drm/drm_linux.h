@@ -1262,6 +1262,20 @@ fence_enable_sw_signaling(struct fence *fence)
 	panic("%s not implemented\n", __func__);
 }
 
+static inline bool
+fence_is_signaled(struct fence *fence)
+{
+	panic("%s not implemented\n", __func__);
+	return false;
+}
+
+static inline long
+fence_wait_timeout(struct fence *fence, bool intr, signed long timeout)
+{
+	panic("%s not implemented\n", __func__);
+	return 0;
+}
+
 struct idr_entry {
 	SPLAY_ENTRY(idr_entry) entry;
 	int id;
