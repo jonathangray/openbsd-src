@@ -58,13 +58,9 @@
 
 #define pr_fmt(fmt) "[TTM] " fmt
 
+#include <dev/pci/drm/drm_linux.h>
 #include <dev/pci/drm/ttm/ttm_object.h>
 #include <dev/pci/drm/ttm/ttm_module.h>
-#include <linux/list.h>
-#include <linux/spinlock.h>
-#include <linux/slab.h>
-#include <linux/module.h>
-#include <linux/atomic.h>
 
 struct ttm_object_file {
 	struct ttm_object_device *tdev;
@@ -91,9 +87,11 @@ struct ttm_object_device {
 	struct drm_open_hash object_hash;
 	atomic_t object_count;
 	struct ttm_mem_global *mem_glob;
+#ifdef notyet
 	struct dma_buf_ops ops;
 	void (*dmabuf_release)(struct dma_buf *dma_buf);
 	size_t dma_buf_size;
+#endif
 };
 
 /**
@@ -118,7 +116,9 @@ struct ttm_object_device {
  */
 
 struct ttm_ref_object {
+#ifdef notyet
 	struct rcu_head rcu_head;
+#endif
 	struct drm_hash_item hash;
 	struct list_head head;
 	struct kref kref;
@@ -127,7 +127,9 @@ struct ttm_ref_object {
 	struct ttm_object_file *tfile;
 };
 
+#ifdef notyet
 static void ttm_prime_dmabuf_release(struct dma_buf *dma_buf);
+#endif
 
 static inline struct ttm_object_file *
 ttm_object_file_ref(struct ttm_object_file *tfile)
@@ -229,6 +231,9 @@ EXPORT_SYMBOL(ttm_base_object_unref);
 struct ttm_base_object *ttm_base_object_lookup(struct ttm_object_file *tfile,
 					       uint32_t key)
 {
+	STUB();
+	return NULL;
+#ifdef notyet
 	struct ttm_base_object *base = NULL;
 	struct drm_hash_item *hash;
 	struct drm_open_hash *ht = &tfile->ref_hash[TTM_REF_USAGE];
@@ -245,12 +250,16 @@ struct ttm_base_object *ttm_base_object_lookup(struct ttm_object_file *tfile,
 	rcu_read_unlock();
 
 	return base;
+#endif
 }
 EXPORT_SYMBOL(ttm_base_object_lookup);
 
 struct ttm_base_object *
 ttm_base_object_lookup_for_ref(struct ttm_object_device *tdev, uint32_t key)
 {
+	STUB();
+	return NULL;
+#ifdef notyet
 	struct ttm_base_object *base = NULL;
 	struct drm_hash_item *hash;
 	struct drm_open_hash *ht = &tdev->object_hash;
@@ -267,6 +276,7 @@ ttm_base_object_lookup_for_ref(struct ttm_object_device *tdev, uint32_t key)
 	rcu_read_unlock();
 
 	return base;
+#endif
 }
 EXPORT_SYMBOL(ttm_base_object_lookup_for_ref);
 
@@ -283,6 +293,9 @@ EXPORT_SYMBOL(ttm_base_object_lookup_for_ref);
 bool ttm_ref_object_exists(struct ttm_object_file *tfile,
 			   struct ttm_base_object *base)
 {
+	STUB();
+	return false;
+#ifdef notyet
 	struct drm_open_hash *ht = &tfile->ref_hash[TTM_REF_USAGE];
 	struct drm_hash_item *hash;
 	struct ttm_ref_object *ref;
@@ -313,6 +326,7 @@ bool ttm_ref_object_exists(struct ttm_object_file *tfile,
  out_false:
 	rcu_read_unlock();
 	return false;
+#endif
 }
 EXPORT_SYMBOL(ttm_ref_object_exists);
 
@@ -321,6 +335,9 @@ int ttm_ref_object_add(struct ttm_object_file *tfile,
 		       enum ttm_ref_type ref_type, bool *existed,
 		       bool require_existed)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct drm_open_hash *ht = &tfile->ref_hash[ref_type];
 	struct ttm_ref_object *ref;
 	struct drm_hash_item *hash;
@@ -385,11 +402,14 @@ int ttm_ref_object_add(struct ttm_object_file *tfile,
 	}
 
 	return ret;
+#endif
 }
 EXPORT_SYMBOL(ttm_ref_object_add);
 
 static void ttm_ref_object_release(struct kref *kref)
 {
+	STUB();
+#ifdef notyet
 	struct ttm_ref_object *ref =
 	    container_of(kref, struct ttm_ref_object, kref);
 	struct ttm_base_object *base = ref->obj;
@@ -409,6 +429,7 @@ static void ttm_ref_object_release(struct kref *kref)
 	ttm_mem_global_free(mem_glob, sizeof(*ref));
 	kfree_rcu(ref, rcu_head);
 	spin_lock(&tfile->lock);
+#endif
 }
 
 int ttm_ref_object_base_unref(struct ttm_object_file *tfile,
@@ -496,6 +517,7 @@ out_err:
 }
 EXPORT_SYMBOL(ttm_object_file_init);
 
+#ifdef notyet
 struct ttm_object_device *
 ttm_object_device_init(struct ttm_mem_global *mem_glob,
 		       unsigned int hash_order,
@@ -526,6 +548,7 @@ out_no_object_hash:
 	return NULL;
 }
 EXPORT_SYMBOL(ttm_object_device_init);
+#endif
 
 void ttm_object_device_release(struct ttm_object_device **p_tdev)
 {
@@ -554,10 +577,12 @@ EXPORT_SYMBOL(ttm_object_device_release);
  * Nobody really wants this as a public API yet, so let it mature here
  * for some time...
  */
+#ifdef notyet
 static bool __must_check get_dma_buf_unless_doomed(struct dma_buf *dmabuf)
 {
 	return atomic_long_inc_not_zero(&dmabuf->file->f_count) != 0L;
 }
+#endif
 
 /**
  * ttm_prime_refcount_release - refcount release method for a prime object.
@@ -592,6 +617,7 @@ static void ttm_prime_refcount_release(struct ttm_base_object **p_base)
  * and finally releases the reference the dma_buf has on our base
  * object.
  */
+#ifdef notyet
 static void ttm_prime_dmabuf_release(struct dma_buf *dma_buf)
 {
 	struct ttm_prime_object *prime =
@@ -608,6 +634,7 @@ static void ttm_prime_dmabuf_release(struct dma_buf *dma_buf)
 	ttm_mem_global_free(tdev->mem_glob, tdev->dma_buf_size);
 	ttm_base_object_unref(&base);
 }
+#endif
 
 /**
  * ttm_prime_fd_to_handle - Get a base object handle from a prime fd
@@ -623,6 +650,9 @@ static void ttm_prime_dmabuf_release(struct dma_buf *dma_buf)
 int ttm_prime_fd_to_handle(struct ttm_object_file *tfile,
 			   int fd, u32 *handle)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct ttm_object_device *tdev = tfile->tdev;
 	struct dma_buf *dma_buf;
 	struct ttm_prime_object *prime;
@@ -644,8 +674,8 @@ int ttm_prime_fd_to_handle(struct ttm_object_file *tfile,
 	dma_buf_put(dma_buf);
 
 	return ret;
+#endif
 }
-EXPORT_SYMBOL_GPL(ttm_prime_fd_to_handle);
 
 /**
  * ttm_prime_handle_to_fd - Return a dma_buf fd from a ttm prime object
@@ -660,6 +690,9 @@ int ttm_prime_handle_to_fd(struct ttm_object_file *tfile,
 			   uint32_t handle, uint32_t flags,
 			   int *prime_fd)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct ttm_object_device *tdev = tfile->tdev;
 	struct ttm_base_object *base;
 	struct dma_buf *dma_buf;
@@ -732,8 +765,8 @@ out_unref:
 	if (base)
 		ttm_base_object_unref(&base);
 	return ret;
+#endif
 }
-EXPORT_SYMBOL_GPL(ttm_prime_handle_to_fd);
 
 /**
  * ttm_prime_object_init - Initialize a ttm_prime_object
