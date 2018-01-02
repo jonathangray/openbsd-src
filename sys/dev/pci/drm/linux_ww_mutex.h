@@ -234,4 +234,8 @@ ww_mutex_destroy(struct ww_mutex *lock) {
 	KASSERT(lock->owner == NULL);
 }
 
+struct reservation_object {
+	struct ww_mutex lock;
+};
+
 #endif	/* _LINUX_WW_MUTEX_H_ */
