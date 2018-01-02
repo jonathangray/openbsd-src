@@ -234,8 +234,53 @@ ww_mutex_destroy(struct ww_mutex *lock) {
 	KASSERT(lock->owner == NULL);
 }
 
+struct reservation_object_list {
+	uint32_t shared_count;
+};
+
 struct reservation_object {
 	struct ww_mutex lock;
 };
+
+static inline void
+reservation_object_init(struct reservation_object *obj)
+{
+	panic("%s not implemented", __func__);
+}
+
+static inline void
+reservation_object_fini(struct reservation_object *obj)
+{
+	panic("%s not implemented", __func__);
+}
+
+static inline struct reservation_object_list *
+reservation_object_get_list(struct reservation_object *obj)
+{
+	panic("%s not implemented", __func__);
+	return NULL;
+}
+
+static inline struct fence *
+reservation_object_get_excl(struct reservation_object *obj)
+{
+	panic("%s not implemented", __func__);
+	return NULL;
+}
+
+static inline int
+reservation_object_held(struct reservation_object *obj)
+{
+	panic("%s not implemented", __func__);
+	return 0;
+}
+
+static inline long
+reservation_object_wait_timeout_rcu(struct reservation_object *obj,
+    bool wait_all, bool intr, unsigned long timeout)
+{
+	panic("%s not implemented", __func__);
+	return 0;
+}
 
 #endif	/* _LINUX_WW_MUTEX_H_ */

@@ -1248,12 +1248,19 @@ struct seq_file;
 static inline void
 seq_printf(struct seq_file *m, const char *fmt, ...) {};
 
-struct fence_ops {
-};
-
 struct fence {
 	struct fence_ops *ops;
 };
+
+struct fence_ops {
+	bool (*signaled)(struct fence *);
+};
+
+static inline void
+fence_enable_sw_signaling(struct fence *fence)
+{
+	panic("%s not implemented\n", __func__);
+}
 
 struct idr_entry {
 	SPLAY_ENTRY(idr_entry) entry;
