@@ -54,6 +54,8 @@
 #pragma GCC diagnostic ignored "-Wformat-zero-length"
 #endif
 
+#define STUB() do { printf("%s: stub\n", __func__); } while(0)
+
 typedef int irqreturn_t;
 enum irqreturn {
 	IRQ_NONE = 0,
