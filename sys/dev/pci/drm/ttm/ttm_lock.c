@@ -1,4 +1,3 @@
-/*	$OpenBSD: ttm_lock.c,v 1.5 2015/04/12 03:54:10 jsg Exp $	*/
 /**************************************************************************
  *
  * Copyright (c) 2007-2009 VMware, Inc., Palo Alto, CA., USA
@@ -29,9 +28,13 @@
  * Authors: Thomas Hellstrom <thellstrom-at-vmware-dot-com>
  */
 
-#include <dev/pci/drm/drmP.h>
-#include <dev/pci/drm/ttm/ttm_lock.h>
-#include <dev/pci/drm/ttm/ttm_module.h>
+#include <drm/ttm/ttm_lock.h>
+#include <drm/ttm/ttm_module.h>
+#include <linux/atomic.h>
+#include <linux/errno.h>
+#include <linux/wait.h>
+#include <linux/sched.h>
+#include <linux/module.h>
 
 #define TTM_WRITE_LOCK_PENDING    (1 << 0)
 #define TTM_VT_LOCK_PENDING       (1 << 1)
@@ -39,11 +42,9 @@
 #define TTM_VT_LOCK               (1 << 3)
 #define TTM_SUSPEND_LOCK          (1 << 4)
 
-void	 ttm_write_lock_downgrade(struct ttm_lock *);
-
 void ttm_lock_init(struct ttm_lock *lock)
 {
-	mtx_init(&lock->lock, IPL_NONE);
+	spin_lock_init(&lock->lock);
 	init_waitqueue_head(&lock->queue);
 	lock->rw = 0;
 	lock->flags = 0;
@@ -61,7 +62,6 @@ void ttm_read_unlock(struct ttm_lock *lock)
 }
 EXPORT_SYMBOL(ttm_read_unlock);
 
-#ifdef notyet
 static bool __ttm_read_lock(struct ttm_lock *lock)
 {
 	bool locked = false;
@@ -79,13 +79,9 @@ static bool __ttm_read_lock(struct ttm_lock *lock)
 	spin_unlock(&lock->lock);
 	return locked;
 }
-#endif
 
 int ttm_read_lock(struct ttm_lock *lock, bool interruptible)
 {
-	printf("%s stub\n", __func__);
-	return -ENOSYS;
-#ifdef notyet
 	int ret = 0;
 
 	if (interruptible)
@@ -94,11 +90,9 @@ int ttm_read_lock(struct ttm_lock *lock, bool interruptible)
 	else
 		wait_event(lock->queue, __ttm_read_lock(lock));
 	return ret;
-#endif
 }
 EXPORT_SYMBOL(ttm_read_lock);
 
-#ifdef notyet
 static bool __ttm_read_trylock(struct ttm_lock *lock, bool *locked)
 {
 	bool block = true;
@@ -122,13 +116,9 @@ static bool __ttm_read_trylock(struct ttm_lock *lock, bool *locked)
 
 	return !block;
 }
-#endif
 
 int ttm_read_trylock(struct ttm_lock *lock, bool interruptible)
 {
-	printf("%s stub\n", __func__);
-	return -ENOSYS;
-#ifdef notyet
 	int ret = 0;
 	bool locked;
 
@@ -144,7 +134,6 @@ int ttm_read_trylock(struct ttm_lock *lock, bool interruptible)
 	}
 
 	return (locked) ? 0 : -EBUSY;
-#endif
 }
 
 void ttm_write_unlock(struct ttm_lock *lock)
@@ -156,7 +145,6 @@ void ttm_write_unlock(struct ttm_lock *lock)
 }
 EXPORT_SYMBOL(ttm_write_unlock);
 
-#ifdef notyet
 static bool __ttm_write_lock(struct ttm_lock *lock)
 {
 	bool locked = false;
@@ -177,13 +165,9 @@ static bool __ttm_write_lock(struct ttm_lock *lock)
 	spin_unlock(&lock->lock);
 	return locked;
 }
-#endif
 
 int ttm_write_lock(struct ttm_lock *lock, bool interruptible)
 {
-	printf("%s stub\n", __func__);
-	return -ENOSYS;
-#ifdef notyet
 	int ret = 0;
 
 	if (interruptible) {
@@ -196,22 +180,12 @@ int ttm_write_lock(struct ttm_lock *lock, bool interruptible)
 			spin_unlock(&lock->lock);
 		}
 	} else
-		wait_event(lock->queue, __ttm_read_lock(lock));
+		wait_event(lock->queue, __ttm_write_lock(lock));
 
 	return ret;
-#endif
 }
 EXPORT_SYMBOL(ttm_write_lock);
 
-void ttm_write_lock_downgrade(struct ttm_lock *lock)
-{
-	spin_lock(&lock->lock);
-	lock->rw = 1;
-	wake_up_all(&lock->queue);
-	spin_unlock(&lock->lock);
-}
-
-#ifdef notyet
 static int __ttm_vt_unlock(struct ttm_lock *lock)
 {
 	int ret = 0;
@@ -225,9 +199,7 @@ static int __ttm_vt_unlock(struct ttm_lock *lock)
 
 	return ret;
 }
-#endif
 
-#ifdef notyet
 static void ttm_vt_lock_remove(struct ttm_base_object **p_base)
 {
 	struct ttm_base_object *base = *p_base;
@@ -238,9 +210,7 @@ static void ttm_vt_lock_remove(struct ttm_base_object **p_base)
 	ret = __ttm_vt_unlock(lock);
 	BUG_ON(ret != 0);
 }
-#endif
 
-#ifdef notyet
 static bool __ttm_vt_lock(struct ttm_lock *lock)
 {
 	bool locked = false;
@@ -256,15 +226,11 @@ static bool __ttm_vt_lock(struct ttm_lock *lock)
 	spin_unlock(&lock->lock);
 	return locked;
 }
-#endif
 
 int ttm_vt_lock(struct ttm_lock *lock,
 		bool interruptible,
 		struct ttm_object_file *tfile)
 {
-	printf("%s stub\n", __func__);
-	return -ENOSYS;
-#ifdef notyet
 	int ret = 0;
 
 	if (interruptible) {
@@ -294,7 +260,6 @@ int ttm_vt_lock(struct ttm_lock *lock,
 		lock->vt_holder = tfile;
 
 	return ret;
-#endif
 }
 EXPORT_SYMBOL(ttm_vt_lock);
 
@@ -314,7 +279,6 @@ void ttm_suspend_unlock(struct ttm_lock *lock)
 }
 EXPORT_SYMBOL(ttm_suspend_unlock);
 
-#ifdef notyet
 static bool __ttm_suspend_lock(struct ttm_lock *lock)
 {
 	bool locked = false;
@@ -330,13 +294,9 @@ static bool __ttm_suspend_lock(struct ttm_lock *lock)
 	spin_unlock(&lock->lock);
 	return locked;
 }
-#endif
 
 void ttm_suspend_lock(struct ttm_lock *lock)
 {
-	printf("%s stub\n", __func__);
-#ifdef notyet
 	wait_event(lock->queue, __ttm_suspend_lock(lock));
-#endif
 }
 EXPORT_SYMBOL(ttm_suspend_lock);

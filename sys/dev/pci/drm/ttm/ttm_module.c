@@ -1,4 +1,3 @@
-/*	$OpenBSD: ttm_module.c,v 1.1 2013/08/12 04:11:53 jsg Exp $	*/
 /**************************************************************************
  *
  * Copyright (c) 2006-2009 VMware, Inc., Palo Alto, CA., USA
@@ -29,11 +28,14 @@
  * Authors: Thomas Hellstrom <thellstrom-at-vmware-dot-com>
  * 	    Jerome Glisse
  */
-#include <dev/pci/drm/ttm/ttm_module.h>
-#include <dev/pci/drm/drm_sysfs.h>
+#include <linux/module.h>
+#include <linux/device.h>
+#include <linux/sched.h>
+#include <drm/ttm/ttm_module.h>
+#include <drm/drm_sysfs.h>
 
 static DECLARE_WAIT_QUEUE_HEAD(exit_q);
-atomic_t device_released;
+static atomic_t device_released;
 
 static struct device_type ttm_drm_class_type = {
 	.name = "ttm",

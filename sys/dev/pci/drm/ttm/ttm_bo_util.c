@@ -1,4 +1,3 @@
-/*	$OpenBSD: ttm_bo_util.c,v 1.16 2017/06/04 14:02:24 kettenis Exp $	*/
 /**************************************************************************
  *
  * Copyright (c) 2007-2009 VMware, Inc., Palo Alto, CA., USA
@@ -29,14 +28,16 @@
  * Authors: Thomas Hellstrom <thellstrom-at-vmware-dot-com>
  */
 
-#include <dev/pci/drm/ttm/ttm_bo_driver.h>
-#include <dev/pci/drm/ttm/ttm_placement.h>
-#include <dev/pci/drm/drm_vma_manager.h>
-
-int	 ttm_mem_reg_ioremap(struct ttm_bo_device *, struct ttm_mem_reg *,
-	     void **);
-void	 ttm_mem_reg_iounmap(struct ttm_bo_device *, struct ttm_mem_reg *,
-	     void *);
+#include <drm/ttm/ttm_bo_driver.h>
+#include <drm/ttm/ttm_placement.h>
+#include <drm/drm_vma_manager.h>
+#include <linux/io.h>
+#include <linux/highmem.h>
+#include <linux/wait.h>
+#include <linux/slab.h>
+#include <linux/vmalloc.h>
+#include <linux/module.h>
+#include <linux/reservation.h>
 
 void ttm_bo_free_old_node(struct ttm_buffer_object *bo)
 {
@@ -87,6 +88,7 @@ int ttm_mem_io_lock(struct ttm_mem_type_manager *man, bool interruptible)
 	mutex_lock(&man->io_reserve_mutex);
 	return 0;
 }
+EXPORT_SYMBOL(ttm_mem_io_lock);
 
 void ttm_mem_io_unlock(struct ttm_mem_type_manager *man)
 {
@@ -95,6 +97,7 @@ void ttm_mem_io_unlock(struct ttm_mem_type_manager *man)
 
 	mutex_unlock(&man->io_reserve_mutex);
 }
+EXPORT_SYMBOL(ttm_mem_io_unlock);
 
 static int ttm_mem_io_evict(struct ttm_mem_type_manager *man)
 {
@@ -112,8 +115,9 @@ static int ttm_mem_io_evict(struct ttm_mem_type_manager *man)
 	return 0;
 }
 
-static int ttm_mem_io_reserve(struct ttm_bo_device *bdev,
-			      struct ttm_mem_reg *mem)
+
+int ttm_mem_io_reserve(struct ttm_bo_device *bdev,
+		       struct ttm_mem_reg *mem)
 {
 	struct ttm_mem_type_manager *man = &bdev->man[mem->mem_type];
 	int ret = 0;
@@ -135,9 +139,10 @@ retry:
 	}
 	return ret;
 }
+EXPORT_SYMBOL(ttm_mem_io_reserve);
 
-static void ttm_mem_io_free(struct ttm_bo_device *bdev,
-			    struct ttm_mem_reg *mem)
+void ttm_mem_io_free(struct ttm_bo_device *bdev,
+		     struct ttm_mem_reg *mem)
 {
 	struct ttm_mem_type_manager *man = &bdev->man[mem->mem_type];
 
@@ -150,6 +155,7 @@ static void ttm_mem_io_free(struct ttm_bo_device *bdev,
 		bdev->driver->io_mem_free(bdev, mem);
 
 }
+EXPORT_SYMBOL(ttm_mem_io_free);
 
 int ttm_mem_io_reserve_vm(struct ttm_buffer_object *bo)
 {
@@ -182,13 +188,12 @@ void ttm_mem_io_free_vm(struct ttm_buffer_object *bo)
 	}
 }
 
-int ttm_mem_reg_ioremap(struct ttm_bo_device *bdev, struct ttm_mem_reg *mem,
+static int ttm_mem_reg_ioremap(struct ttm_bo_device *bdev, struct ttm_mem_reg *mem,
 			void **virtual)
 {
 	struct ttm_mem_type_manager *man = &bdev->man[mem->mem_type];
 	int ret;
 	void *addr;
-	int flags;
 
 	*virtual = NULL;
 	(void) ttm_mem_io_lock(man, false);
@@ -201,18 +206,9 @@ int ttm_mem_reg_ioremap(struct ttm_bo_device *bdev, struct ttm_mem_reg *mem,
 		addr = mem->bus.addr;
 	} else {
 		if (mem->placement & TTM_PL_FLAG_WC)
-			flags = BUS_SPACE_MAP_PREFETCHABLE;
+			addr = ioremap_wc(mem->bus.base + mem->bus.offset, mem->bus.size);
 		else
-			flags = 0;
-
-		if (bus_space_map(bdev->memt, mem->bus.base + mem->bus.offset,
-		    mem->bus.size, BUS_SPACE_MAP_LINEAR | flags, &mem->bus.bsh)) {
-			printf("%s bus_space_map failed\n", __func__);
-			return -ENOMEM;
-		}
-
-		addr = bus_space_vaddr(bdev->memt, mem->bus.bsh);
-
+			addr = ioremap_nocache(mem->bus.base + mem->bus.offset, mem->bus.size);
 		if (!addr) {
 			(void) ttm_mem_io_lock(man, false);
 			ttm_mem_io_free(bdev, mem);
@@ -224,7 +220,7 @@ int ttm_mem_reg_ioremap(struct ttm_bo_device *bdev, struct ttm_mem_reg *mem,
 	return 0;
 }
 
-void ttm_mem_reg_iounmap(struct ttm_bo_device *bdev, struct ttm_mem_reg *mem,
+static void ttm_mem_reg_iounmap(struct ttm_bo_device *bdev, struct ttm_mem_reg *mem,
 			 void *virtual)
 {
 	struct ttm_mem_type_manager *man;
@@ -232,7 +228,7 @@ void ttm_mem_reg_iounmap(struct ttm_bo_device *bdev, struct ttm_mem_reg *mem,
 	man = &bdev->man[mem->mem_type];
 
 	if (virtual && mem->bus.addr == NULL)
-		bus_space_unmap(bdev->memt, mem->bus.bsh, mem->bus.size);
+		iounmap(virtual);
 	(void) ttm_mem_io_lock(man, false);
 	ttm_mem_io_free(bdev, mem);
 	ttm_mem_io_unlock(man);
@@ -255,7 +251,7 @@ static int ttm_copy_io_ttm_page(struct ttm_tt *ttm, void *src,
 				unsigned long page,
 				pgprot_t prot)
 {
-	struct vm_page *d = ttm->pages[page];
+	struct page *d = ttm->pages[page];
 	void *dst;
 
 	if (!d)
@@ -263,47 +259,63 @@ static int ttm_copy_io_ttm_page(struct ttm_tt *ttm, void *src,
 
 	src = (void *)((unsigned long)src + (page << PAGE_SHIFT));
 
+#ifdef CONFIG_X86
+	dst = kmap_atomic_prot(d, prot);
+#else
 	if (pgprot_val(prot) != pgprot_val(PAGE_KERNEL))
 		dst = vmap(&d, 1, 0, prot);
 	else
 		dst = kmap(d);
+#endif
 	if (!dst)
 		return -ENOMEM;
 
 	memcpy_fromio(dst, src, PAGE_SIZE);
 
+#ifdef CONFIG_X86
+	kunmap_atomic(dst);
+#else
 	if (pgprot_val(prot) != pgprot_val(PAGE_KERNEL))
-		vunmap(dst, PAGE_SIZE);
+		vunmap(dst);
 	else
 		kunmap(d);
+#endif
 
 	return 0;
 }
 
 static int ttm_copy_ttm_io_page(struct ttm_tt *ttm, void *dst,
 				unsigned long page,
-				vm_prot_t prot)
+				pgprot_t prot)
 {
-	struct vm_page *s = ttm->pages[page];
+	struct page *s = ttm->pages[page];
 	void *src;
 
 	if (!s)
 		return -ENOMEM;
 
 	dst = (void *)((unsigned long)dst + (page << PAGE_SHIFT));
+#ifdef CONFIG_X86
+	src = kmap_atomic_prot(s, prot);
+#else
 	if (pgprot_val(prot) != pgprot_val(PAGE_KERNEL))
 		src = vmap(&s, 1, 0, prot);
 	else
 		src = kmap(s);
+#endif
 	if (!src)
 		return -ENOMEM;
 
 	memcpy_toio(dst, src, PAGE_SIZE);
 
+#ifdef CONFIG_X86
+	kunmap_atomic(src);
+#else
 	if (pgprot_val(prot) != pgprot_val(PAGE_KERNEL))
-		vunmap(src, PAGE_SIZE);
+		vunmap(src);
 	else
 		kunmap(s);
+#endif
 
 	return 0;
 }
@@ -339,10 +351,14 @@ int ttm_bo_move_memcpy(struct ttm_buffer_object *bo,
 		goto out2;
 
 	/*
-	 * Move nonexistent data. NOP.
+	 * Don't move nonexistent data. Clear destination instead.
 	 */
-	if (old_iomap == NULL && ttm == NULL)
+	if (old_iomap == NULL &&
+	    (ttm == NULL || (ttm->state == tt_unpopulated &&
+			     !(ttm->page_flags & TTM_PAGE_FLAG_SWAPPED)))) {
+		memset_io(new_iomap, 0, new_mem->num_pages*PAGE_SIZE);
 		goto out2;
+	}
 
 	/*
 	 * TTM might be null for moves within the same region.
@@ -429,8 +445,7 @@ static int ttm_buffer_object_transfer(struct ttm_buffer_object *bo,
 				      struct ttm_buffer_object **new_obj)
 {
 	struct ttm_buffer_object *fbo;
-	struct ttm_bo_device *bdev = bo->bdev;
-	struct ttm_bo_driver *driver = bdev->driver;
+	int ret;
 
 	fbo = kmalloc(sizeof(*fbo), GFP_KERNEL);
 	if (!fbo)
@@ -443,7 +458,6 @@ static int ttm_buffer_object_transfer(struct ttm_buffer_object *bo,
 	 * TODO: Explicit member copy would probably be better here.
 	 */
 
-	init_waitqueue_head(&fbo->event_queue);
 	INIT_LIST_HEAD(&fbo->ddestroy);
 	INIT_LIST_HEAD(&fbo->lru);
 	INIT_LIST_HEAD(&fbo->swap);
@@ -451,16 +465,14 @@ static int ttm_buffer_object_transfer(struct ttm_buffer_object *bo,
 	drm_vma_node_reset(&fbo->vma_node);
 	atomic_set(&fbo->cpu_writers, 0);
 
-	spin_lock(&bdev->fence_lock);
-	if (bo->sync_obj)
-		fbo->sync_obj = driver->sync_obj_ref(bo->sync_obj);
-	else
-		fbo->sync_obj = NULL;
-	spin_unlock(&bdev->fence_lock);
 	kref_init(&fbo->list_kref);
 	kref_init(&fbo->kref);
 	fbo->destroy = &ttm_transfered_destroy;
 	fbo->acc_size = 0;
+	fbo->resv = &fbo->ttm_resv;
+	reservation_object_init(fbo->resv);
+	ret = ww_mutex_trylock(&fbo->resv->lock);
+	WARN_ON(!ret);
 
 	*new_obj = fbo;
 	return 0;
@@ -468,12 +480,27 @@ static int ttm_buffer_object_transfer(struct ttm_buffer_object *bo,
 
 pgprot_t ttm_io_prot(uint32_t caching_flags, pgprot_t tmp)
 {
-#ifdef PMAP_WC
+	/* Cached mappings need no adjustment */
+	if (caching_flags & TTM_PL_FLAG_CACHED)
+		return tmp;
+
+#if defined(__i386__) || defined(__x86_64__)
 	if (caching_flags & TTM_PL_FLAG_WC)
-		return PMAP_WC;
-	else
+		tmp = pgprot_writecombine(tmp);
+	else if (boot_cpu_data.x86 > 3)
+		tmp = pgprot_noncached(tmp);
 #endif
-		return PMAP_NOCACHE;
+#if defined(__ia64__) || defined(__arm__) || defined(__aarch64__) || \
+    defined(__powerpc__)
+	if (caching_flags & TTM_PL_FLAG_WC)
+		tmp = pgprot_writecombine(tmp);
+	else
+		tmp = pgprot_noncached(tmp);
+#endif
+#if defined(__sparc__) || defined(__mips__)
+	tmp = pgprot_noncached(tmp);
+#endif
+	return tmp;
 }
 EXPORT_SYMBOL(ttm_io_prot);
 
@@ -483,7 +510,6 @@ static int ttm_bo_ioremap(struct ttm_buffer_object *bo,
 			  struct ttm_bo_kmap_obj *map)
 {
 	struct ttm_mem_reg *mem = &bo->mem;
-	int flags;
 
 	if (bo->mem.bus.addr) {
 		map->bo_kmap_type = ttm_bo_map_premapped;
@@ -491,19 +517,11 @@ static int ttm_bo_ioremap(struct ttm_buffer_object *bo,
 	} else {
 		map->bo_kmap_type = ttm_bo_map_iomap;
 		if (mem->placement & TTM_PL_FLAG_WC)
-			flags = BUS_SPACE_MAP_PREFETCHABLE;
+			map->virtual = ioremap_wc(bo->mem.bus.base + bo->mem.bus.offset + offset,
+						  size);
 		else
-			flags = 0;
-
-		if (bus_space_map(bo->bdev->memt,
-		    mem->bus.base + bo->mem.bus.offset + offset,
-		    size, BUS_SPACE_MAP_LINEAR | flags,
-		    &bo->mem.bus.bsh)) {
-			printf("%s bus_space_map failed\n", __func__);
-			map->virtual = 0;
-		} else
-			map->virtual = bus_space_vaddr(bo->bdev->memt,
-			    bo->mem.bus.bsh);
+			map->virtual = ioremap_nocache(bo->mem.bus.base + bo->mem.bus.offset + offset,
+						       size);
 	}
 	return (!map->virtual) ? -ENOMEM : 0;
 }
@@ -539,9 +557,7 @@ static int ttm_bo_kmap_ttm(struct ttm_buffer_object *bo,
 		 * We need to use vmap to get the desired page protection
 		 * or to make the buffer object look contiguous.
 		 */
-		prot = (mem->placement & TTM_PL_FLAG_CACHED) ?
-			PAGE_KERNEL :
-			ttm_io_prot(mem->placement, PAGE_KERNEL);
+		prot = ttm_io_prot(mem->placement, PAGE_KERNEL);
 		map->bo_kmap_type = ttm_bo_map_vmap;
 		map->virtual = vmap(ttm->pages + start_page, num_pages,
 				    0, prot);
@@ -566,7 +582,7 @@ int ttm_bo_kmap(struct ttm_buffer_object *bo,
 	if (start_page > bo->num_pages)
 		return -EINVAL;
 #if 0
-	if (num_pages > 1 && !DRM_SUSER(DRM_CURPROC))
+	if (num_pages > 1 && !capable(CAP_SYS_ADMIN))
 		return -EPERM;
 #endif
 	(void) ttm_mem_io_lock(man, false);
@@ -594,14 +610,13 @@ void ttm_bo_kunmap(struct ttm_bo_kmap_obj *map)
 		return;
 	switch (map->bo_kmap_type) {
 	case ttm_bo_map_iomap:
-		bus_space_unmap(bo->bdev->memt, bo->mem.bus.bsh,
-		    bo->mem.bus.size);
+		iounmap(map->virtual);
 		break;
 	case ttm_bo_map_vmap:
-		vunmap(map->virtual, bo->mem.bus.size);
+		vunmap(map->virtual);
 		break;
 	case ttm_bo_map_kmap:
-		kunmap(map->virtual);
+		kunmap(map->page);
 		break;
 	case ttm_bo_map_premapped:
 		break;
@@ -617,30 +632,20 @@ void ttm_bo_kunmap(struct ttm_bo_kmap_obj *map)
 EXPORT_SYMBOL(ttm_bo_kunmap);
 
 int ttm_bo_move_accel_cleanup(struct ttm_buffer_object *bo,
-			      void *sync_obj,
+			      struct fence *fence,
 			      bool evict,
 			      bool no_wait_gpu,
 			      struct ttm_mem_reg *new_mem)
 {
 	struct ttm_bo_device *bdev = bo->bdev;
-	struct ttm_bo_driver *driver = bdev->driver;
 	struct ttm_mem_type_manager *man = &bdev->man[new_mem->mem_type];
 	struct ttm_mem_reg *old_mem = &bo->mem;
 	int ret;
 	struct ttm_buffer_object *ghost_obj;
-	void *tmp_obj = NULL;
 
-	spin_lock(&bdev->fence_lock);
-	if (bo->sync_obj) {
-		tmp_obj = bo->sync_obj;
-		bo->sync_obj = NULL;
-	}
-	bo->sync_obj = driver->sync_obj_ref(sync_obj);
+	reservation_object_add_excl_fence(bo->resv, fence);
 	if (evict) {
 		ret = ttm_bo_wait(bo, false, false, false);
-		spin_unlock(&bdev->fence_lock);
-		if (tmp_obj)
-			driver->sync_obj_unref(&tmp_obj);
 		if (ret)
 			return ret;
 
@@ -661,13 +666,12 @@ int ttm_bo_move_accel_cleanup(struct ttm_buffer_object *bo,
 		 */
 
 		set_bit(TTM_BO_PRIV_FLAG_MOVING, &bo->priv_flags);
-		spin_unlock(&bdev->fence_lock);
-		if (tmp_obj)
-			driver->sync_obj_unref(&tmp_obj);
 
 		ret = ttm_buffer_object_transfer(bo, &ghost_obj);
 		if (ret)
 			return ret;
+
+		reservation_object_add_excl_fence(ghost_obj->resv, fence);
 
 		/**
 		 * If we're not moving to fixed memory, the TTM object
