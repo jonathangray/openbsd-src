@@ -1,4 +1,3 @@
-/*	$OpenBSD: ttm_bo_manager.c,v 1.9 2018/04/20 16:09:37 deraadt Exp $	*/
 /**************************************************************************
  *
  * Copyright (c) 2007-2010 VMware, Inc., Palo Alto, CA., USA
@@ -29,13 +28,16 @@
  * Authors: Thomas Hellstrom <thellstrom-at-vmware-dot-com>
  */
 
-#include <dev/pci/drm/ttm/ttm_module.h>
-#include <dev/pci/drm/ttm/ttm_bo_driver.h>
-#include <dev/pci/drm/ttm/ttm_placement.h>
-#include <dev/pci/drm/drm_mm.h>
+#include <drm/ttm/ttm_module.h>
+#include <drm/ttm/ttm_bo_driver.h>
+#include <drm/ttm/ttm_placement.h>
+#include <drm/drm_mm.h>
+#include <linux/slab.h>
+#include <linux/spinlock.h>
+#include <linux/module.h>
 
 /**
- * Currently we use a mutex for the lock, but a rwlock *may* be
+ * Currently we use a spinlock for the lock, but a mutex *may* be
  * more appropriate to reduce scheduling latency if the range manager
  * ends up with very fragmented allocation patterns.
  */
@@ -47,7 +49,7 @@ struct ttm_range_manager {
 
 static int ttm_bo_man_get_node(struct ttm_mem_type_manager *man,
 			       struct ttm_buffer_object *bo,
-			       struct ttm_placement *placement,
+			       const struct ttm_place *place,
 			       struct ttm_mem_reg *mem)
 {
 	struct ttm_range_manager *rman = (struct ttm_range_manager *) man->priv;
@@ -58,7 +60,7 @@ static int ttm_bo_man_get_node(struct ttm_mem_type_manager *man,
 	unsigned long lpfn;
 	int ret;
 
-	lpfn = placement->lpfn;
+	lpfn = place->lpfn;
 	if (!lpfn)
 		lpfn = man->size;
 
@@ -66,10 +68,15 @@ static int ttm_bo_man_get_node(struct ttm_mem_type_manager *man,
 	if (!node)
 		return -ENOMEM;
 
+	if (place->flags & TTM_PL_FLAG_TOPDOWN) {
+		sflags = DRM_MM_SEARCH_BELOW;
+		aflags = DRM_MM_CREATE_TOP;
+	}
+
 	spin_lock(&rman->lock);
 	ret = drm_mm_insert_node_in_range_generic(mm, node, mem->num_pages,
 					  mem->page_alignment, 0,
-					  placement->fpfn, lpfn,
+					  place->fpfn, lpfn,
 					  sflags, aflags);
 	spin_unlock(&rman->lock);
 
@@ -108,7 +115,7 @@ static int ttm_bo_man_init(struct ttm_mem_type_manager *man,
 		return -ENOMEM;
 
 	drm_mm_init(&rman->mm, 0, p_size);
-	mtx_init(&rman->lock, IPL_NONE);
+	spin_lock_init(&rman->lock);
 	man->priv = rman;
 	return 0;
 }
@@ -133,14 +140,11 @@ static int ttm_bo_man_takedown(struct ttm_mem_type_manager *man)
 static void ttm_bo_man_debug(struct ttm_mem_type_manager *man,
 			     const char *prefix)
 {
-	printf("%s stub\n", __func__);
-#ifdef notyet
 	struct ttm_range_manager *rman = (struct ttm_range_manager *) man->priv;
 
 	spin_lock(&rman->lock);
 	drm_mm_debug_table(&rman->mm, prefix);
 	spin_unlock(&rman->lock);
-#endif
 }
 
 const struct ttm_mem_type_manager_func ttm_bo_manager_func = {

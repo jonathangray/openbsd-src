@@ -1,4 +1,3 @@
-/*	$OpenBSD: ttm_memory.h,v 1.7 2018/04/20 16:09:37 deraadt Exp $	*/
 /**************************************************************************
  *
  * Copyright (c) 2006-2009 VMware, Inc., Palo Alto, CA., USA
@@ -29,7 +28,13 @@
 #ifndef TTM_MEMORY_H
 #define TTM_MEMORY_H
 
-#include <sys/task.h>
+#include <linux/workqueue.h>
+#include <linux/spinlock.h>
+#include <linux/bug.h>
+#include <linux/wait.h>
+#include <linux/errno.h>
+#include <linux/kobject.h>
+#include <linux/mm.h>
 
 /**
  * struct ttm_mem_shrink - callback to shrink TTM memory usage.
@@ -72,9 +77,8 @@ struct ttm_mem_zone;
 struct ttm_mem_global {
 	struct kobject kobj;
 	struct ttm_mem_shrink *shrink;
-	struct taskq *swap_queue;
-	struct task task;
-	bool task_queued;
+	struct workqueue_struct *swap_queue;
+	struct work_struct work;
 	spinlock_t lock;
 	struct ttm_mem_zone *zones[TTM_MEM_MAX_ZONES];
 	unsigned int num_zones;
@@ -146,9 +150,9 @@ extern int ttm_mem_global_alloc(struct ttm_mem_global *glob, uint64_t memory,
 extern void ttm_mem_global_free(struct ttm_mem_global *glob,
 				uint64_t amount);
 extern int ttm_mem_global_alloc_page(struct ttm_mem_global *glob,
-				     struct vm_page *page,
+				     struct page *page,
 				     bool no_wait, bool interruptible);
 extern void ttm_mem_global_free_page(struct ttm_mem_global *glob,
-				     struct vm_page *page);
+				     struct page *page);
 extern size_t ttm_round_pot(size_t size);
 #endif

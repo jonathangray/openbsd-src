@@ -1,4 +1,3 @@
-/*	$OpenBSD: ttm_lock.h,v 1.5 2018/04/20 21:12:50 naddy Exp $	*/
 /**************************************************************************
  *
  * Copyright (c) 2007-2009 VMware, Inc., Palo Alto, CA., USA
@@ -50,8 +49,9 @@
 #ifndef _TTM_LOCK_H_
 #define _TTM_LOCK_H_
 
-#include <sys/mutex.h>
-#include <dev/pci/drm/ttm/ttm_object.h>
+#include <ttm/ttm_object.h>
+#include <linux/wait.h>
+#include <linux/atomic.h>
 
 /**
  * struct ttm_lock

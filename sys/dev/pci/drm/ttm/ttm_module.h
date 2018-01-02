@@ -1,4 +1,3 @@
-/*	$OpenBSD: ttm_module.h,v 1.3 2018/04/20 16:09:37 deraadt Exp $	*/
 /**************************************************************************
  *
  * Copyright 2008-2009 VMware, Inc., Palo Alto, CA., USA
@@ -32,6 +31,7 @@
 #ifndef _TTM_MODULE_H_
 #define _TTM_MODULE_H_
 
+#include <linux/kernel.h>
 struct kobject;
 
 #define TTM_PFX "[TTM] "
