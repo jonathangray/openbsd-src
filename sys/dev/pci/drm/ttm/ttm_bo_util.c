@@ -251,7 +251,7 @@ static int ttm_copy_io_ttm_page(struct ttm_tt *ttm, void *src,
 				unsigned long page,
 				pgprot_t prot)
 {
-	struct page *d = ttm->pages[page];
+	struct vm_page *d = ttm->pages[page];
 	void *dst;
 
 	if (!d)
@@ -288,7 +288,7 @@ static int ttm_copy_ttm_io_page(struct ttm_tt *ttm, void *dst,
 				unsigned long page,
 				pgprot_t prot)
 {
-	struct page *s = ttm->pages[page];
+	struct vm_page *s = ttm->pages[page];
 	void *src;
 
 	if (!s)
