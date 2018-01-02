@@ -1260,7 +1260,12 @@ struct fence {
 };
 
 struct fence_ops {
+	const char * (*get_driver_name)(struct fence *);
+	const char * (*get_timeline_name)(struct fence *);
+	bool (*enable_signaling)(struct fence *);
 	bool (*signaled)(struct fence *);
+	long (*wait)(struct fence *, bool, long);
+	void (*release)(struct fence *);
 };
 
 struct fence_cb {
