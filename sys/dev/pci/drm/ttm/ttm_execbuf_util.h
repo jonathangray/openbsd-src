@@ -32,7 +32,6 @@
 #define _TTM_EXECBUF_UTIL_H_
 
 #include <dev/pci/drm/ttm/ttm_bo_api.h>
-#include <linux/list.h>
 
 /**
  * struct ttm_validate_buffer

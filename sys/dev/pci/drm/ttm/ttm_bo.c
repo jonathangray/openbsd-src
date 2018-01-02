@@ -33,14 +33,9 @@
 #include <dev/pci/drm/ttm/ttm_module.h>
 #include <dev/pci/drm/ttm/ttm_bo_driver.h>
 #include <dev/pci/drm/ttm/ttm_placement.h>
-#include <linux/jiffies.h>
-#include <linux/slab.h>
-#include <linux/sched.h>
-#include <linux/mm.h>
-#include <linux/file.h>
-#include <linux/module.h>
-#include <linux/atomic.h>
-#include <linux/reservation.h>
+#include <dev/pci/drm/drm_linux.h>
+#include <dev/pci/drm/drm_linux_atomic.h>
+#include <dev/pci/drm/linux_ww_mutex.h>
 
 #define TTM_ASSERT_LOCKED(param)
 #define TTM_DEBUG(fmt, arg...)
@@ -49,10 +44,12 @@
 static int ttm_bo_swapout(struct ttm_mem_shrink *shrink);
 static void ttm_bo_global_kobj_release(struct kobject *kobj);
 
+#ifdef notyet
 static struct attribute ttm_bo_count = {
 	.name = "bo_count",
 	.mode = S_IRUGO
 };
+#endif
 
 static inline int ttm_mem_type_from_place(const struct ttm_place *place,
 					  uint32_t *mem_type)
@@ -101,6 +98,7 @@ static void ttm_bo_mem_space_debug(struct ttm_buffer_object *bo,
 	}
 }
 
+#ifdef notyet
 static ssize_t ttm_bo_global_show(struct kobject *kobj,
 				  struct attribute *attr,
 				  char *buffer)
@@ -120,11 +118,14 @@ static struct attribute *ttm_bo_global_attrs[] = {
 static const struct sysfs_ops ttm_bo_global_ops = {
 	.show = &ttm_bo_global_show
 };
+#endif
 
 static struct kobj_type ttm_bo_glob_kobj_type  = {
 	.release = &ttm_bo_global_kobj_release,
+#ifdef __linux__
 	.sysfs_ops = &ttm_bo_global_ops,
 	.default_attrs = ttm_bo_global_attrs
+#endif
 };
 
 
@@ -1124,7 +1125,7 @@ int ttm_bo_init(struct ttm_bo_device *bdev,
 	INIT_LIST_HEAD(&bo->ddestroy);
 	INIT_LIST_HEAD(&bo->swap);
 	INIT_LIST_HEAD(&bo->io_reserve_lru);
-	mutex_init(&bo->wu_mutex);
+	rw_init(&bo->wu_mutex, "ttmwu");
 	bo->bdev = bdev;
 	bo->glob = bdev->glob;
 	bo->type = type;
@@ -1326,7 +1327,7 @@ int ttm_bo_init_mm(struct ttm_bo_device *bdev, unsigned type,
 	BUG_ON(man->has_type);
 	man->io_reserve_fastpath = true;
 	man->use_io_reserve_lru = false;
-	mutex_init(&man->io_reserve_mutex);
+	rw_init(&man->io_reserve_mutex, "ior");
 	INIT_LIST_HEAD(&man->io_reserve_lru);
 
 	ret = bdev->driver->init_mem_type(bdev, type, man);
@@ -1376,8 +1377,8 @@ int ttm_bo_global_init(struct drm_global_reference *ref)
 	struct ttm_bo_global *glob = ref->object;
 	int ret;
 
-	mutex_init(&glob->device_list_mutex);
-	spin_lock_init(&glob->lru_lock);
+	rw_init(&glob->device_list_mutex, "gdl");
+	mtx_init(&glob->lru_lock, IPL_NONE);
 	glob->mem_glob = bo_ref->mem_glob;
 	glob->dummy_read_page = alloc_page(__GFP_ZERO | GFP_DMA32);
 

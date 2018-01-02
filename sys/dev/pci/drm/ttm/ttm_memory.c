@@ -365,7 +365,7 @@ int ttm_mem_global_init(struct ttm_mem_global *glob)
 	int i;
 	struct ttm_mem_zone *zone;
 
-	spin_lock_init(&glob->lock);
+	mtx_init(&glob->lock, IPL_TTY);
 	glob->swap_queue = create_singlethread_workqueue("ttm_swap");
 	INIT_WORK(&glob->work, ttm_shrink_work);
 	ret = kobject_init_and_add(

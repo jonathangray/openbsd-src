@@ -31,9 +31,10 @@
 #ifndef _TTM_BO_API_H_
 #define _TTM_BO_API_H_
 
+#include <dev/pci/drm/drm_linux.h>
+#include <dev/pci/drm/linux_ww_mutex.h>
 #include <dev/pci/drm/drm_hashtab.h>
 #include <dev/pci/drm/drm_vma_manager.h>
-#include <dev/pci/drm/drm_linux.h>
 
 struct ttm_bo_device;
 
@@ -661,6 +662,7 @@ extern void ttm_bo_kunmap(struct ttm_bo_kmap_obj *map);
  * if the fbdev address space is to be backed by a bo.
  */
 
+#ifdef notyet
 extern int ttm_fbdev_mmap(struct vm_area_struct *vma,
 			  struct ttm_buffer_object *bo);
 
@@ -677,6 +679,7 @@ extern int ttm_fbdev_mmap(struct vm_area_struct *vma,
 
 extern int ttm_bo_mmap(struct file *filp, struct vm_area_struct *vma,
 		       struct ttm_bo_device *bdev);
+#endif
 
 /**
  * ttm_bo_io

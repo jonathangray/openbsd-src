@@ -801,7 +801,7 @@ static int ttm_get_pages(struct page **pages, unsigned npages, int flags,
 static void ttm_page_pool_init_locked(struct ttm_page_pool *pool, gfp_t flags,
 		char *name)
 {
-	spin_lock_init(&pool->lock);
+	mtx_init(&pool->lock, IPL_TTY);
 	pool->fill_lock = false;
 	INIT_LIST_HEAD(&pool->list);
 	pool->npages = pool->nfrees = 0;

@@ -472,7 +472,7 @@ struct ttm_object_file *ttm_object_file_init(struct ttm_object_device *tdev,
 	if (unlikely(tfile == NULL))
 		return NULL;
 
-	spin_lock_init(&tfile->lock);
+	mtx_init(&tfile->lock, IPL_NONE);
 	tfile->tdev = tdev;
 	kref_init(&tfile->refcount);
 	INIT_LIST_HEAD(&tfile->ref_list);
@@ -508,7 +508,7 @@ ttm_object_device_init(struct ttm_mem_global *mem_glob,
 		return NULL;
 
 	tdev->mem_glob = mem_glob;
-	spin_lock_init(&tdev->object_lock);
+	mtx_init(&tdev->object_lock, IPL_NONE);
 	atomic_set(&tdev->object_count, 0);
 	ret = drm_ht_create(&tdev->object_hash, hash_order);
 	if (ret != 0)
@@ -756,7 +756,7 @@ int ttm_prime_object_init(struct ttm_object_file *tfile, size_t size,
 			  void (*ref_obj_release) (struct ttm_base_object *,
 						   enum ttm_ref_type ref_type))
 {
-	mutex_init(&prime->mutex);
+	rw_init(&prime->mutex, "prime");
 	prime->size = PAGE_ALIGN(size);
 	prime->real_type = type;
 	prime->dma_buf = NULL;

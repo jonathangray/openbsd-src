@@ -30,6 +30,7 @@
 #ifndef _TTM_BO_DRIVER_H_
 #define _TTM_BO_DRIVER_H_
 
+#include <sys/task.h>
 #include <dev/pci/drm/ttm/ttm_bo_api.h>
 #include <dev/pci/drm/ttm/ttm_memory.h>
 #include <dev/pci/drm/ttm/ttm_module.h>
@@ -37,10 +38,6 @@
 #include <dev/pci/drm/drm_mm.h>
 #include <dev/pci/drm/drm_global.h>
 #include <dev/pci/drm/drm_vma_manager.h>
-#include <linux/workqueue.h>
-#include <linux/fs.h>
-#include <linux/spinlock.h>
-#include <linux/reservation.h>
 
 struct ttm_backend_func {
 	/**
