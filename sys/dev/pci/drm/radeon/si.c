@@ -7407,6 +7407,8 @@ int si_set_uvd_clocks(struct radeon_device *rdev, u32 vclk, u32 dclk)
 
 static void si_pcie_gen3_enable(struct radeon_device *rdev)
 {
+	STUB();
+#ifdef notyet
 	struct pci_dev *root = rdev->pdev->bus->self;
 	int bridge_pos, gpu_pos;
 	u32 speed_cntl, mask, current_data_rate;
@@ -7563,13 +7565,16 @@ static void si_pcie_gen3_enable(struct radeon_device *rdev)
 			break;
 		udelay(1);
 	}
+#endif
 }
 
 static void si_program_aspm(struct radeon_device *rdev)
 {
 	u32 data, orig;
 	bool disable_l0s = false, disable_l1 = false, disable_plloff_in_l1 = false;
+#ifdef notyet
 	bool disable_clkreq = false;
+#endif
 
 	if (radeon_aspm == 0)
 		return;
@@ -7693,6 +7698,7 @@ static void si_program_aspm(struct radeon_device *rdev)
 			if (orig != data)
 				WREG32_PIF_PHY1(PB1_PIF_CNTL, data);
 
+#ifdef notyet
 			if (!disable_clkreq &&
 			    !pci_is_root_bus(rdev->pdev->bus)) {
 				struct pci_dev *root = rdev->pdev->bus->self;
@@ -7705,6 +7711,10 @@ static void si_program_aspm(struct radeon_device *rdev)
 			} else {
 				clk_req_support = false;
 			}
+#else
+			clk_req_support = false;
+			printf("%s todo clk_req cap\n", __func__);
+#endif
 
 			if (clk_req_support) {
 				orig = data = RREG32_PCIE_PORT(PCIE_LC_CNTL2);
