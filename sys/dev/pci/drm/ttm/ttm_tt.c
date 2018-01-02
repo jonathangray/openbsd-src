@@ -30,7 +30,7 @@
 
 #define pr_fmt(fmt) "[TTM] " fmt
 
-#include <dev/pci/drm/drm_linux.h>
+#include <dev/pci/drm/drmP.h>
 #include <dev/pci/drm/drm_cache.h>
 #include <dev/pci/drm/drm_mem_util.h>
 #include <dev/pci/drm/ttm/ttm_module.h>
@@ -171,7 +171,7 @@ void ttm_tt_destroy(struct ttm_tt *ttm)
 
 	if (!(ttm->page_flags & TTM_PAGE_FLAG_PERSISTENT_SWAP) &&
 	    ttm->swap_storage)
-		fput(ttm->swap_storage);
+		uao_detach(ttm->swap_storage);
 
 	ttm->swap_storage = NULL;
 	ttm->func->destroy(ttm);
@@ -281,8 +281,11 @@ EXPORT_SYMBOL(ttm_tt_bind);
 
 int ttm_tt_swapin(struct ttm_tt *ttm)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct address_space *swap_space;
-	struct file *swap_storage;
+	struct uvm_object *swap_storage;
 	struct vm_page *from_page;
 	struct vm_page *to_page;
 	int i;
@@ -315,12 +318,16 @@ int ttm_tt_swapin(struct ttm_tt *ttm)
 	return 0;
 out_err:
 	return ret;
+#endif
 }
 
-int ttm_tt_swapout(struct ttm_tt *ttm, struct file *persistent_swap_storage)
+int ttm_tt_swapout(struct ttm_tt *ttm, struct uvm_object *persistent_swap_storage)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct address_space *swap_space;
-	struct file *swap_storage;
+	struct uvm_object *swap_storage;
 	struct vm_page *from_page;
 	struct vm_page *to_page;
 	int i;
@@ -369,10 +376,13 @@ out_err:
 		fput(swap_storage);
 
 	return ret;
+#endif
 }
 
 static void ttm_tt_clear_mapping(struct ttm_tt *ttm)
 {
+	STUB();
+#ifdef notyet
 	pgoff_t i;
 	struct vm_page **page = ttm->pages;
 
@@ -383,6 +393,7 @@ static void ttm_tt_clear_mapping(struct ttm_tt *ttm)
 		(*page)->mapping = NULL;
 		(*page++)->index = 0;
 	}
+#endif
 }
 
 void ttm_tt_unpopulate(struct ttm_tt *ttm)

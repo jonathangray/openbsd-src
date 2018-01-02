@@ -117,7 +117,7 @@ struct ttm_tt {
 	unsigned long num_pages;
 	struct sg_table *sg; /* for SG objects via dma-buf */
 	struct ttm_bo_global *glob;
-	struct file *swap_storage;
+	struct uvm_object *swap_storage;
 	enum ttm_caching_state caching_state;
 	enum {
 		tt_bound,
@@ -646,7 +646,7 @@ extern int ttm_tt_swapin(struct ttm_tt *ttm);
  */
 extern int ttm_tt_set_placement_caching(struct ttm_tt *ttm, uint32_t placement);
 extern int ttm_tt_swapout(struct ttm_tt *ttm,
-			  struct file *persistent_swap_storage);
+			  struct uvm_object *persistent_swap_storage);
 
 /**
  * ttm_tt_unpopulate - free pages from a ttm
