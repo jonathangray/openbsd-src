@@ -137,7 +137,7 @@ file	dev/pci/drm/radeon/cik_sdma.c			radeondrm
 file	dev/pci/drm/radeon/cypress_dpm.c		radeondrm
 file	dev/pci/drm/radeon/dce3_1_afmt.c		radeondrm
 file	dev/pci/drm/radeon/dce6_afmt.c			radeondrm
-file	dev/pci/drm/radeon/drm_buffer.c			radeondrm
+#file	dev/pci/drm/radeon/drm_buffer.c			radeondrm	UMS
 file	dev/pci/drm/radeon/evergreen.c			radeondrm
 file	dev/pci/drm/radeon/evergreen_blit_shaders.c	radeondrm
 file	dev/pci/drm/radeon/evergreen_cs.c		radeondrm
@@ -151,13 +151,13 @@ file	dev/pci/drm/radeon/ni_dpm.c			radeondrm
 file	dev/pci/drm/radeon/r100.c			radeondrm
 file	dev/pci/drm/radeon/r200.c			radeondrm
 file	dev/pci/drm/radeon/r300.c			radeondrm
-file	dev/pci/drm/radeon/r300_cmdbuf.c		radeondrm
+#file	dev/pci/drm/radeon/r300_cmdbuf.c		radeondrm	UMS
 file	dev/pci/drm/radeon/r420.c			radeondrm
 file	dev/pci/drm/radeon/r520.c			radeondrm
 file	dev/pci/drm/radeon/r600.c			radeondrm
-file	dev/pci/drm/radeon/r600_blit.c			radeondrm
+#file	dev/pci/drm/radeon/r600_blit.c			radeondrm	UMS
 file	dev/pci/drm/radeon/r600_blit_shaders.c		radeondrm
-file	dev/pci/drm/radeon/r600_cp.c			radeondrm
+#file	dev/pci/drm/radeon/r600_cp.c			radeondrm	UMS
 file	dev/pci/drm/radeon/r600_cs.c			radeondrm
 file	dev/pci/drm/radeon/r600_dma.c			radeondrm
 file	dev/pci/drm/radeon/r600_dpm.c			radeondrm
@@ -172,7 +172,7 @@ file	dev/pci/drm/radeon/radeon_bios.c		radeondrm
 file	dev/pci/drm/radeon/radeon_clocks.c		radeondrm
 file	dev/pci/drm/radeon/radeon_combios.c		radeondrm
 file	dev/pci/drm/radeon/radeon_connectors.c		radeondrm
-file	dev/pci/drm/radeon/radeon_cp.c			radeondrm
+#file	dev/pci/drm/radeon/radeon_cp.c			radeondrm	UMS
 file	dev/pci/drm/radeon/radeon_cs.c			radeondrm
 file	dev/pci/drm/radeon/radeon_cursor.c		radeondrm
 file	dev/pci/drm/radeon/radeon_device.c		radeondrm
@@ -188,14 +188,14 @@ file	dev/pci/drm/radeon/radeon_gem.c			radeondrm
 file	dev/pci/drm/radeon/radeon_i2c.c			radeondrm
 file	dev/pci/drm/radeon/radeon_ib.c			radeondrm
 file	dev/pci/drm/radeon/radeon_ioc32.c		radeondrm
-file	dev/pci/drm/radeon/radeon_irq.c			radeondrm
+#file	dev/pci/drm/radeon/radeon_irq.c			radeondrm	UMS
 file	dev/pci/drm/radeon/radeon_irq_kms.c		radeondrm
-file	dev/pci/drm/radeon/radeon_kfd.c			radeondrm
+#file	dev/pci/drm/radeon/radeon_kfd.c			radeondrm
 file	dev/pci/drm/radeon/radeon_kms.c			radeondrm
 file	dev/pci/drm/radeon/radeon_legacy_crtc.c		radeondrm
 file	dev/pci/drm/radeon/radeon_legacy_encoders.c	radeondrm
 file	dev/pci/drm/radeon/radeon_legacy_tv.c		radeondrm
-file	dev/pci/drm/radeon/radeon_mem.c			radeondrm
+#file	dev/pci/drm/radeon/radeon_mem.c			radeondrm	UMS
 file	dev/pci/drm/radeon/radeon_mn.c			radeondrm
 file	dev/pci/drm/radeon/radeon_object.c		radeondrm
 file	dev/pci/drm/radeon/radeon_pm.c			radeondrm
@@ -203,7 +203,7 @@ file	dev/pci/drm/radeon/radeon_pm.c			radeondrm
 file	dev/pci/drm/radeon/radeon_ring.c		radeondrm
 file	dev/pci/drm/radeon/radeon_sa.c			radeondrm
 file	dev/pci/drm/radeon/radeon_semaphore.c		radeondrm
-file	dev/pci/drm/radeon/radeon_state.c		radeondrm
+#file	dev/pci/drm/radeon/radeon_state.c		radeondrm	UMS
 file	dev/pci/drm/radeon/radeon_sync.c		radeondrm
 file	dev/pci/drm/radeon/radeon_test.c		radeondrm
 #file	dev/pci/drm/radeon/radeon_trace_points.c	radeondrm
