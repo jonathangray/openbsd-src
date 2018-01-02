@@ -551,6 +551,8 @@ static int radeon_audio_set_avi_packet(struct drm_encoder *encoder,
  */
 static void radeon_audio_calc_cts(unsigned int clock, int *CTS, int *N, int freq)
 {
+	STUB();
+#ifdef notyet
 	int n, cts;
 	unsigned long div, mul;
 
@@ -584,6 +586,7 @@ static void radeon_audio_calc_cts(unsigned int clock, int *CTS, int *N, int freq
 
 	DRM_DEBUG("Calculated ACR timing N=%d CTS=%d for frequency %d\n",
 		*N, *CTS, freq);
+#endif
 }
 
 static const struct radeon_hdmi_acr* radeon_audio_acr(unsigned int clock)

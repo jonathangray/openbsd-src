@@ -42,6 +42,9 @@
  */
 static bool igp_read_bios_from_vram(struct radeon_device *rdev)
 {
+	STUB();
+	return false;
+#ifdef notyet
 	uint8_t __iomem *bios;
 	resource_size_t vram_base;
 	resource_size_t size = 256 * 1024; /* ??? */
@@ -69,10 +72,14 @@ static bool igp_read_bios_from_vram(struct radeon_device *rdev)
 	memcpy_fromio(rdev->bios, bios, size);
 	iounmap(bios);
 	return true;
+#endif
 }
 
 static bool radeon_read_bios(struct radeon_device *rdev)
 {
+	STUB();
+	return false;
+#ifdef notyet
 	uint8_t __iomem *bios, val1, val2;
 	size_t size;
 
@@ -98,10 +105,14 @@ static bool radeon_read_bios(struct radeon_device *rdev)
 	memcpy_fromio(rdev->bios, bios, size);
 	pci_unmap_rom(rdev->pdev, bios);
 	return true;
+#endif
 }
 
 static bool radeon_read_platform_bios(struct radeon_device *rdev)
 {
+	STUB();
+	return false;
+#ifdef notyet
 	uint8_t __iomem *bios;
 	size_t size;
 
@@ -121,6 +132,7 @@ static bool radeon_read_platform_bios(struct radeon_device *rdev)
 	}
 
 	return true;
+#endif
 }
 
 #ifdef CONFIG_ACPI
