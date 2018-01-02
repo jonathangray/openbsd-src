@@ -516,6 +516,10 @@ struct ttm_bo_device {
 	struct ttm_bo_driver *driver;
 	struct ttm_mem_type_manager man[TTM_NUM_MEM_TYPES];
 
+	bus_space_tag_t iot;
+	bus_space_tag_t memt;
+	bus_dma_tag_t dmat;
+
 	/*
 	 * Protected by internal locks.
 	 */

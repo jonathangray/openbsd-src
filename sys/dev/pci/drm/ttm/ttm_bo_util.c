@@ -31,13 +31,8 @@
 #include <dev/pci/drm/ttm/ttm_bo_driver.h>
 #include <dev/pci/drm/ttm/ttm_placement.h>
 #include <dev/pci/drm/drm_vma_manager.h>
-#include <linux/io.h>
-#include <linux/highmem.h>
-#include <linux/wait.h>
-#include <linux/slab.h>
-#include <linux/vmalloc.h>
-#include <linux/module.h>
-#include <linux/reservation.h>
+#include <dev/pci/drm/drmP.h>
+#include <dev/pci/drm/linux_ww_mutex.h>
 
 void ttm_bo_free_old_node(struct ttm_buffer_object *bo)
 {
@@ -191,6 +186,9 @@ void ttm_mem_io_free_vm(struct ttm_buffer_object *bo)
 static int ttm_mem_reg_ioremap(struct ttm_bo_device *bdev, struct ttm_mem_reg *mem,
 			void **virtual)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct ttm_mem_type_manager *man = &bdev->man[mem->mem_type];
 	int ret;
 	void *addr;
@@ -218,11 +216,14 @@ static int ttm_mem_reg_ioremap(struct ttm_bo_device *bdev, struct ttm_mem_reg *m
 	}
 	*virtual = addr;
 	return 0;
+#endif
 }
 
 static void ttm_mem_reg_iounmap(struct ttm_bo_device *bdev, struct ttm_mem_reg *mem,
 			 void *virtual)
 {
+	STUB();
+#ifdef notyet
 	struct ttm_mem_type_manager *man;
 
 	man = &bdev->man[mem->mem_type];
@@ -232,6 +233,7 @@ static void ttm_mem_reg_iounmap(struct ttm_bo_device *bdev, struct ttm_mem_reg *
 	(void) ttm_mem_io_lock(man, false);
 	ttm_mem_io_free(bdev, mem);
 	ttm_mem_io_unlock(man);
+#endif
 }
 
 static int ttm_copy_io_page(void *dst, void *src, unsigned long page)
@@ -276,7 +278,7 @@ static int ttm_copy_io_ttm_page(struct ttm_tt *ttm, void *src,
 	kunmap_atomic(dst);
 #else
 	if (pgprot_val(prot) != pgprot_val(PAGE_KERNEL))
-		vunmap(dst);
+		vunmap(dst, PAGE_SIZE);
 	else
 		kunmap(d);
 #endif
@@ -312,7 +314,7 @@ static int ttm_copy_ttm_io_page(struct ttm_tt *ttm, void *dst,
 	kunmap_atomic(src);
 #else
 	if (pgprot_val(prot) != pgprot_val(PAGE_KERNEL))
-		vunmap(src);
+		vunmap(src, PAGE_SIZE);
 	else
 		kunmap(s);
 #endif
@@ -478,6 +480,7 @@ static int ttm_buffer_object_transfer(struct ttm_buffer_object *bo,
 	return 0;
 }
 
+#ifdef __linux__
 pgprot_t ttm_io_prot(uint32_t caching_flags, pgprot_t tmp)
 {
 	/* Cached mappings need no adjustment */
@@ -503,12 +506,26 @@ pgprot_t ttm_io_prot(uint32_t caching_flags, pgprot_t tmp)
 	return tmp;
 }
 EXPORT_SYMBOL(ttm_io_prot);
+#endif
+
+pgprot_t ttm_io_prot(uint32_t caching_flags, pgprot_t tmp)
+{
+#ifdef PMAP_WC
+	if (caching_flags & TTM_PL_FLAG_WC)
+		return PMAP_WC;
+	else
+#endif
+		return PMAP_NOCACHE;
+}
 
 static int ttm_bo_ioremap(struct ttm_buffer_object *bo,
 			  unsigned long offset,
 			  unsigned long size,
 			  struct ttm_bo_kmap_obj *map)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct ttm_mem_reg *mem = &bo->mem;
 
 	if (bo->mem.bus.addr) {
@@ -524,6 +541,7 @@ static int ttm_bo_ioremap(struct ttm_buffer_object *bo,
 						       size);
 	}
 	return (!map->virtual) ? -ENOMEM : 0;
+#endif
 }
 
 static int ttm_bo_kmap_ttm(struct ttm_buffer_object *bo,
@@ -610,10 +628,11 @@ void ttm_bo_kunmap(struct ttm_bo_kmap_obj *map)
 		return;
 	switch (map->bo_kmap_type) {
 	case ttm_bo_map_iomap:
-		iounmap(map->virtual);
+		bus_space_unmap(bo->bdev->memt, bo->mem.bus.bsh,
+		    bo->mem.bus.size);
 		break;
 	case ttm_bo_map_vmap:
-		vunmap(map->virtual);
+		vunmap(map->virtual, bo->mem.bus.size);
 		break;
 	case ttm_bo_map_kmap:
 		kunmap(map->page);
