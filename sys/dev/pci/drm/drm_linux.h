@@ -1243,8 +1243,6 @@ schedule_timeout(long timeout, wait_queue_head_t **wait)
 	return -msleep(*wait, &(*wait)->lock, PZERO, "schto", timeout);
 }
 
-struct reservation_object;
-
 struct seq_file;
 
 static inline void
