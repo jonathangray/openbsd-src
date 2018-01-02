@@ -44,6 +44,7 @@ struct radeon_fbdev {
 	struct radeon_device *rdev;
 };
 
+#ifdef notyet
 static struct fb_ops radeonfb_ops = {
 	.owner = THIS_MODULE,
 	.fb_check_var = drm_fb_helper_check_var,
@@ -57,6 +58,7 @@ static struct fb_ops radeonfb_ops = {
 	.fb_debug_enter = drm_fb_helper_debug_enter,
 	.fb_debug_leave = drm_fb_helper_debug_leave,
 };
+#endif
 
 
 int radeon_align_pitch(struct radeon_device *rdev, int width, int bpp, bool tiled)
@@ -236,39 +238,51 @@ static int radeonfb_create(struct drm_fb_helper *helper,
 
 	memset_io(rbo->kptr, 0x0, radeon_bo_size(rbo));
 
+#ifdef __linux__
 	strcpy(info->fix.id, "radeondrmfb");
+#endif
 
 	drm_fb_helper_fill_fix(info, fb->pitches[0], fb->depth);
 
+#ifdef __linux__
 	info->flags = FBINFO_DEFAULT | FBINFO_CAN_FORCE_OUTPUT;
 	info->fbops = &radeonfb_ops;
+#endif
 
 	tmp = radeon_bo_gpu_offset(rbo) - rdev->mc.vram_start;
+#ifdef __linux__
 	info->fix.smem_start = rdev->mc.aper_base + tmp;
 	info->fix.smem_len = radeon_bo_size(rbo);
 	info->screen_base = rbo->kptr;
 	info->screen_size = radeon_bo_size(rbo);
+#endif
 
 	drm_fb_helper_fill_var(info, &rfbdev->helper, sizes->fb_width, sizes->fb_height);
 
 	/* setup aperture base/size for vesafb takeover */
+#ifdef __linux__
 	info->apertures->ranges[0].base = rdev->ddev->mode_config.fb_base;
 	info->apertures->ranges[0].size = rdev->mc.aper_size;
+#endif
 
 	/* Use default scratch pixmap (info->pixmap.flags = FB_PIXMAP_SYSTEM) */
 
+#ifdef __linux__
 	if (info->screen_base == NULL) {
 		ret = -ENOSPC;
 		goto out_destroy_fbi;
 	}
 
 	DRM_INFO("fb mappable at 0x%lX\n",  info->fix.smem_start);
+#endif
 	DRM_INFO("vram apper at 0x%lX\n",  (unsigned long)rdev->mc.aper_base);
 	DRM_INFO("size %lu\n", (unsigned long)radeon_bo_size(rbo));
 	DRM_INFO("fb depth is %d\n", fb->depth);
 	DRM_INFO("   pitch is %d\n", fb->pitches[0]);
 
+#ifdef __linux__
 	vga_switcheroo_client_fb_set(rdev->ddev->pdev, info);
+#endif
 	return 0;
 
 out_destroy_fbi:
@@ -373,7 +387,9 @@ void radeon_fbdev_fini(struct radeon_device *rdev)
 
 void radeon_fbdev_set_suspend(struct radeon_device *rdev, int state)
 {
+#ifdef __linux__
 	fb_set_suspend(rdev->mode_info.rfbdev->helper.fbdev, state);
+#endif
 }
 
 bool radeon_fbdev_robj_is_fb(struct radeon_device *rdev, struct radeon_bo *robj)
