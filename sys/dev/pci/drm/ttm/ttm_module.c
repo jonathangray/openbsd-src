@@ -31,8 +31,8 @@
 #include <linux/module.h>
 #include <linux/device.h>
 #include <linux/sched.h>
-#include <drm/ttm/ttm_module.h>
-#include <drm/drm_sysfs.h>
+#include <dev/pci/drm/ttm/ttm_module.h>
+#include <dev/pci/drm/drm_sysfs.h>
 
 static DECLARE_WAIT_QUEUE_HEAD(exit_q);
 static atomic_t device_released;

@@ -38,7 +38,7 @@
 #define _TTM_OBJECT_H_
 
 #include <linux/list.h>
-#include <drm/drm_hashtab.h>
+#include <dev/pci/drm/drm_hashtab.h>
 #include <linux/kref.h>
 #include <linux/rcupdate.h>
 #include <linux/dma-buf.h>
