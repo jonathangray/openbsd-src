@@ -167,7 +167,7 @@ struct device_pools {
  * @shrinker: The structure used by [un|]register_shrinker
  */
 struct ttm_pool_manager {
-	struct mutex		lock;
+	struct rwlock		lock;
 	struct list_head	pools;
 	struct ttm_pool_opts	options;
 	unsigned		npools;

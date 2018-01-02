@@ -280,7 +280,7 @@ struct ttm_mem_type_manager {
 	uint32_t default_caching;
 	const struct ttm_mem_type_manager_func *func;
 	void *priv;
-	struct mutex io_reserve_mutex;
+	struct rwlock io_reserve_mutex;
 	bool use_io_reserve_lru;
 	bool io_reserve_fastpath;
 
@@ -466,7 +466,7 @@ struct ttm_bo_global {
 	struct ttm_mem_global *mem_glob;
 	struct page *dummy_read_page;
 	struct ttm_mem_shrink shrink;
-	struct mutex device_list_mutex;
+	struct rwlock device_list_mutex;
 	spinlock_t lru_lock;
 
 	/**

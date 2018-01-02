@@ -167,7 +167,9 @@ void ttm_bo_add_to_lru(struct ttm_buffer_object *bo)
 	struct ttm_bo_device *bdev = bo->bdev;
 	struct ttm_mem_type_manager *man;
 
+#ifdef notyet
 	lockdep_assert_held(&bo->resv->lock.base);
+#endif
 
 	if (!(bo->mem.placement & TTM_PL_FLAG_NO_EVICT)) {
 
@@ -406,6 +408,8 @@ static void ttm_bo_cleanup_memtype_use(struct ttm_buffer_object *bo)
 
 static void ttm_bo_flush_all_fences(struct ttm_buffer_object *bo)
 {
+	STUB();
+#ifdef notyet
 	struct reservation_object_list *fobj;
 	struct fence *fence;
 	int i;
@@ -422,6 +426,7 @@ static void ttm_bo_flush_all_fences(struct ttm_buffer_object *bo)
 		if (!fence->ops->signaled)
 			fence_enable_sw_signaling(fence);
 	}
+#endif
 }
 
 static void ttm_bo_cleanup_refs_or_queue(struct ttm_buffer_object *bo)
@@ -674,7 +679,9 @@ static int ttm_bo_evict(struct ttm_buffer_object *bo, bool interruptible,
 		goto out;
 	}
 
+#ifdef notyet
 	lockdep_assert_held(&bo->resv->lock.base);
+#endif
 
 	evict_mem = bo->mem;
 	evict_mem.mm_node = NULL;
@@ -975,7 +982,9 @@ static int ttm_bo_move_buffer(struct ttm_buffer_object *bo,
 	int ret = 0;
 	struct ttm_mem_reg mem;
 
+#ifdef notyet
 	lockdep_assert_held(&bo->resv->lock.base);
+#endif
 
 	/*
 	 * FIXME: It's possible to pipeline buffer moves.
@@ -1049,7 +1058,9 @@ int ttm_bo_validate(struct ttm_buffer_object *bo,
 	int ret;
 	uint32_t new_flags;
 
+#ifdef notyet
 	lockdep_assert_held(&bo->resv->lock.base);
+#endif
 	/*
 	 * Check whether we need to move buffer.
 	 */
@@ -1144,7 +1155,9 @@ int ttm_bo_init(struct ttm_bo_device *bdev,
 	bo->sg = sg;
 	if (resv) {
 		bo->resv = resv;
+#ifdef notyet
 		lockdep_assert_held(&bo->resv->lock.base);
+#endif
 	} else {
 		bo->resv = &bo->ttm_resv;
 		reservation_object_init(&bo->ttm_resv);

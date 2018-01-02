@@ -151,7 +151,7 @@ struct ttm_base_object {
 
 struct ttm_prime_object {
 	struct ttm_base_object base;
-	struct mutex mutex;
+	struct rwlock mutex;
 	size_t size;
 	enum ttm_object_type real_type;
 	struct dma_buf *dma_buf;
