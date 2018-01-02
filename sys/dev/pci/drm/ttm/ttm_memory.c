@@ -27,15 +27,10 @@
 
 #define pr_fmt(fmt) "[TTM] " fmt
 
+#include <dev/pci/drm/drm_linux.h>
 #include <dev/pci/drm/ttm/ttm_memory.h>
 #include <dev/pci/drm/ttm/ttm_module.h>
 #include <dev/pci/drm/ttm/ttm_page_alloc.h>
-#include <linux/spinlock.h>
-#include <linux/sched.h>
-#include <linux/wait.h>
-#include <linux/mm.h>
-#include <linux/module.h>
-#include <linux/slab.h>
 
 #define TTM_MEMORY_ALLOC_RETRIES 4
 
@@ -50,6 +45,7 @@ struct ttm_mem_zone {
 	uint64_t used_mem;
 };
 
+#ifdef notyet
 static struct attribute ttm_mem_sys = {
 	.name = "zone_memory",
 	.mode = S_IRUGO
@@ -70,6 +66,7 @@ static struct attribute ttm_mem_used = {
 	.name = "used_memory",
 	.mode = S_IRUGO
 };
+#endif
 
 static void ttm_mem_zone_kobj_release(struct kobject *kobj)
 {
@@ -81,6 +78,7 @@ static void ttm_mem_zone_kobj_release(struct kobject *kobj)
 	kfree(zone);
 }
 
+#ifdef notyet
 static ssize_t ttm_mem_zone_show(struct kobject *kobj,
 				 struct attribute *attr,
 				 char *buffer)
@@ -159,11 +157,14 @@ static const struct sysfs_ops ttm_mem_zone_ops = {
 	.show = &ttm_mem_zone_show,
 	.store = &ttm_mem_zone_store
 };
+#endif
 
 static struct kobj_type ttm_mem_zone_kobj_type = {
 	.release = &ttm_mem_zone_kobj_release,
+#ifdef __linux__
 	.sysfs_ops = &ttm_mem_zone_ops,
 	.default_attrs = ttm_mem_zone_attrs,
+#endif
 };
 
 static void ttm_mem_global_kobj_release(struct kobject *kobj)
@@ -243,17 +244,13 @@ static void ttm_shrink_work(struct work_struct *work)
 }
 
 static int ttm_mem_init_kernel_zone(struct ttm_mem_global *glob,
-				    const struct sysinfo *si)
+    uint64_t mem)
 {
 	struct ttm_mem_zone *zone = kzalloc(sizeof(*zone), GFP_KERNEL);
-	uint64_t mem;
 	int ret;
 
 	if (unlikely(!zone))
 		return -ENOMEM;
-
-	mem = si->totalram - si->totalhigh;
-	mem *= si->mem_unit;
 
 	zone->name = "kernel";
 	zone->zone_mem = mem;
@@ -275,10 +272,9 @@ static int ttm_mem_init_kernel_zone(struct ttm_mem_global *glob,
 
 #ifdef CONFIG_HIGHMEM
 static int ttm_mem_init_highmem_zone(struct ttm_mem_global *glob,
-				     const struct sysinfo *si)
+    uint64_t mem)
 {
 	struct ttm_mem_zone *zone;
-	uint64_t mem;
 	int ret;
 
 	if (si->totalhigh == 0)
@@ -287,9 +283,6 @@ static int ttm_mem_init_highmem_zone(struct ttm_mem_global *glob,
 	zone = kzalloc(sizeof(*zone), GFP_KERNEL);
 	if (unlikely(!zone))
 		return -ENOMEM;
-
-	mem = si->totalram;
-	mem *= si->mem_unit;
 
 	zone->name = "highmem";
 	zone->zone_mem = mem;
@@ -311,17 +304,13 @@ static int ttm_mem_init_highmem_zone(struct ttm_mem_global *glob,
 }
 #else
 static int ttm_mem_init_dma32_zone(struct ttm_mem_global *glob,
-				   const struct sysinfo *si)
+    uint64_t mem)
 {
 	struct ttm_mem_zone *zone = kzalloc(sizeof(*zone), GFP_KERNEL);
-	uint64_t mem;
 	int ret;
 
 	if (unlikely(!zone))
 		return -ENOMEM;
-
-	mem = si->totalram;
-	mem *= si->mem_unit;
 
 	/**
 	 * No special dma32 zone needed.
@@ -360,7 +349,7 @@ static int ttm_mem_init_dma32_zone(struct ttm_mem_global *glob,
 
 int ttm_mem_global_init(struct ttm_mem_global *glob)
 {
-	struct sysinfo si;
+	uint64_t mem;
 	int ret;
 	int i;
 	struct ttm_mem_zone *zone;
@@ -375,17 +364,17 @@ int ttm_mem_global_init(struct ttm_mem_global *glob)
 		return ret;
 	}
 
-	si_meminfo(&si);
+	mem = ptoa(physmem);
 
-	ret = ttm_mem_init_kernel_zone(glob, &si);
+	ret = ttm_mem_init_kernel_zone(glob, mem);
 	if (unlikely(ret != 0))
 		goto out_no_zone;
 #ifdef CONFIG_HIGHMEM
-	ret = ttm_mem_init_highmem_zone(glob, &si);
+	ret = ttm_mem_init_highmem_zone(glob, mem);
 	if (unlikely(ret != 0))
 		goto out_no_zone;
 #else
-	ret = ttm_mem_init_dma32_zone(glob, &si);
+	ret = ttm_mem_init_dma32_zone(glob, mem);
 	if (unlikely(ret != 0))
 		goto out_no_zone;
 #endif
