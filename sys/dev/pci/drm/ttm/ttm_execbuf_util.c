@@ -28,10 +28,8 @@
 #include <dev/pci/drm/ttm/ttm_execbuf_util.h>
 #include <dev/pci/drm/ttm/ttm_bo_driver.h>
 #include <dev/pci/drm/ttm/ttm_placement.h>
-#include <linux/wait.h>
-#include <linux/sched.h>
-#include <linux/module.h>
 
+#ifdef notyet
 static void ttm_eu_backoff_reservation_reverse(struct list_head *list,
 					      struct ttm_validate_buffer *entry)
 {
@@ -53,6 +51,7 @@ static void ttm_eu_del_from_lru_locked(struct list_head *list)
 		ttm_bo_list_ref_sub(bo, put_count, true);
 	}
 }
+#endif
 
 void ttm_eu_backoff_reservation(struct ww_acquire_ctx *ticket,
 				struct list_head *list)
@@ -96,6 +95,9 @@ int ttm_eu_reserve_buffers(struct ww_acquire_ctx *ticket,
 			   struct list_head *list, bool intr,
 			   struct list_head *dups)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct ttm_bo_global *glob;
 	struct ttm_validate_buffer *entry;
 	int ret;
@@ -176,6 +178,7 @@ int ttm_eu_reserve_buffers(struct ww_acquire_ctx *ticket,
 	ttm_eu_del_from_lru_locked(list);
 	spin_unlock(&glob->lru_lock);
 	return 0;
+#endif
 }
 EXPORT_SYMBOL(ttm_eu_reserve_buffers);
 
