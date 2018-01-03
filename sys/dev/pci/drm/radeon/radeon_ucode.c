@@ -25,6 +25,7 @@
 #include "radeon.h"
 #include "radeon_ucode.h"
 
+#ifdef notyet
 static void radeon_ucode_print_common_hdr(const struct common_firmware_header *hdr)
 {
 	DRM_DEBUG("size_bytes: %u\n", le32_to_cpu(hdr->size_bytes));
@@ -39,9 +40,12 @@ static void radeon_ucode_print_common_hdr(const struct common_firmware_header *h
 		  le32_to_cpu(hdr->ucode_array_offset_bytes));
 	DRM_DEBUG("crc32: 0x%08x\n", le32_to_cpu(hdr->crc32));
 }
+#endif
 
 void radeon_ucode_print_mc_hdr(const struct common_firmware_header *hdr)
 {
+	STUB();
+#ifdef notyet
 	uint16_t version_major = le16_to_cpu(hdr->header_version_major);
 	uint16_t version_minor = le16_to_cpu(hdr->header_version_minor);
 
@@ -59,10 +63,13 @@ void radeon_ucode_print_mc_hdr(const struct common_firmware_header *hdr)
 	} else {
 		DRM_ERROR("Unknown MC ucode version: %u.%u\n", version_major, version_minor);
 	}
+#endif
 }
 
 void radeon_ucode_print_smc_hdr(const struct common_firmware_header *hdr)
 {
+	STUB();
+#ifdef notyet
 	uint16_t version_major = le16_to_cpu(hdr->header_version_major);
 	uint16_t version_minor = le16_to_cpu(hdr->header_version_minor);
 
@@ -77,10 +84,13 @@ void radeon_ucode_print_smc_hdr(const struct common_firmware_header *hdr)
 	} else {
 		DRM_ERROR("Unknown SMC ucode version: %u.%u\n", version_major, version_minor);
 	}
+#endif
 }
 
 void radeon_ucode_print_gfx_hdr(const struct common_firmware_header *hdr)
 {
+	STUB();
+#ifdef notyet
 	uint16_t version_major = le16_to_cpu(hdr->header_version_major);
 	uint16_t version_minor = le16_to_cpu(hdr->header_version_minor);
 
@@ -98,10 +108,13 @@ void radeon_ucode_print_gfx_hdr(const struct common_firmware_header *hdr)
 	} else {
 		DRM_ERROR("Unknown GFX ucode version: %u.%u\n", version_major, version_minor);
 	}
+#endif
 }
 
 void radeon_ucode_print_rlc_hdr(const struct common_firmware_header *hdr)
 {
+	STUB();
+#ifdef notyet
 	uint16_t version_major = le16_to_cpu(hdr->header_version_major);
 	uint16_t version_minor = le16_to_cpu(hdr->header_version_minor);
 
@@ -125,10 +138,13 @@ void radeon_ucode_print_rlc_hdr(const struct common_firmware_header *hdr)
 	} else {
 		DRM_ERROR("Unknown RLC ucode version: %u.%u\n", version_major, version_minor);
 	}
+#endif
 }
 
 void radeon_ucode_print_sdma_hdr(const struct common_firmware_header *hdr)
 {
+	STUB();
+#ifdef notyet
 	uint16_t version_major = le16_to_cpu(hdr->header_version_major);
 	uint16_t version_minor = le16_to_cpu(hdr->header_version_minor);
 
@@ -149,6 +165,7 @@ void radeon_ucode_print_sdma_hdr(const struct common_firmware_header *hdr)
 		DRM_ERROR("Unknown SDMA ucode version: %u.%u\n",
 			  version_major, version_minor);
 	}
+#endif
 }
 
 int radeon_ucode_validate(const struct firmware *fw)

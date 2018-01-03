@@ -167,6 +167,7 @@ static struct kobj_type ttm_mem_zone_kobj_type = {
 #endif
 };
 
+#ifdef notyet
 static void ttm_mem_global_kobj_release(struct kobject *kobj)
 {
 	struct ttm_mem_global *glob =
@@ -178,6 +179,7 @@ static void ttm_mem_global_kobj_release(struct kobject *kobj)
 static struct kobj_type ttm_mem_glob_kobj_type = {
 	.release = &ttm_mem_global_kobj_release,
 };
+#endif
 
 static bool ttm_zones_above_swap_target(struct ttm_mem_global *glob,
 					bool from_wq, uint64_t extra)
@@ -349,6 +351,9 @@ static int ttm_mem_init_dma32_zone(struct ttm_mem_global *glob,
 
 int ttm_mem_global_init(struct ttm_mem_global *glob)
 {
+	STUB();
+	return -ENOSYS;
+
 	uint64_t mem;
 	int ret;
 	int i;
@@ -357,8 +362,12 @@ int ttm_mem_global_init(struct ttm_mem_global *glob)
 	mtx_init(&glob->lock, IPL_TTY);
 	glob->swap_queue = create_singlethread_workqueue("ttm_swap");
 	INIT_WORK(&glob->work, ttm_shrink_work);
+#ifdef notyet
 	ret = kobject_init_and_add(
 		&glob->kobj, &ttm_mem_glob_kobj_type, ttm_get_kobj(), "memory_accounting");
+#else
+	ret = 1;
+#endif
 	if (unlikely(ret != 0)) {
 		kobject_put(&glob->kobj);
 		return ret;
