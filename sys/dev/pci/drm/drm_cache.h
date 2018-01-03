@@ -38,4 +38,15 @@
 void drm_clflush_pages(struct page *pages[], unsigned long num_pages);
 #endif
 
+static inline bool drm_arch_can_wc_memory(void)
+{
+#if defined(__powerpc__)
+	return false;
+#elif defined(__mips__)
+	return false;
+#else
+	return true;
+#endif
+}
+
 #endif
