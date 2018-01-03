@@ -34,8 +34,10 @@ void radeon_gem_object_free(struct drm_gem_object *gobj)
 	struct radeon_bo *robj = gem_to_radeon_bo(gobj);
 
 	if (robj) {
+#ifdef notyet
 		if (robj->gem_base.import_attach)
 			drm_prime_gem_destroy(&robj->gem_base, robj->tbo.sg);
+#endif
 		radeon_mn_unregister(robj);
 		radeon_bo_unref(&robj);
 	}
@@ -81,7 +83,7 @@ retry:
 		return r;
 	}
 	*obj = &robj->gem_base;
-	robj->pid = task_pid_nr(current);
+	robj->pid = curproc->p_p->ps_pid;
 
 	mutex_lock(&rdev->gem.mutex);
 	list_add_tail(&robj->list, &rdev->gem.objects);
@@ -281,6 +283,9 @@ int radeon_gem_create_ioctl(struct drm_device *dev, void *data,
 int radeon_gem_userptr_ioctl(struct drm_device *dev, void *data,
 			     struct drm_file *filp)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct radeon_device *rdev = dev->dev_private;
 	struct drm_radeon_gem_userptr *args = data;
 	struct drm_gem_object *gobj;
@@ -364,6 +369,7 @@ handle_lockup:
 	r = radeon_gem_handle_lockup(rdev, r);
 
 	return r;
+#endif
 }
 
 int radeon_gem_set_domain_ioctl(struct drm_device *dev, void *data,
