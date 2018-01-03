@@ -567,8 +567,7 @@ static const struct file_operations radeon_driver_kms_fops = {
 };
 #endif /* __linux__ */
 
-#ifdef notyet
-static struct drm_driver kms_driver = {
+struct drm_driver kms_driver = {
 	.driver_features =
 	    DRIVER_USE_AGP |
 	    DRIVER_HAVE_IRQ | DRIVER_IRQ_SHARED | DRIVER_GEM |
@@ -629,7 +628,6 @@ static struct drm_driver kms_driver = {
 };
 
 static struct drm_driver *driver;
-#endif /* notyet */
 #ifdef __linux__
 static struct pci_driver *pdriver;
 
