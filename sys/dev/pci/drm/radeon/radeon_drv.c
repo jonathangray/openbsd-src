@@ -627,7 +627,9 @@ struct drm_driver kms_driver = {
 	.patchlevel = KMS_DRIVER_PATCHLEVEL,
 };
 
+#ifdef notyet
 static struct drm_driver *driver;
+#endif
 #ifdef __linux__
 static struct pci_driver *pdriver;
 
