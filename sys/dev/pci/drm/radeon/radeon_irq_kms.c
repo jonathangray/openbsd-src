@@ -201,7 +201,7 @@ void radeon_driver_irq_uninstall_kms(struct drm_device *dev)
  * Returns true if MSIs should be enabled, false if MSIs
  * should not be enabled.
  */
-static bool radeon_msi_ok(struct radeon_device *rdev)
+bool radeon_msi_ok(struct radeon_device *rdev)
 {
 	/* RV370/RV380 was first asic with MSI support */
 	if (rdev->family < CHIP_RV380)
@@ -216,10 +216,12 @@ static bool radeon_msi_ok(struct radeon_device *rdev)
 	 * of address for "64-bit" MSIs which breaks on some platforms, notably
 	 * IBM POWER servers, so we limit them
 	 */
+#ifdef notyet
 	if (rdev->family < CHIP_BONAIRE) {
 		dev_info(rdev->dev, "radeon: MSI limited to 32-bit\n");
 		rdev->pdev->no_64bit_msi = 1;
 	}
+#endif
 
 	/* force MSI on */
 	if (radeon_msi == 1)
@@ -290,6 +292,7 @@ int radeon_irq_kms_init(struct radeon_device *rdev)
 	if (r) {
 		return r;
 	}
+#ifdef notyet
 	/* enable msi */
 	rdev->msi_enabled = 0;
 
@@ -300,6 +303,7 @@ int radeon_irq_kms_init(struct radeon_device *rdev)
 			dev_info(rdev->dev, "radeon: using MSI.\n");
 		}
 	}
+#endif
 
 	INIT_DELAYED_WORK(&rdev->hotplug_work, radeon_hotplug_work_func);
 	INIT_WORK(&rdev->dp_work, radeon_dp_work_func);
