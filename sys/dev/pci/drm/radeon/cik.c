@@ -7946,8 +7946,10 @@ restart_ih:
 		/* wptr/rptr are in bytes! */
 		ring_index = rptr / 4;
 
+#ifdef notyet
 		radeon_kfd_interrupt(rdev,
 				(const void *) &rdev->ih.ring[ring_index]);
+#endif
 
 		src_id =  le32_to_cpu(rdev->ih.ring[ring_index]) & 0xff;
 		src_data = le32_to_cpu(rdev->ih.ring[ring_index + 1]) & 0xfffffff;
@@ -8734,9 +8736,11 @@ static int cik_startup(struct radeon_device *rdev)
 	if (r)
 		return r;
 
+#ifdef notyet
 	r = radeon_kfd_resume(rdev);
 	if (r)
 		return r;
+#endif
 
 	return 0;
 }
@@ -8786,7 +8790,9 @@ int cik_resume(struct radeon_device *rdev)
  */
 int cik_suspend(struct radeon_device *rdev)
 {
+#ifdef notyet
 	radeon_kfd_suspend(rdev);
+#endif
 	radeon_pm_suspend(rdev);
 	radeon_audio_fini(rdev);
 	radeon_vm_manager_fini(rdev);

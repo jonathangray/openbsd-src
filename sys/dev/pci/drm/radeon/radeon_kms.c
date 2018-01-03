@@ -112,10 +112,8 @@ int radeon_driver_unload_kms(struct drm_device *dev)
 	if (rdev == NULL)
 		return 0;
 
-#ifdef __linux__
 	if (rdev->rmmio == NULL)
 		goto done_free;
-#endif
 
 	pm_runtime_get_sync(dev->dev);
 
@@ -126,9 +124,7 @@ int radeon_driver_unload_kms(struct drm_device *dev)
 	radeon_modeset_fini(rdev);
 	radeon_device_fini(rdev);
 
-#ifdef __linux__
 done_free:
-#endif
 	kfree(rdev);
 	dev->dev_private = NULL;
 	return 0;
@@ -145,7 +141,9 @@ radeondrm_detach_kms(struct device *self, int flags)
 
 	pm_runtime_get_sync(dev->dev);
 
+#ifdef notyet
 	radeon_kfd_device_fini(rdev);
+#endif
 
 	radeon_acpi_fini(rdev);
 	
@@ -404,8 +402,10 @@ int radeon_driver_load_kms(struct drm_device *dev, unsigned long flags)
 				"Error during ACPI methods call\n");
 	}
 
+#ifdef notyet
 	radeon_kfd_device_probe(rdev);
 	radeon_kfd_device_init(rdev);
+#endif
 
 	if (radeon_is_px(dev)) {
 		pm_runtime_use_autosuspend(dev->dev);
@@ -679,8 +679,10 @@ radeondrm_attachhook(struct device *self)
 			DRM_DEBUG("Error during ACPI methods call\n");
 	}
 
+#ifdef notyet
 	radeon_kfd_device_probe(rdev);
 	radeon_kfd_device_init(rdev);
+#endif
 
 	if (radeon_is_px(rdev->ddev)) {
 		pm_runtime_use_autosuspend(dev->dev);
