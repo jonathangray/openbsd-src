@@ -578,14 +578,14 @@ radeondrm_attach_kms(struct device *parent, struct device *self, void *aux)
 		printf(": couldn't map interrupt\n");
 		return;
 	}
-	printf("%s: %s\n", rdev->dev.dv_xname,
+	printf("%s: %s\n", rdev->self.dv_xname,
 	    pci_intr_string(pa->pa_pc, rdev->intrh));
 
 	rdev->irqh = pci_intr_establish(pa->pa_pc, rdev->intrh, IPL_TTY,
-	    radeon_driver_irq_handler_kms, rdev->ddev, rdev->dev.dv_xname);
+	    radeon_driver_irq_handler_kms, rdev->ddev, rdev->self.dv_xname);
 	if (rdev->irqh == NULL) {
 		printf("%s: couldn't establish interrupt\n",
-		    rdev->dev.dv_xname);
+		    rdev->self.dv_xname);
 		return;
 	}
 	rdev->pdev->irq = -1;
@@ -608,7 +608,7 @@ radeondrm_attach_kms(struct device *parent, struct device *self, void *aux)
 	    bus_space_read_4(rdev->memt, rdev->rmmio, RADEON_CRTC_OFFSET);
 	if (bus_space_map(rdev->memt, rdev->fb_aper_offset + rdev->fb_offset,
 	    rdev->sf.sf_fbsize, BUS_SPACE_MAP_LINEAR, &rdev->memh)) {
-		printf("%s: can't map video memory\n", rdev->dev.dv_xname);
+		printf("%s: can't map video memory\n", rdev->self.dv_xname);
 		return;
 	}
 
@@ -630,7 +630,7 @@ radeondrm_attach_kms(struct device *parent, struct device *self, void *aux)
 int
 radeondrm_forcedetach(struct radeon_device *rdev)
 {
-	struct pci_softc	*sc = (struct pci_softc *)rdev->dev.dv_parent;
+	struct pci_softc	*sc = (struct pci_softc *)rdev->self.dv_parent;
 	pcitag_t		 tag = rdev->pa_tag;
 
 #if NVGA > 0
@@ -638,7 +638,7 @@ radeondrm_forcedetach(struct radeon_device *rdev)
 		vga_console_attached = 0;
 #endif
 
-	config_detach(&rdev->dev, 0);
+	config_detach(&rdev->self, 0);
 	return pci_probe_device(sc, tag, NULL, NULL);
 }
 
@@ -741,12 +741,12 @@ radeondrm_attachhook(struct device *self)
 	 * VGA legacy addresses, and opt out of arbitration.
 	 */
 	radeon_vga_set_state(rdev, false);
-	pci_disable_legacy_vga(&rdev->dev);
+	pci_disable_legacy_vga(&rdev->self);
 
-	printf("%s: %dx%d, %dbpp\n", rdev->dev.dv_xname,
+	printf("%s: %dx%d, %dbpp\n", rdev->self.dv_xname,
 	    ri->ri_width, ri->ri_height, ri->ri_depth);
 
-	config_found_sm(&rdev->dev, &aa, wsemuldisplaydevprint,
+	config_found_sm(&rdev->self, &aa, wsemuldisplaydevprint,
 	    wsemuldisplaydevsubmatch);
 }
 }
