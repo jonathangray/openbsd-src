@@ -70,6 +70,14 @@
 
 #include <dev/pci/drm/drmP.h>
 
+#include <dev/wscons/wsconsio.h>
+#include <dev/wscons/wsdisplayvar.h>
+#include <dev/rasops/rasops.h>
+
+#ifdef __sparc64__
+#include <machine/fbvar.h>
+#endif
+
 #include "radeon_family.h"
 #include "radeon_mode.h"
 #include "radeon_reg.h"
@@ -2309,7 +2317,7 @@ typedef uint32_t (*radeon_rreg_t)(struct radeon_device*, uint32_t);
 typedef void (*radeon_wreg_t)(struct radeon_device*, uint32_t, uint32_t);
 
 struct radeon_device {
-	struct device			*dev;
+	struct device			dev;
 	struct drm_device		*ddev;
 	struct pci_dev			*pdev;
 	struct rwlock			exclusive_lock;
@@ -2321,6 +2329,22 @@ struct radeon_device {
 	bus_space_tag_t			memt;
 	bus_dma_tag_t			dmat;
 	void				*irqh;
+
+	void				(*switchcb)(void *, int, int);
+	void				*switchcbarg;
+	void				*switchcookie;
+	struct task			switchtask;
+	struct rasops_info		ro;
+	int				console;
+
+	struct task			burner_task;
+	int				burner_fblank;
+
+#ifdef __sparc64__
+	struct sunfb			sf;
+	bus_size_t			fb_offset;
+	bus_space_handle_t		memh;
+#endif
 
 	unsigned long			fb_aper_offset;
 	unsigned long			fb_aper_size;
@@ -2378,7 +2402,7 @@ struct radeon_device {
 	radeon_rreg_t			pciep_rreg;
 	radeon_wreg_t			pciep_wreg;
 	/* io port */
-	void __iomem                    *rio_mem;
+	bus_space_handle_t		rio_mem;
 	resource_size_t			rio_mem_size;
 	struct radeon_clock             clock;
 	struct radeon_mc		mc;
