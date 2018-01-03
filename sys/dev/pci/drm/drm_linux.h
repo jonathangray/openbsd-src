@@ -880,6 +880,7 @@ timespec_sub(struct timespec t1, struct timespec t2)
 #define time_in_range(x, min, max) ((x) >= (min) && (x) <= (max))
 
 extern volatile unsigned long jiffies;
+#define jiffies_64 jiffies /* XXX */
 #undef HZ
 #define HZ	hz
 
