@@ -240,11 +240,9 @@ static int radeonfb_create(struct drm_fb_helper *helper,
 
 #ifdef __linux__
 	strcpy(info->fix.id, "radeondrmfb");
-#endif
 
 	drm_fb_helper_fill_fix(info, fb->pitches[0], fb->depth);
 
-#ifdef __linux__
 	info->flags = FBINFO_DEFAULT | FBINFO_CAN_FORCE_OUTPUT;
 	info->fbops = &radeonfb_ops;
 #endif
@@ -255,12 +253,10 @@ static int radeonfb_create(struct drm_fb_helper *helper,
 	info->fix.smem_len = radeon_bo_size(rbo);
 	info->screen_base = rbo->kptr;
 	info->screen_size = radeon_bo_size(rbo);
-#endif
 
 	drm_fb_helper_fill_var(info, &rfbdev->helper, sizes->fb_width, sizes->fb_height);
 
 	/* setup aperture base/size for vesafb takeover */
-#ifdef __linux__
 	info->apertures->ranges[0].base = rdev->ddev->mode_config.fb_base;
 	info->apertures->ranges[0].size = rdev->mc.aper_size;
 #endif
@@ -286,7 +282,9 @@ static int radeonfb_create(struct drm_fb_helper *helper,
 	return 0;
 
 out_destroy_fbi:
+#ifdef __linux__
 	drm_fb_helper_release_fbi(helper);
+#endif
 out_unref:
 	if (rbo) {
 
@@ -305,6 +303,7 @@ void radeon_fb_output_poll_changed(struct radeon_device *rdev)
 	drm_fb_helper_hotplug_event(&rdev->mode_info.rfbdev->helper);
 }
 
+#ifdef notyet
 static int radeon_fbdev_destroy(struct drm_device *dev, struct radeon_fbdev *rfbdev)
 {
 	struct radeon_framebuffer *rfb = &rfbdev->rfb;
@@ -322,6 +321,7 @@ static int radeon_fbdev_destroy(struct drm_device *dev, struct radeon_fbdev *rfb
 
 	return 0;
 }
+#endif
 
 static const struct drm_fb_helper_funcs radeon_fb_helper_funcs = {
 	.gamma_set = radeon_crtc_fb_gamma_set,
@@ -380,7 +380,9 @@ void radeon_fbdev_fini(struct radeon_device *rdev)
 	if (!rdev->mode_info.rfbdev)
 		return;
 
+#ifdef notyet
 	radeon_fbdev_destroy(rdev->ddev, rdev->mode_info.rfbdev);
+#endif
 	kfree(rdev->mode_info.rfbdev);
 	rdev->mode_info.rfbdev = NULL;
 }
