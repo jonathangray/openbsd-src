@@ -42,7 +42,9 @@
 #define TTM_BO_HASH_ORDER 13
 
 static int ttm_bo_swapout(struct ttm_mem_shrink *shrink);
+#ifdef notyet
 static void ttm_bo_global_kobj_release(struct kobject *kobj);
+#endif
 
 #ifdef notyet
 static struct attribute ttm_bo_count = {
@@ -120,6 +122,7 @@ static const struct sysfs_ops ttm_bo_global_ops = {
 };
 #endif
 
+#ifdef notyet
 static struct kobj_type ttm_bo_glob_kobj_type  = {
 	.release = &ttm_bo_global_kobj_release,
 #ifdef __linux__
@@ -127,6 +130,7 @@ static struct kobj_type ttm_bo_glob_kobj_type  = {
 	.default_attrs = ttm_bo_global_attrs
 #endif
 };
+#endif
 
 
 static inline uint32_t ttm_bo_type_flags(unsigned type)
@@ -1364,6 +1368,7 @@ int ttm_bo_init_mm(struct ttm_bo_device *bdev, unsigned type,
 }
 EXPORT_SYMBOL(ttm_bo_init_mm);
 
+#ifdef notyet
 static void ttm_bo_global_kobj_release(struct kobject *kobj)
 {
 	struct ttm_bo_global *glob =
@@ -1373,6 +1378,7 @@ static void ttm_bo_global_kobj_release(struct kobject *kobj)
 	__free_page(glob->dummy_read_page);
 	kfree(glob);
 }
+#endif
 
 void ttm_bo_global_release(struct drm_global_reference *ref)
 {
@@ -1385,6 +1391,9 @@ EXPORT_SYMBOL(ttm_bo_global_release);
 
 int ttm_bo_global_init(struct drm_global_reference *ref)
 {
+	STUB();
+	return -ENOSYS;
+
 	struct ttm_bo_global_ref *bo_ref =
 		container_of(ref, struct ttm_bo_global_ref, ref);
 	struct ttm_bo_global *glob = ref->object;
@@ -1412,8 +1421,12 @@ int ttm_bo_global_init(struct drm_global_reference *ref)
 
 	atomic_set(&glob->bo_count, 0);
 
+#if 0
 	ret = kobject_init_and_add(
 		&glob->kobj, &ttm_bo_glob_kobj_type, ttm_get_kobj(), "buffer_objects");
+#else
+	ret = 1;
+#endif
 	if (unlikely(ret != 0))
 		kobject_put(&glob->kobj);
 	return ret;
