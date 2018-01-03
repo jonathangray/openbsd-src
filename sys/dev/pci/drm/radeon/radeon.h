@@ -466,9 +466,7 @@ struct radeon_bo_va {
 	unsigned			ref_count;
 
 	/* protected by vm mutex */
-#ifdef __linux__
 	struct interval_tree_node	it;
-#endif
 	struct list_head		vm_status;
 
 	/* constant after initialization */
