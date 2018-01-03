@@ -30,6 +30,9 @@
 #include "radeon.h"
 #include "atom.h"
 
+#include <dev/i2c/i2cvar.h>
+#include <dev/i2c/i2c_bitbang.h>
+
 extern int radeon_atom_hw_i2c_xfer(struct i2c_adapter *i2c_adap,
 				   struct i2c_msg *msgs, int num);
 extern u32 radeon_atom_hw_i2c_func(struct i2c_adapter *adap);
@@ -229,6 +232,97 @@ static void set_data(void *i2c_priv, int data)
 	val |= data ? 0 : rec->en_data_mask;
 	WREG32(rec->en_data_reg, val);
 }
+
+void	radeon_bb_set_bits(void *, uint32_t);
+void	radeon_bb_set_dir(void *, uint32_t);
+uint32_t radeon_bb_read_bits(void *);
+
+int	radeon_acquire_bus(void *, int);
+void	radeon_release_bus(void *, int);
+int	radeon_send_start(void *, int);
+int	radeon_send_stop(void *, int);
+int	radeon_initiate_xfer(void *, i2c_addr_t, int);
+int	radeon_read_byte(void *, u_int8_t *, int);
+int	radeon_write_byte(void *, u_int8_t, int);
+
+#define RADEON_BB_SDA		(1 << I2C_BIT_SDA)
+#define RADEON_BB_SCL		(1 << I2C_BIT_SCL)
+
+struct i2c_bitbang_ops radeon_bbops = {
+	radeon_bb_set_bits,
+	radeon_bb_set_dir,
+	radeon_bb_read_bits,
+	{ RADEON_BB_SDA, RADEON_BB_SCL, 0, 0 }
+};
+
+void
+radeon_bb_set_bits(void *cookie, uint32_t bits)
+{
+	set_clock(cookie, bits & RADEON_BB_SCL);
+	set_data(cookie, bits & RADEON_BB_SDA);
+}
+
+void
+radeon_bb_set_dir(void *cookie, uint32_t bits)
+{
+}
+
+uint32_t
+radeon_bb_read_bits(void *cookie)
+{
+	uint32_t bits = 0;
+
+	if (get_clock(cookie))
+		bits |= RADEON_BB_SCL;
+	if (get_data(cookie))
+		bits |= RADEON_BB_SDA;
+
+	return bits;
+}
+
+int
+radeon_acquire_bus(void *cookie, int flags)
+{
+	pre_xfer(cookie);
+	return (0);
+}
+
+void
+radeon_release_bus(void *cookie, int flags)
+{
+	post_xfer(cookie);
+}
+
+int
+radeon_send_start(void *cookie, int flags)
+{
+	return (i2c_bitbang_send_start(cookie, flags, &radeon_bbops));
+}
+
+int
+radeon_send_stop(void *cookie, int flags)
+{
+	return (i2c_bitbang_send_stop(cookie, flags, &radeon_bbops));
+}
+
+int
+radeon_initiate_xfer(void *cookie, i2c_addr_t addr, int flags)
+{
+	return (i2c_bitbang_initiate_xfer(cookie, addr, flags, &radeon_bbops));
+}
+
+int
+radeon_read_byte(void *cookie, u_int8_t *bytep, int flags)
+{
+	return (i2c_bitbang_read_byte(cookie, bytep, flags, &radeon_bbops));
+}
+
+int
+radeon_write_byte(void *cookie, u_int8_t byte, int flags)
+{
+	return (i2c_bitbang_write_byte(cookie, byte, flags, &radeon_bbops));
+}
+
 
 /* hw i2c */
 
@@ -921,9 +1015,11 @@ struct radeon_i2c_chan *radeon_i2c_create(struct drm_device *dev,
 		return NULL;
 
 	i2c->rec = *rec;
+#ifdef __linux__
 	i2c->adapter.owner = THIS_MODULE;
 	i2c->adapter.class = I2C_CLASS_DDC;
 	i2c->adapter.dev.parent = &dev->pdev->dev;
+#endif
 	i2c->dev = dev;
 	i2c_set_adapdata(&i2c->adapter, i2c);
 	rw_init(&i2c->mutex, "riic");
@@ -957,6 +1053,7 @@ struct radeon_i2c_chan *radeon_i2c_create(struct drm_device *dev,
 		/* set the radeon bit adapter */
 		snprintf(i2c->adapter.name, sizeof(i2c->adapter.name),
 			 "Radeon i2c bit bus %s", name);
+#ifdef notyet
 		i2c->adapter.algo_data = &i2c->bit;
 		i2c->bit.pre_xfer = pre_xfer;
 		i2c->bit.post_xfer = post_xfer;
@@ -968,6 +1065,16 @@ struct radeon_i2c_chan *radeon_i2c_create(struct drm_device *dev,
 		i2c->bit.timeout = usecs_to_jiffies(2200);	/* from VESA */
 		i2c->bit.data = i2c;
 		ret = i2c_bit_add_bus(&i2c->adapter);
+#else
+		i2c->adapter.ic.ic_cookie = i2c;
+		i2c->adapter.ic.ic_acquire_bus = radeon_acquire_bus;
+		i2c->adapter.ic.ic_release_bus = radeon_release_bus;
+		i2c->adapter.ic.ic_send_start = radeon_send_start;
+		i2c->adapter.ic.ic_send_stop = radeon_send_stop;
+		i2c->adapter.ic.ic_initiate_xfer = radeon_initiate_xfer;
+		i2c->adapter.ic.ic_read_byte = radeon_read_byte;
+		i2c->adapter.ic.ic_write_byte = radeon_write_byte;
+#endif
 		if (ret) {
 			DRM_ERROR("Failed to register bit i2c %s\n", name);
 			goto out_free;
