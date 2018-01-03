@@ -191,6 +191,7 @@ static int radeonfb_create(struct drm_fb_helper *helper,
 		container_of(helper, struct radeon_fbdev, helper);
 	struct radeon_device *rdev = rfbdev->rdev;
 	struct fb_info *info;
+	struct rasops_info *ri = &rdev->ro;
 	struct drm_framebuffer *fb = NULL;
 	struct drm_mode_fb_cmd2 mode_cmd;
 	struct drm_gem_object *gobj = NULL;
@@ -275,6 +276,31 @@ static int radeonfb_create(struct drm_fb_helper *helper,
 	DRM_INFO("size %lu\n", (unsigned long)radeon_bo_size(rbo));
 	DRM_INFO("fb depth is %d\n", fb->depth);
 	DRM_INFO("   pitch is %d\n", fb->pitches[0]);
+
+	ri->ri_bits = rbo->kptr;
+	ri->ri_depth = fb->bits_per_pixel;
+	ri->ri_stride = fb->pitches[0];
+	ri->ri_width = sizes->fb_width;
+	ri->ri_height = sizes->fb_height;
+
+	switch (fb->pixel_format) {
+	case DRM_FORMAT_XRGB8888:
+		ri->ri_rnum = 8;
+		ri->ri_rpos = 16;
+		ri->ri_gnum = 8;
+		ri->ri_gpos = 8;
+		ri->ri_bnum = 8;
+		ri->ri_bpos = 0;
+		break;
+	case DRM_FORMAT_RGB565:
+		ri->ri_rnum = 5;
+		ri->ri_rpos = 11;
+		ri->ri_gnum = 6;
+		ri->ri_gpos = 5;
+		ri->ri_bnum = 5;
+		ri->ri_bpos = 0;
+		break;
+	}
 
 #ifdef __linux__
 	vga_switcheroo_client_fb_set(rdev->ddev->pdev, info);
@@ -425,4 +451,37 @@ void radeon_fbdev_restore_mode(struct radeon_device *rdev)
 	ret = drm_fb_helper_restore_fbdev_mode_unlocked(fb_helper);
 	if (ret)
 		DRM_DEBUG("failed to restore crtc mode\n");
+}
+
+void
+radeondrm_burner(void *v, u_int on, u_int flags)
+{
+	struct rasops_info *ri = v;
+	struct radeon_device *rdev = ri->ri_hw;
+
+	task_del(systq, &rdev->burner_task);
+
+	if (on)
+		rdev->burner_fblank = FB_BLANK_UNBLANK;
+	else {
+		if (flags & WSDISPLAY_BURN_VBLANK)
+			rdev->burner_fblank = FB_BLANK_VSYNC_SUSPEND;
+		else
+			rdev->burner_fblank = FB_BLANK_NORMAL;
+	}
+
+	/*
+	 * Setting the DPMS mode may sleep while waiting for vblank so
+	 * hand things off to a taskq.
+	 */
+	task_add(systq, &rdev->burner_task);
+}
+
+void
+radeondrm_burner_cb(void *arg1)
+{
+	struct radeon_device *rdev = arg1;
+	struct drm_fb_helper *helper = &rdev->mode_info.rfbdev->helper;
+
+	drm_fb_helper_blank(rdev->burner_fblank, helper->fbdev);
 }
