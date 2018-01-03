@@ -1352,6 +1352,10 @@ fence_remove_callback(struct fence *fence, struct fence_cb *cb)
 	return false;
 }
 
+struct interval_tree_node {
+	unsigned long start;
+};
+
 struct idr_entry {
 	SPLAY_ENTRY(idr_entry) entry;
 	int id;

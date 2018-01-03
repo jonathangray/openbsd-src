@@ -305,4 +305,12 @@ reservation_object_reserve_shared(struct reservation_object *obj)
 	return 0;
 }
 
+static inline bool
+reservation_object_test_signaled_rcu(struct reservation_object *obj,
+    bool test_all)
+{
+	panic("%s not implemented", __func__);
+	return false;
+}
+
 #endif	/* _LINUX_WW_MUTEX_H_ */
