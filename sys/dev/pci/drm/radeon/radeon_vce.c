@@ -102,8 +102,10 @@ int radeon_vce_init(struct radeon_device *rdev)
 		return -EINVAL;
 
 	c += strlen(fw_version);
+#ifdef notyet
 	if (sscanf(c, "%2hhd.%2hhd.%2hhd]", &start, &mid, &end) != 3)
 		return -EINVAL;
+#endif
 
 	/* search for feedback version */
 
@@ -117,8 +119,10 @@ int radeon_vce_init(struct radeon_device *rdev)
 		return -EINVAL;
 
 	c += strlen(fb_version);
+#ifdef notyet
 	if (sscanf(c, "%2u]", &rdev->vce.fb_version) != 1)
 		return -EINVAL;
+#endif
 
 	DRM_INFO("Found VCE firmware/feedback version %hhd.%hhd.%hhd / %d!\n",
 		 start, mid, end, rdev->vce.fb_version);
