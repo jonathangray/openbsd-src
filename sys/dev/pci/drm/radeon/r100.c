@@ -40,13 +40,13 @@
 #include "rn50_reg_safe.h"
 
 /* Firmware Names */
-#define FIRMWARE_R100		"radeon/R100_cp.bin"
-#define FIRMWARE_R200		"radeon/R200_cp.bin"
-#define FIRMWARE_R300		"radeon/R300_cp.bin"
-#define FIRMWARE_R420		"radeon/R420_cp.bin"
-#define FIRMWARE_RS690		"radeon/RS690_cp.bin"
-#define FIRMWARE_RS600		"radeon/RS600_cp.bin"
-#define FIRMWARE_R520		"radeon/R520_cp.bin"
+#define FIRMWARE_R100		"radeon-r100_cp"
+#define FIRMWARE_R200		"radeon-r200_cp"
+#define FIRMWARE_R300		"radeon-r300_cp"
+#define FIRMWARE_R420		"radeon-r420_cp"
+#define FIRMWARE_RS690		"radeon-rs690_cp"
+#define FIRMWARE_RS600		"radeon-rs600_cp"
+#define FIRMWARE_R520		"radeon-r520_cp"
 
 MODULE_FIRMWARE(FIRMWARE_R100);
 MODULE_FIRMWARE(FIRMWARE_R200);

@@ -1712,10 +1712,10 @@ static int si_init_microcode(struct radeon_device *rdev)
 
 	DRM_INFO("Loading %s Microcode\n", new_chip_name);
 
-	snprintf(fw_name, sizeof(fw_name), "radeon/%s_pfp.bin", new_chip_name);
+	snprintf(fw_name, sizeof(fw_name), "radeon-%s_pfp", new_chip_name);
 	err = request_firmware(&rdev->pfp_fw, fw_name, rdev->dev);
 	if (err) {
-		snprintf(fw_name, sizeof(fw_name), "radeon/%s_pfp.bin", chip_name);
+		snprintf(fw_name, sizeof(fw_name), "radeon-%s_pfp", chip_name);
 		err = request_firmware(&rdev->pfp_fw, fw_name, rdev->dev);
 		if (err)
 			goto out;
@@ -1738,10 +1738,10 @@ static int si_init_microcode(struct radeon_device *rdev)
 		}
 	}
 
-	snprintf(fw_name, sizeof(fw_name), "radeon/%s_me.bin", new_chip_name);
+	snprintf(fw_name, sizeof(fw_name), "radeon-%s_me", new_chip_name);
 	err = request_firmware(&rdev->me_fw, fw_name, rdev->dev);
 	if (err) {
-		snprintf(fw_name, sizeof(fw_name), "radeon/%s_me.bin", chip_name);
+		snprintf(fw_name, sizeof(fw_name), "radeon-%s_me", chip_name);
 		err = request_firmware(&rdev->me_fw, fw_name, rdev->dev);
 		if (err)
 			goto out;
@@ -1763,10 +1763,10 @@ static int si_init_microcode(struct radeon_device *rdev)
 		}
 	}
 
-	snprintf(fw_name, sizeof(fw_name), "radeon/%s_ce.bin", new_chip_name);
+	snprintf(fw_name, sizeof(fw_name), "radeon-%s_ce", new_chip_name);
 	err = request_firmware(&rdev->ce_fw, fw_name, rdev->dev);
 	if (err) {
-		snprintf(fw_name, sizeof(fw_name), "radeon/%s_ce.bin", chip_name);
+		snprintf(fw_name, sizeof(fw_name), "radeon-%s_ce", chip_name);
 		err = request_firmware(&rdev->ce_fw, fw_name, rdev->dev);
 		if (err)
 			goto out;
@@ -1788,10 +1788,10 @@ static int si_init_microcode(struct radeon_device *rdev)
 		}
 	}
 
-	snprintf(fw_name, sizeof(fw_name), "radeon/%s_rlc.bin", new_chip_name);
+	snprintf(fw_name, sizeof(fw_name), "radeon-%s_rlc", new_chip_name);
 	err = request_firmware(&rdev->rlc_fw, fw_name, rdev->dev);
 	if (err) {
-		snprintf(fw_name, sizeof(fw_name), "radeon/%s_rlc.bin", chip_name);
+		snprintf(fw_name, sizeof(fw_name), "radeon-%s_rlc", chip_name);
 		err = request_firmware(&rdev->rlc_fw, fw_name, rdev->dev);
 		if (err)
 			goto out;
@@ -1813,13 +1813,13 @@ static int si_init_microcode(struct radeon_device *rdev)
 		}
 	}
 
-	snprintf(fw_name, sizeof(fw_name), "radeon/%s_mc.bin", new_chip_name);
+	snprintf(fw_name, sizeof(fw_name), "radeon-%s_mc", new_chip_name);
 	err = request_firmware(&rdev->mc_fw, fw_name, rdev->dev);
 	if (err) {
-		snprintf(fw_name, sizeof(fw_name), "radeon/%s_mc2.bin", chip_name);
+		snprintf(fw_name, sizeof(fw_name), "radeon-%s_mc2", chip_name);
 		err = request_firmware(&rdev->mc_fw, fw_name, rdev->dev);
 		if (err) {
-			snprintf(fw_name, sizeof(fw_name), "radeon/%s_mc.bin", chip_name);
+			snprintf(fw_name, sizeof(fw_name), "radeon-%s_mc", chip_name);
 			err = request_firmware(&rdev->mc_fw, fw_name, rdev->dev);
 			if (err)
 				goto out;
@@ -1844,10 +1844,10 @@ static int si_init_microcode(struct radeon_device *rdev)
 		}
 	}
 
-	snprintf(fw_name, sizeof(fw_name), "radeon/%s_smc.bin", new_chip_name);
+	snprintf(fw_name, sizeof(fw_name), "radeon-%s_smc", new_chip_name);
 	err = request_firmware(&rdev->smc_fw, fw_name, rdev->dev);
 	if (err) {
-		snprintf(fw_name, sizeof(fw_name), "radeon/%s_smc.bin", chip_name);
+		snprintf(fw_name, sizeof(fw_name), "radeon-%s_smc", chip_name);
 		err = request_firmware(&rdev->smc_fw, fw_name, rdev->dev);
 		if (err) {
 			printk(KERN_ERR
