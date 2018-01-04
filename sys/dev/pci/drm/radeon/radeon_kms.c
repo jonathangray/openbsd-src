@@ -157,7 +157,6 @@ radeondrm_detach_kms(struct device *self, int flags)
 
 	pci_intr_disestablish(rdev->pc, rdev->irqh);
 
-	kfree(rdev);
 	dev->dev_private = NULL;
 	return 0;
 }
