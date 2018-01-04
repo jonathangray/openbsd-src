@@ -523,9 +523,7 @@ static int ttm_bo_ioremap(struct ttm_buffer_object *bo,
 			  unsigned long size,
 			  struct ttm_bo_kmap_obj *map)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
+	int flags;
 	struct ttm_mem_reg *mem = &bo->mem;
 
 	if (bo->mem.bus.addr) {
@@ -534,14 +532,21 @@ static int ttm_bo_ioremap(struct ttm_buffer_object *bo,
 	} else {
 		map->bo_kmap_type = ttm_bo_map_iomap;
 		if (mem->placement & TTM_PL_FLAG_WC)
-			map->virtual = ioremap_wc(bo->mem.bus.base + bo->mem.bus.offset + offset,
-						  size);
+			flags = BUS_SPACE_MAP_PREFETCHABLE;
 		else
-			map->virtual = ioremap_nocache(bo->mem.bus.base + bo->mem.bus.offset + offset,
-						       size);
+			flags = 0;
+
+		if (bus_space_map(bo->bdev->memt,
+		    mem->bus.base + bo->mem.bus.offset + offset,
+		    size, BUS_SPACE_MAP_LINEAR | flags,
+		    &bo->mem.bus.bsh)) {
+			printf("%s bus_space_map failed\n", __func__);
+			map->virtual = 0;
+		} else
+			map->virtual = bus_space_vaddr(bo->bdev->memt,
+			    bo->mem.bus.bsh);
 	}
 	return (!map->virtual) ? -ENOMEM : 0;
-#endif
 }
 
 static int ttm_bo_kmap_ttm(struct ttm_buffer_object *bo,
