@@ -897,6 +897,9 @@ int radeon_ttm_init(struct radeon_device *rdev)
 		DRM_ERROR("failed initializing buffer object driver(%d).\n", r);
 		return r;
 	}
+	rdev->mman.bdev.iot = rdev->iot;
+	rdev->mman.bdev.memt = rdev->memt;
+	rdev->mman.bdev.dmat = rdev->dmat;
 	rdev->mman.initialized = true;
 	r = ttm_bo_init_mm(&rdev->mman.bdev, TTM_PL_VRAM,
 				rdev->mc.real_vram_size >> PAGE_SHIFT);
