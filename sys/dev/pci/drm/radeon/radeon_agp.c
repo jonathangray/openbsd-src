@@ -28,7 +28,7 @@
 #include "radeon.h"
 #include <dev/pci/drm/radeon_drm.h>
 
-#if IS_ENABLED(CONFIG_AGP)
+#if __OS_HAS_AGP
 
 struct radeon_agpmode_quirk {
 	u32 hostbridge_vendor;
@@ -126,10 +126,11 @@ static struct radeon_agpmode_quirk radeon_agpmode_quirk_list[] = {
 
 int radeon_agp_init(struct radeon_device *rdev)
 {
-#if IS_ENABLED(CONFIG_AGP)
+#if __OS_HAS_AGP
 	struct radeon_agpmode_quirk *p = radeon_agpmode_quirk_list;
 	struct drm_agp_mode mode;
 	struct drm_agp_info info;
+	paddr_t start, end;
 	uint32_t agp_status;
 	int default_mode;
 	bool is_v3;
@@ -149,11 +150,11 @@ int radeon_agp_init(struct radeon_device *rdev)
 		return ret;
 	}
 
-	if (rdev->ddev->agp->agp_info.aper_size < 32) {
+	if ((rdev->ddev->agp->info.ai_aperture_size >> 20) < 32) {
 		drm_agp_release(rdev->ddev);
 		dev_warn(rdev->dev, "AGP aperture too small (%zuM) "
 			"need at least 32M, disabling AGP\n",
-			rdev->ddev->agp->agp_info.aper_size);
+			rdev->ddev->agp->info.ai_aperture_size >> 20);
 		return -EINVAL;
 	}
 
@@ -241,12 +242,18 @@ int radeon_agp_init(struct radeon_device *rdev)
 		return ret;
 	}
 
-	rdev->mc.agp_base = rdev->ddev->agp->agp_info.aper_base;
-	rdev->mc.gtt_size = rdev->ddev->agp->agp_info.aper_size << 20;
+	rdev->mc.agp_base = rdev->ddev->agp->info.ai_aperture_base;
+	rdev->mc.gtt_size = rdev->ddev->agp->info.ai_aperture_size;
 	rdev->mc.gtt_start = rdev->mc.agp_base;
 	rdev->mc.gtt_end = rdev->mc.gtt_start + rdev->mc.gtt_size - 1;
 	dev_info(rdev->dev, "GTT: %lluM 0x%08llX - 0x%08llX\n",
 		rdev->mc.gtt_size >> 20, rdev->mc.gtt_start, rdev->mc.gtt_end);
+
+	if (!rdev->ddev->agp->cant_use_aperture) {
+		start = atop(bus_space_mmap(rdev->memt, rdev->mc.gtt_start, 0, 0, 0));
+		end = start + atop(rdev->mc.gtt_size);
+		uvm_page_physload(start, end, start, end, PHYSLOAD_DEVICE);
+	}
 
 	/* workaround some hw issues */
 	if (rdev->family < CHIP_R200) {
@@ -260,7 +267,7 @@ int radeon_agp_init(struct radeon_device *rdev)
 
 void radeon_agp_resume(struct radeon_device *rdev)
 {
-#if IS_ENABLED(CONFIG_AGP)
+#if __OS_HAS_AGP
 	int r;
 	if (rdev->flags & RADEON_IS_AGP) {
 		r = radeon_agp_init(rdev);
@@ -272,7 +279,7 @@ void radeon_agp_resume(struct radeon_device *rdev)
 
 void radeon_agp_fini(struct radeon_device *rdev)
 {
-#if IS_ENABLED(CONFIG_AGP)
+#if __OS_HAS_AGP
 	if (rdev->ddev->agp && rdev->ddev->agp->acquired) {
 		drm_agp_release(rdev->ddev);
 	}
