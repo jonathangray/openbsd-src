@@ -349,7 +349,7 @@ static int r600_cp_init_microcode(drm_radeon_private_t *dev_priv)
 
 	DRM_INFO("Loading %s CP Microcode\n", chip_name);
 
-	snprintf(fw_name, sizeof(fw_name), "radeon-%s_pfp", chip_name);
+	snprintf(fw_name, sizeof(fw_name), "radeon/%s_pfp.bin", chip_name);
 	err = request_firmware(&dev_priv->pfp_fw, fw_name, &pdev->dev);
 	if (err)
 		goto out;
@@ -361,7 +361,7 @@ static int r600_cp_init_microcode(drm_radeon_private_t *dev_priv)
 		goto out;
 	}
 
-	snprintf(fw_name, sizeof(fw_name), "radeon-%s_me", chip_name);
+	snprintf(fw_name, sizeof(fw_name), "radeon/%s_me.bin", chip_name);
 	err = request_firmware(&dev_priv->me_fw, fw_name, &pdev->dev);
 	if (err)
 		goto out;
