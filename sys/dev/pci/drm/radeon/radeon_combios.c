@@ -1464,7 +1464,7 @@ bool radeon_get_legacy_connector_info_from_table(struct drm_device *dev)
 
 	rdev->mode_info.connector_table = radeon_connector_table;
 	if (rdev->mode_info.connector_table == CT_NONE) {
-#ifdef CONFIG_PPC_PMAC
+#ifdef __macppc__
 		if (of_machine_is_compatible("PowerBook3,3")) {
 			/* powerbook with VGA */
 			rdev->mode_info.connector_table = CT_POWERBOOK_VGA;
@@ -1530,7 +1530,7 @@ bool radeon_get_legacy_connector_info_from_table(struct drm_device *dev)
 			/* SAM440ep RV250 embedded board */
 			rdev->mode_info.connector_table = CT_SAM440EP;
 		} else
-#endif /* CONFIG_PPC_PMAC */
+#endif /* __macppc__ */
 #ifdef CONFIG_PPC64
 		if (ASIC_IS_RN50(rdev))
 			rdev->mode_info.connector_table = CT_RN50_POWER;
