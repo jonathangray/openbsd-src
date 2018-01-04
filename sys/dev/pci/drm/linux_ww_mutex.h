@@ -243,16 +243,18 @@ struct reservation_object {
 	struct ww_mutex lock;
 };
 
+extern struct ww_class reservation_ww_class;
+
 static inline void
 reservation_object_init(struct reservation_object *obj)
 {
-	panic("%s not implemented", __func__);
+	ww_mutex_init(&obj->lock, &reservation_ww_class);
 }
 
 static inline void
 reservation_object_fini(struct reservation_object *obj)
 {
-	panic("%s not implemented", __func__);
+	ww_mutex_destroy(&obj->lock);
 }
 
 static inline struct reservation_object_list *
