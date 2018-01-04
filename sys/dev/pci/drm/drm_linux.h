@@ -1279,7 +1279,7 @@ typedef void (*fence_func_t)(struct fence *fence, struct fence_cb *cb);
 static inline struct fence *
 fence_get(struct fence *fence)
 {
-	panic("%s not implemented", __func__);
+	STUB();
 	return NULL;
 }
 
@@ -1293,27 +1293,27 @@ fence_wait(struct fence *fence, bool intr)
 static inline void
 fence_enable_sw_signaling(struct fence *fence)
 {
-	panic("%s not implemented\n", __func__);
+	STUB();
 }
 
 static inline bool
 fence_is_signaled(struct fence *fence)
 {
-	panic("%s not implemented\n", __func__);
+	STUB();
 	return false;
 }
 
 static inline long
 fence_wait_timeout(struct fence *fence, bool intr, signed long timeout)
 {
-	panic("%s not implemented\n", __func__);
-	return 0;
+	STUB();
+	return -ENOSYS;
 }
 
 static inline unsigned
 fence_context_alloc(unsigned num)
 {
-	panic("%s not implemented\n", __func__);
+	STUB();
 	return 0;
 }
 
@@ -1321,20 +1321,20 @@ static inline void
 fence_init(struct fence *fence, const struct fence_ops *ops,
     spinlock_t *lock, unsigned context, unsigned seqno)
 {
-	panic("%s not implemented\n", __func__);
+	STUB();
 }
 
 static inline int
 fence_signal(struct fence *fence)
 {
-	panic("%s not implemented\n", __func__);
+	STUB();
 	return 0;
 }
 
 static inline int
 fence_signal_locked(struct fence *fence)
 {
-	panic("%s not implemented\n", __func__);
+	STUB();
 	return 0;
 }
 
@@ -1342,14 +1342,14 @@ static inline int
 fence_add_callback(struct fence *fence, struct fence_cb *cb,
     fence_func_t func)
 {
-	panic("%s not implemented\n", __func__);
-	return 0;
+	STUB();
+	return -ENOSYS;
 }
 
 static inline bool
 fence_remove_callback(struct fence *fence, struct fence_cb *cb)
 {
-	panic("%s not implemented\n", __func__);
+	STUB();
 	return false;
 }
 
