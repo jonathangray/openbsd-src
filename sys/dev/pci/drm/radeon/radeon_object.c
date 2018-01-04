@@ -444,6 +444,8 @@ void radeon_bo_force_delete(struct radeon_device *rdev)
 
 int radeon_bo_init(struct radeon_device *rdev)
 {
+	paddr_t start, end;
+
 	/* Add an MTRR for the VRAM */
 	if (!rdev->fastfb_working) {
 #ifdef __linux__
@@ -455,6 +457,11 @@ int radeon_bo_init(struct radeon_device *rdev)
 		rdev->mc.vram_mtrr = 1;
 #endif
 	}
+
+	start = atop(bus_space_mmap(rdev->memt, rdev->mc.aper_base, 0, 0, 0));
+	end = start + atop(rdev->mc.aper_size);
+	uvm_page_physload(start, end, start, end, PHYSLOAD_DEVICE);
+
 	DRM_INFO("Detected VRAM RAM=%lluM, BAR=%lluM\n",
 		rdev->mc.mc_vram_size >> 20,
 		(unsigned long long)rdev->mc.aper_size >> 20);
