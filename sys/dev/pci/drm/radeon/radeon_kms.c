@@ -561,6 +561,7 @@ radeondrm_attach_kms(struct device *parent, struct device *self, void *aux)
 	printf("\n");
 
 	kms_driver.num_ioctls = radeon_max_kms_ioctl;
+	kms_driver.driver_features |= DRIVER_MODESET;
 
 	dev = (struct drm_device *)drm_attach_pci(&kms_driver, pa, is_agp,
 	    rdev->console, self);
