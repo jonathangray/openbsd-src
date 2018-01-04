@@ -186,12 +186,10 @@ void ttm_mem_io_free_vm(struct ttm_buffer_object *bo)
 static int ttm_mem_reg_ioremap(struct ttm_bo_device *bdev, struct ttm_mem_reg *mem,
 			void **virtual)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
 	struct ttm_mem_type_manager *man = &bdev->man[mem->mem_type];
 	int ret;
 	void *addr;
+	int flags;
 
 	*virtual = NULL;
 	(void) ttm_mem_io_lock(man, false);
@@ -204,9 +202,19 @@ static int ttm_mem_reg_ioremap(struct ttm_bo_device *bdev, struct ttm_mem_reg *m
 		addr = mem->bus.addr;
 	} else {
 		if (mem->placement & TTM_PL_FLAG_WC)
-			addr = ioremap_wc(mem->bus.base + mem->bus.offset, mem->bus.size);
+			flags = BUS_SPACE_MAP_PREFETCHABLE;
 		else
-			addr = ioremap_nocache(mem->bus.base + mem->bus.offset, mem->bus.size);
+			flags = 0;
+
+		if (bus_space_map(bdev->memt, mem->bus.base + mem->bus.offset,
+		    mem->bus.size, BUS_SPACE_MAP_LINEAR | flags,
+		    &mem->bus.bsh)) {
+			printf("%s bus_space_map failed\n", __func__);
+			return -ENOMEM;
+		}
+
+		addr = bus_space_vaddr(bdev->memt, mem->bus.bsh);
+
 		if (!addr) {
 			(void) ttm_mem_io_lock(man, false);
 			ttm_mem_io_free(bdev, mem);
@@ -216,24 +224,20 @@ static int ttm_mem_reg_ioremap(struct ttm_bo_device *bdev, struct ttm_mem_reg *m
 	}
 	*virtual = addr;
 	return 0;
-#endif
 }
 
 static void ttm_mem_reg_iounmap(struct ttm_bo_device *bdev, struct ttm_mem_reg *mem,
 			 void *virtual)
 {
-	STUB();
-#ifdef notyet
 	struct ttm_mem_type_manager *man;
 
 	man = &bdev->man[mem->mem_type];
 
 	if (virtual && mem->bus.addr == NULL)
-		iounmap(virtual);
+		bus_space_unmap(bdev->memt, mem->bus.bsh, mem->bus.size);
 	(void) ttm_mem_io_lock(man, false);
 	ttm_mem_io_free(bdev, mem);
 	ttm_mem_io_unlock(man);
-#endif
 }
 
 static int ttm_copy_io_page(void *dst, void *src, unsigned long page)
