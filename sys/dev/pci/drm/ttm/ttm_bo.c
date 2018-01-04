@@ -53,6 +53,12 @@ static struct attribute ttm_bo_count = {
 };
 #endif
 
+struct kobject *
+ttm_get_kobj(void)
+{
+	return (NULL);
+}
+
 static inline int ttm_mem_type_from_place(const struct ttm_place *place,
 					  uint32_t *mem_type)
 {
