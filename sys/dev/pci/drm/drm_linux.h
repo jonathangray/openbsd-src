@@ -1253,11 +1253,27 @@ struct seq_file;
 static inline void
 seq_printf(struct seq_file *m, const char *fmt, ...) {};
 
+struct lock_class_key {
+};
+
+typedef struct {
+	unsigned sequence;
+} seqcount_t;
+
+static inline void
+__seqcount_init(seqcount_t *s, const char *name,
+    struct lock_class_key *key)
+{
+	s->sequence = 0;
+}
+
 #define FENCE_TRACE(fence, fmt, args...) do {} while(0)
 
 struct fence {
 	struct fence_ops *ops;
 	unsigned long flags;
+	unsigned int context;
+	unsigned int seqno;
 };
 
 struct fence_ops {

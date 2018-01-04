@@ -21,8 +21,6 @@
 #include <dev/pci/ppbreg.h>
 #include <sys/event.h>
 
-DEFINE_WW_CLASS(reservation_ww_class);
-
 void
 flush_barrier(void *arg)
 {
