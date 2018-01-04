@@ -33,6 +33,7 @@
 
 #include <dev/pci/drm/drm_linux.h>
 #include <dev/pci/drm/linux_ww_mutex.h>
+#include <dev/pci/drm/linux_reservation.h>
 #include <dev/pci/drm/drm_hashtab.h>
 #include <dev/pci/drm/drm_vma_manager.h>
 
