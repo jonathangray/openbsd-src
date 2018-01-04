@@ -36,8 +36,8 @@
 #define VCE_IDLE_TIMEOUT_MS	1000
 
 /* Firmware Names */
-#define FIRMWARE_TAHITI	"radeon/TAHITI_vce.bin"
-#define FIRMWARE_BONAIRE	"radeon/BONAIRE_vce.bin"
+#define FIRMWARE_TAHITI	"radeon-tahiti_vce"
+#define FIRMWARE_BONAIRE	"radeon-bonaire_vce"
 
 MODULE_FIRMWARE(FIRMWARE_TAHITI);
 MODULE_FIRMWARE(FIRMWARE_BONAIRE);

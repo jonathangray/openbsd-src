@@ -38,14 +38,14 @@
 #define UVD_IDLE_TIMEOUT_MS	1000
 
 /* Firmware Names */
-#define FIRMWARE_R600		"radeon/R600_uvd.bin"
-#define FIRMWARE_RS780		"radeon/RS780_uvd.bin"
-#define FIRMWARE_RV770		"radeon/RV770_uvd.bin"
-#define FIRMWARE_RV710		"radeon/RV710_uvd.bin"
-#define FIRMWARE_CYPRESS	"radeon/CYPRESS_uvd.bin"
-#define FIRMWARE_SUMO		"radeon/SUMO_uvd.bin"
-#define FIRMWARE_TAHITI		"radeon/TAHITI_uvd.bin"
-#define FIRMWARE_BONAIRE	"radeon/BONAIRE_uvd.bin"
+#define FIRMWARE_R600		"radeon-r600_uvd"
+#define FIRMWARE_RS780		"radeon-rs780_uvd"
+#define FIRMWARE_RV770		"radeon-rv770_uvd"
+#define FIRMWARE_RV710		"radeon-rv710_uvd"
+#define FIRMWARE_CYPRESS	"radeon-cypress_uvd"
+#define FIRMWARE_SUMO		"radeon-sumo_uvd"
+#define FIRMWARE_TAHITI		"radeon-tahiti_uvd"
+#define FIRMWARE_BONAIRE	"radeon-bonaire_uvd"
 
 MODULE_FIRMWARE(FIRMWARE_R600);
 MODULE_FIRMWARE(FIRMWARE_RS780);
