@@ -2347,9 +2347,6 @@ struct radeon_device {
 
 	unsigned long			fb_aper_offset;
 	unsigned long			fb_aper_size;
-	bool				is_agp;
-	bool				is_pcie;
-	bool				is_pci;
 
 	/* ASIC */
 	union radeon_asic_config	config;
