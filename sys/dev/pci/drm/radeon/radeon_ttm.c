@@ -712,9 +712,6 @@ static struct radeon_ttm_tt *radeon_ttm_tt_to_gtt(struct ttm_tt *ttm)
 
 static int radeon_ttm_tt_populate(struct ttm_tt *ttm)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
 	struct radeon_ttm_tt *gtt = radeon_ttm_tt_to_gtt(ttm);
 	struct radeon_device *rdev;
 	unsigned i;
@@ -735,8 +732,10 @@ static int radeon_ttm_tt_populate(struct ttm_tt *ttm)
 	}
 
 	if (slave && ttm->sg) {
+#ifdef notyet
 		drm_prime_sg_to_page_addr_arrays(ttm->sg, ttm->pages,
 						 gtt->ttm.dma_address, ttm->num_pages);
+#endif
 		ttm->state = tt_unbound;
 		return 0;
 	}
@@ -774,7 +773,6 @@ static int radeon_ttm_tt_populate(struct ttm_tt *ttm)
 		}
 	}
 	return 0;
-#endif
 }
 
 static void radeon_ttm_tt_unpopulate(struct ttm_tt *ttm)
