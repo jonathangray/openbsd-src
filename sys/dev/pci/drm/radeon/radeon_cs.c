@@ -121,7 +121,7 @@ static int radeon_cs_parser_relocs(struct radeon_cs_parser *p)
 		   VRAM, also but everything into VRAM on AGP cards and older
 		   IGP chips to avoid image corruptions */
 		if (p->ring == R600_RING_TYPE_UVD_INDEX &&
-		    (i == 0 || p->rdev->is_agp ||
+		    (i == 0 || (p->rdev->flags & RADEON_IS_AGP) ||
 		     p->rdev->family == CHIP_RS780 ||
 		     p->rdev->family == CHIP_RS880)) {
 
