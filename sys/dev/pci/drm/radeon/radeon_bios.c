@@ -30,6 +30,16 @@
 #include "radeon.h"
 #include "atom.h"
 
+#if defined(__amd64__) || defined(__i386__)
+#include <dev/isa/isareg.h>
+#include <dev/isa/isavar.h>
+#include "acpi.h"
+#endif
+
+#if defined (__loongson__)
+#include <machine/autoconf.h>
+#endif
+
 /*
  * BIOS.
  */
@@ -40,11 +50,9 @@
  * copy of the igp rom at the start of vram if a discrete card is
  * present.
  */
+#ifdef __linux__
 static bool igp_read_bios_from_vram(struct radeon_device *rdev)
 {
-	STUB();
-	return false;
-#ifdef notyet
 	uint8_t __iomem *bios;
 	resource_size_t vram_base;
 	resource_size_t size = 256 * 1024; /* ??? */
@@ -72,14 +80,48 @@ static bool igp_read_bios_from_vram(struct radeon_device *rdev)
 	memcpy_fromio(rdev->bios, bios, size);
 	iounmap(bios);
 	return true;
-#endif
 }
+#else
+static bool igp_read_bios_from_vram(struct radeon_device *rdev)
+{
+	uint8_t __iomem *bios;
+	bus_size_t size = 256 * 1024; /* ??? */
+	bus_space_handle_t bsh;
+	bus_space_tag_t bst = rdev->memt;
+	
+	if (!(rdev->flags & RADEON_IS_IGP))
+		if (!radeon_card_posted(rdev))
+			return false;
 
+	rdev->bios = NULL;
+
+	if (bus_space_map(bst, rdev->fb_aper_offset, size, BUS_SPACE_MAP_LINEAR, &bsh) != 0)
+		return false;
+
+	bios = bus_space_vaddr(rdev->memt, bsh);
+	if (bios == NULL) {
+		bus_space_unmap(bst, bsh, size);
+		return false;
+	}
+	if (size == 0 || bios[0] != 0x55 || bios[1] != 0xaa) {
+		bus_space_unmap(bst, bsh, size);
+		return false;
+	}
+
+	rdev->bios = kmalloc(size, GFP_KERNEL);
+	if (rdev->bios == NULL) {
+		bus_space_unmap(bst, bsh, size);
+		return false;
+	}
+	memcpy_fromio(rdev->bios, bios, size);
+	bus_space_unmap(bst, bsh, size);
+	return true;
+}
+#endif
+
+#ifdef __linux__
 static bool radeon_read_bios(struct radeon_device *rdev)
 {
-	STUB();
-	return false;
-#ifdef notyet
 	uint8_t __iomem *bios, val1, val2;
 	size_t size;
 
@@ -105,14 +147,56 @@ static bool radeon_read_bios(struct radeon_device *rdev)
 	memcpy_fromio(rdev->bios, bios, size);
 	pci_unmap_rom(rdev->pdev, bios);
 	return true;
-#endif
+}
+#else
+static bool radeon_read_bios(struct radeon_device *rdev)
+{
+	uint8_t __iomem *bios;
+	bus_size_t size;
+	pcireg_t address, mask;
+	bus_space_handle_t romh;
+	int rc;
+
+	rdev->bios = NULL;
+	/* XXX: some cards may return 0 for rom size? ddx has a workaround */
+
+	address = pci_conf_read(rdev->pc, rdev->pa_tag, PCI_ROM_REG);
+	pci_conf_write(rdev->pc, rdev->pa_tag, PCI_ROM_REG, ~PCI_ROM_ENABLE);
+	mask = pci_conf_read(rdev->pc, rdev->pa_tag, PCI_ROM_REG);
+	address |= PCI_ROM_ENABLE;
+	pci_conf_write(rdev->pc, rdev->pa_tag, PCI_ROM_REG, address);
+
+	size = PCI_ROM_SIZE(mask);
+	if (size == 0)
+		return false;
+	rc = bus_space_map(rdev->memt, PCI_ROM_ADDR(address), size,
+	    BUS_SPACE_MAP_LINEAR, &romh);
+	if (rc != 0) {
+		printf(": can't map PCI ROM (%d)\n", rc);
+		return false;
+	}
+	bios = (uint8_t *)bus_space_vaddr(rdev->memt, romh);
+	if (!bios) {
+		printf(": bus_space_vaddr failed\n");
+		return false;
+	}
+
+	if (size == 0 || bios[0] != 0x55 || bios[1] != 0xaa)
+		goto fail;
+	rdev->bios = kmalloc(size, GFP_KERNEL);
+	memcpy(rdev->bios, bios, size);
+	bus_space_unmap(rdev->memt, romh, size);
+	return true;
+fail:
+	bus_space_unmap(rdev->memt, romh, size);
+	return false;
 }
 
+#endif
+
+#ifdef __linux__
 static bool radeon_read_platform_bios(struct radeon_device *rdev)
 {
-	STUB();
-	return false;
-#ifdef notyet
 	uint8_t __iomem *bios;
 	size_t size;
 
@@ -132,8 +216,53 @@ static bool radeon_read_platform_bios(struct radeon_device *rdev)
 	}
 
 	return true;
-#endif
 }
+#else
+static bool radeon_read_platform_bios(struct radeon_device *rdev)
+{
+#if defined(__amd64__) || defined(__i386__) || defined(__loongson__)
+	uint8_t __iomem *bios;
+	bus_size_t size = 256 * 1024; /* ??? */
+	uint8_t *found = NULL;
+	int i;
+	
+	if (!(rdev->flags & RADEON_IS_IGP))
+		if (!radeon_card_posted(rdev))
+			return false;
+
+	rdev->bios = NULL;
+
+#if defined(__loongson__)
+	if (loongson_videobios == NULL)
+		return false;
+	bios = loongson_videobios;
+#else
+	bios = (u8 *)ISA_HOLE_VADDR(0xc0000);
+#endif
+
+	for (i = 0; i + 2 < size; i++) {
+		if (bios[i] == 0x55 && bios[i + 1] == 0xaa) {
+			found = bios + i;
+			break;
+		}
+			
+	}
+	if (found == NULL) {
+		DRM_ERROR("bios size zero or checksum mismatch\n");
+		return false;
+	}
+
+	rdev->bios = kmalloc(size, GFP_KERNEL);
+	if (rdev->bios == NULL)
+		return false;
+
+	memcpy(rdev->bios, found, size);
+
+	return true;
+#endif
+	return false;
+}
+#endif
 
 #ifdef CONFIG_ACPI
 /* ATRM is used to get the BIOS on the discrete cards in
@@ -602,6 +731,10 @@ static bool radeon_read_disabled_bios(struct radeon_device *rdev)
 	else
 		return legacy_read_disabled_bios(rdev);
 }
+
+#if NACPI > 0
+#define CONFIG_ACPI
+#endif
 
 #ifdef CONFIG_ACPI
 static bool radeon_acpi_vfct_bios(struct radeon_device *rdev)
