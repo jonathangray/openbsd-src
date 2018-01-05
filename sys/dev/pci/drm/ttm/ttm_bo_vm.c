@@ -37,7 +37,7 @@
 
 #define TTM_BO_VM_NUM_PREFAULT 16
 
-#ifdef notyet
+#ifdef __linux__
 static int ttm_bo_vm_fault_idle(struct ttm_buffer_object *bo,
 				struct vm_area_struct *vma,
 				struct vm_fault *vmf)
@@ -82,7 +82,18 @@ static int ttm_bo_vm_fault_idle(struct ttm_buffer_object *bo,
 out_unlock:
 	return ret;
 }
+#else
+int
+ttm_bo_vm_fault(struct uvm_faultinfo *ufi, vaddr_t vaddr, vm_page_t *pps,
+    int npages, int centeridx, vm_fault_t fault_type,
+    vm_prot_t access_type, int flags)
+{
+	STUB();
+	return -ENOSYS;
+}
+#endif
 
+#ifdef notyet
 static int ttm_bo_vm_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
 {
 	struct ttm_buffer_object *bo = (struct ttm_buffer_object *)
@@ -289,6 +300,32 @@ static const struct vm_operations_struct ttm_bo_vm_ops = {
 	.open = ttm_bo_vm_open,
 	.close = ttm_bo_vm_close
 };
+#endif
+
+void
+ttm_bo_vm_reference(struct uvm_object *uobj)
+{
+	struct ttm_buffer_object *bo =
+	    (struct ttm_buffer_object *)uobj;
+
+	(void)ttm_bo_reference(bo);
+	uobj->uo_refs++;
+}
+
+void
+ttm_bo_vm_detach(struct uvm_object *uobj)
+{
+	struct ttm_buffer_object *bo = (struct ttm_buffer_object *)uobj;
+
+	uobj->uo_refs--;
+	ttm_bo_unref(&bo);
+}
+
+struct uvm_pagerops ttm_bo_vm_ops = {
+	.pgo_fault = ttm_bo_vm_fault,
+	.pgo_reference = ttm_bo_vm_reference,
+	.pgo_detach = ttm_bo_vm_detach
+};
 
 static struct ttm_buffer_object *ttm_bo_vm_lookup(struct ttm_bo_device *bdev,
 						  unsigned long offset,
@@ -314,6 +351,7 @@ static struct ttm_buffer_object *ttm_bo_vm_lookup(struct ttm_bo_device *bdev,
 	return bo;
 }
 
+#ifdef __linux__
 int ttm_bo_mmap(struct file *filp, struct vm_area_struct *vma,
 		struct ttm_bo_device *bdev)
 {
@@ -357,8 +395,40 @@ out_unref:
 	ttm_bo_unref(&bo);
 	return ret;
 }
+#else
+struct uvm_object *
+ttm_bo_mmap(voff_t off, vsize_t size, struct ttm_bo_device *bdev)
+{
+	struct ttm_bo_driver *driver;
+	struct ttm_buffer_object *bo;
+	int ret;
+
+	bo = ttm_bo_vm_lookup(bdev, off >> PAGE_SHIFT, size >> PAGE_SHIFT);
+	if (unlikely(!bo))
+		return NULL;
+
+	driver = bo->bdev->driver;
+	if (unlikely(!driver->verify_access)) {
+		ret = -EPERM;
+		goto out_unref;
+	}
+#ifdef notyet
+	ret = driver->verify_access(bo, filp);
+	if (unlikely(ret != 0))
+		goto out_unref;
+#endif
+
+	bo->uobj.pgops = &ttm_bo_vm_ops;
+	bo->uobj.uo_refs++;
+	return &bo->uobj;
+out_unref:
+	ttm_bo_unref(&bo);
+	return NULL;
+}
+#endif
 EXPORT_SYMBOL(ttm_bo_mmap);
 
+#ifdef notyet
 int ttm_fbdev_mmap(struct vm_area_struct *vma, struct ttm_buffer_object *bo)
 {
 	if (vma->vm_pgoff != 0)
