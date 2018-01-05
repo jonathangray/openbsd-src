@@ -466,7 +466,6 @@ bool radeon_fence_signaled(struct radeon_fence *fence)
  * Returns true if any has signaled (current value is >= requested value)
  * or false if it has not. Helper function for radeon_fence_wait_seq.
  */
-#ifdef notyet
 static bool radeon_fence_any_seq_signaled(struct radeon_device *rdev, u64 *seq)
 {
 	unsigned i;
@@ -477,7 +476,6 @@ static bool radeon_fence_any_seq_signaled(struct radeon_device *rdev, u64 *seq)
 	}
 	return false;
 }
-#endif
 
 /**
  * radeon_fence_wait_seq_timeout - wait for a specific sequence numbers
@@ -496,7 +494,6 @@ static bool radeon_fence_any_seq_signaled(struct radeon_device *rdev, u64 *seq)
  * the wait timeout, or an error for all other cases.
  * -EDEADLK is returned when a GPU lockup has been detected.
  */
-#ifdef notyet
 static long radeon_fence_wait_seq_timeout(struct radeon_device *rdev,
 					  u64 *target_seq, bool intr,
 					  long timeout)
@@ -539,7 +536,6 @@ static long radeon_fence_wait_seq_timeout(struct radeon_device *rdev,
 
 	return r;
 }
-#endif
 
 /**
  * radeon_fence_wait - wait for a fence to signal
@@ -554,9 +550,6 @@ static long radeon_fence_wait_seq_timeout(struct radeon_device *rdev,
  */
 int radeon_fence_wait(struct radeon_fence *fence, bool intr)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
 	uint64_t seq[RADEON_NUM_RINGS] = {};
 	long r;
 
@@ -579,7 +572,6 @@ int radeon_fence_wait(struct radeon_fence *fence, bool intr)
 	if (!r)
 		FENCE_TRACE(&fence->base, "signaled from fence_wait\n");
 	return 0;
-#endif
 }
 
 /**
