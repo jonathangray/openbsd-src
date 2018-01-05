@@ -720,7 +720,7 @@ struct radeon_doorbell {
 	/* doorbell mmio */
 	resource_size_t		base;
 	resource_size_t		size;
-	u32 __iomem		*ptr;
+	bus_space_handle_t	bsh;
 	u32			num_doorbells;	/* Number of doorbells actually reserved for radeon. */
 	DECLARE_BITMAP(used, RADEON_MAX_DOORBELLS);
 };
@@ -2321,6 +2321,7 @@ struct radeon_device {
 	struct pci_dev			*pdev;
 	struct rwlock			exclusive_lock;
 
+	struct pci_attach_args		pa;
 	pci_chipset_tag_t		pc;
 	pcitag_t			pa_tag;
 	pci_intr_handle_t		intrh;
