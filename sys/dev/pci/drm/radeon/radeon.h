@@ -2321,7 +2321,6 @@ struct radeon_device {
 	struct pci_dev			*pdev;
 	struct rwlock			exclusive_lock;
 
-	struct pci_attach_args		pa;
 	pci_chipset_tag_t		pc;
 	pcitag_t			pa_tag;
 	pci_intr_handle_t		intrh;
