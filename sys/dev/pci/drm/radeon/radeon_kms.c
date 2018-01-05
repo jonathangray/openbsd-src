@@ -433,6 +433,8 @@ radeondrm_attach_kms(struct device *parent, struct device *self, void *aux)
 	const struct drm_pcidev *id_entry;
 	int			 is_agp;
 	pcireg_t		 type;
+	int			 i;
+	uint8_t			 rmmio_bar;
 #if !defined(__sparc64__)
 	pcireg_t		 addr, mask;
 	int			 s;
@@ -445,6 +447,7 @@ radeondrm_attach_kms(struct device *parent, struct device *self, void *aux)
 	id_entry = drm_find_description(PCI_VENDOR(pa->pa_id),
 	    PCI_PRODUCT(pa->pa_id), radeondrm_pciidlist);
 	rdev->flags = id_entry->driver_data;
+	rdev->family = rdev->flags & RADEON_FAMILY_MASK;
 	rdev->pc = pa->pa_pc;
 	rdev->pa_tag = pa->pa_tag;
 	rdev->iot = pa->pa_iot;
@@ -480,6 +483,30 @@ radeondrm_attach_kms(struct device *parent, struct device *self, void *aux)
 	    pci_mapreg_info(pa->pa_pc, pa->pa_tag, RADEON_PCI_MEM,
 	    type, &rdev->fb_aper_offset, &rdev->fb_aper_size, NULL)) {
 		printf(": can't get frambuffer info\n");
+		return;
+	}
+
+	for (i = 0x10; i <= 0x24 ; i+= 4) {
+		type = pci_mapreg_type(pa->pa_pc, pa->pa_tag, i);
+		if (PCI_MAPREG_TYPE(type) != PCI_MAPREG_TYPE_IO)
+			continue;
+		if (pci_mapreg_map(pa, i, type, 0, NULL,
+		    &rdev->rio_mem, NULL, &rdev->rio_mem_size, 0)) {
+			printf(": can't map rio space\n");
+			return;
+		}
+	}
+
+	if (rdev->family >= CHIP_BONAIRE)
+		rmmio_bar = 0x24;
+	else
+		rmmio_bar = 0x18;
+
+	type = pci_mapreg_type(pa->pa_pc, pa->pa_tag, rmmio_bar);
+	if (PCI_MAPREG_TYPE(type) != PCI_MAPREG_TYPE_MEM ||
+	    pci_mapreg_map(pa, rmmio_bar, type, 0, NULL,
+	    &rdev->rmmio_bsh, &rdev->rmmio_base, &rdev->rmmio_size, 0)) {
+		printf(": can't map rmmio space\n");
 		return;
 	}
 
@@ -544,7 +571,6 @@ radeondrm_attach_kms(struct device *parent, struct device *self, void *aux)
 	rdev->ddev = dev;
 	rdev->pdev = dev->pdev;
 
-	rdev->family = rdev->flags & RADEON_FAMILY_MASK;
 	if (!radeon_msi_ok(rdev))
 		pa->pa_flags &= ~PCI_FLAGS_MSI_ENABLED;
 

@@ -1332,8 +1332,6 @@ int radeon_device_init(struct radeon_device *rdev,
 	int r, i;
 	int dma_bits;
 	bool runtime = false;
-	pcireg_t type;
-	uint8_t rmmio_bar;
 
 	rdev->shutdown = false;
 	rdev->ddev = ddev;
@@ -1461,19 +1459,6 @@ int radeon_device_init(struct radeon_device *rdev,
 	if (rdev->rmmio == NULL) {
 		return -ENOMEM;
 	}
-#else
-	if (rdev->family >= CHIP_BONAIRE)
-		rmmio_bar = 0x24;
-	else
-		rmmio_bar = 0x18;
-
-	type = pci_mapreg_type(rdev->pc, rdev->pa_tag, rmmio_bar);
-	if (PCI_MAPREG_TYPE(type) != PCI_MAPREG_TYPE_MEM ||
-	    pci_mapreg_map(&rdev->pa, rmmio_bar, type, 0, NULL,
-	    &rdev->rmmio, &rdev->rmmio_base, &rdev->rmmio_size, 0)) {
-		printf("%s: can't map rmmio space\n", rdev->self.dv_xname);
-		return -ENOMEM;
-	}
 #endif
 	DRM_INFO("register mmio base: 0x%08X\n", (uint32_t)rdev->rmmio_base);
 	DRM_INFO("register mmio size: %u\n", (unsigned)rdev->rmmio_size);
@@ -1493,17 +1478,6 @@ int radeon_device_init(struct radeon_device *rdev,
 	}
 	if (rdev->rio_mem == NULL)
 		DRM_ERROR("Unable to find PCI I/O BAR\n");
-#else
-	for (i = 0x10; i <= 0x24 ; i+= 4) {
-		type = pci_mapreg_type(rdev->pc, rdev->pa_tag, i);
-		if (PCI_MAPREG_TYPE(type) != PCI_MAPREG_TYPE_IO)
-			continue;
-		if (pci_mapreg_map(&rdev->pa, i, type, 0, NULL,
-		    &rdev->rio_mem, NULL, &rdev->rio_mem_size, 0)) {
-			printf("%s: can't map rio space\n", rdev->self.dv_xname);
-			return -ENOMEM;
-		}
-	}
 #endif
 
 	if (rdev->flags & RADEON_IS_PX)

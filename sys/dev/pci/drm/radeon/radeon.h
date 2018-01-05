@@ -2390,7 +2390,7 @@ struct radeon_device {
 	spinlock_t didt_idx_lock;
 	/* protects concurrent ENDPOINT (audio) register access */
 	spinlock_t end_idx_lock;
-	bus_space_handle_t		rmmio;
+	bus_space_handle_t		rmmio_bsh;
 	radeon_rreg_t			mc_rreg;
 	radeon_wreg_t			mc_wreg;
 	radeon_rreg_t			pll_rreg;
@@ -2517,7 +2517,7 @@ static inline uint32_t r100_mm_rreg(struct radeon_device *rdev, uint32_t reg,
 {
 	/* The mmio size is 64kb at minimum. Allows the if to be optimized out. */
 	if ((reg < rdev->rmmio_size || reg < RADEON_MIN_MMIO_SIZE) && !always_indirect)
-		return readl(((void __iomem *)rdev->rmmio) + reg);
+		return bus_space_read_4(rdev->memt, rdev->rmmio_bsh, reg);
 	else
 		return r100_mm_rreg_slow(rdev, reg);
 }
@@ -2525,7 +2525,7 @@ static inline void r100_mm_wreg(struct radeon_device *rdev, uint32_t reg, uint32
 				bool always_indirect)
 {
 	if ((reg < rdev->rmmio_size || reg < RADEON_MIN_MMIO_SIZE) && !always_indirect)
-		writel(v, ((void __iomem *)rdev->rmmio) + reg);
+		bus_space_write_4(rdev->memt, rdev->rmmio_bsh, reg, v);
 	else
 		r100_mm_wreg_slow(rdev, reg, v);
 }
@@ -2555,13 +2555,13 @@ static inline struct radeon_fence *to_radeon_fence(struct fence *f)
  * Registers read & write functions.
  */
 #define RREG8(reg) \
-	bus_space_read_1(rdev->memt, rdev->rmmio, (reg))
+	bus_space_read_1(rdev->memt, rdev->rmmio_bsh, (reg))
 #define WREG8(reg, v) \
-	bus_space_write_1(rdev->memt, rdev->rmmio, (reg), (v))
+	bus_space_write_1(rdev->memt, rdev->rmmio_bsh, (reg), (v))
 #define RREG16(reg) \
-	bus_space_read_2(rdev->memt, rdev->rmmio, (reg))
+	bus_space_read_2(rdev->memt, rdev->rmmio_bsh, (reg))
 #define WREG16(reg, v) \
-	bus_space_write_2(rdev->memt, rdev->rmmio, (reg), (v))
+	bus_space_write_2(rdev->memt, rdev->rmmio_bsh, (reg), (v))
 #define RREG32(reg) r100_mm_rreg(rdev, (reg), false)
 #define RREG32_IDX(reg) r100_mm_rreg(rdev, (reg), true)
 #define DREG32(reg) printk(KERN_INFO "REGISTER: " #reg " : 0x%08X\n", r100_mm_rreg(rdev, (reg), false))
