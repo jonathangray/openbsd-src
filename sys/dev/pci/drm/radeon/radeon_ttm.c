@@ -518,6 +518,9 @@ struct radeon_ttm_tt {
 	uint64_t			userptr;
 	struct mm_struct		*usermm;
 	uint32_t			userflags;
+
+	bus_dmamap_t			map;
+	bus_dma_segment_t		*segs;
 };
 
 /* prepare the sg table with the user pages */
@@ -665,6 +668,8 @@ static void radeon_ttm_backend_destroy(struct ttm_tt *ttm)
 {
 	struct radeon_ttm_tt *gtt = (void *)ttm;
 
+	bus_dmamap_destroy(gtt->rdev->dmat, gtt->map);
+	free(gtt->segs, M_DRM, 0);
 	ttm_dma_tt_fini(&gtt->ttm);
 	kfree(gtt);
 }
@@ -700,6 +705,18 @@ static struct ttm_tt *radeon_ttm_tt_create(struct ttm_bo_device *bdev,
 		kfree(gtt);
 		return NULL;
 	}
+
+	gtt->segs = mallocarray(gtt->ttm.ttm.num_pages,
+	    sizeof(bus_dma_segment_t), M_DRM, M_WAITOK | M_ZERO);
+
+	if (bus_dmamap_create(rdev->dmat, size, gtt->ttm.ttm.num_pages, size,
+			      0, BUS_DMA_WAITOK, &gtt->map)) {
+		free(gtt->segs, M_DRM, 0);
+		ttm_dma_tt_fini(&gtt->ttm);
+		free(gtt, M_DRM, 0);
+		return NULL;
+	}
+
 	return &gtt->ttm.ttm;
 }
 
@@ -716,6 +733,7 @@ static int radeon_ttm_tt_populate(struct ttm_tt *ttm)
 	struct radeon_device *rdev;
 	unsigned i;
 	int r;
+	int seg;
 	bool slave = !!(ttm->page_flags & TTM_PAGE_FLAG_SG);
 
 	if (ttm->state != tt_unpopulated)
@@ -759,6 +777,7 @@ static int radeon_ttm_tt_populate(struct ttm_tt *ttm)
 	}
 
 	for (i = 0; i < ttm->num_pages; i++) {
+#ifdef __linux__
 		gtt->ttm.dma_address[i] = pci_map_page(rdev->pdev, ttm->pages[i],
 						       0, PAGE_SIZE,
 						       PCI_DMA_BIDIRECTIONAL);
@@ -771,7 +790,23 @@ static int radeon_ttm_tt_populate(struct ttm_tt *ttm)
 			ttm_pool_unpopulate(ttm);
 			return -EFAULT;
 		}
+#else
+		gtt->segs[i].ds_addr = VM_PAGE_TO_PHYS(ttm->pages[i]);
+		gtt->segs[i].ds_len = PAGE_SIZE;
+#endif
 	}
+
+	for (seg = 0, i = 0; seg < gtt->map->dm_nsegs; seg++) {
+		bus_addr_t addr = gtt->map->dm_segs[seg].ds_addr;
+		bus_size_t len = gtt->map->dm_segs[seg].ds_len;
+
+		while (len > 0) {
+			gtt->ttm.dma_address[i++] = addr;
+			addr += PAGE_SIZE;
+			len -= PAGE_SIZE;
+		}
+	}
+
 	return 0;
 }
 
@@ -807,10 +842,14 @@ static void radeon_ttm_tt_unpopulate(struct ttm_tt *ttm)
 #endif
 
 	for (i = 0; i < ttm->num_pages; i++) {
+#ifdef __linux__
 		if (gtt->ttm.dma_address[i]) {
 			pci_unmap_page(rdev->pdev, gtt->ttm.dma_address[i],
 				       PAGE_SIZE, PCI_DMA_BIDIRECTIONAL);
 		}
+#else
+		gtt->ttm.dma_address[i] = 0;
+#endif
 	}
 
 	ttm_pool_unpopulate(ttm);
@@ -988,7 +1027,7 @@ void radeon_ttm_set_active_vram_size(struct radeon_device *rdev, u64 size)
 	man->size = size >> PAGE_SHIFT;
 }
 
-#ifdef notyet
+#ifdef __linux__
 static struct vm_operations_struct radeon_ttm_vm_ops;
 static const struct vm_operations_struct *ttm_vm_ops = NULL;
 
@@ -1035,6 +1074,57 @@ int radeon_mmap(struct file *filp, struct vm_area_struct *vma)
 	}
 	vma->vm_ops = &radeon_ttm_vm_ops;
 	return 0;
+}
+#else
+
+static struct uvm_pagerops radeon_ttm_vm_ops;
+static const struct uvm_pagerops *ttm_vm_ops = NULL;
+
+static int
+radeon_ttm_fault(struct uvm_faultinfo *ufi, vaddr_t vaddr, vm_page_t *pps,
+    int npages, int centeridx, vm_fault_t fault_type,
+    vm_prot_t access_type, int flags)
+{
+	struct ttm_buffer_object *bo;
+	struct radeon_device *rdev;
+	int r;
+
+	bo = (struct ttm_buffer_object *)ufi->entry->object.uvm_obj;
+	rdev = radeon_get_rdev(bo->bdev);
+	down_read(&rdev->pm.mclk_lock);
+	r = ttm_vm_ops->pgo_fault(ufi, vaddr, pps, npages, centeridx,
+				  fault_type, access_type, flags);
+	up_read(&rdev->pm.mclk_lock);
+	return r;
+}
+
+struct uvm_object *
+radeon_mmap(struct drm_device *dev, voff_t off, vsize_t size)
+{
+	struct radeon_device *rdev = dev->dev_private;
+	struct uvm_object *uobj;
+
+	if (unlikely(off < DRM_FILE_PAGE_OFFSET))
+		return NULL;
+
+#if 0
+	file_priv = filp->private_data;
+	rdev = file_priv->minor->dev->dev_private;
+	if (rdev == NULL) {
+		return -EINVAL;
+	}
+#endif
+	uobj = ttm_bo_mmap(off, size, &rdev->mman.bdev);
+	if (unlikely(uobj == NULL)) {
+		return NULL;
+	}
+	if (unlikely(ttm_vm_ops == NULL)) {
+		ttm_vm_ops = uobj->pgops;
+		radeon_ttm_vm_ops = *ttm_vm_ops;
+		radeon_ttm_vm_ops.pgo_fault = &radeon_ttm_fault;
+	}
+	uobj->pgops = &radeon_ttm_vm_ops;
+	return uobj;
 }
 #endif
 
