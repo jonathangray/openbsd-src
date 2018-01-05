@@ -573,6 +573,8 @@ struct wait_queue {
 	int (*func)(wait_queue_t *, unsigned, int, void *);
 };
 
+#define MAX_SCHEDULE_TIMEOUT 0
+
 static inline void
 init_waitqueue_head(wait_queue_head_t *wq)
 {
