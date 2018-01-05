@@ -91,9 +91,6 @@ int radeon_sync_resv(struct radeon_device *rdev,
 		     struct reservation_object *resv,
 		     bool shared)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
 	struct reservation_object_list *flist;
 	struct fence *f;
 	struct radeon_fence *fence;
@@ -125,7 +122,6 @@ int radeon_sync_resv(struct radeon_device *rdev,
 			break;
 	}
 	return r;
-#endif
 }
 
 /**
