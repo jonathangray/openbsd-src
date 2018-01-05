@@ -433,7 +433,6 @@ radeondrm_attach_kms(struct device *parent, struct device *self, void *aux)
 	const struct drm_pcidev *id_entry;
 	int			 is_agp;
 	pcireg_t		 type;
-	uint8_t			 iobar;
 #if !defined(__sparc64__)
 	pcireg_t		 addr, mask;
 	int			 s;
@@ -475,34 +474,12 @@ radeondrm_attach_kms(struct device *parent, struct device *self, void *aux)
 #endif
 
 #define RADEON_PCI_MEM		0x10
-#define RADEON_PCI_IO		0x14
-#define RADEON_PCI_MMIO		0x18
-#define RADEON_PCI_IO2		0x20
 
 	type = pci_mapreg_type(pa->pa_pc, pa->pa_tag, RADEON_PCI_MEM);
 	if (PCI_MAPREG_TYPE(type) != PCI_MAPREG_TYPE_MEM ||
 	    pci_mapreg_info(pa->pa_pc, pa->pa_tag, RADEON_PCI_MEM,
 	    type, &rdev->fb_aper_offset, &rdev->fb_aper_size, NULL)) {
 		printf(": can't get frambuffer info\n");
-		return;
-	}
-
-	if (PCI_MAPREG_MEM_TYPE(type) != PCI_MAPREG_MEM_TYPE_64BIT)
-		iobar = RADEON_PCI_IO;
-	else
-		iobar = RADEON_PCI_IO2;
-	
-	if (pci_mapreg_map(pa, iobar, PCI_MAPREG_TYPE_IO, 0,
-	    NULL, &rdev->rio_mem, NULL, &rdev->rio_mem_size, 0)) {
-		printf(": can't map IO space\n");
-		return;
-	}
-
-	type = pci_mapreg_type(pa->pa_pc, pa->pa_tag, RADEON_PCI_MMIO);
-	if (PCI_MAPREG_TYPE(type) != PCI_MAPREG_TYPE_MEM ||
-	    pci_mapreg_map(pa, RADEON_PCI_MMIO, type, 0, NULL,
-	    &rdev->rmmio, &rdev->rmmio_base, &rdev->rmmio_size, 0)) {
-		printf(": can't map mmio space\n");
 		return;
 	}
 

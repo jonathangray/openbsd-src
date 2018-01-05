@@ -308,28 +308,37 @@ void radeon_scratch_free(struct radeon_device *rdev, uint32_t reg)
  */
 static int radeon_doorbell_init(struct radeon_device *rdev)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
 	/* doorbell bar mapping */
+#ifdef __linux__
 	rdev->doorbell.base = pci_resource_start(rdev->pdev, 2);
 	rdev->doorbell.size = pci_resource_len(rdev->pdev, 2);
+#else
+	pcireg_t type = pci_mapreg_type(rdev->pc, rdev->pa_tag, 0x18);
+	if (PCI_MAPREG_TYPE(type) != PCI_MAPREG_TYPE_MEM ||
+	    pci_mapreg_map(&rdev->pa, 0x18, type, 0, NULL,
+	    &rdev->doorbell.bsh, &rdev->doorbell.base, &rdev->doorbell.size,
+	    0)) {
+		printf("%s: can't map doorbell space\n", rdev->self.dv_xname);
+		return -ENOMEM;
+	}
+#endif
 
 	rdev->doorbell.num_doorbells = min_t(u32, rdev->doorbell.size / sizeof(u32), RADEON_MAX_DOORBELLS);
 	if (rdev->doorbell.num_doorbells == 0)
 		return -EINVAL;
 
+#ifdef __linux__
 	rdev->doorbell.ptr = ioremap(rdev->doorbell.base, rdev->doorbell.num_doorbells * sizeof(u32));
 	if (rdev->doorbell.ptr == NULL) {
 		return -ENOMEM;
 	}
+#endif
 	DRM_INFO("doorbell mmio base: 0x%08X\n", (uint32_t)rdev->doorbell.base);
 	DRM_INFO("doorbell mmio size: %u\n", (unsigned)rdev->doorbell.size);
 
 	memset(&rdev->doorbell.used, 0, sizeof(rdev->doorbell.used));
 
 	return 0;
-#endif
 }
 
 /**
@@ -1323,6 +1332,8 @@ int radeon_device_init(struct radeon_device *rdev,
 	int r, i;
 	int dma_bits;
 	bool runtime = false;
+	pcireg_t type;
+	uint8_t rmmio_bar;
 
 	rdev->shutdown = false;
 	rdev->ddev = ddev;
@@ -1438,7 +1449,7 @@ int radeon_device_init(struct radeon_device *rdev,
 	mtx_init(&rdev->rcu_idx_lock, IPL_TTY);
 	mtx_init(&rdev->didt_idx_lock, IPL_TTY);
 	mtx_init(&rdev->end_idx_lock, IPL_TTY);
-#ifdef notyet
+#ifdef __linux__
 	if (rdev->family >= CHIP_BONAIRE) {
 		rdev->rmmio_base = pci_resource_start(rdev->pdev, 5);
 		rdev->rmmio_size = pci_resource_len(rdev->pdev, 5);
@@ -1450,16 +1461,29 @@ int radeon_device_init(struct radeon_device *rdev,
 	if (rdev->rmmio == NULL) {
 		return -ENOMEM;
 	}
+#else
+	if (rdev->family >= CHIP_BONAIRE)
+		rmmio_bar = 0x24;
+	else
+		rmmio_bar = 0x18;
+
+	type = pci_mapreg_type(rdev->pc, rdev->pa_tag, rmmio_bar);
+	if (PCI_MAPREG_TYPE(type) != PCI_MAPREG_TYPE_MEM ||
+	    pci_mapreg_map(&rdev->pa, rmmio_bar, type, 0, NULL,
+	    &rdev->rmmio, &rdev->rmmio_base, &rdev->rmmio_size, 0)) {
+		printf("%s: can't map rmmio space\n", rdev->self.dv_xname);
+		return -ENOMEM;
+	}
+#endif
 	DRM_INFO("register mmio base: 0x%08X\n", (uint32_t)rdev->rmmio_base);
 	DRM_INFO("register mmio size: %u\n", (unsigned)rdev->rmmio_size);
-#endif
 
 	/* doorbell bar mapping */
 	if (rdev->family >= CHIP_BONAIRE)
 		radeon_doorbell_init(rdev);
 
-#ifdef notyet
 	/* io port mapping */
+#ifdef linux
 	for (i = 0; i < DEVICE_COUNT_RESOURCE; i++) {
 		if (pci_resource_flags(rdev->pdev, i) & IORESOURCE_IO) {
 			rdev->rio_mem_size = pci_resource_len(rdev->pdev, i);
@@ -1469,6 +1493,17 @@ int radeon_device_init(struct radeon_device *rdev,
 	}
 	if (rdev->rio_mem == NULL)
 		DRM_ERROR("Unable to find PCI I/O BAR\n");
+#else
+	for (i = 0x10; i <= 0x24 ; i+= 4) {
+		type = pci_mapreg_type(rdev->pc, rdev->pa_tag, i);
+		if (PCI_MAPREG_TYPE(type) != PCI_MAPREG_TYPE_IO)
+			continue;
+		if (pci_mapreg_map(&rdev->pa, i, type, 0, NULL,
+		    &rdev->rio_mem, NULL, &rdev->rio_mem_size, 0)) {
+			printf("%s: can't map rio space\n", rdev->self.dv_xname);
+			return -ENOMEM;
+		}
+	}
 #endif
 
 	if (rdev->flags & RADEON_IS_PX)
