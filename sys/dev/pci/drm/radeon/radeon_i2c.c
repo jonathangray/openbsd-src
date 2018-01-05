@@ -1066,7 +1066,7 @@ struct radeon_i2c_chan *radeon_i2c_create(struct drm_device *dev,
 		i2c->bit.data = i2c;
 		ret = i2c_bit_add_bus(&i2c->adapter);
 #else
-		i2c->adapter.ic.ic_cookie = i2c;
+		i2c->adapter.ic.ic_cookie = &i2c->adapter;
 		i2c->adapter.ic.ic_acquire_bus = radeon_acquire_bus;
 		i2c->adapter.ic.ic_release_bus = radeon_release_bus;
 		i2c->adapter.ic.ic_send_start = radeon_send_start;
