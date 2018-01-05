@@ -497,6 +497,17 @@ radeondrm_attach_kms(struct device *parent, struct device *self, void *aux)
 		}
 	}
 
+	if (rdev->family >= CHIP_BONAIRE) {
+		type = pci_mapreg_type(pa->pa_pc, pa->pa_tag, 0x18);
+		if (PCI_MAPREG_TYPE(type) != PCI_MAPREG_TYPE_MEM ||
+		    pci_mapreg_map(pa, 0x18, type, 0, NULL,
+		    &rdev->doorbell.bsh, &rdev->doorbell.base,
+		    &rdev->doorbell.size, 0)) {
+			printf(": can't map doorbell space\n");
+			return;
+		}
+	}
+
 	if (rdev->family >= CHIP_BONAIRE)
 		rmmio_bar = 0x24;
 	else

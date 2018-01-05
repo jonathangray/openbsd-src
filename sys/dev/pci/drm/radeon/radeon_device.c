@@ -312,15 +312,6 @@ static int radeon_doorbell_init(struct radeon_device *rdev)
 #ifdef __linux__
 	rdev->doorbell.base = pci_resource_start(rdev->pdev, 2);
 	rdev->doorbell.size = pci_resource_len(rdev->pdev, 2);
-#else
-	pcireg_t type = pci_mapreg_type(rdev->pc, rdev->pa_tag, 0x18);
-	if (PCI_MAPREG_TYPE(type) != PCI_MAPREG_TYPE_MEM ||
-	    pci_mapreg_map(&rdev->pa, 0x18, type, 0, NULL,
-	    &rdev->doorbell.bsh, &rdev->doorbell.base, &rdev->doorbell.size,
-	    0)) {
-		printf("%s: can't map doorbell space\n", rdev->self.dv_xname);
-		return -ENOMEM;
-	}
 #endif
 
 	rdev->doorbell.num_doorbells = min_t(u32, rdev->doorbell.size / sizeof(u32), RADEON_MAX_DOORBELLS);
