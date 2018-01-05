@@ -910,8 +910,6 @@ static bool radeon_setup_enc_conn(struct drm_device *dev)
 static void avivo_reduce_ratio(unsigned *nom, unsigned *den,
 			       unsigned nom_min, unsigned den_min)
 {
-	STUB();
-#ifdef notyet
 	unsigned tmp;
 
 	/* reduce the numbers to a simpler ratio */
@@ -932,7 +930,6 @@ static void avivo_reduce_ratio(unsigned *nom, unsigned *den,
 		*nom *= tmp;
 		*den *= tmp;
 	}
-#endif
 }
 
 /**
