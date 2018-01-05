@@ -1267,6 +1267,21 @@ __seqcount_init(seqcount_t *s, const char *name,
 	s->sequence = 0;
 }
 
+static inline void
+write_seqcount_begin(seqcount_t *s)
+{
+	s->sequence++;
+}
+
+static inline void
+write_seqcount_end(seqcount_t *s)
+{
+	s->sequence++;
+}
+
+#define preempt_enable()
+#define preempt_disable()
+
 #define FENCE_TRACE(fence, fmt, args...) do {} while(0)
 
 struct fence {

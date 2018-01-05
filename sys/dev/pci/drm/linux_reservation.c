@@ -214,8 +214,6 @@ EXPORT_SYMBOL(reservation_object_add_shared_fence);
 void reservation_object_add_excl_fence(struct reservation_object *obj,
 				       struct fence *fence)
 {
-	STUB();
-#ifdef notyet
 	struct fence *old_fence = reservation_object_get_excl(obj);
 	struct reservation_object_list *old;
 	u32 i = 0;
@@ -243,7 +241,6 @@ void reservation_object_add_excl_fence(struct reservation_object *obj,
 
 	if (old_fence)
 		fence_put(old_fence);
-#endif
 }
 EXPORT_SYMBOL(reservation_object_add_excl_fence);
 
