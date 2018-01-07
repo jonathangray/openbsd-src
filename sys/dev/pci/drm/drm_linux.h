@@ -1269,6 +1269,19 @@ __seqcount_init(seqcount_t *s, const char *name,
 	s->sequence = 0;
 }
 
+static inline unsigned int
+read_seqcount_begin(const seqcount_t *s)
+{
+	return s->sequence;
+}
+
+static inline int
+read_seqcount_retry(const seqcount_t *s, unsigned start)
+{
+	STUB();
+	return 0;
+}
+
 static inline void
 write_seqcount_begin(seqcount_t *s)
 {
@@ -1293,6 +1306,12 @@ struct fence {
 	unsigned int seqno;
 };
 
+enum fence_flag_bits {
+	FENCE_FLAG_SIGNALED_BIT,
+	FENCE_FLAG_ENABLE_SIGNAL_BIT,
+	FENCE_FLAG_USER_BITS,
+};
+
 struct fence_ops {
 	const char * (*get_driver_name)(struct fence *);
 	const char * (*get_timeline_name)(struct fence *);
@@ -1311,6 +1330,13 @@ typedef void (*fence_func_t)(struct fence *fence, struct fence_cb *cb);
 
 static inline struct fence *
 fence_get(struct fence *fence)
+{
+	STUB();
+	return NULL;
+}
+
+static inline struct fence *
+fence_get_rcu(struct fence *fence)
 {
 	STUB();
 	return NULL;
