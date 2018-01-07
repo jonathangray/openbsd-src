@@ -340,9 +340,6 @@ long reservation_object_wait_timeout_rcu(struct reservation_object *obj,
 					 bool wait_all, bool intr,
 					 unsigned long timeout)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
 	struct fence *fence;
 	unsigned seq, shared_count, i = 0;
 	long ret = timeout;
@@ -415,7 +412,6 @@ retry:
 unlock_retry:
 	rcu_read_unlock();
 	goto retry;
-#endif
 }
 #ifdef __linux__
 EXPORT_SYMBOL_GPL(reservation_object_wait_timeout_rcu);
