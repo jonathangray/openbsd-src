@@ -576,6 +576,7 @@ struct drm_driver kms_driver = {
 	.load = radeon_driver_load_kms,
 #endif
 	.open = radeon_driver_open_kms,
+	.mmap = radeon_mmap,
 	.preclose = radeon_driver_preclose_kms,
 	.postclose = radeon_driver_postclose_kms,
 	.lastclose = radeon_driver_lastclose_kms,
