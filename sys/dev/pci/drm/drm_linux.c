@@ -80,7 +80,7 @@ flush_delayed_work(struct delayed_work *dwork)
 		tsleep(&barrier, PWAIT, "fldwto", 1);
 
 	task_set(&task, flush_barrier, &barrier);
-	task_add(dwork->tq, &task);
+	task_add(dwork->tq ? dwork->tq : systq, &task);
 	while (!barrier) {
 		sleep_setup(&sls, &barrier, PWAIT, "fldwbar");
 		sleep_finish(&sls, !barrier);
