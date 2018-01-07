@@ -1268,10 +1268,9 @@ int evergreen_set_uvd_clocks(struct radeon_device *rdev, u32 vclk, u32 dclk)
 	return 0;
 }
 
+#ifdef __linux__
 void evergreen_fix_pci_max_read_req_size(struct radeon_device *rdev)
 {
-	STUB();
-#ifdef notyet
 	int readrq;
 	u16 v;
 
@@ -1282,8 +1281,31 @@ void evergreen_fix_pci_max_read_req_size(struct radeon_device *rdev)
 	 */
 	if ((v == 0) || (v == 6) || (v == 7))
 		pcie_set_readrq(rdev->pdev, 512);
-#endif
 }
+#else
+void evergreen_fix_pci_max_read_req_size(struct radeon_device *rdev)
+{
+	pcireg_t ctl, v;
+	int off;
+
+	if (pci_get_capability(rdev->pc, rdev->pa_tag, PCI_CAP_PCIEXPRESS,
+			       &off, &ctl) == 0)
+		return;
+
+	ctl = pci_conf_read(rdev->pc, rdev->pa_tag, off + PCI_PCIE_DCSR);
+
+	v = (ctl & PCI_PCIE_DCSR_MPS) >> 12;
+
+	/* if bios or OS sets MAX_READ_REQUEST_SIZE to an invalid value, fix it
+	 * to avoid hangs or perfomance issues
+	 */
+	if ((v == 0) || (v == 6) || (v == 7)) {
+		ctl &= ~PCI_PCIE_DCSR_MPS;
+		ctl |= (2 << 12);
+		pci_conf_write(rdev->pc, rdev->pa_tag, off + PCI_PCIE_DCSR, ctl);
+	}
+}
+#endif
 
 void dce4_program_fmt(struct drm_encoder *encoder)
 {
