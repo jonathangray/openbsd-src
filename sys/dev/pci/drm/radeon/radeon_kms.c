@@ -134,7 +134,6 @@ int
 radeondrm_detach_kms(struct device *self, int flags)
 {
 	struct radeon_device *rdev = (struct radeon_device *)self;
-	struct drm_device *dev = rdev->ddev;
 
 	if (rdev == NULL)
 		return 0;
@@ -157,7 +156,6 @@ radeondrm_detach_kms(struct device *self, int flags)
 
 	pci_intr_disestablish(rdev->pc, rdev->irqh);
 
-	dev->dev_private = NULL;
 	return 0;
 }
 #endif
