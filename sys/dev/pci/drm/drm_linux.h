@@ -1300,10 +1300,11 @@ write_seqcount_end(seqcount_t *s)
 #define FENCE_TRACE(fence, fmt, args...) do {} while(0)
 
 struct fence {
-	struct fence_ops *ops;
+	const struct fence_ops *ops;
 	unsigned long flags;
 	unsigned int context;
 	unsigned int seqno;
+	spinlock_t *lock;
 };
 
 enum fence_flag_bits {
@@ -1380,7 +1381,10 @@ static inline void
 fence_init(struct fence *fence, const struct fence_ops *ops,
     spinlock_t *lock, unsigned context, unsigned seqno)
 {
-	STUB();
+	fence->ops = ops;
+	fence->lock = lock;
+	fence->context = context;
+	fence->seqno = seqno;
 }
 
 static inline int

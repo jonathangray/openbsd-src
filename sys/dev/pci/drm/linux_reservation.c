@@ -90,8 +90,6 @@ reservation_object_add_shared_inplace(struct reservation_object *obj,
 				      struct reservation_object_list *fobj,
 				      struct fence *fence)
 {
-	STUB();
-#ifdef notyet
 	u32 i;
 
 	fence_get(fence);
@@ -125,7 +123,6 @@ reservation_object_add_shared_inplace(struct reservation_object *obj,
 
 	write_seqcount_end(&obj->seq);
 	preempt_enable();
-#endif
 }
 
 static void
@@ -134,8 +131,6 @@ reservation_object_add_shared_replace(struct reservation_object *obj,
 				      struct reservation_object_list *fobj,
 				      struct fence *fence)
 {
-	STUB();
-#ifdef notyet
 	unsigned i;
 	struct fence *old_fence = NULL;
 
@@ -188,7 +183,6 @@ done:
 
 	if (old_fence)
 		fence_put(old_fence);
-#endif
 }
 
 /*
@@ -418,7 +412,6 @@ EXPORT_SYMBOL_GPL(reservation_object_wait_timeout_rcu);
 #endif
 
 
-#ifdef notyet
 static inline int
 reservation_object_test_signaled_single(struct fence *passed_fence)
 {
@@ -435,14 +428,10 @@ reservation_object_test_signaled_single(struct fence *passed_fence)
 	}
 	return ret;
 }
-#endif
 
 bool reservation_object_test_signaled_rcu(struct reservation_object *obj,
 					  bool test_all)
 {
-	STUB();
-	return false;
-#ifdef notyet
 	unsigned seq, shared_count;
 	int ret = true;
 
@@ -501,7 +490,6 @@ retry:
 unlock_retry:
 	rcu_read_unlock();
 	goto retry;
-#endif
 }
 #ifdef __linux__
 EXPORT_SYMBOL_GPL(reservation_object_test_signaled_rcu);
