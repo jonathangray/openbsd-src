@@ -2069,11 +2069,15 @@ int radeon_driver_load(struct drm_device *dev, unsigned long flags)
 	drm_radeon_private_t *dev_priv;
 	int ret = 0;
 
+#ifdef __linux__
 	dev_priv = kzalloc(sizeof(drm_radeon_private_t), GFP_KERNEL);
 	if (dev_priv == NULL)
 		return -ENOMEM;
 
 	dev->dev_private = (void *)dev_priv;
+#else
+	dev_priv = dev->dev_private;
+#endif
 	dev_priv->flags = flags;
 
 	switch (flags & RADEON_FAMILY_MASK) {
