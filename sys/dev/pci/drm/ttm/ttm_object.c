@@ -58,7 +58,8 @@
 
 #define pr_fmt(fmt) "[TTM] " fmt
 
-#include <dev/pci/drm/drm_linux.h>
+#include <dev/pci/drm/drmP.h>
+#include <dev/pci/drm/linux_rcupdate.h>
 #include <dev/pci/drm/ttm/ttm_object.h>
 #include <dev/pci/drm/ttm/ttm_module.h>
 
@@ -231,9 +232,6 @@ EXPORT_SYMBOL(ttm_base_object_unref);
 struct ttm_base_object *ttm_base_object_lookup(struct ttm_object_file *tfile,
 					       uint32_t key)
 {
-	STUB();
-	return NULL;
-#ifdef notyet
 	struct ttm_base_object *base = NULL;
 	struct drm_hash_item *hash;
 	struct drm_open_hash *ht = &tfile->ref_hash[TTM_REF_USAGE];
@@ -250,16 +248,12 @@ struct ttm_base_object *ttm_base_object_lookup(struct ttm_object_file *tfile,
 	rcu_read_unlock();
 
 	return base;
-#endif
 }
 EXPORT_SYMBOL(ttm_base_object_lookup);
 
 struct ttm_base_object *
 ttm_base_object_lookup_for_ref(struct ttm_object_device *tdev, uint32_t key)
 {
-	STUB();
-	return NULL;
-#ifdef notyet
 	struct ttm_base_object *base = NULL;
 	struct drm_hash_item *hash;
 	struct drm_open_hash *ht = &tdev->object_hash;
@@ -276,7 +270,6 @@ ttm_base_object_lookup_for_ref(struct ttm_object_device *tdev, uint32_t key)
 	rcu_read_unlock();
 
 	return base;
-#endif
 }
 EXPORT_SYMBOL(ttm_base_object_lookup_for_ref);
 
@@ -293,9 +286,6 @@ EXPORT_SYMBOL(ttm_base_object_lookup_for_ref);
 bool ttm_ref_object_exists(struct ttm_object_file *tfile,
 			   struct ttm_base_object *base)
 {
-	STUB();
-	return false;
-#ifdef notyet
 	struct drm_open_hash *ht = &tfile->ref_hash[TTM_REF_USAGE];
 	struct drm_hash_item *hash;
 	struct ttm_ref_object *ref;
@@ -326,7 +316,6 @@ bool ttm_ref_object_exists(struct ttm_object_file *tfile,
  out_false:
 	rcu_read_unlock();
 	return false;
-#endif
 }
 EXPORT_SYMBOL(ttm_ref_object_exists);
 
@@ -335,9 +324,6 @@ int ttm_ref_object_add(struct ttm_object_file *tfile,
 		       enum ttm_ref_type ref_type, bool *existed,
 		       bool require_existed)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
 	struct drm_open_hash *ht = &tfile->ref_hash[ref_type];
 	struct ttm_ref_object *ref;
 	struct drm_hash_item *hash;
@@ -402,14 +388,11 @@ int ttm_ref_object_add(struct ttm_object_file *tfile,
 	}
 
 	return ret;
-#endif
 }
 EXPORT_SYMBOL(ttm_ref_object_add);
 
 static void ttm_ref_object_release(struct kref *kref)
 {
-	STUB();
-#ifdef notyet
 	struct ttm_ref_object *ref =
 	    container_of(kref, struct ttm_ref_object, kref);
 	struct ttm_base_object *base = ref->obj;
@@ -429,7 +412,6 @@ static void ttm_ref_object_release(struct kref *kref)
 	ttm_mem_global_free(mem_glob, sizeof(*ref));
 	kfree_rcu(ref, rcu_head);
 	spin_lock(&tfile->lock);
-#endif
 }
 
 int ttm_ref_object_base_unref(struct ttm_object_file *tfile,
