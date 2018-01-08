@@ -32,6 +32,7 @@
 #include <dev/pci/drm/drmP.h>
 #include <dev/pci/drm/radeon_drm.h>
 #include "radeon_drv.h"
+#include "radeon.h"
 
 #include <dev/pci/drm/drm_pciids.h>
 
@@ -601,6 +602,7 @@ struct drm_driver kms_driver = {
 	.gem_free_object = radeon_gem_object_free,
 	.gem_open_object = radeon_gem_object_open,
 	.gem_close_object = radeon_gem_object_close,
+	.gem_size = sizeof(struct radeon_bo),
 	.dumb_create = radeon_mode_dumb_create,
 	.dumb_map_offset = radeon_mode_dumb_mmap,
 	.dumb_destroy = drm_gem_dumb_destroy,
