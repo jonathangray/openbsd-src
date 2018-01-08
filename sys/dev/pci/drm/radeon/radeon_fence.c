@@ -591,9 +591,6 @@ int radeon_fence_wait_any(struct radeon_device *rdev,
 			  struct radeon_fence **fences,
 			  bool intr)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
 	uint64_t seq[RADEON_NUM_RINGS];
 	unsigned i, num_rings = 0;
 	long r;
@@ -618,7 +615,6 @@ int radeon_fence_wait_any(struct radeon_device *rdev,
 		return r;
 	}
 	return 0;
-#endif
 }
 
 /**
@@ -633,9 +629,6 @@ int radeon_fence_wait_any(struct radeon_device *rdev,
  */
 int radeon_fence_wait_next(struct radeon_device *rdev, int ring)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
 	uint64_t seq[RADEON_NUM_RINGS] = {};
 	long r;
 
@@ -649,7 +642,6 @@ int radeon_fence_wait_next(struct radeon_device *rdev, int ring)
 	if (r < 0)
 		return r;
 	return 0;
-#endif
 }
 
 /**
@@ -664,9 +656,6 @@ int radeon_fence_wait_next(struct radeon_device *rdev, int ring)
  */
 int radeon_fence_wait_empty(struct radeon_device *rdev, int ring)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
 	uint64_t seq[RADEON_NUM_RINGS] = {};
 	long r;
 
@@ -683,7 +672,6 @@ int radeon_fence_wait_empty(struct radeon_device *rdev, int ring)
 			ring, r);
 	}
 	return 0;
-#endif
 }
 
 /**
