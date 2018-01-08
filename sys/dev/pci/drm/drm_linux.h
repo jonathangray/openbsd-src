@@ -1771,6 +1771,12 @@ pcie_capability_read_dword(struct pci_dev *pdev, int off, u32 *val)
 	return 0;
 }
 
+static inline bool
+pci_is_root_bus(struct pci_bus *pbus)
+{
+	return (pbus->bridgetag == NULL);
+}
+
 #define pci_set_master(x)
 #define pci_clear_master(x)
 
