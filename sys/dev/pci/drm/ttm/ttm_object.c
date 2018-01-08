@@ -117,9 +117,7 @@ struct ttm_object_device {
  */
 
 struct ttm_ref_object {
-#ifdef notyet
 	struct rcu_head rcu_head;
-#endif
 	struct drm_hash_item hash;
 	struct list_head head;
 	struct kref kref;
