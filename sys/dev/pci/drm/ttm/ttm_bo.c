@@ -415,8 +415,6 @@ static void ttm_bo_cleanup_memtype_use(struct ttm_buffer_object *bo)
 
 static void ttm_bo_flush_all_fences(struct ttm_buffer_object *bo)
 {
-	STUB();
-#ifdef notyet
 	struct reservation_object_list *fobj;
 	struct fence *fence;
 	int i;
@@ -433,7 +431,6 @@ static void ttm_bo_flush_all_fences(struct ttm_buffer_object *bo)
 		if (!fence->ops->signaled)
 			fence_enable_sw_signaling(fence);
 	}
-#endif
 }
 
 static void ttm_bo_cleanup_refs_or_queue(struct ttm_buffer_object *bo)
