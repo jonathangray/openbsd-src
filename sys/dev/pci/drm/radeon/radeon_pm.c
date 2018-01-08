@@ -783,9 +783,6 @@ static const struct attribute_group *hwmon_groups[] = {
 
 static int radeon_hwmon_init(struct radeon_device *rdev)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
 	int err = 0;
 
 	switch (rdev->pm.int_thermal_type) {
@@ -799,6 +796,7 @@ static int radeon_hwmon_init(struct radeon_device *rdev)
 	case THERMAL_TYPE_KV:
 		if (rdev->asic->pm.get_temperature == NULL)
 			return err;
+#ifdef notyet
 		rdev->pm.int_hwmon_dev = hwmon_device_register_with_groups(rdev->dev,
 									   "radeon", rdev,
 									   hwmon_groups);
@@ -807,18 +805,17 @@ static int radeon_hwmon_init(struct radeon_device *rdev)
 			dev_err(rdev->dev,
 				"Unable to register hwmon device: %d\n", err);
 		}
+#endif
 		break;
 	default:
 		break;
 	}
 
 	return err;
-#endif
 }
 
 static void radeon_hwmon_fini(struct radeon_device *rdev)
 {
-	STUB();
 #ifdef notyet
 	if (rdev->pm.int_hwmon_dev)
 		hwmon_device_unregister(rdev->pm.int_hwmon_dev);
