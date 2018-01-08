@@ -38,6 +38,7 @@
 #define _TTM_OBJECT_H_
 
 #include <dev/pci/drm/drm_linux.h>
+#include <dev/pci/drm/linux_rcupdate.h>
 #include <dev/pci/drm/drm_hashtab.h>
 #include <dev/pci/drm/ttm/ttm_memory.h>
 
@@ -120,9 +121,7 @@ struct ttm_object_device;
  */
 
 struct ttm_base_object {
-#ifdef notyet
 	struct rcu_head rhead;
-#endif
 	struct drm_hash_item hash;
 	enum ttm_object_type object_type;
 	bool shareable;
