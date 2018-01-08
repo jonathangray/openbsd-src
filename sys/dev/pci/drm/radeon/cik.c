@@ -9954,9 +9954,7 @@ static void cik_program_aspm(struct radeon_device *rdev)
 {
 	u32 data, orig;
 	bool disable_l0s = false, disable_l1 = false, disable_plloff_in_l1 = false;
-#ifdef notyet
 	bool disable_clkreq = false;
-#endif
 
 	if (radeon_aspm == 0)
 		return;
@@ -10029,11 +10027,15 @@ static void cik_program_aspm(struct radeon_device *rdev)
 			if (orig != data)
 				WREG32_PCIE_PORT(PCIE_LC_LINK_WIDTH_CNTL, data);
 
-#ifdef notyet
 			if (!disable_clkreq &&
 			    !pci_is_root_bus(rdev->pdev->bus)) {
-				struct pci_dev *root = rdev->pdev->bus->self;
 				u32 lnkcap;
+				struct pci_dev _root;
+				struct pci_dev *root;
+
+				root = &_root;
+				root->pc = rdev->pdev->pc;
+				root->tag = *rdev->ddev->bridgetag;
 
 				clk_req_support = false;
 				pcie_capability_read_dword(root, PCI_EXP_LNKCAP, &lnkcap);
@@ -10042,10 +10044,6 @@ static void cik_program_aspm(struct radeon_device *rdev)
 			} else {
 				clk_req_support = false;
 			}
-#else
-			clk_req_support = false;
-			printf("%s todo clk_req cap\n", __func__);
-#endif
 
 			if (clk_req_support) {
 				orig = data = RREG32_PCIE_PORT(PCIE_LC_CNTL2);
