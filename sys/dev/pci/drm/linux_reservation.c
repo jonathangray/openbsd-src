@@ -50,10 +50,8 @@ EXPORT_SYMBOL(reservation_seqcount_string);
  */
 int reservation_object_reserve_shared(struct reservation_object *obj)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
 	struct reservation_object_list *fobj, *old;
+	struct reservation_object_list *temp;
 	u32 max;
 
 	old = reservation_object_get_list(obj);
@@ -73,15 +71,17 @@ int reservation_object_reserve_shared(struct reservation_object *obj)
 	 * resize obj->staged or allocate if it doesn't exist,
 	 * noop if already correct size
 	 */
-	fobj = krealloc(obj->staged, offsetof(typeof(*fobj), shared[max]),
-			GFP_KERNEL);
-	if (!fobj)
+	temp = kmalloc(offsetof(typeof(*fobj), shared[max]), GFP_KERNEL);
+	if (!temp)
 		return -ENOMEM;
+	if (obj->staged != NULL)
+		memcpy(temp, obj->staged, offsetof(typeof(*fobj), shared[max]));
+	kfree(obj->staged);
+	obj->staged = temp;
 
 	obj->staged = fobj;
 	fobj->shared_max = max;
 	return 0;
-#endif
 }
 EXPORT_SYMBOL(reservation_object_reserve_shared);
 
@@ -243,9 +243,6 @@ int reservation_object_get_fences_rcu(struct reservation_object *obj,
 				      unsigned *pshared_count,
 				      struct fence ***pshared)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
 	unsigned shared_count = 0;
 	unsigned retry = 1;
 	struct fence **shared = NULL, *fence_excl = NULL;
@@ -264,11 +261,16 @@ int reservation_object_get_fences_rcu(struct reservation_object *obj,
 			struct fence **nshared;
 			size_t sz = sizeof(*shared) * fobj->shared_max;
 
-			nshared = krealloc(shared, sz,
-					   GFP_NOWAIT | __GFP_NOWARN);
+			nshared = kmalloc(sz, GFP_NOWAIT | __GFP_NOWARN);
+			if (nshared != NULL && shared != NULL)
+				memcpy(nshared, shared, sz);
+			kfree(shared);
 			if (!nshared) {
 				rcu_read_unlock();
-				nshared = krealloc(shared, sz, GFP_KERNEL);
+				nshared = kmalloc(sz, GFP_KERNEL);
+				if (nshared != NULL && shared != NULL)
+					memcpy(nshared, shared, sz);
+				kfree(shared);
 				if (nshared) {
 					shared = nshared;
 					continue;
@@ -324,7 +326,6 @@ unlock:
 	*pfence_excl = fence_excl;
 
 	return ret;
-#endif
 }
 #ifdef __linux__
 EXPORT_SYMBOL_GPL(reservation_object_get_fences_rcu);
