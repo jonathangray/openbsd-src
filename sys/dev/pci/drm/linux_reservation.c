@@ -51,7 +51,6 @@ EXPORT_SYMBOL(reservation_seqcount_string);
 int reservation_object_reserve_shared(struct reservation_object *obj)
 {
 	struct reservation_object_list *fobj, *old;
-	struct reservation_object_list *temp;
 	u32 max;
 
 	old = reservation_object_get_list(obj);
@@ -71,13 +70,12 @@ int reservation_object_reserve_shared(struct reservation_object *obj)
 	 * resize obj->staged or allocate if it doesn't exist,
 	 * noop if already correct size
 	 */
-	temp = kmalloc(offsetof(typeof(*fobj), shared[max]), GFP_KERNEL);
-	if (!temp)
+	fobj = kmalloc(offsetof(typeof(*fobj), shared[max]), GFP_KERNEL);
+	if (!fobj)
 		return -ENOMEM;
 	if (obj->staged != NULL)
-		memcpy(temp, obj->staged, offsetof(typeof(*fobj), shared[max]));
+		memcpy(fobj, obj->staged, offsetof(typeof(*fobj), shared[max]));
 	kfree(obj->staged);
-	obj->staged = temp;
 
 	obj->staged = fobj;
 	fobj->shared_max = max;
