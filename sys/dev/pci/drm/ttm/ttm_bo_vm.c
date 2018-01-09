@@ -421,12 +421,15 @@ ttm_bo_vm_fault(struct uvm_faultinfo *ufi, vaddr_t vaddr, vm_page_t *pps,
 		}
 
 		address += PAGE_SIZE;
+		vaddr += PAGE_SIZE;
 		if (unlikely(++page_offset >= page_last))
 			break;
 	}
+	pmap_update(ufi->orig_map->pmap);
 out_io_unlock:
 	ttm_mem_io_unlock(man);
 out_unlock:
+	uvmfault_unlockall(ufi, ufi->entry->aref.ar_amap, NULL, NULL);
 	ttm_bo_unreserve(bo);
 	return retval;
 }
