@@ -154,7 +154,6 @@ int radeon_fence_emit(struct radeon_device *rdev,
  * for the fence locking itself, so unlocked variants are used for
  * fence_signal, and remove_wait_queue.
  */
-#ifdef notyet
 static int radeon_fence_check_signaled(wait_queue_t *wait, unsigned mode, int flags, void *key)
 {
 	struct radeon_fence *fence;
@@ -182,7 +181,6 @@ static int radeon_fence_check_signaled(wait_queue_t *wait, unsigned mode, int fl
 		FENCE_TRACE(&fence->base, "pending\n");
 	return 0;
 }
-#endif
 
 /**
  * radeon_fence_activity - check for fence activity
@@ -266,8 +264,6 @@ static bool radeon_fence_activity(struct radeon_device *rdev, int ring)
  */
 static void radeon_fence_check_lockup(struct work_struct *work)
 {
-	STUB();
-#ifdef notyet
 	struct radeon_fence_driver *fence_drv;
 	struct radeon_device *rdev;
 	int ring;
@@ -308,7 +304,6 @@ static void radeon_fence_check_lockup(struct work_struct *work)
 		wake_up_all(&rdev->fence_queue);
 	}
 	up_read(&rdev->exclusive_lock);
-#endif
 }
 
 /**
@@ -356,9 +351,6 @@ static bool radeon_fence_seq_signaled(struct radeon_device *rdev,
 
 static bool radeon_fence_is_signaled(struct fence *f)
 {
-	STUB();
-	return false;
-#ifdef notyet
 	struct radeon_fence *fence = to_radeon_fence(f);
 	struct radeon_device *rdev = fence->rdev;
 	unsigned ring = fence->ring;
@@ -377,7 +369,6 @@ static bool radeon_fence_is_signaled(struct fence *f)
 		}
 	}
 	return false;
-#endif
 }
 
 /**
@@ -390,9 +381,6 @@ static bool radeon_fence_is_signaled(struct fence *f)
  */
 static bool radeon_fence_enable_signaling(struct fence *f)
 {
-	STUB();
-	return false;
-#ifdef notyet
 	struct radeon_fence *fence = to_radeon_fence(f);
 	struct radeon_device *rdev = fence->rdev;
 
@@ -428,7 +416,6 @@ static bool radeon_fence_enable_signaling(struct fence *f)
 
 	FENCE_TRACE(&fence->base, "armed on ring %i!\n", fence->ring);
 	return true;
-#endif
 }
 
 /**

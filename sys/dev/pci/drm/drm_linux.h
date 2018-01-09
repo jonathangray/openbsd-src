@@ -582,6 +582,18 @@ init_waitqueue_head(wait_queue_head_t *wq)
 	wq->count = 0;
 }
 
+static inline void
+__add_wait_queue(wait_queue_head_t *head, wait_queue_t *new)
+{
+	STUB();
+}
+
+static inline void
+__remove_wait_queue(wait_queue_head_t *head, wait_queue_t *old)
+{
+	STUB();
+}
+
 #define __wait_event_intr_timeout(wq, condition, timo, prio)		\
 ({									\
 	long ret = timo;						\
@@ -1300,6 +1312,7 @@ write_seqcount_end(seqcount_t *s)
 #define FENCE_TRACE(fence, fmt, args...) do {} while(0)
 
 struct fence {
+	struct kref refcount;
 	const struct fence_ops *ops;
 	unsigned long flags;
 	unsigned int context;
@@ -1325,22 +1338,39 @@ struct fence_ops {
 struct fence_cb {
 };
 
-#define fence_put(x)
-
 typedef void (*fence_func_t)(struct fence *fence, struct fence_cb *cb);
 
 static inline struct fence *
 fence_get(struct fence *fence)
 {
-	STUB();
-	return NULL;
+	if (fence)
+		kref_get(&fence->refcount);
+	return fence;
 }
 
 static inline struct fence *
 fence_get_rcu(struct fence *fence)
 {
-	STUB();
-	return NULL;
+	if (fence)
+		kref_get(&fence->refcount);
+	return fence;
+}
+
+static inline void
+fence_release(struct kref *ref)
+{
+	struct fence *fence = container_of(ref, struct fence, refcount);
+	if (fence->ops && fence->ops->release)
+		fence->ops->release(fence);
+	else
+		free(fence, M_DRM, 0);
+}
+
+static inline void
+fence_put(struct fence *fence)
+{
+	if (fence)
+		kref_put(&fence->refcount, fence_release);
 }
 
 static inline long
@@ -1356,10 +1386,33 @@ fence_enable_sw_signaling(struct fence *fence)
 	STUB();
 }
 
+static inline int
+fence_signal(struct fence *fence)
+{
+	STUB();
+	
+	if (fence == NULL)
+		return -EINVAL;
+
+	if (test_and_set_bit(FENCE_FLAG_SIGNALED_BIT, &fence->flags))
+		return -EINVAL;
+
+	/* XXX invoke callbacks */
+
+	return 0;
+}
+
 static inline bool
 fence_is_signaled(struct fence *fence)
 {
-	STUB();
+	if (test_bit(FENCE_FLAG_SIGNALED_BIT, &fence->flags))
+		return true;
+
+	if (fence->ops->signaled && fence->ops->signaled(fence)) {
+		fence_signal(fence);
+		return true;
+	}
+
 	return false;
 }
 
@@ -1385,13 +1438,6 @@ fence_init(struct fence *fence, const struct fence_ops *ops,
 	fence->lock = lock;
 	fence->context = context;
 	fence->seqno = seqno;
-}
-
-static inline int
-fence_signal(struct fence *fence)
-{
-	STUB();
-	return 0;
 }
 
 static inline int
