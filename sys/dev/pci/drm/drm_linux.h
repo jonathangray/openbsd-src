@@ -573,7 +573,7 @@ struct wait_queue {
 	int (*func)(wait_queue_t *, unsigned, int, void *);
 };
 
-#define MAX_SCHEDULE_TIMEOUT 0
+#define MAX_SCHEDULE_TIMEOUT (INT32_MAX)
 
 static inline void
 init_waitqueue_head(wait_queue_head_t *wq)
@@ -1308,6 +1308,8 @@ write_seqcount_end(seqcount_t *s)
 
 #define preempt_enable()
 #define preempt_disable()
+#define __set_current_state(x)
+#define set_current_state(x)
 
 #define FENCE_TRACE(fence, fmt, args...) do {} while(0)
 
@@ -1373,19 +1375,6 @@ fence_put(struct fence *fence)
 		kref_put(&fence->refcount, fence_release);
 }
 
-static inline long
-fence_wait(struct fence *fence, bool intr)
-{
-	STUB();
-	return 0;
-}
-
-static inline void
-fence_enable_sw_signaling(struct fence *fence)
-{
-	STUB();
-}
-
 static inline int
 fence_signal(struct fence *fence)
 {
@@ -1419,8 +1408,25 @@ fence_is_signaled(struct fence *fence)
 static inline long
 fence_wait_timeout(struct fence *fence, bool intr, signed long timeout)
 {
+	if (timeout < 0)
+		return -EINVAL;
+
+	if (timeout == 0)
+		return fence_is_signaled(fence);
+
+	return fence->ops->wait(fence, intr, timeout);
+}
+
+static inline long
+fence_wait(struct fence *fence, bool intr)
+{
+	return fence_wait_timeout(fence, intr, MAX_SCHEDULE_TIMEOUT);
+}
+
+static inline void
+fence_enable_sw_signaling(struct fence *fence)
+{
 	STUB();
-	return -ENOSYS;
 }
 
 static inline unsigned
@@ -1438,6 +1444,8 @@ fence_init(struct fence *fence, const struct fence_ops *ops,
 	fence->lock = lock;
 	fence->context = context;
 	fence->seqno = seqno;
+	fence->flags = 0;
+	kref_init(&fence->refcount);
 }
 
 static inline int
