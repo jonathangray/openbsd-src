@@ -1020,40 +1020,32 @@ static const char *radeon_fence_get_timeline_name(struct fence *f)
 	}
 }
 
-#ifdef notyet
 static inline bool radeon_test_signaled(struct radeon_fence *fence)
 {
 	return test_bit(FENCE_FLAG_SIGNALED_BIT, &fence->base.flags);
 }
-#endif
 
 struct radeon_wait_cb {
 	struct fence_cb base;
-	struct task_struct *task;
+	int ident;
+	struct mutex mtx;
 };
 
-#ifdef notyet
 static void
 radeon_fence_wait_cb(struct fence *fence, struct fence_cb *cb)
 {
 	struct radeon_wait_cb *wait =
 		container_of(cb, struct radeon_wait_cb, base);
 
-	wake_up_process(wait->task);
+	wakeup(&wait->ident);
 }
-#endif
 
 static signed long radeon_fence_default_wait(struct fence *f, bool intr,
 					     signed long t)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
 	struct radeon_fence *fence = to_radeon_fence(f);
 	struct radeon_device *rdev = fence->rdev;
 	struct radeon_wait_cb cb;
-
-	cb.task = current;
 
 	if (fence_add_callback(f, &cb.base, radeon_fence_wait_cb))
 		return t;
@@ -1076,7 +1068,7 @@ static signed long radeon_fence_default_wait(struct fence *f, bool intr,
 			break;
 		}
 
-		t = schedule_timeout(t);
+		t = -msleep(&cb.ident, &cb.mtx, PZERO, "rfence", t);
 
 		if (t > 0 && intr && signal_pending(current))
 			t = -ERESTARTSYS;
@@ -1086,7 +1078,6 @@ static signed long radeon_fence_default_wait(struct fence *f, bool intr,
 	fence_remove_callback(f, &cb.base);
 
 	return t;
-#endif
 }
 
 const struct fence_ops radeon_fence_ops = {
