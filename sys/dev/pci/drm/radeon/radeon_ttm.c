@@ -776,8 +776,8 @@ static int radeon_ttm_tt_populate(struct ttm_tt *ttm)
 		return r;
 	}
 
-	for (i = 0; i < ttm->num_pages; i++) {
 #ifdef __linux__
+	for (i = 0; i < ttm->num_pages; i++) {
 		gtt->ttm.dma_address[i] = pci_map_page(rdev->pdev, ttm->pages[i],
 						       0, PAGE_SIZE,
 						       PCI_DMA_BIDIRECTIONAL);
@@ -790,11 +790,20 @@ static int radeon_ttm_tt_populate(struct ttm_tt *ttm)
 			ttm_pool_unpopulate(ttm);
 			return -EFAULT;
 		}
+	}
 #else
+	for (i = 0; i < ttm->num_pages; i++) {
 		gtt->segs[i].ds_addr = VM_PAGE_TO_PHYS(ttm->pages[i]);
 		gtt->segs[i].ds_len = PAGE_SIZE;
-#endif
 	}
+
+	if (bus_dmamap_load_raw(rdev->dmat, gtt->map, gtt->segs,
+				ttm->num_pages,
+				ttm->num_pages * PAGE_SIZE, 0)) {
+		ttm_pool_unpopulate(ttm);
+		return -EFAULT;
+	}
+#endif
 
 	for (seg = 0, i = 0; seg < gtt->map->dm_nsegs; seg++) {
 		bus_addr_t addr = gtt->map->dm_segs[seg].ds_addr;
@@ -841,16 +850,19 @@ static void radeon_ttm_tt_unpopulate(struct ttm_tt *ttm)
 	}
 #endif
 
-	for (i = 0; i < ttm->num_pages; i++) {
 #ifdef __linux__
+	for (i = 0; i < ttm->num_pages; i++) {
 		if (gtt->ttm.dma_address[i]) {
 			pci_unmap_page(rdev->pdev, gtt->ttm.dma_address[i],
 				       PAGE_SIZE, PCI_DMA_BIDIRECTIONAL);
 		}
-#else
-		gtt->ttm.dma_address[i] = 0;
-#endif
 	}
+#else
+	bus_dmamap_unload(rdev->dmat, gtt->map);
+	for (i = 0; i < ttm->num_pages; i++)
+		gtt->ttm.dma_address[i] = 0;
+
+#endif
 
 	ttm_pool_unpopulate(ttm);
 }
