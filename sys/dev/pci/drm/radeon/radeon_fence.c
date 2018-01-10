@@ -1028,7 +1028,6 @@ static inline bool radeon_test_signaled(struct radeon_fence *fence)
 struct radeon_wait_cb {
 	struct fence_cb base;
 	int ident;
-	struct mutex mtx;
 };
 
 static void
@@ -1068,7 +1067,8 @@ static signed long radeon_fence_default_wait(struct fence *f, bool intr,
 			break;
 		}
 
-		t = -msleep(&cb.ident, &cb.mtx, PZERO, "rfence", t);
+		t = -tsleep(&cb.ident, PZERO | (intr ? PCATCH : 0),
+		    "rfence", t);
 
 		if (t > 0 && intr && signal_pending(current))
 			t = -ERESTARTSYS;
