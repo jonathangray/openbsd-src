@@ -102,8 +102,6 @@ static u32 radeon_fence_read(struct radeon_device *rdev, int ring)
  */
 static void radeon_fence_schedule_check(struct radeon_device *rdev, int ring)
 {
-	STUB();
-#ifdef notyet
 	/*
 	 * Do not reset the timer here with mod_delayed_work,
 	 * this can livelock in an interaction with TTM delayed destroy.
@@ -111,7 +109,6 @@ static void radeon_fence_schedule_check(struct radeon_device *rdev, int ring)
 	queue_delayed_work(system_power_efficient_wq,
 			   &rdev->fence_drv[ring].lockup_work,
 			   RADEON_FENCE_JIFFIES_TIMEOUT);
-#endif
 }
 
 /**
