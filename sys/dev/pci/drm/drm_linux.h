@@ -1267,45 +1267,6 @@ struct seq_file;
 static inline void
 seq_printf(struct seq_file *m, const char *fmt, ...) {};
 
-struct lock_class_key {
-};
-
-typedef struct {
-	unsigned sequence;
-} seqcount_t;
-
-static inline void
-__seqcount_init(seqcount_t *s, const char *name,
-    struct lock_class_key *key)
-{
-	s->sequence = 0;
-}
-
-static inline unsigned int
-read_seqcount_begin(const seqcount_t *s)
-{
-	return s->sequence;
-}
-
-static inline int
-read_seqcount_retry(const seqcount_t *s, unsigned start)
-{
-	STUB();
-	return 0;
-}
-
-static inline void
-write_seqcount_begin(seqcount_t *s)
-{
-	s->sequence++;
-}
-
-static inline void
-write_seqcount_end(seqcount_t *s)
-{
-	s->sequence++;
-}
-
 #define preempt_enable()
 #define preempt_disable()
 #define __set_current_state(x)
@@ -2092,6 +2053,55 @@ cpu_relax(void)
 #define cpu_relax_lowlatency() CPU_BUSY_CYCLE()
 #define cpu_has_pat	1
 #define cpu_has_clflush	1
+
+struct lock_class_key {
+};
+
+typedef struct {
+	unsigned int sequence;
+} seqcount_t;
+
+static inline void
+__seqcount_init(seqcount_t *s, const char *name,
+    struct lock_class_key *key)
+{
+	s->sequence = 0;
+}
+
+static inline unsigned int
+read_seqcount_begin(const seqcount_t *s)
+{
+	unsigned int r;
+	for (;;) {
+		r = s->sequence;
+		if ((r & 1) == 0)
+			break;
+		cpu_relax();
+	}
+	membar_consumer();
+	return r;
+}
+
+static inline int
+read_seqcount_retry(const seqcount_t *s, unsigned start)
+{
+	membar_consumer();
+	return (s->sequence != start);
+}
+
+static inline void
+write_seqcount_begin(seqcount_t *s)
+{
+	s->sequence++;
+	membar_producer();
+}
+
+static inline void
+write_seqcount_end(seqcount_t *s)
+{
+	membar_producer();
+	s->sequence++;
+}
 
 static inline uint32_t ror32(uint32_t word, unsigned int shift)
 {
