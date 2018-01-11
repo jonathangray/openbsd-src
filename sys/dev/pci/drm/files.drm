@@ -28,7 +28,7 @@ file	dev/pci/drm/drm_bridge.c		drm
 file	dev/pci/drm/drm_gem.c			drm
 file	dev/pci/drm/drm_vma_manager.c		drm
 file	dev/pci/drm/drm_linux.c			drm
-file	dev/pci/drm/drm_cache.c			drm & inteldrm
+file	dev/pci/drm/drm_cache.c			drm
 file	dev/pci/drm/drm_panel.c			drm & inteldrm
 file	dev/pci/drm/drm_dp_mst_topology.c	drm
 file	dev/pci/drm/drm_mipi_dsi.c		drm & inteldrm
