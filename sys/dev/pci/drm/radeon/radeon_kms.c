@@ -617,7 +617,7 @@ radeondrm_attach_kms(struct device *parent, struct device *self, void *aux)
 	 * an offset from the start of video memory.
 	 */
 	rdev->fb_offset =
-	    bus_space_read_4(rdev->memt, rdev->rmmio, RADEON_CRTC_OFFSET);
+	    bus_space_read_4(rdev->memt, rdev->rmmio_bsh, RADEON_CRTC_OFFSET);
 	if (bus_space_map(rdev->memt, rdev->fb_aper_offset + rdev->fb_offset,
 	    rdev->sf.sf_fbsize, BUS_SPACE_MAP_LINEAR, &rdev->memh)) {
 		printf("%s: can't map video memory\n", rdev->self.dv_xname);
