@@ -138,9 +138,9 @@ radeondrm_detach_kms(struct device *self, int flags)
 	if (rdev == NULL)
 		return 0;
 
+#ifdef notyet
 	pm_runtime_get_sync(dev->dev);
 
-#ifdef notyet
 	radeon_kfd_device_fini(rdev);
 #endif
 
