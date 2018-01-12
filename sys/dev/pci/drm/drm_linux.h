@@ -585,7 +585,9 @@ init_waitqueue_head(wait_queue_head_t *wq)
 static inline void
 __add_wait_queue(wait_queue_head_t *head, wait_queue_t *new)
 {
+#ifdef notyet
 	STUB();
+#endif
 }
 
 static inline void

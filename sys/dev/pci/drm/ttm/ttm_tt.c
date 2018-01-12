@@ -376,8 +376,8 @@ out_err:
 
 static void ttm_tt_clear_mapping(struct ttm_tt *ttm)
 {
-	STUB();
 #ifdef notyet
+	STUB();
 	pgoff_t i;
 	struct vm_page **page = ttm->pages;
 
