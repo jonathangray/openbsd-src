@@ -17,7 +17,6 @@
  */
 
 #include <dev/pci/drm/drmP.h>
-#include <dev/pci/drm/linux_ww_mutex.h>
 #include <dev/pci/ppbreg.h>
 #include <sys/event.h>
 
