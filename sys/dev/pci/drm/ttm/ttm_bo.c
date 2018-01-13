@@ -1534,6 +1534,7 @@ bool ttm_mem_reg_is_pci(struct ttm_bo_device *bdev, struct ttm_mem_reg *mem)
 	return true;
 }
 
+#ifdef __linux__
 void ttm_bo_unmap_virtual_locked(struct ttm_buffer_object *bo)
 {
 	struct ttm_bo_device *bdev = bo->bdev;
@@ -1541,6 +1542,38 @@ void ttm_bo_unmap_virtual_locked(struct ttm_buffer_object *bo)
 	drm_vma_node_unmap(&bo->vma_node, bdev->dev_mapping);
 	ttm_mem_io_free_vm(bo);
 }
+#else
+void ttm_bo_unmap_virtual_locked(struct ttm_buffer_object *bo)
+{
+	struct ttm_tt *ttm = bo->ttm;
+	struct vm_page *page;
+	bus_addr_t addr;
+	paddr_t paddr;
+	int i;
+
+	if (drm_vma_node_has_offset(&bo->vma_node)) {
+		if (bo->mem.bus.is_iomem) {
+			for (i = 0; i < bo->mem.num_pages; ++i) {
+				addr = bo->mem.bus.base + bo->mem.bus.offset;
+				paddr = bus_space_mmap(bo->bdev->memt, addr,
+						       i << PAGE_SHIFT, 0, 0);
+				page = PHYS_TO_VM_PAGE(paddr);
+				if (unlikely(page == NULL))
+					continue;
+				pmap_page_protect(page, PROT_NONE);
+			}
+		} else if (ttm) {
+			for (i = 0; i < ttm->num_pages; ++i) {
+				page = ttm->pages[i];
+				if (unlikely(page == NULL))
+					continue;
+				pmap_page_protect(page, PROT_NONE);
+			}
+		}
+	}
+	ttm_mem_io_free_vm(bo);
+}
+#endif
 
 void ttm_bo_unmap_virtual(struct ttm_buffer_object *bo)
 {
