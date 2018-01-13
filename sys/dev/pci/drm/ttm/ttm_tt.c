@@ -376,19 +376,18 @@ out_err:
 
 static void ttm_tt_clear_mapping(struct ttm_tt *ttm)
 {
-#ifdef notyet
-	STUB();
-	pgoff_t i;
-	struct vm_page **page = ttm->pages;
+	int i;
+	struct vm_page *page;
 
 	if (ttm->page_flags & TTM_PAGE_FLAG_SG)
 		return;
 
 	for (i = 0; i < ttm->num_pages; ++i) {
-		(*page)->mapping = NULL;
-		(*page++)->index = 0;
+		page = ttm->pages[i];
+		if (unlikely(page == NULL))
+			continue;
+		pmap_page_protect(page, PROT_NONE);
 	}
-#endif
 }
 
 void ttm_tt_unpopulate(struct ttm_tt *ttm)
