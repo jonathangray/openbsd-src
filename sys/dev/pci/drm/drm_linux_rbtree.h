@@ -117,20 +117,20 @@ static inline struct interval_tree_node *
 interval_tree_iter_first(struct rb_root *root,
     unsigned long start, unsigned long last)
 {
-	panic("%s not implemented\n", __func__);
+	STUB();
 	return NULL;
 }
 
 static inline void
 interval_tree_insert(struct interval_tree_node *node, struct rb_root *root)
 {
-	panic("%s not implemented\n", __func__);
+	STUB();
 }
 
 static inline void
 interval_tree_remove(struct interval_tree_node *node, struct rb_root *root)
 {
-	panic("%s not implemented\n", __func__);
+	STUB();
 }
 
 #endif	/* _LINUX_RBTREE_H_ */
