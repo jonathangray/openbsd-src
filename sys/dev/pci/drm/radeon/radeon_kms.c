@@ -484,7 +484,7 @@ radeondrm_attach_kms(struct device *parent, struct device *self, void *aux)
 		return;
 	}
 
-	for (i = 0x10; i <= 0x24 ; i+= 4) {
+	for (i = PCI_MAPREG_START; i < PCI_MAPREG_END ; i+= 4) {
 		type = pci_mapreg_type(pa->pa_pc, pa->pa_tag, i);
 		if (PCI_MAPREG_TYPE(type) != PCI_MAPREG_TYPE_IO)
 			continue;
@@ -493,6 +493,9 @@ radeondrm_attach_kms(struct device *parent, struct device *self, void *aux)
 			printf(": can't map rio space\n");
 			return;
 		}
+
+		if (type & PCI_MAPREG_MEM_TYPE_64BIT)
+			i += 4;
 	}
 
 	if (rdev->family >= CHIP_BONAIRE) {
