@@ -50,6 +50,9 @@ irqreturn_t radeon_driver_irq_handler_kms(void *arg)
 	struct radeon_device *rdev = dev->dev_private;
 	irqreturn_t ret;
 
+	if (!rdev->irq.installed)
+		return 0;
+
 	ret = radeon_irq_process(rdev);
 	if (ret == IRQ_HANDLED)
 		pm_runtime_mark_last_busy(dev->dev);
