@@ -197,9 +197,7 @@ struct radeon_pll {
 struct radeon_i2c_chan {
 	struct i2c_adapter adapter;
 	struct drm_device *dev;
-#ifdef __linux__
 	struct i2c_algo_bit_data bit;
-#endif
 	struct radeon_i2c_bus_rec rec;
 	struct drm_dp_aux aux;
 	bool has_aux;
