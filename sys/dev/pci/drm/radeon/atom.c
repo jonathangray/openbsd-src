@@ -1314,7 +1314,9 @@ struct atom_context *atom_parse(struct card_info *card, void *bios)
 			break;
 		}
 	}
+#ifdef DRMDEBUG
 	printk(KERN_INFO "ATOM BIOS: %s\n", name);
+#endif
 
 	return ctx;
 }
