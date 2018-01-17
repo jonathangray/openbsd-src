@@ -341,10 +341,14 @@ static int radeon_doorbell_init(struct radeon_device *rdev)
  */
 static void radeon_doorbell_fini(struct radeon_device *rdev)
 {
-	STUB();
-#ifdef notyet
+#ifdef __linux__
 	iounmap(rdev->doorbell.ptr);
 	rdev->doorbell.ptr = NULL;
+#else
+	if (rdev->doorbell.size > 0)
+		bus_space_unmap(rdev->memt, rdev->doorbell.bsh,
+		    rdev->doorbell.size);
+	rdev->doorbell.size = 0;
 #endif
 }
 
@@ -1549,9 +1553,7 @@ failed:
 	return r;
 }
 
-#ifdef __linux__
 static void radeon_debugfs_remove_files(struct radeon_device *rdev);
-#endif
 
 /**
  * radeon_device_fini - tear down the driver
@@ -1568,22 +1570,28 @@ void radeon_device_fini(struct radeon_device *rdev)
 	/* evict vram memory */
 	radeon_bo_evict_vram(rdev);
 	radeon_fini(rdev);
-#ifdef notyet
 	vga_switcheroo_unregister_client(rdev->pdev);
 	if (rdev->flags & RADEON_IS_PX)
 		vga_switcheroo_fini_domain_pm_ops(rdev->dev);
 	vga_client_register(rdev->pdev, NULL, NULL, NULL);
+#ifdef __linux__
 	if (rdev->rio_mem)
 		pci_iounmap(rdev->pdev, rdev->rio_mem);
 	rdev->rio_mem = NULL;
 	iounmap(rdev->rmmio);
 	rdev->rmmio = NULL;
+#else
+	if (rdev->rio_mem_size > 0)
+		bus_space_unmap(rdev->memt, rdev->rio_mem, rdev->rio_mem_size);
+	rdev->rio_mem_size = 0;
+
+	if (rdev->rmmio_size > 0)
+		bus_space_unmap(rdev->memt, rdev->rmmio_bsh, rdev->rmmio_size);
+	rdev->rmmio_size = 0;
 #endif
 	if (rdev->family >= CHIP_BONAIRE)
 		radeon_doorbell_fini(rdev);
-#ifdef notyet
 	radeon_debugfs_remove_files(rdev);
-#endif
 }
 
 
@@ -1963,7 +1971,6 @@ int radeon_debugfs_add_files(struct radeon_device *rdev,
 	return 0;
 }
 
-#ifdef __linux__
 static void radeon_debugfs_remove_files(struct radeon_device *rdev)
 {
 #if defined(CONFIG_DEBUG_FS)
@@ -1979,7 +1986,6 @@ static void radeon_debugfs_remove_files(struct radeon_device *rdev)
 	}
 #endif
 }
-#endif
 
 #if defined(CONFIG_DEBUG_FS)
 int radeon_debugfs_init(struct drm_minor *minor)
