@@ -1228,8 +1228,6 @@ int radeon_vm_init(struct radeon_device *rdev, struct radeon_vm *vm)
  */
 void radeon_vm_fini(struct radeon_device *rdev, struct radeon_vm *vm)
 {
-	STUB();
-#ifdef notyet
 	struct radeon_bo_va *bo_va, *tmp;
 	int i, r;
 
@@ -1264,5 +1262,4 @@ void radeon_vm_fini(struct radeon_device *rdev, struct radeon_vm *vm)
 	}
 
 	mutex_destroy(&vm->mutex);
-#endif
 }
