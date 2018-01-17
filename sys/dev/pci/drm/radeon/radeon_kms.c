@@ -138,6 +138,8 @@ radeondrm_detach_kms(struct device *self, int flags)
 	if (rdev == NULL)
 		return 0;
 
+	pci_intr_disestablish(rdev->pc, rdev->irqh);
+
 #ifdef notyet
 	pm_runtime_get_sync(dev->dev);
 
@@ -153,8 +155,6 @@ radeondrm_detach_kms(struct device *self, int flags)
 		config_detach((struct device *)rdev->ddev, flags);
 		rdev->ddev = NULL;
 	}
-
-	pci_intr_disestablish(rdev->pc, rdev->irqh);
 
 	return 0;
 }
