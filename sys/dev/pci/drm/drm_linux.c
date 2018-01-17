@@ -791,3 +791,11 @@ drm_sysfs_hotplug_event(struct drm_device *dev)
 {
 	KNOTE(&dev->note, NOTE_CHANGE);
 }
+
+unsigned int drm_fence_count;
+
+unsigned int
+fence_context_alloc(unsigned int num)
+{
+	return __sync_add_and_fetch(&drm_fence_count, num) - num;
+}

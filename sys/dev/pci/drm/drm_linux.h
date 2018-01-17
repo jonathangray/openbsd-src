@@ -1309,6 +1309,8 @@ struct fence_cb {
 	fence_func_t func;
 };
 
+unsigned int fence_context_alloc(unsigned int);
+
 static inline struct fence *
 fence_get(struct fence *fence)
 {
@@ -1430,13 +1432,6 @@ fence_enable_sw_signaling(struct fence *fence)
 			fence_signal_locked(fence);
 		spin_unlock_irqrestore(fence->lock, flags);
 	}
-}
-
-static inline unsigned
-fence_context_alloc(unsigned num)
-{
-	STUB();
-	return 0;
 }
 
 static inline void
