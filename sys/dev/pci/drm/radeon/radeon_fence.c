@@ -1027,7 +1027,7 @@ static inline bool radeon_test_signaled(struct radeon_fence *fence)
 
 struct radeon_wait_cb {
 	struct fence_cb base;
-	int ident;
+	void *ident;
 };
 
 static void
@@ -1036,7 +1036,7 @@ radeon_fence_wait_cb(struct fence *fence, struct fence_cb *cb)
 	struct radeon_wait_cb *wait =
 		container_of(cb, struct radeon_wait_cb, base);
 
-	wakeup(&wait->ident);
+	wakeup(wait->ident);
 }
 
 static signed long radeon_fence_default_wait(struct fence *f, bool intr,
@@ -1045,6 +1045,8 @@ static signed long radeon_fence_default_wait(struct fence *f, bool intr,
 	struct radeon_fence *fence = to_radeon_fence(f);
 	struct radeon_device *rdev = fence->rdev;
 	struct radeon_wait_cb cb;
+
+	cb.ident = &rdev->fence_queue;
 
 	if (fence_add_callback(f, &cb.base, radeon_fence_wait_cb))
 		return t;
@@ -1067,7 +1069,7 @@ static signed long radeon_fence_default_wait(struct fence *f, bool intr,
 			break;
 		}
 
-		t = -tsleep(&cb.ident, PZERO | (intr ? PCATCH : 0),
+		t = -tsleep(&rdev->fence_queue, PZERO | (intr ? PCATCH : 0),
 		    "rfence", t);
 
 		if (t > 0 && intr && signal_pending(current))
