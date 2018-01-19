@@ -1036,7 +1036,7 @@ radeon_fence_wait_cb(struct fence *fence, struct fence_cb *cb)
 	struct radeon_wait_cb *wait =
 		container_of(cb, struct radeon_wait_cb, base);
 
-	wakeup(wait->ident);
+	wakeup_one(wait->ident);
 }
 
 static signed long radeon_fence_default_wait(struct fence *f, bool intr,
