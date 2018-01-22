@@ -252,7 +252,7 @@ int reservation_object_get_fences_rcu(struct reservation_object *obj,
 
 		seq = read_seqcount_begin(&obj->seq);
 
-		rcu_read_lock();
+		rw_enter_read(&obj->rwl);
 
 		fobj = rcu_dereference(obj->fence);
 		if (fobj) {
@@ -264,7 +264,7 @@ int reservation_object_get_fences_rcu(struct reservation_object *obj,
 				memcpy(nshared, shared, sz);
 			kfree(shared);
 			if (!nshared) {
-				rcu_read_unlock();
+				rw_exit_read(&obj->rwl);
 				nshared = kmalloc(sz, GFP_KERNEL);
 				if (nshared != NULL && shared != NULL)
 					memcpy(nshared, shared, sz);
@@ -312,7 +312,7 @@ int reservation_object_get_fences_rcu(struct reservation_object *obj,
 			retry = 1;
 
 unlock:
-		rcu_read_unlock();
+		rw_exit_read(&obj->rwl);
 	}
 	*pshared_count = shared_count;
 	if (shared_count)
@@ -344,7 +344,7 @@ retry:
 	fence = NULL;
 	shared_count = 0;
 	seq = read_seqcount_begin(&obj->seq);
-	rcu_read_lock();
+	rw_enter_read(&obj->rwl);
 
 	if (wait_all) {
 		struct reservation_object_list *fobj =
@@ -393,7 +393,7 @@ retry:
 		}
 	}
 
-	rcu_read_unlock();
+	rw_exit_read(&obj->rwl);
 	if (fence) {
 		ret = fence_wait_timeout(fence, intr, ret);
 		fence_put(fence);
@@ -403,7 +403,7 @@ retry:
 	return ret;
 
 unlock_retry:
-	rcu_read_unlock();
+	rw_exit_read(&obj->rwl);
 	goto retry;
 }
 #ifdef __linux__
@@ -437,7 +437,7 @@ bool reservation_object_test_signaled_rcu(struct reservation_object *obj,
 retry:
 	shared_count = 0;
 	seq = read_seqcount_begin(&obj->seq);
-	rcu_read_lock();
+	rw_enter_read(&obj->rwl);
 
 	if (test_all) {
 		unsigned i;
@@ -483,11 +483,11 @@ retry:
 		}
 	}
 
-	rcu_read_unlock();
+	rw_exit_read(&obj->rwl);
 	return ret;
 
 unlock_retry:
-	rcu_read_unlock();
+	rw_exit_read(&obj->rwl);
 	goto retry;
 }
 #ifdef __linux__
