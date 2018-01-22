@@ -60,6 +60,7 @@ struct reservation_object {
 	struct fence __rcu *fence_excl;
 	struct reservation_object_list __rcu *fence;
 	struct reservation_object_list *staged;
+	struct rwlock rwl;
 };
 
 #define reservation_object_held(obj) lockdep_is_held(&(obj)->lock.base)
@@ -75,6 +76,7 @@ reservation_object_init(struct reservation_object *obj)
 	RCU_INIT_POINTER(obj->fence, NULL);
 	RCU_INIT_POINTER(obj->fence_excl, NULL);
 	obj->staged = NULL;
+	rw_init(&obj->rwl, "rvobj");
 }
 
 static inline void
