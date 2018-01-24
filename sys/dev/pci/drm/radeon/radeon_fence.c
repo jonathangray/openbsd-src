@@ -1051,6 +1051,7 @@ static signed long radeon_fence_default_wait(struct fence *f, bool intr,
 	if (fence_add_callback(f, &cb.base, radeon_fence_wait_cb))
 		return t;
 
+	mtx_enter(&rdev->fence_queue.lock);
 	while (t > 0) {
 		if (intr)
 			set_current_state(TASK_INTERRUPTIBLE);
@@ -1069,14 +1070,13 @@ static signed long radeon_fence_default_wait(struct fence *f, bool intr,
 			break;
 		}
 
-		mtx_enter(&rdev->fence_queue.lock);
 		t = -msleep(&rdev->fence_queue, &rdev->fence_queue.lock,
 		    PZERO | (intr ? PCATCH : 0), "rfence", t);
-		mtx_leave(&rdev->fence_queue.lock);
 
 		if (t > 0 && intr && signal_pending(current))
 			t = -ERESTARTSYS;
 	}
+	mtx_leave(&rdev->fence_queue.lock);
 
 	__set_current_state(TASK_RUNNING);
 	fence_remove_callback(f, &cb.base);
