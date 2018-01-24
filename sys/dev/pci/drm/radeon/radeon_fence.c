@@ -1070,8 +1070,10 @@ static signed long radeon_fence_default_wait(struct fence *f, bool intr,
 			break;
 		}
 
+		atomic_inc_int(&rdev->fence_queue.count);
 		t = -msleep(&rdev->fence_queue, &rdev->fence_queue.lock,
 		    PZERO | (intr ? PCATCH : 0), "rfence", t);
+		atomic_dec_int(&rdev->fence_queue.count);
 
 		if (t > 0 && intr && signal_pending(current))
 			t = -ERESTARTSYS;
