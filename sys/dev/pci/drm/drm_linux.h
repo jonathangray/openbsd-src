@@ -560,18 +560,19 @@ _spin_unlock_irqrestore(struct mutex *mtxp, __unused unsigned long flags
 #define free_irq(irq, dev)
 #define synchronize_irq(x)
 
-struct wait_queue_head {
-	struct mutex lock;
-	unsigned int count;
-};
-typedef struct wait_queue_head wait_queue_head_t;
-
 typedef struct wait_queue wait_queue_t;
 struct wait_queue {
 	unsigned int flags;
 	void *private;
 	int (*func)(wait_queue_t *, unsigned, int, void *);
 };
+
+struct wait_queue_head {
+	struct mutex lock;
+	unsigned int count;
+	struct wait_queue *_wq;
+};
+typedef struct wait_queue_head wait_queue_head_t;
 
 #define MAX_SCHEDULE_TIMEOUT (INT32_MAX)
 
@@ -580,20 +581,19 @@ init_waitqueue_head(wait_queue_head_t *wq)
 {
 	mtx_init(&wq->lock, IPL_TTY);
 	wq->count = 0;
+	wq->_wq = NULL;
 }
 
 static inline void
 __add_wait_queue(wait_queue_head_t *head, wait_queue_t *new)
 {
-#ifdef notyet
-	STUB();
-#endif
+	head->_wq = new;
 }
 
 static inline void
 __remove_wait_queue(wait_queue_head_t *head, wait_queue_t *old)
 {
-	STUB();
+	head->_wq = NULL;
 }
 
 #define __wait_event_intr_timeout(wq, condition, timo, prio)		\
@@ -661,16 +661,29 @@ do {						\
 	__ret;					\
 })
 
-#define wake_up(wq)				\
-do {						\
-	mtx_enter(&(wq)->lock);			\
-	wakeup(wq);				\
-	mtx_leave(&(wq)->lock);			\
-} while (0)
-#define wake_up_all(wq)			wake_up(wq)
-#define wake_up_all_locked(wq)		wakeup(wq)
-#define wake_up_interruptible(wq)	wake_up(wq)
+static inline void
+wake_up(wait_queue_head_t *wq)
+{
+	mtx_enter(&wq->lock);
+	if (wq->_wq != NULL && wq->_wq->func != NULL)
+		wq->_wq->func(wq->_wq, 0, wq->_wq->flags, NULL);
+	else
+		wakeup(wq);
+	mtx_leave(&wq->lock);
+}
 
+#define wake_up_all(wq)			wake_up(wq)
+
+static inline void
+wake_up_all_locked(wait_queue_head_t *wq)
+{
+	if (wq->_wq != NULL && wq->_wq->func != NULL)
+		wq->_wq->func(wq->_wq, 0, wq->_wq->flags, NULL);
+	else
+		wakeup(wq);
+}
+
+#define wake_up_interruptible(wq)	wake_up(wq)
 #define waitqueue_active(wq)		((wq)->count > 0)
 
 struct completion {
