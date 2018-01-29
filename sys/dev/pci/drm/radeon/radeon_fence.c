@@ -1027,7 +1027,7 @@ static inline bool radeon_test_signaled(struct radeon_fence *fence)
 
 struct radeon_wait_cb {
 	struct fence_cb base;
-	int ident;
+	void *task;
 };
 
 static void
@@ -1035,7 +1035,8 @@ radeon_fence_wait_cb(struct fence *fence, struct fence_cb *cb)
 {
 	struct radeon_wait_cb *wait =
 		container_of(cb, struct radeon_wait_cb, base);
-	wakeup_one(&wait->ident);
+
+	wake_up_process(wait->task);
 }
 
 static signed long radeon_fence_default_wait(struct fence *f, bool intr,
@@ -1045,10 +1046,11 @@ static signed long radeon_fence_default_wait(struct fence *f, bool intr,
 	struct radeon_device *rdev = fence->rdev;
 	struct radeon_wait_cb cb;
 
+	cb.task = curproc;
+
 	if (fence_add_callback(f, &cb.base, radeon_fence_wait_cb))
 		return t;
 
-	mtx_enter(&rdev->fence_queue.lock);
 	while (t > 0) {
 		if (intr)
 			set_current_state(TASK_INTERRUPTIBLE);
@@ -1067,15 +1069,11 @@ static signed long radeon_fence_default_wait(struct fence *f, bool intr,
 			break;
 		}
 
-		atomic_inc_int(&rdev->fence_queue.count);
-		t = -msleep(&cb.ident, &rdev->fence_queue.lock,
-		    PZERO | (intr ? PCATCH : 0), "rfence", t);
-		atomic_dec_int(&rdev->fence_queue.count);
+		t = schedule_timeout(t);
 
 		if (t > 0 && intr && signal_pending(current))
 			t = -ERESTARTSYS;
 	}
-	mtx_leave(&rdev->fence_queue.lock);
 
 	__set_current_state(TASK_RUNNING);
 	fence_remove_callback(f, &cb.base);

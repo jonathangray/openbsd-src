@@ -20,6 +20,10 @@
 #include <dev/pci/ppbreg.h>
 #include <sys/event.h>
 
+struct mutex sch_mtx = MUTEX_INITIALIZER(IPL_TTY);
+void *sch_ident;
+int sch_priority;
+
 void
 flush_barrier(void *arg)
 {
