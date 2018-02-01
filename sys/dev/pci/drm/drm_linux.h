@@ -631,6 +631,14 @@ do {						\
 		__wait_event_intr_timeout(wq, condition, 0, 0); \
 } while (0)
 
+#define wait_event_interruptible_locked(wq, condition) 		\
+({						\
+	int __ret = 0;				\
+	if (!(condition))			\
+		__ret = __wait_event_intr_timeout(wq, condition, 0, PCATCH); \
+	__ret;					\
+})
+
 /*
  * Sleep until `condition' gets true or `timo' expires.
  *
