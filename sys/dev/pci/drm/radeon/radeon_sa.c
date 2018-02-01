@@ -317,7 +317,6 @@ int radeon_sa_bo_new(struct radeon_device *rdev,
 	struct radeon_fence *fences[RADEON_NUM_RINGS];
 	unsigned tries[RADEON_NUM_RINGS];
 	int i, r;
-	int error;
 
 	BUG_ON(align > sa_manager->align);
 	BUG_ON(size > sa_manager->size);
@@ -360,16 +359,10 @@ int radeon_sa_bo_new(struct radeon_device *rdev,
 		spin_lock(&sa_manager->wq.lock);
 		/* if we have nothing to wait for block */
 		if (r == -ENOENT) {
-			r = 0;
-			while (r == 0) {
-				if (radeon_sa_event(sa_manager, size, align))
-					break;
-				error = msleep(&sa_manager->wq, &sa_manager->wq.lock,
-				    PZERO | PCATCH, "samgr", 0);
-				if (error == ERESTART)
-					error = EINTR; /* XXX */
-				r = -error;
-			}
+			r = wait_event_interruptible_locked(
+				sa_manager->wq, 
+				radeon_sa_event(sa_manager, size, align)
+			);
 		}
 
 	} while (!r);
