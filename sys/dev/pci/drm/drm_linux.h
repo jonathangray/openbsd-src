@@ -686,9 +686,8 @@ wake_up(wait_queue_head_t *wq)
 
 #define wake_up_process(task)		\
 do {					\
-	mtx_enter(&sch_mtx);		\
+	MUTEX_ASSERT_LOCKED(&sch_mtx);	\
 	wakeup(task);			\
-	mtx_leave(&sch_mtx);		\
 } while (0)
 
 #define wake_up_all(wq)			wake_up(wq)
@@ -1293,6 +1292,7 @@ __set_current_state(int state)
 {
 	KASSERT(state == TASK_RUNNING);
 	mtx_leave(&sch_mtx);
+	sch_ident = NULL;
 }
 
 static inline long
