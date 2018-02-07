@@ -567,6 +567,10 @@ struct wait_queue {
 	int (*func)(wait_queue_t *, unsigned, int, void *);
 };
 
+extern struct mutex sch_mtx;
+extern void *sch_ident;
+extern int sch_priority;
+
 struct wait_queue_head {
 	struct mutex lock;
 	unsigned int count;
@@ -599,14 +603,14 @@ __remove_wait_queue(wait_queue_head_t *head, wait_queue_t *old)
 #define __wait_event_intr_timeout(wq, condition, timo, prio)		\
 ({									\
 	long ret = timo;						\
-	mtx_enter(&(wq).lock);						\
+	mtx_enter(&sch_mtx);						\
 	do {								\
 		int deadline, __error;					\
 									\
 		KASSERT(!cold);						\
 		atomic_inc_int(&(wq).count);				\
 		deadline = ticks + ret;					\
-		__error = msleep(&wq, &(wq).lock, prio, "drmweti", ret); \
+		__error = msleep(&wq, &sch_mtx, prio, "drmweti", ret);	\
 		ret = deadline - ticks;					\
 		atomic_dec_int(&(wq).count);				\
 		if (__error == ERESTART || __error == EINTR) {		\
@@ -618,7 +622,7 @@ __remove_wait_queue(wait_queue_head_t *head, wait_queue_t *old)
 			break;						\
  		}							\
 	} while (ret > 0 && !(condition));				\
-	mtx_leave(&(wq).lock);						\
+	mtx_leave(&sch_mtx);						\
 	ret;								\
 })
 
@@ -675,10 +679,20 @@ wake_up(wait_queue_head_t *wq)
 	mtx_enter(&wq->lock);
 	if (wq->_wq != NULL && wq->_wq->func != NULL)
 		wq->_wq->func(wq->_wq, 0, wq->_wq->flags, NULL);
-	else
+	else {
+		mtx_enter(&sch_mtx);
 		wakeup(wq);
+		mtx_leave(&sch_mtx);
+	}
 	mtx_leave(&wq->lock);
 }
+
+#define wake_up_process(task)			\
+do {						\
+	mtx_enter(&sch_mtx);			\
+	wakeup(task);				\
+	mtx_leave(&sch_mtx);			\
+} while (0)
 
 #define wake_up_all(wq)			wake_up(wq)
 
@@ -687,8 +701,11 @@ wake_up_all_locked(wait_queue_head_t *wq)
 {
 	if (wq->_wq != NULL && wq->_wq->func != NULL)
 		wq->_wq->func(wq->_wq, 0, wq->_wq->flags, NULL);
-	else
+	else {
+		mtx_enter(&sch_mtx);
 		wakeup(wq);
+		mtx_leave(&sch_mtx);
+	}
 }
 
 #define wake_up_interruptible(wq)	wake_up(wq)
@@ -891,6 +908,7 @@ typedef void *async_cookie_t;
 
 #define TASK_UNINTERRUPTIBLE	0
 #define TASK_INTERRUPTIBLE	PCATCH
+#define TASK_RUNNING		-1
 
 #define signal_pending_state(x, y) CURSIG(curproc)
 #define signal_pending(y) CURSIG(curproc)
@@ -1262,27 +1280,58 @@ static inline void
 prepare_to_wait(wait_queue_head_t *wq, wait_queue_head_t **wait, int state)
 {
 	if (*wait == NULL) {
-		mtx_enter(&wq->lock);
+		mtx_enter(&sch_mtx);
 		*wait = wq;
 	}
+	MUTEX_ASSERT_LOCKED(&sch_mtx);
+	sch_ident = wq;
+	sch_priority = state;
 }
 
 static inline void
 finish_wait(wait_queue_head_t *wq, wait_queue_head_t **wait)
 {
-	if (*wait)
-		mtx_leave(&wq->lock);
+	if (*wait) {
+		MUTEX_ASSERT_LOCKED(&sch_mtx);
+		sch_ident = NULL;
+		mtx_leave(&sch_mtx);
+	}
+}
+
+static inline void
+set_current_state(int state)
+{
+	if (sch_ident != curproc)
+		mtx_enter(&sch_mtx);
+	MUTEX_ASSERT_LOCKED(&sch_mtx);
+	sch_ident = curproc;
+	sch_priority = state;
+}
+
+static inline void
+__set_current_state(int state)
+{
+	KASSERT(state == TASK_RUNNING);
+	if (sch_ident == curproc) {
+		MUTEX_ASSERT_LOCKED(&sch_mtx);
+		sch_ident = NULL;
+		mtx_leave(&sch_mtx);
+	}
 }
 
 static inline long
-schedule_timeout(long timeout, wait_queue_head_t **wait)
+schedule_timeout(long timeout)
 {
+	int err;
+
 	if (cold) {
 		delay((timeout * 1000000) / hz);
 		return -ETIMEDOUT;
 	}
 
-	return -msleep(*wait, &(*wait)->lock, PZERO, "schto", timeout);
+	err = -msleep(sch_ident, &sch_mtx, sch_priority, "schto", timeout);
+	sch_ident = curproc;
+	return err;
 }
 
 struct seq_file;
@@ -1292,8 +1341,6 @@ seq_printf(struct seq_file *m, const char *fmt, ...) {};
 
 #define preempt_enable()
 #define preempt_disable()
-#define __set_current_state(x)
-#define set_current_state(x)
 
 #define FENCE_TRACE(fence, fmt, args...) do {} while(0)
 
