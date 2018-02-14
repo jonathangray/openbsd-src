@@ -1620,6 +1620,8 @@ int radeon_suspend_kms(struct drm_device *dev, bool suspend, bool fbcon)
 	}
 
 	rdev = dev->dev_private;
+	if (rdev->shutdown)
+		return 0;
 
 #ifdef notyet
 	if (dev->switch_power_state == DRM_SWITCH_POWER_OFF)
