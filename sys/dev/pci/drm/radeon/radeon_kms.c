@@ -1243,8 +1243,8 @@ void radeon_driver_lastclose_kms(struct drm_device *dev)
 #ifdef __sparc64__
 	fbwscons_setcolormap(&rdev->sf, radeondrm_setcolor);
 #endif
-
-	radeon_fbdev_restore_mode(rdev);
+	if (rdev->mode_info.mode_config_initialized)
+		radeon_fbdev_restore_mode(rdev);
 	vga_switcheroo_process_delayed_switch();
 }
 
