@@ -1323,15 +1323,26 @@ static inline long
 schedule_timeout(long timeout)
 {
 	int err;
+	long deadline;
 
 	if (cold) {
 		delay((timeout * 1000000) / hz);
-		return -ETIMEDOUT;
+		return 0;
 	}
 
-	err = -msleep(sch_ident, &sch_mtx, sch_priority, "schto", timeout);
+	if (timeout == MAX_SCHEDULE_TIMEOUT) {
+		err = msleep(sch_ident, &sch_mtx, sch_priority, "schto", 0);
+		sch_ident = curproc;
+		return timeout;
+	}
+
+	deadline = ticks + timeout;
+	err = msleep(sch_ident, &sch_mtx, sch_priority, "schto", timeout);
+	timeout = deadline - ticks;
+	if (timeout < 0)
+		timeout = 0;
 	sch_ident = curproc;
-	return err;
+	return timeout;
 }
 
 struct seq_file;
