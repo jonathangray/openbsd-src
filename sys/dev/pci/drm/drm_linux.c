@@ -20,7 +20,7 @@
 #include <dev/pci/ppbreg.h>
 #include <sys/event.h>
 
-struct mutex sch_mtx = MUTEX_INITIALIZER(IPL_TTY);
+struct mutex sch_mtx = MUTEX_INITIALIZER(IPL_SCHED);
 void *sch_ident;
 int sch_priority;
 
