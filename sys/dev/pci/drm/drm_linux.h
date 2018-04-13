@@ -674,9 +674,9 @@ do {						\
 })
 
 static inline void
-wake_up(wait_queue_head_t *wq)
+_wake_up(wait_queue_head_t *wq LOCK_FL_VARS)
 {
-	mtx_enter(&wq->lock);
+	_mtx_enter(&wq->lock LOCK_FL_ARGS);
 	if (wq->_wq != NULL && wq->_wq->func != NULL)
 		wq->_wq->func(wq->_wq, 0, wq->_wq->flags, NULL);
 	else {
@@ -684,7 +684,7 @@ wake_up(wait_queue_head_t *wq)
 		wakeup(wq);
 		mtx_leave(&sch_mtx);
 	}
-	mtx_leave(&wq->lock);
+	_mtx_leave(&wq->lock LOCK_FL_ARGS);
 }
 
 #define wake_up_process(task)			\
@@ -694,7 +694,8 @@ do {						\
 	mtx_leave(&sch_mtx);			\
 } while (0)
 
-#define wake_up_all(wq)			wake_up(wq)
+#define wake_up(wq)			_wake_up(wq LOCK_FILE_LINE)
+#define wake_up_all(wq)			_wake_up(wq LOCK_FILE_LINE)
 
 static inline void
 wake_up_all_locked(wait_queue_head_t *wq)
@@ -708,7 +709,7 @@ wake_up_all_locked(wait_queue_head_t *wq)
 	}
 }
 
-#define wake_up_interruptible(wq)	wake_up(wq)
+#define wake_up_interruptible(wq)	_wake_up(wq LOCK_FILE_LINE)
 #define waitqueue_active(wq)		((wq)->count > 0)
 
 struct completion {
