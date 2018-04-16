@@ -1,3 +1,5 @@
+/* Public domain. */
+
 #ifndef LINUX_RCUPDATE_H
 #define LINUX_RCUPDATE_H
 
