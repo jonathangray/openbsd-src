@@ -603,11 +603,12 @@ __remove_wait_queue(wait_queue_head_t *head, wait_queue_t *old)
 #define __wait_event_intr_timeout(wq, condition, timo, prio)		\
 ({									\
 	long ret = timo;						\
-	mtx_enter(&sch_mtx);						\
 	do {								\
 		int deadline, __error;					\
 									\
 		KASSERT(!cold);						\
+									\
+		mtx_enter(&sch_mtx);					\
 		atomic_inc_int(&(wq).count);				\
 		deadline = ticks + ret;					\
 		__error = msleep(&wq, &sch_mtx, prio, "drmweti", ret);	\
@@ -615,14 +616,16 @@ __remove_wait_queue(wait_queue_head_t *head, wait_queue_t *old)
 		atomic_dec_int(&(wq).count);				\
 		if (__error == ERESTART || __error == EINTR) {		\
 			ret = -ERESTARTSYS;				\
+			mtx_leave(&sch_mtx);				\
 			break;						\
 		}							\
 		if (timo && (ret <= 0 || __error == EWOULDBLOCK)) { 	\
+			mtx_leave(&sch_mtx);				\
 			ret = ((condition)) ? 1 : 0;			\
 			break;						\
  		}							\
+		mtx_leave(&sch_mtx);					\
 	} while (ret > 0 && !(condition));				\
-	mtx_leave(&sch_mtx);						\
 	ret;								\
 })
 
