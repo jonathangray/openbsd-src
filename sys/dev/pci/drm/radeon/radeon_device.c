@@ -1582,7 +1582,7 @@ void radeon_device_fini(struct radeon_device *rdev)
 	rdev->rmmio = NULL;
 #else
 	if (rdev->rio_mem_size > 0)
-		bus_space_unmap(rdev->memt, rdev->rio_mem, rdev->rio_mem_size);
+		bus_space_unmap(rdev->iot, rdev->rio_mem, rdev->rio_mem_size);
 	rdev->rio_mem_size = 0;
 
 	if (rdev->rmmio_size > 0)
