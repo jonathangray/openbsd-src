@@ -33,13 +33,12 @@
 
 #define pr_fmt(fmt) "[TTM] " fmt
 
-#include <dev/pci/drm/drm_linux.h>
-
+#include <dev/pci/drm/drmP.h>
 #include <dev/pci/drm/ttm/ttm_bo_driver.h>
 #include <dev/pci/drm/ttm/ttm_page_alloc.h>
 
 #ifdef TTM_HAS_AGP
-#include <asm/agp.h>
+#include <dev/pci/agpvar.h>
 #endif
 
 #define NUM_PAGES_TO_ALLOC		(PAGE_SIZE/sizeof(struct vm_page *))
@@ -212,16 +211,23 @@ static struct kobj_type ttm_pool_kobj_type = {
 #endif
 };
 
+#ifndef PG_PMAP_WC
+#define PG_PMAP_WC PG_PMAP_UC
+#endif
+
 static struct ttm_pool_manager *_manager;
 
-#ifndef CONFIG_X86
 static int set_pages_array_wb(struct vm_page **pages, int addrinarray)
 {
 #ifdef TTM_HAS_AGP
+#if defined(__amd64__) || defined(__i386__) || defined(__powerpc__)
 	int i;
 
 	for (i = 0; i < addrinarray; i++)
-		unmap_page_from_agp(pages[i]);
+		atomic_clearbits_int(&pages[i]->pg_flags, PG_PMAP_WC);
+#else
+	return -ENOSYS;
+#endif
 #endif
 	return 0;
 }
@@ -229,10 +235,14 @@ static int set_pages_array_wb(struct vm_page **pages, int addrinarray)
 static int set_pages_array_wc(struct vm_page **pages, int addrinarray)
 {
 #ifdef TTM_HAS_AGP
+#if defined(__amd64__) || defined(__i386__) || defined(__powerpc__)
 	int i;
 
 	for (i = 0; i < addrinarray; i++)
-		map_page_into_agp(pages[i]);
+		atomic_setbits_int(&pages[i]->pg_flags, PG_PMAP_WC);
+#else
+	return -ENOSYS;
+#endif
 #endif
 	return 0;
 }
@@ -240,14 +250,17 @@ static int set_pages_array_wc(struct vm_page **pages, int addrinarray)
 static int set_pages_array_uc(struct vm_page **pages, int addrinarray)
 {
 #ifdef TTM_HAS_AGP
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	int i;
 
 	for (i = 0; i < addrinarray; i++)
 		map_page_into_agp(pages[i]);
 #endif
+#endif
 	return 0;
 }
-#endif
 
 /**
  * Select the right pool or requested caching state and ttm flags. */
