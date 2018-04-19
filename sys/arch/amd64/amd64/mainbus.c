@@ -261,6 +261,20 @@ mainbus_attach(struct device *parent, struct device *self, void *aux)
 #endif
 }
 
+void
+mainbus_efifb_reattach(void)
+{
+	union mainbus_attach_args mba;
+	struct device *self = device_mainbus();
+#if NEFIFB > 0
+	if (bios_efiinfo != NULL || efifb_cb_found()) {
+		efifb_cnreattach();
+		mba.mba_eaa.eaa_name = "efifb";
+		config_found(self, &mba, mainbus_print);
+	}
+#endif
+}
+
 int
 mainbus_print(void *aux, const char *pnp)
 {

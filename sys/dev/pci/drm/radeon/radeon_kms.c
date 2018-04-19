@@ -47,6 +47,7 @@ extern int vga_console_attached;
 
 #ifdef __amd64__
 #include "efifb.h"
+#include <machine/biosvar.h>
 #endif
 
 #if NEFIFB > 0
@@ -642,6 +643,8 @@ radeondrm_attach_kms(struct device *parent, struct device *self, void *aux)
 	config_mountroot(self, radeondrm_attachhook);
 }
 
+extern void mainbus_efifb_reattach(void);
+
 int
 radeondrm_forcedetach(struct radeon_device *rdev)
 {
@@ -653,8 +656,19 @@ radeondrm_forcedetach(struct radeon_device *rdev)
 		vga_console_attached = 0;
 #endif
 
-	config_detach(&rdev->self, 0);
-	return pci_probe_device(sc, tag, NULL, NULL);
+	/* reprobe pci device for non efi systems */
+#if NEFIFB > 0
+	if (bios_efiinfo == NULL && !efifb_cb_found()) {
+#endif
+		config_detach(&rdev->self, 0);
+		return pci_probe_device(sc, tag, NULL, NULL);
+#if NEFIFB > 0
+	} else if (rdev->console) {
+		mainbus_efifb_reattach();
+	}
+#endif
+
+	return 0;
 }
 
 void

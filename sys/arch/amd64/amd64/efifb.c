@@ -484,6 +484,12 @@ efifb_cndetach(void)
 	efifb_console.detached = 1;
 }
 
+void
+efifb_cnreattach(void)
+{
+	efifb_console.detached = 0;
+}
+
 int
 efifb_cb_cnattach(void)
 {
