@@ -644,7 +644,7 @@ void ttm_bo_kunmap(struct ttm_bo_kmap_obj *map)
 		vunmap(map->virtual, bo->mem.bus.size);
 		break;
 	case ttm_bo_map_kmap:
-		kunmap(map->page);
+		kunmap(map->virtual);
 		break;
 	case ttm_bo_map_premapped:
 		break;
