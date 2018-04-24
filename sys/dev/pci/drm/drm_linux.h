@@ -1365,7 +1365,7 @@ struct fence {
 	unsigned long flags;
 	unsigned int context;
 	unsigned int seqno;
-	spinlock_t *lock;
+	struct mutex *lock;
 	struct list_head cb_list;
 };
 
@@ -1430,8 +1430,6 @@ fence_put(struct fence *fence)
 static inline int
 fence_signal(struct fence *fence)
 {
-	unsigned long flags;
-
 	if (fence == NULL)
 		return -EINVAL;
 
@@ -1441,12 +1439,12 @@ fence_signal(struct fence *fence)
 	if (test_bit(FENCE_FLAG_ENABLE_SIGNAL_BIT, &fence->flags)) {
 		struct fence_cb *cur, *tmp;
 
-		spin_lock_irqsave(fence->lock, flags);
+		mtx_enter(fence->lock);
 		list_for_each_entry_safe(cur, tmp, &fence->cb_list, node) {
 			list_del_init(&cur->node);
 			cur->func(fence, cur);
 		}
-		spin_unlock_irqrestore(fence->lock, flags);
+		mtx_leave(fence->lock);
 	}
 
 	return 0;
@@ -1506,20 +1504,18 @@ fence_wait(struct fence *fence, bool intr)
 static inline void
 fence_enable_sw_signaling(struct fence *fence)
 {
-	unsigned long flags;
-
 	if (!test_and_set_bit(FENCE_FLAG_ENABLE_SIGNAL_BIT, &fence->flags) &&
 	    !test_bit(FENCE_FLAG_SIGNALED_BIT, &fence->flags)) {
-		spin_lock_irqsave(fence->lock, flags);
+		mtx_enter(fence->lock);
 		if (!fence->ops->enable_signaling(fence))
 			fence_signal_locked(fence);
-		spin_unlock_irqrestore(fence->lock, flags);
+		mtx_leave(fence->lock);
 	}
 }
 
 static inline void
 fence_init(struct fence *fence, const struct fence_ops *ops,
-    spinlock_t *lock, unsigned context, unsigned seqno)
+    struct mutex *lock, unsigned context, unsigned seqno)
 {
 	fence->ops = ops;
 	fence->lock = lock;
@@ -1534,7 +1530,6 @@ static inline int
 fence_add_callback(struct fence *fence, struct fence_cb *cb,
     fence_func_t func)
 {
-	unsigned long flags;
 	int ret = 0;
 	bool was_set;
 
@@ -1546,7 +1541,7 @@ fence_add_callback(struct fence *fence, struct fence_cb *cb,
 		return -ENOENT;
 	}
 
-	spin_lock_irqsave(fence->lock, flags);
+	mtx_enter(fence->lock);
 
 	was_set = test_and_set_bit(FENCE_FLAG_ENABLE_SIGNAL_BIT, &fence->flags);
 
@@ -1564,7 +1559,7 @@ fence_add_callback(struct fence *fence, struct fence_cb *cb,
 		list_add_tail(&cb->node, &fence->cb_list);
 	} else
 		INIT_LIST_HEAD(&cb->node);
-	spin_unlock_irqrestore(fence->lock, flags);
+	mtx_leave(fence->lock);
 
 	return ret;
 }
@@ -1572,16 +1567,15 @@ fence_add_callback(struct fence *fence, struct fence_cb *cb,
 static inline bool
 fence_remove_callback(struct fence *fence, struct fence_cb *cb)
 {
-	unsigned long flags;
 	bool ret;
 
-	spin_lock_irqsave(fence->lock, flags);
+	mtx_enter(fence->lock);
 
 	ret = !list_empty(&cb->node);
 	if (ret)
 		list_del_init(&cb->node);
 
-	spin_unlock_irqrestore(fence->lock, flags);
+	mtx_leave(fence->lock);
 
 	return ret;
 }
