@@ -52,6 +52,7 @@
 #pragma clang diagnostic ignored "-Wtautological-compare"
 #pragma clang diagnostic ignored "-Wunneeded-internal-declaration"
 #pragma clang diagnostic ignored "-Wunused-const-variable"
+#pragma clang diagnostic ignored "-Wincompatible-pointer-types-discards-qualifiers"
 #else
 #pragma GCC diagnostic ignored "-Wformat-zero-length"
 #endif
@@ -387,6 +388,11 @@ struct va_format {
 #define dev_debug(dev, fmt, arg...) 				\
 	    do { } while(0)
 #endif
+
+#define DEFINE_RATELIMIT_STATE(name, interval, burst) \
+	int name __used = 1;
+
+#define __ratelimit(x)	(1)
 
 enum {
 	DUMP_PREFIX_NONE,
@@ -1394,6 +1400,7 @@ struct seq_file;
 
 static inline void
 seq_printf(struct seq_file *m, const char *fmt, ...) {};
+void seq_puts(struct seq_file *m, const char *s) {};
 
 #define preempt_enable()
 #define preempt_disable()
