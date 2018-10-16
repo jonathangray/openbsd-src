@@ -42,7 +42,9 @@
 #include <dev/pci/drm/drm_fourcc.h>
 #include <dev/pci/drm/drm_modeset_lock.h>
 #include <dev/pci/drm/drm_atomic.h>
+#ifdef notyet
 #include <dev/pci/drm/drm_auth.h>
+#endif
 #include <dev/pci/drm/drm_debugfs_crc.h>
 
 #include "drm_crtc_internal.h"

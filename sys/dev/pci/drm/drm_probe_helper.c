@@ -35,7 +35,9 @@
 #endif
 
 #include <dev/pci/drm/drmP.h>
+#ifdef notyet
 #include <dev/pci/drm/drm_client.h>
+#endif
 #include <dev/pci/drm/drm_crtc.h>
 #include <dev/pci/drm/drm_fourcc.h>
 #include <dev/pci/drm/drm_crtc_helper.h>
@@ -563,7 +565,9 @@ void drm_kms_helper_hotplug_event(struct drm_device *dev)
 	if (dev->mode_config.funcs->output_poll_changed)
 		dev->mode_config.funcs->output_poll_changed(dev);
 
+#ifdef notyet
 	drm_client_dev_hotplug(dev);
+#endif
 }
 EXPORT_SYMBOL(drm_kms_helper_hotplug_event);
 

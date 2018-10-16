@@ -30,7 +30,9 @@
 #include <dev/pci/drm/drm_plane_helper.h>
 #include <dev/pci/drm/drm_crtc_helper.h>
 #include <dev/pci/drm/drm_atomic_helper.h>
+#ifdef notyet
 #include <dev/pci/drm/drm_writeback.h>
+#endif
 #ifdef __linux__
 #include <linux/dma-fence.h>
 #endif

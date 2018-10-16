@@ -78,6 +78,7 @@
 #include "drm_mm.h"
 #include "drm_linux_atomic.h"
 #include "drm_print.h"
+#include "drm_prime.h"
 #include "agp.h"
 
 struct fb_cmap;
@@ -287,12 +288,6 @@ struct drm_pending_event {
 	void (*destroy)(struct drm_pending_event *event);
 };
 
-/* initial implementaton using a linked list - todo hashtab */
-struct drm_prime_file_private {
-	struct list_head head;
-	struct rwlock lock;
-};
-
 /** File private data */
 struct drm_file {
 	unsigned always_authenticated :1;
@@ -341,6 +336,12 @@ struct drm_file {
 	struct selinfo rsel;
 	SPLAY_ENTRY(drm_file) link;
 };
+
+static inline void
+drm_dev_put(struct drm_device *dev)
+{
+	printf("%s: STUB\n", __func__);
+}
 
 struct drm_agp_head {
 	struct agp_softc			*agpdev;
@@ -1061,6 +1062,11 @@ int drm_gem_open_ioctl(struct drm_device *dev, void *data,
 void drm_gem_open(struct drm_device *dev, struct drm_file *file_private);
 void drm_gem_release(struct drm_device *dev,struct drm_file *file_private);
 
+static inline void drm_gem_object_get(struct drm_gem_object *obj)
+{
+	kref_get(&obj->refcount);
+}
+
 static __inline void
 drm_gem_object_reference(struct drm_gem_object *obj)
 {
@@ -1086,6 +1092,8 @@ drm_gem_object_unreference_unlocked(struct drm_gem_object *obj)
 		mutex_unlock(&dev->struct_mutex);
 	}
 }
+
+#define drm_gem_object_put_unlocked(x) drm_gem_object_unreference_unlocked(x)
 
 int drm_gem_dumb_destroy(struct drm_file *file,
 			 struct drm_device *dev,
@@ -1134,6 +1142,9 @@ static inline int drm_dev_to_irq(struct drm_device *dev)
 #define DRM_PCIE_SPEED_80 4
 
 int	 drm_pcie_get_speed_cap_mask(struct drm_device *, u32 *);
+
+/* helper for handling conditionals in various for_each macros */
+#define for_each_if(condition) if (!(condition)) {} else
 
 #endif /* __KERNEL__ */
 #endif /* _DRM_P_H_ */

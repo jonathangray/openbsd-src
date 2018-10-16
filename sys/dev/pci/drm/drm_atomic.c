@@ -30,7 +30,9 @@
 #include <dev/pci/drm/drm_atomic.h>
 #include <dev/pci/drm/drm_mode.h>
 #include <dev/pci/drm/drm_print.h>
+#ifdef notyet
 #include <dev/pci/drm/drm_writeback.h>
+#endif
 #include <dev/pci/drm/drm_plane_helper.h>
 
 #include <dev/pci/drm/drm_crtc_internal.h>
