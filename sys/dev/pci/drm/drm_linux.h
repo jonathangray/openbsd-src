@@ -31,6 +31,7 @@
 #include <sys/time.h>
 #include <sys/timeout.h>
 #include <sys/tree.h>
+#include <sys/proc.h>
 
 #include <uvm/uvm_extern.h>
 
@@ -360,6 +361,9 @@ struct va_format {
 	    __func__ , ## arg)
 #define dev_err(dev, fmt, arg...)				\
 	printf("drm:pid%d:%s *ERROR* " fmt, curproc->p_p->ps_pid,	\
+	    __func__ , ## arg)
+#define dev_printk(level, dev, fmt, arg...)				\
+	printf("drm:pid%d:%s *PRINTK* " fmt, curproc->p_p->ps_pid,	\
 	    __func__ , ## arg)
 
 #ifdef DRMDEBUG
