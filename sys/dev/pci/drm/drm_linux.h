@@ -315,6 +315,11 @@ struct module;
 
 #define TASK_COMM_LEN	(MAXCOMLEN + 1)
 
+struct va_format {
+	const char *fmt;
+	va_list *va;
+};
+
 #ifndef pr_fmt
 #define pr_fmt(fmt) fmt
 #endif
