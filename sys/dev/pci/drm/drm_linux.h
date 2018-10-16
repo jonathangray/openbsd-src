@@ -104,6 +104,17 @@ typedef off_t loff_t;
 
 #define barrier()		__asm __volatile("" : : : "memory");
 
+#define ACCESS_ONCE(x)		(*(volatile __typeof(x) *)&(x))
+
+#define READ_ONCE(x) ({		\
+	__typeof(x) __tmp = ({	\
+		barrier();	\
+		ACCESS_ONCE(x);	\
+	});			\
+	barrier();		\
+	__tmp;			\
+})
+
 #define uninitialized_var(x) x
 
 #if BYTE_ORDER == BIG_ENDIAN
@@ -257,8 +268,6 @@ __hash_empty(struct hlist_head *table, u_int size)
 #define hash_for_each_safe(table, i, tmp, obj, member) 	\
 	for (i = 0; i < nitems(table); i++)		\
 	       hlist_for_each_entry_safe(obj, tmp, &table[i], member)
-
-#define ACCESS_ONCE(x)		(x)
 
 #define EXPORT_SYMBOL(x)
 
@@ -1160,6 +1169,22 @@ kasprintf(int flags, const char *fmt, ...)
 	return buf;
 }
 
+static inline char *
+kvasprintf(int flags, const char *fmt, va_list ap)
+{
+	char *buf;
+	size_t len;
+
+	len = vsnprintf(NULL, 0, fmt, ap);
+
+	buf = kmalloc(len, flags);
+	if (buf) {
+		vsnprintf(buf, len, fmt, ap);
+	}
+
+	return buf;
+}
+
 static inline void *
 vmalloc(unsigned long size)
 {
@@ -2022,6 +2047,8 @@ void vga_put(struct pci_dev *, int);
 #define vga_switcheroo_unregister_client(a)
 #define vga_switcheroo_process_delayed_switch()
 #define vga_switcheroo_fini_domain_pm_ops(x)
+#define vga_switcheroo_lock_ddc(x)
+#define vga_switcheroo_unlock_ddc(x)
 
 struct i2c_algorithm;
 

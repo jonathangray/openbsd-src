@@ -302,6 +302,8 @@ struct drm_file {
 	unsigned universal_planes:1;
 	/* true if client understands atomic properties */
 	unsigned atomic:1;
+	unsigned aspect_ratio_allowed:1;
+	unsigned writeback_connectors:1;
 
 	drm_magic_t magic;
 	int minor;
@@ -1103,6 +1105,12 @@ static __inline__ int drm_core_check_feature(struct drm_device *dev,
 					     int feature)
 {
 	return ((dev->driver->driver_features & feature) ? 1 : 0);
+}
+
+static inline bool drm_drv_uses_atomic_modeset(struct drm_device *dev)
+{
+	return drm_core_check_feature(dev, DRIVER_ATOMIC) ||
+		(dev->mode_config.funcs && dev->mode_config.funcs->atomic_commit != NULL);
 }
 
 static inline bool drm_is_render_client(const struct drm_file *file_priv)

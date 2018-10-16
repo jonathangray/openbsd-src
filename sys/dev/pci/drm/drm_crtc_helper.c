@@ -39,7 +39,7 @@
 #include <dev/pci/drm/drm_atomic.h>
 #include <dev/pci/drm/drm_crtc.h>
 #include <dev/pci/drm/drm_encoder.h>
-#include <dev/pci/drm/drm_fourcc.h>
+#include <dev/pci/drm/drm_fourcc_internal.h>
 #include <dev/pci/drm/drm_crtc_helper.h>
 #include <dev/pci/drm/drm_fb_helper.h>
 #include <dev/pci/drm/drm_plane_helper.h>

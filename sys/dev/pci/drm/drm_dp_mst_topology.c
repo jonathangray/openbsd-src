@@ -29,8 +29,8 @@
 #include <linux/seq_file.h>
 #include <linux/i2c.h>
 #endif
-#include <dev/pci/drm/drm_dp_mst_helper.h>
 #include <dev/pci/drm/drmP.h>
+#include <dev/pci/drm/drm_dp_mst_helper.h>
 
 #include <dev/pci/drm/drm_fixed.h>
 #include <dev/pci/drm/drm_atomic.h>
