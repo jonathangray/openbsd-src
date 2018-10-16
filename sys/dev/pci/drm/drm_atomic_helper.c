@@ -1180,6 +1180,8 @@ EXPORT_SYMBOL(drm_atomic_helper_commit_modeset_disables);
 static void drm_atomic_helper_commit_writebacks(struct drm_device *dev,
 						struct drm_atomic_state *old_state)
 {
+	STUB();
+#if 0
 	struct drm_connector *connector;
 	struct drm_connector_state *new_conn_state;
 	int i;
@@ -1196,6 +1198,7 @@ static void drm_atomic_helper_commit_writebacks(struct drm_device *dev,
 			funcs->atomic_commit(connector, new_conn_state);
 		}
 	}
+#endif
 }
 
 /**
@@ -1417,6 +1420,8 @@ EXPORT_SYMBOL(drm_atomic_helper_wait_for_vblanks);
 void drm_atomic_helper_wait_for_flip_done(struct drm_device *dev,
 					  struct drm_atomic_state *old_state)
 {
+	STUB();
+#if 0
 	struct drm_crtc_state *new_crtc_state;
 	struct drm_crtc *crtc;
 	int i;
@@ -1433,6 +1438,7 @@ void drm_atomic_helper_wait_for_flip_done(struct drm_device *dev,
 			DRM_ERROR("[CRTC:%d:%s] flip_done timed out\n",
 				  crtc->base.id, crtc->name);
 	}
+#endif
 }
 EXPORT_SYMBOL(drm_atomic_helper_wait_for_flip_done);
 
@@ -1500,6 +1506,7 @@ void drm_atomic_helper_commit_tail_rpm(struct drm_atomic_state *old_state)
 }
 EXPORT_SYMBOL(drm_atomic_helper_commit_tail_rpm);
 
+#ifdef notyet
 static void commit_tail(struct drm_atomic_state *old_state)
 {
 	struct drm_device *dev = old_state->dev;
@@ -1520,7 +1527,9 @@ static void commit_tail(struct drm_atomic_state *old_state)
 
 	drm_atomic_state_put(old_state);
 }
+#endif
 
+#ifdef notyet
 static void commit_work(struct work_struct *work)
 {
 	struct drm_atomic_state *state = container_of(work,
@@ -1528,6 +1537,7 @@ static void commit_work(struct work_struct *work)
 						      commit_work);
 	commit_tail(state);
 }
+#endif
 
 /**
  * drm_atomic_helper_async_check - check if state can be commited asynchronously
@@ -1545,6 +1555,9 @@ static void commit_work(struct work_struct *work)
 int drm_atomic_helper_async_check(struct drm_device *dev,
 				   struct drm_atomic_state *state)
 {
+	STUB();
+	return -ENOSYS;
+#if 0
 	struct drm_crtc *crtc;
 	struct drm_crtc_state *crtc_state;
 	struct drm_plane *plane = NULL;
@@ -1586,6 +1599,7 @@ int drm_atomic_helper_async_check(struct drm_device *dev,
 		return -EBUSY;
 
 	return funcs->atomic_async_check(plane, new_plane_state);
+#endif
 }
 EXPORT_SYMBOL(drm_atomic_helper_async_check);
 
@@ -1648,6 +1662,9 @@ int drm_atomic_helper_commit(struct drm_device *dev,
 			     struct drm_atomic_state *state,
 			     bool nonblock)
 {
+	STUB();
+	return -ENOSYS;
+#if 0
 	int ret;
 
 	if (state->async_update) {
@@ -1718,6 +1735,7 @@ int drm_atomic_helper_commit(struct drm_device *dev,
 err:
 	drm_atomic_helper_cleanup_planes(dev, state);
 	return ret;
+#endif
 }
 EXPORT_SYMBOL(drm_atomic_helper_commit);
 
@@ -1762,8 +1780,12 @@ EXPORT_SYMBOL(drm_atomic_helper_commit);
  * drm_atomic_helper_setup_commit() for a starting point.
  */
 
+#ifdef notyet
 static int stall_checks(struct drm_crtc *crtc, bool nonblock)
 {
+	STUB();
+	return -ENOSYS;
+#if 0
 	struct drm_crtc_commit *commit, *stall_commit = NULL;
 	bool completed = true;
 	int i;
@@ -1804,6 +1826,7 @@ static int stall_checks(struct drm_crtc *crtc, bool nonblock)
 	drm_crtc_commit_put(stall_commit);
 
 	return ret < 0 ? ret : 0;
+#endif
 }
 
 static void release_crtc_commit(struct completion *completion)
@@ -1846,6 +1869,7 @@ crtc_or_fake_commit(struct drm_atomic_state *state, struct drm_crtc *crtc)
 
 	return state->fake_commit;
 }
+#endif
 
 /**
  * drm_atomic_helper_setup_commit - setup possibly nonblocking commit
@@ -1893,6 +1917,9 @@ crtc_or_fake_commit(struct drm_atomic_state *state, struct drm_crtc *crtc)
 int drm_atomic_helper_setup_commit(struct drm_atomic_state *state,
 				   bool nonblock)
 {
+	STUB();
+	return -ENOSYS;
+#if 0
 	struct drm_crtc *crtc;
 	struct drm_crtc_state *old_crtc_state, *new_crtc_state;
 	struct drm_connector *conn;
@@ -1976,6 +2003,7 @@ int drm_atomic_helper_setup_commit(struct drm_atomic_state *state,
 	}
 
 	return 0;
+#endif
 }
 EXPORT_SYMBOL(drm_atomic_helper_setup_commit);
 
@@ -1993,6 +2021,8 @@ EXPORT_SYMBOL(drm_atomic_helper_setup_commit);
  */
 void drm_atomic_helper_wait_for_dependencies(struct drm_atomic_state *old_state)
 {
+	STUB();
+#if 0
 	struct drm_crtc *crtc;
 	struct drm_crtc_state *old_crtc_state;
 	struct drm_plane *plane;
@@ -2065,6 +2095,7 @@ void drm_atomic_helper_wait_for_dependencies(struct drm_atomic_state *old_state)
 			DRM_ERROR("[PLANE:%d:%s] flip_done timed out\n",
 				  plane->base.id, plane->name);
 	}
+#endif
 }
 EXPORT_SYMBOL(drm_atomic_helper_wait_for_dependencies);
 
@@ -2169,6 +2200,8 @@ EXPORT_SYMBOL(drm_atomic_helper_commit_hw_done);
  */
 void drm_atomic_helper_commit_cleanup_done(struct drm_atomic_state *old_state)
 {
+	STUB();
+#if 0
 	struct drm_crtc *crtc;
 	struct drm_crtc_state *old_crtc_state;
 	struct drm_crtc_commit *commit;
@@ -2189,6 +2222,7 @@ void drm_atomic_helper_commit_cleanup_done(struct drm_atomic_state *old_state)
 
 	if (old_state->fake_commit)
 		complete_all(&old_state->fake_commit->cleanup_done);
+#endif
 }
 EXPORT_SYMBOL(drm_atomic_helper_commit_cleanup_done);
 
@@ -2561,6 +2595,9 @@ EXPORT_SYMBOL(drm_atomic_helper_cleanup_planes);
 int drm_atomic_helper_swap_state(struct drm_atomic_state *state,
 				  bool stall)
 {
+	STUB();
+	return -ENOSYS;
+#if 0
 	int i, ret;
 	struct drm_connector *connector;
 	struct drm_connector_state *old_conn_state, *new_conn_state;
@@ -2666,6 +2703,7 @@ int drm_atomic_helper_swap_state(struct drm_atomic_state *state,
 	}
 
 	return 0;
+#endif
 }
 EXPORT_SYMBOL(drm_atomic_helper_swap_state);
 
@@ -3732,7 +3770,9 @@ __drm_atomic_helper_connector_duplicate_state(struct drm_connector *connector,
 	state->commit = NULL;
 
 	/* Don't copy over a writeback job, they are used only once */
+#ifdef notyet
 	state->writeback_job = NULL;
+#endif
 }
 EXPORT_SYMBOL(__drm_atomic_helper_connector_duplicate_state);
 
