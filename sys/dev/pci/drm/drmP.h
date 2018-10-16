@@ -85,7 +85,6 @@ struct fb_copyarea;
 struct fb_image;
 
 #define drm_debug	0
-#define DRM_UT_KMS	0
 
 /***********************************************************************/
 /** \name DRM template customization defaults */
@@ -213,75 +212,6 @@ drm_can_sleep(void)
 	if (ret > 0)							\
 		ret = 0;						\
 } while (0)
-
-#define DRM_ERROR(fmt, arg...) \
-	printf("error: [" DRM_NAME ":pid%d:%s] *ERROR* " fmt,		\
-	    curproc->p_p->ps_pid, __func__ , ## arg)
-
-
-#ifdef DRMDEBUG
-#define DRM_INFO(fmt, arg...)  printf("drm: " fmt, ## arg)
-#define DRM_INFO_ONCE(fmt, arg...)  printf("drm: " fmt, ## arg)
-#else
-#define DRM_INFO(fmt, arg...) do { } while(/* CONSTCOND */ 0)
-#define DRM_INFO_ONCE(fmt, arg...) do { } while(/* CONSTCOND */ 0)
-#endif
-
-#ifdef DRMDEBUG
-#undef DRM_DEBUG
-#define DRM_DEBUG(fmt, arg...) do {					\
-	if (drm_debug_flag)						\
-		printf("[" DRM_NAME ":pid%d:%s] " fmt,			\
-		    curproc->p_p->ps_pid, __func__ , ## arg);		\
-} while (0)
-#else
-#define DRM_DEBUG(fmt, arg...) do { } while(/* CONSTCOND */ 0)
-#endif
-
-#ifdef DRMDEBUG
-#undef DRM_DEBUG_KMS
-#define DRM_DEBUG_KMS(fmt, arg...) do {					\
-	if (drm_debug_flag)						\
-		printf("[" DRM_NAME ":pid%d:%s] " fmt,			\
-		    curproc->p_p->ps_pid, __func__ , ## arg);		\
-} while (0)
-#else
-#define DRM_DEBUG_KMS(fmt, arg...) do { } while(/* CONSTCOND */ 0)
-#endif
-
-#ifdef DRMDEBUG
-#undef DRM_LOG_KMS
-#define DRM_LOG_KMS(fmt, arg...) do {					\
-	if (drm_debug_flag)						\
-		printf(fmt, ## arg);					\
-} while (0)
-#else
-#define DRM_LOG_KMS(fmt, arg...) do { } while(/* CONSTCOND */ 0)
-#endif
-
-#ifdef DRMDEBUG
-#undef DRM_DEBUG_DRIVER
-#define DRM_DEBUG_DRIVER(fmt, arg...) do {					\
-	if (drm_debug_flag)						\
-		printf("[" DRM_NAME ":pid%d:%s] " fmt,			\
-		    curproc->p_p->ps_pid, __func__ , ## arg);		\
-} while (0)
-#else
-#define DRM_DEBUG_DRIVER(fmt, arg...) do { } while(/* CONSTCOND */ 0)
-#endif
-
-#ifdef DRMDEBUG
-#undef DRM_DEBUG_ATOMIC
-#define DRM_DEBUG_ATOMIC(fmt, arg...) do {					\
-	if (drm_debug_flag)						\
-		printf("[" DRM_NAME ":pid%d:%s] " fmt,			\
-		    curproc->p_p->ps_pid, __func__ , ## arg);		\
-} while (0)
-#else
-#define DRM_DEBUG_ATOMIC(fmt, arg...) do { } while(0)
-#endif
-
-#define DRM_DEBUG_VBL(fmt, arg...) do {} while(0)
 
 struct drm_pcidev {
 	uint16_t vendor;
