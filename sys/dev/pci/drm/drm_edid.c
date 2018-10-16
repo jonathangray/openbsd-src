@@ -1539,11 +1539,11 @@ static void connector_bad_edid(struct drm_connector *connector,
 		char prefix[20];
 
 		if (drm_edid_is_zero(block, EDID_LENGTH))
-			sprintf(prefix, "\t[%02x] ZERO ", i);
+			snprintf(prefix, sizeof(prefix), "\t[%02x] ZERO ", i);
 		else if (!drm_edid_block_valid(block, i, false, NULL))
-			sprintf(prefix, "\t[%02x] BAD  ", i);
+			snprintf(prefix, sizeof(prefix), "\t[%02x] BAD  ", i);
 		else
-			sprintf(prefix, "\t[%02x] GOOD ", i);
+			snprintf(prefix, sizeof(prefix), "\t[%02x] GOOD ", i);
 
 		print_hex_dump(KERN_WARNING,
 			       prefix, DUMP_PREFIX_NONE, 16, 1,
@@ -1612,7 +1612,7 @@ struct edid *drm_do_get_edid(struct drm_connector *connector,
 	if (valid_extensions == 0)
 		return (struct edid *)edid;
 
-	new = kmalloc(edid, (valid_extensions + 1) * EDID_LENGTH, GFP_KERNEL);
+	new = kmalloc((valid_extensions + 1) * EDID_LENGTH, GFP_KERNEL);
 	if (!new)
 		goto out;
 	memcpy(new, edid, EDID_LENGTH);
@@ -1727,7 +1727,9 @@ EXPORT_SYMBOL(drm_get_edid);
 struct edid *drm_get_edid_switcheroo(struct drm_connector *connector,
 				     struct i2c_adapter *adapter)
 {
+#ifdef __linux__
 	struct pci_dev *pdev = connector->dev->pdev;
+#endif
 	struct edid *edid;
 
 	vga_switcheroo_lock_ddc(pdev);
@@ -2912,6 +2914,7 @@ cea_mode_alternate_timings(u8 vic, struct drm_display_mode *mode)
 	 * get the other variants by simply increasing the
 	 * vertical front porch length.
 	 */
+#ifdef notyet
 	BUILD_BUG_ON(edid_cea_modes[8].vtotal != 262 ||
 		     edid_cea_modes[9].vtotal != 262 ||
 		     edid_cea_modes[12].vtotal != 262 ||
@@ -2920,6 +2923,7 @@ cea_mode_alternate_timings(u8 vic, struct drm_display_mode *mode)
 		     edid_cea_modes[24].vtotal != 312 ||
 		     edid_cea_modes[27].vtotal != 312 ||
 		     edid_cea_modes[28].vtotal != 312);
+#endif
 
 	if (((vic == 8 || vic == 9 ||
 	      vic == 12 || vic == 13) && mode->vtotal < 263) ||

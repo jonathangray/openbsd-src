@@ -462,7 +462,9 @@ struct drm_connector_state {
 	 * See also: drm_writeback_queue_job() and
 	 * drm_writeback_signal_completion()
 	 */
+#ifdef notyet
 	struct drm_writeback_job *writeback_job;
+#endif
 };
 
 /**
