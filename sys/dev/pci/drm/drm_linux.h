@@ -2612,6 +2612,8 @@ void backlight_schedule_update_status(struct backlight_device *);
 #define MIPI_DSI_DCS_SHORT_WRITE		0x05
 #define MIPI_DSI_DCS_SHORT_WRITE_PARAM		0x15
 #define MIPI_DSI_DCS_READ			0x06
+#define MIPI_DSI_DCS_COMPRESSION_MODE		0x07
+#define MIPI_DSI_PPS_LONG_WRITE			0x0a
 #define MIPI_DSI_SET_MAXIMUM_RETURN_PACKET_SIZE	0x37
 #define MIPI_DSI_END_OF_TRANSMISSION		0x08
 #define MIPI_DSI_NULL_PACKET			0x09
