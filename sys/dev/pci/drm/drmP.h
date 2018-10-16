@@ -74,7 +74,8 @@
 #include "drm_linux_list.h"
 #include "drm.h"
 #include "drm_vma_manager.h"
-#include <dev/pci/drm/drm_crtc.h>
+#include "drm_crtc.h"
+#include "drm_fourcc_internal.h"
 #include "drm_mm.h"
 #include "drm_linux_atomic.h"
 #include "drm_print.h"
@@ -826,6 +827,8 @@ struct drm_device {
 	struct idr object_name_idr;
 	struct drm_vma_offset_manager *vma_offset_manager;
 	/*@} */
+
+	struct drm_fb_helper *fb_helper;
 };
 
 struct drm_attach_args {
