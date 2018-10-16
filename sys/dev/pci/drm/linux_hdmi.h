@@ -1,4 +1,3 @@
-/*	$OpenBSD: linux_hdmi.h,v 1.2 2017/07/01 16:14:10 kettenis Exp $	*/
 /*
  * Copyright (C) 2012 Avionic Design GmbH
  *
@@ -35,6 +34,7 @@ enum hdmi_infoframe_type {
 };
 
 #define HDMI_IEEE_OUI 0x000c03
+#define HDMI_FORUM_IEEE_OUI 0xc45dd8
 #define HDMI_INFOFRAME_HEADER_SIZE  4
 #define HDMI_AVI_INFOFRAME_SIZE    13
 #define HDMI_SPD_INFOFRAME_SIZE    25
@@ -78,6 +78,8 @@ enum hdmi_picture_aspect {
 	HDMI_PICTURE_ASPECT_NONE,
 	HDMI_PICTURE_ASPECT_4_3,
 	HDMI_PICTURE_ASPECT_16_9,
+	HDMI_PICTURE_ASPECT_64_27,
+	HDMI_PICTURE_ASPECT_256_135,
 	HDMI_PICTURE_ASPECT_RESERVED,
 };
 
