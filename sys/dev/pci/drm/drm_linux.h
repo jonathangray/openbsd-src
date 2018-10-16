@@ -1360,9 +1360,9 @@ seq_printf(struct seq_file *m, const char *fmt, ...) {};
 
 #define FENCE_TRACE(fence, fmt, args...) do {} while(0)
 
-struct fence {
+struct dma_fence {
 	struct kref refcount;
-	const struct fence_ops *ops;
+	const struct dma_fence_ops *ops;
 	unsigned long flags;
 	unsigned int context;
 	unsigned int seqno;
@@ -1370,41 +1370,41 @@ struct fence {
 	struct list_head cb_list;
 };
 
-enum fence_flag_bits {
+enum dma_fence_flag_bits {
 	FENCE_FLAG_SIGNALED_BIT,
 	FENCE_FLAG_ENABLE_SIGNAL_BIT,
 	FENCE_FLAG_USER_BITS,
 };
 
-struct fence_ops {
-	const char * (*get_driver_name)(struct fence *);
-	const char * (*get_timeline_name)(struct fence *);
-	bool (*enable_signaling)(struct fence *);
-	bool (*signaled)(struct fence *);
-	long (*wait)(struct fence *, bool, long);
-	void (*release)(struct fence *);
+struct dma_fence_ops {
+	const char * (*get_driver_name)(struct dma_fence *);
+	const char * (*get_timeline_name)(struct dma_fence *);
+	bool (*enable_signaling)(struct dma_fence *);
+	bool (*signaled)(struct dma_fence *);
+	long (*wait)(struct dma_fence *, bool, long);
+	void (*release)(struct dma_fence *);
 };
 
-struct fence_cb;
-typedef void (*fence_func_t)(struct fence *fence, struct fence_cb *cb);
+struct dma_fence_cb;
+typedef void (*dma_fence_func_t)(struct dma_fence *fence, struct dma_fence_cb *cb);
 
-struct fence_cb {
+struct dma_fence_cb {
 	struct list_head node;
-	fence_func_t func;
+	dma_fence_func_t func;
 };
 
-unsigned int fence_context_alloc(unsigned int);
+unsigned int dma_fence_context_alloc(unsigned int);
 
-static inline struct fence *
-fence_get(struct fence *fence)
+static inline struct dma_fence *
+dma_fence_get(struct dma_fence *fence)
 {
 	if (fence)
 		kref_get(&fence->refcount);
 	return fence;
 }
 
-static inline struct fence *
-fence_get_rcu(struct fence *fence)
+static inline struct dma_fence *
+dma_fence_get_rcu(struct dma_fence *fence)
 {
 	if (fence)
 		kref_get(&fence->refcount);
@@ -1412,9 +1412,9 @@ fence_get_rcu(struct fence *fence)
 }
 
 static inline void
-fence_release(struct kref *ref)
+dma_fence_release(struct kref *ref)
 {
-	struct fence *fence = container_of(ref, struct fence, refcount);
+	struct dma_fence *fence = container_of(ref, struct dma_fence, refcount);
 	if (fence->ops && fence->ops->release)
 		fence->ops->release(fence);
 	else
@@ -1422,14 +1422,14 @@ fence_release(struct kref *ref)
 }
 
 static inline void
-fence_put(struct fence *fence)
+dma_fence_put(struct dma_fence *fence)
 {
 	if (fence)
-		kref_put(&fence->refcount, fence_release);
+		kref_put(&fence->refcount, dma_fence_release);
 }
 
 static inline int
-fence_signal(struct fence *fence)
+dma_fence_signal(struct dma_fence *fence)
 {
 	if (fence == NULL)
 		return -EINVAL;
@@ -1438,7 +1438,7 @@ fence_signal(struct fence *fence)
 		return -EINVAL;
 
 	if (test_bit(FENCE_FLAG_ENABLE_SIGNAL_BIT, &fence->flags)) {
-		struct fence_cb *cur, *tmp;
+		struct dma_fence_cb *cur, *tmp;
 
 		mtx_enter(fence->lock);
 		list_for_each_entry_safe(cur, tmp, &fence->cb_list, node) {
@@ -1452,9 +1452,9 @@ fence_signal(struct fence *fence)
 }
 
 static inline int
-fence_signal_locked(struct fence *fence)
+dma_fence_signal_locked(struct dma_fence *fence)
 {
-	struct fence_cb *cur, *tmp;
+	struct dma_fence_cb *cur, *tmp;
 
 	if (fence == NULL)
 		return -EINVAL;
@@ -1471,13 +1471,13 @@ fence_signal_locked(struct fence *fence)
 }
 
 static inline bool
-fence_is_signaled(struct fence *fence)
+dma_fence_is_signaled(struct dma_fence *fence)
 {
 	if (test_bit(FENCE_FLAG_SIGNALED_BIT, &fence->flags))
 		return true;
 
 	if (fence->ops->signaled && fence->ops->signaled(fence)) {
-		fence_signal(fence);
+		dma_fence_signal(fence);
 		return true;
 	}
 
@@ -1485,37 +1485,37 @@ fence_is_signaled(struct fence *fence)
 }
 
 static inline long
-fence_wait_timeout(struct fence *fence, bool intr, signed long timeout)
+dma_fence_wait_timeout(struct dma_fence *fence, bool intr, signed long timeout)
 {
 	if (timeout < 0)
 		return -EINVAL;
 
 	if (timeout == 0)
-		return fence_is_signaled(fence);
+		return dma_fence_is_signaled(fence);
 
 	return fence->ops->wait(fence, intr, timeout);
 }
 
 static inline long
-fence_wait(struct fence *fence, bool intr)
+dma_fence_wait(struct dma_fence *fence, bool intr)
 {
-	return fence_wait_timeout(fence, intr, MAX_SCHEDULE_TIMEOUT);
+	return dma_fence_wait_timeout(fence, intr, MAX_SCHEDULE_TIMEOUT);
 }
 
 static inline void
-fence_enable_sw_signaling(struct fence *fence)
+dma_fence_enable_sw_signaling(struct dma_fence *fence)
 {
 	if (!test_and_set_bit(FENCE_FLAG_ENABLE_SIGNAL_BIT, &fence->flags) &&
 	    !test_bit(FENCE_FLAG_SIGNALED_BIT, &fence->flags)) {
 		mtx_enter(fence->lock);
 		if (!fence->ops->enable_signaling(fence))
-			fence_signal_locked(fence);
+			dma_fence_signal_locked(fence);
 		mtx_leave(fence->lock);
 	}
 }
 
 static inline void
-fence_init(struct fence *fence, const struct fence_ops *ops,
+dma_fence_init(struct dma_fence *fence, const struct dma_fence_ops *ops,
     struct mutex *lock, unsigned context, unsigned seqno)
 {
 	fence->ops = ops;
@@ -1528,8 +1528,8 @@ fence_init(struct fence *fence, const struct fence_ops *ops,
 }
 
 static inline int
-fence_add_callback(struct fence *fence, struct fence_cb *cb,
-    fence_func_t func)
+dma_fence_add_callback(struct dma_fence *fence, struct dma_fence_cb *cb,
+    dma_fence_func_t func)
 {
 	int ret = 0;
 	bool was_set;
@@ -1550,7 +1550,7 @@ fence_add_callback(struct fence *fence, struct fence_cb *cb,
 		ret = -ENOENT;
 	else if (!was_set) {
 		if (!fence->ops->enable_signaling(fence)) {
-			fence_signal_locked(fence);
+			dma_fence_signal_locked(fence);
 			ret = -ENOENT;
 		}
 	}
@@ -1566,7 +1566,7 @@ fence_add_callback(struct fence *fence, struct fence_cb *cb,
 }
 
 static inline bool
-fence_remove_callback(struct fence *fence, struct fence_cb *cb)
+dma_fence_remove_callback(struct dma_fence *fence, struct dma_fence_cb *cb)
 {
 	bool ret;
 
