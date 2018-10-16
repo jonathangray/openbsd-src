@@ -59,13 +59,13 @@
 #include "drm.h"
 #include "drm_sarea.h"
 #include "drm_internal.h"
+#include "drm_crtc_internal.h"
 
 #ifdef DRMDEBUG
 int drm_debug_flag = 1;
 #endif
 
 int	 drm_firstopen(struct drm_device *);
-int	 drm_lastclose(struct drm_device *);
 void	 drm_attach(struct device *, struct device *, void *);
 int	 drm_probe(struct device *, void *, void *);
 int	 drm_detach(struct device *, int);
