@@ -101,6 +101,8 @@ typedef off_t loff_t;
 #define __user
 #endif
 
+#define CONFIG_DRM_FBDEV_OVERALLOC 0
+
 #define __printf(x, y)
 
 #define barrier()		__asm __volatile("" : : : "memory");
@@ -184,6 +186,7 @@ hweight64(uint64_t x)
 #define upper_32_bits(_val)	((u32)(((_val) >> 16) >> 16))
 #define DMA_BIT_MASK(n) (((n) == 64) ? ~0ULL : (1ULL<<(n)) -1)
 #define BIT(x)			(1UL << x)
+#define BIT_ULL(x)		(1ULL << x)
 #define BITS_TO_LONGS(x)	howmany((x), 8 * sizeof(long))
 
 #define DECLARE_BITMAP(x, y)	unsigned long x[BITS_TO_LONGS(y)];
@@ -296,6 +299,7 @@ struct module;
 #define MODULE_FIRMWARE(x)
 #define MODULE_DEVICE_TABLE(x, y)
 #define MODULE_PARM_DESC(parm, desc)
+#define module_param(name, type, perm)
 #define module_param_named(name, value, type, perm)
 #define module_param_named_unsafe(name, value, type, perm)
 #define module_param_unsafe(name, type, perm)
@@ -2528,6 +2532,7 @@ struct fb_var_screeninfo {
 
 struct fb_info {
 	struct fb_var_screeninfo var;
+	char *screen_buffer;
 	void *par;
 };
 
@@ -2542,6 +2547,8 @@ struct fb_info {
 
 #define framebuffer_alloc(flags, device) \
 	kzalloc(sizeof(struct fb_info), GFP_KERNEL)
+
+#define fb_set_suspend(x, y)
 
 struct address_space;
 #define unmap_mapping_range(mapping, holebegin, holeend, even_cows)

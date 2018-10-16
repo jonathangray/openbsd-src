@@ -328,6 +328,7 @@ static s32 __user *get_out_fence_for_crtc(struct drm_atomic_state *state,
 	return fence_ptr;
 }
 
+#ifdef notyet
 static int set_out_fence_for_connector(struct drm_atomic_state *state,
 					struct drm_connector *connector,
 					s32 __user *fence_ptr)
@@ -344,6 +345,7 @@ static int set_out_fence_for_connector(struct drm_atomic_state *state,
 
 	return 0;
 }
+#endif
 
 static s32 __user *get_out_fence_for_connector(struct drm_atomic_state *state,
 					       struct drm_connector *connector)
@@ -542,6 +544,9 @@ int drm_atomic_crtc_set_property(struct drm_crtc *crtc,
 		struct drm_crtc_state *state, struct drm_property *property,
 		uint64_t val)
 {
+	STUB();
+	return -ENOSYS;
+#if 0
 	struct drm_device *dev = crtc->dev;
 	struct drm_mode_config *config = &dev->mode_config;
 	bool replaced = false;
@@ -599,6 +604,7 @@ int drm_atomic_crtc_set_property(struct drm_crtc *crtc,
 	}
 
 	return 0;
+#endif
 }
 EXPORT_SYMBOL(drm_atomic_crtc_set_property);
 
@@ -743,6 +749,9 @@ static void drm_atomic_crtc_print_state(struct drm_printer *p,
 static int drm_atomic_connector_check(struct drm_connector *connector,
 		struct drm_connector_state *state)
 {
+	STUB();
+	return -ENOSYS;
+#if 0
 	struct drm_crtc_state *crtc_state;
 	struct drm_writeback_job *writeback_job = state->writeback_job;
 
@@ -773,6 +782,7 @@ static int drm_atomic_connector_check(struct drm_connector *connector,
 	}
 
 	return 0;
+#endif
 }
 
 /**
@@ -857,6 +867,9 @@ static int drm_atomic_plane_set_property(struct drm_plane *plane,
 		struct drm_plane_state *state, struct drm_property *property,
 		uint64_t val)
 {
+	STUB();
+	return -ENOSYS;
+#if 0
 	struct drm_device *dev = plane->dev;
 	struct drm_mode_config *config = &dev->mode_config;
 
@@ -921,6 +934,7 @@ static int drm_atomic_plane_set_property(struct drm_plane *plane,
 	}
 
 	return 0;
+#endif
 }
 
 /**
@@ -1439,9 +1453,11 @@ static void drm_atomic_connector_print_state(struct drm_printer *p,
 	drm_printf(p, "connector[%u]: %s\n", connector->base.id, connector->name);
 	drm_printf(p, "\tcrtc=%s\n", state->crtc ? state->crtc->name : "(null)");
 
+#ifdef notyet
 	if (connector->connector_type == DRM_MODE_CONNECTOR_WRITEBACK)
 		if (state->writeback_job && state->writeback_job->fb)
 			drm_printf(p, "\tfb=%d\n", state->writeback_job->fb->base.id);
+#endif
 
 	if (connector->funcs->atomic_print_state)
 		connector->funcs->atomic_print_state(p, state);
@@ -1748,6 +1764,7 @@ EXPORT_SYMBOL(drm_atomic_set_crtc_for_connector);
  *
  * Returns: The writeback job for the given connector state
  */
+#ifdef notyet
 static struct drm_writeback_job *
 drm_atomic_get_writeback_job(struct drm_connector_state *conn_state)
 {
@@ -1800,6 +1817,7 @@ int drm_atomic_set_writeback_fb_for_connector(
 	return 0;
 }
 EXPORT_SYMBOL(drm_atomic_set_writeback_fb_for_connector);
+#endif
 
 /**
  * drm_atomic_add_affected_connectors - add connectors for crtc
