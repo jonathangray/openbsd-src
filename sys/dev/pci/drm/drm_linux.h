@@ -1422,9 +1422,9 @@ struct dma_fence {
 };
 
 enum dma_fence_flag_bits {
-	FENCE_FLAG_SIGNALED_BIT,
-	FENCE_FLAG_ENABLE_SIGNAL_BIT,
-	FENCE_FLAG_USER_BITS,
+	DMA_FENCE_FLAG_SIGNALED_BIT,
+	DMA_FENCE_FLAG_ENABLE_SIGNAL_BIT,
+	DMA_FENCE_FLAG_USER_BITS,
 };
 
 struct dma_fence_ops {
@@ -1485,10 +1485,10 @@ dma_fence_signal(struct dma_fence *fence)
 	if (fence == NULL)
 		return -EINVAL;
 
-	if (test_and_set_bit(FENCE_FLAG_SIGNALED_BIT, &fence->flags))
+	if (test_and_set_bit(DMA_FENCE_FLAG_SIGNALED_BIT, &fence->flags))
 		return -EINVAL;
 
-	if (test_bit(FENCE_FLAG_ENABLE_SIGNAL_BIT, &fence->flags)) {
+	if (test_bit(DMA_FENCE_FLAG_ENABLE_SIGNAL_BIT, &fence->flags)) {
 		struct dma_fence_cb *cur, *tmp;
 
 		mtx_enter(fence->lock);
@@ -1510,7 +1510,7 @@ dma_fence_signal_locked(struct dma_fence *fence)
 	if (fence == NULL)
 		return -EINVAL;
 
-	if (test_and_set_bit(FENCE_FLAG_SIGNALED_BIT, &fence->flags))
+	if (test_and_set_bit(DMA_FENCE_FLAG_SIGNALED_BIT, &fence->flags))
 		return -EINVAL;
 
 	list_for_each_entry_safe(cur, tmp, &fence->cb_list, node) {
@@ -1524,7 +1524,7 @@ dma_fence_signal_locked(struct dma_fence *fence)
 static inline bool
 dma_fence_is_signaled(struct dma_fence *fence)
 {
-	if (test_bit(FENCE_FLAG_SIGNALED_BIT, &fence->flags))
+	if (test_bit(DMA_FENCE_FLAG_SIGNALED_BIT, &fence->flags))
 		return true;
 
 	if (fence->ops->signaled && fence->ops->signaled(fence)) {
@@ -1556,8 +1556,8 @@ dma_fence_wait(struct dma_fence *fence, bool intr)
 static inline void
 dma_fence_enable_sw_signaling(struct dma_fence *fence)
 {
-	if (!test_and_set_bit(FENCE_FLAG_ENABLE_SIGNAL_BIT, &fence->flags) &&
-	    !test_bit(FENCE_FLAG_SIGNALED_BIT, &fence->flags)) {
+	if (!test_and_set_bit(DMA_FENCE_FLAG_ENABLE_SIGNAL_BIT, &fence->flags) &&
+	    !test_bit(DMA_FENCE_FLAG_SIGNALED_BIT, &fence->flags)) {
 		mtx_enter(fence->lock);
 		if (!fence->ops->enable_signaling(fence))
 			dma_fence_signal_locked(fence);
@@ -1588,16 +1588,16 @@ dma_fence_add_callback(struct dma_fence *fence, struct dma_fence_cb *cb,
 	if (WARN_ON(!fence || !func))
 		return -EINVAL;
 
-	if (test_bit(FENCE_FLAG_SIGNALED_BIT, &fence->flags)) {
+	if (test_bit(DMA_FENCE_FLAG_SIGNALED_BIT, &fence->flags)) {
 		INIT_LIST_HEAD(&cb->node);
 		return -ENOENT;
 	}
 
 	mtx_enter(fence->lock);
 
-	was_set = test_and_set_bit(FENCE_FLAG_ENABLE_SIGNAL_BIT, &fence->flags);
+	was_set = test_and_set_bit(DMA_FENCE_FLAG_ENABLE_SIGNAL_BIT, &fence->flags);
 
-	if (test_bit(FENCE_FLAG_SIGNALED_BIT, &fence->flags))
+	if (test_bit(DMA_FENCE_FLAG_SIGNALED_BIT, &fence->flags))
 		ret = -ENOENT;
 	else if (!was_set) {
 		if (!fence->ops->enable_signaling(fence)) {
