@@ -77,6 +77,7 @@
 #include <dev/pci/drm/drm_crtc.h>
 #include "drm_mm.h"
 #include "drm_linux_atomic.h"
+#include "drm_print.h"
 #include "agp.h"
 
 struct fb_cmap;
