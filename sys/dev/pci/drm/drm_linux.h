@@ -274,6 +274,7 @@ __hash_empty(struct hlist_head *table, u_int size)
 	       hlist_for_each_entry_safe(obj, tmp, &table[i], member)
 
 #define EXPORT_SYMBOL(x)
+#define EXPORT_SYMBOL_GPL(x)
 
 #define IS_ENABLED(x) x - 0
 
