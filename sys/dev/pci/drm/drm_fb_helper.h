@@ -32,9 +32,13 @@
 
 struct drm_fb_helper;
 
+#ifdef notyet
 #include <dev/pci/drm/drm_client.h>
+#endif
 #include <dev/pci/drm/drm_crtc.h>
+#ifdef notyet
 #include <dev/pci/drm/drm_device.h>
+#endif
 #ifdef __linux__
 #include <linux/kgdb.h>
 #endif
@@ -162,7 +166,9 @@ struct drm_fb_helper {
 	 *
 	 * DRM client used by the generic fbdev emulation.
 	 */
+#ifdef notyet
 	struct drm_client_dev client;
+#endif
 
 	/**
 	 * @buffer:
@@ -251,11 +257,13 @@ struct drm_fb_helper {
 	int preferred_bpp;
 };
 
+#ifdef notyet
 static inline struct drm_fb_helper *
 drm_fb_helper_from_client(struct drm_client_dev *client)
 {
 	return container_of(client, struct drm_fb_helper, client);
 }
+#endif
 
 /**
  * define DRM_FB_HELPER_DEFAULT_OPS - helper define for drm drivers
@@ -606,6 +614,7 @@ drm_fbdev_generic_setup(struct drm_device *dev, unsigned int preferred_bpp)
 
 #endif
 
+#ifdef __linux__
 static inline int
 drm_fb_helper_remove_conflicting_framebuffers(struct apertures_struct *a,
 					      const char *name, bool primary)
@@ -616,5 +625,6 @@ drm_fb_helper_remove_conflicting_framebuffers(struct apertures_struct *a,
 	return 0;
 #endif
 }
+#endif /* __linux__ */
 
 #endif

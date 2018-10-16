@@ -1077,7 +1077,9 @@ struct drm_connector {
 	 * connector from any context, in conjunction with
 	 * &drm_mode_config.connector_free_work.
 	 */
+#ifdef notyet
 	struct llist_node free_node;
+#endif
 };
 
 #define obj_to_connector(x) container_of(x, struct drm_connector, base)

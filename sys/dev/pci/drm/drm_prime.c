@@ -288,8 +288,6 @@ void drm_prime_remove_buf_handle_locked(struct drm_prime_file_private *prime_fpr
 	}
 }
 
-#endif
-
 /**
  * drm_gem_map_dma_buf - map_dma_buf implementation for GEM
  * @attach: attachment whose scatterlist is to be returned
@@ -387,6 +385,8 @@ struct dma_buf *drm_gem_dmabuf_export(struct drm_device *dev,
 	return dma_buf;
 }
 EXPORT_SYMBOL(drm_gem_dmabuf_export);
+
+#endif
 
 /**
  * drm_gem_dmabuf_release - dma_buf release implementation for GEM
@@ -629,7 +629,7 @@ int drm_gem_prime_handle_to_fd(struct drm_device *dev,
 	struct dma_buf *dmabuf;
 
 	mutex_lock(&file_priv->prime.lock);
-	obj = drm_gem_object_lookup(file_priv, handle);
+	obj = drm_gem_object_lookup(dev, file_priv, handle);
 	if (!obj)  {
 		ret = -ENOENT;
 		goto out_unlock;

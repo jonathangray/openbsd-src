@@ -29,10 +29,10 @@
 
 struct videomode;
 
-#include <linux/hdmi.h>
+#include <dev/pci/drm/linux_hdmi.h>
 
-#include <drm/drm_mode_object.h>
-#include <drm/drm_connector.h>
+#include <dev/pci/drm/drm_mode_object.h>
+#include <dev/pci/drm/drm_connector.h>
 
 struct videomode;
 
