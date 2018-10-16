@@ -590,11 +590,11 @@ _spin_unlock_irqrestore(struct mutex *mtxp, __unused unsigned long flags
 #define free_irq(irq, dev)
 #define synchronize_irq(x)
 
-typedef struct wait_queue wait_queue_t;
+typedef struct wait_queue wait_queue_entry_t;
 struct wait_queue {
 	unsigned int flags;
 	void *private;
-	int (*func)(wait_queue_t *, unsigned, int, void *);
+	int (*func)(wait_queue_entry_t *, unsigned, int, void *);
 };
 
 extern struct mutex sch_mtx;
@@ -619,13 +619,13 @@ init_waitqueue_head(wait_queue_head_t *wq)
 }
 
 static inline void
-__add_wait_queue(wait_queue_head_t *head, wait_queue_t *new)
+__add_wait_queue(wait_queue_head_t *head, wait_queue_entry_t *new)
 {
 	head->_wq = new;
 }
 
 static inline void
-__remove_wait_queue(wait_queue_head_t *head, wait_queue_t *old)
+__remove_wait_queue(wait_queue_head_t *head, wait_queue_entry_t *old)
 {
 	head->_wq = NULL;
 }
@@ -1457,6 +1457,14 @@ dma_fence_get(struct dma_fence *fence)
 
 static inline struct dma_fence *
 dma_fence_get_rcu(struct dma_fence *fence)
+{
+	if (fence)
+		kref_get(&fence->refcount);
+	return fence;
+}
+
+static inline struct dma_fence *
+dma_fence_get_rcu_safe(struct dma_fence *fence)
 {
 	if (fence)
 		kref_get(&fence->refcount);
