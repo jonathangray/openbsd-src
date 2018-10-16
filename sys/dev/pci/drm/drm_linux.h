@@ -1692,6 +1692,12 @@ div64_s64(int64_t x, int64_t y)
 	return (x / y);
 }
 
+static inline uint64_t
+mul_u32_u32(uint32_t x, uint32_t y)
+{
+	return (uint64_t)x * y;
+}
+
 #define mult_frac(x, n, d) (((x) * (n)) / (d))
 #define order_base_2(x) drm_order(x)
 
@@ -2165,6 +2171,8 @@ void	 vunmap(void *, size_t);
 #define roundup2(x, y) (((x)+((y)-1))&(~((y)-1))) /* if y is powers of two */
 #define DIV_ROUND_UP(x, y)	(((x) + ((y) - 1)) / (y))
 #define DIV_ROUND_UP_ULL(x, y)	DIV_ROUND_UP(x, y)
+#define DIV_ROUND_DOWN(x, y)	((x) / (y))
+#define DIV_ROUND_DOWN_ULL(x, y)	DIV_ROUND_DOWN(x, y)
 #define DIV_ROUND_CLOSEST(x, y)	(((x) + ((y) / 2)) / (y))
 #define DIV_ROUND_CLOSEST_ULL(x, y)	DIV_ROUND_CLOSEST(x, y)
 
