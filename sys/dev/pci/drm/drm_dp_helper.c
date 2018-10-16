@@ -1001,6 +1001,7 @@ static const struct i2c_algorithm drm_dp_i2c_algo = {
 	.master_xfer = drm_dp_i2c_xfer,
 };
 
+#ifdef __linux__
 static struct drm_dp_aux *i2c_to_aux(struct i2c_adapter *i2c)
 {
 	return container_of(i2c, struct drm_dp_aux, ddc);
@@ -1026,6 +1027,7 @@ static const struct i2c_lock_operations drm_dp_i2c_lock_ops = {
 	.trylock_bus = trylock_bus,
 	.unlock_bus = unlock_bus,
 };
+#endif
 
 static int drm_dp_aux_get_crc(struct drm_dp_aux *aux, u8 *crc)
 {
@@ -1118,7 +1120,9 @@ void drm_dp_aux_init(struct drm_dp_aux *aux)
 	aux->ddc.algo_data = aux;
 	aux->ddc.retries = 3;
 
+#ifdef __linux__
 	aux->ddc.lock_ops = &drm_dp_i2c_lock_ops;
+#endif
 }
 EXPORT_SYMBOL(drm_dp_aux_init);
 
