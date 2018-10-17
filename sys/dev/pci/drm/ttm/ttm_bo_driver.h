@@ -1015,7 +1015,7 @@ extern void ttm_bo_free_old_node(struct ttm_buffer_object *bo);
  */
 
 extern int ttm_bo_move_accel_cleanup(struct ttm_buffer_object *bo,
-				     struct fence *fence,
+				     struct dma_fence *fence,
 				     bool evict, bool no_wait_gpu,
 				     struct ttm_mem_reg *new_mem);
 /**
