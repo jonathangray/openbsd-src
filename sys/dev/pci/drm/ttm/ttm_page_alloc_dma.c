@@ -48,9 +48,9 @@
 #include <linux/atomic.h>
 #include <linux/device.h>
 #include <linux/kthread.h>
-#include <drm/ttm/ttm_bo_driver.h>
-#include <drm/ttm/ttm_page_alloc.h>
-#include <drm/ttm/ttm_set_memory.h>
+#include <dev/pci/drm/ttm/ttm_bo_driver.h>
+#include <dev/pci/drm/ttm/ttm_page_alloc.h>
+#include <dev/pci/drm/ttm/ttm_set_memory.h>
 
 #define NUM_PAGES_TO_ALLOC		(PAGE_SIZE/sizeof(struct page *))
 #define SMALL_ALLOCATION		4
