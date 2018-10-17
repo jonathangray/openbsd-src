@@ -30,9 +30,7 @@
 #include <linux/poll.h>
 #endif
 
-#ifdef notyet
 #include <dev/pci/drm/drm_file.h>
-#endif
 #include <dev/pci/drm/drm_modes.h>
 #include <dev/pci/drm/drm.h>
 
@@ -106,12 +104,14 @@ struct drm_vblank_crtc {
 	 * drm_vblank_offdelay module option and the setting of the
 	 * &drm_device.max_vblank_count value.
 	 */
-	struct timer_list disable_timer;
+	struct timeout disable_timer;
 
 	/**
 	 * @seqlock: Protect vblank count and time.
 	 */
+#ifdef notyet
 	seqlock_t seqlock;		/* protects vblank count and time */
+#endif
 
 	/**
 	 * @count: Current software vblank counter.
@@ -210,4 +210,6 @@ bool drm_calc_vbltimestamp_from_scanoutpos(struct drm_device *dev,
 void drm_calc_timestamping_constants(struct drm_crtc *crtc,
 				     const struct drm_display_mode *mode);
 wait_queue_head_t *drm_crtc_vblank_waitqueue(struct drm_crtc *crtc);
+
+void drm_vblank_put(struct drm_device *dev, unsigned int pipe);
 #endif

@@ -172,9 +172,9 @@ int drm_framebuffer_check_src_coords(uint32_t src_x, uint32_t src_y,
 				     const struct drm_framebuffer *fb);
 void drm_fb_release(struct drm_file *file_priv);
 
-int drm_mode_addfb(struct drm_device *dev, void *data,
+int drm_mode_addfb(struct drm_device *dev, struct drm_mode_fb_cmd *or,
 		   struct drm_file *file_priv);
-int drm_mode_rmfb(struct drm_device *dev, void *data,
+int drm_mode_rmfb(struct drm_device *dev, u32 fb_id,
 		  struct drm_file *file_priv);
 
 

@@ -110,10 +110,9 @@ int drm_framebuffer_check_src_coords(uint32_t src_x, uint32_t src_y,
  * Returns:
  * Zero on success, negative errno on failure.
  */
-int drm_mode_addfb(struct drm_device *dev, void *data,
+int drm_mode_addfb(struct drm_device *dev, struct drm_mode_fb_cmd *or,
 		   struct drm_file *file_priv)
 {
-	struct drm_mode_fb_cmd *or = data;
 	struct drm_mode_fb_cmd2 r = {};
 	int ret;
 
@@ -388,12 +387,11 @@ static void drm_mode_rmfb_work_fn(struct work_struct *w)
  * Returns:
  * Zero on success, negative errno on failure.
  */
-int drm_mode_rmfb(struct drm_device *dev, void *data,
+int drm_mode_rmfb(struct drm_device *dev, u32 fb_id,
 		  struct drm_file *file_priv)
 {
 	struct drm_framebuffer *fb = NULL;
 	struct drm_framebuffer *fbl = NULL;
-	uint32_t *fb_id = data;
 	int found = 0;
 
 	if (!drm_core_check_feature(dev, DRIVER_MODESET))

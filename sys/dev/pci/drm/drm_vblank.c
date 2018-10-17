@@ -24,8 +24,8 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <dev/pci/drm/drm_vblank.h>
 #include <dev/pci/drm/drmP.h>
+#include <dev/pci/drm/drm_vblank.h>
 #ifdef __linux__
 #include <linux/export.h>
 #endif
@@ -95,6 +95,8 @@ static void store_vblank(struct drm_device *dev, unsigned int pipe,
 			 u32 vblank_count_inc,
 			 ktime_t t_vblank, u32 last)
 {
+	STUB();
+#if 0
 	struct drm_vblank_crtc *vblank = &dev->vblank[pipe];
 
 	assert_spin_locked(&dev->vblank_time_lock);
@@ -105,6 +107,7 @@ static void store_vblank(struct drm_device *dev, unsigned int pipe,
 	vblank->time = t_vblank;
 	vblank->count += vblank_count_inc;
 	write_sequnlock(&vblank->seqlock);
+#endif
 }
 
 /*
@@ -168,7 +171,7 @@ static void drm_reset_vblank_timestamp(struct drm_device *dev, unsigned int pipe
 	 * interrupt and assign 0 for now, to mark the vblanktimestamp as invalid.
 	 */
 	if (!rc)
-		t_vblank = 0;
+		t_vblank = (struct timeval) {0, 0};
 
 	/*
 	 * +1 to make sure user will never see the same
@@ -271,7 +274,7 @@ static void drm_update_vblank_count(struct drm_device *dev, unsigned int pipe,
 	 * for now, to mark the vblanktimestamp as invalid.
 	 */
 	if (!rc && !in_vblank_irq)
-		t_vblank = 0;
+		t_vblank = (struct timeval) {0, 0};
 
 	store_vblank(dev, pipe, diff, t_vblank, cur_vblank);
 }
@@ -377,9 +380,9 @@ out:
 	spin_unlock_irqrestore(&dev->vblank_time_lock, irqflags);
 }
 
-static void vblank_disable_fn(struct timer_list *t)
+static void vblank_disable_fn(unsigned long arg)
 {
-	struct drm_vblank_crtc *vblank = from_timer(vblank, t, disable_timer);
+	struct drm_vblank_crtc *vblank = (void *)arg;
 	struct drm_device *dev = vblank->dev;
 	unsigned int pipe = vblank->pipe;
 	unsigned long irqflags;
@@ -428,11 +431,14 @@ void drm_vblank_cleanup(struct drm_device *dev)
  */
 int drm_vblank_init(struct drm_device *dev, unsigned int num_crtcs)
 {
+	STUB();
+	return -ENOSYS;
+#if 0
 	int ret = -ENOMEM;
 	unsigned int i;
 
-	spin_lock_init(&dev->vbl_lock);
-	spin_lock_init(&dev->vblank_time_lock);
+	mtx_init(&dev->vbl_lock, IPL_TTY);
+	mtx_init(&dev->vblank_time_lock, IPL_TTY);
 
 	dev->num_crtcs = num_crtcs;
 
@@ -446,7 +452,8 @@ int drm_vblank_init(struct drm_device *dev, unsigned int num_crtcs)
 		vblank->dev = dev;
 		vblank->pipe = i;
 		init_waitqueue_head(&vblank->queue);
-		timer_setup(&vblank->disable_timer, vblank_disable_fn, 0);
+		setup_timer(&vblank->disable_timer, vblank_disable_fn,
+		    (unsigned long)vblank);
 		seqlock_init(&vblank->seqlock);
 	}
 
@@ -470,6 +477,7 @@ int drm_vblank_init(struct drm_device *dev, unsigned int num_crtcs)
 err:
 	dev->num_crtcs = 0;
 	return ret;
+#endif
 }
 EXPORT_SYMBOL(drm_vblank_init);
 
@@ -584,6 +592,9 @@ bool drm_calc_vbltimestamp_from_scanoutpos(struct drm_device *dev,
 					   ktime_t *vblank_time,
 					   bool in_vblank_irq)
 {
+	STUB();
+	return false;
+#if 0
 	struct timespec64 ts_etime, ts_vblank_time;
 	ktime_t stime, etime;
 	bool vbl_status;
@@ -691,6 +702,7 @@ bool drm_calc_vbltimestamp_from_scanoutpos(struct drm_device *dev,
 		      duration_ns / 1000, i);
 
 	return true;
+#endif
 }
 EXPORT_SYMBOL(drm_calc_vbltimestamp_from_scanoutpos);
 
@@ -774,12 +786,15 @@ EXPORT_SYMBOL(drm_crtc_vblank_count);
 static u64 drm_vblank_count_and_time(struct drm_device *dev, unsigned int pipe,
 				     ktime_t *vblanktime)
 {
+	STUB();
+	return 0;
+#if 0
 	struct drm_vblank_crtc *vblank = &dev->vblank[pipe];
 	u64 vblank_count;
 	unsigned int seq;
 
 	if (WARN_ON(pipe >= dev->num_crtcs)) {
-		*vblanktime = 0;
+		*vblanktime = (struct timeval) {0, 0};
 		return 0;
 	}
 
@@ -790,6 +805,7 @@ static u64 drm_vblank_count_and_time(struct drm_device *dev, unsigned int pipe,
 	} while (read_seqretry(&vblank->seqlock, seq));
 
 	return vblank_count;
+#endif
 }
 
 /**
@@ -815,6 +831,8 @@ static void send_vblank_event(struct drm_device *dev,
 		struct drm_pending_vblank_event *e,
 		u64 seq, ktime_t now)
 {
+	STUB();
+#if 0
 	struct timespec64 tv;
 
 	switch (e->event.base.type) {
@@ -838,6 +856,7 @@ static void send_vblank_event(struct drm_device *dev,
 	}
 	trace_drm_vblank_event_delivered(e->base.file_priv, e->pipe, seq);
 	drm_send_event_locked(dev, &e->base);
+#endif
 }
 
 /**
@@ -1018,7 +1037,7 @@ int drm_crtc_vblank_get(struct drm_crtc *crtc)
 }
 EXPORT_SYMBOL(drm_crtc_vblank_get);
 
-static void drm_vblank_put(struct drm_device *dev, unsigned int pipe)
+void drm_vblank_put(struct drm_device *dev, unsigned int pipe)
 {
 	struct drm_vblank_crtc *vblank = &dev->vblank[pipe];
 
@@ -1033,7 +1052,7 @@ static void drm_vblank_put(struct drm_device *dev, unsigned int pipe)
 		if (drm_vblank_offdelay == 0)
 			return;
 		else if (drm_vblank_offdelay < 0)
-			vblank_disable_fn(&vblank->disable_timer);
+			vblank_disable_fn((unsigned long)vblank);
 		else if (!dev->vblank_disable_immediate)
 			mod_timer(&vblank->disable_timer,
 				  jiffies + ((drm_vblank_offdelay * HZ)/1000));
@@ -1509,6 +1528,8 @@ static u64 widen_32_to_64(u32 narrow, u64 near)
 static void drm_wait_vblank_reply(struct drm_device *dev, unsigned int pipe,
 				  struct drm_wait_vblank_reply *reply)
 {
+	STUB();
+#ifdef notyet
 	ktime_t now;
 	struct timespec64 ts;
 
@@ -1521,11 +1542,15 @@ static void drm_wait_vblank_reply(struct drm_device *dev, unsigned int pipe,
 	ts = ktime_to_timespec64(now);
 	reply->tval_sec = (u32)ts.tv_sec;
 	reply->tval_usec = ts.tv_nsec / 1000;
+#endif
 }
 
 int drm_wait_vblank_ioctl(struct drm_device *dev, void *data,
 			  struct drm_file *file_priv)
 {
+	STUB();
+	return -ENOSYS;
+#if 0
 	struct drm_crtc *crtc;
 	struct drm_vblank_crtc *vblank;
 	union drm_wait_vblank *vblwait = data;
@@ -1643,6 +1668,7 @@ int drm_wait_vblank_ioctl(struct drm_device *dev, void *data,
 done:
 	drm_vblank_put(dev, pipe);
 	return ret;
+#endif
 }
 
 static void drm_handle_vblank_events(struct drm_device *dev, unsigned int pipe)
@@ -1729,7 +1755,7 @@ bool drm_handle_vblank(struct drm_device *dev, unsigned int pipe)
 	spin_unlock_irqrestore(&dev->event_lock, irqflags);
 
 	if (disable_irq)
-		vblank_disable_fn(&vblank->disable_timer);
+		vblank_disable_fn((unsigned long)vblank);
 
 	return true;
 }
