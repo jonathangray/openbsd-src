@@ -30,9 +30,9 @@
 #ifndef _TTM_BO_DRIVER_H_
 #define _TTM_BO_DRIVER_H_
 
-#include <drm/drm_mm.h>
-#include <drm/drm_global.h>
-#include <drm/drm_vma_manager.h>
+#include <dev/pci/drm/drm_mm.h>
+#include <dev/pci/drm/drm_global.h>
+#include <dev/pci/drm/drm_vma_manager.h>
 #include <linux/workqueue.h>
 #include <linux/fs.h>
 #include <linux/spinlock.h>

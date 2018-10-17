@@ -35,10 +35,10 @@
 #include <linux/pagemap.h>
 #include <linux/shmem_fs.h>
 #include <linux/file.h>
-#include <drm/drm_cache.h>
-#include <drm/ttm/ttm_bo_driver.h>
-#include <drm/ttm/ttm_page_alloc.h>
-#include <drm/ttm/ttm_set_memory.h>
+#include <dev/pci/drm/drm_cache.h>
+#include <dev/pci/drm/ttm/ttm_bo_driver.h>
+#include <dev/pci/drm/ttm/ttm_page_alloc.h>
+#include <dev/pci/drm/ttm/ttm_set_memory.h>
 
 /**
  * Allocates a ttm structure for the given BO.
