@@ -1785,7 +1785,12 @@ copy_from_user(void *to, const void *from, unsigned len)
 }
 
 #define get_user(x, ptr)	-copyin(ptr, &(x), sizeof(x))
-#define put_user(x, ptr)	-copyout(&(x), ptr, sizeof(x))
+#define put_user(x, ptr) ({				\
+	__typeof((x)) __tmp = (x);			\
+	-copyout(&(__tmp), ptr, sizeof(__tmp));		\
+})
+
+#define u64_to_user_ptr(x)	((void *)(uintptr_t)(x))
 
 #define console_lock()
 #define console_trylock()	1

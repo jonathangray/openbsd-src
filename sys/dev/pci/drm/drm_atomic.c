@@ -311,6 +311,7 @@ drm_atomic_get_crtc_state(struct drm_atomic_state *state,
 }
 EXPORT_SYMBOL(drm_atomic_get_crtc_state);
 
+#ifdef notyet
 static void set_out_fence_for_crtc(struct drm_atomic_state *state,
 				   struct drm_crtc *crtc, s32 __user *fence_ptr)
 {
@@ -327,8 +328,8 @@ static s32 __user *get_out_fence_for_crtc(struct drm_atomic_state *state,
 
 	return fence_ptr;
 }
+#endif
 
-#ifdef notyet
 static int set_out_fence_for_connector(struct drm_atomic_state *state,
 					struct drm_connector *connector,
 					s32 __user *fence_ptr)
@@ -345,8 +346,8 @@ static int set_out_fence_for_connector(struct drm_atomic_state *state,
 
 	return 0;
 }
-#endif
 
+#ifdef notyet
 static s32 __user *get_out_fence_for_connector(struct drm_atomic_state *state,
 					       struct drm_connector *connector)
 {
@@ -358,6 +359,7 @@ static s32 __user *get_out_fence_for_connector(struct drm_atomic_state *state,
 
 	return fence_ptr;
 }
+#endif
 
 /**
  * drm_atomic_set_mode_for_crtc - set mode for CRTC
@@ -492,6 +494,7 @@ EXPORT_SYMBOL(drm_atomic_set_mode_prop_for_crtc);
  * RETURNS:
  * Zero on success, error code on failure.
  */
+#ifdef notyet
 static int
 drm_atomic_replace_property_blob_from_id(struct drm_device *dev,
 					 struct drm_property_blob **blob,
@@ -524,6 +527,7 @@ drm_atomic_replace_property_blob_from_id(struct drm_device *dev,
 
 	return 0;
 }
+#endif
 
 /**
  * drm_atomic_crtc_set_property - set property on CRTC
@@ -1236,9 +1240,12 @@ drm_atomic_get_private_obj_state(struct drm_atomic_state *state,
 
 	num_objs = state->num_private_objs + 1;
 	size = sizeof(*state->private_objs) * num_objs;
-	arr = krealloc(state->private_objs, size, GFP_KERNEL);
+	arr = kmalloc(size, GFP_KERNEL);
 	if (!arr)
 		return ERR_PTR(-ENOMEM);
+	memcpy(arr, state->private_objs,
+	    sizeof(*state->private_objs) * state->num_private_objs);
+	kfree(state->private_objs);
 
 	state->private_objs = arr;
 	index = state->num_private_objs;
@@ -1298,9 +1305,12 @@ drm_atomic_get_connector_state(struct drm_atomic_state *state,
 		struct __drm_connnectors_state *c;
 		int alloc = max(index + 1, config->num_connector);
 
-		c = krealloc(state->connectors, alloc * sizeof(*state->connectors), GFP_KERNEL);
+		c = kmalloc(alloc * sizeof(*state->connectors), GFP_KERNEL);
 		if (!c)
 			return ERR_PTR(-ENOMEM);
+		memcpy(c, state->connectors,
+		    config->num_connector * sizeof(*state->connectors));
+		kfree(state->connectors);
 
 		state->connectors = c;
 		memset(&state->connectors[state->num_connector], 0,
@@ -2166,6 +2176,7 @@ int drm_atomic_debugfs_init(struct drm_minor *minor)
  * The big monster ioctl
  */
 
+#if 0
 static struct drm_pending_vblank_event *create_vblank_event(
 		struct drm_crtc *crtc, uint64_t user_data)
 {
@@ -2182,6 +2193,7 @@ static struct drm_pending_vblank_event *create_vblank_event(
 
 	return e;
 }
+#endif
 
 int drm_atomic_connector_commit_dpms(struct drm_atomic_state *state,
 				     struct drm_connector *connector,
@@ -2354,6 +2366,7 @@ struct drm_out_fence_state {
 	int fd;
 };
 
+#ifdef notyet
 static int setup_out_fence(struct drm_out_fence_state *fence_state,
 			   struct dma_fence *fence)
 {
@@ -2370,6 +2383,7 @@ static int setup_out_fence(struct drm_out_fence_state *fence_state,
 
 	return 0;
 }
+#endif
 
 static int prepare_signaling(struct drm_device *dev,
 				  struct drm_atomic_state *state,
@@ -2378,6 +2392,9 @@ static int prepare_signaling(struct drm_device *dev,
 				  struct drm_out_fence_state **fence_state,
 				  unsigned int *num_fences)
 {
+	STUB();
+	return -ENOSYS;
+#if 0
 	struct drm_crtc *crtc;
 	struct drm_crtc_state *crtc_state;
 	struct drm_connector *conn;
@@ -2421,10 +2438,13 @@ static int prepare_signaling(struct drm_device *dev,
 			struct dma_fence *fence;
 			struct drm_out_fence_state *f;
 
-			f = krealloc(*fence_state, sizeof(**fence_state) *
+			f = kmalloc(sizeof(**fence_state) *
 				     (*num_fences + 1), GFP_KERNEL);
 			if (!f)
 				return -ENOMEM;
+			memcpy(f, *fence_state,
+			    sizeof(**fence_state) * (*num_fences));
+			kfree(*fence_state);
 
 			memset(&f[*num_fences], 0, sizeof(*f));
 
@@ -2462,10 +2482,13 @@ static int prepare_signaling(struct drm_device *dev,
 		if (!job)
 			return -ENOMEM;
 
-		f = krealloc(*fence_state, sizeof(**fence_state) *
+		f = kmalloc(sizeof(**fence_state) *
 			     (*num_fences + 1), GFP_KERNEL);
 		if (!f)
 			return -ENOMEM;
+		memcpy(f, *fence_state,
+		    sizeof(**fence_state) * (*num_fences));
+		kfree(*fence_state);
 
 		memset(&f[*num_fences], 0, sizeof(*f));
 
@@ -2494,6 +2517,7 @@ static int prepare_signaling(struct drm_device *dev,
 		return -EINVAL;
 
 	return 0;
+#endif
 }
 
 static void complete_signaling(struct drm_device *dev,
@@ -2502,6 +2526,8 @@ static void complete_signaling(struct drm_device *dev,
 			       unsigned int num_fences,
 			       bool install_fds)
 {
+	STUB();
+#if 0
 	struct drm_crtc *crtc;
 	struct drm_crtc_state *crtc_state;
 	int i;
@@ -2544,6 +2570,7 @@ static void complete_signaling(struct drm_device *dev,
 	}
 
 	kfree(fence_state);
+#endif
 }
 
 int drm_mode_atomic_ioctl(struct drm_device *dev,
