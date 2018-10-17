@@ -1124,6 +1124,11 @@ ktime_us_delta(struct timeval a, struct timeval b)
 #define __GFP_NOWARN	0
 #define __GFP_NORETRY	0
 #define __GFP_ZERO	M_ZERO
+#define __GFP_RETRY_MAYFAIL	0
+#define __GFP_MOVABLE		0
+#define __GFP_COMP		0
+#define GFP_TRANSHUGE_LIGHT	0
+#define __GFP_KSWAPD_RECLAIM	0
 
 #define PageHighMem(x)	0
 
