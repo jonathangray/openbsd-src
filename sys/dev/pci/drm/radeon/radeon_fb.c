@@ -59,8 +59,10 @@ radeonfb_open(struct fb_info *info, int user)
 static int
 radeonfb_release(struct fb_info *info, int user)
 {
+#ifdef notyet
 	struct radeon_fbdev *rfbdev = info->par;
 	struct radeon_device *rdev = rfbdev->rdev;
+#endif
 
 	pm_runtime_mark_last_busy(rdev->ddev->dev);
 	pm_runtime_put_autosuspend(rdev->ddev->dev);
@@ -296,12 +298,12 @@ static int radeonfb_create(struct drm_fb_helper *helper,
 	DRM_INFO("   pitch is %d\n", fb->pitches[0]);
 
 	ri->ri_bits = rbo->kptr;
-	ri->ri_depth = fb->bits_per_pixel;
+	ri->ri_depth = fb->format->cpp[0] * 8;
 	ri->ri_stride = fb->pitches[0];
 	ri->ri_width = sizes->fb_width;
 	ri->ri_height = sizes->fb_height;
 
-	switch (fb->pixel_format) {
+	switch (fb->format->format) {
 	case DRM_FORMAT_XRGB8888:
 		ri->ri_rnum = 8;
 		ri->ri_rpos = 16;

@@ -1442,7 +1442,7 @@ void seq_puts(struct seq_file *m, const char *s) {};
 #define preempt_enable()
 #define preempt_disable()
 
-#define FENCE_TRACE(fence, fmt, args...) do {} while(0)
+#define DMA_FENCE_TRACE(fence, fmt, args...) do {} while(0)
 
 struct dma_fence {
 	struct kref refcount;
