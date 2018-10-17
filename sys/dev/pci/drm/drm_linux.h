@@ -1672,6 +1672,12 @@ dma_fence_remove_callback(struct dma_fence *fence, struct dma_fence_cb *cb)
 	return ret;
 }
 
+static inline bool
+dma_fence_is_later(struct dma_fence *a, struct dma_fence *b)
+{
+	return (a->seqno > b->seqno);
+}
+
 struct idr_entry {
 	SPLAY_ENTRY(idr_entry) entry;
 	int id;
