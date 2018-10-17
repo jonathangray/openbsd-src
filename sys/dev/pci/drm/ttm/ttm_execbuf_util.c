@@ -29,9 +29,11 @@
 #include <dev/pci/drm/ttm/ttm_execbuf_util.h>
 #include <dev/pci/drm/ttm/ttm_bo_driver.h>
 #include <dev/pci/drm/ttm/ttm_placement.h>
+#ifdef __linux__
 #include <linux/wait.h>
 #include <linux/sched.h>
 #include <linux/module.h>
+#endif
 
 static void ttm_eu_backoff_reservation_reverse(struct list_head *list,
 					      struct ttm_validate_buffer *entry)

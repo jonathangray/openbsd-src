@@ -33,9 +33,11 @@
 #include <dev/pci/drm/ttm/ttm_bo_driver.h>
 #include <dev/pci/drm/ttm/ttm_placement.h>
 #include <dev/pci/drm/drm_mm.h>
+#ifdef __linux__
 #include <linux/slab.h>
 #include <linux/spinlock.h>
 #include <linux/module.h>
+#endif
 
 /**
  * Currently we use a spinlock for the lock, but a mutex *may* be
@@ -55,8 +57,9 @@ static int ttm_bo_man_get_node(struct ttm_mem_type_manager *man,
 {
 	struct ttm_range_manager *rman = (struct ttm_range_manager *) man->priv;
 	struct drm_mm *mm = &rman->mm;
-	struct drm_mm_node *node;
-	enum drm_mm_insert_mode mode;
+	struct drm_mm_node *node = NULL;
+	enum drm_mm_search_flags sflags = DRM_MM_SEARCH_BEST;
+	enum drm_mm_allocator_flags aflags = DRM_MM_CREATE_DEFAULT;
 	unsigned long lpfn;
 	int ret;
 
@@ -68,15 +71,16 @@ static int ttm_bo_man_get_node(struct ttm_mem_type_manager *man,
 	if (!node)
 		return -ENOMEM;
 
-	mode = DRM_MM_INSERT_BEST;
-	if (place->flags & TTM_PL_FLAG_TOPDOWN)
-		mode = DRM_MM_INSERT_HIGH;
+	if (place->flags & TTM_PL_FLAG_TOPDOWN) {
+		sflags = DRM_MM_SEARCH_BELOW;
+		aflags = DRM_MM_CREATE_TOP;
+	}
 
 	spin_lock(&rman->lock);
-	ret = drm_mm_insert_node_in_range(mm, node,
-					  mem->num_pages,
+	ret = drm_mm_insert_node_in_range_generic(mm, node, mem->num_pages,
 					  mem->page_alignment, 0,
-					  place->fpfn, lpfn, mode);
+					  place->fpfn, lpfn,
+					  sflags, aflags);
 	spin_unlock(&rman->lock);
 
 	if (unlikely(ret)) {
@@ -114,7 +118,7 @@ static int ttm_bo_man_init(struct ttm_mem_type_manager *man,
 		return -ENOMEM;
 
 	drm_mm_init(&rman->mm, 0, p_size);
-	spin_lock_init(&rman->lock);
+	mtx_init(&rman->lock, IPL_NONE);
 	man->priv = rman;
 	return 0;
 }
@@ -142,7 +146,7 @@ static void ttm_bo_man_debug(struct ttm_mem_type_manager *man,
 	struct ttm_range_manager *rman = (struct ttm_range_manager *) man->priv;
 
 	spin_lock(&rman->lock);
-	drm_mm_print(&rman->mm, printer);
+	drm_mm_debug_table(&rman->mm, printer->prefix);
 	spin_unlock(&rman->lock);
 }
 

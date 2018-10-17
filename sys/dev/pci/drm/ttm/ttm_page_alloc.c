@@ -33,6 +33,7 @@
 
 #define pr_fmt(fmt) "[TTM] " fmt
 
+#ifdef __linux__
 #include <linux/list.h>
 #include <linux/spinlock.h>
 #include <linux/highmem.h>
@@ -44,6 +45,10 @@
 #include <linux/dma-mapping.h>
 
 #include <linux/atomic.h>
+#else
+#include <dev/pci/drm/drm_linux.h>
+#include <dev/pci/drm/drm_linux_list.h>
+#endif
 
 #include <dev/pci/drm/ttm/ttm_bo_driver.h>
 #include <dev/pci/drm/ttm/ttm_page_alloc.h>

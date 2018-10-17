@@ -32,6 +32,7 @@
 #include <dev/pci/drm/ttm/ttm_bo_driver.h>
 #include <dev/pci/drm/ttm/ttm_placement.h>
 #include <dev/pci/drm/drm_vma_manager.h>
+#ifdef __linux__
 #include <linux/io.h>
 #include <linux/highmem.h>
 #include <linux/wait.h>
@@ -39,6 +40,9 @@
 #include <linux/vmalloc.h>
 #include <linux/module.h>
 #include <linux/reservation.h>
+#else
+#include <dev/pci/drm/linux_ww_mutex.h>
+#endif
 
 struct ttm_transfer_obj {
 	struct ttm_buffer_object base;
