@@ -34,6 +34,7 @@
 #include <dev/pci/drm/ttm/ttm_module.h>
 #include <dev/pci/drm/ttm/ttm_bo_driver.h>
 #include <dev/pci/drm/ttm/ttm_placement.h>
+#ifdef __linux__
 #include <linux/jiffies.h>
 #include <linux/slab.h>
 #include <linux/sched.h>
@@ -42,13 +43,21 @@
 #include <linux/module.h>
 #include <linux/atomic.h>
 #include <linux/reservation.h>
+#else
+#include <dev/pci/drm/drm_linux.h>
+#include <dev/pci/drm/drm_linux_atomic.h>
+#include <dev/pci/drm/linux_rcupdate.h>
+#include <dev/pci/drm/linux_ww_mutex.h>
+#endif
 
 static void ttm_bo_global_kobj_release(struct kobject *kobj);
 
+#ifdef notyet
 static struct attribute ttm_bo_count = {
 	.name = "bo_count",
 	.mode = S_IRUGO
 };
+#endif
 
 /* default destructor */
 static void ttm_bo_default_destroy(struct ttm_buffer_object *bo)
@@ -104,6 +113,7 @@ static void ttm_bo_mem_space_debug(struct ttm_buffer_object *bo,
 	}
 }
 
+#ifdef notyet
 static ssize_t ttm_bo_global_show(struct kobject *kobj,
 				  struct attribute *attr,
 				  char *buffer)
@@ -123,11 +133,14 @@ static struct attribute *ttm_bo_global_attrs[] = {
 static const struct sysfs_ops ttm_bo_global_ops = {
 	.show = &ttm_bo_global_show
 };
+#endif
 
 static struct kobj_type ttm_bo_glob_kobj_type  = {
 	.release = &ttm_bo_global_kobj_release,
+#ifdef __linux__
 	.sysfs_ops = &ttm_bo_global_ops,
 	.default_attrs = ttm_bo_global_attrs
+#endif
 };
 
 

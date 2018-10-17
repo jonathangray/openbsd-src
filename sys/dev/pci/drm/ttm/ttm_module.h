@@ -31,7 +31,9 @@
 #ifndef _TTM_MODULE_H_
 #define _TTM_MODULE_H_
 
+#ifdef __linux__
 #include <linux/kernel.h>
+#endif
 struct kobject;
 
 #define TTM_PFX "[TTM] "
