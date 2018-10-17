@@ -893,10 +893,13 @@ drm_gem_object_free(struct kref *kref)
 	struct drm_gem_object *obj = (struct drm_gem_object *) kref;
 	struct drm_device *dev = obj->dev;
 
-	BUG_ON(!mutex_is_locked(&dev->struct_mutex));
+	if (dev->driver->gem_free_object_unlocked) {
+		dev->driver->gem_free_object_unlocked(obj);
+	} else if (dev->driver->gem_free_object) {
+		WARN_ON(!mutex_is_locked(&dev->struct_mutex));
 
-	if (dev->driver->gem_free_object != NULL)
 		dev->driver->gem_free_object(obj);
+	}
 }
 EXPORT_SYMBOL(drm_gem_object_free);
 

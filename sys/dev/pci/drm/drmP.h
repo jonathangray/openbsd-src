@@ -516,8 +516,8 @@ struct drm_driver {
 	 * but unknown small number of scanlines wrt. real scanout position.
 	 *
 	 */
-	int (*get_scanout_position) (struct drm_device *dev, unsigned int pipe,
-				     unsigned int flags, int *vpos, int *hpos,
+	bool (*get_scanout_position) (struct drm_device *dev, unsigned int pipe,
+				     bool in_vblank_irq, int *vpos, int *hpos,
 				     ktime_t *stime, ktime_t *etime,
 				     const struct drm_display_mode *mode);
 
@@ -551,10 +551,10 @@ struct drm_driver {
 	 * negative number on failure. A positive status code on success,
 	 * which describes how the vblank_time timestamp was computed.
 	 */
-	int (*get_vblank_timestamp) (struct drm_device *dev, unsigned int pipe,
+	bool (*get_vblank_timestamp) (struct drm_device *dev, unsigned int pipe,
 				     int *max_error,
-				     struct timeval *vblank_time,
-				     unsigned flags);
+				     ktime_t *vblank_time,
+				     bool in_vblank_irq);
 
 	/**
 	 * Driver-specific constructor for drm_gem_objects, to set up
@@ -563,6 +563,7 @@ struct drm_driver {
 	 * Returns 0 on success.
 	 */
 	void (*gem_free_object) (struct drm_gem_object *obj);
+	void (*gem_free_object_unlocked) (struct drm_gem_object *obj);
 	int (*gem_open_object) (struct drm_gem_object *, struct drm_file *);
 	void (*gem_close_object) (struct drm_gem_object *, struct drm_file *);
 
