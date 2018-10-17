@@ -416,20 +416,20 @@ static void ttm_bo_cleanup_memtype_use(struct ttm_buffer_object *bo)
 static void ttm_bo_flush_all_fences(struct ttm_buffer_object *bo)
 {
 	struct reservation_object_list *fobj;
-	struct fence *fence;
+	struct dma_fence *fence;
 	int i;
 
 	fobj = reservation_object_get_list(bo->resv);
 	fence = reservation_object_get_excl(bo->resv);
 	if (fence && !fence->ops->signaled)
-		fence_enable_sw_signaling(fence);
+		dma_fence_enable_sw_signaling(fence);
 
 	for (i = 0; fobj && i < fobj->shared_count; ++i) {
 		fence = rcu_dereference_protected(fobj->shared[i],
 					reservation_object_held(bo->resv));
 
 		if (!fence->ops->signaled)
-			fence_enable_sw_signaling(fence);
+			dma_fence_enable_sw_signaling(fence);
 	}
 }
 
@@ -1593,7 +1593,7 @@ int ttm_bo_wait(struct ttm_buffer_object *bo,
 {
 	struct reservation_object_list *fobj;
 	struct reservation_object *resv;
-	struct fence *excl;
+	struct dma_fence *excl;
 	long timeout = 15 * HZ;
 	int i;
 
@@ -1601,25 +1601,25 @@ int ttm_bo_wait(struct ttm_buffer_object *bo,
 	fobj = reservation_object_get_list(resv);
 	excl = reservation_object_get_excl(resv);
 	if (excl) {
-		if (!fence_is_signaled(excl)) {
+		if (!dma_fence_is_signaled(excl)) {
 			if (no_wait)
 				return -EBUSY;
 
-			timeout = fence_wait_timeout(excl,
+			timeout = dma_fence_wait_timeout(excl,
 						     interruptible, timeout);
 		}
 	}
 
 	for (i = 0; fobj && timeout > 0 && i < fobj->shared_count; ++i) {
-		struct fence *fence;
+		struct dma_fence *fence;
 		fence = rcu_dereference_protected(fobj->shared[i],
 						reservation_object_held(resv));
 
-		if (!fence_is_signaled(fence)) {
+		if (!dma_fence_is_signaled(fence)) {
 			if (no_wait)
 				return -EBUSY;
 
-			timeout = fence_wait_timeout(fence,
+			timeout = dma_fence_wait_timeout(fence,
 						     interruptible, timeout);
 		}
 	}
