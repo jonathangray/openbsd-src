@@ -23,13 +23,15 @@
  * Authors: Dave Airlie
  *          Alex Deucher
  */
-#include <drm/drmP.h>
-#include <drm/drm_crtc_helper.h>
-#include <drm/radeon_drm.h>
+#include <dev/pci/drm/drmP.h>
+#include <dev/pci/drm/drm_crtc_helper.h>
+#include <dev/pci/drm/radeon_drm.h>
 #include "radeon.h"
 #include "radeon_asic.h"
 #include "atom.h"
+#ifdef __linux__
 #include <linux/backlight.h>
+#endif
 #ifdef CONFIG_PMAC_BACKLIGHT
 #include <asm/backlight.h>
 #endif

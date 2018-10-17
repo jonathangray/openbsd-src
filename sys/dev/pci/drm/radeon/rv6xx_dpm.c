@@ -22,14 +22,16 @@
  * Authors: Alex Deucher
  */
 
-#include <drm/drmP.h>
+#include <dev/pci/drm/drmP.h>
 #include "radeon.h"
 #include "radeon_asic.h"
 #include "rv6xxd.h"
 #include "r600_dpm.h"
 #include "rv6xx_dpm.h"
 #include "atom.h"
+#ifdef __linux__
 #include <linux/seq_file.h>
+#endif
 
 static u32 rv6xx_scale_count_given_unit(struct radeon_device *rdev,
 					u32 unscaled_count, u32 unit);

@@ -21,15 +21,17 @@
  *
  */
 
-#include <drm/drmP.h>
+#include <dev/pci/drm/drmP.h>
 #include "radeon.h"
 #include "radeon_asic.h"
 #include "sid.h"
 #include "r600_dpm.h"
 #include "si_dpm.h"
 #include "atom.h"
+#ifdef __linux__
 #include <linux/math64.h>
 #include <linux/seq_file.h>
+#endif
 
 #define MC_CG_ARB_FREQ_F0           0x0a
 #define MC_CG_ARB_FREQ_F1           0x0b

@@ -23,18 +23,20 @@
  * Authors: Dave Airlie
  *          Alex Deucher
  */
-#include <drm/drmP.h>
-#include <drm/drm_edid.h>
-#include <drm/drm_crtc_helper.h>
-#include <drm/drm_fb_helper.h>
-#include <drm/drm_dp_mst_helper.h>
-#include <drm/radeon_drm.h>
+#include <dev/pci/drm/drmP.h>
+#include <dev/pci/drm/drm_edid.h>
+#include <dev/pci/drm/drm_crtc_helper.h>
+#include <dev/pci/drm/drm_fb_helper.h>
+#include <dev/pci/drm/drm_dp_mst_helper.h>
+#include <dev/pci/drm/radeon_drm.h>
 #include "radeon.h"
 #include "radeon_audio.h"
 #include "atom.h"
 
+#ifdef __linux__
 #include <linux/pm_runtime.h>
 #include <linux/vga_switcheroo.h>
+#endif
 
 static int radeon_dp_handle_hpd(struct drm_connector *connector)
 {
