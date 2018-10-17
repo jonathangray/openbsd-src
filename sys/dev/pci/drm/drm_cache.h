@@ -34,9 +34,7 @@
 #ifndef _DRM_CACHE_H_
 #define _DRM_CACHE_H_
 
-#ifdef notyet
-void drm_clflush_pages(struct page *pages[], unsigned long num_pages);
-#endif
+void drm_clflush_pages(struct vm_page *pages[], unsigned long num_pages);
 
 static inline bool drm_arch_can_wc_memory(void)
 {
