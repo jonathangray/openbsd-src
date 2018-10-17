@@ -8331,7 +8331,7 @@ static int cik_startup(struct radeon_device *rdev)
 		}
 	}
 	rdev->rlc.cs_data = ci_cs_data;
-	rdev->rlc.cp_table_size = ALIGN(CP_ME_TABLE_SIZE * 5 * 4, 2048); /* CP JT */
+	rdev->rlc.cp_table_size = roundup2(CP_ME_TABLE_SIZE * 5 * 4, 2048); /* CP JT */
 	rdev->rlc.cp_table_size += 64 * 1024; /* GDS */
 	r = sumo_rlc_init(rdev);
 	if (r) {
@@ -9497,6 +9497,8 @@ int cik_set_vce_clocks(struct radeon_device *rdev, u32 evclk, u32 ecclk)
 
 static void cik_pcie_gen3_enable(struct radeon_device *rdev)
 {
+	STUB();
+#if 0
 	struct pci_dev _root;
 	struct pci_dev *root;
 	int bridge_pos, gpu_pos;
@@ -9659,6 +9661,7 @@ static void cik_pcie_gen3_enable(struct radeon_device *rdev)
 			break;
 		udelay(1);
 	}
+#endif
 }
 
 static void cik_program_aspm(struct radeon_device *rdev)

@@ -30,7 +30,9 @@
 #include "atom.h"
 
 #include <dev/pci/drm/drm_crtc_helper.h>
+#ifdef notyet
 #include <dev/pci/drm/drm_gem_framebuffer_helper.h>
+#endif
 #include <dev/pci/drm/drm_fb_helper.h>
 #include <dev/pci/drm/drm_plane_helper.h>
 #include <dev/pci/drm/drm_edid.h>
@@ -661,6 +663,8 @@ static const struct drm_crtc_funcs radeon_crtc_funcs = {
 
 static void radeon_crtc_init(struct drm_device *dev, int index)
 {
+	STUB();
+#ifdef notyet
 	struct radeon_device *rdev = dev->dev_private;
 	struct radeon_crtc *radeon_crtc;
 	int i;
@@ -702,6 +706,7 @@ static void radeon_crtc_init(struct drm_device *dev, int index)
 		radeon_atombios_init_crtc(dev, radeon_crtc);
 	else
 		radeon_legacy_init_crtc(dev, radeon_crtc);
+#endif
 }
 
 #ifdef DRMDEBUG
@@ -1281,10 +1286,12 @@ void radeon_compute_pll_legacy(struct radeon_pll *pll,
 
 }
 
+#ifdef notyet
 static const struct drm_framebuffer_funcs radeon_fb_funcs = {
 	.destroy = drm_gem_fb_destroy,
 	.create_handle = drm_gem_fb_create_handle,
 };
+#endif
 
 int
 radeon_framebuffer_init(struct drm_device *dev,
@@ -1292,6 +1299,9 @@ radeon_framebuffer_init(struct drm_device *dev,
 			const struct drm_mode_fb_cmd2 *mode_cmd,
 			struct drm_gem_object *obj)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	int ret;
 	fb->obj[0] = obj;
 	drm_helper_mode_fill_fb_struct(dev, fb, mode_cmd);
@@ -1301,6 +1311,7 @@ radeon_framebuffer_init(struct drm_device *dev,
 		return ret;
 	}
 	return 0;
+#endif
 }
 
 static struct drm_framebuffer *
@@ -1308,11 +1319,14 @@ radeon_user_framebuffer_create(struct drm_device *dev,
 			       struct drm_file *file_priv,
 			       const struct drm_mode_fb_cmd2 *mode_cmd)
 {
+	STUB();
+	return NULL;
+#ifdef notyet
 	struct drm_gem_object *obj;
 	struct drm_framebuffer *fb;
 	int ret;
 
-	obj = drm_gem_object_lookup(file_priv, mode_cmd->handles[0]);
+	obj = drm_gem_object_lookup(dev, file_priv, mode_cmd->handles[0]);
 	if (obj ==  NULL) {
 		dev_err(&dev->pdev->dev, "No GEM object associated to handle 0x%08X, "
 			"can't create framebuffer\n", mode_cmd->handles[0]);
@@ -1341,6 +1355,7 @@ radeon_user_framebuffer_create(struct drm_device *dev,
 	}
 
 	return fb;
+#endif
 }
 
 static const struct drm_mode_config_funcs radeon_mode_funcs = {
