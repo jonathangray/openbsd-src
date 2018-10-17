@@ -25,7 +25,7 @@
  *          Alex Deucher
  *          Jerome Glisse
  */
-#include <dev/pci/drm/drmP.h>
+#include <drm/drmP.h>
 #include "radeon.h"
 #include "radeon_asic.h"
 #include "radeon_audio.h"
@@ -52,8 +52,7 @@ static void rs690_gpu_init(struct radeon_device *rdev)
 	/* FIXME: is this correct ? */
 	r420_pipes_init(rdev);
 	if (rs690_mc_wait_for_idle(rdev)) {
-		printk(KERN_WARNING "Failed to wait MC idle while "
-		       "programming pipes. Bad things might happen.\n");
+		pr_warn("Failed to wait MC idle while programming pipes. Bad things might happen.\n");
 	}
 }
 
@@ -157,8 +156,8 @@ static void rs690_mc_init(struct radeon_device *rdev)
 	rdev->mc.vram_width = 128;
 	rdev->mc.real_vram_size = RREG32(RADEON_CONFIG_MEMSIZE);
 	rdev->mc.mc_vram_size = rdev->mc.real_vram_size;
-	rdev->mc.aper_base = rdev->fb_aper_offset;
-	rdev->mc.aper_size = rdev->fb_aper_size;
+	rdev->mc.aper_base = pci_resource_start(rdev->pdev, 0);
+	rdev->mc.aper_size = pci_resource_len(rdev->pdev, 0);
 	rdev->mc.visible_vram_size = rdev->mc.aper_size;
 	base = RREG32_MC(R_000100_MCCFG_FB_LOCATION);
 	base = G_000100_MC_FB_START(base) << 16;

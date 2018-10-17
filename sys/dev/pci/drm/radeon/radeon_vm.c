@@ -25,8 +25,8 @@
  *          Alex Deucher
  *          Jerome Glisse
  */
-#include <dev/pci/drm/drmP.h>
-#include <dev/pci/drm/radeon_drm.h>
+#include <drm/drmP.h>
+#include <drm/radeon_drm.h>
 #include "radeon.h"
 #include "radeon_trace.h"
 
@@ -132,14 +132,14 @@ struct radeon_bo_list *radeon_vm_get_bos(struct radeon_device *rdev,
 	struct radeon_bo_list *list;
 	unsigned i, idx;
 
-	list = drm_malloc_ab(vm->max_pde_used + 2,
-			     sizeof(struct radeon_bo_list));
+	list = kvmalloc_array(vm->max_pde_used + 2,
+			     sizeof(struct radeon_bo_list), GFP_KERNEL);
 	if (!list)
 		return NULL;
 
 	/* add the vm page table to the list */
 	list[0].robj = vm->page_directory;
-	list[0].prefered_domains = RADEON_GEM_DOMAIN_VRAM;
+	list[0].preferred_domains = RADEON_GEM_DOMAIN_VRAM;
 	list[0].allowed_domains = RADEON_GEM_DOMAIN_VRAM;
 	list[0].tv.bo = &vm->page_directory->tbo;
 	list[0].tv.shared = true;
@@ -151,7 +151,7 @@ struct radeon_bo_list *radeon_vm_get_bos(struct radeon_device *rdev,
 			continue;
 
 		list[idx].robj = vm->page_tables[i].bo;
-		list[idx].prefered_domains = RADEON_GEM_DOMAIN_VRAM;
+		list[idx].preferred_domains = RADEON_GEM_DOMAIN_VRAM;
 		list[idx].allowed_domains = RADEON_GEM_DOMAIN_VRAM;
 		list[idx].tv.bo = &list[idx].robj->tbo;
 		list[idx].tv.shared = true;
@@ -387,6 +387,7 @@ static void radeon_vm_set_pages(struct radeon_device *rdev,
 static int radeon_vm_clear_bo(struct radeon_device *rdev,
 			      struct radeon_bo *bo)
 {
+	struct ttm_operation_ctx ctx = { true, false };
 	struct radeon_ib ib;
 	unsigned entries;
 	uint64_t addr;
@@ -396,7 +397,7 @@ static int radeon_vm_clear_bo(struct radeon_device *rdev,
 	if (r)
 		return r;
 
-	r = ttm_bo_validate(&bo->tbo, &bo->placement, true, false);
+	r = ttm_bo_validate(&bo->tbo, &bo->placement, &ctx);
 	if (r)
 		goto error_unreserve;
 
@@ -483,7 +484,7 @@ int radeon_vm_bo_set_addr(struct radeon_device *rdev,
 			struct radeon_bo_va *tmp;
 			tmp = container_of(it, struct radeon_bo_va, it);
 			/* bo and tmp overlap, invalid offset */
-			dev_err(rdev->dev, "bo %p va 0x%010llx conflict with "
+			dev_err(rdev->dev, "bo %p va 0x%010Lx conflict with "
 				"(bo %p 0x%010lx 0x%010lx)\n", bo_va->bo,
 				soffset, tmp->bo, tmp->it.start, tmp->it.last);
 			mutex_unlock(&vm->mutex);
@@ -611,15 +612,16 @@ uint64_t radeon_vm_map_gart(struct radeon_device *rdev, uint64_t addr)
  */
 static uint32_t radeon_vm_page_flags(uint32_t flags)
 {
-        uint32_t hw_flags = 0;
-        hw_flags |= (flags & RADEON_VM_PAGE_VALID) ? R600_PTE_VALID : 0;
-        hw_flags |= (flags & RADEON_VM_PAGE_READABLE) ? R600_PTE_READABLE : 0;
-        hw_flags |= (flags & RADEON_VM_PAGE_WRITEABLE) ? R600_PTE_WRITEABLE : 0;
-        if (flags & RADEON_VM_PAGE_SYSTEM) {
-                hw_flags |= R600_PTE_SYSTEM;
-                hw_flags |= (flags & RADEON_VM_PAGE_SNOOPED) ? R600_PTE_SNOOPED : 0;
-        }
-        return hw_flags;
+	uint32_t hw_flags = 0;
+
+	hw_flags |= (flags & RADEON_VM_PAGE_VALID) ? R600_PTE_VALID : 0;
+	hw_flags |= (flags & RADEON_VM_PAGE_READABLE) ? R600_PTE_READABLE : 0;
+	hw_flags |= (flags & RADEON_VM_PAGE_WRITEABLE) ? R600_PTE_WRITEABLE : 0;
+	if (flags & RADEON_VM_PAGE_SYSTEM) {
+		hw_flags |= R600_PTE_SYSTEM;
+		hw_flags |= (flags & RADEON_VM_PAGE_SNOOPED) ? R600_PTE_SNOOPED : 0;
+	}
+	return hw_flags;
 }
 
 /**
@@ -758,7 +760,7 @@ static void radeon_vm_frag_ptes(struct radeon_device *rdev,
 	uint64_t frag_align = ((rdev->family == CHIP_CAYMAN) ||
 			       (rdev->family == CHIP_ARUBA)) ? 0x200 : 0x80;
 
-	uint64_t frag_start = roundup2(pe_start, frag_align);
+	uint64_t frag_start = ALIGN(pe_start, frag_align);
 	uint64_t frag_end = pe_end & ~(frag_align - 1);
 
 	unsigned count;
@@ -1183,9 +1185,9 @@ int radeon_vm_init(struct radeon_device *rdev, struct radeon_vm *vm)
 		vm->ids[i].flushed_updates = NULL;
 		vm->ids[i].last_id_use = NULL;
 	}
-	rw_init(&vm->mutex, "vmlk");
-	vm->va = RB_ROOT;
-	mtx_init(&vm->status_lock, IPL_TTY);
+	mutex_init(&vm->mutex);
+	vm->va = RB_ROOT_CACHED;
+	spin_lock_init(&vm->status_lock);
 	INIT_LIST_HEAD(&vm->invalidated);
 	INIT_LIST_HEAD(&vm->freed);
 	INIT_LIST_HEAD(&vm->cleared);
@@ -1231,10 +1233,11 @@ void radeon_vm_fini(struct radeon_device *rdev, struct radeon_vm *vm)
 	struct radeon_bo_va *bo_va, *tmp;
 	int i, r;
 
-	if (!RB_EMPTY_ROOT(&vm->va)) {
+	if (!RB_EMPTY_ROOT(&vm->va.rb_root)) {
 		dev_err(rdev->dev, "still active bo inside vm\n");
 	}
-	rbtree_postorder_for_each_entry_safe(bo_va, tmp, &vm->va, it.rb) {
+	rbtree_postorder_for_each_entry_safe(bo_va, tmp,
+					     &vm->va.rb_root, it.rb) {
 		interval_tree_remove(&bo_va->it, &vm->va);
 		r = radeon_bo_reserve(bo_va->bo, false);
 		if (!r) {

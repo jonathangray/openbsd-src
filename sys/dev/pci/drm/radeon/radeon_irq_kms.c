@@ -25,13 +25,14 @@
  *          Alex Deucher
  *          Jerome Glisse
  */
-#include <dev/pci/drm/drmP.h>
-#include <dev/pci/drm/drm_crtc_helper.h>
-#include <dev/pci/drm/radeon_drm.h>
+#include <drm/drmP.h>
+#include <drm/drm_crtc_helper.h>
+#include <drm/radeon_drm.h>
 #include "radeon_reg.h"
 #include "radeon.h"
 #include "atom.h"
 
+#include <linux/pm_runtime.h>
 
 #define RADEON_WAIT_IDLE_TIMEOUT 200
 
@@ -44,14 +45,11 @@
  * radeon_irq_process is a macro that points to the per-asic
  * irq handler callback.
  */
-irqreturn_t radeon_driver_irq_handler_kms(void *arg)
+irqreturn_t radeon_driver_irq_handler_kms(int irq, void *arg)
 {
 	struct drm_device *dev = (struct drm_device *) arg;
 	struct radeon_device *rdev = dev->dev_private;
 	irqreturn_t ret;
-
-	if (!rdev->irq.installed)
-		return 0;
 
 	ret = radeon_irq_process(rdev);
 	if (ret == IRQ_HANDLED)
@@ -87,10 +85,8 @@ static void radeon_hotplug_work_func(struct work_struct *work)
 		return;
 
 	mutex_lock(&mode_config->mutex);
-	if (mode_config->num_connector) {
-		list_for_each_entry(connector, &mode_config->connector_list, head)
-			radeon_connector_hotplug(connector);
-	}
+	list_for_each_entry(connector, &mode_config->connector_list, head)
+		radeon_connector_hotplug(connector);
 	mutex_unlock(&mode_config->mutex);
 	/* Just fire off a uevent and let userspace tell us what to do */
 	drm_helper_hpd_irq_event(dev);
@@ -105,10 +101,8 @@ static void radeon_dp_work_func(struct work_struct *work)
 	struct drm_connector *connector;
 
 	/* this should take a mutex */
-	if (mode_config->num_connector) {
-		list_for_each_entry(connector, &mode_config->connector_list, head)
-			radeon_connector_hotplug(connector);
-	}
+	list_for_each_entry(connector, &mode_config->connector_list, head)
+		radeon_connector_hotplug(connector);
 }
 /**
  * radeon_driver_irq_preinstall_kms - drm irq preinstall callback
@@ -204,7 +198,7 @@ void radeon_driver_irq_uninstall_kms(struct drm_device *dev)
  * Returns true if MSIs should be enabled, false if MSIs
  * should not be enabled.
  */
-bool radeon_msi_ok(struct radeon_device *rdev)
+static bool radeon_msi_ok(struct radeon_device *rdev)
 {
 	/* RV370/RV380 was first asic with MSI support */
 	if (rdev->family < CHIP_RV380)
@@ -219,12 +213,10 @@ bool radeon_msi_ok(struct radeon_device *rdev)
 	 * of address for "64-bit" MSIs which breaks on some platforms, notably
 	 * IBM POWER servers, so we limit them
 	 */
-#ifdef notyet
 	if (rdev->family < CHIP_BONAIRE) {
 		dev_info(rdev->dev, "radeon: MSI limited to 32-bit\n");
 		rdev->pdev->no_64bit_msi = 1;
 	}
-#endif
 
 	/* force MSI on */
 	if (radeon_msi == 1)
@@ -290,12 +282,16 @@ int radeon_irq_kms_init(struct radeon_device *rdev)
 {
 	int r = 0;
 
-	mtx_init(&rdev->irq.lock, IPL_TTY);
+	spin_lock_init(&rdev->irq.lock);
+
+	/* Disable vblank irqs aggressively for power-saving */
+	rdev->ddev->vblank_disable_immediate = true;
+
 	r = drm_vblank_init(rdev->ddev, rdev->num_crtc);
 	if (r) {
 		return r;
 	}
-#ifdef notyet
+
 	/* enable msi */
 	rdev->msi_enabled = 0;
 
@@ -306,7 +302,6 @@ int radeon_irq_kms_init(struct radeon_device *rdev)
 			dev_info(rdev->dev, "radeon: using MSI.\n");
 		}
 	}
-#endif
 
 	INIT_DELAYED_WORK(&rdev->hotplug_work, radeon_hotplug_work_func);
 	INIT_WORK(&rdev->dp_work, radeon_dp_work_func);
@@ -333,7 +328,6 @@ int radeon_irq_kms_init(struct radeon_device *rdev)
  */
 void radeon_irq_kms_fini(struct radeon_device *rdev)
 {
-	drm_vblank_cleanup(rdev->ddev);
 	if (rdev->irq.installed) {
 		drm_irq_uninstall(rdev->ddev);
 		rdev->irq.installed = false;
@@ -547,3 +541,38 @@ void radeon_irq_kms_disable_hpd(struct radeon_device *rdev, unsigned hpd_mask)
 	spin_unlock_irqrestore(&rdev->irq.lock, irqflags);
 }
 
+/**
+ * radeon_irq_kms_update_int_n - helper for updating interrupt enable registers
+ *
+ * @rdev: radeon device pointer
+ * @reg: the register to write to enable/disable interrupts
+ * @mask: the mask that enables the interrupts
+ * @enable: whether to enable or disable the interrupt register
+ * @name: the name of the interrupt register to print to the kernel log
+ * @num: the number of the interrupt register to print to the kernel log
+ *
+ * Helper for updating the enable state of interrupt registers. Checks whether
+ * or not the interrupt matches the enable state we want. If it doesn't, then
+ * we update it and print a debugging message to the kernel log indicating the
+ * new state of the interrupt register.
+ *
+ * Used for updating sequences of interrupts registers like HPD1, HPD2, etc.
+ */
+void radeon_irq_kms_set_irq_n_enabled(struct radeon_device *rdev,
+				      u32 reg, u32 mask,
+				      bool enable, const char *name, unsigned n)
+{
+	u32 tmp = RREG32(reg);
+
+	/* Interrupt state didn't change */
+	if (!!(tmp & mask) == enable)
+		return;
+
+	if (enable) {
+		DRM_DEBUG("%s%d interrupts enabled\n", name, n);
+		WREG32(reg, tmp |= mask);
+	} else {
+		DRM_DEBUG("%s%d interrupts disabled\n", name, n);
+		WREG32(reg, tmp & ~mask);
+	}
+}
