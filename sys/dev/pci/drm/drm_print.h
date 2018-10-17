@@ -287,8 +287,12 @@ void drm_err(const char *format, ...);
 #define _DRM_PRINTK(once, level, fmt, ...)				\
 	printk##once(KERN_##level "[" DRM_NAME "] " fmt, ##__VA_ARGS__)
 
+#ifdef DRMDEBUG
 #define DRM_INFO(fmt, ...)						\
 	_DRM_PRINTK(, INFO, fmt, ##__VA_ARGS__)
+#else
+#define DRM_INFO(fmt, arg...) do { } while(/* CONSTCOND */ 0)
+#endif
 #define DRM_NOTE(fmt, ...)						\
 	_DRM_PRINTK(, NOTICE, fmt, ##__VA_ARGS__)
 #define DRM_WARN(fmt, ...)						\
@@ -350,8 +354,12 @@ void drm_err(const char *format, ...);
  */
 #define DRM_DEV_DEBUG(dev, fmt, ...)					\
 	drm_dev_dbg(dev, DRM_UT_CORE, fmt, ##__VA_ARGS__)
+#ifdef DRMDEBUG
 #define DRM_DEBUG(fmt, ...)						\
 	drm_dbg(DRM_UT_CORE, fmt, ##__VA_ARGS__)
+#else
+#define DRM_DEBUG(fmt, arg...) do { } while(/* CONSTCOND */ 0)
+#endif
 
 #define DRM_DEV_DEBUG_DRIVER(dev, fmt, ...)				\
 	drm_dev_dbg(dev, DRM_UT_DRIVER,	fmt, ##__VA_ARGS__)
@@ -360,8 +368,12 @@ void drm_err(const char *format, ...);
 
 #define DRM_DEV_DEBUG_KMS(dev, fmt, ...)				\
 	drm_dev_dbg(dev, DRM_UT_KMS, fmt, ##__VA_ARGS__)
+#ifdef DRMDEBUG
 #define DRM_DEBUG_KMS(fmt, ...)						\
 	drm_dbg(DRM_UT_KMS, fmt, ##__VA_ARGS__)
+#else
+#define DRM_DEBUG_KMS(fmt, arg...) do { } while(/* CONSTCOND */ 0)
+#endif
 
 #define DRM_DEV_DEBUG_PRIME(dev, fmt, ...)				\
 	drm_dev_dbg(dev, DRM_UT_PRIME, fmt, ##__VA_ARGS__)

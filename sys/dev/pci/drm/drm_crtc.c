@@ -669,7 +669,9 @@ retry:
 							   fb->format->format,
 							   fb->modifier);
 			if (ret) {
+#ifdef DRMDEBUG
 				struct drm_format_name_buf format_name;
+#endif
 				DRM_DEBUG_KMS("Invalid pixel format %s, modifier 0x%llx\n",
 					      drm_get_format_name(fb->format->format,
 								  &format_name),

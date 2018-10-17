@@ -170,7 +170,9 @@ static int framebuffer_check(struct drm_device *dev,
 	/* check if the format is supported at all */
 	info = __drm_format_info(r->pixel_format & ~DRM_FORMAT_BIG_ENDIAN);
 	if (!info) {
+#ifdef DRMDEBUG
 		struct drm_format_name_buf format_name;
+#endif
 
 		DRM_DEBUG_KMS("bad framebuffer format %s\n",
 			      drm_get_format_name(r->pixel_format,

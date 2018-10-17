@@ -361,6 +361,7 @@ struct va_format {
 #define pr_notice(fmt, arg...)	printf(pr_fmt(fmt), ## arg)
 #define pr_crit(fmt, arg...)	printf(pr_fmt(fmt), ## arg)
 #define pr_err(fmt, arg...)	printf(pr_fmt(fmt), ## arg)
+#define pr_cont(fmt, arg...)	printf(pr_fmt(fmt), ## arg)
 
 #ifdef DRMDEBUG
 #define pr_info(fmt, arg...)	printf(pr_fmt(fmt), ## arg)
@@ -997,6 +998,7 @@ round_jiffies_up_relative(unsigned long j)
 #define jiffies_to_msecs(x)	(((uint64_t)(x)) * 1000 / hz)
 #define jiffies_to_usecs(x)	(((uint64_t)(x)) * 1000000 / hz)
 #define msecs_to_jiffies(x)	(((uint64_t)(x)) * hz / 1000)
+#define usecs_to_jiffies(x)	(((uint64_t)(x)) * hz / 1000000)
 #define nsecs_to_jiffies64(x)	(((uint64_t)(x)) * hz / 1000000000)
 #define get_jiffies_64()	jiffies
 #define time_after(a,b)		((long)(b) - (long)(a) < 0)
@@ -1138,6 +1140,14 @@ kmalloc_array(size_t n, size_t size, int flags)
 }
 
 static inline void *
+kvmalloc_array(size_t n, size_t size, int flags)
+{
+	if (n == 0 || SIZE_MAX / n < size)
+		return NULL;
+	return malloc(n * size, M_DRM, flags);
+}
+
+static inline void *
 kcalloc(size_t n, size_t size, int flags)
 {
 	if (n == 0 || SIZE_MAX / n < size)
@@ -1153,6 +1163,12 @@ kzalloc(size_t size, int flags)
 
 static inline void
 kfree(const void *objp)
+{
+	free((void *)objp, M_DRM, 0);
+}
+
+static inline void
+kvfree(const void *objp)
 {
 	free((void *)objp, M_DRM, 0);
 }
@@ -2039,6 +2055,7 @@ typedef enum {
 #define pci_enable_device(x)	0
 #define pci_disable_device(x)
 #define pci_set_power_state(d, s)
+#define pci_is_thunderbolt_attached(x) false
 
 static inline int
 vga_client_register(struct pci_dev *a, void *b, void *c, void *d)
@@ -2085,6 +2102,9 @@ void vga_put(struct pci_dev *, int);
 #define vga_switcheroo_fini_domain_pm_ops(x)
 #define vga_switcheroo_lock_ddc(x)
 #define vga_switcheroo_unlock_ddc(x)
+#define vga_switcheroo_handler_flags() 0
+
+#define VGA_SWITCHEROO_CAN_SWITCH_DDC	1
 
 struct i2c_algorithm;
 
@@ -2396,6 +2416,7 @@ power_supply_is_system_supplied(void)
 #define pm_runtime_set_autosuspend_delay(x, y)
 #define pm_runtime_set_active(x)
 #define pm_runtime_allow(x)
+#define pm_runtime_put_noidle(x)
 
 static inline int
 pm_runtime_get_sync(struct device *dev)
@@ -2591,7 +2612,7 @@ struct acpi_table_header;
 
 #define AE_NOT_FOUND	0x0005
 
-acpi_status acpi_get_table_with_size(const char *, int, struct acpi_table_header **, acpi_size *);
+acpi_status acpi_get_table(const char *, int, struct acpi_table_header **);
 
 #define acpi_video_register()
 #define acpi_video_unregister()

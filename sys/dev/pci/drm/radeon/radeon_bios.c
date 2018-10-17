@@ -737,6 +737,9 @@ static bool radeon_read_disabled_bios(struct radeon_device *rdev)
 
 #if NACPI > 0
 #define CONFIG_ACPI
+
+#include <dev/acpi/acpireg.h>
+#include <dev/acpi/acpivar.h>
 #endif
 
 #ifdef CONFIG_ACPI

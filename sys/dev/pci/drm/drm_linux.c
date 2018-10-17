@@ -739,8 +739,8 @@ vga_put(struct pci_dev *pdev, int rsrc)
 #include <dev/acpi/acpivar.h>
 
 acpi_status
-acpi_get_table_with_size(const char *sig, int instance,
-    struct acpi_table_header **hdr, acpi_size *size)
+acpi_get_table(const char *sig, int instance,
+    struct acpi_table_header **hdr)
 {
 	struct acpi_softc *sc = acpi_softc;
 	struct acpi_q *entry;
@@ -753,7 +753,6 @@ acpi_get_table_with_size(const char *sig, int instance,
 	SIMPLEQ_FOREACH(entry, &sc->sc_tables, q_next) {
 		if (memcmp(entry->q_table, sig, strlen(sig)) == 0) {
 			*hdr = entry->q_table;
-			*size = (*hdr)->length;
 			return 0;
 		}
 	}
