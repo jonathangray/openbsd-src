@@ -1907,6 +1907,7 @@ struct pci_dev {
 
 	int		irq;
 	int		msi_enabled;
+	uint8_t		no_64bit_msi;
 };
 #define PCI_ANY_ID (uint16_t) (~0U)
 

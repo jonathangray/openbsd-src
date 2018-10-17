@@ -87,7 +87,7 @@ static void radeon_ttm_bo_destroy(struct ttm_buffer_object *tbo)
 	if (bo->gem_base.import_attach)
 		drm_prime_gem_destroy(&bo->gem_base, bo->tbo.sg);
 	drm_gem_object_release(&bo->gem_base);
-	kfree(bo);
+	pool_put(&bo->rdev->ddev->objpl, bo);
 }
 
 bool radeon_ttm_bo_is_radeon_bo(struct ttm_buffer_object *bo)
@@ -191,7 +191,7 @@ int radeon_bo_create(struct radeon_device *rdev,
 	size_t acc_size;
 	int r;
 
-	size = ALIGN(size, PAGE_SIZE);
+	size = PAGE_ALIGN(size);
 
 	if (kernel) {
 		type = ttm_bo_type_kernel;
@@ -205,7 +205,7 @@ int radeon_bo_create(struct radeon_device *rdev,
 	acc_size = ttm_bo_dma_acc_size(&rdev->mman.bdev, size,
 				       sizeof(struct radeon_bo));
 
-	bo = kzalloc(sizeof(struct radeon_bo), GFP_KERNEL);
+	bo = pool_get(&rdev->ddev->objpl, PR_WAITOK | PR_ZERO);
 	if (bo == NULL)
 		return -ENOMEM;
 	drm_gem_private_object_init(rdev->ddev, &bo->gem_base, size);
@@ -453,15 +453,30 @@ void radeon_bo_force_delete(struct radeon_device *rdev)
 
 int radeon_bo_init(struct radeon_device *rdev)
 {
+	paddr_t start, end;
+
+#ifdef __linux__
 	/* reserve PAT memory space to WC for VRAM */
 	arch_io_reserve_memtype_wc(rdev->mc.aper_base,
 				   rdev->mc.aper_size);
+#endif
 
 	/* Add an MTRR for the VRAM */
 	if (!rdev->fastfb_working) {
+#ifdef __linux__
 		rdev->mc.vram_mtrr = arch_phys_wc_add(rdev->mc.aper_base,
 						      rdev->mc.aper_size);
+#else
+		drm_mtrr_add(rdev->mc.aper_base, rdev->mc.aper_size, DRM_MTRR_WC);
+		/* fake a 'cookie', seems to be unused? */
+		rdev->mc.vram_mtrr = 1;
+#endif
 	}
+
+	start = atop(bus_space_mmap(rdev->memt, rdev->mc.aper_base, 0, 0, 0));
+	end = start + atop(rdev->mc.aper_size);
+	uvm_page_physload(start, end, start, end, PHYSLOAD_DEVICE);
+
 	DRM_INFO("Detected VRAM RAM=%lluM, BAR=%lluM\n",
 		rdev->mc.mc_vram_size >> 20,
 		(unsigned long long)rdev->mc.aper_size >> 20);
@@ -473,8 +488,12 @@ int radeon_bo_init(struct radeon_device *rdev)
 void radeon_bo_fini(struct radeon_device *rdev)
 {
 	radeon_ttm_fini(rdev);
+#ifdef __linux__
 	arch_phys_wc_del(rdev->mc.vram_mtrr);
 	arch_io_free_memtype_wc(rdev->mc.aper_base, rdev->mc.aper_size);
+#else
+	drm_mtrr_del(0, rdev->mc.aper_base, rdev->mc.aper_size, DRM_MTRR_WC);
+#endif
 }
 
 /* Returns how many bytes TTM can move per IB.
@@ -609,7 +628,9 @@ int radeon_bo_get_surface_reg(struct radeon_bo *bo)
 	int steal;
 	int i;
 
+#ifdef notyet
 	lockdep_assert_held(&bo->tbo.resv->lock.base);
+#endif
 
 	if (!bo->tiling_flags)
 		return 0;
@@ -735,7 +756,9 @@ void radeon_bo_get_tiling_flags(struct radeon_bo *bo,
 				uint32_t *tiling_flags,
 				uint32_t *pitch)
 {
+#ifdef notyet
 	lockdep_assert_held(&bo->tbo.resv->lock.base);
+#endif
 
 	if (tiling_flags)
 		*tiling_flags = bo->tiling_flags;
@@ -746,8 +769,10 @@ void radeon_bo_get_tiling_flags(struct radeon_bo *bo,
 int radeon_bo_check_tiling(struct radeon_bo *bo, bool has_moved,
 				bool force_drop)
 {
+#ifdef notyet
 	if (!force_drop)
 		lockdep_assert_held(&bo->tbo.resv->lock.base);
+#endif
 
 	if (!(bo->tiling_flags & RADEON_TILING_SURFACE))
 		return 0;
