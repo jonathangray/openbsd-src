@@ -53,6 +53,7 @@
 #pragma clang diagnostic ignored "-Wunneeded-internal-declaration"
 #pragma clang diagnostic ignored "-Wunused-const-variable"
 #pragma clang diagnostic ignored "-Wincompatible-pointer-types-discards-qualifiers"
+#pragma clang diagnostic ignored "-Wunused-function"
 #else
 #pragma GCC diagnostic ignored "-Wformat-zero-length"
 #endif
@@ -117,6 +118,12 @@ typedef off_t loff_t;
 	barrier();		\
 	__tmp;			\
 })
+
+#define WRITE_ONCE(x, v) do {	\
+	barrier();		\
+	ACCESS_ONCE(x) = (v);	\
+	barrier();		\
+} while(0)
 
 #define uninitialized_var(x) x
 
