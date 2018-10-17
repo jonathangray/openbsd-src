@@ -61,6 +61,12 @@ struct ww_mutex {
 		.name = #classname	\
 	}
 
+#define DEFINE_WD_CLASS(classname)	\
+	struct ww_class classname = {	\
+		.stamp = 0,		\
+		.name = #classname	\
+	}
+
 static inline void
 ww_acquire_init(struct ww_acquire_ctx *ctx, struct ww_class *ww_class) {
 	ctx->stamp = __sync_fetch_and_add(&ww_class->stamp, 1);

@@ -415,11 +415,16 @@ int reservation_object_get_fences_rcu(struct reservation_object *obj,
 		if (sz) {
 			struct dma_fence **nshared;
 
-			nshared = krealloc(shared, sz,
-					   GFP_NOWAIT | __GFP_NOWARN);
+			nshared = kmalloc(sz, GFP_NOWAIT | __GFP_NOWARN);
+			if (nshared != NULL && shared != NULL)
+				memcpy(nshared, shared, sz);
+			kfree(shared);
 			if (!nshared) {
 				rcu_read_unlock();
-				nshared = krealloc(shared, sz, GFP_KERNEL);
+				nshared = kmalloc(sz, GFP_KERNEL);
+				if (nshared != NULL && shared != NULL)
+					memcpy(nshared, shared, sz);
+				kfree(shared);
 				if (nshared) {
 					shared = nshared;
 					continue;
