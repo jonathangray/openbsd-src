@@ -116,7 +116,7 @@ static vm_fault_t ttm_bo_vm_fault(struct vm_fault *vmf)
 	unsigned long page_last;
 	unsigned long pfn;
 	struct ttm_tt *ttm = NULL;
-	struct page *page;
+	struct vm_page *page;
 	int err;
 	int i;
 	vm_fault_t ret = VM_FAULT_NOPAGE;

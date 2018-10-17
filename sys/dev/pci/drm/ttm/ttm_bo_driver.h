@@ -30,13 +30,17 @@
 #ifndef _TTM_BO_DRIVER_H_
 #define _TTM_BO_DRIVER_H_
 
+#include <dev/pci/drm/drm_linux.h>
 #include <dev/pci/drm/drm_mm.h>
 #include <dev/pci/drm/drm_global.h>
 #include <dev/pci/drm/drm_vma_manager.h>
+#include <dev/pci/drm/drm_print.h>
+#ifdef __linux__
 #include <linux/workqueue.h>
 #include <linux/fs.h>
 #include <linux/spinlock.h>
 #include <linux/reservation.h>
+#endif
 
 #include "ttm_bo_api.h"
 #include "ttm_memory.h"
@@ -184,7 +188,7 @@ struct ttm_mem_type_manager {
 	uint32_t default_caching;
 	const struct ttm_mem_type_manager_func *func;
 	void *priv;
-	struct mutex io_reserve_mutex;
+	struct rwlock io_reserve_mutex;
 	bool use_io_reserve_lru;
 	bool io_reserve_fastpath;
 	spinlock_t move_lock;
@@ -415,8 +419,8 @@ struct ttm_bo_global {
 
 	struct kobject kobj;
 	struct ttm_mem_global *mem_glob;
-	struct page *dummy_read_page;
-	struct mutex device_list_mutex;
+	struct vm_page *dummy_read_page;
+	struct rwlock device_list_mutex;
 	spinlock_t lru_lock;
 
 	/**

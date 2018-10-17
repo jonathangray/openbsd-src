@@ -31,8 +31,12 @@
 #ifndef _TTM_BO_API_H_
 #define _TTM_BO_API_H_
 
+#include <dev/pci/drm/drm_linux.h>
+#include <dev/pci/drm/linux_ww_mutex.h>
+#include <dev/pci/drm/linux_reservation.h>
 #include <dev/pci/drm/drm_hashtab.h>
 #include <dev/pci/drm/drm_vma_manager.h>
+#ifdef __linux__
 #include <linux/kref.h>
 #include <linux/list.h>
 #include <linux/wait.h>
@@ -40,6 +44,7 @@
 #include <linux/mm.h>
 #include <linux/bitmap.h>
 #include <linux/reservation.h>
+#endif
 
 struct ttm_bo_global;
 
@@ -72,6 +77,7 @@ struct ttm_bus_placement {
 	bool		is_iomem;
 	bool		io_reserved_vm;
 	uint64_t        io_reserved_count;
+	bus_space_handle_t bsh;
 };
 
 
@@ -167,6 +173,8 @@ struct ttm_tt;
  */
 
 struct ttm_buffer_object {
+	struct uvm_object uobj;
+
 	/**
 	 * Members constant at init.
 	 */
@@ -189,7 +197,7 @@ struct ttm_buffer_object {
 	 */
 
 	struct ttm_mem_reg mem;
-	struct file *persistent_swap_storage;
+	struct uvm_object *persistent_swap_storage;
 	struct ttm_tt *ttm;
 	bool evicted;
 
@@ -230,7 +238,7 @@ struct ttm_buffer_object {
 
 	struct reservation_object *resv;
 	struct reservation_object ttm_resv;
-	struct mutex wu_mutex;
+	struct rwlock wu_mutex;
 };
 
 /**
@@ -249,7 +257,7 @@ struct ttm_buffer_object {
 #define TTM_BO_MAP_IOMEM_MASK 0x80
 struct ttm_bo_kmap_obj {
 	void *virtual;
-	struct page *page;
+	struct vm_page *page;
 	enum {
 		ttm_bo_map_iomap        = 1 | TTM_BO_MAP_IOMEM_MASK,
 		ttm_bo_map_vmap         = 2,
@@ -707,6 +715,7 @@ int ttm_bo_kmap(struct ttm_buffer_object *bo, unsigned long start_page,
  */
 void ttm_bo_kunmap(struct ttm_bo_kmap_obj *map);
 
+#ifdef notyet
 /**
  * ttm_fbdev_mmap - mmap fbdev memory backed by a ttm buffer object.
  *
@@ -731,10 +740,13 @@ int ttm_fbdev_mmap(struct vm_area_struct *vma, struct ttm_buffer_object *bo);
  */
 int ttm_bo_mmap(struct file *filp, struct vm_area_struct *vma,
 		struct ttm_bo_device *bdev);
+#endif
 
-void *ttm_kmap_atomic_prot(struct page *page, pgprot_t prot);
+void *ttm_kmap_atomic_prot(struct vm_page *page, pgprot_t prot);
 
 void ttm_kunmap_atomic_prot(void *addr, pgprot_t prot);
+
+extern struct uvm_object *ttm_bo_mmap(voff_t, vsize_t, struct ttm_bo_device *);
 
 /**
  * ttm_bo_io
