@@ -23,12 +23,11 @@
  *
  * Authors: Alex Deucher
  */
-#include <dev/pci/drm/drmP.h>
+#include <drm/drmP.h>
 
 #include "radeon.h"
-#include <dev/pci/drm/radeon_drm.h>
-
-#ifdef notyet
+#include <drm/radeon_drm.h>
+#include <linux/dma-buf.h>
 
 struct sg_table *radeon_gem_prime_get_sg_table(struct drm_gem_object *obj)
 {
@@ -78,6 +77,7 @@ struct drm_gem_object *radeon_gem_prime_import_sg_table(struct drm_device *dev,
 	list_add_tail(&bo->list, &rdev->gem.objects);
 	mutex_unlock(&rdev->gem.mutex);
 
+	bo->prime_shared_count = 1;
 	return &bo->gem_base;
 }
 
@@ -92,6 +92,9 @@ int radeon_gem_prime_pin(struct drm_gem_object *obj)
 
 	/* pin buffer into GTT */
 	ret = radeon_bo_pin(bo, RADEON_GEM_DOMAIN_GTT, NULL);
+	if (likely(ret == 0))
+		bo->prime_shared_count++;
+
 	radeon_bo_unreserve(bo);
 	return ret;
 }
@@ -106,6 +109,8 @@ void radeon_gem_prime_unpin(struct drm_gem_object *obj)
 		return;
 
 	radeon_bo_unpin(bo);
+	if (bo->prime_shared_count)
+		bo->prime_shared_count--;
 	radeon_bo_unreserve(bo);
 }
 
@@ -116,8 +121,6 @@ struct reservation_object *radeon_gem_prime_res_obj(struct drm_gem_object *obj)
 
 	return bo->tbo.resv;
 }
-
-#endif
 
 struct dma_buf *radeon_gem_prime_export(struct drm_device *dev,
 					struct drm_gem_object *gobj,
