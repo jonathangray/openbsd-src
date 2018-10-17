@@ -235,6 +235,7 @@ static void ttm_mem_global_kobj_release(struct kobject *kobj)
 	kfree(glob);
 }
 
+#ifdef notyet
 static struct attribute *ttm_mem_global_attrs[] = {
 	&ttm_mem_global_lower_mem_limit,
 	NULL
@@ -244,11 +245,14 @@ static const struct sysfs_ops ttm_mem_global_ops = {
 	.show = &ttm_mem_global_show,
 	.store = &ttm_mem_global_store,
 };
+#endif
 
 static struct kobj_type ttm_mem_glob_kobj_type = {
 	.release = &ttm_mem_global_kobj_release,
+#ifdef __linux__
 	.sysfs_ops = &ttm_mem_global_ops,
 	.default_attrs = ttm_mem_global_attrs,
+#endif
 };
 
 static bool ttm_zones_above_swap_target(struct ttm_mem_global *glob,
@@ -314,17 +318,13 @@ static void ttm_shrink_work(struct work_struct *work)
 }
 
 static int ttm_mem_init_kernel_zone(struct ttm_mem_global *glob,
-				    const struct sysinfo *si)
+    uint64_t mem)
 {
 	struct ttm_mem_zone *zone = kzalloc(sizeof(*zone), GFP_KERNEL);
-	uint64_t mem;
 	int ret;
 
 	if (unlikely(!zone))
 		return -ENOMEM;
-
-	mem = si->totalram - si->totalhigh;
-	mem *= si->mem_unit;
 
 	zone->name = "kernel";
 	zone->zone_mem = mem;
@@ -346,10 +346,9 @@ static int ttm_mem_init_kernel_zone(struct ttm_mem_global *glob,
 
 #ifdef CONFIG_HIGHMEM
 static int ttm_mem_init_highmem_zone(struct ttm_mem_global *glob,
-				     const struct sysinfo *si)
+    uint64_t mem)
 {
 	struct ttm_mem_zone *zone;
-	uint64_t mem;
 	int ret;
 
 	if (si->totalhigh == 0)
@@ -358,9 +357,6 @@ static int ttm_mem_init_highmem_zone(struct ttm_mem_global *glob,
 	zone = kzalloc(sizeof(*zone), GFP_KERNEL);
 	if (unlikely(!zone))
 		return -ENOMEM;
-
-	mem = si->totalram;
-	mem *= si->mem_unit;
 
 	zone->name = "highmem";
 	zone->zone_mem = mem;
@@ -382,17 +378,13 @@ static int ttm_mem_init_highmem_zone(struct ttm_mem_global *glob,
 }
 #else
 static int ttm_mem_init_dma32_zone(struct ttm_mem_global *glob,
-				   const struct sysinfo *si)
+    uint64_t mem)
 {
 	struct ttm_mem_zone *zone = kzalloc(sizeof(*zone), GFP_KERNEL);
-	uint64_t mem;
 	int ret;
 
 	if (unlikely(!zone))
 		return -ENOMEM;
-
-	mem = si->totalram;
-	mem *= si->mem_unit;
 
 	/**
 	 * No special dma32 zone needed.
@@ -431,12 +423,12 @@ static int ttm_mem_init_dma32_zone(struct ttm_mem_global *glob,
 
 int ttm_mem_global_init(struct ttm_mem_global *glob)
 {
-	struct sysinfo si;
+	uint64_t mem;
 	int ret;
 	int i;
 	struct ttm_mem_zone *zone;
 
-	spin_lock_init(&glob->lock);
+	mtx_init(&glob->lock, IPL_TTY);
 	glob->swap_queue = create_singlethread_workqueue("ttm_swap");
 	INIT_WORK(&glob->work, ttm_shrink_work);
 	ret = kobject_init_and_add(
@@ -446,20 +438,20 @@ int ttm_mem_global_init(struct ttm_mem_global *glob)
 		return ret;
 	}
 
-	si_meminfo(&si);
+	mem = ptoa(physmem);
 
 	/* set it as 0 by default to keep original behavior of OOM */
 	glob->lower_mem_limit = 0;
 
-	ret = ttm_mem_init_kernel_zone(glob, &si);
+	ret = ttm_mem_init_kernel_zone(glob, mem);
 	if (unlikely(ret != 0))
 		goto out_no_zone;
 #ifdef CONFIG_HIGHMEM
-	ret = ttm_mem_init_highmem_zone(glob, &si);
+	ret = ttm_mem_init_highmem_zone(glob, mem);
 	if (unlikely(ret != 0))
 		goto out_no_zone;
 #else
-	ret = ttm_mem_init_dma32_zone(glob, &si);
+	ret = ttm_mem_init_dma32_zone(glob, mem);
 	if (unlikely(ret != 0))
 		goto out_no_zone;
 #endif
@@ -560,6 +552,9 @@ ttm_check_under_lowerlimit(struct ttm_mem_global *glob,
 			uint64_t num_pages,
 			struct ttm_operation_ctx *ctx)
 {
+	STUB();
+	return false;
+#if 0
 	int64_t available;
 
 	if (ctx->flags & TTM_OPT_FLAG_FORCE_ALLOC)
@@ -571,6 +566,7 @@ ttm_check_under_lowerlimit(struct ttm_mem_global *glob,
 		return true;
 
 	return false;
+#endif
 }
 EXPORT_SYMBOL(ttm_check_under_lowerlimit);
 
