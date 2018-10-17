@@ -78,8 +78,9 @@
 #include "drm_fourcc_internal.h"
 #include "drm_mm.h"
 #include "drm_linux_atomic.h"
-#include "drm_print.h"
 #include "drm_prime.h"
+#include "drm_print.h"
+#include "drm_file.h"
 #include "agp.h"
 
 struct fb_cmap;
@@ -285,66 +286,6 @@ typedef struct drm_dma_handle {
 	void *vaddr;
 	size_t size;
 } drm_dma_handle_t;
-
-struct drm_pending_event {
-	struct drm_event *event;
-	struct list_head link;
-	struct drm_file *file_priv;
-	pid_t pid; /* pid of requester, no guarantee it's valid by the time
-		      we deliver the event, for tracing only */
-	void (*destroy)(struct drm_pending_event *event);
-};
-
-/** File private data */
-struct drm_file {
-	unsigned always_authenticated :1;
-	unsigned authenticated :1;
-	unsigned is_master :1; /* this file private is a master for a minor */
-	/* true when the client has asked us to expose stereo 3D mode flags */
-	unsigned stereo_allowed :1;
-	/*
-	 * true if client understands CRTC primary planes and cursor planes
-	 * in the plane list
-	 */
-	unsigned universal_planes:1;
-	/* true if client understands atomic properties */
-	unsigned atomic:1;
-	unsigned aspect_ratio_allowed:1;
-	unsigned writeback_connectors:1;
-
-	drm_magic_t magic;
-	int minor;
-
-	/** Mapping of mm object handles to object pointers. */
-	struct idr object_idr;
-	/** Lock for synchronization of access to object_idr. */
-	spinlock_t table_lock;
-
-	struct file *filp;
-	void *driver_priv;
-
-	/**
-	 * fbs - List of framebuffers associated with this file.
-	 *
-	 * Protected by fbs_lock. Note that the fbs list holds a reference on
-	 * the fb object to prevent it from untimely disappearing.
-	 */
-	struct list_head fbs;
-	struct rwlock fbs_lock;
-
-	/** User-created blob properties; this retains a reference on the
-	 *  property. */
-	struct list_head blobs;
-
-	wait_queue_head_t event_wait;
-	struct list_head event_list;
-	int event_space;
-
-	struct drm_prime_file_private prime;
-
-	struct selinfo rsel;
-	SPLAY_ENTRY(drm_file) link;
-};
 
 static inline void
 drm_dev_put(struct drm_device *dev)
@@ -665,31 +606,7 @@ struct drm_driver {
 
 };
 
-enum drm_minor_type {
-	DRM_MINOR_LEGACY,
-	DRM_MINOR_CONTROL,
-	DRM_MINOR_RENDER,
-	DRM_MINOR_CNT,
-};
-
 #include "drm_crtc.h"
-
-#if 0
-/* mode specified on the command line */
-struct drm_cmdline_mode {
-	bool specified;
-	bool refresh_specified;
-	bool bpp_specified;
-	int xres, yres;
-	int bpp;
-	int refresh;
-	bool rb;
-	bool interlace;
-	bool cvt;
-	bool margins;
-	enum drm_connector_force force;
-};
-#endif
 
 struct drm_minor;
 
@@ -1120,33 +1037,6 @@ static inline bool drm_drv_uses_atomic_modeset(struct drm_device *dev)
 {
 	return drm_core_check_feature(dev, DRIVER_ATOMIC) ||
 		(dev->mode_config.funcs && dev->mode_config.funcs->atomic_commit != NULL);
-}
-
-static inline bool drm_is_render_client(const struct drm_file *file_priv)
-{
-#ifdef notyet
-	return file_priv->minor->type == DRM_MINOR_RENDER;
-#else
-	return 0;
-#endif
-}
-
-static inline bool drm_is_control_client(const struct drm_file *file_priv)
-{
-#ifdef notyet
-	return file_priv->minor->type == DRM_MINOR_CONTROL;
-#else
-	return 0;
-#endif
-}
-
-static inline bool drm_is_primary_client(const struct drm_file *file_priv)
-{
-#ifdef notyet
-	return file_priv->minor->type == DRM_MINOR_LEGACY;
-#else
-	return 1;
-#endif
 }
 
 static inline int drm_dev_to_irq(struct drm_device *dev)
