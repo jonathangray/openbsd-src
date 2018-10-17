@@ -31,10 +31,14 @@
 
 #define pr_fmt(fmt) "[TTM] " fmt
 
+#ifdef __linux__
 #include <linux/sched.h>
 #include <linux/pagemap.h>
 #include <linux/shmem_fs.h>
 #include <linux/file.h>
+#else
+#include <dev/pci/drm/drm_linux.h>
+#endif
 #include <dev/pci/drm/drm_cache.h>
 #include <dev/pci/drm/ttm/ttm_bo_driver.h>
 #include <dev/pci/drm/ttm/ttm_page_alloc.h>
