@@ -25,9 +25,11 @@
  *          Alex Deucher
  *          Jerome Glisse
  */
+#ifdef __linux__
 #include <linux/seq_file.h>
 #include <linux/slab.h>
-#include <drm/drmP.h>
+#endif
+#include <dev/pci/drm/drmP.h>
 #include "rv515d.h"
 #include "radeon.h"
 #include "radeon_asic.h"

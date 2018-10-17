@@ -25,13 +25,15 @@
  *          Alex Deucher
  *          Jerome Glisse
  */
+#ifdef __linux__
 #include <linux/firmware.h>
 #include <linux/slab.h>
-#include <drm/drmP.h>
+#endif
+#include <dev/pci/drm/drmP.h>
 #include "radeon.h"
 #include "radeon_asic.h"
 #include "radeon_audio.h"
-#include <drm/radeon_drm.h>
+#include <dev/pci/drm/radeon_drm.h>
 #include "rv770d.h"
 #include "atom.h"
 #include "avivod.h"
