@@ -1168,7 +1168,7 @@ int ttm_bo_init_reserved(struct ttm_bo_device *bdev,
 	INIT_LIST_HEAD(&bo->ddestroy);
 	INIT_LIST_HEAD(&bo->swap);
 	INIT_LIST_HEAD(&bo->io_reserve_lru);
-	mutex_init(&bo->wu_mutex);
+	rw_init(&bo->wu_mutex, "ttmwu");
 	bo->bdev = bdev;
 	bo->type = type;
 	bo->num_pages = num_pages;
@@ -1426,8 +1426,8 @@ int ttm_bo_init_mm(struct ttm_bo_device *bdev, unsigned type,
 	BUG_ON(man->has_type);
 	man->io_reserve_fastpath = true;
 	man->use_io_reserve_lru = false;
-	mutex_init(&man->io_reserve_mutex);
-	spin_lock_init(&man->move_lock);
+	rw_init(&man->io_reserve_mutex, "ior");
+	mtx_init(&man->move_lock, IPL_NONE);
 	INIT_LIST_HEAD(&man->io_reserve_lru);
 
 	ret = bdev->driver->init_mem_type(bdev, type, man);
@@ -1478,8 +1478,8 @@ int ttm_bo_global_init(struct drm_global_reference *ref)
 	int ret;
 	unsigned i;
 
-	mutex_init(&glob->device_list_mutex);
-	spin_lock_init(&glob->lru_lock);
+	rw_init(&glob->device_list_mutex, "gdl");
+	mtx_init(&glob->lru_lock, IPL_NONE);
 	glob->mem_glob = bo_ref->mem_glob;
 	glob->mem_glob->bo_glob = glob;
 	glob->dummy_read_page = alloc_page(__GFP_ZERO | GFP_DMA32);

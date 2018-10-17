@@ -49,7 +49,7 @@ struct ww_acquire_ctx {
 };
 
 struct ww_mutex {
-	struct mutex			lock;
+	struct mutex			base;
 	volatile int			acquired;
 	volatile struct ww_acquire_ctx	*ctx;
 	volatile struct proc		*owner;
@@ -83,7 +83,7 @@ ww_acquire_fini(__unused struct ww_acquire_ctx *ctx) {
 
 static inline void
 ww_mutex_init(struct ww_mutex *lock, struct ww_class *ww_class) {
-	mtx_init(&lock->lock, IPL_NONE);
+	mtx_init(&lock->base, IPL_NONE);
 	lock->acquired = 0;
 	lock->ctx = NULL;
 	lock->owner = NULL;
@@ -92,9 +92,9 @@ ww_mutex_init(struct ww_mutex *lock, struct ww_class *ww_class) {
 static inline bool
 ww_mutex_is_locked(struct ww_mutex *lock) {
 	bool res = false;
-	mtx_enter(&lock->lock);
+	mtx_enter(&lock->base);
 	if (lock->acquired > 0) res = true;
-	mtx_leave(&lock->lock);
+	mtx_leave(&lock->base);
 	return res;
 }
 
@@ -105,7 +105,7 @@ static inline int
 ww_mutex_trylock(struct ww_mutex *lock) {
 	int res = 0;
 
-	mtx_enter(&lock->lock);
+	mtx_enter(&lock->base);
 	/*
 	 * In case no one holds the ww_mutex yet, we acquire it.
 	 */
@@ -115,7 +115,7 @@ ww_mutex_trylock(struct ww_mutex *lock) {
 		lock->owner = curproc;
 		res = 1;
 	}
-	mtx_leave(&lock->lock);
+	mtx_leave(&lock->base);
 	return res;
 }
 
@@ -130,7 +130,7 @@ static inline int
 __ww_mutex_lock(struct ww_mutex *lock, struct ww_acquire_ctx *ctx, bool slow, bool intr) {
 	int err;
 
-	mtx_enter(&lock->lock);
+	mtx_enter(&lock->base);
 	for (;;) {
 		/*
 		 * In case no one holds the ww_mutex yet, we acquire it.
@@ -171,7 +171,7 @@ __ww_mutex_lock(struct ww_mutex *lock, struct ww_acquire_ctx *ctx, bool slow, bo
 			 */
 			if (slow || ctx == NULL ||
 			    (lock->ctx && ctx->stamp < lock->ctx->stamp)) {
-				int s = msleep(lock, &lock->lock,
+				int s = msleep(lock, &lock->base,
 					       intr ? PCATCH : 0,
 					       ctx ? ctx->ww_class->name : "ww_mutex_lock", 0);
 				if (intr && (s == EINTR || s == ERESTART)) {
@@ -196,7 +196,7 @@ __ww_mutex_lock(struct ww_mutex *lock, struct ww_acquire_ctx *ctx, bool slow, bo
 		}
 
 	} /* for */
-	mtx_leave(&lock->lock);
+	mtx_leave(&lock->base);
 	return err;
 }
 
@@ -222,14 +222,14 @@ ww_mutex_lock_slow_interruptible(struct ww_mutex *lock, struct ww_acquire_ctx *c
 
 static inline void
 ww_mutex_unlock(struct ww_mutex *lock) {
-	mtx_enter(&lock->lock);
+	mtx_enter(&lock->base);
 	KASSERT(lock->owner == curproc);
 	KASSERT(lock->acquired == 1);
 
 	lock->acquired = 0;
 	lock->ctx = NULL;
 	lock->owner = NULL;
-	mtx_leave(&lock->lock);
+	mtx_leave(&lock->base);
 	wakeup(lock);
 }
 

@@ -109,7 +109,7 @@ struct ttm_tt {
 	uint32_t page_flags;
 	unsigned long num_pages;
 	struct sg_table *sg; /* for SG objects via dma-buf */
-	struct file *swap_storage;
+	struct uvm_object *swap_storage;
 	enum ttm_caching_state caching_state;
 	enum {
 		tt_bound,

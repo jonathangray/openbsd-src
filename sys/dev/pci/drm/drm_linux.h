@@ -1125,6 +1125,8 @@ ktime_us_delta(struct timeval a, struct timeval b)
 #define __GFP_NORETRY	0
 #define __GFP_ZERO	M_ZERO
 
+#define PageHighMem(x)	0
+
 #define array_size(x, y) ((x) * (y))
 
 static inline void *
@@ -2222,6 +2224,7 @@ capable(int cap)
 	return suser(curproc);
 }
 
+typedef unsigned long pgoff_t;
 typedef int pgprot_t;
 #define pgprot_val(v)	(v)
 #define PAGE_KERNEL	0
