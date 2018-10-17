@@ -841,7 +841,7 @@ radeondrm_activate_kms(struct device *self, int act)
 	switch (act) {
 	case DVACT_QUIESCE:
 		rv = config_activate_children(self, act);
-		radeon_suspend_kms(rdev->ddev, true, true);
+		radeon_suspend_kms(rdev->ddev, true, true, false);
 		break;
 	case DVACT_SUSPEND:
 		break;

@@ -363,8 +363,12 @@ void drm_err(const char *format, ...);
 
 #define DRM_DEV_DEBUG_DRIVER(dev, fmt, ...)				\
 	drm_dev_dbg(dev, DRM_UT_DRIVER,	fmt, ##__VA_ARGS__)
+#ifdef DRMDEBUG
 #define DRM_DEBUG_DRIVER(fmt, ...)					\
 	drm_dbg(DRM_UT_DRIVER, fmt, ##__VA_ARGS__)
+#else
+#define DRM_DEBUG_DRIVER(fmt, arg...) do { } while(/* CONSTCOND */ 0)
+#endif
 
 #define DRM_DEV_DEBUG_KMS(dev, fmt, ...)				\
 	drm_dev_dbg(dev, DRM_UT_KMS, fmt, ##__VA_ARGS__)

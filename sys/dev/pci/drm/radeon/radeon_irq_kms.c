@@ -284,7 +284,7 @@ int radeon_irq_kms_init(struct radeon_device *rdev)
 {
 	int r = 0;
 
-	spin_lock_init(&rdev->irq.lock);
+	mtx_init(&rdev->irq.lock, IPL_TTY);
 
 	/* Disable vblank irqs aggressively for power-saving */
 	rdev->ddev->vblank_disable_immediate = true;
@@ -294,6 +294,7 @@ int radeon_irq_kms_init(struct radeon_device *rdev)
 		return r;
 	}
 
+#ifdef notyet
 	/* enable msi */
 	rdev->msi_enabled = 0;
 
@@ -304,6 +305,7 @@ int radeon_irq_kms_init(struct radeon_device *rdev)
 			dev_info(rdev->dev, "radeon: using MSI.\n");
 		}
 	}
+#endif
 
 	INIT_DELAYED_WORK(&rdev->hotplug_work, radeon_hotplug_work_func);
 	INIT_WORK(&rdev->dp_work, radeon_dp_work_func);
