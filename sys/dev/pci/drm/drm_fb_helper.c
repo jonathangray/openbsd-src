@@ -2722,22 +2722,22 @@ __drm_fb_helper_initial_config_and_unlock(struct drm_fb_helper *fb_helper,
 	/* Need to drop locks to avoid recursive deadlock in
 	 * register_framebuffer. This is ok because the only thing left to do is
 	 * register the fbdev emulation instance in kernel_fb_helper_list. */
-#ifdef __linux__
 	mutex_unlock(&fb_helper->lock);
 
+#ifdef __linux__
 	ret = register_framebuffer(info);
 	if (ret < 0)
 		return ret;
 
 	dev_info(dev->dev, "fb%d: %s frame buffer device\n",
 		 info->node, info->fix.id);
+#endif
 
 	mutex_lock(&kernel_fb_helper_lock);
 	if (list_empty(&kernel_fb_helper_list))
 		register_sysrq_key('v', &sysrq_drm_fb_helper_restore_op);
 
 	list_add(&fb_helper->kernel_fb_list, &kernel_fb_helper_list);
-#endif
 	mutex_unlock(&kernel_fb_helper_lock);
 
 	return 0;
