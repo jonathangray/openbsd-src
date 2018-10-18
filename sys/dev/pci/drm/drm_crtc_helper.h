@@ -79,6 +79,8 @@ void drm_kms_helper_hotplug_event(struct drm_device *dev);
 
 void drm_kms_helper_poll_disable(struct drm_device *dev);
 void drm_kms_helper_poll_enable(struct drm_device *dev);
+#ifdef __linux__
 bool drm_kms_helper_is_poll_worker(void);
+#endif
 
 #endif
