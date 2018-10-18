@@ -589,6 +589,9 @@ _spin_unlock_irqrestore(struct mutex *mtxp, __unused unsigned long flags
 
 #define might_lock(lock)
 #define lockdep_assert_held(lock)	do { (void)(lock); } while(0)
+#define lock_acquire(lock, a, b, c, d, e, f)
+#define lock_release(lock, a, b)
+#define lock_acquire_shared_recursive(lock, a, b, c, d)
 
 #define IRQF_SHARED	0
 
@@ -2609,12 +2612,15 @@ __copy_from_user_inatomic_nocache(void *to, const void *from, unsigned len)
 
 struct fb_var_screeninfo {
 	int pixclock;
+	uint32_t width;
+	uint32_t height;
 };
 
 struct fb_info {
 	struct fb_var_screeninfo var;
 	char *screen_buffer;
 	void *par;
+	int fbcon_rotate_hint;
 };
 
 #define FB_BLANK_UNBLANK	0
@@ -2625,6 +2631,11 @@ struct fb_info {
 
 #define FBINFO_STATE_RUNNING	0
 #define FBINFO_STATE_SUSPENDED	1
+
+#define FB_ROTATE_UR		0
+#define FB_ROTATE_CW		1
+#define FB_ROTATE_UD		2
+#define FB_ROTATE_CCW		3
 
 #define framebuffer_alloc(flags, device) \
 	kzalloc(sizeof(struct fb_info), GFP_KERNEL)

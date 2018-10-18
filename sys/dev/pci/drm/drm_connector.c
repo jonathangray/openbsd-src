@@ -589,12 +589,9 @@ static struct lockdep_map connector_list_iter_dep_map = {
 void drm_connector_list_iter_begin(struct drm_device *dev,
 				   struct drm_connector_list_iter *iter)
 {
-	STUB();
 	iter->dev = dev;
 	iter->conn = NULL;
-#ifdef notyet
 	lock_acquire_shared_recursive(&connector_list_iter_dep_map, 0, 1, NULL, _RET_IP_);
-#endif
 }
 EXPORT_SYMBOL(drm_connector_list_iter_begin);
 
@@ -606,12 +603,11 @@ EXPORT_SYMBOL(drm_connector_list_iter_begin);
 static void
 __drm_connector_put_safe(struct drm_connector *conn)
 {
-	STUB();
-#ifdef notyet
 	struct drm_mode_config *config = &conn->dev->mode_config;
 
 	lockdep_assert_held(&config->connector_list_lock);
 
+#ifdef notyet
 	if (!refcount_dec_and_test(&conn->base.refcount.refcount))
 		return;
 
@@ -669,8 +665,6 @@ EXPORT_SYMBOL(drm_connector_list_iter_next);
  */
 void drm_connector_list_iter_end(struct drm_connector_list_iter *iter)
 {
-	STUB();
-#ifdef notyet
 	struct drm_mode_config *config = &iter->dev->mode_config;
 	unsigned long flags;
 
@@ -681,7 +675,6 @@ void drm_connector_list_iter_end(struct drm_connector_list_iter *iter)
 		spin_unlock_irqrestore(&config->connector_list_lock, flags);
 	}
 	lock_release(&connector_list_iter_dep_map, 0, _RET_IP_);
-#endif
 }
 EXPORT_SYMBOL(drm_connector_list_iter_end);
 
