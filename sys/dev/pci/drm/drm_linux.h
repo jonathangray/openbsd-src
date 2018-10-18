@@ -593,6 +593,46 @@ _spin_unlock_irqrestore(struct mutex *mtxp, __unused unsigned long flags
 #define lock_release(lock, a, b)
 #define lock_acquire_shared_recursive(lock, a, b, c, d)
 
+typedef struct {
+	unsigned int seq;
+	struct mutex lock;
+} seqlock_t;
+
+static inline void
+seqlock_init(seqlock_t *sl)
+{ 
+	sl->seq = 0;
+	mtx_init(&sl->lock, IPL_NONE);
+}
+
+static inline void
+write_seqlock(seqlock_t *sl)
+{
+	mtx_enter(&sl->lock);
+	sl->seq++;
+	membar_producer();
+}
+
+static inline void
+write_sequnlock(seqlock_t *sl)
+{
+	membar_producer();
+	sl->seq++;
+	mtx_leave(&sl->lock);
+}
+
+static inline unsigned int
+read_seqbegin(seqlock_t *sl)
+{
+	return READ_ONCE(sl->seq);
+}
+
+static inline unsigned int
+read_seqretry(seqlock_t *sl, unsigned int pos)
+{
+	return sl->seq != pos;
+}
+
 #define IRQF_SHARED	0
 
 #define local_irq_save(x)		(x) = splhigh()

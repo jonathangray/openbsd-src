@@ -95,8 +95,6 @@ static void store_vblank(struct drm_device *dev, unsigned int pipe,
 			 u32 vblank_count_inc,
 			 ktime_t t_vblank, u32 last)
 {
-	STUB();
-#if 0
 	struct drm_vblank_crtc *vblank = &dev->vblank[pipe];
 
 	assert_spin_locked(&dev->vblank_time_lock);
@@ -107,7 +105,6 @@ static void store_vblank(struct drm_device *dev, unsigned int pipe,
 	vblank->time = t_vblank;
 	vblank->count += vblank_count_inc;
 	write_sequnlock(&vblank->seqlock);
-#endif
 }
 
 /*
@@ -451,9 +448,7 @@ int drm_vblank_init(struct drm_device *dev, unsigned int num_crtcs)
 		init_waitqueue_head(&vblank->queue);
 		setup_timer(&vblank->disable_timer, vblank_disable_fn,
 		    (unsigned long)vblank);
-#ifdef notyet
 		seqlock_init(&vblank->seqlock);
-#endif
 	}
 
 	DRM_INFO("Supports vblank timestamp caching Rev 2 (21.10.2013).\n");
@@ -780,9 +775,6 @@ EXPORT_SYMBOL(drm_crtc_vblank_count);
 static u64 drm_vblank_count_and_time(struct drm_device *dev, unsigned int pipe,
 				     ktime_t *vblanktime)
 {
-	STUB();
-	return 0;
-#if 0
 	struct drm_vblank_crtc *vblank = &dev->vblank[pipe];
 	u64 vblank_count;
 	unsigned int seq;
@@ -799,7 +791,6 @@ static u64 drm_vblank_count_and_time(struct drm_device *dev, unsigned int pipe,
 	} while (read_seqretry(&vblank->seqlock, seq));
 
 	return vblank_count;
-#endif
 }
 
 /**
