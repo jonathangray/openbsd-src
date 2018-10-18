@@ -2927,4 +2927,6 @@ struct dma_buf *dma_buf_export(const struct dma_buf_export_info *);
 #define dma_buf_attach(x, y) NULL
 #define dma_buf_detach(x, y) panic("dma_buf_detach")
 
+#define register_sysrq_key(x, y)
+
 #endif
