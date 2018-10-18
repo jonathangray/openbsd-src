@@ -75,6 +75,7 @@ typedef uint32_t u32;
 typedef int64_t  s64;
 typedef uint64_t u64;
 
+#define U32_MAX UINT32_MAX
 #define U64_C(x) UINT64_C(x)
 #define U64_MAX UINT64_MAX
 
@@ -1170,6 +1171,12 @@ kzalloc(size_t size, int flags)
 	return malloc(size, M_DRM, flags | M_ZERO);
 }
 
+static inline void *
+kvzalloc(size_t size, int flags)
+{
+	return malloc(size, M_DRM, flags | M_ZERO);
+}
+
 static inline void
 kfree(const void *objp)
 {
@@ -1437,7 +1444,8 @@ struct seq_file;
 
 static inline void
 seq_printf(struct seq_file *m, const char *fmt, ...) {};
-void seq_puts(struct seq_file *m, const char *s) {};
+static inline void
+seq_puts(struct seq_file *m, const char *s) {};
 
 #define preempt_enable()
 #define preempt_disable()
@@ -2302,7 +2310,7 @@ roundup_pow_of_two(unsigned long x)
 	return (1UL << flsl(x - 1));
 }
 
-#define is_power_of_2(x)	(x != 0 && (((x) - 1) & (x)) == 0)
+#define is_power_of_2(x)	(((x) != 0) && (((x) - 1) & (x)) == 0)
 
 #define PAGE_ALIGN(addr)	(((addr) + PAGE_MASK) & ~PAGE_MASK)
 #define IS_ALIGNED(x, y)	(((x) & ((y) - 1)) == 0)
