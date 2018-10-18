@@ -663,8 +663,6 @@ static const struct drm_crtc_funcs radeon_crtc_funcs = {
 
 static void radeon_crtc_init(struct drm_device *dev, int index)
 {
-	STUB();
-#ifdef notyet
 	struct radeon_device *rdev = dev->dev_private;
 	struct radeon_crtc *radeon_crtc;
 	int i;
@@ -706,7 +704,6 @@ static void radeon_crtc_init(struct drm_device *dev, int index)
 		radeon_atombios_init_crtc(dev, radeon_crtc);
 	else
 		radeon_legacy_init_crtc(dev, radeon_crtc);
-#endif
 }
 
 #ifdef DRMDEBUG

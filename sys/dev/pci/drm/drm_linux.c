@@ -548,6 +548,11 @@ ida_simple_get(struct ida *ida, unsigned int start, unsigned int end,
 	return ida->counter++;
 }
 
+void
+ida_simple_remove(struct ida *ida, int id)
+{
+}
+
 int
 sg_alloc_table(struct sg_table *table, unsigned int nents, gfp_t gfp_mask)
 {

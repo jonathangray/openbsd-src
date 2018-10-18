@@ -431,9 +431,6 @@ void drm_vblank_cleanup(struct drm_device *dev)
  */
 int drm_vblank_init(struct drm_device *dev, unsigned int num_crtcs)
 {
-	STUB();
-	return -ENOSYS;
-#if 0
 	int ret = -ENOMEM;
 	unsigned int i;
 
@@ -454,7 +451,9 @@ int drm_vblank_init(struct drm_device *dev, unsigned int num_crtcs)
 		init_waitqueue_head(&vblank->queue);
 		setup_timer(&vblank->disable_timer, vblank_disable_fn,
 		    (unsigned long)vblank);
+#ifdef notyet
 		seqlock_init(&vblank->seqlock);
+#endif
 	}
 
 	DRM_INFO("Supports vblank timestamp caching Rev 2 (21.10.2013).\n");
@@ -477,7 +476,6 @@ int drm_vblank_init(struct drm_device *dev, unsigned int num_crtcs)
 err:
 	dev->num_crtcs = 0;
 	return ret;
-#endif
 }
 EXPORT_SYMBOL(drm_vblank_init);
 

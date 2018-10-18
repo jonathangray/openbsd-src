@@ -197,9 +197,6 @@ int drm_connector_init(struct drm_device *dev,
 		       const struct drm_connector_funcs *funcs,
 		       int connector_type)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
 	struct drm_mode_config *config = &dev->mode_config;
 	int ret;
 	struct ida *connector_ida =
@@ -248,7 +245,7 @@ int drm_connector_init(struct drm_device *dev,
 
 	INIT_LIST_HEAD(&connector->probed_modes);
 	INIT_LIST_HEAD(&connector->modes);
-	mutex_init(&connector->mutex);
+	rw_init(&connector->mutex, "cnlk");
 	connector->edid_blob_ptr = NULL;
 	connector->status = connector_status_unknown;
 	connector->display_info.panel_orientation =
@@ -296,7 +293,6 @@ out_put:
 		drm_mode_object_unregister(dev, &connector->base);
 
 	return ret;
-#endif
 }
 EXPORT_SYMBOL(drm_connector_init);
 

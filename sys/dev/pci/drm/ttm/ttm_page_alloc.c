@@ -1214,7 +1214,7 @@ EXPORT_SYMBOL(ttm_populate_and_map_pages);
 void ttm_unmap_and_unpopulate_pages(struct device *dev, struct ttm_dma_tt *tt)
 {
 	STUB();
-#if 1
+#if 0
 	unsigned i, j;
 
 	for (i = 0; i < tt->ttm.num_pages;) {
@@ -1238,8 +1238,8 @@ void ttm_unmap_and_unpopulate_pages(struct device *dev, struct ttm_dma_tt *tt)
 
 		i += num_pages;
 	}
-	ttm_pool_unpopulate(&tt->ttm);
 #endif
+	ttm_pool_unpopulate(&tt->ttm);
 }
 EXPORT_SYMBOL(ttm_unmap_and_unpopulate_pages);
 
