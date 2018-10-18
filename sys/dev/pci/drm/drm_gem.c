@@ -1036,3 +1036,9 @@ int drm_gem_mmap(struct file *filp, struct vm_area_struct *vma)
 EXPORT_SYMBOL(drm_gem_mmap);
 
 #endif
+
+void drm_gem_print_info(struct drm_printer *p, unsigned int indent,
+			const struct drm_gem_object *obj)
+{
+	STUB();
+}
