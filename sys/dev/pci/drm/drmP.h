@@ -861,8 +861,6 @@ struct drm_display_mode *
 	 drm_mode_create_from_cmdline_mode(struct drm_device *,
 	     struct drm_cmdline_mode *);
 
-extern unsigned int drm_timestamp_monotonic;
-
 /* AGP/PCI Express/GART support (drm_agpsupport.c) */
 struct drm_agp_head *drm_agp_init(void);
 void	drm_agp_takedown(struct drm_device *);

@@ -358,6 +358,8 @@ void drm_gem_unmap_dma_buf(struct dma_buf_attachment *attach,
 }
 EXPORT_SYMBOL(drm_gem_unmap_dma_buf);
 
+#endif
+
 /**
  * drm_gem_dmabuf_export - dma_buf export implementation for GEM
  * @dev: parent device for the exported dmabuf
@@ -373,6 +375,9 @@ EXPORT_SYMBOL(drm_gem_unmap_dma_buf);
 struct dma_buf *drm_gem_dmabuf_export(struct drm_device *dev,
 				      struct dma_buf_export_info *exp_info)
 {
+	STUB();
+	return NULL;
+#ifdef notyet
 	struct dma_buf *dma_buf;
 
 	dma_buf = dma_buf_export(exp_info);
@@ -383,10 +388,9 @@ struct dma_buf *drm_gem_dmabuf_export(struct drm_device *dev,
 	drm_gem_object_get(exp_info->priv);
 
 	return dma_buf;
+#endif
 }
 EXPORT_SYMBOL(drm_gem_dmabuf_export);
-
-#endif
 
 /**
  * drm_gem_dmabuf_release - dma_buf release implementation for GEM
