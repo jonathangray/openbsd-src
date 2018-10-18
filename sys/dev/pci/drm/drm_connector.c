@@ -118,13 +118,13 @@ void drm_connector_ida_destroy(void)
  */
 static void drm_connector_get_cmdline_mode(struct drm_connector *connector)
 {
-	STUB();
-#ifdef notyet
 	struct drm_cmdline_mode *mode = &connector->cmdline_mode;
 	char *option = NULL;
 
+#ifdef __linux__
 	if (fb_get_options(connector->name, &option))
 		return;
+#endif
 
 	if (!drm_mode_parse_command_line_for_connector(option,
 						       connector,
@@ -144,7 +144,6 @@ static void drm_connector_get_cmdline_mode(struct drm_connector *connector)
 		      mode->rb ? " reduced blanking" : "",
 		      mode->margins ? " with margins" : "",
 		      mode->interlace ?  " interlaced" : "");
-#endif
 }
 
 static void drm_connector_free(struct kref *kref)
@@ -435,13 +434,12 @@ EXPORT_SYMBOL(drm_connector_cleanup);
  */
 int drm_connector_register(struct drm_connector *connector)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
 	int ret = 0;
 
+#ifdef notyet
 	if (!connector->dev->registered)
 		return 0;
+#endif
 
 	mutex_lock(&connector->mutex);
 	if (connector->registered)
@@ -474,7 +472,6 @@ err_sysfs:
 unlock:
 	mutex_unlock(&connector->mutex);
 	return ret;
-#endif
 }
 EXPORT_SYMBOL(drm_connector_register);
 
@@ -593,9 +590,9 @@ void drm_connector_list_iter_begin(struct drm_device *dev,
 				   struct drm_connector_list_iter *iter)
 {
 	STUB();
-#ifdef notyet
 	iter->dev = dev;
 	iter->conn = NULL;
+#ifdef notyet
 	lock_acquire_shared_recursive(&connector_list_iter_dep_map, 0, 1, NULL, _RET_IP_);
 #endif
 }
