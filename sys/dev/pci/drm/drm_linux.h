@@ -978,6 +978,11 @@ extern int64_t timeval_to_ns(const struct timeval *);
 extern int64_t timeval_to_us(const struct timeval *);
 extern struct timeval ns_to_timeval(const int64_t);
 
+struct timespec64 {
+	time_t	tv_sec;
+	long	tv_nsec;
+};
+
 static inline struct timespec
 timespec_sub(struct timespec t1, struct timespec t2)
 {
@@ -1095,6 +1100,15 @@ ktime_get_raw_ns(void)
 }
 
 #define ktime_to_timeval(tv) (tv)
+
+static inline struct timespec64
+ktime_to_timespec64(struct timeval tv)
+{
+	struct timespec64 ts;
+	ts.tv_sec = tv.tv_sec;
+	ts.tv_nsec = tv.tv_usec * NSEC_PER_USEC;
+	return ts;
+}
 
 static inline struct timeval
 ktime_sub(struct timeval a, struct timeval b)
