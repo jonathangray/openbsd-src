@@ -2643,8 +2643,6 @@ out:
  */
 static void drm_setup_crtcs_fb(struct drm_fb_helper *fb_helper)
 {
-	STUB();
-#if 0
 	struct fb_info *info = fb_helper->fbdev;
 	int i;
 
@@ -2687,7 +2685,6 @@ static void drm_setup_crtcs_fb(struct drm_fb_helper *fb_helper)
 		 */
 		info->fbcon_rotate_hint = FB_ROTATE_UR;
 	}
-#endif
 }
 
 /* Note: Drops fb_helper->lock before returning. */
