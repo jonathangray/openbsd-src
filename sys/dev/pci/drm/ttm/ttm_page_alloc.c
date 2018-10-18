@@ -711,6 +711,7 @@ out:
 
 	/* clear the pages coming from the pool if requested */
 	if (ttm_flags & TTM_PAGE_FLAG_ZERO_ALLOC) {
+#ifdef __linux__
 		struct vm_page *page;
 
 		list_for_each_entry(page, pages, lru) {
@@ -719,6 +720,11 @@ out:
 			else
 				clear_page(page_address(page));
 		}
+#else
+		TAILQ_FOREACH(p, &plist, pageq) {
+			pmap_zero_page(p);
+		}
+#endif
 	}
 
 	/* If pool didn't have enough pages allocate new one. */
@@ -868,9 +874,6 @@ static void ttm_put_pages(struct vm_page **pages, unsigned npages, int flags,
 static int ttm_get_pages(struct vm_page **pages, unsigned npages, int flags,
 			 enum ttm_caching_state cstate)
 {
-	STUB();
-	return -ENOSYS;
-#if 0
 	struct ttm_page_pool *pool = ttm_get_pool(flags, false, cstate);
 #ifdef CONFIG_TRANSPARENT_HUGEPAGE
 	struct ttm_page_pool *huge = ttm_get_pool(flags, true, cstate);
@@ -963,7 +966,7 @@ static int ttm_get_pages(struct vm_page **pages, unsigned npages, int flags,
 				    npages - count, 0);
 
 	first = count;
-	list_for_each_entry(p, &plist, lru) {
+	TAILQ_FOREACH(p, &plist, pageq) {
 		struct vm_page *tmp = p;
 
 		/* Swap the pages if we detect consecutive order */
@@ -982,7 +985,6 @@ static int ttm_get_pages(struct vm_page **pages, unsigned npages, int flags,
 	}
 
 	return 0;
-#endif
 }
 
 static void ttm_page_pool_init_locked(struct ttm_page_pool *pool, gfp_t flags,
@@ -1143,16 +1145,15 @@ EXPORT_SYMBOL(ttm_pool_unpopulate);
 int ttm_populate_and_map_pages(struct device *dev, struct ttm_dma_tt *tt,
 					struct ttm_operation_ctx *ctx)
 {
-	STUB();
-	return -ENOSYS;
-#if 0
-	unsigned i, j;
+	unsigned i;
 	int r;
+	int seg;
 
 	r = ttm_pool_populate(&tt->ttm, ctx);
 	if (r)
 		return r;
 
+#ifdef __linux__
 	for (i = 0; i < tt->ttm.num_pages; ++i) {
 		struct vm_page *p = tt->ttm.pages[i];
 		size_t num_pages = 1;
@@ -1182,15 +1183,38 @@ int ttm_populate_and_map_pages(struct device *dev, struct ttm_dma_tt *tt,
 			++i;
 		}
 	}
-	return 0;
+#else
+	for (i = 0; i < tt->ttm.num_pages; i++) {
+		tt->segs[i].ds_addr = VM_PAGE_TO_PHYS(tt->ttm.pages[i]);
+		tt->segs[i].ds_len = PAGE_SIZE;
+	}
+
+	if (bus_dmamap_load_raw(tt->dmat, tt->map, tt->segs,
+				tt->ttm.num_pages,
+				tt->ttm.num_pages * PAGE_SIZE, 0)) {
+		ttm_pool_unpopulate(&tt->ttm);
+		return -EFAULT;
+	}
+
+	for (seg = 0, i = 0; seg < tt->map->dm_nsegs; seg++) {
+		bus_addr_t addr = tt->map->dm_segs[seg].ds_addr;
+		bus_size_t len = tt->map->dm_segs[seg].ds_len;
+
+		while (len > 0) {
+			tt->dma_address[i++] = addr;
+			addr += PAGE_SIZE;
+			len -= PAGE_SIZE;
+		}
+	}
 #endif
+	return 0;
 }
 EXPORT_SYMBOL(ttm_populate_and_map_pages);
 
 void ttm_unmap_and_unpopulate_pages(struct device *dev, struct ttm_dma_tt *tt)
 {
 	STUB();
-#if 0
+#if 1
 	unsigned i, j;
 
 	for (i = 0; i < tt->ttm.num_pages;) {

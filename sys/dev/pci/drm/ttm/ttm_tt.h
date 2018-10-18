@@ -133,6 +133,10 @@ struct ttm_dma_tt {
 	struct ttm_tt ttm;
 	dma_addr_t *dma_address;
 	struct list_head pages_list;
+
+	bus_dma_tag_t dmat;
+	bus_dmamap_t map;
+	bus_dma_segment_t *segs;
 };
 
 /**
