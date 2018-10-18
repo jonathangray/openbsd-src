@@ -1193,8 +1193,6 @@ drm_mode_validate_size(const struct drm_display_mode *mode,
 }
 EXPORT_SYMBOL(drm_mode_validate_size);
 
-#ifdef DRMDEBUG
-
 /**
  * drm_mode_validate_ycbcr420 - add 'ycbcr420-only' modes only when allowed
  * @mode: mode to check
@@ -1279,8 +1277,6 @@ const char *drm_get_mode_status_name(enum drm_mode_status status)
 
 	return drm_mode_status_names[index];
 }
-
-#endif
 
 /**
  * drm_mode_prune_invalid - remove invalid modes from mode list
