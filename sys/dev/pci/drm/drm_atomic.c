@@ -1786,6 +1786,7 @@ drm_atomic_get_writeback_job(struct drm_connector_state *conn_state)
 
 	return conn_state->writeback_job;
 }
+#endif
 
 /**
  * drm_atomic_set_writeback_fb_for_connector - set writeback framebuffer
@@ -1810,6 +1811,9 @@ int drm_atomic_set_writeback_fb_for_connector(
 		struct drm_connector_state *conn_state,
 		struct drm_framebuffer *fb)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct drm_writeback_job *job =
 		drm_atomic_get_writeback_job(conn_state);
 	if (!job)
@@ -1825,9 +1829,9 @@ int drm_atomic_set_writeback_fb_for_connector(
 				 conn_state);
 
 	return 0;
+#endif
 }
 EXPORT_SYMBOL(drm_atomic_set_writeback_fb_for_connector);
-#endif
 
 /**
  * drm_atomic_add_affected_connectors - add connectors for crtc
