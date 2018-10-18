@@ -590,9 +590,6 @@ bool drm_calc_vbltimestamp_from_scanoutpos(struct drm_device *dev,
 					   ktime_t *vblank_time,
 					   bool in_vblank_irq)
 {
-	STUB();
-	return false;
-#if 0
 	struct timespec64 ts_etime, ts_vblank_time;
 	ktime_t stime, etime;
 	bool vbl_status;
@@ -700,7 +697,6 @@ bool drm_calc_vbltimestamp_from_scanoutpos(struct drm_device *dev,
 		      duration_ns / 1000, i);
 
 	return true;
-#endif
 }
 EXPORT_SYMBOL(drm_calc_vbltimestamp_from_scanoutpos);
 
@@ -829,8 +825,6 @@ static void send_vblank_event(struct drm_device *dev,
 		struct drm_pending_vblank_event *e,
 		u64 seq, ktime_t now)
 {
-	STUB();
-#if 0
 	struct timespec64 tv;
 
 	switch (e->event.base.type) {
@@ -854,7 +848,6 @@ static void send_vblank_event(struct drm_device *dev,
 	}
 	trace_drm_vblank_event_delivered(e->base.file_priv, e->pipe, seq);
 	drm_send_event_locked(dev, &e->base);
-#endif
 }
 
 /**
@@ -1526,8 +1519,6 @@ static u64 widen_32_to_64(u32 narrow, u64 near)
 static void drm_wait_vblank_reply(struct drm_device *dev, unsigned int pipe,
 				  struct drm_wait_vblank_reply *reply)
 {
-	STUB();
-#ifdef notyet
 	ktime_t now;
 	struct timespec64 ts;
 
@@ -1540,7 +1531,6 @@ static void drm_wait_vblank_reply(struct drm_device *dev, unsigned int pipe,
 	ts = ktime_to_timespec64(now);
 	reply->tval_sec = (u32)ts.tv_sec;
 	reply->tval_usec = ts.tv_nsec / 1000;
-#endif
 }
 
 int drm_wait_vblank_ioctl(struct drm_device *dev, void *data,
