@@ -28,6 +28,8 @@
 #include <linux/seqlock.h>
 #include <linux/idr.h>
 #include <linux/poll.h>
+#else
+#include <dev/pci/drm/drm_linux.h>
 #endif
 
 #include <dev/pci/drm/drm_file.h>
@@ -109,9 +111,7 @@ struct drm_vblank_crtc {
 	/**
 	 * @seqlock: Protect vblank count and time.
 	 */
-#ifdef notyet
 	seqlock_t seqlock;		/* protects vblank count and time */
-#endif
 
 	/**
 	 * @count: Current software vblank counter.
