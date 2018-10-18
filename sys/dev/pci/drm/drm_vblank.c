@@ -1536,9 +1536,6 @@ static void drm_wait_vblank_reply(struct drm_device *dev, unsigned int pipe,
 int drm_wait_vblank_ioctl(struct drm_device *dev, void *data,
 			  struct drm_file *file_priv)
 {
-	STUB();
-	return -ENOSYS;
-#if 0
 	struct drm_crtc *crtc;
 	struct drm_vblank_crtc *vblank;
 	union drm_wait_vblank *vblwait = data;
@@ -1656,7 +1653,6 @@ int drm_wait_vblank_ioctl(struct drm_device *dev, void *data,
 done:
 	drm_vblank_put(dev, pipe);
 	return ret;
-#endif
 }
 
 static void drm_handle_vblank_events(struct drm_device *dev, unsigned int pipe)

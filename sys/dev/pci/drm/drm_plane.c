@@ -462,9 +462,6 @@ EXPORT_SYMBOL(drm_mode_plane_set_obj_prop);
 int drm_mode_getplane_res(struct drm_device *dev, void *data,
 			  struct drm_file *file_priv)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
 	struct drm_mode_get_plane_res *plane_resp = data;
 	struct drm_mode_config *config;
 	struct drm_plane *plane;
@@ -500,15 +497,11 @@ int drm_mode_getplane_res(struct drm_device *dev, void *data,
 	plane_resp->count_planes = count;
 
 	return 0;
-#endif
 }
 
 int drm_mode_getplane(struct drm_device *dev, void *data,
 		      struct drm_file *file_priv)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
 	struct drm_mode_get_plane *plane_resp = data;
 	struct drm_plane *plane;
 	uint32_t __user *format_ptr;
@@ -558,7 +551,6 @@ int drm_mode_getplane(struct drm_device *dev, void *data,
 	plane_resp->count_format_types = plane->format_count;
 
 	return 0;
-#endif
 }
 
 int drm_plane_check_pixel_format(struct drm_plane *plane,

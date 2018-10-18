@@ -219,9 +219,6 @@ static struct drm_crtc *drm_encoder_get_crtc(struct drm_encoder *encoder)
 int drm_mode_getencoder(struct drm_device *dev, void *data,
 			struct drm_file *file_priv)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
 	struct drm_mode_get_encoder *enc_resp = data;
 	struct drm_encoder *encoder;
 	struct drm_crtc *crtc;
@@ -248,5 +245,4 @@ int drm_mode_getencoder(struct drm_device *dev, void *data,
 	enc_resp->possible_clones = encoder->possible_clones;
 
 	return 0;
-#endif
 }
