@@ -1256,6 +1256,8 @@ void drm_fb_helper_cfb_imageblit(struct fb_info *info,
 }
 EXPORT_SYMBOL(drm_fb_helper_cfb_imageblit);
 
+#endif
+
 /**
  * drm_fb_helper_set_suspend - wrapper around fb_set_suspend
  * @fb_helper: driver-allocated fbdev helper, can be NULL
@@ -1291,6 +1293,7 @@ EXPORT_SYMBOL(drm_fb_helper_set_suspend);
 void drm_fb_helper_set_suspend_unlocked(struct drm_fb_helper *fb_helper,
 					bool suspend)
 {
+#ifdef notyet
 	if (!fb_helper || !fb_helper->fbdev)
 		return;
 
@@ -1315,8 +1318,12 @@ void drm_fb_helper_set_suspend_unlocked(struct drm_fb_helper *fb_helper,
 
 	fb_set_suspend(fb_helper->fbdev, suspend);
 	console_unlock();
+#endif
 }
 EXPORT_SYMBOL(drm_fb_helper_set_suspend_unlocked);
+
+#ifdef __linux__
+
 
 static int setcmap_pseudo_palette(struct fb_cmap *cmap, struct fb_info *info)
 {

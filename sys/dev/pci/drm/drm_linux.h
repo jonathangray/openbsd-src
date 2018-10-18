@@ -803,6 +803,15 @@ struct workqueue_struct;
 #define system_wq (struct workqueue_struct *)systq
 #define system_long_wq (struct workqueue_struct *)systq
 
+#define WQ_HIGHPRI	1
+
+static inline struct workqueue_struct *
+alloc_workqueue(const char *name, int flags, int max_active)
+{
+	struct taskq *tq = taskq_create(name, 1, IPL_TTY, 0);
+	return (struct workqueue_struct *)tq;
+}
+
 static inline struct workqueue_struct *
 alloc_ordered_workqueue(const char *name, int flags)
 {
@@ -1724,6 +1733,7 @@ void ida_init(struct ida *);
 void ida_destroy(struct ida *);
 int ida_simple_get(struct ida *, unsigned int, unsigned nt, int);
 void ida_remove(struct ida *, int);
+void ida_simple_remove(struct ida *, int);
 
 struct notifier_block {
 	void *notifier_call;

@@ -375,13 +375,11 @@ static int drm_mode_create_standard_properties(struct drm_device *dev)
  */
 void drm_mode_config_init(struct drm_device *dev)
 {
-	STUB();
-#ifdef notyet
-	mutex_init(&dev->mode_config.mutex);
+	rw_init(&dev->mode_config.mutex, "mcrwl");
 	drm_modeset_lock_init(&dev->mode_config.connection_mutex);
-	mutex_init(&dev->mode_config.idr_mutex);
-	mutex_init(&dev->mode_config.fb_lock);
-	mutex_init(&dev->mode_config.blob_lock);
+	rw_init(&dev->mode_config.idr_mutex, "idrlk");
+	rw_init(&dev->mode_config.fb_lock, "fblk");
+	rw_init(&dev->mode_config.blob_lock, "mcblk");
 	INIT_LIST_HEAD(&dev->mode_config.fb_list);
 	INIT_LIST_HEAD(&dev->mode_config.crtc_list);
 	INIT_LIST_HEAD(&dev->mode_config.connector_list);
@@ -392,9 +390,11 @@ void drm_mode_config_init(struct drm_device *dev)
 	idr_init(&dev->mode_config.crtc_idr);
 	idr_init(&dev->mode_config.tile_idr);
 	ida_init(&dev->mode_config.connector_ida);
-	spin_lock_init(&dev->mode_config.connector_list_lock);
+	mtx_init(&dev->mode_config.connector_list_lock, IPL_NONE);
 
+#ifdef notyet
 	init_llist_head(&dev->mode_config.connector_free_list);
+#endif
 	INIT_WORK(&dev->mode_config.connector_free_work, drm_connector_free_work_fn);
 
 	drm_mode_create_standard_properties(dev);
@@ -405,7 +405,6 @@ void drm_mode_config_init(struct drm_device *dev)
 	dev->mode_config.num_crtc = 0;
 	dev->mode_config.num_encoder = 0;
 	dev->mode_config.num_total_plane = 0;
-#endif
 }
 EXPORT_SYMBOL(drm_mode_config_init);
 
