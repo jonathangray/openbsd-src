@@ -374,8 +374,6 @@ static void drm_mode_remove(struct drm_connector *connector,
  */
 void drm_connector_cleanup(struct drm_connector *connector)
 {
-	STUB();
-#ifdef notyet
 	struct drm_device *dev = connector->dev;
 	struct drm_display_mode *mode, *t;
 
@@ -419,7 +417,6 @@ void drm_connector_cleanup(struct drm_connector *connector)
 	mutex_destroy(&connector->mutex);
 
 	memset(connector, 0, sizeof(*connector));
-#endif
 }
 EXPORT_SYMBOL(drm_connector_cleanup);
 
@@ -1718,9 +1715,6 @@ drm_mode_expose_to_userspace(const struct drm_display_mode *mode,
 int drm_mode_getconnector(struct drm_device *dev, void *data,
 			  struct drm_file *file_priv)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
 	struct drm_mode_get_connector *out_resp = data;
 	struct drm_connector *connector;
 	struct drm_encoder *encoder;
@@ -1733,7 +1727,7 @@ int drm_mode_getconnector(struct drm_device *dev, void *data,
 	struct drm_mode_modeinfo u_mode;
 	struct drm_mode_modeinfo __user *mode_ptr;
 	uint32_t __user *encoder_ptr;
-	LIST_HEAD(export_list);
+	DRM_LIST_HEAD(export_list);
 
 	if (!drm_core_check_feature(dev, DRIVER_MODESET))
 		return -EINVAL;
@@ -1836,7 +1830,6 @@ out:
 	drm_connector_put(connector);
 
 	return ret;
-#endif
 }
 
 
