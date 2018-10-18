@@ -58,6 +58,8 @@ module_param(drm_fbdev_overalloc, int, 0444);
 MODULE_PARM_DESC(drm_fbdev_overalloc,
 		 "Overallocation of the fbdev buffer (%) [default="
 		 __MODULE_STRING(CONFIG_DRM_FBDEV_OVERALLOC) "]");
+#else
+static int drm_fbdev_overalloc = 100;
 #endif
 
 static DRM_LIST_HEAD(kernel_fb_helper_list);
@@ -1837,6 +1839,8 @@ int drm_fb_helper_pan_display(struct fb_var_screeninfo *var,
 }
 EXPORT_SYMBOL(drm_fb_helper_pan_display);
 
+#endif
+
 /*
  * Allocates the backing storage and sets up the fbdev info structure through
  * the ->fb_probe callback.
@@ -1954,9 +1958,13 @@ static int drm_fb_helper_single_fb_probe(struct drm_fb_helper *fb_helper,
 	if (ret < 0)
 		return ret;
 
+#ifdef __linux__
 	strcpy(fb_helper->fb->comm, "[fbcon]");
+#endif
 	return 0;
 }
+
+#ifdef __linux__
 
 /**
  * drm_fb_helper_fill_fix - initializes fixed fbdev information
@@ -2687,9 +2695,6 @@ static int
 __drm_fb_helper_initial_config_and_unlock(struct drm_fb_helper *fb_helper,
 					  int bpp_sel)
 {
-	STUB();
-	return -ENOSYS;
-#if 0
 	struct drm_device *dev = fb_helper->dev;
 	struct fb_info *info;
 	unsigned int width, height;
@@ -2720,6 +2725,7 @@ __drm_fb_helper_initial_config_and_unlock(struct drm_fb_helper *fb_helper,
 	/* Need to drop locks to avoid recursive deadlock in
 	 * register_framebuffer. This is ok because the only thing left to do is
 	 * register the fbdev emulation instance in kernel_fb_helper_list. */
+#ifdef __linux__
 	mutex_unlock(&fb_helper->lock);
 
 	ret = register_framebuffer(info);
@@ -2734,10 +2740,10 @@ __drm_fb_helper_initial_config_and_unlock(struct drm_fb_helper *fb_helper,
 		register_sysrq_key('v', &sysrq_drm_fb_helper_restore_op);
 
 	list_add(&fb_helper->kernel_fb_list, &kernel_fb_helper_list);
+#endif
 	mutex_unlock(&kernel_fb_helper_lock);
 
 	return 0;
-#endif
 }
 
 /**

@@ -129,9 +129,6 @@ struct drm_mode_object *__drm_mode_object_find(struct drm_device *dev,
 					       struct drm_file *file_priv,
 					       uint32_t id, uint32_t type)
 {
-	STUB();
-	return NULL;
-#ifdef notyet
 	struct drm_mode_object *obj = NULL;
 
 	mutex_lock(&dev->mode_config.idr_mutex);
@@ -141,9 +138,11 @@ struct drm_mode_object *__drm_mode_object_find(struct drm_device *dev,
 	if (obj && obj->id != id)
 		obj = NULL;
 
+#ifdef notyet
 	if (obj && drm_mode_object_lease_required(obj->type) &&
 	    !_drm_lease_held(file_priv, obj->id))
 		obj = NULL;
+#endif
 
 	if (obj && obj->free_cb) {
 		if (!kref_get_unless_zero(&obj->refcount))
@@ -152,7 +151,6 @@ struct drm_mode_object *__drm_mode_object_find(struct drm_device *dev,
 	mutex_unlock(&dev->mode_config.idr_mutex);
 
 	return obj;
-#endif
 }
 
 /**
