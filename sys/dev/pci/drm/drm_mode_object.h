@@ -26,9 +26,7 @@
 #ifdef __linux__
 #include <linux/kref.h>
 #endif
-#ifdef notyet
 #include <dev/pci/drm/drm_lease.h>
-#endif
 struct drm_object_properties;
 struct drm_property;
 struct drm_device;

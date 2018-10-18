@@ -85,9 +85,6 @@ void drm_modeset_unregister_all(struct drm_device *dev)
 int drm_mode_getresources(struct drm_device *dev, void *data,
 			  struct drm_file *file_priv)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
 	struct drm_mode_card_res *card_res = data;
 	struct drm_framebuffer *fb;
 	struct drm_connector *connector;
@@ -167,7 +164,6 @@ int drm_mode_getresources(struct drm_device *dev, void *data,
 	drm_connector_list_iter_end(&conn_iter);
 
 	return ret;
-#endif
 }
 
 /**
