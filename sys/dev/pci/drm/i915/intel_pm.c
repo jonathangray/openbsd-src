@@ -943,7 +943,7 @@ static uint16_t vlv_compute_wm_level(struct intel_plane *plane,
 	if (!state->visible)
 		return 0;
 
-	pixel_size = drm_format_plane_cpp(state->base.fb->pixel_format, 0);
+	pixel_size = drm_format_plane_cpp(state->base.fb->format->format, 0);
 	clock = crtc->config->base.adjusted_mode.crtc_clock;
 	htotal = crtc->config->base.adjusted_mode.crtc_htotal;
 	width = crtc->config->pipe_src_w;
@@ -984,7 +984,7 @@ static void vlv_compute_fifo(struct intel_crtc *crtc)
 
 		if (state->visible) {
 			wm_state->num_active_planes++;
-			total_rate += drm_format_plane_cpp(state->base.fb->pixel_format, 0);
+			total_rate += drm_format_plane_cpp(state->base.fb->format->format, 0);
 		}
 	}
 
@@ -1003,7 +1003,7 @@ static void vlv_compute_fifo(struct intel_crtc *crtc)
 			continue;
 		}
 
-		rate = drm_format_plane_cpp(state->base.fb->pixel_format, 0);
+		rate = drm_format_plane_cpp(state->base.fb->format->format, 0);
 		plane->wm.fifo_size = fifo_size * rate / total_rate;
 		fifo_left -= plane->wm.fifo_size;
 	}
@@ -3103,11 +3103,11 @@ static void skl_compute_wm_pipe_parameters(struct drm_crtc *crtc,
 		/* For planar: Bpp is for uv plane, y_Bpp is for y plane */
 		if (fb) {
 			p->plane[0].enabled = true;
-			p->plane[0].bytes_per_pixel = fb->pixel_format == DRM_FORMAT_NV12 ?
-				drm_format_plane_cpp(fb->pixel_format, 1) :
-				drm_format_plane_cpp(fb->pixel_format, 0);
-			p->plane[0].y_bytes_per_pixel = fb->pixel_format == DRM_FORMAT_NV12 ?
-				drm_format_plane_cpp(fb->pixel_format, 0) : 0;
+			p->plane[0].bytes_per_pixel = fb->format->format == DRM_FORMAT_NV12 ?
+				drm_format_plane_cpp(fb->format->format, 1) :
+				drm_format_plane_cpp(fb->format->format, 0);
+			p->plane[0].y_bytes_per_pixel = fb->format->format == DRM_FORMAT_NV12 ?
+				drm_format_plane_cpp(fb->format->format, 0) : 0;
 			p->plane[0].tiling = fb->modifier[0];
 		} else {
 			p->plane[0].enabled = false;
@@ -3682,11 +3682,11 @@ skl_update_sprite_wm(struct drm_plane *plane, struct drm_crtc *crtc,
 
 	/* For planar: Bpp is for UV plane, y_Bpp is for Y plane */
 	intel_plane->wm.bytes_per_pixel =
-		(fb && fb->pixel_format == DRM_FORMAT_NV12) ?
-		drm_format_plane_cpp(plane->state->fb->pixel_format, 1) : pixel_size;
+		(fb && fb->format->format == DRM_FORMAT_NV12) ?
+		drm_format_plane_cpp(plane->state->fb->format->format, 1) : pixel_size;
 	intel_plane->wm.y_bytes_per_pixel =
-		(fb && fb->pixel_format == DRM_FORMAT_NV12) ?
-		drm_format_plane_cpp(plane->state->fb->pixel_format, 0) : 0;
+		(fb && fb->format->format == DRM_FORMAT_NV12) ?
+		drm_format_plane_cpp(plane->state->fb->format->format, 0) : 0;
 
 	/*
 	 * Framebuffer can be NULL on plane disable, but it does not

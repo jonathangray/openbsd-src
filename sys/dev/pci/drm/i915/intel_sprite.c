@@ -192,7 +192,7 @@ skl_update_plane(struct drm_plane *drm_plane, struct drm_crtc *crtc,
 	const int pipe = intel_plane->pipe;
 	const int plane = intel_plane->plane + 1;
 	u32 plane_ctl, stride_div, stride;
-	int pixel_size = drm_format_plane_cpp(fb->pixel_format, 0);
+	int pixel_size = drm_format_plane_cpp(fb->format->format, 0);
 	const struct drm_intel_sprite_colorkey *key =
 		&to_intel_plane_state(drm_plane->state)->ckey;
 	u32 surf_addr;
@@ -206,7 +206,7 @@ skl_update_plane(struct drm_plane *drm_plane, struct drm_crtc *crtc,
 		PLANE_CTL_PIPE_GAMMA_ENABLE |
 		PLANE_CTL_PIPE_CSC_ENABLE;
 
-	plane_ctl |= skl_plane_ctl_format(fb->pixel_format);
+	plane_ctl |= skl_plane_ctl_format(fb->format->format);
 	plane_ctl |= skl_plane_ctl_tiling(fb->modifier[0]);
 
 	rotation = drm_plane->state->rotation;
@@ -217,7 +217,7 @@ skl_update_plane(struct drm_plane *drm_plane, struct drm_crtc *crtc,
 				       src_w != crtc_w || src_h != crtc_h);
 
 	stride_div = intel_fb_stride_alignment(dev, fb->modifier[0],
-					       fb->pixel_format);
+					       fb->format->format);
 
 	scaler_id = to_intel_plane_state(drm_plane->state)->scaler_id;
 
@@ -242,7 +242,7 @@ skl_update_plane(struct drm_plane *drm_plane, struct drm_crtc *crtc,
 
 	if (intel_rotation_90_or_270(rotation)) {
 		/* stride: Surface height in tiles */
-		tile_height = intel_tile_height(dev, fb->pixel_format,
+		tile_height = intel_tile_height(dev, fb->format->format,
 						fb->modifier[0], 0);
 		stride = DIV_ROUND_UP(fb->height, tile_height);
 		plane_size = (src_w << 16) | src_h;
@@ -356,13 +356,13 @@ vlv_update_plane(struct drm_plane *dplane, struct drm_crtc *crtc,
 	int plane = intel_plane->plane;
 	u32 sprctl;
 	unsigned long sprsurf_offset, linear_offset;
-	int pixel_size = drm_format_plane_cpp(fb->pixel_format, 0);
+	int pixel_size = drm_format_plane_cpp(fb->format->format, 0);
 	const struct drm_intel_sprite_colorkey *key =
 		&to_intel_plane_state(dplane->state)->ckey;
 
 	sprctl = SP_ENABLE;
 
-	switch (fb->pixel_format) {
+	switch (fb->format->format) {
 	case DRM_FORMAT_YUYV:
 		sprctl |= SP_FORMAT_YUV422 | SP_YUV_ORDER_YUYV;
 		break;
@@ -428,7 +428,7 @@ vlv_update_plane(struct drm_plane *dplane, struct drm_crtc *crtc,
 							fb->pitches[0]);
 	linear_offset -= sprsurf_offset;
 
-	if (dplane->state->rotation == BIT(DRM_ROTATE_180)) {
+	if (dplane->state->rotation == BIT(DRM_MODE_ROTATE_180)) {
 		sprctl |= SP_ROTATE_180;
 
 		x += src_w;
@@ -446,7 +446,7 @@ vlv_update_plane(struct drm_plane *dplane, struct drm_crtc *crtc,
 		sprctl |= SP_SOURCE_KEY;
 
 	if (IS_CHERRYVIEW(dev) && pipe == PIPE_B)
-		chv_update_csc(intel_plane, fb->pixel_format);
+		chv_update_csc(intel_plane, fb->format->format);
 
 	I915_WRITE(SPSTRIDE(pipe, plane), fb->pitches[0]);
 	I915_WRITE(SPPOS(pipe, plane), (crtc_y << 16) | crtc_x);
@@ -495,13 +495,13 @@ ivb_update_plane(struct drm_plane *plane, struct drm_crtc *crtc,
 	enum pipe pipe = intel_plane->pipe;
 	u32 sprctl, sprscale = 0;
 	unsigned long sprsurf_offset, linear_offset;
-	int pixel_size = drm_format_plane_cpp(fb->pixel_format, 0);
+	int pixel_size = drm_format_plane_cpp(fb->format->format, 0);
 	const struct drm_intel_sprite_colorkey *key =
 		&to_intel_plane_state(plane->state)->ckey;
 
 	sprctl = SPRITE_ENABLE;
 
-	switch (fb->pixel_format) {
+	switch (fb->format->format) {
 	case DRM_FORMAT_XBGR8888:
 		sprctl |= SPRITE_FORMAT_RGBX888 | SPRITE_RGB_ORDER_RGBX;
 		break;
@@ -561,7 +561,7 @@ ivb_update_plane(struct drm_plane *plane, struct drm_crtc *crtc,
 					       pixel_size, fb->pitches[0]);
 	linear_offset -= sprsurf_offset;
 
-	if (plane->state->rotation == BIT(DRM_ROTATE_180)) {
+	if (plane->state->rotation == BIT(DRM_MODE_ROTATE_180)) {
 		sprctl |= SPRITE_ROTATE_180;
 
 		/* HSW and BDW does this automagically in hardware */
@@ -637,13 +637,13 @@ ilk_update_plane(struct drm_plane *plane, struct drm_crtc *crtc,
 	int pipe = intel_plane->pipe;
 	unsigned long dvssurf_offset, linear_offset;
 	u32 dvscntr, dvsscale;
-	int pixel_size = drm_format_plane_cpp(fb->pixel_format, 0);
+	int pixel_size = drm_format_plane_cpp(fb->format->format, 0);
 	const struct drm_intel_sprite_colorkey *key =
 		&to_intel_plane_state(plane->state)->ckey;
 
 	dvscntr = DVS_ENABLE;
 
-	switch (fb->pixel_format) {
+	switch (fb->format->format) {
 	case DRM_FORMAT_XBGR8888:
 		dvscntr |= DVS_FORMAT_RGBX888 | DVS_RGB_ORDER_XBGR;
 		break;
@@ -699,7 +699,7 @@ ilk_update_plane(struct drm_plane *plane, struct drm_crtc *crtc,
 					       pixel_size, fb->pitches[0]);
 	linear_offset -= dvssurf_offset;
 
-	if (plane->state->rotation == BIT(DRM_ROTATE_180)) {
+	if (plane->state->rotation == BIT(DRM_MODE_ROTATE_180)) {
 		dvscntr |= DVS_ROTATE_180;
 
 		x += src_w;
@@ -872,7 +872,7 @@ intel_check_sprite_plane(struct drm_plane *plane,
 		src_y = src->y1 >> 16;
 		src_h = drm_rect_height(src) >> 16;
 
-		if (format_is_yuv(fb->pixel_format)) {
+		if (format_is_yuv(fb->format->format)) {
 			src_x &= ~1;
 			src_w &= ~1;
 
@@ -902,7 +902,7 @@ intel_check_sprite_plane(struct drm_plane *plane,
 		if (src_w < 3 || src_h < 3)
 			state->visible = false;
 
-		pixel_size = drm_format_plane_cpp(fb->pixel_format, 0);
+		pixel_size = drm_format_plane_cpp(fb->format->format, 0);
 		width_bytes = ((src_x * pixel_size) & 63) +
 					src_w * pixel_size;
 

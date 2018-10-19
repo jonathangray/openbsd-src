@@ -296,7 +296,7 @@ static int intelfb_create(struct drm_fb_helper *helper,
 	ri->ri_width = sizes->fb_width;
 	ri->ri_height = sizes->fb_height;
 
-	switch (fb->pixel_format) {
+	switch (fb->format->format) {
 	case DRM_FORMAT_XRGB8888:
 		ri->ri_rnum = 8;
 		ri->ri_rpos = 16;

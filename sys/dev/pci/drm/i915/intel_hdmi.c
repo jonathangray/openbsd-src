@@ -1229,7 +1229,7 @@ static bool hdmi_12bpc_possible(struct intel_crtc_state *crtc_state)
 
 	state = crtc_state->base.state;
 
-	for_each_connector_in_state(state, connector, connector_state, i) {
+	for_each_new_connector_in_state(state, connector, connector_state, i) {
 		if (connector_state->crtc != crtc_state->base.crtc)
 			continue;
 

@@ -147,7 +147,7 @@ static void g4x_fbc_enable(struct intel_crtc *crtc)
 	dev_priv->fbc.enabled = true;
 
 	dpfc_ctl = DPFC_CTL_PLANE(crtc->plane) | DPFC_SR_EN;
-	if (drm_format_plane_cpp(fb->pixel_format, 0) == 2)
+	if (drm_format_plane_cpp(fb->format->format, 0) == 2)
 		dpfc_ctl |= DPFC_CTL_LIMIT_2X;
 	else
 		dpfc_ctl |= DPFC_CTL_LIMIT_1X;
@@ -200,7 +200,7 @@ static void ilk_fbc_enable(struct intel_crtc *crtc)
 	dev_priv->fbc.enabled = true;
 
 	dpfc_ctl = DPFC_CTL_PLANE(crtc->plane);
-	if (drm_format_plane_cpp(fb->pixel_format, 0) == 2)
+	if (drm_format_plane_cpp(fb->format->format, 0) == 2)
 		threshold++;
 
 	switch (threshold) {
@@ -271,7 +271,7 @@ static void gen7_fbc_enable(struct intel_crtc *crtc)
 	if (IS_IVYBRIDGE(dev_priv))
 		dpfc_ctl |= IVB_DPFC_CTL_PLANE(crtc->plane);
 
-	if (drm_format_plane_cpp(fb->pixel_format, 0) == 2)
+	if (drm_format_plane_cpp(fb->format->format, 0) == 2)
 		threshold++;
 
 	switch (threshold) {
@@ -745,7 +745,7 @@ static int intel_fbc_setup_cfb(struct intel_crtc *crtc)
 	int size, cpp;
 
 	size = intel_fbc_calculate_cfb_size(crtc);
-	cpp = drm_format_plane_cpp(fb->pixel_format, 0);
+	cpp = drm_format_plane_cpp(fb->format->format, 0);
 
 	if (size <= dev_priv->fbc.uncompressed_size)
 		return 0;
@@ -782,7 +782,7 @@ static bool pixel_format_is_valid(struct drm_framebuffer *fb)
 	struct drm_device *dev = fb->dev;
 	struct drm_i915_private *dev_priv = dev->dev_private;
 
-	switch (fb->pixel_format) {
+	switch (fb->format->format) {
 	case DRM_FORMAT_XRGB8888:
 	case DRM_FORMAT_XBGR8888:
 		return true;
@@ -923,7 +923,7 @@ static void __intel_fbc_update(struct drm_i915_private *dev_priv)
 		goto out_disable;
 	}
 	if (INTEL_INFO(dev_priv)->gen <= 4 && !IS_G4X(dev_priv) &&
-	    crtc->primary->state->rotation != BIT(DRM_ROTATE_0)) {
+	    crtc->primary->state->rotation != BIT(DRM_MODE_ROTATE_0)) {
 		set_no_fbc_reason(dev_priv, FBC_ROTATION);
 		goto out_disable;
 	}

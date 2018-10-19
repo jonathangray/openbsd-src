@@ -538,7 +538,7 @@ static bool intel_pipe_will_have_type(const struct intel_crtc_state *crtc_state,
 	struct intel_encoder *encoder;
 	int i, num_connectors = 0;
 
-	for_each_connector_in_state(state, connector, connector_state, i) {
+	for_each_new_connector_in_state(state, connector, connector_state, i) {
 		if (connector_state->crtc != crtc_state->base.crtc)
 			continue;
 
@@ -2292,12 +2292,12 @@ intel_fill_fb_ggtt_view(struct i915_ggtt_view *view, struct drm_framebuffer *fb,
 	*view = i915_ggtt_view_rotated;
 
 	info->height = fb->height;
-	info->pixel_format = fb->pixel_format;
+	info->pixel_format = fb->format->format;
 	info->pitch = fb->pitches[0];
 	info->uv_offset = fb->offsets[1];
 	info->fb_modifier = fb->modifier[0];
 
-	tile_height = intel_tile_height(fb->dev, fb->pixel_format,
+	tile_height = intel_tile_height(fb->dev, fb->format->format,
 					fb->modifier[0], 0);
 	tile_pitch = PAGE_SIZE / tile_height;
 	info->width_pages = DIV_ROUND_UP(fb->pitches[0], tile_pitch);
@@ -2305,7 +2305,7 @@ intel_fill_fb_ggtt_view(struct i915_ggtt_view *view, struct drm_framebuffer *fb,
 	info->size = info->width_pages * info->height_pages * PAGE_SIZE;
 
 	if (info->pixel_format == DRM_FORMAT_NV12) {
-		tile_height = intel_tile_height(fb->dev, fb->pixel_format,
+		tile_height = intel_tile_height(fb->dev, fb->format->format,
 						fb->modifier[0], 1);
 		tile_pitch = PAGE_SIZE / tile_height;
 		info->width_pages_uv = DIV_ROUND_UP(fb->pitches[0], tile_pitch);
@@ -2563,7 +2563,7 @@ intel_alloc_initial_plane_obj(struct intel_crtc *crtc,
 	if (obj->tiling_mode == I915_TILING_X)
 		obj->stride = fb->pitches[0];
 
-	mode_cmd.pixel_format = fb->pixel_format;
+	mode_cmd.pixel_format = fb->format->format;
 	mode_cmd.width = fb->width;
 	mode_cmd.height = fb->height;
 	mode_cmd.pitches[0] = fb->pitches[0];
@@ -2716,7 +2716,7 @@ static void i9xx_update_primary_plane(struct drm_crtc *crtc,
 	if (WARN_ON(obj == NULL))
 		return;
 
-	pixel_size = drm_format_plane_cpp(fb->pixel_format, 0);
+	pixel_size = drm_format_plane_cpp(fb->format->format, 0);
 
 	dspcntr = DISPPLANE_GAMMA_ENABLE;
 
@@ -2741,7 +2741,7 @@ static void i9xx_update_primary_plane(struct drm_crtc *crtc,
 		I915_WRITE(PRIMCNSTALPHA(plane), 0);
 	}
 
-	switch (fb->pixel_format) {
+	switch (fb->format->format) {
 	case DRM_FORMAT_C8:
 		dspcntr |= DISPPLANE_8BPP;
 		break;
@@ -2787,7 +2787,7 @@ static void i9xx_update_primary_plane(struct drm_crtc *crtc,
 		intel_crtc->dspaddr_offset = linear_offset;
 	}
 
-	if (crtc->primary->state->rotation == BIT(DRM_ROTATE_180)) {
+	if (crtc->primary->state->rotation == BIT(DRM_MODE_ROTATE_180)) {
 		dspcntr |= DISPPLANE_ROTATE_180;
 
 		x += (intel_crtc->config->pipe_src_w - 1);
@@ -2843,7 +2843,7 @@ static void ironlake_update_primary_plane(struct drm_crtc *crtc,
 	if (WARN_ON(obj == NULL))
 		return;
 
-	pixel_size = drm_format_plane_cpp(fb->pixel_format, 0);
+	pixel_size = drm_format_plane_cpp(fb->format->format, 0);
 
 	dspcntr = DISPPLANE_GAMMA_ENABLE;
 
@@ -2852,7 +2852,7 @@ static void ironlake_update_primary_plane(struct drm_crtc *crtc,
 	if (IS_HASWELL(dev) || IS_BROADWELL(dev))
 		dspcntr |= DISPPLANE_PIPE_CSC_ENABLE;
 
-	switch (fb->pixel_format) {
+	switch (fb->format->format) {
 	case DRM_FORMAT_C8:
 		dspcntr |= DISPPLANE_8BPP;
 		break;
@@ -2888,7 +2888,7 @@ static void ironlake_update_primary_plane(struct drm_crtc *crtc,
 					       pixel_size,
 					       fb->pitches[0]);
 	linear_offset -= intel_crtc->dspaddr_offset;
-	if (crtc->primary->state->rotation == BIT(DRM_ROTATE_180)) {
+	if (crtc->primary->state->rotation == BIT(DRM_MODE_ROTATE_180)) {
 		dspcntr |= DISPPLANE_ROTATE_180;
 
 		if (!IS_HASWELL(dev) && !IS_BROADWELL(dev)) {
@@ -3071,17 +3071,17 @@ u32 skl_plane_ctl_tiling(uint64_t fb_modifier)
 u32 skl_plane_ctl_rotation(unsigned int rotation)
 {
 	switch (rotation) {
-	case BIT(DRM_ROTATE_0):
+	case BIT(DRM_MODE_ROTATE_0):
 		break;
 	/*
-	 * DRM_ROTATE_ is counter clockwise to stay compatible with Xrandr
+	 * DRM_MODE_ROTATE_ is counter clockwise to stay compatible with Xrandr
 	 * while i915 HW rotation is clockwise, thats why this swapping.
 	 */
-	case BIT(DRM_ROTATE_90):
+	case BIT(DRM_MODE_ROTATE_90):
 		return PLANE_CTL_ROTATE_270;
-	case BIT(DRM_ROTATE_180):
+	case BIT(DRM_MODE_ROTATE_180):
 		return PLANE_CTL_ROTATE_180;
-	case BIT(DRM_ROTATE_270):
+	case BIT(DRM_MODE_ROTATE_270):
 		return PLANE_CTL_ROTATE_90;
 	default:
 		MISSING_CASE(rotation);
@@ -3125,7 +3125,7 @@ static void skylake_update_primary_plane(struct drm_crtc *crtc,
 		    PLANE_CTL_PIPE_GAMMA_ENABLE |
 		    PLANE_CTL_PIPE_CSC_ENABLE;
 
-	plane_ctl |= skl_plane_ctl_format(fb->pixel_format);
+	plane_ctl |= skl_plane_ctl_format(fb->format->format);
 	plane_ctl |= skl_plane_ctl_tiling(fb->modifier[0]);
 	plane_ctl |= PLANE_CTL_PLANE_GAMMA_DISABLE;
 
@@ -3134,7 +3134,7 @@ static void skylake_update_primary_plane(struct drm_crtc *crtc,
 
 	obj = intel_fb_obj(fb);
 	stride_div = intel_fb_stride_alignment(dev, fb->modifier[0],
-					       fb->pixel_format);
+					       fb->format->format);
 	surf_addr = intel_plane_obj_offset(to_intel_plane(plane), obj, 0);
 
 	WARN_ON(drm_rect_width(&plane_state->src) == 0);
@@ -3153,7 +3153,7 @@ static void skylake_update_primary_plane(struct drm_crtc *crtc,
 
 	if (intel_rotation_90_or_270(rotation)) {
 		/* stride = Surface height in tiles */
-		tile_height = intel_tile_height(dev, fb->pixel_format,
+		tile_height = intel_tile_height(dev, fb->format->format,
 						fb->modifier[0], 0);
 		stride = DIV_ROUND_UP(fb->height, tile_height);
 		x_offset = stride * tile_height - y - src_h;
@@ -4457,7 +4457,7 @@ int skl_update_scaler_crtc(struct intel_crtc_state *state)
 		      intel_crtc->base.base.id, intel_crtc->pipe, SKL_CRTC_INDEX);
 
 	return skl_update_scaler(state, !state->base.active, SKL_CRTC_INDEX,
-		&state->scaler_state.scaler_id, BIT(DRM_ROTATE_0),
+		&state->scaler_state.scaler_id, BIT(DRM_MODE_ROTATE_0),
 		state->pipe_src_w, state->pipe_src_h,
 		adjusted_mode->crtc_hdisplay, adjusted_mode->crtc_vdisplay);
 }
@@ -4509,7 +4509,7 @@ static int skl_update_scaler_plane(struct intel_crtc_state *crtc_state,
 	}
 
 	/* Check src format */
-	switch (fb->pixel_format) {
+	switch (fb->format->format) {
 	case DRM_FORMAT_RGB565:
 	case DRM_FORMAT_XBGR8888:
 	case DRM_FORMAT_XRGB8888:
@@ -4524,7 +4524,7 @@ static int skl_update_scaler_plane(struct intel_crtc_state *crtc_state,
 		break;
 	default:
 		DRM_DEBUG_KMS("[PLANE:%d] FB:%d unsupported scaling format 0x%x\n",
-			intel_plane->base.base.id, fb->base.id, fb->pixel_format);
+			intel_plane->base.base.id, fb->base.id, fb->format->format);
 		return -EINVAL;
 	}
 
@@ -5368,7 +5368,7 @@ static void modeset_update_crtc_power_domains(struct drm_atomic_state *state)
 	struct drm_crtc *crtc;
 	int i;
 
-	for_each_crtc_in_state(state, crtc, crtc_state, i) {
+	for_each_new_crtc_in_state(state, crtc, crtc_state, i) {
 		if (needs_modeset(crtc->state))
 			put_domains[to_intel_crtc(crtc)->pipe] =
 				modeset_get_crtc_power_domains(crtc);
@@ -7920,7 +7920,7 @@ static int i9xx_crtc_compute_clock(struct intel_crtc *crtc,
 	memset(&crtc_state->dpll_hw_state, 0,
 	       sizeof(crtc_state->dpll_hw_state));
 
-	for_each_connector_in_state(state, connector, connector_state, i) {
+	for_each_new_connector_in_state(state, connector, connector_state, i) {
 		if (connector_state->crtc != &crtc->base)
 			continue;
 
@@ -8072,7 +8072,7 @@ i9xx_get_initial_plane_config(struct intel_crtc *crtc,
 
 	pixel_format = val & DISPPLANE_PIXFORMAT_MASK;
 	fourcc = i9xx_format_to_fourcc(pixel_format);
-	fb->pixel_format = fourcc;
+	fb->format->format = fourcc;
 	fb->bits_per_pixel = drm_format_plane_cpp(fourcc, 0) * 8;
 
 	if (INTEL_INFO(dev)->gen >= 4) {
@@ -8094,7 +8094,7 @@ i9xx_get_initial_plane_config(struct intel_crtc *crtc,
 	fb->pitches[0] = val & 0xffffffc0;
 
 	aligned_height = intel_fb_align_height(dev, fb->height,
-					       fb->pixel_format,
+					       fb->format->format,
 					       fb->modifier[0]);
 
 	plane_config->size = fb->pitches[0] * aligned_height;
@@ -8614,7 +8614,7 @@ static int ironlake_get_refclk(struct intel_crtc_state *crtc_state)
 	int num_connectors = 0, i;
 	bool is_lvds = false;
 
-	for_each_connector_in_state(state, connector, connector_state, i) {
+	for_each_new_connector_in_state(state, connector, connector_state, i) {
 		if (connector_state->crtc != crtc_state->base.crtc)
 			continue;
 
@@ -8859,7 +8859,7 @@ static uint32_t ironlake_compute_dpll(struct intel_crtc *intel_crtc,
 	int factor, num_connectors = 0, i;
 	bool is_lvds = false, is_sdvo = false;
 
-	for_each_connector_in_state(state, connector, connector_state, i) {
+	for_each_new_connector_in_state(state, connector, connector_state, i) {
 		if (connector_state->crtc != crtc_state->base.crtc)
 			continue;
 
@@ -9140,7 +9140,7 @@ skylake_get_initial_plane_config(struct intel_crtc *crtc,
 	fourcc = skl_format_to_fourcc(pixel_format,
 				      val & PLANE_CTL_ORDER_RGBX,
 				      val & PLANE_CTL_ALPHA_MASK);
-	fb->pixel_format = fourcc;
+	fb->format->format = fourcc;
 	fb->bits_per_pixel = drm_format_plane_cpp(fourcc, 0) * 8;
 
 	tiling = val & PLANE_CTL_TILED_MASK;
@@ -9174,11 +9174,11 @@ skylake_get_initial_plane_config(struct intel_crtc *crtc,
 
 	val = I915_READ(PLANE_STRIDE(pipe, 0));
 	stride_mult = intel_fb_stride_alignment(dev, fb->modifier[0],
-						fb->pixel_format);
+						fb->format->format);
 	fb->pitches[0] = (val & 0x3ff) * stride_mult;
 
 	aligned_height = intel_fb_align_height(dev, fb->height,
-					       fb->pixel_format,
+					       fb->format->format,
 					       fb->modifier[0]);
 
 	plane_config->size = fb->pitches[0] * aligned_height;
@@ -9253,7 +9253,7 @@ ironlake_get_initial_plane_config(struct intel_crtc *crtc,
 
 	pixel_format = val & DISPPLANE_PIXFORMAT_MASK;
 	fourcc = i9xx_format_to_fourcc(pixel_format);
-	fb->pixel_format = fourcc;
+	fb->format->format = fourcc;
 	fb->bits_per_pixel = drm_format_plane_cpp(fourcc, 0) * 8;
 
 	base = I915_READ(DSPSURF(pipe)) & 0xfffff000;
@@ -9275,7 +9275,7 @@ ironlake_get_initial_plane_config(struct intel_crtc *crtc,
 	fb->pitches[0] = val & 0xffffffc0;
 
 	aligned_height = intel_fb_align_height(dev, fb->height,
-					       fb->pixel_format,
+					       fb->format->format,
 					       fb->modifier[0]);
 
 	plane_config->size = fb->pitches[0] * aligned_height;
@@ -10050,7 +10050,7 @@ static void i9xx_update_cursor(struct drm_crtc *crtc, u32 base, bool on)
 			cntl |= CURSOR_PIPE_CSC_ENABLE;
 	}
 
-	if (crtc->cursor->state->rotation == BIT(DRM_ROTATE_180))
+	if (crtc->cursor->state->rotation == BIT(DRM_MODE_ROTATE_180))
 		cntl |= CURSOR_ROTATE_180;
 
 	if (intel_crtc->cursor_cntl != cntl) {
@@ -10109,7 +10109,7 @@ static void intel_crtc_update_cursor(struct drm_crtc *crtc,
 
 	/* ILK+ do this automagically */
 	if (HAS_GMCH_DISPLAY(dev) &&
-	    crtc->cursor->state->rotation == BIT(DRM_ROTATE_180)) {
+	    crtc->cursor->state->rotation == BIT(DRM_MODE_ROTATE_180)) {
 		base += (cursor_state->crtc_h *
 			 cursor_state->crtc_w - 1) * 4;
 	}
@@ -11244,7 +11244,7 @@ static void skl_do_mmio_flip(struct intel_crtc *intel_crtc,
 	 */
 	stride = fb->pitches[0] /
 		 intel_fb_stride_alignment(dev, fb->modifier[0],
-					   fb->pixel_format);
+					   fb->format->format);
 
 	/*
 	 * Both PLANE_CTL and PLANE_STRIDE are not updated on vblank but on
@@ -11455,7 +11455,7 @@ static int intel_crtc_page_flip(struct drm_crtc *crtc,
 		return -EBUSY;
 
 	/* Can't change pixel format via MI display flips. */
-	if (fb->pixel_format != crtc->primary->fb->pixel_format)
+	if (fb->format->format != crtc->primary->fb->pixel_format)
 		return -EINVAL;
 
 	/*
@@ -11807,7 +11807,7 @@ int intel_plane_atomic_calc_changes(struct drm_crtc_state *crtc_state,
 		if (visible &&
 		    INTEL_INFO(dev)->gen <= 4 && !IS_G4X(dev) &&
 		    dev_priv->fbc.crtc == intel_crtc &&
-		    plane_state->rotation != BIT(DRM_ROTATE_0))
+		    plane_state->rotation != BIT(DRM_MODE_ROTATE_0))
 			intel_crtc->atomic.disable_fbc = true;
 
 		/*
@@ -11849,7 +11849,7 @@ static bool check_single_encoder_cloning(struct drm_atomic_state *state,
 	struct drm_connector_state *connector_state;
 	int i;
 
-	for_each_connector_in_state(state, connector, connector_state, i) {
+	for_each_new_connector_in_state(state, connector, connector_state, i) {
 		if (connector_state->crtc != &crtc->base)
 			continue;
 
@@ -11870,7 +11870,7 @@ static bool check_encoder_cloning(struct drm_atomic_state *state,
 	struct drm_connector_state *connector_state;
 	int i;
 
-	for_each_connector_in_state(state, connector, connector_state, i) {
+	for_each_new_connector_in_state(state, connector, connector_state, i) {
 		if (connector_state->crtc != &crtc->base)
 			continue;
 
@@ -11998,7 +11998,7 @@ compute_baseline_pipe_bpp(struct intel_crtc *crtc,
 	state = pipe_config->base.state;
 
 	/* Clamp display bpp to EDID value */
-	for_each_connector_in_state(state, connector, connector_state, i) {
+	for_each_new_connector_in_state(state, connector, connector_state, i) {
 		if (connector_state->crtc != &crtc->base)
 			continue;
 
@@ -12146,7 +12146,7 @@ static void intel_dump_pipe_config(struct intel_crtc *crtc,
 			crtc->base.primary == plane ? 0 : intel_plane->plane + 1,
 			drm_plane_index(plane));
 		DRM_DEBUG_KMS("\tFB:%d, fb = %ux%u format = 0x%x",
-			fb->base.id, fb->width, fb->height, fb->pixel_format);
+			fb->base.id, fb->width, fb->height, fb->format->format);
 		DRM_DEBUG_KMS("\tscaler:%d src (%u, %u) %ux%u dst (%u, %u) %ux%u\n",
 			state->scaler_id,
 			state->src.x1 >> 16, state->src.y1 >> 16,
@@ -12298,7 +12298,7 @@ encoder_retry:
 	 * adjust it according to limitations or connector properties, and also
 	 * a chance to reject the mode entirely.
 	 */
-	for_each_connector_in_state(state, connector, connector_state, i) {
+	for_each_new_connector_in_state(state, connector, connector_state, i) {
 		if (connector_state->crtc != crtc)
 			continue;
 
@@ -12351,7 +12351,7 @@ intel_modeset_update_crtc_state(struct drm_atomic_state *state)
 	int i;
 
 	/* Double check state. */
-	for_each_crtc_in_state(state, crtc, crtc_state, i) {
+	for_each_new_crtc_in_state(state, crtc, crtc_state, i) {
 		to_intel_crtc(crtc)->config = to_intel_crtc_state(crtc->state);
 
 		/* Update hwmode for vblank functions */
@@ -12720,7 +12720,7 @@ check_connector_state(struct drm_device *dev,
 	struct drm_connector *connector;
 	int i;
 
-	for_each_connector_in_state(old_state, connector, old_conn_state, i) {
+	for_each_new_connector_in_state(old_state, connector, old_conn_state, i) {
 		struct drm_encoder *encoder = connector->encoder;
 		struct drm_connector_state *state = connector->state;
 
@@ -12782,7 +12782,7 @@ check_crtc_state(struct drm_device *dev, struct drm_atomic_state *old_state)
 	struct drm_crtc *crtc;
 	int i;
 
-	for_each_crtc_in_state(old_state, crtc, old_crtc_state, i) {
+	for_each_new_crtc_in_state(old_state, crtc, old_crtc_state, i) {
 		struct intel_crtc *intel_crtc = to_intel_crtc(crtc);
 		struct intel_crtc_state *pipe_config, *sw_config;
 		bool active;
@@ -12971,7 +12971,7 @@ static void intel_modeset_clear_plls(struct drm_atomic_state *state)
 	if (!dev_priv->display.crtc_compute_clock)
 		return;
 
-	for_each_crtc_in_state(state, crtc, crtc_state, i) {
+	for_each_new_crtc_in_state(state, crtc, crtc_state, i) {
 		int dpll;
 
 		intel_crtc = to_intel_crtc(crtc);
@@ -13007,7 +13007,7 @@ static int haswell_mode_set_planes_workaround(struct drm_atomic_state *state)
 	int i;
 
 	/* look at all crtc's that are going to be enabled in during modeset */
-	for_each_crtc_in_state(state, crtc, crtc_state, i) {
+	for_each_new_crtc_in_state(state, crtc, crtc_state, i) {
 		intel_crtc = to_intel_crtc(crtc);
 
 		if (!crtc_state->active || !needs_modeset(crtc_state))
@@ -13141,7 +13141,7 @@ static int intel_atomic_check(struct drm_device *dev,
 	if (ret)
 		return ret;
 
-	for_each_crtc_in_state(state, crtc, crtc_state, i) {
+	for_each_new_crtc_in_state(state, crtc, crtc_state, i) {
 		struct intel_crtc_state *pipe_config =
 			to_intel_crtc_state(crtc_state);
 
@@ -13243,7 +13243,7 @@ static int intel_atomic_commit(struct drm_device *dev,
 
 	drm_atomic_helper_swap_state(dev, state);
 
-	for_each_crtc_in_state(state, crtc, crtc_state, i) {
+	for_each_new_crtc_in_state(state, crtc, crtc_state, i) {
 		struct intel_crtc *intel_crtc = to_intel_crtc(crtc);
 
 		if (!needs_modeset(crtc->state))
@@ -13272,7 +13272,7 @@ static int intel_atomic_commit(struct drm_device *dev,
 	}
 
 	/* Now enable the clocks, plane, pipe, and connectors that we set up. */
-	for_each_crtc_in_state(state, crtc, crtc_state, i) {
+	for_each_new_crtc_in_state(state, crtc, crtc_state, i) {
 		struct intel_crtc *intel_crtc = to_intel_crtc(crtc);
 		bool modeset = needs_modeset(crtc->state);
 		bool update_pipe = !modeset &&
@@ -13749,11 +13749,11 @@ static struct drm_plane *intel_primary_plane_create(struct drm_device *dev,
 void intel_create_rotation_property(struct drm_device *dev, struct intel_plane *plane)
 {
 	if (!dev->mode_config.rotation_property) {
-		unsigned long flags = BIT(DRM_ROTATE_0) |
-			BIT(DRM_ROTATE_180);
+		unsigned long flags = BIT(DRM_MODE_ROTATE_0) |
+			BIT(DRM_MODE_ROTATE_180);
 
 		if (INTEL_INFO(dev)->gen >= 9)
-			flags |= BIT(DRM_ROTATE_90) | BIT(DRM_ROTATE_270);
+			flags |= BIT(DRM_MODE_ROTATE_90) | BIT(DRM_MODE_ROTATE_270);
 
 		dev->mode_config.rotation_property =
 			drm_mode_create_rotation_property(dev, flags);
@@ -13894,8 +13894,8 @@ static struct drm_plane *intel_cursor_plane_create(struct drm_device *dev,
 		if (!dev->mode_config.rotation_property)
 			dev->mode_config.rotation_property =
 				drm_mode_create_rotation_property(dev,
-							BIT(DRM_ROTATE_0) |
-							BIT(DRM_ROTATE_180));
+							BIT(DRM_MODE_ROTATE_0) |
+							BIT(DRM_MODE_ROTATE_180));
 		if (dev->mode_config.rotation_property)
 			drm_object_attach_property(&cursor->base.base,
 				dev->mode_config.rotation_property,

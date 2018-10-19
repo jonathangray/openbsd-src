@@ -1105,7 +1105,7 @@ intel_tile_height(struct drm_device *dev, uint32_t pixel_format,
 static inline bool
 intel_rotation_90_or_270(unsigned int rotation)
 {
-	return rotation & (BIT(DRM_ROTATE_90) | BIT(DRM_ROTATE_270));
+	return rotation & (BIT(DRM_MODE_ROTATE_90) | BIT(DRM_MODE_ROTATE_270));
 }
 
 void intel_create_rotation_property(struct drm_device *dev,

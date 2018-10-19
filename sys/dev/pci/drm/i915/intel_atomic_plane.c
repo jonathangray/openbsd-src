@@ -55,7 +55,7 @@ intel_create_plane_state(struct drm_plane *plane)
 		return NULL;
 
 	state->base.plane = plane;
-	state->base.rotation = BIT(DRM_ROTATE_0);
+	state->base.rotation = BIT(DRM_MODE_ROTATE_0);
 	state->ckey.flags = I915_SET_COLORKEY_NONE;
 
 	return state;
@@ -166,11 +166,11 @@ static int intel_plane_atomic_check(struct drm_plane *plane,
 		 * RGB 16-bit 5:6:5, and Indexed 8-bit.
 		 * TBD: Add RGB64 case once its added in supported format list.
 		 */
-		switch (state->fb->pixel_format) {
+		switch (state->fb->format->format) {
 		case DRM_FORMAT_C8:
 		case DRM_FORMAT_RGB565:
 			DRM_DEBUG_KMS("Unsupported pixel format %s for 90/270!\n",
-					drm_get_format_name(state->fb->pixel_format));
+					drm_get_format_name(state->fb->format->format));
 			return -EINVAL;
 
 		default:

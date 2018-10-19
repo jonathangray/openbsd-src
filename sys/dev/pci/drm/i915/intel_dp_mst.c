@@ -64,7 +64,7 @@ static bool intel_dp_mst_compute_config(struct intel_encoder *encoder,
 
 	state = pipe_config->base.state;
 
-	for_each_connector_in_state(state, drm_connector, connector_state, i) {
+	for_each_new_connector_in_state(state, drm_connector, connector_state, i) {
 		connector = to_intel_connector(drm_connector);
 
 		if (connector_state->best_encoder == &encoder->base) {
