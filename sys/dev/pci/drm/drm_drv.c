@@ -774,13 +774,13 @@ err:
 	return (ret);
 }
 
+void drm_events_release(struct drm_file *file_priv, struct drm_device *dev);
+
 int
 drmclose(dev_t kdev, int flags, int fmt, struct proc *p)
 {
 	struct drm_device		*dev = drm_get_device_from_kdev(kdev);
 	struct drm_file			*file_priv;
-	struct drm_pending_event *e, *et;
-	struct drm_pending_vblank_event	*v, *vt;
 	int				 retcode = 0;
 
 	if (dev == NULL)
@@ -805,23 +805,7 @@ drmclose(dev_t kdev, int flags, int fmt, struct proc *p)
 	DRM_DEBUG("pid = %d, device = 0x%lx, open_count = %d\n",
 	    DRM_CURRENTPID, (long)&dev->device, dev->open_count);
 
-	mtx_enter(&dev->event_lock);
-
-	/* Remove pending flips */
-	list_for_each_entry_safe(v, vt, &dev->vblank_event_list, base.link)
-		if (v->base.file_priv == file_priv) {
-			list_del(&v->base.link);
-			drm_vblank_put(dev, v->pipe);
-			v->base.destroy(&v->base);
-		}
-
-	/* Remove unconsumed events */
-	list_for_each_entry_safe(e, et, &file_priv->event_list, link) {
-		list_del(&e->link);
-		e->destroy(e);
-	}
-
-	mtx_leave(&dev->event_lock);
+	drm_events_release(file_priv, dev);
 
 	if (dev->driver->driver_features & DRIVER_MODESET)
 		drm_fb_release(file_priv);
@@ -1005,7 +989,7 @@ drmread(dev_t kdev, struct uio *uio, int ioflag)
 		MUTEX_ASSERT_UNLOCKED(&dev->event_lock);
 		/* XXX we always destroy the event on error. */
 		error = uiomove(ev->event, ev->event->length, uio);
-		ev->destroy(ev);
+		kfree(ev);
 		if (error)
 			break;
 		mtx_enter(&dev->event_lock);

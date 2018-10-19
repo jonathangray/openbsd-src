@@ -111,7 +111,6 @@ DEFINE_MUTEX(drm_global_mutex);
 static int drm_open_helper(struct file *filp, struct drm_minor *minor);
 
 #ifdef __linux__
-
 /**
  * drm_file_alloc - allocate file context
  * @minor: minor to allocate on
@@ -180,10 +179,10 @@ out_prime_destroy:
 
 	return ERR_PTR(ret);
 }
+#endif
 
-static void drm_events_release(struct drm_file *file_priv)
+void drm_events_release(struct drm_file *file_priv, struct drm_device *dev)
 {
-	struct drm_device *dev = file_priv->minor->dev;
 	struct drm_pending_event *e, *et;
 	unsigned long flags;
 
@@ -205,6 +204,7 @@ static void drm_events_release(struct drm_file *file_priv)
 	spin_unlock_irqrestore(&dev->event_lock, flags);
 }
 
+#ifdef __linux__
 /**
  * drm_file_free - free file context
  * @file: context to free, or NULL
