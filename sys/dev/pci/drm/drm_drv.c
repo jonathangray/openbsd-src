@@ -724,8 +724,13 @@ drmopen(dev_t kdev, int flags, int fmt, struct proc *p)
 
 	file_priv->filp = (void *)&file_priv;
 	file_priv->minor = minor(kdev);
+	INIT_LIST_HEAD(&file_priv->lhead);
 	INIT_LIST_HEAD(&file_priv->fbs);
+	rw_init(&file_priv->fbs_lock, "fbslk");
+	INIT_LIST_HEAD(&file_priv->blobs);
+	INIT_LIST_HEAD(&file_priv->pending_event_list);
 	INIT_LIST_HEAD(&file_priv->event_list);
+	init_waitqueue_head(&file_priv->event_wait);
 	file_priv->event_space = 4096; /* 4k for event buffer */
 	DRM_DEBUG("minor = %d\n", file_priv->minor);
 
