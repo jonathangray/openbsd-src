@@ -36,6 +36,10 @@
 #ifndef _DRM_H_
 #define _DRM_H_
 
+#ifndef __user
+#define __user
+#endif
+
 #if defined(__KERNEL__) && defined(__linux__)
 
 #include <linux/types.h>
