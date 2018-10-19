@@ -29,12 +29,12 @@
  *    Thomas Hellstrom <thomas-at-tungstengraphics-dot-com>
  *    Dave Airlie
  */
+#include <dev/pci/drm/drmP.h>
 #include <dev/pci/drm/ttm/ttm_bo_api.h>
 #include <dev/pci/drm/ttm/ttm_bo_driver.h>
 #include <dev/pci/drm/ttm/ttm_placement.h>
 #include <dev/pci/drm/ttm/ttm_module.h>
 #include <dev/pci/drm/ttm/ttm_page_alloc.h>
-#include <dev/pci/drm/drmP.h>
 #include <dev/pci/drm/radeon_drm.h>
 #ifdef __linux__
 #include <linux/seq_file.h>
