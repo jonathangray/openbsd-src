@@ -251,8 +251,8 @@ int ttm_tt_populate(struct ttm_tt *ttm, struct ttm_operation_ctx *ctx);
  */
 void ttm_tt_unpopulate(struct ttm_tt *ttm);
 
-#if IS_ENABLED(CONFIG_AGP)
-#include <linux/agp_backend.h>
+#if __OS_HAS_AGP
+#define TTM_HAS_AGP
 
 /**
  * ttm_agp_tt_create
@@ -267,7 +267,7 @@ void ttm_tt_unpopulate(struct ttm_tt *ttm);
  * bind and unbind memory backing a ttm_tt.
  */
 struct ttm_tt *ttm_agp_tt_create(struct ttm_buffer_object *bo,
-				 struct agp_bridge_data *bridge,
+				 struct drm_agp_head *agp,
 				 uint32_t page_flags);
 int ttm_agp_tt_populate(struct ttm_tt *ttm, struct ttm_operation_ctx *ctx);
 void ttm_agp_tt_unpopulate(struct ttm_tt *ttm);
