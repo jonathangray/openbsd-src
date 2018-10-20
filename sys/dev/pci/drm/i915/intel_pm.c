@@ -634,7 +634,7 @@ static void pineview_update_wm(struct drm_crtc *unused_crtc)
 	crtc = single_enabled_crtc(dev);
 	if (crtc) {
 		const struct drm_display_mode *adjusted_mode = &to_intel_crtc(crtc)->config->base.adjusted_mode;
-		int pixel_size = crtc->primary->state->fb->bits_per_pixel / 8;
+		int pixel_size = crtc->primary->state->fb->format->cpp[0];
 		int clock = adjusted_mode->crtc_clock;
 
 		/* Display SR */
@@ -707,7 +707,7 @@ static bool g4x_compute_wm0(struct drm_device *dev,
 	clock = adjusted_mode->crtc_clock;
 	htotal = adjusted_mode->crtc_htotal;
 	hdisplay = to_intel_crtc(crtc)->config->pipe_src_w;
-	pixel_size = crtc->primary->state->fb->bits_per_pixel / 8;
+	pixel_size = crtc->primary->state->fb->format->cpp[0];
 
 	/* Use the small buffer method to calculate plane watermark */
 	entries = ((clock * pixel_size / 1000) * display_latency_ns) / 1000;
@@ -794,7 +794,7 @@ static bool g4x_compute_srwm(struct drm_device *dev,
 	clock = adjusted_mode->crtc_clock;
 	htotal = adjusted_mode->crtc_htotal;
 	hdisplay = to_intel_crtc(crtc)->config->pipe_src_w;
-	pixel_size = crtc->primary->state->fb->bits_per_pixel / 8;
+	pixel_size = crtc->primary->state->fb->format->cpp[0];
 
 	line_time_us = max(htotal * 1000 / clock, 1);
 	line_count = (latency_ns / line_time_us + 1000) / 1000;
@@ -1435,7 +1435,7 @@ static void i965_update_wm(struct drm_crtc *unused_crtc)
 		int clock = adjusted_mode->crtc_clock;
 		int htotal = adjusted_mode->crtc_htotal;
 		int hdisplay = to_intel_crtc(crtc)->config->pipe_src_w;
-		int pixel_size = crtc->primary->state->fb->bits_per_pixel / 8;
+		int pixel_size = crtc->primary->state->fb->format->cpp[0];
 		unsigned long line_time_us;
 		int entries;
 
@@ -1514,7 +1514,7 @@ static void i9xx_update_wm(struct drm_crtc *unused_crtc)
 	crtc = intel_get_crtc_for_plane(dev, 0);
 	if (intel_crtc_active(crtc)) {
 		const struct drm_display_mode *adjusted_mode;
-		int cpp = crtc->primary->state->fb->bits_per_pixel / 8;
+		int cpp = crtc->primary->state->fb->format->cpp[0];
 		if (IS_GEN2(dev))
 			cpp = 4;
 
@@ -1536,7 +1536,7 @@ static void i9xx_update_wm(struct drm_crtc *unused_crtc)
 	crtc = intel_get_crtc_for_plane(dev, 1);
 	if (intel_crtc_active(crtc)) {
 		const struct drm_display_mode *adjusted_mode;
-		int cpp = crtc->primary->state->fb->bits_per_pixel / 8;
+		int cpp = crtc->primary->state->fb->format->cpp[0];
 		if (IS_GEN2(dev))
 			cpp = 4;
 
@@ -1582,7 +1582,7 @@ static void i9xx_update_wm(struct drm_crtc *unused_crtc)
 		int clock = adjusted_mode->crtc_clock;
 		int htotal = adjusted_mode->crtc_htotal;
 		int hdisplay = to_intel_crtc(enabled)->config->pipe_src_w;
-		int pixel_size = enabled->primary->state->fb->bits_per_pixel / 8;
+		int pixel_size = enabled->primary->state->fb->format->cpp[0];
 		unsigned long line_time_us;
 		int entries;
 
@@ -1744,7 +1744,7 @@ static uint32_t ilk_compute_pri_wm(const struct intel_crtc_state *cstate,
 				   uint32_t mem_value,
 				   bool is_lp)
 {
-	int bpp = pstate->base.fb ? pstate->base.fb->bits_per_pixel / 8 : 0;
+	int bpp = pstate->base.fb ? pstate->base.fb->format->cpp[0] : 0;
 	uint32_t method1, method2;
 
 	if (!cstate->base.active || !pstate->visible)
@@ -1772,7 +1772,7 @@ static uint32_t ilk_compute_spr_wm(const struct intel_crtc_state *cstate,
 				   const struct intel_plane_state *pstate,
 				   uint32_t mem_value)
 {
-	int bpp = pstate->base.fb ? pstate->base.fb->bits_per_pixel / 8 : 0;
+	int bpp = pstate->base.fb ? pstate->base.fb->format->cpp[0] : 0;
 	uint32_t method1, method2;
 
 	if (!cstate->base.active || !pstate->visible)
@@ -1816,7 +1816,7 @@ static uint32_t ilk_compute_fbc_wm(const struct intel_crtc_state *cstate,
 				   const struct intel_plane_state *pstate,
 				   uint32_t pri_val)
 {
-	int bpp = pstate->base.fb ? pstate->base.fb->bits_per_pixel / 8 : 0;
+	int bpp = pstate->base.fb ? pstate->base.fb->format->cpp[0] : 0;
 
 	if (!cstate->base.active || !pstate->visible)
 		return 0;
@@ -3108,7 +3108,7 @@ static void skl_compute_wm_pipe_parameters(struct drm_crtc *crtc,
 				drm_format_plane_cpp(fb->format->format, 0);
 			p->plane[0].y_bytes_per_pixel = fb->format->format == DRM_FORMAT_NV12 ?
 				drm_format_plane_cpp(fb->format->format, 0) : 0;
-			p->plane[0].tiling = fb->modifier[0];
+			p->plane[0].tiling = fb->modifier;
 		} else {
 			p->plane[0].enabled = false;
 			p->plane[0].bytes_per_pixel = 0;
@@ -3123,7 +3123,7 @@ static void skl_compute_wm_pipe_parameters(struct drm_crtc *crtc,
 		p->plane[PLANE_CURSOR].y_bytes_per_pixel = 0;
 		if (fb) {
 			p->plane[PLANE_CURSOR].enabled = true;
-			p->plane[PLANE_CURSOR].bytes_per_pixel = fb->bits_per_pixel / 8;
+			p->plane[PLANE_CURSOR].bytes_per_pixel = fb->format->cpp[0];
 			p->plane[PLANE_CURSOR].horiz_pixels = crtc->cursor->state->crtc_w;
 			p->plane[PLANE_CURSOR].vert_pixels = crtc->cursor->state->crtc_h;
 		} else {
@@ -3693,7 +3693,7 @@ skl_update_sprite_wm(struct drm_plane *plane, struct drm_crtc *crtc,
 	 * matter for watermarks if we assume no tiling in that case.
 	 */
 	if (fb)
-		intel_plane->wm.tiling = fb->modifier[0];
+		intel_plane->wm.tiling = fb->modifier;
 	intel_plane->wm.rotation = plane->state->rotation;
 
 	skl_update_wm(crtc);

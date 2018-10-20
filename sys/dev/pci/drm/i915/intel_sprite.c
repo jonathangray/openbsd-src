@@ -207,7 +207,7 @@ skl_update_plane(struct drm_plane *drm_plane, struct drm_crtc *crtc,
 		PLANE_CTL_PIPE_CSC_ENABLE;
 
 	plane_ctl |= skl_plane_ctl_format(fb->format->format);
-	plane_ctl |= skl_plane_ctl_tiling(fb->modifier[0]);
+	plane_ctl |= skl_plane_ctl_tiling(fb->modifier);
 
 	rotation = drm_plane->state->rotation;
 	plane_ctl |= skl_plane_ctl_rotation(rotation);
@@ -216,7 +216,7 @@ skl_update_plane(struct drm_plane *drm_plane, struct drm_crtc *crtc,
 				       pixel_size, true,
 				       src_w != crtc_w || src_h != crtc_h);
 
-	stride_div = intel_fb_stride_alignment(dev, fb->modifier[0],
+	stride_div = intel_fb_stride_alignment(dev, fb->modifier,
 					       fb->format->format);
 
 	scaler_id = to_intel_plane_state(drm_plane->state)->scaler_id;
@@ -243,7 +243,7 @@ skl_update_plane(struct drm_plane *drm_plane, struct drm_crtc *crtc,
 	if (intel_rotation_90_or_270(rotation)) {
 		/* stride: Surface height in tiles */
 		tile_height = intel_tile_height(dev, fb->format->format,
-						fb->modifier[0], 0);
+						fb->modifier, 0);
 		stride = DIV_ROUND_UP(fb->height, tile_height);
 		plane_size = (src_w << 16) | src_h;
 		x_offset = stride * tile_height - y - (src_h + 1);
@@ -820,7 +820,7 @@ intel_check_sprite_plane(struct drm_plane *plane,
 	vscale = drm_rect_calc_vscale_relaxed(src, dst, min_scale, max_scale);
 	BUG_ON(vscale < 0);
 
-	state->visible = drm_rect_clip_scaled(src, dst, clip, hscale, vscale);
+	state->visible = drm_rect_clip_scaled(src, dst, clip);
 
 	crtc_x = dst->x1;
 	crtc_y = dst->y1;
@@ -832,8 +832,8 @@ intel_check_sprite_plane(struct drm_plane *plane,
 		hscale = drm_rect_calc_hscale(src, dst, min_scale, max_scale);
 		if (hscale < 0) {
 			DRM_DEBUG_KMS("Horizontal scaling factor out of limits\n");
-			drm_rect_debug_print(src, true);
-			drm_rect_debug_print(dst, false);
+			drm_rect_debug_print("src: ", src, true);
+			drm_rect_debug_print("dst: ", dst, false);
 
 			return hscale;
 		}
@@ -841,8 +841,8 @@ intel_check_sprite_plane(struct drm_plane *plane,
 		vscale = drm_rect_calc_vscale(src, dst, min_scale, max_scale);
 		if (vscale < 0) {
 			DRM_DEBUG_KMS("Vertical scaling factor out of limits\n");
-			drm_rect_debug_print(src, true);
-			drm_rect_debug_print(dst, false);
+			drm_rect_debug_print("src: ", src, true);
+			drm_rect_debug_print("dst: ", dst, false);
 
 			return vscale;
 		}
@@ -973,7 +973,7 @@ int intel_sprite_set_colorkey(struct drm_device *dev, void *data,
 	    set->flags & I915_SET_COLORKEY_DESTINATION)
 		return -EINVAL;
 
-	plane = drm_plane_find(dev, set->plane_id);
+	plane = drm_plane_find(dev, file_priv, set->plane_id);
 	if (!plane || plane->type != DRM_PLANE_TYPE_OVERLAY)
 		return -ENOENT;
 
@@ -1001,9 +1001,7 @@ int intel_sprite_set_colorkey(struct drm_device *dev, void *data,
 		drm_modeset_backoff(&ctx);
 	}
 
-	if (ret)
-		drm_atomic_state_free(state);
-
+	drm_atomic_state_put(state);
 out:
 	drm_modeset_drop_locks(&ctx);
 	drm_modeset_acquire_fini(&ctx);
@@ -1138,10 +1136,19 @@ intel_plane_init(struct drm_device *dev, enum pipe pipe, int plane)
 	intel_plane->check_plane = intel_check_sprite_plane;
 	intel_plane->commit_plane = intel_commit_sprite_plane;
 	possible_crtcs = (1 << pipe);
-	ret = drm_universal_plane_init(dev, &intel_plane->base, possible_crtcs,
-				       &intel_plane_funcs,
-				       plane_formats, num_plane_formats,
-				       DRM_PLANE_TYPE_OVERLAY);
+
+	if (INTEL_INFO(dev)->gen >= 9)
+		ret = drm_universal_plane_init(dev, &intel_plane->base,
+					       possible_crtcs, &intel_plane_funcs,
+					       plane_formats, num_plane_formats,
+					       NULL, DRM_PLANE_TYPE_OVERLAY,
+					       "plane %d%c", plane + 2, pipe_name(pipe));
+	else
+		ret = drm_universal_plane_init(dev, &intel_plane->base,
+					       possible_crtcs, &intel_plane_funcs,
+					       plane_formats, num_plane_formats,
+					       NULL, DRM_PLANE_TYPE_OVERLAY,
+					       "sprite %c", sprite_name(pipe, plane));
 	if (ret) {
 		kfree(intel_plane);
 		goto out;
