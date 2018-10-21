@@ -5092,7 +5092,6 @@ void intel_dp_encoder_reset(struct drm_encoder *encoder)
 }
 
 static const struct drm_connector_funcs intel_dp_connector_funcs = {
-	.dpms = drm_atomic_helper_connector_dpms,
 	.detect = intel_dp_detect,
 	.force = intel_dp_force,
 	.fill_modes = drm_helper_probe_single_connector_modes,
@@ -5912,9 +5911,8 @@ static bool intel_edp_init_connector(struct intel_dp *intel_dp,
 	edid = drm_get_edid(connector, &intel_dp->aux.ddc);
 	if (edid) {
 		if (drm_add_edid_modes(connector, edid)) {
-			drm_mode_connector_update_edid_property(connector,
+			drm_connector_update_edid_property(connector,
 								edid);
-			drm_edid_to_eld(connector, edid);
 		} else {
 			kfree(edid);
 			edid = ERR_PTR(-EINVAL);
@@ -6145,7 +6143,7 @@ bool intel_dp_init(struct drm_device *dev,
 	encoder = &intel_encoder->base;
 
 	drm_encoder_init(dev, &intel_encoder->base, &intel_dp_enc_funcs,
-			 DRM_MODE_ENCODER_TMDS);
+			 DRM_MODE_ENCODER_TMDS, "DP %c", port_name(port));
 
 	intel_encoder->compute_config = intel_dp_compute_config;
 	intel_encoder->disable = intel_disable_dp;

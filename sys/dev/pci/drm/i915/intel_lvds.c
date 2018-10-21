@@ -554,7 +554,6 @@ static const struct drm_connector_helper_funcs intel_lvds_connector_helper_funcs
 };
 
 static const struct drm_connector_funcs intel_lvds_connector_funcs = {
-	.dpms = drm_atomic_helper_connector_dpms,
 	.detect = intel_lvds_detect,
 	.fill_modes = drm_helper_probe_single_connector_modes,
 	.set_property = intel_lvds_set_property,
@@ -1040,7 +1039,7 @@ void intel_lvds_init(struct drm_device *dev)
 			   DRM_MODE_CONNECTOR_LVDS);
 
 	drm_encoder_init(dev, &intel_encoder->base, &intel_lvds_enc_funcs,
-			 DRM_MODE_ENCODER_LVDS);
+			 DRM_MODE_ENCODER_LVDS, "LVDS");
 
 	intel_encoder->enable = intel_enable_lvds;
 	intel_encoder->pre_enable = intel_pre_enable_lvds;
@@ -1098,7 +1097,7 @@ void intel_lvds_init(struct drm_device *dev)
 	edid = drm_get_edid(connector, intel_gmbus_get_adapter(dev_priv, pin));
 	if (edid) {
 		if (drm_add_edid_modes(connector, edid)) {
-			drm_mode_connector_update_edid_property(connector,
+			drm_connector_update_edid_property(connector,
 								edid);
 		} else {
 			kfree(edid);
@@ -1108,17 +1107,6 @@ void intel_lvds_init(struct drm_device *dev)
 		edid = ERR_PTR(-ENOENT);
 	}
 	lvds_connector->base.edid = edid;
-
-	if (IS_ERR_OR_NULL(edid)) {
-		/* Didn't get an EDID, so
-		 * Set wide sync ranges so we get all modes
-		 * handed to valid_mode for checking
-		 */
-		connector->display_info.min_vfreq = 0;
-		connector->display_info.max_vfreq = 200;
-		connector->display_info.min_hfreq = 0;
-		connector->display_info.max_hfreq = 200;
-	}
 
 	list_for_each_entry(scan, &connector->probed_modes, head) {
 		if (scan->type & DRM_MODE_TYPE_PREFERRED) {

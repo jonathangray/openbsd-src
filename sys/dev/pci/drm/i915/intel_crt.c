@@ -738,7 +738,6 @@ static void intel_crt_reset(struct drm_connector *connector)
 
 static const struct drm_connector_funcs intel_crt_connector_funcs = {
 	.reset = intel_crt_reset,
-	.dpms = drm_atomic_helper_connector_dpms,
 	.detect = intel_crt_detect,
 	.fill_modes = drm_helper_probe_single_connector_modes,
 	.destroy = intel_crt_destroy,
@@ -811,7 +810,7 @@ void intel_crt_init(struct drm_device *dev)
 			   &intel_crt_connector_funcs, DRM_MODE_CONNECTOR_VGA);
 
 	drm_encoder_init(dev, &crt->base.base, &intel_crt_enc_funcs,
-			 DRM_MODE_ENCODER_DAC);
+			 DRM_MODE_ENCODER_DAC, "CRT");
 
 	intel_connector_attach_encoder(intel_connector, &crt->base);
 

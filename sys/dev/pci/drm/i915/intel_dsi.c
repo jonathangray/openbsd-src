@@ -1109,7 +1109,6 @@ static const struct drm_connector_helper_funcs intel_dsi_connector_helper_funcs 
 };
 
 static const struct drm_connector_funcs intel_dsi_connector_funcs = {
-	.dpms = drm_atomic_helper_connector_dpms,
 	.detect = intel_dsi_detect,
 	.destroy = intel_dsi_connector_destroy,
 	.fill_modes = drm_helper_probe_single_connector_modes,
@@ -1159,7 +1158,8 @@ void intel_dsi_init(struct drm_device *dev)
 
 	connector = &intel_connector->base;
 
-	drm_encoder_init(dev, encoder, &intel_dsi_funcs, DRM_MODE_ENCODER_DSI);
+	drm_encoder_init(dev, encoder, &intel_dsi_funcs, DRM_MODE_ENCODER_DSI,
+			 "DSI %c", port_name(port));
 
 	/* XXX: very likely not all of these are needed */
 	intel_encoder->compute_config = intel_dsi_compute_config;
