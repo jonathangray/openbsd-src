@@ -1,5 +1,5 @@
 /*
- * Copyright © 2014 Intel Corporation
+ * Copyright © 2017 Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -17,31 +17,22 @@
  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL
  * THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
- * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
- * DEALINGS IN THE SOFTWARE.
+ * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+ * IN THE SOFTWARE.
+ *
  */
 
-#ifndef _INTEL_RENDERSTATE_H
-#define _INTEL_RENDERSTATE_H
+#ifndef __I915_SYNCMAP_H__
+#define __I915_SYNCMAP_H__
 
 #include <linux/types.h>
 
-struct intel_renderstate_rodata {
-	const u32 *reloc;
-	const u32 *batch;
-	const u32 batch_items;
-};
+struct i915_syncmap;
+#define KSYNCMAP 16 /* radix of the tree, how many slots in each layer */
 
-#define RO_RENDERSTATE(_g)						\
-	const struct intel_renderstate_rodata gen ## _g ## _null_state = { \
-		.reloc = gen ## _g ## _null_state_relocs,		\
-		.batch = gen ## _g ## _null_state_batch,		\
-		.batch_items = sizeof(gen ## _g ## _null_state_batch)/4, \
-	}
+void i915_syncmap_init(struct i915_syncmap **root);
+int i915_syncmap_set(struct i915_syncmap **root, u64 id, u32 seqno);
+bool i915_syncmap_is_later(struct i915_syncmap **root, u64 id, u32 seqno);
+void i915_syncmap_free(struct i915_syncmap **root);
 
-extern const struct intel_renderstate_rodata gen6_null_state;
-extern const struct intel_renderstate_rodata gen7_null_state;
-extern const struct intel_renderstate_rodata gen8_null_state;
-extern const struct intel_renderstate_rodata gen9_null_state;
-
-#endif /* INTEL_RENDERSTATE_H */
+#endif /* __I915_SYNCMAP_H__ */

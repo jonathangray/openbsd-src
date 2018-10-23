@@ -1,5 +1,5 @@
 /*
- * Copyright(c) 2011-2015 Intel Corporation. All rights reserved.
+ * Copyright(c) 2011-2016 Intel Corporation. All rights reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -21,28 +21,30 @@
  * SOFTWARE.
  */
 
-#ifndef _I915_VGPU_H_
-#define _I915_VGPU_H_
+#ifndef _INTEL_GVT_H_
+#define _INTEL_GVT_H_
 
-#include "i915_pvinfo.h"
+struct intel_gvt;
 
-void i915_check_vgpu(struct drm_i915_private *dev_priv);
-
-bool intel_vgpu_has_full_48bit_ppgtt(struct drm_i915_private *dev_priv);
-
-static inline bool
-intel_vgpu_has_hwsp_emulation(struct drm_i915_private *dev_priv)
+#ifdef CONFIG_DRM_I915_GVT
+int intel_gvt_init(struct drm_i915_private *dev_priv);
+void intel_gvt_cleanup(struct drm_i915_private *dev_priv);
+int intel_gvt_init_device(struct drm_i915_private *dev_priv);
+void intel_gvt_clean_device(struct drm_i915_private *dev_priv);
+int intel_gvt_init_host(void);
+void intel_gvt_sanitize_options(struct drm_i915_private *dev_priv);
+#else
+static inline int intel_gvt_init(struct drm_i915_private *dev_priv)
 {
-	return dev_priv->vgpu.caps & VGT_CAPS_HWSP_EMULATION;
+	return 0;
+}
+static inline void intel_gvt_cleanup(struct drm_i915_private *dev_priv)
+{
 }
 
-static inline bool
-intel_vgpu_has_huge_gtt(struct drm_i915_private *dev_priv)
+static inline void intel_gvt_sanitize_options(struct drm_i915_private *dev_priv)
 {
-	return dev_priv->vgpu.caps & VGT_CAPS_HUGE_GTT;
 }
+#endif
 
-int intel_vgt_balloon(struct drm_i915_private *dev_priv);
-void intel_vgt_deballoon(struct drm_i915_private *dev_priv);
-
-#endif /* _I915_VGPU_H_ */
+#endif /* _INTEL_GVT_H_ */
