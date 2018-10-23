@@ -2295,10 +2295,10 @@ intel_fill_fb_ggtt_view(struct i915_ggtt_view *view, struct drm_framebuffer *fb,
 	info->pixel_format = fb->format->format;
 	info->pitch = fb->pitches[0];
 	info->uv_offset = fb->offsets[1];
-	info->fb_modifier = fb->modifier[0];
+	info->fb_modifier = fb->modifier;
 
 	tile_height = intel_tile_height(fb->dev, fb->format->format,
-					fb->modifier[0], 0);
+					fb->modifier, 0);
 	tile_pitch = PAGE_SIZE / tile_height;
 	info->width_pages = DIV_ROUND_UP(fb->pitches[0], tile_pitch);
 	info->height_pages = DIV_ROUND_UP(fb->height, tile_height);
@@ -2306,7 +2306,7 @@ intel_fill_fb_ggtt_view(struct i915_ggtt_view *view, struct drm_framebuffer *fb,
 
 	if (info->pixel_format == DRM_FORMAT_NV12) {
 		tile_height = intel_tile_height(fb->dev, fb->format->format,
-						fb->modifier[0], 1);
+						fb->modifier, 1);
 		tile_pitch = PAGE_SIZE / tile_height;
 		info->width_pages_uv = DIV_ROUND_UP(fb->pitches[0], tile_pitch);
 		info->height_pages_uv = DIV_ROUND_UP(fb->height / 2,
@@ -2347,7 +2347,7 @@ intel_pin_and_fence_fb_obj(struct drm_plane *plane,
 
 	WARN_ON(!mutex_is_locked(&dev->struct_mutex));
 
-	switch (fb->modifier[0]) {
+	switch (fb->modifier) {
 	case DRM_FORMAT_MOD_NONE:
 		alignment = intel_linear_alignment(dev_priv);
 		break;
@@ -2367,7 +2367,7 @@ intel_pin_and_fence_fb_obj(struct drm_plane *plane,
 		alignment = 1 * 1024 * 1024;
 		break;
 	default:
-		MISSING_CASE(fb->modifier[0]);
+		MISSING_CASE(fb->modifier);
 		return -EINVAL;
 	}
 
@@ -2567,7 +2567,7 @@ intel_alloc_initial_plane_obj(struct intel_crtc *crtc,
 	mode_cmd.width = fb->width;
 	mode_cmd.height = fb->height;
 	mode_cmd.pitches[0] = fb->pitches[0];
-	mode_cmd.modifier[0] = fb->modifier[0];
+	mode_cmd.modifier[0] = fb->modifier;
 	mode_cmd.flags = DRM_MODE_FB_MODIFIERS;
 
 	mutex_lock(&dev->struct_mutex);
@@ -3126,14 +3126,14 @@ static void skylake_update_primary_plane(struct drm_crtc *crtc,
 		    PLANE_CTL_PIPE_CSC_ENABLE;
 
 	plane_ctl |= skl_plane_ctl_format(fb->format->format);
-	plane_ctl |= skl_plane_ctl_tiling(fb->modifier[0]);
+	plane_ctl |= skl_plane_ctl_tiling(fb->modifier);
 	plane_ctl |= PLANE_CTL_PLANE_GAMMA_DISABLE;
 
 	rotation = plane->state->rotation;
 	plane_ctl |= skl_plane_ctl_rotation(rotation);
 
 	obj = intel_fb_obj(fb);
-	stride_div = intel_fb_stride_alignment(dev, fb->modifier[0],
+	stride_div = intel_fb_stride_alignment(dev, fb->modifier,
 					       fb->format->format);
 	surf_addr = intel_plane_obj_offset(to_intel_plane(plane), obj, 0);
 
@@ -3154,7 +3154,7 @@ static void skylake_update_primary_plane(struct drm_crtc *crtc,
 	if (intel_rotation_90_or_270(rotation)) {
 		/* stride = Surface height in tiles */
 		tile_height = intel_tile_height(dev, fb->format->format,
-						fb->modifier[0], 0);
+						fb->modifier, 0);
 		stride = DIV_ROUND_UP(fb->height, tile_height);
 		x_offset = stride * tile_height - y - src_h;
 		y_offset = x;
@@ -8066,7 +8066,7 @@ i9xx_get_initial_plane_config(struct intel_crtc *crtc,
 	if (INTEL_INFO(dev)->gen >= 4) {
 		if (val & DISPPLANE_TILED) {
 			plane_config->tiling = I915_TILING_X;
-			fb->modifier[0] = I915_FORMAT_MOD_X_TILED;
+			fb->modifier = I915_FORMAT_MOD_X_TILED;
 		}
 	}
 
@@ -8095,7 +8095,7 @@ i9xx_get_initial_plane_config(struct intel_crtc *crtc,
 
 	aligned_height = intel_fb_align_height(dev, fb->height,
 					       fb->format->format,
-					       fb->modifier[0]);
+					       fb->modifier);
 
 	plane_config->size = fb->pitches[0] * aligned_height;
 
@@ -9146,17 +9146,17 @@ skylake_get_initial_plane_config(struct intel_crtc *crtc,
 	tiling = val & PLANE_CTL_TILED_MASK;
 	switch (tiling) {
 	case PLANE_CTL_TILED_LINEAR:
-		fb->modifier[0] = DRM_FORMAT_MOD_NONE;
+		fb->modifier = DRM_FORMAT_MOD_NONE;
 		break;
 	case PLANE_CTL_TILED_X:
 		plane_config->tiling = I915_TILING_X;
-		fb->modifier[0] = I915_FORMAT_MOD_X_TILED;
+		fb->modifier = I915_FORMAT_MOD_X_TILED;
 		break;
 	case PLANE_CTL_TILED_Y:
-		fb->modifier[0] = I915_FORMAT_MOD_Y_TILED;
+		fb->modifier = I915_FORMAT_MOD_Y_TILED;
 		break;
 	case PLANE_CTL_TILED_YF:
-		fb->modifier[0] = I915_FORMAT_MOD_Yf_TILED;
+		fb->modifier = I915_FORMAT_MOD_Yf_TILED;
 		break;
 	default:
 		MISSING_CASE(tiling);
@@ -9173,13 +9173,13 @@ skylake_get_initial_plane_config(struct intel_crtc *crtc,
 	fb->width = ((val >> 0) & 0x1fff) + 1;
 
 	val = I915_READ(PLANE_STRIDE(pipe, 0));
-	stride_mult = intel_fb_stride_alignment(dev, fb->modifier[0],
+	stride_mult = intel_fb_stride_alignment(dev, fb->modifier,
 						fb->format->format);
 	fb->pitches[0] = (val & 0x3ff) * stride_mult;
 
 	aligned_height = intel_fb_align_height(dev, fb->height,
 					       fb->format->format,
-					       fb->modifier[0]);
+					       fb->modifier);
 
 	plane_config->size = fb->pitches[0] * aligned_height;
 
@@ -9247,7 +9247,7 @@ ironlake_get_initial_plane_config(struct intel_crtc *crtc,
 	if (INTEL_INFO(dev)->gen >= 4) {
 		if (val & DISPPLANE_TILED) {
 			plane_config->tiling = I915_TILING_X;
-			fb->modifier[0] = I915_FORMAT_MOD_X_TILED;
+			fb->modifier = I915_FORMAT_MOD_X_TILED;
 		}
 	}
 
@@ -9276,7 +9276,7 @@ ironlake_get_initial_plane_config(struct intel_crtc *crtc,
 
 	aligned_height = intel_fb_align_height(dev, fb->height,
 					       fb->format->format,
-					       fb->modifier[0]);
+					       fb->modifier);
 
 	plane_config->size = fb->pitches[0] * aligned_height;
 
@@ -11222,7 +11222,7 @@ static void skl_do_mmio_flip(struct intel_crtc *intel_crtc,
 
 	ctl = I915_READ(PLANE_CTL(pipe, 0));
 	ctl &= ~PLANE_CTL_TILED_MASK;
-	switch (fb->modifier[0]) {
+	switch (fb->modifier) {
 	case DRM_FORMAT_MOD_NONE:
 		break;
 	case I915_FORMAT_MOD_X_TILED:
@@ -11235,7 +11235,7 @@ static void skl_do_mmio_flip(struct intel_crtc *intel_crtc,
 		ctl |= PLANE_CTL_TILED_YF;
 		break;
 	default:
-		MISSING_CASE(fb->modifier[0]);
+		MISSING_CASE(fb->modifier);
 	}
 
 	/*
@@ -11243,7 +11243,7 @@ static void skl_do_mmio_flip(struct intel_crtc *intel_crtc,
 	 * linear buffers or in number of tiles for tiled buffers.
 	 */
 	stride = fb->pitches[0] /
-		 intel_fb_stride_alignment(dev, fb->modifier[0],
+		 intel_fb_stride_alignment(dev, fb->modifier,
 					   fb->format->format);
 
 	/*
@@ -11676,7 +11676,7 @@ static bool intel_wm_need_update(struct drm_plane *plane,
 {
 	/* Update watermarks on tiling changes. */
 	if (!plane->state->fb || !state->fb ||
-	    plane->state->fb->modifier[0] != state->fb->modifier[0] ||
+	    plane->state->fb->modifier != state->fb->modifier ||
 	    plane->state->rotation != state->rotation)
 		return true;
 
@@ -13801,7 +13801,7 @@ intel_check_cursor_plane(struct drm_plane *plane,
 		return -ENOMEM;
 	}
 
-	if (fb->modifier[0] != DRM_FORMAT_MOD_NONE) {
+	if (fb->modifier != DRM_FORMAT_MOD_NONE) {
 		DRM_DEBUG_KMS("cursor cannot be tiled\n");
 		return -EINVAL;
 	}
