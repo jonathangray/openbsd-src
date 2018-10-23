@@ -2280,9 +2280,7 @@ uint32_t ddi_signal_levels(struct intel_dp *intel_dp)
 	return DDI_BUF_TRANS_SELECT(level);
 }
 
-static void intel_ddi_pre_enable(struct intel_encoder *intel_encoder,
-				 const struct intel_crtc_state *crtc_state,
-				 const struct drm_connector_state *conn_state)
+static void intel_ddi_pre_enable(struct intel_encoder *intel_encoder)
 {
 	struct drm_encoder *encoder = &intel_encoder->base;
 	struct drm_device *dev = encoder->dev;
@@ -2355,14 +2353,12 @@ static void intel_ddi_pre_enable(struct intel_encoder *intel_encoder,
 					INTEL_OUTPUT_HDMI);
 		}
 		intel_hdmi->set_infoframes(encoder,
-					   crtc_state->has_infoframe,
-					   crtc_state, conn_state);
+					   crtc->config->has_hdmi_sink,
+					   &crtc->config->base.adjusted_mode);
 	}
 }
 
-static void intel_ddi_post_disable(struct intel_encoder *intel_encoder,
-				   const struct intel_crtc_state *old_crtc_state,
-				   const struct drm_connector_state *old_conn_state)
+static void intel_ddi_post_disable(struct intel_encoder *intel_encoder)
 {
 	struct drm_encoder *encoder = &intel_encoder->base;
 	struct drm_device *dev = encoder->dev;
@@ -2439,9 +2435,7 @@ static void intel_enable_ddi(struct intel_encoder *intel_encoder)
 	}
 }
 
-static void intel_disable_ddi(struct intel_encoder *intel_encoder,
-			      const struct intel_crtc_state *old_crtc_state,
-			      const struct drm_connector_state *old_conn_state)
+static void intel_disable_ddi(struct intel_encoder *intel_encoder)
 {
 	struct drm_encoder *encoder = &intel_encoder->base;
 	struct drm_crtc *crtc = encoder->crtc;
@@ -3087,15 +3081,13 @@ void intel_ddi_prepare_link_retrain(struct drm_encoder *encoder)
 	udelay(600);
 }
 
-void intel_ddi_fdi_disable(struct drm_crtc *crtc,
-			   struct intel_crtc_state *old_crtc_state,
-			   struct drm_connector_state *old_conn_state)
+void intel_ddi_fdi_disable(struct drm_crtc *crtc)
 {
 	struct drm_i915_private *dev_priv = crtc->dev->dev_private;
 	struct intel_encoder *intel_encoder = intel_ddi_get_crtc_encoder(crtc);
 	uint32_t val;
 
-	intel_ddi_post_disable(intel_encoder, old_crtc_state, old_conn_state);
+	intel_ddi_post_disable(intel_encoder);
 
 	val = I915_READ(FDI_RX_CTL(PIPE_A));
 	val &= ~FDI_RX_ENABLE;

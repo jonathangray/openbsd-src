@@ -141,17 +141,11 @@ struct intel_encoder {
 	bool (*compute_config)(struct intel_encoder *,
 			       struct intel_crtc_state *);
 	void (*pre_pll_enable)(struct intel_encoder *);
-	void (*pre_enable)(struct intel_encoder *,
-			   const struct intel_crtc_state *,
-			   const struct drm_connector_state *);
+	void (*pre_enable)(struct intel_encoder *);
 	void (*enable)(struct intel_encoder *);
 	void (*mode_set)(struct intel_encoder *intel_encoder);
-	void (*disable)(struct intel_encoder *,
-			const struct intel_crtc_state *,
-			const struct drm_connector_state *);
-	void (*post_disable)(struct intel_encoder *,
-			     const struct intel_crtc_state *,
-			     const struct drm_connector_state *);
+	void (*disable)(struct intel_encoder *);
+	void (*post_disable)(struct intel_encoder *);
 	void (*post_pll_disable)(struct intel_encoder *);
 	/* Read out the current hw state of this connector, returning true if
 	 * the encoder is active. If the encoder is enabled it also set the pipe
@@ -703,8 +697,7 @@ struct intel_hdmi {
 				const void *frame, ssize_t len);
 	void (*set_infoframes)(struct drm_encoder *encoder,
 			       bool enable,
-			       const struct intel_crtc_state *crtc_state,
-			       const struct drm_connector_state *conn_state);
+			       const struct drm_display_mode *adjusted_mode);
 	bool (*infoframe_enabled)(struct drm_encoder *encoder);
 };
 
@@ -1000,9 +993,7 @@ bool intel_ddi_pll_select(struct intel_crtc *crtc,
 void intel_ddi_set_pipe_settings(struct drm_crtc *crtc);
 void intel_ddi_prepare_link_retrain(struct drm_encoder *encoder);
 bool intel_ddi_connector_get_hw_state(struct intel_connector *intel_connector);
-void intel_ddi_fdi_disable(struct drm_crtc *crtc,
-			   struct intel_crtc_state *old_crtc_state,
-			   struct drm_connector_state *old_conn_state);
+void intel_ddi_fdi_disable(struct drm_crtc *crtc);
 void intel_ddi_get_config(struct intel_encoder *encoder,
 			  struct intel_crtc_state *pipe_config);
 struct intel_encoder *

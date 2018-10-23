@@ -851,9 +851,7 @@ intel_enable_tv(struct intel_encoder *encoder)
 }
 
 static void
-intel_disable_tv(struct intel_encoder *encoder,
-		 const struct intel_crtc_state *old_crtc_state,
-		 const struct drm_connector_state *old_conn_state)
+intel_disable_tv(struct intel_encoder *encoder)
 {
 	struct drm_device *dev = encoder->base.dev;
 	struct drm_i915_private *dev_priv = dev->dev_private;
@@ -1008,9 +1006,7 @@ static void set_color_conversion(struct drm_i915_private *dev_priv,
 		   color_conversion->av);
 }
 
-static void intel_tv_pre_enable(struct intel_encoder *encoder,
-				const struct intel_crtc_state *pipe_config,
-				const struct drm_connector_state *conn_state)
+static void intel_tv_pre_enable(struct intel_encoder *encoder)
 {
 	struct drm_device *dev = encoder->base.dev;
 	struct drm_i915_private *dev_priv = dev->dev_private;

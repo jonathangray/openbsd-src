@@ -114,9 +114,7 @@ static void intel_mst_disable_dp(struct intel_encoder *encoder)
 	}
 }
 
-static void intel_mst_post_disable_dp(struct intel_encoder *encoder,
-				      const struct intel_crtc_state *old_crtc_state,
-				      const struct drm_connector_state *old_conn_state)
+static void intel_mst_post_disable_dp(struct intel_encoder *encoder)
 {
 	struct intel_dp_mst_encoder *intel_mst = enc_to_mst(&encoder->base);
 	struct intel_digital_port *intel_dig_port = intel_mst->primary;
@@ -134,8 +132,7 @@ static void intel_mst_post_disable_dp(struct intel_encoder *encoder,
 	intel_dp->active_mst_links--;
 	intel_mst->port = NULL;
 	if (intel_dp->active_mst_links == 0) {
-		intel_dig_port->base.post_disable(&intel_dig_port->base,
-						  old_crtc_state, NULL);
+		intel_dig_port->base.post_disable(&intel_dig_port->base);
 		intel_dp_sink_dpms(intel_dp, DRM_MODE_DPMS_OFF);
 	}
 }

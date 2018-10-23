@@ -1016,8 +1016,7 @@ static bool intel_sdvo_set_avi_infoframe(struct intel_sdvo *intel_sdvo,
 	ssize_t len;
 
 	ret = drm_hdmi_avi_infoframe_from_display_mode(&frame.avi,
-						       adjusted_mode,
-						       false);
+						       adjusted_mode, false);
 	if (ret < 0) {
 		DRM_ERROR("couldn't fill AVI infoframe\n");
 		return false;
@@ -1196,9 +1195,7 @@ static bool intel_sdvo_compute_config(struct intel_encoder *encoder,
 	return true;
 }
 
-static void intel_sdvo_pre_enable(struct intel_encoder *intel_encoder,
-				  const struct intel_crtc_state *crtc_state,
-				  const struct drm_connector_state *conn_state)
+static void intel_sdvo_pre_enable(struct intel_encoder *intel_encoder)
 {
 	struct drm_device *dev = intel_encoder->base.dev;
 	struct drm_i915_private *dev_priv = dev->dev_private;
@@ -1446,9 +1443,7 @@ static void intel_sdvo_get_config(struct intel_encoder *encoder,
 	     pipe_config->pixel_multiplier, encoder_pixel_multiplier);
 }
 
-static void intel_disable_sdvo(struct intel_encoder *encoder,
-			       const struct intel_crtc_state *old_crtc_state,
-			       const struct drm_connector_state *conn_state)
+static void intel_disable_sdvo(struct intel_encoder *encoder)
 {
 	struct drm_i915_private *dev_priv = encoder->base.dev->dev_private;
 	struct intel_sdvo *intel_sdvo = to_sdvo(encoder);
@@ -1480,17 +1475,13 @@ static void intel_disable_sdvo(struct intel_encoder *encoder,
 	}
 }
 
-static void pch_disable_sdvo(struct intel_encoder *encoder,
-			     const struct intel_crtc_state *old_crtc_state,
-			     const struct drm_connector_state *old_conn_state)
+static void pch_disable_sdvo(struct intel_encoder *encoder)
 {
 }
 
-static void pch_post_disable_sdvo(struct intel_encoder *encoder,
-				  const struct intel_crtc_state *old_crtc_state,
-				  const struct drm_connector_state *old_conn_state)
+static void pch_post_disable_sdvo(struct intel_encoder *encoder)
 {
-	intel_disable_sdvo(encoder, old_crtc_state, old_conn_state);
+	intel_disable_sdvo(encoder);
 }
 
 static void intel_enable_sdvo(struct intel_encoder *encoder)

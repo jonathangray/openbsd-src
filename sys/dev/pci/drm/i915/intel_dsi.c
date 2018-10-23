@@ -460,9 +460,7 @@ static void intel_dsi_enable(struct intel_encoder *encoder)
 	intel_panel_enable_backlight(intel_dsi->attached_connector);
 }
 
-static void intel_dsi_pre_enable(struct intel_encoder *encoder,
-				 const struct intel_crtc_state *pipe_config,
-				 const struct drm_connector_state *conn_state)
+static void intel_dsi_pre_enable(struct intel_encoder *encoder)
 {
 	struct drm_device *dev = encoder->base.dev;
 	struct drm_i915_private *dev_priv = dev->dev_private;
@@ -524,9 +522,7 @@ static void intel_dsi_enable_nop(struct intel_encoder *encoder)
 	 */
 }
 
-static void intel_dsi_pre_disable(struct intel_encoder *encoder,
-				  const struct intel_crtc_state *old_crtc_state,
-				  const struct drm_connector_state *old_conn_state)
+static void intel_dsi_pre_disable(struct intel_encoder *encoder)
 {
 	struct intel_dsi *intel_dsi = enc_to_intel_dsi(&encoder->base);
 	enum port port;
@@ -631,9 +627,7 @@ static void intel_dsi_clear_device_ready(struct intel_encoder *encoder)
 	intel_disable_dsi_pll(encoder);
 }
 
-static void intel_dsi_post_disable(struct intel_encoder *encoder,
-				   const struct intel_crtc_state *pipe_config,
-				   const struct drm_connector_state *conn_state)
+static void intel_dsi_post_disable(struct intel_encoder *encoder)
 {
 	struct drm_i915_private *dev_priv = encoder->base.dev->dev_private;
 	struct intel_dsi *intel_dsi = enc_to_intel_dsi(&encoder->base);
