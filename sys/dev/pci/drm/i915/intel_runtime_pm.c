@@ -26,8 +26,10 @@
  *
  */
 
+#ifdef __linux__
 #include <linux/pm_runtime.h>
 #include <linux/vgaarb.h>
+#endif
 
 #include "i915_drv.h"
 #include "intel_drv.h"

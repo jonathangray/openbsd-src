@@ -22,7 +22,9 @@
  *
  */
 
+#ifdef __linux__
 #include <linux/slab.h>
+#endif
 
 #include "i915_syncmap.h"
 

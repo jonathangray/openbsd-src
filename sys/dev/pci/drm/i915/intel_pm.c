@@ -25,13 +25,17 @@
  *
  */
 
+#ifdef __linux__
 #include <linux/cpufreq.h>
-#include <drm/drm_plane_helper.h>
+#endif
+#include <dev/pci/drm/drm_plane_helper.h>
 #include "i915_drv.h"
 #include "intel_drv.h"
+#ifdef __linux__
 #include "../../../platform/x86/intel_ips.h"
 #include <linux/module.h>
-#include <drm/drm_atomic_helper.h>
+#endif
+#include <dev/pci/drm/drm_atomic_helper.h>
 
 /**
  * DOC: RC6

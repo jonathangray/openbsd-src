@@ -27,11 +27,11 @@
 
 #include <linux/reservation.h>
 
-#include <drm/drm_vma_manager.h>
-#include <drm/drm_gem.h>
-#include <drm/drmP.h>
+#include <dev/pci/drm/drm_vma_manager.h>
+#include <dev/pci/drm/drm_gem.h>
+#include <dev/pci/drm/drmP.h>
 
-#include <drm/i915_drm.h>
+#include <dev/pci/drm/i915_drm.h>
 
 #include "i915_request.h"
 #include "i915_selftest.h"

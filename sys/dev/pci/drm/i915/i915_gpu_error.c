@@ -27,11 +27,15 @@
  *
  */
 
+#ifdef __linux__
 #include <generated/utsrelease.h>
 #include <linux/stop_machine.h>
 #include <linux/zlib.h>
-#include <drm/drm_print.h>
+#endif
+#include <dev/pci/drm/drm_print.h>
+#ifdef __linux__
 #include <linux/ascii85.h>
+#endif
 
 #include "i915_gpu_error.h"
 #include "i915_drv.h"

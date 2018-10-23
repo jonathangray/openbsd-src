@@ -31,9 +31,9 @@
  * prepare/check/commit/cleanup steps.
  */
 
-#include <drm/drmP.h>
-#include <drm/drm_atomic_helper.h>
-#include <drm/drm_plane_helper.h>
+#include <dev/pci/drm/drmP.h>
+#include <dev/pci/drm/drm_atomic_helper.h>
+#include <dev/pci/drm/drm_plane_helper.h>
 #include "intel_drv.h"
 
 /**

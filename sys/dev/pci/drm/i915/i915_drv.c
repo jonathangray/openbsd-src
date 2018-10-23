@@ -27,6 +27,7 @@
  *
  */
 
+#ifdef __linux__
 #include <linux/acpi.h>
 #include <linux/device.h>
 #include <linux/oom.h>
@@ -40,11 +41,14 @@
 #include <linux/vga_switcheroo.h>
 #include <linux/vt.h>
 #include <acpi/video.h>
+#else
+#include <dev/pci/drm/drm_linux.h>
+#endif
 
-#include <drm/drmP.h>
-#include <drm/drm_crtc_helper.h>
-#include <drm/drm_atomic_helper.h>
-#include <drm/i915_drm.h>
+#include <dev/pci/drm/drmP.h>
+#include <dev/pci/drm/drm_crtc_helper.h>
+#include <dev/pci/drm/drm_atomic_helper.h>
+#include <dev/pci/drm/i915_drm.h>
 
 #include "i915_drv.h"
 #include "i915_trace.h"

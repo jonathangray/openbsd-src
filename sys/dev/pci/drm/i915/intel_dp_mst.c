@@ -23,12 +23,12 @@
  *
  */
 
-#include <drm/drmP.h>
+#include <dev/pci/drm/drmP.h>
 #include "i915_drv.h"
 #include "intel_drv.h"
-#include <drm/drm_atomic_helper.h>
-#include <drm/drm_crtc_helper.h>
-#include <drm/drm_edid.h>
+#include <dev/pci/drm/drm_atomic_helper.h>
+#include <dev/pci/drm/drm_crtc_helper.h>
+#include <dev/pci/drm/drm_edid.h>
 
 static bool intel_dp_mst_compute_config(struct intel_encoder *encoder,
 					struct intel_crtc_state *pipe_config,

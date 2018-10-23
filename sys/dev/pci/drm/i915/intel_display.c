@@ -24,6 +24,7 @@
  *	Eric Anholt <eric@anholt.net>
  */
 
+#ifdef __linux__
 #include <linux/dmi.h>
 #include <linux/module.h>
 #include <linux/input.h>
@@ -31,23 +32,26 @@
 #include <linux/kernel.h>
 #include <linux/slab.h>
 #include <linux/vgaarb.h>
-#include <drm/drm_edid.h>
-#include <drm/drmP.h>
+#endif
+#include <dev/pci/drm/drm_edid.h>
+#include <dev/pci/drm/drmP.h>
 #include "intel_drv.h"
 #include "intel_frontbuffer.h"
-#include <drm/i915_drm.h>
+#include <dev/pci/drm/i915_drm.h>
 #include "i915_drv.h"
 #include "i915_gem_clflush.h"
 #include "intel_dsi.h"
 #include "i915_trace.h"
-#include <drm/drm_atomic.h>
-#include <drm/drm_atomic_helper.h>
-#include <drm/drm_dp_helper.h>
-#include <drm/drm_crtc_helper.h>
-#include <drm/drm_plane_helper.h>
-#include <drm/drm_rect.h>
+#include <dev/pci/drm/drm_atomic.h>
+#include <dev/pci/drm/drm_atomic_helper.h>
+#include <dev/pci/drm/drm_dp_helper.h>
+#include <dev/pci/drm/drm_crtc_helper.h>
+#include <dev/pci/drm/drm_plane_helper.h>
+#include <dev/pci/drm/drm_rect.h>
+#ifdef __linux__
 #include <linux/dma_remapping.h>
 #include <linux/reservation.h>
+#endif
 
 /* Primary plane formats for gen <= 3 */
 static const uint32_t i8xx_primary_formats[] = {

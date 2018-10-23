@@ -22,9 +22,11 @@
  *
  */
 
+#ifdef __linux__
 #include <linux/fs.h>
 #include <linux/mount.h>
 #include <linux/pagemap.h>
+#endif
 
 #include "i915_drv.h"
 #include "i915_gemfs.h"

@@ -24,10 +24,12 @@
  *	Dave Airlie <airlied@redhat.com>
  */
 
+#ifdef __linux__
 #include <linux/dma-buf.h>
 #include <linux/reservation.h>
+#endif
 
-#include <drm/drmP.h>
+#include <dev/pci/drm/drmP.h>
 
 #include "i915_drv.h"
 

@@ -22,7 +22,7 @@
  * IN THE SOFTWARE.
  */
 
-#include <drm/drm_print.h>
+#include <dev/pci/drm/drm_print.h>
 
 #include "i915_params.h"
 #include "i915_drv.h"

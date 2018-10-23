@@ -25,8 +25,10 @@
 #ifndef _INTEL_OPREGION_H_
 #define _INTEL_OPREGION_H_
 
+#ifdef __linux__
 #include <linux/workqueue.h>
 #include <linux/pci.h>
+#endif
 
 struct drm_i915_private;
 struct intel_encoder;

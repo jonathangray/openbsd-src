@@ -22,8 +22,10 @@
  *
  */
 
+#ifdef __linux__
 #include <linux/kthread.h>
 #include <uapi/linux/sched/types.h>
+#endif
 
 #include "i915_drv.h"
 

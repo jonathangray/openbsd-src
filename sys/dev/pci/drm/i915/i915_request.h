@@ -25,14 +25,16 @@
 #ifndef I915_REQUEST_H
 #define I915_REQUEST_H
 
+#ifdef __linux__
 #include <linux/dma-fence.h>
+#endif
 
 #include "i915_gem.h"
 #include "i915_scheduler.h"
 #include "i915_sw_fence.h"
 #include "i915_scheduler.h"
 
-#include <uapi/drm/i915_drm.h>
+#include <dev/pci/drm/uapi/i915_drm.h>
 
 struct drm_file;
 struct drm_i915_gem_object;

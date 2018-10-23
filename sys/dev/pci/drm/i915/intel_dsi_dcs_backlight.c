@@ -27,7 +27,7 @@
 #include "intel_dsi.h"
 #include "i915_drv.h"
 #include <video/mipi_display.h>
-#include <drm/drm_mipi_dsi.h>
+#include <dev/pci/drm/drm_mipi_dsi.h>
 
 #define CONTROL_DISPLAY_BCTRL		(1 << 5)
 #define CONTROL_DISPLAY_DD		(1 << 3)

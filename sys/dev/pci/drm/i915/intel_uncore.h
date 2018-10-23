@@ -25,9 +25,13 @@
 #ifndef __INTEL_UNCORE_H__
 #define __INTEL_UNCORE_H__
 
+#ifdef __linux__
 #include <linux/spinlock.h>
 #include <linux/notifier.h>
 #include <linux/hrtimer.h>
+#else
+#include <dev/pci/drm/drm_linux.h>
+#endif
 
 #include "i915_reg.h"
 

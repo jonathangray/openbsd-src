@@ -22,7 +22,7 @@
  *
  */
 
-#include <drm/drm_print.h>
+#include <dev/pci/drm/drm_print.h>
 
 #include "intel_device_info.h"
 #include "i915_drv.h"

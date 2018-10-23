@@ -2,8 +2,12 @@
 #ifndef _INTEL_RINGBUFFER_H_
 #define _INTEL_RINGBUFFER_H_
 
+#ifdef __linux__
 #include <linux/hashtable.h>
 #include <linux/seqlock.h>
+#else
+#include <dev/pci/drm/drm_linux.h>
+#endif
 
 #include "i915_gem_batch_pool.h"
 

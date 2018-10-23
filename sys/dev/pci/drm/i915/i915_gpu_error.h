@@ -11,7 +11,7 @@
 #include <linux/ktime.h>
 #include <linux/sched.h>
 
-#include <drm/drm_mm.h>
+#include <dev/pci/drm/drm_mm.h>
 
 #include "intel_device_info.h"
 #include "intel_ringbuffer.h"

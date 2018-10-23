@@ -22,8 +22,12 @@
  *
  */
 
+#ifdef __linux__
 #include <linux/firmware.h>
-#include <drm/drm_print.h>
+#else
+#include <dev/pci/drm/drm_linux.h>
+#endif
+#include <dev/pci/drm/drm_print.h>
 
 #include "intel_uc_fw.h"
 #include "i915_drv.h"

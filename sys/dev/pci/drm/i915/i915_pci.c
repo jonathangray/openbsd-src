@@ -22,9 +22,11 @@
  *
  */
 
+#ifdef __linux__
 #include <linux/console.h>
 #include <linux/vgaarb.h>
 #include <linux/vga_switcheroo.h>
+#endif
 
 #include "i915_drv.h"
 #include "i915_selftest.h"

@@ -30,9 +30,10 @@
 #ifndef _I915_DRV_H_
 #define _I915_DRV_H_
 
-#include <uapi/drm/i915_drm.h>
-#include <uapi/drm/drm_fourcc.h>
+#include <dev/pci/drm/uapi/i915_drm.h>
+#include <dev/pci/drm/uapi/drm_fourcc.h>
 
+#ifdef __linux__
 #include <linux/io-mapping.h>
 #include <linux/i2c.h>
 #include <linux/i2c-algo-bit.h>
@@ -45,13 +46,18 @@
 #include <linux/pm_qos.h>
 #include <linux/reservation.h>
 #include <linux/shmem_fs.h>
+#else
+#include <dev/pci/drm/drm_linux.h>
+#endif
 
-#include <drm/drmP.h>
-#include <drm/intel-gtt.h>
-#include <drm/drm_legacy.h> /* for struct drm_dma_handle */
-#include <drm/drm_gem.h>
-#include <drm/drm_auth.h>
-#include <drm/drm_cache.h>
+#include <dev/pci/drm/drmP.h>
+#ifdef __linux__
+#include <dev/pci/drm/intel-gtt.h>
+#include <dev/pci/drm/drm_legacy.h> /* for struct drm_dma_handle */
+#include <dev/pci/drm/drm_gem.h>
+#include <dev/pci/drm/drm_auth.h>
+#endif
+#include <dev/pci/drm/drm_cache.h>
 
 #include "i915_params.h"
 #include "i915_reg.h"

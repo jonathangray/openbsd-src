@@ -7,10 +7,14 @@
  * of the License.
  */
 
+#ifdef __linux__
 #include <linux/slab.h>
 #include <linux/dma-fence.h>
 #include <linux/irq_work.h>
 #include <linux/reservation.h>
+#else
+#include <dev/pci/drm/drm_linux.h>
+#endif
 
 #include "i915_sw_fence.h"
 #include "i915_selftest.h"

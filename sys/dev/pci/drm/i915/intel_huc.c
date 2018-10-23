@@ -22,7 +22,9 @@
  *
  */
 
+#ifdef __linux__
 #include <linux/types.h>
+#endif
 
 #include "intel_huc.h"
 #include "i915_drv.h"

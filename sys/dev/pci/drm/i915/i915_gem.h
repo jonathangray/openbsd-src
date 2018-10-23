@@ -25,8 +25,10 @@
 #ifndef __I915_GEM_H__
 #define __I915_GEM_H__
 
+#ifdef __linux__
 #include <linux/bug.h>
 #include <linux/interrupt.h>
+#endif
 
 struct drm_i915_private;
 

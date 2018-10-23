@@ -25,9 +25,9 @@
  *
  */
 
-#include <drm/drmP.h>
-#include <drm/drm_vma_manager.h>
-#include <drm/i915_drm.h>
+#include <dev/pci/drm/drmP.h>
+#include <dev/pci/drm/drm_vma_manager.h>
+#include <dev/pci/drm/i915_drm.h>
 #include "i915_drv.h"
 #include "i915_gem_clflush.h"
 #include "i915_vgpu.h"
@@ -37,6 +37,7 @@
 #include "intel_mocs.h"
 #include "intel_workarounds.h"
 #include "i915_gemfs.h"
+#ifdef __linux__
 #include <linux/dma-fence-array.h>
 #include <linux/kthread.h>
 #include <linux/reservation.h>
@@ -46,6 +47,7 @@
 #include <linux/swap.h>
 #include <linux/pci.h>
 #include <linux/dma-buf.h>
+#endif
 
 static void i915_gem_flush_free_objects(struct drm_i915_private *i915);
 

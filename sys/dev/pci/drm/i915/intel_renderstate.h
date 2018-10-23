@@ -24,7 +24,9 @@
 #ifndef _INTEL_RENDERSTATE_H
 #define _INTEL_RENDERSTATE_H
 
+#ifdef __linux__
 #include <linux/types.h>
+#endif
 
 struct intel_renderstate_rodata {
 	const u32 *reloc;

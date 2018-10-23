@@ -25,9 +25,9 @@
  *
  */
 
-#include <drm/drm_dp_helper.h>
-#include <drm/drmP.h>
-#include <drm/i915_drm.h>
+#include <dev/pci/drm/drm_dp_helper.h>
+#include <dev/pci/drm/drmP.h>
+#include <dev/pci/drm/i915_drm.h>
 #include "i915_drv.h"
 
 #define _INTEL_BIOS_PRIVATE

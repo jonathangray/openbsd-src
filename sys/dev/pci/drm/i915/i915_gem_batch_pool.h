@@ -7,7 +7,9 @@
 #ifndef I915_GEM_BATCH_POOL_H
 #define I915_GEM_BATCH_POOL_H
 
+#ifdef __linux__
 #include <linux/types.h>
+#endif
 
 struct intel_engine_cs;
 

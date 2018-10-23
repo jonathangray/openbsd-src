@@ -25,20 +25,24 @@
 #ifndef __INTEL_DRV_H__
 #define __INTEL_DRV_H__
 
+#ifdef __linux__
 #include <linux/async.h>
 #include <linux/i2c.h>
 #include <linux/hdmi.h>
 #include <linux/sched/clock.h>
-#include <drm/i915_drm.h>
+#else
+#include <dev/pci/drm/linux_hdmi.h>
+#endif
+#include <dev/pci/drm/i915_drm.h>
 #include "i915_drv.h"
-#include <drm/drm_crtc.h>
-#include <drm/drm_crtc_helper.h>
-#include <drm/drm_encoder.h>
-#include <drm/drm_fb_helper.h>
-#include <drm/drm_dp_dual_mode_helper.h>
-#include <drm/drm_dp_mst_helper.h>
-#include <drm/drm_rect.h>
-#include <drm/drm_atomic.h>
+#include <dev/pci/drm/drm_crtc.h>
+#include <dev/pci/drm/drm_crtc_helper.h>
+#include <dev/pci/drm/drm_encoder.h>
+#include <dev/pci/drm/drm_fb_helper.h>
+#include <dev/pci/drm/drm_dp_dual_mode_helper.h>
+#include <dev/pci/drm/drm_dp_mst_helper.h>
+#include <dev/pci/drm/drm_rect.h>
+#include <dev/pci/drm/drm_atomic.h>
 #include <media/cec-notifier.h>
 
 /**

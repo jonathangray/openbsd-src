@@ -7,9 +7,13 @@
 #ifndef _I915_SCHEDULER_H_
 #define _I915_SCHEDULER_H_
 
+#ifdef __linux__
 #include <linux/bitops.h>
+#else
+#include <dev/pci/drm/drm_linux.h>
+#endif
 
-#include <uapi/drm/i915_drm.h>
+#include <dev/pci/drm/uapi/i915_drm.h>
 
 enum {
 	I915_PRIORITY_MIN = I915_CONTEXT_MIN_USER_PRIORITY - 1,

@@ -25,7 +25,9 @@
 #ifndef __I915_SYNCMAP_H__
 #define __I915_SYNCMAP_H__
 
+#ifdef __linux__
 #include <linux/types.h>
+#endif
 
 struct i915_syncmap;
 #define KSYNCMAP 16 /* radix of the tree, how many slots in each layer */

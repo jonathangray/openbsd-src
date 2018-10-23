@@ -22,10 +22,12 @@
  *
  */
 
+#ifdef __linux__
 #include <linux/mm.h>
 #include <linux/io-mapping.h>
 
 #include <asm/pgtable.h>
+#endif
 
 #include "i915_drv.h"
 

@@ -25,13 +25,15 @@
  *
  */
 
+#ifdef __linux__
 #include <linux/acpi.h>
 #include <linux/dmi.h>
 #include <linux/firmware.h>
 #include <acpi/video.h>
+#endif
 
-#include <drm/drmP.h>
-#include <drm/i915_drm.h>
+#include <dev/pci/drm/drmP.h>
+#include <dev/pci/drm/i915_drm.h>
 
 #include "intel_opregion.h"
 #include "i915_drv.h"

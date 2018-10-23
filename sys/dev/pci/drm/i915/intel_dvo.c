@@ -24,13 +24,15 @@
  * Authors:
  *	Eric Anholt <eric@anholt.net>
  */
+#ifdef __linux__
 #include <linux/i2c.h>
 #include <linux/slab.h>
-#include <drm/drmP.h>
-#include <drm/drm_atomic_helper.h>
-#include <drm/drm_crtc.h>
+#endif
+#include <dev/pci/drm/drmP.h>
+#include <dev/pci/drm/drm_atomic_helper.h>
+#include <dev/pci/drm/drm_crtc.h>
 #include "intel_drv.h"
-#include <drm/i915_drm.h>
+#include <dev/pci/drm/i915_drm.h>
 #include "i915_drv.h"
 #include "dvo.h"
 

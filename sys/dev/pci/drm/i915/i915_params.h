@@ -25,8 +25,10 @@
 #ifndef _I915_PARAMS_H_
 #define _I915_PARAMS_H_
 
+#ifdef __linux__
 #include <linux/bitops.h>
 #include <linux/cache.h> /* for __read_mostly */
+#endif
 
 struct drm_printer;
 

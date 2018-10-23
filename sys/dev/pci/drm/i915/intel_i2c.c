@@ -26,13 +26,15 @@
  *	Eric Anholt <eric@anholt.net>
  *	Chris Wilson <chris@chris-wilson.co.uk>
  */
+#ifdef __linux__
 #include <linux/i2c.h>
 #include <linux/i2c-algo-bit.h>
 #include <linux/export.h>
-#include <drm/drmP.h>
-#include <drm/drm_hdcp.h>
+#endif
+#include <dev/pci/drm/drmP.h>
+#include <dev/pci/drm/drm_hdcp.h>
 #include "intel_drv.h"
-#include <drm/i915_drm.h>
+#include <dev/pci/drm/i915_drm.h>
 #include "i915_drv.h"
 
 struct gmbus_pin {

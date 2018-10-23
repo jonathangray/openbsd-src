@@ -24,10 +24,14 @@
  *
  */
 
+#ifdef __linux__
 #include <linux/seq_file.h>
 #include <linux/circ_buf.h>
 #include <linux/ctype.h>
 #include <linux/debugfs.h>
+#else
+#include <dev/pci/drm/drm_linux.h>
+#endif
 #include "intel_drv.h"
 
 static const char * const pipe_crc_sources[] = {

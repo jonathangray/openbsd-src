@@ -25,7 +25,9 @@
 #ifndef _INTEL_GUC_SUBMISSION_H_
 #define _INTEL_GUC_SUBMISSION_H_
 
+#ifdef __linux__
 #include <linux/spinlock.h>
+#endif
 
 #include "i915_gem.h"
 

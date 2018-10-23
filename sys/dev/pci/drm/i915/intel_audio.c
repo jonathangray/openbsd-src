@@ -21,14 +21,16 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
+#ifdef __linux__
 #include <linux/kernel.h>
 #include <linux/component.h>
-#include <drm/i915_component.h>
-#include <drm/intel_lpe_audio.h>
+#endif
+#include <dev/pci/drm/i915_component.h>
+#include <dev/pci/drm/intel_lpe_audio.h>
 #include "intel_drv.h"
 
-#include <drm/drmP.h>
-#include <drm/drm_edid.h>
+#include <dev/pci/drm/drmP.h>
+#include <dev/pci/drm/drm_edid.h>
 #include "i915_drv.h"
 
 /**

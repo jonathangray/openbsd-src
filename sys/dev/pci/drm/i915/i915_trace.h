@@ -6,7 +6,7 @@
 #include <linux/types.h>
 #include <linux/tracepoint.h>
 
-#include <drm/drmP.h>
+#include <dev/pci/drm/drmP.h>
 #include "i915_drv.h"
 #include "intel_drv.h"
 #include "intel_ringbuffer.h"

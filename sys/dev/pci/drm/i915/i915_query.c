@@ -4,7 +4,9 @@
  * Copyright © 2018 Intel Corporation
  */
 
+#ifdef __linux__
 #include <linux/nospec.h>
+#endif
 
 #include "i915_drv.h"
 #include "i915_query.h"
