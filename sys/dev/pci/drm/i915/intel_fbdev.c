@@ -291,7 +291,7 @@ static int intelfb_create(struct drm_fb_helper *helper,
 	}
 
 	ri->ri_bits = bus_space_vaddr(dev->bst, bsh);
-	ri->ri_depth = fb->bits_per_pixel;
+	ri->ri_depth = fb->format->cpp[0] * 8;
 	ri->ri_stride = fb->pitches[0];
 	ri->ri_width = sizes->fb_width;
 	ri->ri_height = sizes->fb_height;
@@ -339,27 +339,6 @@ out_unpin:
 out_unlock:
 	mutex_unlock(&dev->struct_mutex);
 	return ret;
-}
-
-/** Sets the color ramps on behalf of RandR */
-static void intel_crtc_fb_gamma_set(struct drm_crtc *crtc, u16 red, u16 green,
-				    u16 blue, int regno)
-{
-	struct intel_crtc *intel_crtc = to_intel_crtc(crtc);
-
-	intel_crtc->lut_r[regno] = red >> 8;
-	intel_crtc->lut_g[regno] = green >> 8;
-	intel_crtc->lut_b[regno] = blue >> 8;
-}
-
-static void intel_crtc_fb_gamma_get(struct drm_crtc *crtc, u16 *red, u16 *green,
-				    u16 *blue, int regno)
-{
-	struct intel_crtc *intel_crtc = to_intel_crtc(crtc);
-
-	*red = intel_crtc->lut_r[regno] << 8;
-	*green = intel_crtc->lut_g[regno] << 8;
-	*blue = intel_crtc->lut_b[regno] << 8;
 }
 
 static struct drm_fb_helper_crtc *
@@ -488,7 +467,7 @@ retry:
 			      connector->name);
 
 		/* go for command line mode first */
-		modes[i] = drm_pick_cmdline_mode(fb_conn, width, height);
+		modes[i] = drm_pick_cmdline_mode(fb_conn);
 
 		/* try for preferred next */
 		if (!modes[i]) {
@@ -566,8 +545,6 @@ bail:
 
 static const struct drm_fb_helper_funcs intel_fb_helper_funcs = {
 	.initial_config = intel_fb_initial_config,
-	.gamma_set = intel_crtc_fb_gamma_set,
-	.gamma_get = intel_crtc_fb_gamma_get,
 	.fb_probe = intelfb_create,
 };
 
@@ -651,7 +628,7 @@ static bool intel_fbdev_init_bios(struct drm_device *dev,
 		 * rather than the current pipe's, since they differ.
 		 */
 		cur_size = intel_crtc->config->base.adjusted_mode.crtc_hdisplay;
-		cur_size = cur_size * fb->base.bits_per_pixel / 8;
+		cur_size = cur_size * fb->base.format->cpp[0];
 		if (fb->base.pitches[0] < cur_size) {
 			DRM_DEBUG_KMS("fb not wide enough for plane %c (%d vs %d)\n",
 				      pipe_name(intel_crtc->pipe),
@@ -662,14 +639,14 @@ static bool intel_fbdev_init_bios(struct drm_device *dev,
 
 		cur_size = intel_crtc->config->base.adjusted_mode.crtc_vdisplay;
 		cur_size = intel_fb_align_height(dev, cur_size,
-						 fb->base.pixel_format,
+						 fb->base.format->format,
 						 fb->base.modifier);
 		cur_size *= fb->base.pitches[0];
 		DRM_DEBUG_KMS("pipe %c area: %dx%d, bpp: %d, size: %d\n",
 			      pipe_name(intel_crtc->pipe),
 			      intel_crtc->config->base.adjusted_mode.crtc_hdisplay,
 			      intel_crtc->config->base.adjusted_mode.crtc_vdisplay,
-			      fb->base.bits_per_pixel,
+			      fb->base.format->cpp[0] * 8,
 			      cur_size);
 
 		if (cur_size > max_size) {
@@ -690,7 +667,7 @@ static bool intel_fbdev_init_bios(struct drm_device *dev,
 		goto out;
 	}
 
-	ifbdev->preferred_bpp = fb->base.bits_per_pixel;
+	ifbdev->preferred_bpp = fb->base.format->cpp[0] * 8;
 	ifbdev->fb = fb;
 
 	drm_framebuffer_reference(&ifbdev->fb->base);
@@ -745,14 +722,11 @@ int intel_fbdev_init(struct drm_device *dev)
 	if (!intel_fbdev_init_bios(dev, ifbdev))
 		ifbdev->preferred_bpp = 32;
 
-	ret = drm_fb_helper_init(dev, &ifbdev->helper,
-				 INTEL_INFO(dev)->num_pipes, 4);
+	ret = drm_fb_helper_init(dev, &ifbdev->helper, 4);
 	if (ret) {
 		kfree(ifbdev);
 		return ret;
 	}
-
-	ifbdev->helper.atomic = true;
 
 	dev_priv->fbdev = ifbdev;
 #ifdef notyet

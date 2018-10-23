@@ -6539,7 +6539,7 @@ int intel_display_suspend(struct drm_device *dev)
 free:
 	if (ret)
 		DRM_ERROR("Suspending crtc's failed with %i\n", ret);
-	drm_atomic_state_free(state);
+	drm_atomic_state_put(state);
 	return ret;
 }
 
@@ -8206,8 +8206,7 @@ i9xx_get_initial_plane_config(struct intel_crtc *crtc,
 
 	pixel_format = val & DISPPLANE_PIXFORMAT_MASK;
 	fourcc = i9xx_format_to_fourcc(pixel_format);
-	fb->format->format = fourcc;
-	fb->bits_per_pixel = drm_format_plane_cpp(fourcc, 0) * 8;
+	fb->format = drm_format_info(fourcc);
 
 	if (INTEL_INFO(dev)->gen >= 4) {
 		if (plane_config->tiling)
@@ -8235,7 +8234,7 @@ i9xx_get_initial_plane_config(struct intel_crtc *crtc,
 
 	DRM_DEBUG_KMS("pipe/plane %c/%d with fb: size=%dx%d@%d, offset=%x, pitch %d, size 0x%x\n",
 		      pipe_name(pipe), plane, fb->width, fb->height,
-		      fb->bits_per_pixel, base, fb->pitches[0],
+		      fb->format->cpp[0] * 8, base, fb->pitches[0],
 		      plane_config->size);
 
 	plane_config->fb = intel_fb;
@@ -9274,8 +9273,7 @@ skylake_get_initial_plane_config(struct intel_crtc *crtc,
 	fourcc = skl_format_to_fourcc(pixel_format,
 				      val & PLANE_CTL_ORDER_RGBX,
 				      val & PLANE_CTL_ALPHA_MASK);
-	fb->format->format = fourcc;
-	fb->bits_per_pixel = drm_format_plane_cpp(fourcc, 0) * 8;
+	fb->format = drm_format_info(fourcc);
 
 	tiling = val & PLANE_CTL_TILED_MASK;
 	switch (tiling) {
@@ -9319,7 +9317,7 @@ skylake_get_initial_plane_config(struct intel_crtc *crtc,
 
 	DRM_DEBUG_KMS("pipe %c with fb: size=%dx%d@%d, offset=%x, pitch %d, size 0x%x\n",
 		      pipe_name(pipe), fb->width, fb->height,
-		      fb->bits_per_pixel, base, fb->pitches[0],
+		      fb->format->cpp[0] * 8, base, fb->pitches[0],
 		      plane_config->size);
 
 	plane_config->fb = intel_fb;
@@ -9387,8 +9385,7 @@ ironlake_get_initial_plane_config(struct intel_crtc *crtc,
 
 	pixel_format = val & DISPPLANE_PIXFORMAT_MASK;
 	fourcc = i9xx_format_to_fourcc(pixel_format);
-	fb->format->format = fourcc;
-	fb->bits_per_pixel = drm_format_plane_cpp(fourcc, 0) * 8;
+	fb->format = drm_format_info(fourcc);
 
 	base = I915_READ(DSPSURF(pipe)) & 0xfffff000;
 	if (IS_HASWELL(dev) || IS_BROADWELL(dev)) {
@@ -9416,7 +9413,7 @@ ironlake_get_initial_plane_config(struct intel_crtc *crtc,
 
 	DRM_DEBUG_KMS("pipe %c with fb: size=%dx%d@%d, offset=%x, pitch %d, size 0x%x\n",
 		      pipe_name(pipe), fb->width, fb->height,
-		      fb->bits_per_pixel, base, fb->pitches[0],
+		      fb->format->cpp[0] * 8, base, fb->pitches[0],
 		      plane_config->size);
 
 	plane_config->fb = intel_fb;
@@ -10411,7 +10408,7 @@ mode_fits_in_fbdev(struct drm_device *dev,
 
 	fb = &dev_priv->fbdev->fb->base;
 	if (fb->pitches[0] < intel_framebuffer_pitch_for_width(mode->hdisplay,
-							       fb->bits_per_pixel))
+							       fb->format->cpp[0] * 8))
 		return NULL;
 
 	if (obj->base.size < mode->vdisplay * fb->pitches[0])
@@ -10438,7 +10435,7 @@ static int intel_modeset_setup_plane_state(struct drm_atomic_state *state,
 		return PTR_ERR(plane_state);
 
 	if (mode)
-		drm_crtc_get_hv_timing(mode, &hdisplay, &vdisplay);
+		drm_mode_get_hv_timing(mode, &hdisplay, &vdisplay);
 	else
 		hdisplay = vdisplay = 0;
 
@@ -10613,7 +10610,7 @@ retry:
 	return true;
 
 fail:
-	drm_atomic_state_free(state);
+	drm_atomic_state_put(state);
 	state = NULL;
 
 	if (ret == -EDEADLK) {
@@ -10687,7 +10684,7 @@ void intel_release_load_detect_pipe(struct drm_connector *connector,
 	return;
 fail:
 	DRM_DEBUG_KMS("Couldn't release load detect pipe.\n");
-	drm_atomic_state_free(state);
+	drm_atomic_state_put(state);
 }
 
 static int i9xx_pll_refclk(struct drm_device *dev,
@@ -11589,7 +11586,7 @@ static int intel_crtc_page_flip(struct drm_crtc *crtc,
 		return -EBUSY;
 
 	/* Can't change pixel format via MI display flips. */
-	if (fb->format->format != crtc->primary->fb->pixel_format)
+	if (fb->format->format != crtc->primary->fb->format->format)
 		return -EINVAL;
 
 	/*
@@ -11763,7 +11760,7 @@ out_hang:
 		state = drm_atomic_state_alloc(dev);
 		if (!state)
 			return -ENOMEM;
-		state->acquire_ctx = drm_modeset_legacy_acquire_ctx(crtc);
+		state->acquire_ctx = dev->mode_config.acquire_ctx;
 
 retry:
 		plane_state = drm_atomic_get_plane_state(state, primary);
@@ -11782,8 +11779,7 @@ retry:
 			goto retry;
 		}
 
-		if (ret)
-			drm_atomic_state_free(state);
+		drm_atomic_state_put(state);
 
 		if (ret == 0 && event) {
 			spin_lock_irq(&dev->event_lock);
@@ -12415,7 +12411,7 @@ intel_modeset_pipe_config(struct drm_crtc *crtc,
 	 * computation to clearly distinguish it from the adjusted mode, which
 	 * can be changed by the connectors in the below retry loop.
 	 */
-	drm_crtc_get_hv_timing(&pipe_config->base.mode,
+	drm_mode_get_hv_timing(&pipe_config->base.mode,
 			       &pipe_config->pipe_src_w,
 			       &pipe_config->pipe_src_h);
 
@@ -13444,7 +13440,7 @@ static int intel_atomic_commit(struct drm_device *dev,
 	if (any_ms)
 		intel_modeset_check_state(dev, state);
 
-	drm_atomic_state_free(state);
+	drm_atomic_state_put(state);
 
 	return 0;
 }
@@ -13463,7 +13459,7 @@ void intel_crtc_restore_mode(struct drm_crtc *crtc)
 		return;
 	}
 
-	state->acquire_ctx = drm_modeset_legacy_acquire_ctx(crtc);
+	state->acquire_ctx = crtc->dev->mode_config.acquire_ctx;
 
 retry:
 	crtc_state = drm_atomic_get_crtc_state(state, crtc);
@@ -13482,9 +13478,8 @@ retry:
 		goto retry;
 	}
 
-	if (ret)
 out:
-		drm_atomic_state_free(state);
+	drm_atomic_state_put(state);
 }
 
 #undef for_each_intel_crtc_masked
@@ -13705,7 +13700,6 @@ intel_check_primary_plane(struct drm_plane *plane,
 			  struct intel_plane_state *state)
 {
 	struct drm_crtc *crtc = state->base.crtc;
-	struct drm_framebuffer *fb = state->base.fb;
 	int min_scale = DRM_PLANE_HELPER_NO_SCALING;
 	int max_scale = DRM_PLANE_HELPER_NO_SCALING;
 	bool can_position = false;
@@ -13719,11 +13713,9 @@ intel_check_primary_plane(struct drm_plane *plane,
 		can_position = true;
 	}
 
-	return drm_plane_helper_check_update(plane, crtc, fb, &state->src,
-					     &state->dst, &state->clip,
-					     min_scale, max_scale,
-					     can_position, true,
-					     &state->visible);
+	return drm_atomic_helper_check_plane_state(&state->base, crtc, 
+					           min_scale, max_scale,
+					           can_position, true);
 }
 
 static void
@@ -13814,7 +13806,6 @@ const struct drm_plane_funcs intel_plane_funcs = {
 	.update_plane = drm_atomic_helper_update_plane,
 	.disable_plane = drm_atomic_helper_disable_plane,
 	.destroy = intel_plane_destroy,
-	.set_property = drm_atomic_helper_plane_set_property,
 	.atomic_get_property = intel_plane_atomic_get_property,
 	.atomic_set_property = intel_plane_atomic_set_property,
 	.atomic_duplicate_state = intel_plane_duplicate_state,
@@ -13870,7 +13861,8 @@ static struct drm_plane *intel_primary_plane_create(struct drm_device *dev,
 	drm_universal_plane_init(dev, &primary->base, 0,
 				 &intel_plane_funcs,
 				 intel_primary_formats, num_formats,
-				 DRM_PLANE_TYPE_PRIMARY);
+				 NULL,
+				 DRM_PLANE_TYPE_PRIMARY, NULL);
 
 	if (INTEL_INFO(dev)->gen >= 4)
 		intel_create_rotation_property(dev, primary);
@@ -14022,7 +14014,8 @@ static struct drm_plane *intel_cursor_plane_create(struct drm_device *dev,
 				 &intel_plane_funcs,
 				 intel_cursor_formats,
 				 ARRAY_SIZE(intel_cursor_formats),
-				 DRM_PLANE_TYPE_CURSOR);
+				 NULL, DRM_PLANE_TYPE_CURSOR,
+				 "cursor %c", pipe_name(pipe));
 
 	if (INTEL_INFO(dev)->gen >= 4) {
 		if (!dev->mode_config.rotation_property)
@@ -15662,7 +15655,7 @@ void intel_display_resume(struct drm_device *dev)
 
 err:
 	DRM_ERROR("Restoring old state failed with %i\n", ret);
-	drm_atomic_state_free(state);
+	drm_atomic_state_put(state);
 }
 
 void intel_modeset_gem_init(struct drm_device *dev)

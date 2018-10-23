@@ -114,7 +114,9 @@ static void intel_mst_disable_dp(struct intel_encoder *encoder)
 	}
 }
 
-static void intel_mst_post_disable_dp(struct intel_encoder *encoder)
+static void intel_mst_post_disable_dp(struct intel_encoder *encoder,
+				      const struct intel_crtc_state *old_crtc_state,
+				      const struct drm_connector_state *old_conn_state)
 {
 	struct intel_dp_mst_encoder *intel_mst = enc_to_mst(&encoder->base);
 	struct intel_digital_port *intel_dig_port = intel_mst->primary;
@@ -132,7 +134,8 @@ static void intel_mst_post_disable_dp(struct intel_encoder *encoder)
 	intel_dp->active_mst_links--;
 	intel_mst->port = NULL;
 	if (intel_dp->active_mst_links == 0) {
-		intel_dig_port->base.post_disable(&intel_dig_port->base);
+		intel_dig_port->base.post_disable(&intel_dig_port->base,
+						  old_crtc_state, NULL);
 		intel_dp_sink_dpms(intel_dp, DRM_MODE_DPMS_OFF);
 	}
 }
@@ -148,7 +151,6 @@ static void intel_mst_pre_enable_dp(struct intel_encoder *encoder)
 	int ret;
 	uint32_t temp;
 	struct intel_connector *found = NULL, *connector;
-	int slots;
 	struct drm_crtc *crtc = encoder->base.crtc;
 	struct intel_crtc *intel_crtc = to_intel_crtc(crtc);
 
@@ -193,7 +195,8 @@ static void intel_mst_pre_enable_dp(struct intel_encoder *encoder)
 
 	ret = drm_dp_mst_allocate_vcpi(&intel_dp->mst_mgr,
 				       intel_mst->port,
-				       intel_crtc->config->pbn, &slots);
+				       intel_crtc->config->pbn,
+				       intel_crtc->config->dp_m_n.tu);
 	if (ret == false) {
 		DRM_ERROR("failed to allocate vcpi\n");
 		return;
@@ -334,7 +337,6 @@ intel_dp_mst_connector_destroy(struct drm_connector *connector)
 }
 
 static const struct drm_connector_funcs intel_dp_mst_connector_funcs = {
-	.dpms = drm_atomic_helper_connector_dpms,
 	.detect = intel_dp_mst_detect,
 	.fill_modes = drm_helper_probe_single_connector_modes,
 	.set_property = intel_dp_mst_set_property,
@@ -449,15 +451,15 @@ static struct drm_connector *intel_dp_add_mst_connector(struct drm_dp_mst_topolo
 	intel_connector->port = port;
 
 	for (i = PIPE_A; i <= PIPE_C; i++) {
-		drm_mode_connector_attach_encoder(&intel_connector->base,
-						  &intel_dp->mst_encoders[i]->base.base);
+		drm_connector_attach_encoder(&intel_connector->base,
+					     &intel_dp->mst_encoders[i]->base.base);
 	}
 	intel_dp_add_properties(intel_dp, connector);
 
 	drm_object_attach_property(&connector->base, dev->mode_config.path_property, 0);
 	drm_object_attach_property(&connector->base, dev->mode_config.tile_property, 0);
 
-	drm_mode_connector_set_path_property(connector, pathprop);
+	drm_connector_set_path_property(connector, pathprop);
 	return connector;
 }
 
@@ -488,7 +490,7 @@ static void intel_dp_destroy_mst_connector(struct drm_dp_mst_topology_mgr *mgr,
 		memset(&set, 0, sizeof(set));
 		set.crtc = connector->state->crtc,
 
-		ret = drm_atomic_helper_set_config(&set);
+		ret = drm_atomic_helper_set_config(&set, NULL);
 
 		WARN(ret, "Disabling mst crtc failed with %i\n", ret);
 	}
@@ -534,7 +536,7 @@ intel_dp_create_fake_mst_encoder(struct intel_digital_port *intel_dig_port, enum
 	intel_mst->primary = intel_dig_port;
 
 	drm_encoder_init(dev, &intel_encoder->base, &intel_dp_mst_enc_funcs,
-			 DRM_MODE_ENCODER_DPMST);
+			 DRM_MODE_ENCODER_DPMST, "DP-MST %c", pipe_name(pipe));
 
 	intel_encoder->type = INTEL_OUTPUT_DP_MST;
 	intel_encoder->crtc_mask = 0x7;
@@ -575,7 +577,8 @@ intel_dp_mst_encoder_init(struct intel_digital_port *intel_dig_port, int conn_ba
 
 	/* create encoders */
 	intel_dp_create_fake_mst_encoders(intel_dig_port);
-	ret = drm_dp_mst_topology_mgr_init(&intel_dp->mst_mgr, dev->dev, &intel_dp->aux, 16, 3, conn_base_id);
+	ret = drm_dp_mst_topology_mgr_init(&intel_dp->mst_mgr, dev,
+					   &intel_dp->aux, 16, 3, conn_base_id);
 	if (ret) {
 		intel_dp->can_mst = false;
 		return ret;
