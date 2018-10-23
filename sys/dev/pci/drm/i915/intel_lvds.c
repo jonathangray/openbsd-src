@@ -132,7 +132,9 @@ static void intel_lvds_get_config(struct intel_encoder *encoder,
 	pipe_config->base.adjusted_mode.crtc_clock = dotclock;
 }
 
-static void intel_pre_enable_lvds(struct intel_encoder *encoder)
+static void intel_pre_enable_lvds(struct intel_encoder *encoder,
+				  const struct intel_crtc_state *pipe_config,
+				  const struct drm_connector_state *conn_state)
 {
 	struct intel_lvds_encoder *lvds_encoder = to_lvds_encoder(&encoder->base);
 	struct drm_device *dev = encoder->base.dev;
@@ -256,7 +258,9 @@ static void intel_disable_lvds(struct intel_encoder *encoder)
 	POSTING_READ(lvds_encoder->reg);
 }
 
-static void gmch_disable_lvds(struct intel_encoder *encoder)
+static void gmch_disable_lvds(struct intel_encoder *encoder,
+			      const struct intel_crtc_state *old_crtc_state,
+			      const struct drm_connector_state *old_conn_state)
 {
 	struct intel_lvds_encoder *lvds_encoder = to_lvds_encoder(&encoder->base);
 	struct intel_connector *intel_connector =
@@ -267,7 +271,9 @@ static void gmch_disable_lvds(struct intel_encoder *encoder)
 	intel_disable_lvds(encoder);
 }
 
-static void pch_disable_lvds(struct intel_encoder *encoder)
+static void pch_disable_lvds(struct intel_encoder *encoder,
+			     const struct intel_crtc_state *old_crtc_state,
+			     const struct drm_connector_state *old_conn_state)
 {
 	struct intel_lvds_encoder *lvds_encoder = to_lvds_encoder(&encoder->base);
 	struct intel_connector *intel_connector =
@@ -276,7 +282,9 @@ static void pch_disable_lvds(struct intel_encoder *encoder)
 	intel_panel_disable_backlight(intel_connector);
 }
 
-static void pch_post_disable_lvds(struct intel_encoder *encoder)
+static void pch_post_disable_lvds(struct intel_encoder *encoder,
+				  const struct intel_crtc_state *old_crtc_state,
+				  const struct drm_connector_state *old_conn_state)
 {
 	intel_disable_lvds(encoder);
 }

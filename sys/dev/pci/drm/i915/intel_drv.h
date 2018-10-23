@@ -1000,7 +1000,9 @@ bool intel_ddi_pll_select(struct intel_crtc *crtc,
 void intel_ddi_set_pipe_settings(struct drm_crtc *crtc);
 void intel_ddi_prepare_link_retrain(struct drm_encoder *encoder);
 bool intel_ddi_connector_get_hw_state(struct intel_connector *intel_connector);
-void intel_ddi_fdi_disable(struct drm_crtc *crtc);
+void intel_ddi_fdi_disable(struct drm_crtc *crtc,
+			   struct intel_crtc_state *old_crtc_state,
+			   struct drm_connector_state *old_conn_state);
 void intel_ddi_get_config(struct intel_encoder *encoder,
 			  struct intel_crtc_state *pipe_config);
 struct intel_encoder *
@@ -1091,9 +1093,9 @@ void intel_finish_page_flip(struct drm_device *dev, int pipe);
 void intel_finish_page_flip_plane(struct drm_device *dev, int plane);
 void intel_check_page_flip(struct drm_device *dev, int pipe);
 int intel_prepare_plane_fb(struct drm_plane *plane,
-			   const struct drm_plane_state *new_state);
+			   struct drm_plane_state *new_state);
 void intel_cleanup_plane_fb(struct drm_plane *plane,
-			    const struct drm_plane_state *old_state);
+			    struct drm_plane_state *old_state);
 int intel_plane_atomic_get_property(struct drm_plane *plane,
 				    const struct drm_plane_state *state,
 				    struct drm_property *property,
@@ -1476,6 +1478,18 @@ intel_atomic_get_crtc_state(struct drm_atomic_state *state,
 
 	return to_intel_crtc_state(crtc_state);
 }
+
+static inline struct intel_plane_state *
+intel_atomic_get_existing_plane_state(struct drm_atomic_state *state,
+				      struct intel_plane *plane)
+{
+	struct drm_plane_state *plane_state;
+
+	plane_state = drm_atomic_get_existing_plane_state(state, &plane->base);
+
+	return to_intel_plane_state(plane_state);
+}
+
 int intel_atomic_setup_scalers(struct drm_device *dev,
 	struct intel_crtc *intel_crtc,
 	struct intel_crtc_state *crtc_state);

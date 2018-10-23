@@ -2567,7 +2567,7 @@ intel_alloc_initial_plane_obj(struct intel_crtc *crtc,
 	mode_cmd.width = fb->width;
 	mode_cmd.height = fb->height;
 	mode_cmd.pitches[0] = fb->pitches[0];
-	mode_cmd.modifier[0] = fb->modifier;
+	mode_cmd.modifier = fb->modifier;
 	mode_cmd.flags = DRM_MODE_FB_MODIFIERS;
 
 	mutex_lock(&dev->struct_mutex);
@@ -13478,7 +13478,7 @@ static void intel_shared_dpll_init(struct drm_device *dev)
  */
 int
 intel_prepare_plane_fb(struct drm_plane *plane,
-		       const struct drm_plane_state *new_state)
+		       struct drm_plane_state *new_state)
 {
 	struct drm_device *dev = plane->dev;
 	struct drm_framebuffer *fb = new_state->fb;
@@ -13519,7 +13519,7 @@ intel_prepare_plane_fb(struct drm_plane *plane,
  */
 void
 intel_cleanup_plane_fb(struct drm_plane *plane,
-		       const struct drm_plane_state *old_state)
+		       struct drm_plane_state *old_state)
 {
 	struct drm_device *dev = plane->dev;
 	struct drm_i915_gem_object *obj = intel_fb_obj(old_state->fb);
@@ -14370,13 +14370,13 @@ static int intel_framebuffer_init(struct drm_device *dev,
 		/* Enforce that fb modifier and tiling mode match, but only for
 		 * X-tiled. This is needed for FBC. */
 		if (!!(obj->tiling_mode == I915_TILING_X) !=
-		    !!(mode_cmd->modifier[0] == I915_FORMAT_MOD_X_TILED)) {
+		    !!(mode_cmd->modifier == I915_FORMAT_MOD_X_TILED)) {
 			DRM_DEBUG("tiling_mode doesn't match fb modifier\n");
 			return -EINVAL;
 		}
 	} else {
 		if (obj->tiling_mode == I915_TILING_X)
-			mode_cmd->modifier[0] = I915_FORMAT_MOD_X_TILED;
+			mode_cmd->modifier = I915_FORMAT_MOD_X_TILED;
 		else if (obj->tiling_mode == I915_TILING_Y) {
 			DRM_DEBUG("No Y tiling for legacy addfb\n");
 			return -EINVAL;
@@ -14384,12 +14384,12 @@ static int intel_framebuffer_init(struct drm_device *dev,
 	}
 
 	/* Passed in modifier sanity checking. */
-	switch (mode_cmd->modifier[0]) {
+	switch (mode_cmd->modifier) {
 	case I915_FORMAT_MOD_Y_TILED:
 	case I915_FORMAT_MOD_Yf_TILED:
 		if (INTEL_INFO(dev)->gen < 9) {
 			DRM_DEBUG("Unsupported tiling 0x%llx!\n",
-				  mode_cmd->modifier[0]);
+				  mode_cmd->modifier);
 			return -EINVAL;
 		}
 	case DRM_FORMAT_MOD_NONE:
@@ -14397,11 +14397,11 @@ static int intel_framebuffer_init(struct drm_device *dev,
 		break;
 	default:
 		DRM_DEBUG("Unsupported fb modifier 0x%llx!\n",
-			  mode_cmd->modifier[0]);
+			  mode_cmd->modifier);
 		return -EINVAL;
 	}
 
-	stride_alignment = intel_fb_stride_alignment(dev, mode_cmd->modifier[0],
+	stride_alignment = intel_fb_stride_alignment(dev, mode_cmd->modifier,
 						     mode_cmd->pixel_format);
 	if (mode_cmd->pitches[0] & (stride_alignment - 1)) {
 		DRM_DEBUG("pitch (%d) must be at least %u byte aligned\n",
@@ -14409,17 +14409,17 @@ static int intel_framebuffer_init(struct drm_device *dev,
 		return -EINVAL;
 	}
 
-	pitch_limit = intel_fb_pitch_limit(dev, mode_cmd->modifier[0],
+	pitch_limit = intel_fb_pitch_limit(dev, mode_cmd->modifier,
 					   mode_cmd->pixel_format);
 	if (mode_cmd->pitches[0] > pitch_limit) {
 		DRM_DEBUG("%s pitch (%u) must be at less than %d\n",
-			  mode_cmd->modifier[0] != DRM_FORMAT_MOD_NONE ?
+			  mode_cmd->modifier != DRM_FORMAT_MOD_NONE ?
 			  "tiled" : "linear",
 			  mode_cmd->pitches[0], pitch_limit);
 		return -EINVAL;
 	}
 
-	if (mode_cmd->modifier[0] == I915_FORMAT_MOD_X_TILED &&
+	if (mode_cmd->modifier == I915_FORMAT_MOD_X_TILED &&
 	    mode_cmd->pitches[0] != obj->stride) {
 		DRM_DEBUG("pitch (%d) must match tiling stride (%d)\n",
 			  mode_cmd->pitches[0], obj->stride);
@@ -14485,7 +14485,7 @@ static int intel_framebuffer_init(struct drm_device *dev,
 
 	aligned_height = intel_fb_align_height(dev, mode_cmd->height,
 					       mode_cmd->pixel_format,
-					       mode_cmd->modifier[0]);
+					       mode_cmd->modifier);
 	/* FIXME drm helper for size checks (especially planar formats)? */
 	if (obj->base.size < aligned_height * mode_cmd->pitches[0])
 		return -EINVAL;
