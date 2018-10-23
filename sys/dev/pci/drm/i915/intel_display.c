@@ -12783,7 +12783,7 @@ check_crtc_state(struct drm_device *dev, struct drm_atomic_state *old_state)
 		    !to_intel_crtc_state(crtc->state)->update_pipe)
 			continue;
 
-		__drm_atomic_helper_crtc_destroy_state(crtc, old_crtc_state);
+		__drm_atomic_helper_crtc_destroy_state(old_crtc_state);
 		pipe_config = to_intel_crtc_state(old_crtc_state);
 		memset(pipe_config, 0, sizeof(*pipe_config));
 		pipe_config->base.crtc = crtc;
@@ -13944,7 +13944,8 @@ static void intel_crtc_init(struct drm_device *dev, int pipe)
 		goto fail;
 
 	ret = drm_crtc_init_with_planes(dev, &intel_crtc->base, primary,
-					cursor, &intel_crtc_funcs);
+					cursor, &intel_crtc_funcs,
+					"pipe %c", pipe_name(pipe));
 	if (ret)
 		goto fail;
 
@@ -14011,7 +14012,7 @@ int intel_get_pipe_from_crtc_id(struct drm_device *dev, void *data,
 	struct drm_crtc *drmmode_crtc;
 	struct intel_crtc *crtc;
 
-	drmmode_crtc = drm_crtc_find(dev, pipe_from_crtc_id->crtc_id);
+	drmmode_crtc = drm_crtc_find(dev, file, pipe_from_crtc_id->crtc_id);
 
 	if (!drmmode_crtc) {
 		DRM_ERROR("no such CRTC id\n");
@@ -14342,6 +14343,7 @@ static int intel_framebuffer_init(struct drm_device *dev,
 	unsigned int aligned_height;
 	int ret;
 	u32 pitch_limit, stride_alignment;
+	struct drm_format_name_buf format_name;
 
 	WARN_ON(!mutex_is_locked(&dev->struct_mutex));
 
@@ -14415,14 +14417,14 @@ static int intel_framebuffer_init(struct drm_device *dev,
 	case DRM_FORMAT_XRGB1555:
 		if (INTEL_INFO(dev)->gen > 3) {
 			DRM_DEBUG("unsupported pixel format: %s\n",
-				  drm_get_format_name(mode_cmd->pixel_format));
+				  drm_get_format_name(mode_cmd->pixel_format, &format_name));
 			return -EINVAL;
 		}
 		break;
 	case DRM_FORMAT_ABGR8888:
 		if (!IS_VALLEYVIEW(dev) && INTEL_INFO(dev)->gen < 9) {
 			DRM_DEBUG("unsupported pixel format: %s\n",
-				  drm_get_format_name(mode_cmd->pixel_format));
+				  drm_get_format_name(mode_cmd->pixel_format, &format_name));
 			return -EINVAL;
 		}
 		break;
@@ -14431,14 +14433,14 @@ static int intel_framebuffer_init(struct drm_device *dev,
 	case DRM_FORMAT_XBGR2101010:
 		if (INTEL_INFO(dev)->gen < 4) {
 			DRM_DEBUG("unsupported pixel format: %s\n",
-				  drm_get_format_name(mode_cmd->pixel_format));
+				  drm_get_format_name(mode_cmd->pixel_format, &format_name));
 			return -EINVAL;
 		}
 		break;
 	case DRM_FORMAT_ABGR2101010:
 		if (!IS_VALLEYVIEW(dev)) {
 			DRM_DEBUG("unsupported pixel format: %s\n",
-				  drm_get_format_name(mode_cmd->pixel_format));
+				  drm_get_format_name(mode_cmd->pixel_format, &format_name));
 			return -EINVAL;
 		}
 		break;
@@ -14448,13 +14450,13 @@ static int intel_framebuffer_init(struct drm_device *dev,
 	case DRM_FORMAT_VYUY:
 		if (INTEL_INFO(dev)->gen < 5) {
 			DRM_DEBUG("unsupported pixel format: %s\n",
-				  drm_get_format_name(mode_cmd->pixel_format));
+				  drm_get_format_name(mode_cmd->pixel_format, &format_name));
 			return -EINVAL;
 		}
 		break;
 	default:
 		DRM_DEBUG("unsupported pixel format: %s\n",
-			  drm_get_format_name(mode_cmd->pixel_format));
+			  drm_get_format_name(mode_cmd->pixel_format, &format_name));
 		return -EINVAL;
 	}
 
@@ -14469,7 +14471,7 @@ static int intel_framebuffer_init(struct drm_device *dev,
 	if (obj->base.size < aligned_height * mode_cmd->pitches[0])
 		return -EINVAL;
 
-	drm_helper_mode_fill_fb_struct(&intel_fb->base, mode_cmd);
+	drm_helper_mode_fill_fb_struct(dev, &intel_fb->base, mode_cmd);
 	intel_fb->obj = obj;
 	intel_fb->obj->framebuffer_references++;
 
@@ -15297,7 +15299,7 @@ static void intel_modeset_readout_hw_state(struct drm_device *dev)
 	int i;
 
 	for_each_intel_crtc(dev, crtc) {
-		__drm_atomic_helper_crtc_destroy_state(&crtc->base, crtc->base.state);
+		__drm_atomic_helper_crtc_destroy_state(crtc->base.state);
 		memset(crtc->config, 0, sizeof(*crtc->config));
 		crtc->config->base.crtc = &crtc->base;
 
@@ -15624,8 +15626,7 @@ void intel_connector_attach_encoder(struct intel_connector *connector,
 				    struct intel_encoder *encoder)
 {
 	connector->encoder = encoder;
-	drm_mode_connector_attach_encoder(&connector->base,
-					  &encoder->base);
+	drm_connector_attach_encoder(&connector->base, &encoder->base);
 }
 
 /*
