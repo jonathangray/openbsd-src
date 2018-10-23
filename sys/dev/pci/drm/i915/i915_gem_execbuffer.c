@@ -31,6 +31,9 @@
 #include <linux/reservation.h>
 #include <linux/sync_file.h>
 #include <linux/uaccess.h>
+#else
+#include <dev/pci/drm/drm_linux.h>
+#include <dev/pci/drm/linux_reservation.h>
 #endif
 
 #include <dev/pci/drm/drmP.h>

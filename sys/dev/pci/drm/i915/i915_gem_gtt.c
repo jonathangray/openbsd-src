@@ -388,9 +388,9 @@ static void stash_init(struct pagestash *stash)
 	spin_lock_init(&stash->lock);
 }
 
-static struct page *stash_pop_page(struct pagestash *stash)
+static struct vm_page *stash_pop_page(struct pagestash *stash)
 {
-	struct page *page = NULL;
+	struct vm_page *page = NULL;
 
 	spin_lock(&stash->lock);
 	if (likely(stash->pvec.nr))
@@ -417,10 +417,10 @@ static void stash_push_pagevec(struct pagestash *stash, struct pagevec *pvec)
 	pvec->nr -= nr;
 }
 
-static struct page *vm_alloc_page(struct i915_address_space *vm, gfp_t gfp)
+static struct vm_page *vm_alloc_page(struct i915_address_space *vm, gfp_t gfp)
 {
 	struct pagevec stack;
-	struct page *page;
+	struct vm_page *page;
 
 	if (I915_SELFTEST_ONLY(should_fail(&vm->fault_attr, 1)))
 		i915_gem_shrink_all(vm->i915);
@@ -447,7 +447,7 @@ static struct page *vm_alloc_page(struct i915_address_space *vm, gfp_t gfp)
 	 */
 	pagevec_init(&stack);
 	do {
-		struct page *page;
+		struct vm_page *page;
 
 		page = alloc_page(gfp);
 		if (unlikely(!page))
@@ -519,7 +519,7 @@ static void vm_free_pages_release(struct i915_address_space *vm,
 	__pagevec_release(pvec);
 }
 
-static void vm_free_page(struct i915_address_space *vm, struct page *page)
+static void vm_free_page(struct i915_address_space *vm, struct vm_page *page)
 {
 	/*
 	 * On !llc, we need to change the pages back to WB. We only do so
@@ -656,7 +656,7 @@ setup_scratch_page(struct i915_address_space *vm, gfp_t gfp)
 
 	do {
 		int order = get_order(size);
-		struct page *page;
+		struct vm_page *page;
 		dma_addr_t addr;
 
 		page = alloc_pages(gfp, order);

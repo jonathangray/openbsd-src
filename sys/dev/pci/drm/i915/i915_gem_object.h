@@ -25,10 +25,16 @@
 #ifndef __I915_GEM_OBJECT_H__
 #define __I915_GEM_OBJECT_H__
 
+#ifdef __linux__
 #include <linux/reservation.h>
+#else
+#include <dev/pci/drm/linux_reservation.h>
+#endif
 
 #include <dev/pci/drm/drm_vma_manager.h>
+#ifdef notyet
 #include <dev/pci/drm/drm_gem.h>
+#endif
 #include <dev/pci/drm/drmP.h>
 
 #include <dev/pci/drm/i915_drm.h>
@@ -117,7 +123,9 @@ struct drm_i915_gem_object {
 	struct drm_mm_node *stolen;
 	union {
 		struct rcu_head rcu;
+#ifdef notyet
 		struct llist_node freed;
+#endif
 	};
 
 	/**
@@ -218,7 +226,9 @@ struct drm_i915_gem_object {
 			struct scatterlist *sg_pos;
 			unsigned int sg_idx; /* in pages, but 32bit eek! */
 
+#ifdef notyet
 			struct radix_tree_root radix;
+#endif
 			struct mutex lock; /* protects this cache */
 		} get_page;
 
@@ -327,9 +337,11 @@ i915_gem_object_lookup(struct drm_file *file, u32 handle)
 	return obj;
 }
 
+#ifdef __notyet__
 __deprecated
 extern struct drm_gem_object *
 drm_gem_object_lookup(struct drm_file *file, u32 handle);
+#endif
 
 __attribute__((nonnull))
 static inline struct drm_i915_gem_object *
@@ -343,7 +355,10 @@ __attribute__((nonnull))
 static inline void
 i915_gem_object_put(struct drm_i915_gem_object *obj)
 {
+	STUB();
+#ifdef notyet
 	__drm_gem_object_put(&obj->base);
+#endif
 }
 
 static inline void i915_gem_object_lock(struct drm_i915_gem_object *obj)

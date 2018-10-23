@@ -25,7 +25,11 @@
 #ifndef __I915_FENCE_REG_H__
 #define __I915_FENCE_REG_H__
 
+#ifdef __linux__
 #include <linux/list.h>
+#else
+#include <dev/pci/drm/drm_linux_list.h>
+#endif
 
 struct drm_i915_private;
 struct i915_vma;

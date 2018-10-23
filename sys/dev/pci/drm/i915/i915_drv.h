@@ -48,6 +48,7 @@
 #include <linux/shmem_fs.h>
 #else
 #include <dev/pci/drm/drm_linux.h>
+#include <dev/pci/drm/linux_reservation.h>
 #endif
 
 #include <dev/pci/drm/drmP.h>
@@ -952,7 +953,9 @@ struct i915_gem_mm {
 	/**
 	 * List of objects which are pending destruction.
 	 */
+#ifdef notyet
 	struct llist_head free_list;
+#endif
 	struct work_struct free_work;
 	spinlock_t free_lock;
 	/**
@@ -976,7 +979,9 @@ struct i915_gem_mm {
 
 	struct notifier_block oom_notifier;
 	struct notifier_block vmap_notifier;
+#ifdef notyet
 	struct shrinker shrinker;
+#endif
 
 	/** LRU list of objects with fence regs on them. */
 	struct list_head fence_list;
@@ -1331,6 +1336,7 @@ struct i915_oa_reg {
 	u32 value;
 };
 
+#ifdef notyet
 struct i915_oa_config {
 	char uuid[UUID_STRING_LEN + 1];
 	int id;
@@ -1348,6 +1354,7 @@ struct i915_oa_config {
 
 	atomic_t ref_count;
 };
+#endif
 
 struct i915_perf_stream;
 
@@ -1465,7 +1472,9 @@ struct i915_perf_stream {
 	/**
 	 * @oa_config: The OA configuration used by the stream.
 	 */
+#ifdef notyet
 	struct i915_oa_config *oa_config;
+#endif
 };
 
 /**
@@ -1647,7 +1656,9 @@ struct drm_i915_private {
 	bool display_irqs_enabled;
 
 	/* To control wakeup latency, e.g. for irq-driven dp aux transfers. */
+#ifdef notyet
 	struct pm_qos_request pm_qos;
+#endif
 
 	/* Sideband mailbox protection */
 	struct mutex sb_lock;
@@ -1781,7 +1792,9 @@ struct drm_i915_private {
 	struct i915_frontbuffer_tracking fb_tracking;
 
 	struct intel_atomic_helper {
+#ifdef notyet
 		struct llist_head free_list;
+#endif
 		struct work_struct free_work;
 	} atomic_helper;
 
@@ -1835,7 +1848,9 @@ struct drm_i915_private {
 
 	struct {
 		struct list_head list;
+#ifdef notyet
 		struct llist_head free_list;
+#endif
 		struct work_struct free_work;
 
 		/* The hw wants to have a stable context identifier for the
@@ -1969,7 +1984,9 @@ struct drm_i915_private {
 			bool periodic;
 			int period_exponent;
 
+#ifdef notyet
 			struct i915_oa_config test_config;
+#endif
 
 			struct {
 				struct i915_vma *vma;
@@ -2964,11 +2981,11 @@ struct scatterlist *
 i915_gem_object_get_sg(struct drm_i915_gem_object *obj,
 		       unsigned int n, unsigned int *offset);
 
-struct page *
+struct vm_page *
 i915_gem_object_get_page(struct drm_i915_gem_object *obj,
 			 unsigned int n);
 
-struct page *
+struct vm_page *
 i915_gem_object_get_dirty_page(struct drm_i915_gem_object *obj,
 			       unsigned int n);
 

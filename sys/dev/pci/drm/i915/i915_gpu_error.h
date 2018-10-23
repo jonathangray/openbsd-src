@@ -7,9 +7,13 @@
 #ifndef _I915_GPU_ERROR_H_
 #define _I915_GPU_ERROR_H_
 
+#ifdef __linux__
 #include <linux/kref.h>
 #include <linux/ktime.h>
 #include <linux/sched.h>
+#else
+#include <dev/pci/drm/drm_linux.h>
+#endif
 
 #include <dev/pci/drm/drm_mm.h>
 

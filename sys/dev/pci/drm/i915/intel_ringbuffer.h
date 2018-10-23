@@ -301,7 +301,7 @@ struct intel_engine_execlists {
 	/**
 	 * @queue: queue of requests, in priority lists
 	 */
-	struct rb_root_cached queue;
+	struct rb_root queue;
 
 	/**
 	 * @csb_read: control register for Context Switch buffer
@@ -399,8 +399,10 @@ struct intel_engine_cs {
 		struct list_head signals; /* sorted by retirement */
 		struct task_struct *signaler; /* used for fence signalling */
 
+#ifdef notyet
 		struct timer_list fake_irq; /* used after a missed interrupt */
 		struct timer_list hangcheck; /* detect missed interrupts */
+#endif
 
 		unsigned int hangcheck_interrupts;
 		unsigned int irq_enabled;
@@ -584,7 +586,9 @@ struct intel_engine_cs {
 	struct intel_context *last_retired_context;
 
 	/* status_notifier: list of callbacks for context-switch changes */
+#ifdef notyet
 	struct atomic_notifier_head context_status_notifier;
+#endif
 
 	struct intel_engine_hangcheck hangcheck;
 
@@ -684,7 +688,11 @@ static inline bool
 execlists_set_active_once(struct intel_engine_execlists *execlists,
 			  unsigned int bit)
 {
+	STUB();
+	return false;
+#ifdef notyet
 	return !__test_and_set_bit(bit, (unsigned long *)&execlists->active);
+#endif
 }
 
 static inline void
@@ -754,6 +762,8 @@ intel_read_status_page(const struct intel_engine_cs *engine, int reg)
 static inline void
 intel_write_status_page(struct intel_engine_cs *engine, int reg, u32 value)
 {
+	STUB();
+#ifdef notyet
 	/* Writing into the status page should be done sparingly. Since
 	 * we do when we are uncertain of the device state, we take a bit
 	 * of extra paranoia to try and ensure that the HWS takes the value
@@ -768,6 +778,7 @@ intel_write_status_page(struct intel_engine_cs *engine, int reg, u32 value)
 	} else {
 		WRITE_ONCE(engine->status_page.page_addr[reg], value);
 	}
+#endif
 }
 
 /*
@@ -961,14 +972,20 @@ int intel_engine_init_breadcrumbs(struct intel_engine_cs *engine);
 
 static inline void intel_wait_init(struct intel_wait *wait)
 {
+	STUB();
+#ifdef notyet
 	wait->tsk = current;
 	wait->request = NULL;
+#endif
 }
 
 static inline void intel_wait_init_for_seqno(struct intel_wait *wait, u32 seqno)
 {
+	STUB();
+#ifdef notyet
 	wait->tsk = current;
 	wait->seqno = seqno;
+#endif
 }
 
 static inline bool intel_wait_has_seqno(const struct intel_wait *wait)

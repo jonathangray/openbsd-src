@@ -75,6 +75,7 @@ typedef uint32_t u32;
 typedef int64_t  s64;
 typedef uint64_t u64;
 
+#define U16_MAX UINT16_MAX
 #define U32_MAX UINT32_MAX
 #define U64_C(x) UINT64_C(x)
 #define U64_MAX UINT64_MAX
@@ -91,6 +92,8 @@ typedef bus_addr_t resource_size_t;
 
 typedef off_t loff_t;
 
+typedef __ptrdiff_t ptrdiff_t;
+
 #define __force
 #define __always_unused	__unused
 #define __read_mostly
@@ -98,6 +101,8 @@ typedef off_t loff_t;
 #define __must_check
 #define __init
 #define __exit
+#define __deprecated
+#define __always_inline inline
 
 #ifndef __user
 #define __user
@@ -196,6 +201,7 @@ hweight64(uint64_t x)
 #define BIT(x)			(1UL << x)
 #define BIT_ULL(x)		(1ULL << x)
 #define BITS_TO_LONGS(x)	howmany((x), 8 * sizeof(long))
+#define BITS_PER_BYTE		8
 
 #define DECLARE_BITMAP(x, y)	unsigned long x[BITS_TO_LONGS(y)];
 #define bitmap_empty(p, n)	(find_first_bit(p, n) == n)
@@ -437,6 +443,7 @@ do {									\
 #define BUILD_BUG_ON(x) CTASSERT(!(x))
 #define BUILD_BUG_ON_NOT_POWER_OF_2(x)
 #define BUILD_BUG_ON_MSG(x, y)
+#define BUILD_BUG_ON_INVALID(x)
 
 #define WARN(condition, fmt...) ({ 					\
 	int __ret = !!(condition);					\
@@ -614,7 +621,23 @@ write_seqlock(seqlock_t *sl)
 }
 
 static inline void
+write_seqlock_irqsave(seqlock_t *sl, __unused long flags)
+{
+	mtx_enter(&sl->lock);
+	sl->seq++;
+	membar_producer();
+}
+
+static inline void
 write_sequnlock(seqlock_t *sl)
+{
+	membar_producer();
+	sl->seq++;
+	mtx_leave(&sl->lock);
+}
+
+static inline void
+write_sequnlock_irqrestore(seqlock_t *sl, __unused long flags)
 {
 	membar_producer();
 	sl->seq++;
@@ -978,12 +1001,22 @@ cancel_delayed_work_sync(struct delayed_work *dwork)
 	return task_del(dwork->tq, &dwork->work.task);
 }
 
+static inline bool
+delayed_work_pending(struct delayed_work *dwork)
+{
+	STUB();
+	return false;
+}
+
 void flush_workqueue(struct workqueue_struct *);
 void flush_work(struct work_struct *);
-void flush_delayed_work(struct delayed_work *);
+bool flush_delayed_work(struct delayed_work *);
 #define flush_scheduled_work()	flush_workqueue(system_wq)
 
 #define destroy_work_on_stack(x)
+
+struct tasklet_struct {
+};
 
 typedef void *async_cookie_t;
 #define async_schedule(func, data)	(func)((data), NULL)
@@ -1155,6 +1188,14 @@ ktime_sub(struct timeval a, struct timeval b)
 {
 	struct timeval res;
 	timersub(&a, &b, &res);
+	return res;
+}
+
+static inline struct timeval
+ktime_add(struct timeval a, struct timeval b)
+{
+	struct timeval res;
+	timeradd(&a, &b, &res);
 	return res;
 }
 
@@ -2982,5 +3023,11 @@ struct dma_buf *dma_buf_export(const struct dma_buf_export_info *);
 #define dma_buf_detach(x, y) panic("dma_buf_detach")
 
 #define register_sysrq_key(x, y)
+
+struct pmu {
+};
+
+struct hrtimer {
+};
 
 #endif

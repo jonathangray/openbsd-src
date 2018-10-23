@@ -42,7 +42,7 @@ static int remap_pfn(pte_t *pte, pgtable_t token,
 {
 	struct remap_pfn *r = data;
 
-	/* Special PTE are not associated with any struct page */
+	/* Special PTE are not associated with any struct vm_page */
 	set_pte_at(r->mm, addr, pte, pte_mkspecial(pfn_pte(r->pfn, r->prot)));
 	r->pfn++;
 

@@ -718,7 +718,7 @@ i915_gem_detect_bit_6_swizzle(struct drm_i915_private *dev_priv)
  * by the GPU.
  */
 static void
-i915_gem_swizzle_page(struct page *page)
+i915_gem_swizzle_page(struct vm_page *page)
 {
 	char temp[64];
 	char *vaddr;
@@ -753,7 +753,7 @@ i915_gem_object_do_bit_17_swizzle(struct drm_i915_gem_object *obj,
 				  struct sg_table *pages)
 {
 	struct sgt_iter sgt_iter;
-	struct page *page;
+	struct vm_page *page;
 	int i;
 
 	if (obj->bit_17 == NULL)
@@ -785,7 +785,7 @@ i915_gem_object_save_bit_17_swizzle(struct drm_i915_gem_object *obj,
 {
 	const unsigned int page_count = obj->base.size >> PAGE_SHIFT;
 	struct sgt_iter sgt_iter;
-	struct page *page;
+	struct vm_page *page;
 	int i;
 
 	if (obj->bit_17 == NULL) {

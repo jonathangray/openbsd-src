@@ -73,7 +73,7 @@ flush_work(struct work_struct *work)
 	}
 }
 
-void
+bool
 flush_delayed_work(struct delayed_work *dwork)
 {
 	struct sleep_state sls;
@@ -81,7 +81,7 @@ flush_delayed_work(struct delayed_work *dwork)
 	int barrier = 0;
 
 	if (cold)
-		return;
+		return false;
 
 	while (timeout_pending(&dwork->to))
 		tsleep(&barrier, PWAIT, "fldwto", 1);
@@ -92,6 +92,8 @@ flush_delayed_work(struct delayed_work *dwork)
 		sleep_setup(&sls, &barrier, PWAIT, "fldwbar");
 		sleep_finish(&sls, !barrier);
 	}
+
+	return true;
 }
 
 struct timespec

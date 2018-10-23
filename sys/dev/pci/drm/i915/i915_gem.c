@@ -47,6 +47,9 @@
 #include <linux/swap.h>
 #include <linux/pci.h>
 #include <linux/dma-buf.h>
+#else
+#include <dev/pci/drm/drm_linux.h>
+#include <dev/pci/drm/linux_reservation.h>
 #endif
 
 static void i915_gem_flush_free_objects(struct drm_i915_private *i915);
@@ -292,7 +295,7 @@ static int i915_gem_object_get_pages_phys(struct drm_i915_gem_object *obj)
 
 	vaddr = phys->vaddr;
 	for (i = 0; i < obj->base.size / PAGE_SIZE; i++) {
-		struct page *page;
+		struct vm_page *page;
 		char *src;
 
 		page = shmem_read_mapping_page(mapping, i);
@@ -381,7 +384,7 @@ i915_gem_object_put_pages_phys(struct drm_i915_gem_object *obj,
 		int i;
 
 		for (i = 0; i < obj->base.size / PAGE_SIZE; i++) {
-			struct page *page;
+			struct vm_page *page;
 			char *dst;
 
 			page = shmem_read_mapping_page(mapping, i);
@@ -1052,7 +1055,7 @@ shmem_clflush_swizzled_range(char *addr, unsigned long length,
 /* Only difference to the fast-path function is that this can handle bit17
  * and uses non-atomic copy and kmap functions. */
 static int
-shmem_pread_slow(struct page *page, int offset, int length,
+shmem_pread_slow(struct vm_page *page, int offset, int length,
 		 char __user *user_data,
 		 bool page_do_bit17_swizzling, bool needs_clflush)
 {
@@ -1074,7 +1077,7 @@ shmem_pread_slow(struct page *page, int offset, int length,
 }
 
 static int
-shmem_pread(struct page *page, int offset, int length, char __user *user_data,
+shmem_pread(struct vm_page *page, int offset, int length, char __user *user_data,
 	    bool page_do_bit17_swizzling, bool needs_clflush)
 {
 	int ret;
@@ -1123,7 +1126,7 @@ i915_gem_shmem_pread(struct drm_i915_gem_object *obj,
 	user_data = u64_to_user_ptr(args->data_ptr);
 	offset = offset_in_page(args->offset);
 	for (idx = args->offset >> PAGE_SHIFT; remain; idx++) {
-		struct page *page = i915_gem_object_get_page(obj, idx);
+		struct vm_page *page = i915_gem_object_get_page(obj, idx);
 		int length;
 
 		length = remain;
@@ -1473,7 +1476,7 @@ out_unlock:
 }
 
 static int
-shmem_pwrite_slow(struct page *page, int offset, int length,
+shmem_pwrite_slow(struct vm_page *page, int offset, int length,
 		  char __user *user_data,
 		  bool page_do_bit17_swizzling,
 		  bool needs_clflush_before,
@@ -1505,7 +1508,7 @@ shmem_pwrite_slow(struct page *page, int offset, int length,
  * writing if needs_clflush is set.
  */
 static int
-shmem_pwrite(struct page *page, int offset, int len, char __user *user_data,
+shmem_pwrite(struct vm_page *page, int offset, int len, char __user *user_data,
 	     bool page_do_bit17_swizzling,
 	     bool needs_clflush_before,
 	     bool needs_clflush_after)
@@ -1571,7 +1574,7 @@ i915_gem_shmem_pwrite(struct drm_i915_gem_object *obj,
 	remain = args->size;
 	offset = offset_in_page(args->offset);
 	for (idx = args->offset >> PAGE_SHIFT; remain; idx++) {
-		struct page *page = i915_gem_object_get_page(obj, idx);
+		struct vm_page *page = i915_gem_object_get_page(obj, idx);
 		int length;
 
 		length = remain;
@@ -2391,7 +2394,7 @@ i915_gem_object_put_pages_gtt(struct drm_i915_gem_object *obj,
 			      struct sg_table *pages)
 {
 	struct sgt_iter sgt_iter;
-	struct page *page;
+	struct vm_page *page;
 
 	__i915_gem_object_release_shmem(obj, pages, true);
 
@@ -2523,7 +2526,7 @@ static int i915_gem_object_get_pages_gtt(struct drm_i915_gem_object *obj)
 	struct sg_table *st;
 	struct scatterlist *sg;
 	struct sgt_iter sgt_iter;
-	struct page *page;
+	struct vm_page *page;
 	unsigned long last_pfn = 0;	/* suppress gcc warning */
 	unsigned int max_segment = i915_sg_segment_size();
 	unsigned int sg_page_sizes;
@@ -2781,9 +2784,9 @@ static void *i915_gem_object_map(const struct drm_i915_gem_object *obj,
 	unsigned long n_pages = obj->base.size >> PAGE_SHIFT;
 	struct sg_table *sgt = obj->mm.pages;
 	struct sgt_iter sgt_iter;
-	struct page *page;
-	struct page *stack_pages[32];
-	struct page **pages = stack_pages;
+	struct vm_page *page;
+	struct vm_page *stack_pages[32];
+	struct vm_page **pages = stack_pages;
 	unsigned long i = 0;
 	pgprot_t pgprot;
 	void *addr;
@@ -2930,7 +2933,7 @@ i915_gem_object_pwrite_gtt(struct drm_i915_gem_object *obj,
 
 	do {
 		unsigned int len, unwritten;
-		struct page *page;
+		struct vm_page *page;
 		void *data, *vaddr;
 		int err;
 
@@ -5930,7 +5933,7 @@ i915_gem_object_create_from_data(struct drm_i915_private *dev_priv,
 	offset = 0;
 	do {
 		unsigned int len = min_t(typeof(size), size, PAGE_SIZE);
-		struct page *page;
+		struct vm_page *page;
 		void *pgdata, *vaddr;
 
 		err = pagecache_write_begin(file, file->f_mapping,
@@ -6077,7 +6080,7 @@ lookup:
 	return sg;
 }
 
-struct page *
+struct vm_page *
 i915_gem_object_get_page(struct drm_i915_gem_object *obj, unsigned int n)
 {
 	struct scatterlist *sg;
@@ -6090,11 +6093,11 @@ i915_gem_object_get_page(struct drm_i915_gem_object *obj, unsigned int n)
 }
 
 /* Like i915_gem_object_get_page(), but mark the returned page dirty */
-struct page *
+struct vm_page *
 i915_gem_object_get_dirty_page(struct drm_i915_gem_object *obj,
 			       unsigned int n)
 {
-	struct page *page;
+	struct vm_page *page;
 
 	page = i915_gem_object_get_page(obj, n);
 	if (!obj->mm.dirty)

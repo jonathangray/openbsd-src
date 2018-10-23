@@ -25,9 +25,14 @@
 #ifndef __I915_GEM_CONTEXT_H__
 #define __I915_GEM_CONTEXT_H__
 
+#ifdef __linux__
 #include <linux/bitops.h>
 #include <linux/list.h>
 #include <linux/radix-tree.h>
+#else
+#include <dev/pci/drm/drm_linux.h>
+#include <dev/pci/drm/drm_linux_list.h>
+#endif
 
 #include "i915_gem.h"
 #include "i915_scheduler.h"
@@ -98,7 +103,9 @@ struct i915_gem_context {
 
 	/** link: place with &drm_i915_private.context_list */
 	struct list_head link;
+#ifdef notyet
 	struct llist_node free_link;
+#endif
 
 	/**
 	 * @ref: reference count
@@ -187,7 +194,9 @@ struct i915_gem_context {
 	 * the user handle. (user handles are per fd, but the binding is
 	 * per vm, which may be one per context or shared with the global GTT)
 	 */
+#ifdef notyet
 	struct radix_tree_root handles_vma;
+#endif
 
 	/** handles_list: reverse list of all the rbtree entries in use for
 	 * this context, which allows us to free all the allocations on

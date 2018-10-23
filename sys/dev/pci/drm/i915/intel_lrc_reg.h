@@ -7,7 +7,9 @@
 #ifndef _INTEL_LRC_REG_H_
 #define _INTEL_LRC_REG_H_
 
+#ifdef __linux__
 #include <linux/types.h>
+#endif
 
 /* GEN8+ Reg State Context */
 #define CTX_LRI_HEADER_0		0x01

@@ -218,7 +218,7 @@ enum i915_cache_level;
 struct i915_vma;
 
 struct i915_page_dma {
-	struct page *page;
+	struct vm_page *page;
 	int order;
 	union {
 		dma_addr_t daddr;
@@ -274,7 +274,9 @@ struct i915_vma_ops {
 
 struct pagestash {
 	spinlock_t lock;
+#ifdef notyet
 	struct pagevec pvec;
+#endif
 };
 
 struct i915_address_space {
@@ -391,7 +393,9 @@ i915_vm_has_scratch_64K(struct i915_address_space *vm)
 struct i915_ggtt {
 	struct i915_address_space vm;
 
+#ifdef notyet
 	struct io_mapping iomap;	/* Mapping to our CPU mappable region */
+#endif
 	struct resource gmadr;          /* GMADR resource */
 	resource_size_t mappable_end;	/* End offset that we can CPU map */
 
@@ -579,8 +583,12 @@ i915_page_dir_dma_addr(const struct i915_hw_ppgtt *ppgtt, const unsigned n)
 static inline struct i915_ggtt *
 i915_vm_to_ggtt(struct i915_address_space *vm)
 {
+	STUB();
+	return NULL;
+#ifdef notyet
 	GEM_BUG_ON(!i915_is_ggtt(vm));
 	return container_of(vm, struct i915_ggtt, vm);
+#endif
 }
 
 #define INTEL_MAX_PPAT_ENTRIES 8

@@ -420,7 +420,7 @@ struct get_pages_work {
 
 static struct sg_table *
 __i915_gem_userptr_alloc_pages(struct drm_i915_gem_object *obj,
-			       struct page **pvec, int num_pages)
+			       struct vm_page **pvec, int num_pages)
 {
 	unsigned int max_segment = i915_sg_segment_size();
 	struct sg_table *st;
@@ -503,13 +503,13 @@ __i915_gem_userptr_get_pages_worker(struct work_struct *_work)
 	struct get_pages_work *work = container_of(_work, typeof(*work), work);
 	struct drm_i915_gem_object *obj = work->obj;
 	const int npages = obj->base.size >> PAGE_SHIFT;
-	struct page **pvec;
+	struct vm_page **pvec;
 	int pinned, ret;
 
 	ret = -ENOMEM;
 	pinned = 0;
 
-	pvec = kvmalloc_array(npages, sizeof(struct page *), GFP_KERNEL);
+	pvec = kvmalloc_array(npages, sizeof(struct vm_page *), GFP_KERNEL);
 	if (pvec != NULL) {
 		struct mm_struct *mm = obj->userptr.mm->mm;
 		unsigned int flags = 0;
@@ -609,7 +609,7 @@ static int i915_gem_userptr_get_pages(struct drm_i915_gem_object *obj)
 {
 	const int num_pages = obj->base.size >> PAGE_SHIFT;
 	struct mm_struct *mm = obj->userptr.mm->mm;
-	struct page **pvec;
+	struct vm_page **pvec;
 	struct sg_table *pages;
 	bool active;
 	int pinned;
@@ -643,7 +643,7 @@ static int i915_gem_userptr_get_pages(struct drm_i915_gem_object *obj)
 	pinned = 0;
 
 	if (mm == current->mm) {
-		pvec = kvmalloc_array(num_pages, sizeof(struct page *),
+		pvec = kvmalloc_array(num_pages, sizeof(struct vm_page *),
 				      GFP_KERNEL |
 				      __GFP_NORETRY |
 				      __GFP_NOWARN);
@@ -680,7 +680,7 @@ i915_gem_userptr_put_pages(struct drm_i915_gem_object *obj,
 			   struct sg_table *pages)
 {
 	struct sgt_iter sgt_iter;
-	struct page *page;
+	struct vm_page *page;
 
 	BUG_ON(obj->userptr.work != NULL);
 	__i915_gem_userptr_set_active(obj, false);

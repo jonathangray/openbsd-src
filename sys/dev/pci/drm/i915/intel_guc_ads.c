@@ -76,7 +76,7 @@ int intel_guc_ads_create(struct intel_guc *guc)
 {
 	struct drm_i915_private *dev_priv = guc_to_i915(guc);
 	struct i915_vma *vma, *kernel_ctx_vma;
-	struct page *page;
+	struct vm_page *page;
 	/* The ads obj includes the struct itself and buffers passed to GuC */
 	struct {
 		struct guc_ads ads;

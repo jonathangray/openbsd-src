@@ -188,8 +188,12 @@ static inline bool i915_vma_is_closed(const struct i915_vma *vma)
 
 static inline bool i915_vma_set_userfault(struct i915_vma *vma)
 {
+	STUB();
+	return false;
+#ifdef notyet
 	GEM_BUG_ON(!i915_vma_is_map_and_fenceable(vma));
 	return __test_and_set_bit(I915_VMA_USERFAULT_BIT, &vma->flags);
+#endif
 }
 
 static inline void i915_vma_unset_userfault(struct i915_vma *vma)
@@ -361,7 +365,7 @@ void __iomem *i915_vma_pin_iomap(struct i915_vma *vma);
  */
 void i915_vma_unpin_iomap(struct i915_vma *vma);
 
-static inline struct page *i915_vma_first_page(struct i915_vma *vma)
+static inline struct vm_page *i915_vma_first_page(struct i915_vma *vma)
 {
 	GEM_BUG_ON(!vma->pages);
 	return sg_page(vma->pages->sgl);

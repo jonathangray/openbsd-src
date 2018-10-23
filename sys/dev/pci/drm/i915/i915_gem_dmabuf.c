@@ -27,6 +27,9 @@
 #ifdef __linux__
 #include <linux/dma-buf.h>
 #include <linux/reservation.h>
+#else
+#include <dev/pci/drm/drm_linux.h>
+#include <dev/pci/drm/linux_reservation.h>
 #endif
 
 #include <dev/pci/drm/drmP.h>
@@ -116,7 +119,7 @@ static void i915_gem_dmabuf_vunmap(struct dma_buf *dma_buf, void *vaddr)
 static void *i915_gem_dmabuf_kmap(struct dma_buf *dma_buf, unsigned long page_num)
 {
 	struct drm_i915_gem_object *obj = dma_buf_to_obj(dma_buf);
-	struct page *page;
+	struct vm_page *page;
 
 	if (page_num >= obj->base.size >> PAGE_SHIFT)
 		return NULL;

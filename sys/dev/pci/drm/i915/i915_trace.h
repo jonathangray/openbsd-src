@@ -2,9 +2,11 @@
 #if !defined(_I915_TRACE_H_) || defined(TRACE_HEADER_MULTI_READ)
 #define _I915_TRACE_H_
 
+#ifdef __linux__
 #include <linux/stringify.h>
 #include <linux/types.h>
 #include <linux/tracepoint.h>
+#endif
 
 #include <dev/pci/drm/drmP.h>
 #include "i915_drv.h"
@@ -978,4 +980,6 @@ DEFINE_EVENT(i915_context, i915_context_free,
 /* This part must be outside protection */
 #undef TRACE_INCLUDE_PATH
 #define TRACE_INCLUDE_PATH ../../drivers/gpu/drm/i915
+#ifdef __linux__
 #include <trace/define_trace.h>
+#endif

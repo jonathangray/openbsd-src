@@ -51,6 +51,8 @@
 #ifdef __linux__
 #include <linux/dma_remapping.h>
 #include <linux/reservation.h>
+#else
+#include <dev/pci/drm/linux_reservation.h>
 #endif
 
 /* Primary plane formats for gen <= 3 */
