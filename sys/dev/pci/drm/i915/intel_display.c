@@ -10154,19 +10154,13 @@ static bool cursor_size_ok(struct drm_device *dev,
 	return true;
 }
 
-static void intel_crtc_gamma_set(struct drm_crtc *crtc, u16 *red, u16 *green,
-				 u16 *blue, uint32_t start, uint32_t size)
+static int intel_crtc_gamma_set(struct drm_crtc *crtc, u16 *red, u16 *green,
+				 u16 *blue, uint32_t size,
+				 struct drm_modeset_acquire_ctx *ctx)
 {
-	int end = (start + size > 256) ? 256 : start + size, i;
-	struct intel_crtc *intel_crtc = to_intel_crtc(crtc);
-
-	for (i = start; i < end; i++) {
-		intel_crtc->lut_r[i] = red[i] >> 8;
-		intel_crtc->lut_g[i] = green[i] >> 8;
-		intel_crtc->lut_b[i] = blue[i] >> 8;
-	}
-
 	intel_crtc_load_lut(crtc);
+
+	return 0;
 }
 
 /* VESA 640x480x72Hz mode to set on the pipe */
@@ -11922,7 +11916,6 @@ static int intel_crtc_atomic_check(struct drm_crtc *crtc,
 
 static const struct drm_crtc_helper_funcs intel_helper_funcs = {
 	.mode_set_base_atomic = intel_pipe_set_base_atomic,
-	.load_lut = intel_crtc_load_lut,
 	.atomic_begin = intel_begin_crtc_commit,
 	.atomic_flush = intel_finish_crtc_commit,
 	.atomic_check = intel_crtc_atomic_check,
@@ -12157,6 +12150,7 @@ static bool check_digital_port_conflicts(struct drm_atomic_state *state)
 {
 	struct drm_device *dev = state->dev;
 	struct drm_connector *connector;
+	struct drm_connector_list_iter conn_iter;
 	unsigned int used_ports = 0;
 
 	/*
@@ -12164,7 +12158,8 @@ static bool check_digital_port_conflicts(struct drm_atomic_state *state)
 	 * list to detect the problem on ddi platforms
 	 * where there's just one encoder per digital port.
 	 */
-	drm_for_each_connector(connector, dev) {
+	drm_connector_list_iter_begin(dev, &conn_iter);
+	drm_for_each_connector_iter(connector, &conn_iter) {
 		struct drm_connector_state *connector_state;
 		struct intel_encoder *encoder;
 
@@ -12198,6 +12193,7 @@ static bool check_digital_port_conflicts(struct drm_atomic_state *state)
 			break;
 		}
 	}
+	drm_connector_list_iter_end(&conn_iter);
 
 	return true;
 }
@@ -13685,6 +13681,7 @@ static struct drm_plane *intel_primary_plane_create(struct drm_device *dev,
 	struct intel_plane *primary;
 	struct intel_plane_state *state;
 	const uint32_t *intel_primary_formats;
+	unsigned int supported_rotations;
 	unsigned int num_formats;
 
 	primary = kzalloc(sizeof(*primary), GFP_KERNEL);
@@ -13730,30 +13727,25 @@ static struct drm_plane *intel_primary_plane_create(struct drm_device *dev,
 				 NULL,
 				 DRM_PLANE_TYPE_PRIMARY, NULL);
 
+	if (INTEL_INFO(dev)->gen >= 9) {
+		supported_rotations =
+			DRM_MODE_ROTATE_0 | DRM_MODE_ROTATE_90 |
+			DRM_MODE_ROTATE_180 | DRM_MODE_ROTATE_270;
+	} else if (INTEL_INFO(dev)->gen >= 4) {
+		supported_rotations =
+			DRM_MODE_ROTATE_0 | DRM_MODE_ROTATE_180;
+	} else {
+		supported_rotations = DRM_MODE_ROTATE_0;
+	}
+
 	if (INTEL_INFO(dev)->gen >= 4)
-		intel_create_rotation_property(dev, primary);
+		drm_plane_create_rotation_property(&primary->base,
+						   DRM_MODE_ROTATE_0,
+						   supported_rotations);
 
 	drm_plane_helper_add(&primary->base, &intel_plane_helper_funcs);
 
 	return &primary->base;
-}
-
-void intel_create_rotation_property(struct drm_device *dev, struct intel_plane *plane)
-{
-	if (!dev->mode_config.rotation_property) {
-		unsigned long flags = BIT(DRM_MODE_ROTATE_0) |
-			BIT(DRM_MODE_ROTATE_180);
-
-		if (INTEL_INFO(dev)->gen >= 9)
-			flags |= BIT(DRM_MODE_ROTATE_90) | BIT(DRM_MODE_ROTATE_270);
-
-		dev->mode_config.rotation_property =
-			drm_mode_create_rotation_property(dev, flags);
-	}
-	if (dev->mode_config.rotation_property)
-		drm_object_attach_property(&plane->base.base,
-				dev->mode_config.rotation_property,
-				plane->base.state->rotation);
 }
 
 static int
@@ -13883,17 +13875,11 @@ static struct drm_plane *intel_cursor_plane_create(struct drm_device *dev,
 				 NULL, DRM_PLANE_TYPE_CURSOR,
 				 "cursor %c", pipe_name(pipe));
 
-	if (INTEL_INFO(dev)->gen >= 4) {
-		if (!dev->mode_config.rotation_property)
-			dev->mode_config.rotation_property =
-				drm_mode_create_rotation_property(dev,
-							BIT(DRM_MODE_ROTATE_0) |
-							BIT(DRM_MODE_ROTATE_180));
-		if (dev->mode_config.rotation_property)
-			drm_object_attach_property(&cursor->base.base,
-				dev->mode_config.rotation_property,
-				state->base.rotation);
-	}
+	if (INTEL_INFO(dev)->gen >= 4)
+		drm_plane_create_rotation_property(&cursor->base,
+						   DRM_MODE_ROTATE_0,
+						   DRM_MODE_ROTATE_0 |
+						   DRM_MODE_ROTATE_180);
 
 	if (INTEL_INFO(dev)->gen >=9)
 		state->scaler_id = -1;
@@ -14363,13 +14349,13 @@ static int intel_framebuffer_init(struct drm_device *dev,
 		/* Enforce that fb modifier and tiling mode match, but only for
 		 * X-tiled. This is needed for FBC. */
 		if (!!(obj->tiling_mode == I915_TILING_X) !=
-		    !!(mode_cmd->modifier == I915_FORMAT_MOD_X_TILED)) {
+		    !!(mode_cmd->modifier[0] == I915_FORMAT_MOD_X_TILED)) {
 			DRM_DEBUG("tiling_mode doesn't match fb modifier\n");
 			return -EINVAL;
 		}
 	} else {
 		if (obj->tiling_mode == I915_TILING_X)
-			mode_cmd->modifier = I915_FORMAT_MOD_X_TILED;
+			mode_cmd->modifier[0] = I915_FORMAT_MOD_X_TILED;
 		else if (obj->tiling_mode == I915_TILING_Y) {
 			DRM_DEBUG("No Y tiling for legacy addfb\n");
 			return -EINVAL;
@@ -14377,7 +14363,7 @@ static int intel_framebuffer_init(struct drm_device *dev,
 	}
 
 	/* Passed in modifier sanity checking. */
-	switch (mode_cmd->modifier) {
+	switch (mode_cmd->modifier[0]) {
 	case I915_FORMAT_MOD_Y_TILED:
 	case I915_FORMAT_MOD_Yf_TILED:
 		if (INTEL_INFO(dev)->gen < 9) {
@@ -14394,7 +14380,7 @@ static int intel_framebuffer_init(struct drm_device *dev,
 		return -EINVAL;
 	}
 
-	stride_alignment = intel_fb_stride_alignment(dev, mode_cmd->modifier,
+	stride_alignment = intel_fb_stride_alignment(dev, mode_cmd->modifier[0],
 						     mode_cmd->pixel_format);
 	if (mode_cmd->pitches[0] & (stride_alignment - 1)) {
 		DRM_DEBUG("pitch (%d) must be at least %u byte aligned\n",
@@ -14402,17 +14388,17 @@ static int intel_framebuffer_init(struct drm_device *dev,
 		return -EINVAL;
 	}
 
-	pitch_limit = intel_fb_pitch_limit(dev, mode_cmd->modifier,
+	pitch_limit = intel_fb_pitch_limit(dev, mode_cmd->modifier[0],
 					   mode_cmd->pixel_format);
 	if (mode_cmd->pitches[0] > pitch_limit) {
 		DRM_DEBUG("%s pitch (%u) must be at less than %d\n",
-			  mode_cmd->modifier != DRM_FORMAT_MOD_NONE ?
+			  mode_cmd->modifier[0] != DRM_FORMAT_MOD_NONE ?
 			  "tiled" : "linear",
 			  mode_cmd->pitches[0], pitch_limit);
 		return -EINVAL;
 	}
 
-	if (mode_cmd->modifier == I915_FORMAT_MOD_X_TILED &&
+	if (mode_cmd->modifier[0] == I915_FORMAT_MOD_X_TILED &&
 	    mode_cmd->pitches[0] != obj->stride) {
 		DRM_DEBUG("pitch (%d) must match tiling stride (%d)\n",
 			  mode_cmd->pitches[0], obj->stride);
@@ -14478,7 +14464,7 @@ static int intel_framebuffer_init(struct drm_device *dev,
 
 	aligned_height = intel_fb_align_height(dev, mode_cmd->height,
 					       mode_cmd->pixel_format,
-					       mode_cmd->modifier);
+					       mode_cmd->modifier[0]);
 	/* FIXME drm helper for size checks (especially planar formats)? */
 	if (obj->base.size < aligned_height * mode_cmd->pitches[0])
 		return -EINVAL;
