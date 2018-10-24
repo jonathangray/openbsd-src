@@ -1314,7 +1314,7 @@ drm_atomic_get_connector_state(struct drm_atomic_state *state,
 		if (!c)
 			return ERR_PTR(-ENOMEM);
 		memcpy(c, state->connectors,
-		    config->num_connector * sizeof(*state->connectors));
+		    state->num_connector * sizeof(*state->connectors));
 		kfree(state->connectors);
 
 		state->connectors = c;
