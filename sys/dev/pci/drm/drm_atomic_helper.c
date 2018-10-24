@@ -3901,7 +3901,13 @@ EXPORT_SYMBOL(drm_atomic_helper_duplicate_state);
 void
 __drm_atomic_helper_connector_destroy_state(struct drm_connector_state *state)
 {
+#ifdef notyet
 	if (state->crtc)
+#else
+	if (state->connector == NULL)
+		printf("%s attempt to call drm_connector_put(NULL)!\n", __func__);
+	if (state->crtc && (state->connector != NULL))
+#endif
 		drm_connector_put(state->connector);
 
 	if (state->commit)
