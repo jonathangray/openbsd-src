@@ -27,11 +27,15 @@
 #include "i915_drv.h"
 #include "i915_trace.h"
 #include "intel_drv.h"
+#ifdef __linux__
 #include <linux/mmu_context.h>
 #include <linux/mmu_notifier.h>
 #include <linux/mempolicy.h>
 #include <linux/swap.h>
 #include <linux/sched/mm.h>
+#endif
+
+#ifdef __linux__
 
 struct i915_mm_struct {
 	struct mm_struct *mm;
@@ -859,3 +863,23 @@ void i915_gem_cleanup_userptr(struct drm_i915_private *dev_priv)
 {
 	destroy_workqueue(dev_priv->mm.userptr_wq);
 }
+
+#else
+
+int
+i915_gem_userptr_ioctl(struct drm_device *dev, void *data, struct drm_file *file)
+{
+	return -ENODEV;
+}
+
+int
+i915_gem_init_userptr(struct drm_i915_private *dev_priv)
+{
+	return 0;
+}
+
+void i915_gem_cleanup_userptr(struct drm_i915_private *dev_priv)
+{
+}
+
+#endif

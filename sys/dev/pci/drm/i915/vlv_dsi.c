@@ -755,7 +755,7 @@ static void intel_dsi_msleep(struct intel_dsi *intel_dsi, int msec)
 	if (is_vid_mode(intel_dsi) && dev_priv->vbt.dsi.seq_version >= 3)
 		return;
 
-	msleep(msec);
+	drm_msleep(msec);
 }
 
 /*
@@ -882,7 +882,7 @@ static void intel_dsi_pre_enable(struct intel_encoder *encoder,
 		intel_dsi_vbt_exec_sequence(intel_dsi, MIPI_SEQ_TEAR_ON);
 		intel_dsi_vbt_exec_sequence(intel_dsi, MIPI_SEQ_DISPLAY_ON);
 	} else {
-		msleep(20); /* XXX */
+		drm_msleep(20); /* XXX */
 		for_each_dsi_port(port, intel_dsi->ports)
 			dpi_send_cmd(intel_dsi, TURN_ON, false, port);
 		intel_dsi_msleep(intel_dsi, 100);
@@ -932,7 +932,7 @@ static void intel_dsi_disable(struct intel_encoder *encoder,
 		/* Send Shutdown command to the panel in LP mode */
 		for_each_dsi_port(port, intel_dsi->ports)
 			dpi_send_cmd(intel_dsi, SHUTDOWN, false, port);
-		msleep(10);
+		drm_msleep(10);
 	}
 }
 

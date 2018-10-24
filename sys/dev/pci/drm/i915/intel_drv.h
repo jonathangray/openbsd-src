@@ -43,7 +43,9 @@
 #include <dev/pci/drm/drm_dp_mst_helper.h>
 #include <dev/pci/drm/drm_rect.h>
 #include <dev/pci/drm/drm_atomic.h>
+#ifdef __linux__
 #include <media/cec-notifier.h>
+#endif
 
 /**
  * __wait_for - magic wait macro
@@ -496,7 +498,9 @@ struct intel_atomic_state {
 
 	struct i915_sw_fence commit_ready;
 
+#ifdef notyet
 	struct llist_node freed;
+#endif
 };
 
 struct intel_plane_state {

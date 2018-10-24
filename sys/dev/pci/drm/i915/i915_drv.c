@@ -122,8 +122,10 @@ __i915_printk(struct drm_i915_private *dev_priv, const char *level,
 		 * if they may have caused the bug by fiddling with unsafe
 		 * module parameters.
 		 */
+#ifdef __linux__
 		if (!test_taint(TAINT_USER))
 			dev_notice(kdev, "%s", FDO_BUG_MSG);
+#endif
 		shown_bug_once = true;
 	}
 }
@@ -1939,7 +1941,7 @@ void i915_reset(struct drm_i915_private *i915,
 		if (ret == 0)
 			break;
 
-		msleep(100);
+		drm_msleep(100);
 	}
 	if (ret) {
 		dev_err(i915->drm.dev, "Failed to reset chip\n");

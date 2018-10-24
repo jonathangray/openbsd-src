@@ -25,6 +25,7 @@
 #ifndef __I915_UTILS_H
 #define __I915_UTILS_H
 
+#ifdef notyet
 #undef WARN_ON
 /* Many gcc seem to no see through this and fall over :( */
 #if 0
@@ -39,9 +40,10 @@
 
 #undef WARN_ON_ONCE
 #define WARN_ON_ONCE(x) WARN_ONCE((x), "%s", "WARN_ON_ONCE(" __stringify(x) ")")
+#endif
 
-#define MISSING_CASE(x) WARN(1, "Missing case (%s == %ld)\n", \
-			     __stringify(x), (long)(x))
+#define MISSING_CASE(x) WARN(1, "Missing switch case (%lu) in %s\n", \
+			     (long) (x), __func__);
 
 #if defined(GCC_VERSION) && GCC_VERSION >= 70000
 #define add_overflows(A, B) \

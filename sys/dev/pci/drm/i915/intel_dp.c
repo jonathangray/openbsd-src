@@ -887,7 +887,7 @@ static int edp_notify_handler(struct notifier_block *this, unsigned long code,
 		/* 0x1F write to PP_DIV_REG sets max cycle delay */
 		I915_WRITE(pp_div_reg, pp_div | 0x1F);
 		I915_WRITE(pp_ctrl_reg, PANEL_UNLOCK_REGS | PANEL_POWER_OFF);
-		msleep(intel_dp->panel_power_cycle_delay);
+		drm_msleep(intel_dp->panel_power_cycle_delay);
 	}
 
 	pps_unlock(intel_dp);
@@ -1101,7 +1101,7 @@ intel_dp_aux_xfer(struct intel_dp *intel_dp,
 		status = I915_READ_NOTRACE(ch_ctl);
 		if ((status & DP_AUX_CH_CTL_SEND_BUSY) == 0)
 			break;
-		msleep(1);
+		drm_msleep(1);
 	}
 
 	if (try == 3) {
@@ -2170,7 +2170,7 @@ static bool edp_panel_vdd_on(struct intel_dp *intel_dp)
 	if (!edp_have_panel_power(intel_dp)) {
 		DRM_DEBUG_KMS("eDP port %c panel power wasn't enabled\n",
 			      port_name(intel_dig_port->base.port));
-		msleep(intel_dp->panel_power_up_delay);
+		drm_msleep(intel_dp->panel_power_up_delay);
 	}
 
 	return need_to_disable;
@@ -2623,7 +2623,7 @@ void intel_dp_sink_dpms(struct intel_dp *intel_dp, int mode)
 						 DP_SET_POWER_D0);
 			if (ret == 1)
 				break;
-			msleep(1);
+			drm_msleep(1);
 		}
 
 		if (ret == 1 && lspcon->active)
@@ -3685,7 +3685,7 @@ intel_dp_link_down(struct intel_encoder *encoder,
 		intel_set_pch_fifo_underrun_reporting(dev_priv, PIPE_A, true);
 	}
 
-	msleep(intel_dp->panel_power_down_delay);
+	drm_msleep(intel_dp->panel_power_down_delay);
 
 	intel_dp->DP = DP;
 

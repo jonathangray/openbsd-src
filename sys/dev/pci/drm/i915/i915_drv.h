@@ -88,6 +88,134 @@
 
 #include "intel_gvt.h"
 
+struct sg_table;
+
+#define CONFIG_DRM_I915_FBDEV 1
+#define CONFIG_DRM_I915_PRELIMINARY_HW_SUPPORT 1
+
+#include "acpi.h"
+#if NACPI > 0
+#define CONFIG_ACPI
+#endif
+
+#include "drm.h"
+#include "vga.h"
+
+#include <dev/ic/mc6845reg.h>
+#include <dev/ic/pcdisplayvar.h>
+#include <dev/ic/vgareg.h>
+#include <dev/ic/vgavar.h>
+
+#include <sys/task.h>
+#include <dev/pci/vga_pcivar.h>
+#include <dev/wscons/wsconsio.h>
+#include <dev/wscons/wsdisplayvar.h>
+#include <dev/rasops/rasops.h>
+
+extern int intel_enable_gtt(void);
+extern void intel_gtt_chipset_flush(void);
+extern int intel_gmch_probe(struct pci_dev *, struct pci_dev *, void *);
+extern void intel_gtt_get(u64 *, size_t *, phys_addr_t *, u64 *);
+extern void intel_gtt_insert_sg_entries(struct sg_table *, unsigned int,
+					unsigned int);
+extern void intel_gtt_clear_range(unsigned int, unsigned int);
+extern void intel_gmch_remove(void);
+
+#ifdef __i386__
+
+static inline u_int64_t
+bus_space_read_8(bus_space_tag_t t, bus_space_handle_t h, bus_size_t o)
+{
+	u_int64_t lo, hi;
+
+	lo = bus_space_read_4(t, h, o);
+	hi = bus_space_read_4(t, h, o + 4);
+	return (lo | (hi << 32));
+}
+
+static inline void
+bus_space_write_8(bus_space_tag_t t, bus_space_handle_t h, bus_size_t o,
+    u_int64_t v)
+{
+	bus_space_write_4(t, h, o, v);
+	bus_space_write_4(t, h, o + 4, v >> 32);
+}
+
+#endif
+
+/*
+ * The Bridge device's PCI config space has information about the
+ * fb aperture size and the amount of pre-reserved memory.
+ * This is all handled in the intel-gtt.ko module. i915.ko only
+ * cares about the vga bit for the vga rbiter.
+ */
+#define INTEL_GMCH_CTRL		0x52
+#define INTEL_GMCH_VGA_DISABLE  (1 << 1)
+#define SNB_GMCH_CTRL		0x50
+#define    SNB_GMCH_GGMS_SHIFT	8 /* GTT Graphics Memory Size */
+#define    SNB_GMCH_GGMS_MASK	0x3
+#define    SNB_GMCH_GMS_SHIFT   3 /* Graphics Mode Select */
+#define    SNB_GMCH_GMS_MASK    0x1f
+#define    BDW_GMCH_GGMS_SHIFT	6
+#define    BDW_GMCH_GGMS_MASK	0x3
+#define    BDW_GMCH_GMS_SHIFT   8
+#define    BDW_GMCH_GMS_MASK    0xff
+
+#define I830_GMCH_CTRL			0x52
+
+#define I830_GMCH_GMS_MASK		0x70
+#define I830_GMCH_GMS_LOCAL		0x10
+#define I830_GMCH_GMS_STOLEN_512	0x20
+#define I830_GMCH_GMS_STOLEN_1024	0x30
+#define I830_GMCH_GMS_STOLEN_8192	0x40
+
+#define I855_GMCH_GMS_MASK		0xF0
+#define I855_GMCH_GMS_STOLEN_0M		0x0
+#define I855_GMCH_GMS_STOLEN_1M		(0x1 << 4)
+#define I855_GMCH_GMS_STOLEN_4M		(0x2 << 4)
+#define I855_GMCH_GMS_STOLEN_8M		(0x3 << 4)
+#define I855_GMCH_GMS_STOLEN_16M	(0x4 << 4)
+#define I855_GMCH_GMS_STOLEN_32M	(0x5 << 4)
+#define I915_GMCH_GMS_STOLEN_48M	(0x6 << 4)
+#define I915_GMCH_GMS_STOLEN_64M	(0x7 << 4)
+#define G33_GMCH_GMS_STOLEN_128M	(0x8 << 4)
+#define G33_GMCH_GMS_STOLEN_256M	(0x9 << 4)
+#define INTEL_GMCH_GMS_STOLEN_96M	(0xa << 4)
+#define INTEL_GMCH_GMS_STOLEN_160M	(0xb << 4)
+#define INTEL_GMCH_GMS_STOLEN_224M	(0xc << 4)
+#define INTEL_GMCH_GMS_STOLEN_352M	(0xd << 4)
+
+#define I830_DRB3		0x63
+#define I85X_DRB3		0x43
+#define I865_TOUD		0xc4
+
+#define I830_ESMRAMC		0x91
+#define I845_ESMRAMC		0x9e
+#define I85X_ESMRAMC		0x61
+#define    TSEG_ENABLE		(1 << 0)
+#define    I830_TSEG_SIZE_512K	(0 << 1)
+#define    I830_TSEG_SIZE_1M	(1 << 1)
+#define    I845_TSEG_SIZE_MASK	(3 << 1)
+#define    I845_TSEG_SIZE_512K	(2 << 1)
+#define    I845_TSEG_SIZE_1M	(3 << 1)
+
+struct intel_gtt {
+	/* Size of memory reserved for graphics by the BIOS */
+	unsigned int stolen_size;
+	/* Total number of gtt entries. */
+	unsigned int gtt_total_entries;
+	/* Part of the gtt that is mappable by the cpu, for those chips where
+	 * this is not the full gtt. */
+	unsigned int gtt_mappable_entries;
+	/* Share the scratch page dma with ppgtts. */
+	bus_addr_t scratch_page_dma;
+	struct drm_dmamem *scratch_page;
+	/* for ppgtt PDE access */
+	bus_space_handle_t gtt;
+	/* needed for ioremap in drm/i915 */
+	bus_addr_t gma_bus_addr;
+};
+
 /* General customization:
  */
 
@@ -170,6 +298,7 @@ static inline uint32_t fixed16_to_u32(uint_fixed_16_16_t fp)
 	return fp.val >> 16;
 }
 
+#ifdef notyet
 static inline uint_fixed_16_16_t min_fixed16(uint_fixed_16_16_t min1,
 						 uint_fixed_16_16_t min2)
 {
@@ -187,6 +316,7 @@ static inline uint_fixed_16_16_t max_fixed16(uint_fixed_16_16_t max1,
 	max.val = max(max1.val, max2.val);
 	return max;
 }
+#endif
 
 static inline uint_fixed_16_16_t clamp_u64_to_fixed16(uint64_t val)
 {
@@ -332,7 +462,8 @@ struct i915_hotplug {
 	 I915_GEM_DOMAIN_INSTRUCTION | \
 	 I915_GEM_DOMAIN_VERTEX)
 
-struct drm_i915_private;
+struct inteldrm_softc;
+#define drm_i915_private inteldrm_softc
 struct i915_mm_struct;
 struct i915_mmu_object;
 
@@ -504,7 +635,7 @@ enum fb_op_origin {
 struct intel_fbc {
 	/* This is always the inner lock when overlapping with struct_mutex and
 	 * it's the outer lock when overlapping with stolen_lock. */
-	struct mutex lock;
+	struct rwlock lock;
 	unsigned threshold;
 	unsigned int possible_framebuffer_bits;
 	unsigned int busy_bits;
@@ -608,7 +739,7 @@ enum drrs_support_type {
 
 struct intel_dp;
 struct i915_drrs {
-	struct mutex mutex;
+	struct rwlock mutex;
 	struct delayed_work work;
 	struct intel_dp *dp;
 	unsigned busy_frontbuffer_bits;
@@ -617,7 +748,7 @@ struct i915_drrs {
 };
 
 struct i915_psr {
-	struct mutex lock;
+	struct rwlock lock;
 	bool sink_support;
 	struct intel_dp *enabled;
 	bool active;
@@ -789,7 +920,7 @@ struct intel_rps {
 	int last_adj;
 
 	struct {
-		struct mutex mutex;
+		struct rwlock mutex;
 
 		enum { LOW_POWER, BETWEEN, HIGH_POWER } mode;
 		unsigned int interactive;
@@ -913,7 +1044,7 @@ struct i915_power_domains {
 	bool initializing;
 	int power_well_count;
 
-	struct mutex lock;
+	struct rwlock lock;
 	int domain_use_count[POWER_DOMAIN_NUM];
 	struct i915_power_well *power_wells;
 };
@@ -930,7 +1061,7 @@ struct i915_gem_mm {
 	struct drm_mm stolen;
 	/** Protects the usage of the GTT stolen memory allocator. This is
 	 * always the inner lock when overlapping with struct_mutex. */
-	struct mutex stolen_lock;
+	struct rwlock stolen_lock;
 
 	/* Protects bound_list/unbound_list and #drm_i915_gem_object.mm.link */
 	spinlock_t obj_lock;
@@ -1380,9 +1511,11 @@ struct i915_perf_stream_ops {
 	 * @poll_wait: Call poll_wait, passing a wait queue that will be woken
 	 * once there is something ready to read() for the stream
 	 */
+#ifdef notyet
 	void (*poll_wait)(struct i915_perf_stream *stream,
 			  struct file *file,
 			  poll_table *wait);
+#endif
 
 	/**
 	 * @wait_unlocked: For handling a blocking read, wait until there is
@@ -1523,8 +1656,10 @@ struct i915_oa_ops {
 	 * counter reports being sampled. May apply system constraints such as
 	 * disabling EU clock gating as required.
 	 */
+#ifdef notyet
 	int (*enable_metric_set)(struct drm_i915_private *dev_priv,
 				 const struct i915_oa_config *oa_config);
+#endif
 
 	/**
 	 * @disable_metric_set: Remove system constraints associated with using
@@ -1566,15 +1701,21 @@ struct intel_cdclk_state {
 	u8 voltage_level;
 };
 
-struct drm_i915_private {
+struct inteldrm_softc {
+	struct device sc_dev;
+	bus_dma_tag_t dmat;
+	bus_space_tag_t bst;
+	struct agp_map *agph;
+	bus_space_handle_t opregion_ioh;
+
 	struct drm_device drm;
 
-	struct kmem_cache *objects;
-	struct kmem_cache *vmas;
-	struct kmem_cache *luts;
-	struct kmem_cache *requests;
-	struct kmem_cache *dependencies;
-	struct kmem_cache *priorities;
+	struct pool *objects;
+	struct pool *vmas;
+	struct pool *luts;
+	struct pool *requests;
+	struct pool *dependencies;
+	struct pool *priorities;
 
 	const struct intel_device_info info;
 	struct intel_driver_caps caps;
@@ -1603,7 +1744,26 @@ struct drm_i915_private {
 	 */
 	resource_size_t stolen_usable_size;	/* Total size minus reserved ranges */
 
-	void __iomem *regs;
+	pci_chipset_tag_t pc;
+	pcitag_t tag;
+	struct extent *memex;
+	pci_intr_handle_t ih;
+	void *irqh;
+
+	struct vga_pci_bar bar;
+	struct vga_pci_bar *regs;
+
+	int nscreens;
+	void (*switchcb)(void *, int, int);
+	void *switchcbarg;
+	void *switchcookie;
+	struct task switchtask;
+	struct rasops_info ro;
+
+	struct task burner_task;
+	int burner_fblank;
+
+	struct backlight_device *backlight;
 
 	struct intel_uncore uncore;
 
@@ -1622,7 +1782,7 @@ struct drm_i915_private {
 
 	/** gmbus_mutex protects against concurrent usage of the single hw gmbus
 	 * controller on different i2c buses. */
-	struct mutex gmbus_mutex;
+	struct rwlock gmbus_mutex;
 
 	/**
 	 * Base address of the gmbus and gpio block.
@@ -1649,6 +1809,17 @@ struct drm_i915_private {
 
 	struct drm_dma_handle *status_page_dmah;
 	struct resource mch_res;
+	union flush {
+		struct {
+			bus_space_tag_t		bst;
+			bus_space_handle_t	bsh;
+		} i9xx;
+		struct {
+			bus_dma_segment_t	seg;
+			caddr_t			kva;
+		} i8xx;
+	}			 ifp;
+	struct vm_page *pgs;
 
 	/* protects the irq masks */
 	spinlock_t irq_lock;
@@ -1661,7 +1832,7 @@ struct drm_i915_private {
 #endif
 
 	/* Sideband mailbox protection */
-	struct mutex sb_lock;
+	struct rwlock sb_lock;
 
 	/** Cached value of IMR to avoid reads in updating the bitfield */
 	union {
@@ -1687,13 +1858,13 @@ struct drm_i915_private {
 	struct intel_overlay *overlay;
 
 	/* backlight registers and fields in struct intel_panel */
-	struct mutex backlight_lock;
+	struct rwlock backlight_lock;
 
 	/* LVDS info */
 	bool no_aux_handshake;
 
 	/* protects panel power sequencer state */
-	struct mutex pps_mutex;
+	struct rwlock pps_mutex;
 
 	struct drm_i915_fence_reg fence_regs[I915_MAX_NUM_FENCES]; /* assume 965 */
 	int num_fence_regs; /* 8 on pre-965, 16 otherwise */
@@ -1754,7 +1925,7 @@ struct drm_i915_private {
 
 	struct i915_gem_mm mm;
 	DECLARE_HASHTABLE(mm_structs, 7);
-	struct mutex mm_lock;
+	struct rwlock mm_lock;
 
 	struct intel_ppat ppat;
 
@@ -1777,7 +1948,7 @@ struct drm_i915_private {
 	 * Must be global rather than per dpll, because on some platforms
 	 * plls share registers.
 	 */
-	struct mutex dpll_lock;
+	struct rwlock dpll_lock;
 
 	unsigned int active_crtcs;
 	/* minimum acceptable cdclk for each pipe */
@@ -1813,7 +1984,7 @@ struct drm_i915_private {
 	 * this lock may be held for long periods of time when
 	 * talking to hw - so only take it when talking to hw!
 	 */
-	struct mutex pcu_lock;
+	struct rwlock pcu_lock;
 
 	/* gen6+ GT PM state */
 	struct intel_gen6_power_mgmt gt_pm;
@@ -1844,7 +2015,7 @@ struct drm_i915_private {
 	 * av_mutex - mutex for audio/video sync
 	 *
 	 */
-	struct mutex av_mutex;
+	struct rwlock av_mutex;
 
 	struct {
 		struct list_head list;
@@ -1921,7 +2092,7 @@ struct drm_i915_private {
 		 * protects * intel_crtc->wm.active and
 		 * cstate->wm.need_postvbl_update.
 		 */
-		struct mutex wm_mutex;
+		struct rwlock wm_mutex;
 
 		/*
 		 * Set during HW readout of watermarks/DDB.  Some platforms
@@ -1943,7 +2114,7 @@ struct drm_i915_private {
 		 * Lock associated with adding/modifying/removing OA configs
 		 * in dev_priv->perf.metrics_idr.
 		 */
-		struct mutex metrics_lock;
+		struct rwlock metrics_lock;
 
 		/*
 		 * List of dynamic configurations, you need to hold
@@ -1955,7 +2126,7 @@ struct drm_i915_private {
 		 * Lock associated with anything below within this structure
 		 * except exclusive_stream.
 		 */
-		struct mutex lock;
+		struct rwlock lock;
 		struct list_head streams;
 
 		struct {
@@ -1979,7 +2150,9 @@ struct drm_i915_private {
 			 * For rate limiting any notifications of spurious
 			 * invalid OA reports
 			 */
+#ifdef notyet
 			struct ratelimit_state spurious_report_rs;
+#endif
 
 			bool periodic;
 			int period_exponent;
@@ -2151,10 +2324,12 @@ static inline struct drm_i915_private *to_i915(const struct drm_device *dev)
 	return container_of(dev, struct drm_i915_private, drm);
 }
 
+#ifdef __linux__
 static inline struct drm_i915_private *kdev_to_i915(struct device *kdev)
 {
 	return to_i915(dev_get_drvdata(kdev));
 }
+#endif
 
 static inline struct drm_i915_private *wopcm_to_i915(struct intel_wopcm *wopcm)
 {
@@ -2240,6 +2415,7 @@ static __always_inline struct sgt_iter {
 	return s;
 }
 
+#ifdef notyet
 static inline struct scatterlist *____sg_next(struct scatterlist *sg)
 {
 	++sg;
@@ -2261,6 +2437,7 @@ static inline struct scatterlist *__sg_next(struct scatterlist *sg)
 {
 	return sg_is_last(sg) ? NULL : ____sg_next(sg);
 }
+#endif
 
 /**
  * for_each_sgt_dma - iterate over the DMA addresses of the given sg_table
@@ -2287,6 +2464,7 @@ static inline struct scatterlist *__sg_next(struct scatterlist *sg)
 	     (((__iter).curr += PAGE_SIZE) >= (__iter).max) ?		\
 	     (__iter) = __sgt_iter(__sg_next((__iter).sgp), false), 0 : 0)
 
+#ifdef notyet
 static inline unsigned int i915_sg_page_sizes(struct scatterlist *sg)
 {
 	unsigned int page_sizes;
@@ -2301,7 +2479,9 @@ static inline unsigned int i915_sg_page_sizes(struct scatterlist *sg)
 
 	return page_sizes;
 }
+#endif
 
+#ifdef notyet
 static inline unsigned int i915_sg_segment_size(void)
 {
 	unsigned int size = swiotlb_max_segment();
@@ -2316,6 +2496,7 @@ static inline unsigned int i915_sg_segment_size(void)
 
 	return size;
 }
+#endif
 
 static inline const struct intel_device_info *
 intel_info(const struct drm_i915_private *dev_priv)
@@ -2728,8 +2909,10 @@ extern long i915_compat_ioctl(struct file *filp, unsigned int cmd,
 #endif
 extern const struct dev_pm_ops i915_pm_ops;
 
+#ifdef __linux__
 extern int i915_driver_load(struct pci_dev *pdev,
 			    const struct pci_device_id *ent);
+#endif
 extern void i915_driver_unload(struct drm_device *dev);
 extern int intel_gpu_reset(struct drm_i915_private *dev_priv, u32 engine_mask);
 extern bool intel_has_gpu_reset(struct drm_i915_private *dev_priv);
@@ -2926,6 +3109,8 @@ void i915_gem_free_object(struct drm_gem_object *obj);
 
 static inline void i915_gem_drain_freed_objects(struct drm_i915_private *i915)
 {
+	STUB();
+#ifdef notyet
 	if (!atomic_read(&i915->mm.free_count))
 		return;
 
@@ -2938,10 +3123,13 @@ static inline void i915_gem_drain_freed_objects(struct drm_i915_private *i915)
 	do {
 		rcu_barrier();
 	} while (flush_work(&i915->mm.free_work));
+#endif
 }
 
 static inline void i915_gem_drain_workqueue(struct drm_i915_private *i915)
 {
+	STUB();
+#ifdef notyet
 	/*
 	 * Similar to objects above (see i915_gem_drain_freed-objects), in
 	 * general we have workers that are armed by RCU and then rearm
@@ -2958,6 +3146,7 @@ static inline void i915_gem_drain_workqueue(struct drm_i915_private *i915)
 		rcu_barrier();
 		drain_workqueue(i915->wq);
 	} while (--pass);
+#endif
 }
 
 struct i915_vma * __must_check
@@ -3180,7 +3369,13 @@ int i915_gem_wait_for_idle(struct drm_i915_private *dev_priv,
 int __must_check i915_gem_suspend(struct drm_i915_private *dev_priv);
 void i915_gem_suspend_late(struct drm_i915_private *dev_priv);
 void i915_gem_resume(struct drm_i915_private *dev_priv);
+#ifdef __linux__
 vm_fault_t i915_gem_fault(struct vm_fault *vmf);
+#else
+int i915_gem_fault(struct drm_gem_object *gem_obj, struct uvm_faultinfo *ufi,
+		   off_t offset, vaddr_t vaddr, vm_page_t *pps, int npages,
+		   int centeridx, vm_prot_t access_type, int flags);
+#endif
 int i915_gem_object_wait(struct drm_i915_gem_object *obj,
 			 unsigned int flags,
 			 long timeout,
@@ -3282,9 +3477,12 @@ void i915_gem_flush_ggtt_writes(struct drm_i915_private *dev_priv);
 /* belongs in i915_gem_gtt.h */
 static inline void i915_gem_chipset_flush(struct drm_i915_private *dev_priv)
 {
+	STUB();
+#ifdef notyet
 	wmb();
 	if (INTEL_GEN(dev_priv) < 6)
 		intel_gtt_chipset_flush();
+#endif
 }
 
 /* i915_gem_stolen.c */
@@ -3326,7 +3524,7 @@ unsigned long i915_gem_shrink(struct drm_i915_private *i915,
 unsigned long i915_gem_shrink_all(struct drm_i915_private *i915);
 void i915_gem_shrinker_register(struct drm_i915_private *i915);
 void i915_gem_shrinker_unregister(struct drm_i915_private *i915);
-void i915_gem_shrinker_taints_mutex(struct mutex *mutex);
+void i915_gem_shrinker_taints_mutex(struct rwlock *mutex);
 
 /* i915_gem_tiling.c */
 static inline bool i915_gem_object_needs_bit17_swizzle(struct drm_i915_gem_object *obj)
@@ -3597,6 +3795,7 @@ static inline u64 intel_rc6_residency_us(struct drm_i915_private *dev_priv,
 #define POSTING_READ(reg)	(void)I915_READ_NOTRACE(reg)
 #define POSTING_READ16(reg)	(void)I915_READ16_NOTRACE(reg)
 
+#ifdef notyet
 #define __raw_read(x, s) \
 static inline uint##x##_t __raw_i915_read##x(const struct drm_i915_private *dev_priv, \
 					     i915_reg_t reg) \
@@ -3611,7 +3810,7 @@ static inline void __raw_i915_write##x(const struct drm_i915_private *dev_priv, 
 	write##s(val, dev_priv->regs + i915_mmio_reg_offset(reg)); \
 }
 __raw_read(8, b)
-__raw_read(16, w)
+ed_raw_read(16, w)
 __raw_read(32, l)
 __raw_read(64, q)
 
@@ -3622,6 +3821,7 @@ __raw_write(64, q)
 
 #undef __raw_read
 #undef __raw_write
+#endif
 
 /* These are untraced mmio-accessors that are only valid to be used inside
  * critical sections, such as inside IRQ handlers, where forcewake is explicitly
@@ -3649,9 +3849,15 @@ __raw_write(64, q)
  * therefore generally be serialised, by either the dev_priv->uncore.lock or
  * a more localised lock guarding all access to that bank of registers.
  */
+#ifdef __linux__
 #define I915_READ_FW(reg__) __raw_i915_read32(dev_priv, (reg__))
 #define I915_WRITE_FW(reg__, val__) __raw_i915_write32(dev_priv, (reg__), (val__))
 #define I915_WRITE64_FW(reg__, val__) __raw_i915_write64(dev_priv, (reg__), (val__))
+#else
+#define I915_READ_FW(reg__) bus_space_read_4(dev_priv->regs->bst, dev_priv->regs->bsh, (reg__))
+#define I915_WRITE_FW(reg__, val__) bus_space_write_4(dev_priv->regs->bst, dev_priv->regs->bsh, (reg__), (val__))
+#define I915_WRITE64_FW(reg__, val__) bus_space_write_8(dev_priv->regs->bst, dev_priv->regs->bsh, (reg__), (val__))
+#endif
 #define POSTING_READ_FW(reg__) (void)I915_READ_FW(reg__)
 
 /* "Broadcast RGB" property */
@@ -3692,6 +3898,7 @@ static inline unsigned long nsecs_to_jiffies_timeout(const u64 n)
  * when event A happened, then just before event B you call this function and
  * pass the timestamp as the first argument, and X as the second argument.
  */
+#ifdef __linux__
 static inline void
 wait_remaining_ms_from_jiffies(unsigned long timestamp_jiffies, int to_wait_ms)
 {
@@ -3712,10 +3919,39 @@ wait_remaining_ms_from_jiffies(unsigned long timestamp_jiffies, int to_wait_ms)
 			    schedule_timeout_uninterruptible(remaining_jiffies);
 	}
 }
+#else
+static inline void
+wait_remaining_ms_from_jiffies(unsigned long timestamp_jiffies, int to_wait_ms)
+{
+	unsigned long target_jiffies, tmp_jiffies, remaining_jiffies;
+
+	if (cold) {
+		delay(to_wait_ms * 1000);
+		return;
+	}
+
+	/*
+	 * Don't re-read the value of "jiffies" every time since it may change
+	 * behind our back and break the math.
+	 */
+	tmp_jiffies = jiffies;
+	target_jiffies = timestamp_jiffies +
+			 msecs_to_jiffies_timeout(to_wait_ms);
+
+	while (time_after(target_jiffies, tmp_jiffies)) {
+		remaining_jiffies = target_jiffies - tmp_jiffies;
+		tsleep(&tmp_jiffies, PWAIT, "wrmfj", remaining_jiffies);
+		tmp_jiffies = jiffies;
+	}
+}
+#endif
 
 static inline bool
 __i915_request_irq_complete(const struct i915_request *rq)
 {
+	STUB();
+	return false;
+#ifdef notyet
 	struct intel_engine_cs *engine = rq->engine;
 	u32 seqno;
 
@@ -3795,6 +4031,7 @@ __i915_request_irq_complete(const struct i915_request *rq)
 	}
 
 	return false;
+#endif
 }
 
 void i915_memcpy_init_early(struct drm_i915_private *dev_priv);
@@ -3817,9 +4054,11 @@ bool i915_memcpy_from_wc(void *dst, const void *src, unsigned long len);
 	i915_memcpy_from_wc(NULL, NULL, 0)
 
 /* i915_mm.c */
+#ifdef notyet
 int remap_io_mapping(struct vm_area_struct *vma,
 		     unsigned long addr, unsigned long pfn, unsigned long size,
 		     struct io_mapping *iomap);
+#endif
 
 static inline int intel_hws_csb_write_index(struct drm_i915_private *i915)
 {
