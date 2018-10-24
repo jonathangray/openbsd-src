@@ -11409,12 +11409,12 @@ void intel_check_page_flip(struct drm_device *dev, int pipe)
 	work = intel_crtc->unpin_work;
 	if (work != NULL && __intel_pageflip_stall_check(dev, crtc)) {
 		WARN_ONCE(1, "Kicking stuck page flip: queued at %d, now %d\n",
-			 work->flip_queued_vblank, drm_vblank_count(dev, pipe));
+			 work->flip_queued_vblank, (uint32_t)drm_crtc_vblank_count(crtc));
 		page_flip_completed(intel_crtc);
 		work = NULL;
 	}
 	if (work != NULL &&
-	    drm_vblank_count(dev, pipe) - work->flip_queued_vblank > 1)
+	    ((uint32_t)drm_crtc_vblank_count(crtc)) - work->flip_queued_vblank > 1)
 		intel_queue_rps_boost_for_request(dev, work->flip_queued_req);
 	spin_unlock(&dev->event_lock);
 }
@@ -11422,7 +11422,8 @@ void intel_check_page_flip(struct drm_device *dev, int pipe)
 static int intel_crtc_page_flip(struct drm_crtc *crtc,
 				struct drm_framebuffer *fb,
 				struct drm_pending_vblank_event *event,
-				uint32_t page_flip_flags)
+				uint32_t page_flip_flags,
+				struct drm_modeset_acquire_ctx *ctx)
 {
 	struct drm_device *dev = crtc->dev;
 	struct drm_i915_private *dev_priv = dev->dev_private;
@@ -13233,7 +13234,11 @@ static int intel_atomic_commit(struct drm_device *dev,
 	if (ret)
 		return ret;
 
-	drm_atomic_helper_swap_state(dev, state);
+	ret = drm_atomic_helper_swap_state(state, true);
+	if (ret) {
+		drm_atomic_helper_cleanup_planes(dev, state);
+		return ret;
+	}
 
 	for_each_new_crtc_in_state(state, crtc, crtc_state, i) {
 		struct intel_crtc *intel_crtc = to_intel_crtc(crtc);
@@ -13575,7 +13580,8 @@ intel_check_primary_plane(struct drm_plane *plane,
 		can_position = true;
 	}
 
-	return drm_atomic_helper_check_plane_state(&state->base, crtc, 
+	return drm_atomic_helper_check_plane_state(&state->base,
+						   &crtc_state->base, 
 					           min_scale, max_scale,
 					           can_position, true);
 }
@@ -13753,18 +13759,17 @@ intel_check_cursor_plane(struct drm_plane *plane,
 			 struct intel_crtc_state *crtc_state,
 			 struct intel_plane_state *state)
 {
-	struct drm_crtc *crtc = crtc_state->base.crtc;
 	struct drm_framebuffer *fb = state->base.fb;
 	struct drm_i915_gem_object *obj = intel_fb_obj(fb);
 	enum pipe pipe = to_intel_plane(plane)->pipe;
 	unsigned stride;
 	int ret;
 
-	ret = drm_plane_helper_check_update(plane, crtc, fb, &state->src,
-					    &state->dst, &state->clip,
-					    DRM_PLANE_HELPER_NO_SCALING,
-					    DRM_PLANE_HELPER_NO_SCALING,
-					    true, true, &state->visible);
+	ret = drm_atomic_helper_check_plane_state(&state->base,
+						  &crtc_state->base,
+						  DRM_PLANE_HELPER_NO_SCALING,
+						  DRM_PLANE_HELPER_NO_SCALING,
+						  true, true);
 	if (ret)
 		return ret;
 
@@ -14487,7 +14492,7 @@ static int intel_framebuffer_init(struct drm_device *dev,
 static struct drm_framebuffer *
 intel_user_framebuffer_create(struct drm_device *dev,
 			      struct drm_file *filp,
-			      struct drm_mode_fb_cmd2 *user_mode_cmd)
+			      const struct drm_mode_fb_cmd2 *user_mode_cmd)
 {
 	struct drm_i915_gem_object *obj;
 	struct drm_mode_fb_cmd2 mode_cmd = *user_mode_cmd;
