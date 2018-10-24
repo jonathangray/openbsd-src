@@ -1058,6 +1058,7 @@ intel_plane_init(struct drm_device *dev, enum pipe pipe, int plane)
 	struct intel_plane_state *state;
 	unsigned long possible_crtcs;
 	const uint32_t *plane_formats;
+	unsigned int supported_rotations;
 	int num_plane_formats;
 	int ret;
 
@@ -1130,6 +1131,19 @@ intel_plane_init(struct drm_device *dev, enum pipe pipe, int plane)
 		return -ENODEV;
 	}
 
+	if (INTEL_INFO(dev)->gen >= 9) {
+		supported_rotations =
+			DRM_MODE_ROTATE_0 | DRM_MODE_ROTATE_90 |
+			DRM_MODE_ROTATE_180 | DRM_MODE_ROTATE_270;
+	} else if (IS_CHERRYVIEW(dev) && pipe == PIPE_B) {
+		supported_rotations =
+			DRM_MODE_ROTATE_0 | DRM_MODE_ROTATE_180 |
+			DRM_MODE_REFLECT_X;
+	} else {
+		supported_rotations =
+			DRM_MODE_ROTATE_0 | DRM_MODE_ROTATE_180;
+	}
+
 	intel_plane->pipe = pipe;
 	intel_plane->plane = plane;
 	intel_plane->frontbuffer_bit = INTEL_FRONTBUFFER_SPRITE(pipe, plane);
@@ -1154,7 +1168,9 @@ intel_plane_init(struct drm_device *dev, enum pipe pipe, int plane)
 		goto out;
 	}
 
-	intel_create_rotation_property(dev, intel_plane);
+	drm_plane_create_rotation_property(&intel_plane->base,
+					   DRM_MODE_ROTATE_0,
+					   supported_rotations);
 
 	drm_plane_helper_add(&intel_plane->base, &intel_plane_helper_funcs);
 

@@ -3226,6 +3226,7 @@ static void intel_complete_page_flips(struct drm_device *dev)
 
 static void intel_update_primary_planes(struct drm_device *dev)
 {
+#if 0
 	struct drm_crtc *crtc;
 
 	for_each_crtc(dev, crtc) {
@@ -3241,6 +3242,7 @@ static void intel_update_primary_planes(struct drm_device *dev)
 
 		drm_modeset_unlock_crtc(crtc);
 	}
+#endif
 }
 
 void intel_prepare_reset(struct drm_device *dev)
@@ -3945,9 +3947,7 @@ static void page_flip_completed(struct intel_crtc *intel_crtc)
 	intel_crtc->unpin_work = NULL;
 
 	if (work->event)
-		drm_send_vblank_event(intel_crtc->base.dev,
-				      intel_crtc->pipe,
-				      work->event);
+		drm_crtc_send_vblank_event(&intel_crtc->base, work->event);
 
 	drm_crtc_vblank_put(&intel_crtc->base);
 
@@ -11644,7 +11644,7 @@ retry:
 
 		if (ret == 0 && event) {
 			spin_lock_irq(&dev->event_lock);
-			drm_send_vblank_event(dev, pipe, event);
+			drm_crtc_send_vblank_event(crtc, event);
 			spin_unlock_irq(&dev->event_lock);
 		}
 	}

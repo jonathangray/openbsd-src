@@ -1108,9 +1108,6 @@ intel_rotation_90_or_270(unsigned int rotation)
 	return rotation & (BIT(DRM_MODE_ROTATE_90) | BIT(DRM_MODE_ROTATE_270));
 }
 
-void intel_create_rotation_property(struct drm_device *dev,
-					struct intel_plane *plane);
-
 /* shared dpll functions */
 struct intel_shared_dpll *intel_crtc_to_shared_dpll(struct intel_crtc *crtc);
 void assert_shared_dpll(struct drm_i915_private *dev_priv,
