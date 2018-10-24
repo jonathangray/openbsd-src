@@ -758,9 +758,8 @@ static void drm_atomic_crtc_print_state(struct drm_printer *p,
 static int drm_atomic_connector_check(struct drm_connector *connector,
 		struct drm_connector_state *state)
 {
-	STUB();
-	return -ENOSYS;
-#if 0
+	return 0;
+#ifdef notyet
 	struct drm_crtc_state *crtc_state;
 	struct drm_writeback_job *writeback_job = state->writeback_job;
 
