@@ -93,6 +93,9 @@ static int (* const i915_query_funcs[])(struct drm_i915_private *dev_priv,
 
 int i915_query_ioctl(struct drm_device *dev, void *data, struct drm_file *file)
 {
+	STUB();
+	return -1;
+#ifdef notyet
 	struct drm_i915_private *dev_priv = to_i915(dev);
 	struct drm_i915_query *args = data;
 	struct drm_i915_query_item __user *user_item_ptr =
@@ -131,4 +134,5 @@ int i915_query_ioctl(struct drm_device *dev, void *data, struct drm_file *file)
 	}
 
 	return 0;
+#endif
 }

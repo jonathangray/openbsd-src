@@ -972,7 +972,7 @@ void intel_psr_init(struct drm_i915_private *dev_priv)
 		dev_priv->psr.link_standby = dev_priv->vbt.psr.full_link;
 
 	INIT_WORK(&dev_priv->psr.work, intel_psr_work);
-	rw_init(&dev_priv->psr.lock);
+	rw_init(&dev_priv->psr.lock, "psrlk");
 }
 
 void intel_psr_short_pulse(struct intel_dp *intel_dp)

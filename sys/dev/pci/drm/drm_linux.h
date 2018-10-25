@@ -103,12 +103,15 @@ typedef __ptrdiff_t ptrdiff_t;
 #define __exit
 #define __deprecated
 #define __always_inline inline
+#define noinline __attribute__((noinline))
 
 #ifndef __user
 #define __user
 #endif
 
-#define CONFIG_DRM_FBDEV_OVERALLOC 0
+#define CONFIG_DRM_FBDEV_OVERALLOC	0
+#define CONFIG_DRM_I915_DEBUG		0
+#define CONFIG_DRM_I915_DEBUG_GEM	0
 
 #define __printf(x, y)
 
@@ -198,8 +201,8 @@ hweight64(uint64_t x)
 #define lower_32_bits(n)	((u32)(n))
 #define upper_32_bits(_val)	((u32)(((_val) >> 16) >> 16))
 #define DMA_BIT_MASK(n) (((n) == 64) ? ~0ULL : (1ULL<<(n)) -1)
-#define BIT(x)			(1UL << x)
-#define BIT_ULL(x)		(1ULL << x)
+#define BIT(x)			(1UL << (x))
+#define BIT_ULL(x)		(1ULL << (x))
 #define BITS_TO_LONGS(x)	howmany((x), 8 * sizeof(long))
 #define BITS_PER_BYTE		8
 #ifdef __LP64__
@@ -449,6 +452,7 @@ do {									\
 #define BUILD_BUG_ON_NOT_POWER_OF_2(x)
 #define BUILD_BUG_ON_MSG(x, y)
 #define BUILD_BUG_ON_INVALID(x)
+#define BUILD_BUG_ON_ZERO(x)		0
 
 #define WARN(condition, fmt...) ({ 					\
 	int __ret = !!(condition);					\
@@ -2065,6 +2069,9 @@ struct pci_dev {
 
 #define PCI_DEVICE_ID_ATI_RADEON_QY	PCI_PRODUCT_ATI_RADEON_QY
 
+#define PCI_SUBVENDOR_ID_REDHAT_QUMRANET	0x1af4
+#define PCI_SUBDEVICE_ID_QEMU			0x1100
+
 #define PCI_DEVFN(slot, func)	((slot) << 3 | (func))
 #define PCI_SLOT(devfn)		((devfn) >> 3)
 #define PCI_FUNC(devfn)		((devfn) & 0x7)
@@ -2245,7 +2252,7 @@ pci_dma_mapping_error(struct pci_dev *pdev, dma_addr_t dma_addr)
 	return 0;
 }
 
-#define dma_set_coherent_mask(x, y)
+#define dma_set_coherent_mask(x, y)	0
 
 #define VGA_RSRC_LEGACY_IO	0x01
 
@@ -2871,6 +2878,11 @@ void backlight_schedule_update_status(struct backlight_device *);
 #define MIPI_DCS_SET_TEAR_OFF			0x34
 #define MIPI_DCS_SET_TEAR_ON			0x35
 #define MIPI_DCS_SET_PIXEL_FORMAT		0x3a
+#define MIPI_DCS_SET_DISPLAY_BRIGHTNESS		0x51
+#define MIPI_DCS_GET_DISPLAY_BRIGHTNESS		0x52
+#define MIPI_DCS_WRITE_CONTROL_DISPLAY		0x53
+#define MIPI_DCS_GET_CONTROL_DISPLAY		0x54
+#define MIPI_DCS_WRITE_POWER_SAVE		0x55
 
 struct pwm_device;
 
@@ -3061,5 +3073,10 @@ struct hrtimer {
 #define NOTIFY_BAD	2
 
 #define might_sleep()
+#define get_random_u32()	arc4random()
+
+#define add_taint(x, y)
+#define TAINT_MACHINE_CHECK	0
+#define LOCKDEP_STILL_OK	0
 
 #endif

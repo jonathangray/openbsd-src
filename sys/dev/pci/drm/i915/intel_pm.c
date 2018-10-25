@@ -28,6 +28,7 @@
 #ifdef __linux__
 #include <linux/cpufreq.h>
 #endif
+#include <dev/pci/drm/drm_linux.h>
 #include <dev/pci/drm/drm_plane_helper.h>
 #include "i915_drv.h"
 #include "intel_drv.h"

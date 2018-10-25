@@ -24,10 +24,12 @@
 
 #ifdef __linux__
 #include <linux/types.h>
+#else
+#include <dev/pci/drm/drm_linux.h>
 #endif
 
-#include "intel_huc.h"
 #include "i915_drv.h"
+#include "intel_huc.h"
 
 void intel_huc_init_early(struct intel_huc *huc)
 {

@@ -36,6 +36,7 @@ struct drm_i915_private;
 
 #define GEM_SHOW_DEBUG() (drm_debug & DRM_UT_DRIVER)
 
+#ifdef __linux__
 #define GEM_BUG_ON(condition) do { if (unlikely((condition))) {	\
 		pr_err("%s:%d GEM_BUG_ON(%s)\n", \
 		       __func__, __LINE__, __stringify(condition)); \
@@ -44,6 +45,9 @@ struct drm_i915_private;
 		BUG(); \
 		} \
 	} while(0)
+#else
+#define GEM_BUG_ON(x) BUG_ON(x)
+#endif
 #define GEM_WARN_ON(expr) WARN_ON(expr)
 
 #define GEM_DEBUG_DECL(var) var

@@ -3855,9 +3855,9 @@ __raw_write(64, q)
 #define I915_WRITE_FW(reg__, val__) __raw_i915_write32(dev_priv, (reg__), (val__))
 #define I915_WRITE64_FW(reg__, val__) __raw_i915_write64(dev_priv, (reg__), (val__))
 #else
-#define I915_READ_FW(reg__) bus_space_read_4(dev_priv->regs->bst, dev_priv->regs->bsh, (reg__))
-#define I915_WRITE_FW(reg__, val__) bus_space_write_4(dev_priv->regs->bst, dev_priv->regs->bsh, (reg__), (val__))
-#define I915_WRITE64_FW(reg__, val__) bus_space_write_8(dev_priv->regs->bst, dev_priv->regs->bsh, (reg__), (val__))
+#define I915_READ_FW(reg__) bus_space_read_4(dev_priv->regs->bst, dev_priv->regs->bsh, (reg__.reg))
+#define I915_WRITE_FW(reg__, val__) bus_space_write_4(dev_priv->regs->bst, dev_priv->regs->bsh, (reg__.reg), (val__))
+#define I915_WRITE64_FW(reg__, val__) bus_space_write_8(dev_priv->regs->bst, dev_priv->regs->bsh, (reg__.reg), (val__))
 #endif
 #define POSTING_READ_FW(reg__) (void)I915_READ_FW(reg__)
 

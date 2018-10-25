@@ -779,6 +779,7 @@ void intel_panel_disable_backlight(const struct drm_connector_state *old_conn_st
 	if (!panel->backlight.present)
 		return;
 
+#ifdef __linux__
 	/*
 	 * Do not disable backlight on the vga_switcheroo path. When switching
 	 * away from i915, the other client may depend on i915 to handle the
@@ -789,6 +790,7 @@ void intel_panel_disable_backlight(const struct drm_connector_state *old_conn_st
 		DRM_DEBUG_DRIVER("Skipping backlight disable on vga switch\n");
 		return;
 	}
+#endif
 
 	mutex_lock(&dev_priv->backlight_lock);
 
@@ -1738,6 +1740,9 @@ cnp_setup_backlight(struct intel_connector *connector, enum pipe unused)
 static int pwm_setup_backlight(struct intel_connector *connector,
 			       enum pipe pipe)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct drm_device *dev = connector->base.dev;
 	struct intel_panel *panel = &connector->panel;
 	int retval;
@@ -1773,6 +1778,7 @@ static int pwm_setup_backlight(struct intel_connector *connector,
 	panel->backlight.enabled = panel->backlight.level != 0;
 
 	return 0;
+#endif
 }
 
 int intel_panel_setup_backlight(struct drm_connector *connector, enum pipe pipe)

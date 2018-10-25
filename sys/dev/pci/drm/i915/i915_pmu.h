@@ -11,6 +11,8 @@
 #include <linux/hrtimer.h>
 #include <linux/perf_event.h>
 #include <linux/spinlock_types.h>
+#else
+#include <dev/pci/drm/drm_linux.h>
 #endif
 #include <dev/pci/drm/i915_drm.h>
 

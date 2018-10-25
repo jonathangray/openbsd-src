@@ -22,13 +22,16 @@
  *
  */
 
+#include <dev/pci/drm/drm_linux.h>
+#include "i915_drv.h"
 #include "i915_vma.h"
 
-#include "i915_drv.h"
 #include "intel_ringbuffer.h"
 #include "intel_frontbuffer.h"
 
+#ifdef notyet
 #include <dev/pci/drm/drm_gem.h>
+#endif
 
 #if IS_ENABLED(CONFIG_DRM_I915_ERRLOG_GEM) && IS_ENABLED(CONFIG_DRM_DEBUG_MM)
 

@@ -26,6 +26,8 @@
 
 #ifdef __linux__
 #include <linux/types.h>
+#else
+#include <dev/pci/drm/drm_linux.h>
 #endif
 
 struct intel_renderstate_rodata {

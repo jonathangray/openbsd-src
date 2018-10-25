@@ -29,6 +29,8 @@
 #include <linux/mutex.h>
 #include <linux/relay.h>
 #include <linux/workqueue.h>
+#else
+#include <dev/pci/drm/drm_linux.h>
 #endif
 
 #include "intel_guc_fwif.h"

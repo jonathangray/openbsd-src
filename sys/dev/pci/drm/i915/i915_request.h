@@ -27,6 +27,10 @@
 
 #ifdef __linux__
 #include <linux/dma-fence.h>
+#else
+#include <dev/pci/drm/drm_linux.h>
+#include <dev/pci/drm/drm_linux_rbtree.h>
+#include <dev/pci/drm/linux_rcupdate.h>
 #endif
 
 #include "i915_gem.h"

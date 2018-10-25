@@ -22,6 +22,7 @@
  *
  *
  */
+#include <dev/pci/drm/drmP.h>
 #include <dev/pci/drm/drm_edid.h>
 #include <dev/pci/drm/drm_atomic_helper.h>
 #include <dev/pci/drm/drm_dp_dual_mode_helper.h>

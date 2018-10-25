@@ -69,11 +69,15 @@ static int
 insert_mappable_node(struct i915_ggtt *ggtt,
                      struct drm_mm_node *node, u32 size)
 {
+	STUB();
+	return -1;
+#ifdef notyet
 	memset(node, 0, sizeof(*node));
 	return drm_mm_insert_node_in_range(&ggtt->vm.mm, node,
 					   size, 0, I915_COLOR_UNEVICTABLE,
 					   0, ggtt->mappable_end,
 					   DRM_MM_INSERT_LOW);
+#endif
 }
 
 static void
@@ -272,7 +276,9 @@ i915_gem_get_aperture_ioctl(struct drm_device *dev, void *data,
 
 static int i915_gem_object_get_pages_phys(struct drm_i915_gem_object *obj)
 {
+#ifdef __linux__
 	struct address_space *mapping = obj->base.filp->f_mapping;
+#endif
 	drm_dma_handle_t *phys;
 	struct sg_table *st;
 	struct scatterlist *sg;
@@ -298,18 +304,32 @@ static int i915_gem_object_get_pages_phys(struct drm_i915_gem_object *obj)
 		struct vm_page *page;
 		char *src;
 
+#ifdef __linux__
 		page = shmem_read_mapping_page(mapping, i);
 		if (IS_ERR(page)) {
 			err = PTR_ERR(page);
 			goto err_phys;
 		}
+#else
+		struct pglist plist;
+		TAILQ_INIT(&plist);
+		if (uvm_objwire(obj->base.uao, i * PAGE_SIZE, (i + 1) * PAGE_SIZE, &plist)) {
+			err = -ENOMEM;
+			goto err_phys;
+		}
+		page = TAILQ_FIRST(&plist);
+#endif
 
 		src = kmap_atomic(page);
 		memcpy(vaddr, src, PAGE_SIZE);
 		drm_clflush_virt_range(vaddr, PAGE_SIZE);
 		kunmap_atomic(src);
 
+#ifdef __linux__
 		put_page(page);
+#else
+		uvm_objunwire(obj->base.uao, i * PAGE_SIZE, (i + 1) * PAGE_SIZE);
+#endif
 		vaddr += PAGE_SIZE;
 	}
 
@@ -379,7 +399,9 @@ i915_gem_object_put_pages_phys(struct drm_i915_gem_object *obj,
 	__i915_gem_object_release_shmem(obj, pages, false);
 
 	if (obj->mm.dirty) {
+#ifdef __linux__
 		struct address_space *mapping = obj->base.filp->f_mapping;
+#endif
 		char *vaddr = obj->phys_handle->vaddr;
 		int i;
 
@@ -387,9 +409,17 @@ i915_gem_object_put_pages_phys(struct drm_i915_gem_object *obj,
 			struct vm_page *page;
 			char *dst;
 
+#ifdef __linux__
 			page = shmem_read_mapping_page(mapping, i);
 			if (IS_ERR(page))
 				continue;
+#else
+			struct pglist plist;
+			TAILQ_INIT(&plist);
+			if (uvm_objwire(obj->base.uao, i * PAGE_SIZE, (i + 1) * PAGE_SIZE, &plist))
+				continue;
+			page = TAILQ_FIRST(&plist);
+#endif
 
 			dst = kmap_atomic(page);
 			drm_clflush_virt_range(vaddr, PAGE_SIZE);
@@ -397,9 +427,13 @@ i915_gem_object_put_pages_phys(struct drm_i915_gem_object *obj,
 			kunmap_atomic(dst);
 
 			set_page_dirty(page);
+#ifdef __linux__
 			if (obj->mm.madv == I915_MADV_WILLNEED)
 				mark_page_accessed(page);
 			put_page(page);
+#else
+			uvm_objunwire(obj->base.uao, i * PAGE_SIZE, (i + 1) * PAGE_SIZE);
+#endif
 			vaddr += PAGE_SIZE;
 		}
 		obj->mm.dirty = false;
@@ -428,7 +462,7 @@ static const struct drm_i915_gem_object_ops i915_gem_object_ops;
 int i915_gem_object_unbind(struct drm_i915_gem_object *obj)
 {
 	struct i915_vma *vma;
-	LIST_HEAD(still_in_list);
+	DRM_LIST_HEAD(still_in_list);
 	int ret;
 
 	lockdep_assert_held(&obj->base.dev->struct_mutex);
@@ -513,6 +547,9 @@ i915_gem_object_wait_reservation(struct reservation_object *resv,
 				 long timeout,
 				 struct intel_rps_client *rps_client)
 {
+	STUB();
+	return -1;
+#ifdef notyet
 	unsigned int seq = __read_seqcount_begin(&resv->seq);
 	struct dma_fence *excl;
 	bool prune_fences = false;
@@ -575,11 +612,14 @@ i915_gem_object_wait_reservation(struct reservation_object *resv,
 	}
 
 	return timeout;
+#endif
 }
 
 static void __fence_set_priority(struct dma_fence *fence,
 				 const struct i915_sched_attr *attr)
 {
+	STUB();
+#ifdef notyet
 	struct i915_request *rq;
 	struct intel_engine_cs *engine;
 
@@ -595,11 +635,14 @@ static void __fence_set_priority(struct dma_fence *fence,
 		engine->schedule(rq, attr);
 	rcu_read_unlock();
 	local_bh_enable(); /* kick the tasklets if queues were reprioritised */
+#endif
 }
 
 static void fence_set_priority(struct dma_fence *fence,
 			       const struct i915_sched_attr *attr)
 {
+	STUB();
+#ifdef notyet
 	/* Recurse once into a fence-array */
 	if (dma_fence_is_array(fence)) {
 		struct dma_fence_array *array = to_dma_fence_array(fence);
@@ -610,6 +653,7 @@ static void fence_set_priority(struct dma_fence *fence,
 	} else {
 		__fence_set_priority(fence, attr);
 	}
+#endif
 }
 
 int
@@ -704,13 +748,21 @@ i915_gem_phys_pwrite(struct drm_i915_gem_object *obj,
 
 void *i915_gem_object_alloc(struct drm_i915_private *dev_priv)
 {
+#ifdef __linux__
 	return kmem_cache_zalloc(dev_priv->objects, GFP_KERNEL);
+#else
+	return pool_get(dev_priv->objects, PR_WAITOK | PR_ZERO);
+#endif
 }
 
 void i915_gem_object_free(struct drm_i915_gem_object *obj)
 {
 	struct drm_i915_private *dev_priv = to_i915(obj->base.dev);
+#ifdef __linux__
 	kmem_cache_free(dev_priv->objects, obj);
+#else
+	pool_put(dev_priv->objects, obj);
+#endif
 }
 
 static int
@@ -748,7 +800,7 @@ i915_gem_dumb_create(struct drm_file *file,
 		     struct drm_mode_create_dumb *args)
 {
 	/* have to work out size/pitch and return them */
-	args->pitch = ALIGN(args->width * DIV_ROUND_UP(args->bpp, 8), 64);
+	args->pitch = roundup2(args->width * DIV_ROUND_UP(args->bpp, 8), 64);
 	args->size = args->pitch * args->height;
 	return i915_gem_create(file, to_i915(dev),
 			       args->size, &args->handle);
@@ -867,7 +919,7 @@ __copy_to_user_swizzled(char __user *cpu_vaddr,
 	int ret, cpu_offset = 0;
 
 	while (length > 0) {
-		int cacheline_end = ALIGN(gpu_offset + 1, 64);
+		int cacheline_end = roundup2(gpu_offset + 1, 64);
 		int this_length = min(cacheline_end - gpu_offset, length);
 		int swizzled_gpu_offset = gpu_offset ^ 64;
 
@@ -893,7 +945,7 @@ __copy_from_user_swizzled(char *gpu_vaddr, int gpu_offset,
 	int ret, cpu_offset = 0;
 
 	while (length > 0) {
-		int cacheline_end = ALIGN(gpu_offset + 1, 64);
+		int cacheline_end = roundup2(gpu_offset + 1, 64);
 		int this_length = min(cacheline_end - gpu_offset, length);
 		int swizzled_gpu_offset = gpu_offset ^ 64;
 

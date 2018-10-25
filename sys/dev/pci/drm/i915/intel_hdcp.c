@@ -747,7 +747,7 @@ int intel_hdcp_init(struct intel_connector *connector,
 		return ret;
 
 	connector->hdcp_shim = hdcp_shim;
-	rw_init(&connector->hdcp_mutex);
+	rw_init(&connector->hdcp_mutex, "hdcpm");
 	INIT_DELAYED_WORK(&connector->hdcp_check_work, intel_hdcp_check_work);
 	INIT_WORK(&connector->hdcp_prop_work, intel_hdcp_prop_work);
 	return 0;
