@@ -468,7 +468,7 @@ void intel_display_crc_init(struct drm_i915_private *dev_priv)
 	for_each_pipe(dev_priv, pipe) {
 		struct intel_pipe_crc *pipe_crc = &dev_priv->pipe_crc[pipe];
 
-		spin_lock_init(&pipe_crc->lock);
+		mtx_init(&pipe_crc->lock);
 	}
 }
 

@@ -4686,7 +4686,7 @@ frontbuffer_retire(struct i915_gem_active *active, struct i915_request *request)
 void i915_gem_object_init(struct drm_i915_gem_object *obj,
 			  const struct drm_i915_gem_object_ops *ops)
 {
-	mutex_init(&obj->mm.lock);
+	rw_init(&obj->mm.lock);
 
 	INIT_LIST_HEAD(&obj->vma_list);
 	INIT_LIST_HEAD(&obj->lut_list);
@@ -4702,7 +4702,7 @@ void i915_gem_object_init(struct drm_i915_gem_object *obj,
 
 	obj->mm.madv = I915_MADV_WILLNEED;
 	INIT_RADIX_TREE(&obj->mm.get_page.radix, GFP_KERNEL | __GFP_NOWARN);
-	mutex_init(&obj->mm.get_page.lock);
+	rw_init(&obj->mm.get_page.lock);
 
 	i915_gem_info_add_obj(to_i915(obj->base.dev), obj->base.size);
 }
@@ -5685,9 +5685,9 @@ i915_gem_load_init_fences(struct drm_i915_private *dev_priv)
 
 static void i915_gem_init__mm(struct drm_i915_private *i915)
 {
-	spin_lock_init(&i915->mm.object_stat_lock);
-	spin_lock_init(&i915->mm.obj_lock);
-	spin_lock_init(&i915->mm.free_lock);
+	mtx_init(&i915->mm.object_stat_lock);
+	mtx_init(&i915->mm.obj_lock);
+	mtx_init(&i915->mm.free_lock);
 
 	init_llist_head(&i915->mm.free_list);
 
@@ -5747,7 +5747,7 @@ int i915_gem_init_early(struct drm_i915_private *dev_priv)
 
 	atomic_set(&dev_priv->mm.bsd_engine_dispatch_index, 0);
 
-	spin_lock_init(&dev_priv->fb_tracking.lock);
+	mtx_init(&dev_priv->fb_tracking.lock);
 
 	err = i915_gemfs_init(dev_priv);
 	if (err)
@@ -5867,7 +5867,7 @@ int i915_gem_open(struct drm_i915_private *i915, struct drm_file *file)
 	file_priv->dev_priv = i915;
 	file_priv->file = file;
 
-	spin_lock_init(&file_priv->mm.lock);
+	mtx_init(&file_priv->mm.lock);
 	INIT_LIST_HEAD(&file_priv->mm.request_list);
 
 	file_priv->bsd_engine = -1;

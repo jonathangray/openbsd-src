@@ -955,7 +955,7 @@ guc_client_alloc(struct drm_i915_private *dev_priv,
 	client->engines = engines;
 	client->priority = priority;
 	client->doorbell_id = GUC_DOORBELL_INVALID;
-	spin_lock_init(&client->wq_lock);
+	mtx_init(&client->wq_lock);
 
 	ret = ida_simple_get(&guc->stage_ids, 0, GUC_MAX_STAGE_DESCRIPTORS,
 			     GFP_KERNEL);

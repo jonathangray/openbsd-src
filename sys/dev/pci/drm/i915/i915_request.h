@@ -417,7 +417,7 @@ i915_gem_active_set(struct i915_gem_active *active,
 static inline void
 i915_gem_active_set_retire_fn(struct i915_gem_active *active,
 			      i915_gem_retire_fn fn,
-			      struct mutex *mutex)
+			      struct rwlock *mutex)
 {
 	lockdep_assert_held(mutex);
 	active->retire = fn ?: i915_gem_retire_noop;
@@ -445,7 +445,7 @@ __i915_gem_active_peek(const struct i915_gem_active *active)
  * must hold struct_mutex.
  */
 static inline struct i915_request *
-i915_gem_active_raw(const struct i915_gem_active *active, struct mutex *mutex)
+i915_gem_active_raw(const struct i915_gem_active *active, struct rwlock *mutex)
 {
 	return rcu_dereference_protected(active->request,
 					 lockdep_is_held(mutex));
@@ -460,7 +460,7 @@ i915_gem_active_raw(const struct i915_gem_active *active, struct mutex *mutex)
  * for the caller, so the caller must hold struct_mutex.
  */
 static inline struct i915_request *
-i915_gem_active_peek(const struct i915_gem_active *active, struct mutex *mutex)
+i915_gem_active_peek(const struct i915_gem_active *active, struct rwlock *mutex)
 {
 	struct i915_request *request;
 
@@ -479,7 +479,7 @@ i915_gem_active_peek(const struct i915_gem_active *active, struct mutex *mutex)
  * if the active tracker is idle. The caller must hold struct_mutex.
  */
 static inline struct i915_request *
-i915_gem_active_get(const struct i915_gem_active *active, struct mutex *mutex)
+i915_gem_active_get(const struct i915_gem_active *active, struct rwlock *mutex)
 {
 	return i915_request_get(i915_gem_active_peek(active, mutex));
 }
@@ -682,7 +682,7 @@ i915_gem_active_wait(const struct i915_gem_active *active, unsigned int flags)
  */
 static inline int __must_check
 i915_gem_active_retire(struct i915_gem_active *active,
-		       struct mutex *mutex)
+		       struct rwlock *mutex)
 {
 	struct i915_request *request;
 	long ret;

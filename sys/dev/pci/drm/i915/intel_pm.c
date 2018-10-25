@@ -9639,8 +9639,8 @@ int intel_freq_opcode(struct drm_i915_private *dev_priv, int val)
 
 void intel_pm_setup(struct drm_i915_private *dev_priv)
 {
-	mutex_init(&dev_priv->pcu_lock);
-	mutex_init(&dev_priv->gt_pm.rps.power.mutex);
+	rw_init(&dev_priv->pcu_lock);
+	rw_init(&dev_priv->gt_pm.rps.power.mutex);
 
 	atomic_set(&dev_priv->gt_pm.rps.num_waiters, 0);
 

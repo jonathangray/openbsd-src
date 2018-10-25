@@ -384,7 +384,7 @@ static void guc_log_unmap(struct intel_guc_log *log)
 
 void intel_guc_log_init_early(struct intel_guc_log *log)
 {
-	mutex_init(&log->relay.lock);
+	rw_init(&log->relay.lock);
 	INIT_WORK(&log->relay.flush_work, capture_logs_work);
 }
 

@@ -2851,7 +2851,7 @@ int intel_power_domains_init(struct drm_i915_private *dev_priv)
 
 	BUILD_BUG_ON(POWER_DOMAIN_NUM > 64);
 
-	mutex_init(&power_domains->lock);
+	rw_init(&power_domains->lock);
 
 	/*
 	 * The enabling order will be from lower to higher indexed wells,

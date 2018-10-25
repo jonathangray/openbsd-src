@@ -3570,14 +3570,14 @@ void i915_perf_init(struct drm_i915_private *dev_priv)
 		init_waitqueue_head(&dev_priv->perf.oa.poll_wq);
 
 		INIT_LIST_HEAD(&dev_priv->perf.streams);
-		mutex_init(&dev_priv->perf.lock);
-		spin_lock_init(&dev_priv->perf.oa.oa_buffer.ptr_lock);
+		rw_init(&dev_priv->perf.lock);
+		mtx_init(&dev_priv->perf.oa.oa_buffer.ptr_lock);
 
 		oa_sample_rate_hard_limit = 1000 *
 			(INTEL_INFO(dev_priv)->cs_timestamp_frequency_khz / 2);
 		dev_priv->perf.sysctl_header = register_sysctl_table(dev_root);
 
-		mutex_init(&dev_priv->perf.metrics_lock);
+		rw_init(&dev_priv->perf.metrics_lock);
 		idr_init(&dev_priv->perf.metrics_idr);
 
 		dev_priv->perf.initialized = true;

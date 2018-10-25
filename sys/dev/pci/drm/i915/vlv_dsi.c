@@ -847,9 +847,11 @@ static void intel_dsi_pre_enable(struct intel_encoder *encoder,
 	if (!IS_GEMINILAKE(dev_priv))
 		intel_dsi_prepare(encoder, pipe_config);
 
+#ifdef notyet
 	/* Power on, try both CRC pmic gpio and VBT */
 	if (intel_dsi->gpio_panel)
 		gpiod_set_value_cansleep(intel_dsi->gpio_panel, 1);
+#endif
 	intel_dsi_vbt_exec_sequence(intel_dsi, MIPI_SEQ_POWER_ON);
 	intel_dsi_msleep(intel_dsi, intel_dsi->panel_on_delay);
 
@@ -1007,8 +1009,10 @@ static void intel_dsi_post_disable(struct intel_encoder *encoder,
 	/* Power off, try both CRC pmic gpio and VBT */
 	intel_dsi_msleep(intel_dsi, intel_dsi->panel_off_delay);
 	intel_dsi_vbt_exec_sequence(intel_dsi, MIPI_SEQ_POWER_OFF);
+#ifdef notyet
 	if (intel_dsi->gpio_panel)
 		gpiod_set_value_cansleep(intel_dsi->gpio_panel, 0);
+#endif
 
 	/*
 	 * FIXME As we do with eDP, just make a note of the time here
@@ -1656,11 +1660,13 @@ static void intel_dsi_connector_destroy(struct drm_connector *connector)
 
 static void intel_dsi_encoder_destroy(struct drm_encoder *encoder)
 {
+#ifdef notyet
 	struct intel_dsi *intel_dsi = enc_to_intel_dsi(encoder);
 
 	/* dispose of the gpios */
 	if (intel_dsi->gpio_panel)
 		gpiod_put(intel_dsi->gpio_panel);
+#endif
 
 	intel_encoder_destroy(encoder);
 }
@@ -1820,6 +1826,7 @@ void vlv_dsi_init(struct drm_i915_private *dev_priv)
 		goto err;
 	}
 
+#ifdef notyet
 	/*
 	 * In case of BYT with CRC PMIC, we need to use GPIO for
 	 * Panel control.
@@ -1834,6 +1841,7 @@ void vlv_dsi_init(struct drm_i915_private *dev_priv)
 			intel_dsi->gpio_panel = NULL;
 		}
 	}
+#endif
 
 	intel_encoder->type = INTEL_OUTPUT_DSI;
 	intel_encoder->power_domain = POWER_DOMAIN_PORT_DSI;

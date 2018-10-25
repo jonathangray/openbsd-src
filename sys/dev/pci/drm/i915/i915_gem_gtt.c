@@ -385,7 +385,7 @@ static gen6_pte_t iris_pte_encode(dma_addr_t addr,
 static void stash_init(struct pagestash *stash)
 {
 	pagevec_init(&stash->pvec);
-	spin_lock_init(&stash->lock);
+	mtx_init(&stash->lock);
 }
 
 static struct vm_page *stash_pop_page(struct pagestash *stash)
@@ -543,7 +543,7 @@ static void i915_address_space_init(struct i915_address_space *vm,
 	 * Do a dummy acquire now under fs_reclaim so that any allocation
 	 * attempt holding the lock is immediately reported by lockdep.
 	 */
-	mutex_init(&vm->mutex);
+	rw_init(&vm->mutex);
 	i915_gem_shrinker_taints_mutex(&vm->mutex);
 
 	GEM_BUG_ON(!vm->total);

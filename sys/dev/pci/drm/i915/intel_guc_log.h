@@ -71,7 +71,7 @@ struct intel_guc_log {
 		struct workqueue_struct *flush_wq;
 		struct work_struct flush_work;
 		struct rchan *channel;
-		struct mutex lock;
+		struct rwlock lock;
 		u32 full_count;
 	} relay;
 	/* logging related stats */

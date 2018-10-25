@@ -1078,7 +1078,7 @@ static u32 *copy_batch(struct drm_i915_gem_object *dst_obj,
 		if (!IS_ERR(src)) {
 			i915_memcpy_from_wc(dst,
 					    src + batch_start_offset,
-					    ALIGN(batch_len, 16));
+					    roundup2(batch_len, 16));
 			i915_gem_object_unpin_map(src_obj);
 		}
 	}
@@ -1097,7 +1097,7 @@ static u32 *copy_batch(struct drm_i915_gem_object *dst_obj,
 		 */
 		if (dst_needs_clflush & CLFLUSH_BEFORE)
 			batch_len = roundup(batch_len,
-					    boot_cpu_data.x86_clflush_size);
+					    curcpu()->ci_cflushsz);
 
 		ptr = dst;
 		for (n = batch_start_offset >> PAGE_SHIFT; batch_len; n++) {

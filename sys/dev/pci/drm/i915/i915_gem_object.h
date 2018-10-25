@@ -187,7 +187,7 @@ struct drm_i915_gem_object {
 	unsigned int pin_global;
 
 	struct {
-		struct mutex lock; /* protects the pages and their use */
+		struct rwlock lock; /* protects the pages and their use */
 		atomic_t pages_pin_count;
 
 		struct sg_table *pages;
@@ -229,7 +229,7 @@ struct drm_i915_gem_object {
 #ifdef notyet
 			struct radix_tree_root radix;
 #endif
-			struct mutex lock; /* protects this cache */
+			struct rwlock lock; /* protects this cache */
 		} get_page;
 
 		/**

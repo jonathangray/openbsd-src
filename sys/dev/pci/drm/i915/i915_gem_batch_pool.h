@@ -10,6 +10,8 @@
 #ifdef __linux__
 #include <linux/types.h>
 #endif
+#include <dev/pci/drm/drm_linux.h>
+#include <dev/pci/drm/drm_linux_list.h>
 
 struct intel_engine_cs;
 

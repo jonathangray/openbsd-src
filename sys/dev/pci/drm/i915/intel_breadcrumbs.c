@@ -815,8 +815,8 @@ int intel_engine_init_breadcrumbs(struct intel_engine_cs *engine)
 	struct intel_breadcrumbs *b = &engine->breadcrumbs;
 	struct task_struct *tsk;
 
-	spin_lock_init(&b->rb_lock);
-	spin_lock_init(&b->irq_lock);
+	mtx_init(&b->rb_lock);
+	mtx_init(&b->irq_lock);
 
 	timer_setup(&b->fake_irq, intel_breadcrumbs_fake_irq, 0);
 	timer_setup(&b->hangcheck, intel_breadcrumbs_hangcheck, 0);

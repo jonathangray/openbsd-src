@@ -378,7 +378,7 @@ int i915_gem_init_stolen(struct drm_i915_private *dev_priv)
 	resource_size_t reserved_base, stolen_top;
 	resource_size_t reserved_total, reserved_size;
 
-	mutex_init(&dev_priv->mm.stolen_lock);
+	rw_init(&dev_priv->mm.stolen_lock);
 
 	if (intel_vgpu_active(dev_priv)) {
 		DRM_INFO("iGVT-g active, disabling use of stolen memory\n");

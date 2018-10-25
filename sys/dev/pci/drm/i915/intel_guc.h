@@ -85,7 +85,7 @@ struct intel_guc {
 	} send_regs;
 
 	/* To serialize the intel_guc_send actions */
-	struct mutex send_mutex;
+	struct rwlock send_mutex;
 
 	/* GuC's FW specific send function */
 	int (*send)(struct intel_guc *guc, const u32 *data, u32 len,

@@ -420,7 +420,7 @@ struct intel_connector {
 	struct work_struct modeset_retry_work;
 
 	const struct intel_hdcp_shim *hdcp_shim;
-	struct mutex hdcp_mutex;
+	struct rwlock hdcp_mutex;
 	uint64_t hdcp_value; /* protected by hdcp_mutex */
 	struct delayed_work hdcp_check_work;
 	struct work_struct hdcp_prop_work;

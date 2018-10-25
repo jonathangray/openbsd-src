@@ -900,15 +900,15 @@ static int i915_driver_init_early(struct drm_i915_private *dev_priv,
 	BUILD_BUG_ON(INTEL_MAX_PLATFORMS >
 		     sizeof(device_info->platform_mask) * BITS_PER_BYTE);
 	BUG_ON(device_info->gen > sizeof(device_info->gen_mask) * BITS_PER_BYTE);
-	spin_lock_init(&dev_priv->irq_lock);
-	spin_lock_init(&dev_priv->gpu_error.lock);
-	mutex_init(&dev_priv->backlight_lock);
-	spin_lock_init(&dev_priv->uncore.lock);
+	mtx_init(&dev_priv->irq_lock);
+	mtx_init(&dev_priv->gpu_error.lock);
+	rw_init(&dev_priv->backlight_lock);
+	mtx_init(&dev_priv->uncore.lock);
 
-	mutex_init(&dev_priv->sb_lock);
-	mutex_init(&dev_priv->av_mutex);
-	mutex_init(&dev_priv->wm.wm_mutex);
-	mutex_init(&dev_priv->pps_mutex);
+	rw_init(&dev_priv->sb_lock);
+	rw_init(&dev_priv->av_mutex);
+	rw_init(&dev_priv->wm.wm_mutex);
+	rw_init(&dev_priv->pps_mutex);
 
 	i915_memcpy_init_early(dev_priv);
 

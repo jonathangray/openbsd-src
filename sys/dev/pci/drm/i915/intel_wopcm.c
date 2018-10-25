@@ -177,7 +177,7 @@ int intel_wopcm_init(struct intel_wopcm *wopcm)
 		return -E2BIG;
 	}
 
-	guc_wopcm_base = ALIGN(huc_fw_size + WOPCM_RESERVED_SIZE,
+	guc_wopcm_base = roundup2(huc_fw_size + WOPCM_RESERVED_SIZE,
 			       GUC_WOPCM_OFFSET_ALIGNMENT);
 	if ((guc_wopcm_base + ctx_rsvd) >= wopcm->size) {
 		DRM_ERROR("GuC WOPCM base (%uKiB) is too big.\n",

@@ -202,6 +202,11 @@ hweight64(uint64_t x)
 #define BIT_ULL(x)		(1ULL << x)
 #define BITS_TO_LONGS(x)	howmany((x), 8 * sizeof(long))
 #define BITS_PER_BYTE		8
+#ifdef __LP64__
+#define BITS_PER_LONG		64
+#else
+#define BITS_PER_LONG		32
+#endif
 
 #define DECLARE_BITMAP(x, y)	unsigned long x[BITS_TO_LONGS(y)];
 #define bitmap_empty(p, n)	(find_first_bit(p, n) == n)
@@ -1147,6 +1152,8 @@ ktime_get(void)
 	return tv;
 }
 
+#define ktime_get_raw(x) ktime_get(x)
+
 static inline struct timeval
 ktime_get_monotonic_offset(void)
 {
@@ -1215,6 +1222,12 @@ static inline int64_t
 ktime_us_delta(struct timeval a, struct timeval b)
 {
 	return ktime_to_us(ktime_sub(a, b));
+}
+
+static inline bool
+ktime_after(const struct timeval a, const struct timeval b)
+{
+	return timercmp(&a, &b, >);
 }
 
 #define ktime_mono_to_real(x) (x)
@@ -1633,6 +1646,12 @@ dma_fence_release(struct kref *ref)
 }
 
 static inline void
+dma_fence_free(struct dma_fence *fence)
+{
+	free(fence, M_DRM, 0);
+}
+
+static inline void
 dma_fence_put(struct dma_fence *fence)
 {
 	if (fence)
@@ -1693,6 +1712,13 @@ dma_fence_is_signaled(struct dma_fence *fence)
 	}
 
 	return false;
+}
+
+static inline long
+dma_fence_default_wait(struct dma_fence *fence, bool intr, signed long timeout)
+{
+	STUB();
+	return -ENOSYS;
 }
 
 static inline long
@@ -3029,5 +3055,11 @@ struct pmu {
 
 struct hrtimer {
 };
+
+#define NOTIFY_DONE	0
+#define NOTIFY_OK	1
+#define NOTIFY_BAD	2
+
+#define might_sleep()
 
 #endif

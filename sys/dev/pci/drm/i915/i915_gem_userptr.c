@@ -180,7 +180,7 @@ i915_mmu_notifier_create(struct mm_struct *mm)
 	if (mn == NULL)
 		return ERR_PTR(-ENOMEM);
 
-	spin_lock_init(&mn->lock);
+	mtx_init(&mn->lock);
 	mn->mn.ops = &i915_gem_userptr_notifier;
 	mn->objects = RB_ROOT_CACHED;
 	mn->wq = alloc_workqueue("i915-userptr-release",
@@ -846,7 +846,7 @@ i915_gem_userptr_ioctl(struct drm_device *dev,
 
 int i915_gem_init_userptr(struct drm_i915_private *dev_priv)
 {
-	mutex_init(&dev_priv->mm_lock);
+	rw_init(&dev_priv->mm_lock);
 	hash_init(dev_priv->mm_structs);
 
 	dev_priv->mm.userptr_wq =

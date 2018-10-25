@@ -60,6 +60,9 @@
 #endif
 #include <dev/pci/drm/drm_cache.h>
 
+struct inteldrm_softc;
+#define drm_i915_private inteldrm_softc
+
 #include "i915_params.h"
 #include "i915_reg.h"
 #include "i915_utils.h"
@@ -462,8 +465,6 @@ struct i915_hotplug {
 	 I915_GEM_DOMAIN_INSTRUCTION | \
 	 I915_GEM_DOMAIN_VERTEX)
 
-struct inteldrm_softc;
-#define drm_i915_private inteldrm_softc
 struct i915_mm_struct;
 struct i915_mmu_object;
 
