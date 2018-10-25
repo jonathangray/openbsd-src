@@ -1239,6 +1239,14 @@ ktime_after(const struct timeval a, const struct timeval b)
 
 #define do_gettimeofday(tv) getmicrouptime(tv)
 
+static inline uint64_t
+local_clock(void)
+{
+	struct timespec ts;
+	nanouptime(&ts);
+	return (ts.tv_sec * NSEC_PER_SEC) + ts.tv_nsec;
+}
+
 #define GFP_ATOMIC	M_NOWAIT
 #define GFP_NOWAIT	M_NOWAIT
 #define GFP_KERNEL	(M_WAITOK | M_CANFAIL)
@@ -3078,5 +3086,7 @@ struct hrtimer {
 #define add_taint(x, y)
 #define TAINT_MACHINE_CHECK	0
 #define LOCKDEP_STILL_OK	0
+
+#define smp_processor_id()	(curcpu()->ci_cpuid)
 
 #endif
