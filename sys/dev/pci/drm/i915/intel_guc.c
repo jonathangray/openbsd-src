@@ -22,10 +22,10 @@
  *
  */
 
+#include "i915_drv.h"
 #include "intel_guc.h"
 #include "intel_guc_ads.h"
 #include "intel_guc_submission.h"
-#include "i915_drv.h"
 
 static void guc_init_ggtt_pin_bias(struct intel_guc *guc);
 

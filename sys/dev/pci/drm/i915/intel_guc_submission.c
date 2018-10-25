@@ -25,6 +25,8 @@
 #ifdef __linux__
 #include <linux/circ_buf.h>
 #include <trace/events/dma_fence.h>
+#else
+#include <dev/pci/drm/drm_linux.h>
 #endif
 
 #include "intel_guc_submission.h"

@@ -75,6 +75,7 @@ typedef uint32_t u32;
 typedef int64_t  s64;
 typedef uint64_t u64;
 
+#define U8_MAX UINT8_MAX
 #define U16_MAX UINT16_MAX
 #define U32_MAX UINT32_MAX
 #define U64_C(x) UINT64_C(x)
@@ -2179,6 +2180,21 @@ pci_bus_read_config_byte(struct pci_bus *bus, unsigned int devfn,
 }
 
 static inline int
+pci_bus_write_config_byte(struct pci_bus *bus, unsigned int devfn,
+    int reg, u8 val)
+{
+	pcitag_t tag = pci_make_tag(bus->pc, bus->number,
+	    PCI_SLOT(devfn), PCI_FUNC(devfn));
+	uint32_t v;
+
+	v = pci_conf_read(bus->pc, tag, (reg & ~0x3));
+	v &= ~(0xff << ((reg & 0x3) * 8));
+	v |= (val << ((reg & 0x3) * 8));
+	pci_conf_write(bus->pc, tag, (reg & ~0x3), v);
+	return 0;
+}
+
+static inline int
 pci_pcie_cap(struct pci_dev *pdev)
 {
 	int pos;
@@ -3088,5 +3104,8 @@ struct hrtimer {
 #define LOCKDEP_STILL_OK	0
 
 #define smp_processor_id()	(curcpu()->ci_cpuid)
+
+#define ___stringify(x...)	#x
+#define __stringify(x...)	___stringify(x)
 
 #endif

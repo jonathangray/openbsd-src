@@ -302,6 +302,7 @@ static void chv_exec_gpio(struct drm_i915_private *dev_priv,
 static void bxt_exec_gpio(struct drm_i915_private *dev_priv,
 			  u8 gpio_source, u8 gpio_index, bool value)
 {
+#ifdef __linux__
 	/* XXX: this table is a quick ugly hack. */
 	static struct gpio_desc *bxt_gpio_table[U8_MAX + 1];
 	struct gpio_desc *gpio_desc = bxt_gpio_table[gpio_index];
@@ -322,6 +323,7 @@ static void bxt_exec_gpio(struct drm_i915_private *dev_priv,
 	}
 
 	gpiod_set_value(gpio_desc, value);
+#endif
 }
 
 static const u8 *mipi_exec_gpio(struct intel_dsi *intel_dsi, const u8 *data)

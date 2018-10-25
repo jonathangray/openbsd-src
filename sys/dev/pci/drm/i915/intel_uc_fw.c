@@ -29,8 +29,8 @@
 #endif
 #include <dev/pci/drm/drm_print.h>
 
-#include "intel_uc_fw.h"
 #include "i915_drv.h"
+#include "intel_uc_fw.h"
 
 /**
  * intel_uc_fw_fetch - fetch uC firmware
@@ -43,7 +43,9 @@
 void intel_uc_fw_fetch(struct drm_i915_private *dev_priv,
 		       struct intel_uc_fw *uc_fw)
 {
+#ifdef __linux__
 	struct pci_dev *pdev = dev_priv->drm.pdev;
+#endif
 	struct drm_i915_gem_object *obj;
 	const struct firmware *fw = NULL;
 	struct uc_css_header *css;
@@ -61,7 +63,11 @@ void intel_uc_fw_fetch(struct drm_i915_private *dev_priv,
 			 intel_uc_fw_type_repr(uc_fw->type),
 			 intel_uc_fw_status_repr(uc_fw->fetch_status));
 
+#ifdef __linux__
 	err = request_firmware(&fw, uc_fw->path, &pdev->dev);
+#else
+	err = request_firmware(&fw, uc_fw->path, NULL);
+#endif
 	if (err) {
 		DRM_DEBUG_DRIVER("%s fw request_firmware err=%d\n",
 				 intel_uc_fw_type_repr(uc_fw->type), err);
