@@ -301,7 +301,6 @@ static inline uint32_t fixed16_to_u32(uint_fixed_16_16_t fp)
 	return fp.val >> 16;
 }
 
-#ifdef notyet
 static inline uint_fixed_16_16_t min_fixed16(uint_fixed_16_16_t min1,
 						 uint_fixed_16_16_t min2)
 {
@@ -319,7 +318,6 @@ static inline uint_fixed_16_16_t max_fixed16(uint_fixed_16_16_t max1,
 	max.val = max(max1.val, max2.val);
 	return max;
 }
-#endif
 
 static inline uint_fixed_16_16_t clamp_u64_to_fixed16(uint64_t val)
 {

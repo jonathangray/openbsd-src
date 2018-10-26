@@ -164,6 +164,7 @@ atomic_inc_not_zero(atomic_t *p)
 #define atomic_clear_mask(bits, p)	atomic_clearbits_int(p,bits)
 #define atomic_fetchadd_int(p, n) __sync_fetch_and_add(p, n)
 #define atomic_fetchsub_int(p, n) __sync_fetch_and_sub(p, n)
+#define atomic_fetch_inc(p) __sync_fetch_and_add(p, 1)
 
 #if defined(__i386__) || defined(__amd64__)
 static __inline int

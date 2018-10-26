@@ -1750,6 +1750,20 @@ dma_fence_is_signaled(struct dma_fence *fence)
 	return false;
 }
 
+static inline bool
+dma_fence_is_signaled_locked(struct dma_fence *fence)
+{
+	if (test_bit(DMA_FENCE_FLAG_SIGNALED_BIT, &fence->flags))
+		return true;
+
+	if (fence->ops->signaled && fence->ops->signaled(fence)) {
+		dma_fence_signal_locked(fence);
+		return true;
+	}
+
+	return false;
+}
+
 static inline long
 dma_fence_default_wait(struct dma_fence *fence, bool intr, signed long timeout)
 {
@@ -1925,7 +1939,10 @@ struct notifier_block {
 #define clamp(x, a, b) clamp_t(__typeof(x), x, a, b)
 #define clamp_val(x, a, b) clamp_t(__typeof(x), x, a, b)
 
+#define min(a, b) MIN(a, b)
+#define max(a, b) MAX(a, b)
 #define min3(x, y, z) MIN(x, MIN(y, z))
+#define max3(x, y, z) MAX(x, MAX(y, z))
 
 #define do_div(n, base) ({				\
 	uint32_t __base = (base);			\
@@ -1969,6 +1986,12 @@ static inline uint64_t
 mul_u32_u32(uint32_t x, uint32_t y)
 {
 	return (uint64_t)x * y;
+}
+
+static inline uint64_t
+mul_u64_u32_div(uint64_t x, uint32_t y, uint32_t div)
+{
+	return (x * y) / div;
 }
 
 #define mult_frac(x, n, d) (((x) * (n)) / (d))
@@ -2068,6 +2091,7 @@ bool dmi_match(int, const char *);
 
 struct resource {
 	u_long	start;
+	u_long	end;
 };
 
 struct pci_bus {

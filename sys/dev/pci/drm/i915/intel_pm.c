@@ -7108,13 +7108,16 @@ static void gen6_update_ring_freq(struct drm_i915_private *dev_priv)
 	unsigned int gpu_freq;
 	unsigned int max_ia_freq, min_ring_freq;
 	unsigned int max_gpu_freq, min_gpu_freq;
+#ifdef notyet
 	struct cpufreq_policy *policy;
+#endif
 
 	WARN_ON(!mutex_is_locked(&dev_priv->pcu_lock));
 
 	if (rps->max_freq <= rps->min_freq)
 		return;
 
+#ifdef notyet
 	policy = cpufreq_cpu_get(0);
 	if (policy) {
 		max_ia_freq = policy->cpuinfo.max_freq;
@@ -7126,6 +7129,10 @@ static void gen6_update_ring_freq(struct drm_i915_private *dev_priv)
 		 */
 		max_ia_freq = tsc_khz;
 	}
+#else
+	/* XXX we ideally want the max not cpuspeed... */
+	max_ia_freq = cpuspeed;
+#endif
 
 	/* Convert from kHz to MHz */
 	max_ia_freq /= 1000;
@@ -8046,6 +8053,7 @@ out_unlock:
 }
 EXPORT_SYMBOL_GPL(i915_gpu_turbo_disable);
 
+#ifdef __linux__
 /**
  * Tells the intel_ips driver that the i915 driver is now loaded, if
  * IPS got loaded first.
@@ -8065,6 +8073,7 @@ ips_ping_for_i915_load(void)
 		symbol_put(ips_link_to_i915_driver);
 	}
 }
+#endif
 
 void intel_gpu_ips_init(struct drm_i915_private *dev_priv)
 {
@@ -8074,7 +8083,9 @@ void intel_gpu_ips_init(struct drm_i915_private *dev_priv)
 	i915_mch_dev = dev_priv;
 	spin_unlock_irq(&mchdev_lock);
 
+#ifdef __linux__
 	ips_ping_for_i915_load();
+#endif
 }
 
 void intel_gpu_ips_teardown(void)
@@ -9640,8 +9651,8 @@ int intel_freq_opcode(struct drm_i915_private *dev_priv, int val)
 
 void intel_pm_setup(struct drm_i915_private *dev_priv)
 {
-	rw_init(&dev_priv->pcu_lock);
-	rw_init(&dev_priv->gt_pm.rps.power.mutex);
+	rw_init(&dev_priv->pcu_lock, "pculk");
+	rw_init(&dev_priv->gt_pm.rps.power.mutex, "gtpm");
 
 	atomic_set(&dev_priv->gt_pm.rps.num_waiters, 0);
 
