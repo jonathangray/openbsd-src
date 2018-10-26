@@ -3241,4 +3241,19 @@ hrtimer_cancel(struct hrtimer *timer)
 #define iosf_mbi_register_pmic_bus_access_notifier(x)			0
 #define iosf_mbi_unregister_pmic_bus_access_notifier_unlocked(x)	0
 
+static inline int
+match_string(const char * const *array,  size_t n, const char *str)
+{
+	int i;
+
+	for (i = 0; i < n; i++) {
+		if (array[i] == NULL)
+			break;
+		if (!strcmp(array[i], str))	
+			return i;
+	}
+
+	return -EINVAL;
+}
+
 #endif
