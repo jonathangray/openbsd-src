@@ -1598,6 +1598,7 @@ struct dma_fence {
 	unsigned int seqno;
 	struct mutex *lock;
 	struct list_head cb_list;
+	int error;
 };
 
 enum dma_fence_flag_bits {
@@ -1778,6 +1779,7 @@ dma_fence_init(struct dma_fence *fence, const struct dma_fence_ops *ops,
 	fence->context = context;
 	fence->seqno = seqno;
 	fence->flags = 0;
+	fence->error = 0;
 	kref_init(&fence->refcount);
 	INIT_LIST_HEAD(&fence->cb_list);
 }
@@ -1840,6 +1842,12 @@ static inline bool
 dma_fence_is_later(struct dma_fence *a, struct dma_fence *b)
 {
 	return (a->seqno > b->seqno);
+}
+
+static inline void
+dma_fence_set_error(struct dma_fence *fence, int error)
+{
+	fence->error = error;
 }
 
 struct idr_entry {
@@ -3116,5 +3124,25 @@ struct hrtimer {
 
 #define sysfs_create_link(x, y, z)	0
 #define sysfs_remove_link(x, y)
+
+static inline void *
+memset32(uint32_t *b, uint32_t c, size_t len)
+{
+	uint32_t *dst = b;
+	while (len--)
+		*dst++ = c;
+	return b;
+}
+
+static inline void *
+memset64(uint64_t *b, uint64_t c, size_t len)
+{
+	uint64_t *dst = b;
+	while (len--)
+		*dst++ = c;
+	return b;
+}
+
+#define POISON_INUSE	0xdb
 
 #endif
