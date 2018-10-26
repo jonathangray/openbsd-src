@@ -1039,9 +1039,11 @@ static void vlv_display_power_well_deinit(struct drm_i915_private *dev_priv)
 
 	intel_power_sequencer_reset(dev_priv);
 
+#ifdef notyet
 	/* Prevent us from re-enabling polling on accident in late suspend */
 	if (!dev_priv->drm.dev->power.is_suspended)
 		intel_hpd_poll_init(dev_priv);
+#endif
 }
 
 static void vlv_display_power_well_enable(struct drm_i915_private *dev_priv,
@@ -2851,7 +2853,7 @@ int intel_power_domains_init(struct drm_i915_private *dev_priv)
 
 	BUILD_BUG_ON(POWER_DOMAIN_NUM > 64);
 
-	rw_init(&power_domains->lock);
+	rw_init(&power_domains->lock, "pdmlk");
 
 	/*
 	 * The enabling order will be from lower to higher indexed wells,
@@ -2906,7 +2908,9 @@ int intel_power_domains_init(struct drm_i915_private *dev_priv)
  */
 void intel_power_domains_fini(struct drm_i915_private *dev_priv)
 {
+#ifdef __linux__
 	struct device *kdev = &dev_priv->drm.pdev->dev;
+#endif
 
 	/*
 	 * The i915.ko module is still not prepared to be loaded when
@@ -2927,8 +2931,10 @@ void intel_power_domains_fini(struct drm_i915_private *dev_priv)
 	 * Remove the refcount we took in intel_runtime_pm_enable() in case
 	 * the platform doesn't support runtime PM.
 	 */
+#ifdef __linux__
 	if (!HAS_RUNTIME_PM(dev_priv))
 		pm_runtime_put(kdev);
+#endif
 }
 
 static void intel_power_domains_sync_hw(struct drm_i915_private *dev_priv)
@@ -3692,12 +3698,14 @@ void intel_power_domains_verify_state(struct drm_i915_private *dev_priv)
  */
 void intel_runtime_pm_get(struct drm_i915_private *dev_priv)
 {
+#ifdef __linux__
 	struct pci_dev *pdev = dev_priv->drm.pdev;
 	struct device *kdev = &pdev->dev;
 	int ret;
 
 	ret = pm_runtime_get_sync(kdev);
 	WARN_ONCE(ret < 0, "pm_runtime_get_sync() failed: %d\n", ret);
+#endif
 
 	atomic_inc(&dev_priv->runtime_pm.wakeref_count);
 	assert_rpm_wakelock_held(dev_priv);
@@ -3718,6 +3726,7 @@ void intel_runtime_pm_get(struct drm_i915_private *dev_priv)
  */
 bool intel_runtime_pm_get_if_in_use(struct drm_i915_private *dev_priv)
 {
+#ifdef __linux__
 	if (IS_ENABLED(CONFIG_PM)) {
 		struct pci_dev *pdev = dev_priv->drm.pdev;
 		struct device *kdev = &pdev->dev;
@@ -3731,6 +3740,7 @@ bool intel_runtime_pm_get_if_in_use(struct drm_i915_private *dev_priv)
 		if (pm_runtime_get_if_in_use(kdev) <= 0)
 			return false;
 	}
+#endif
 
 	atomic_inc(&dev_priv->runtime_pm.wakeref_count);
 	assert_rpm_wakelock_held(dev_priv);
@@ -3757,11 +3767,15 @@ bool intel_runtime_pm_get_if_in_use(struct drm_i915_private *dev_priv)
  */
 void intel_runtime_pm_get_noresume(struct drm_i915_private *dev_priv)
 {
+#ifdef __linux__
 	struct pci_dev *pdev = dev_priv->drm.pdev;
 	struct device *kdev = &pdev->dev;
 
 	assert_rpm_wakelock_held(dev_priv);
 	pm_runtime_get_noresume(kdev);
+#else
+	assert_rpm_wakelock_held(dev_priv);
+#endif
 
 	atomic_inc(&dev_priv->runtime_pm.wakeref_count);
 }
@@ -3776,6 +3790,7 @@ void intel_runtime_pm_get_noresume(struct drm_i915_private *dev_priv)
  */
 void intel_runtime_pm_put(struct drm_i915_private *dev_priv)
 {
+#ifdef __linux__
 	struct pci_dev *pdev = dev_priv->drm.pdev;
 	struct device *kdev = &pdev->dev;
 
@@ -3784,6 +3799,10 @@ void intel_runtime_pm_put(struct drm_i915_private *dev_priv)
 
 	pm_runtime_mark_last_busy(kdev);
 	pm_runtime_put_autosuspend(kdev);
+#else
+	assert_rpm_wakelock_held(dev_priv);
+	atomic_dec(&dev_priv->runtime_pm.wakeref_count);
+#endif
 }
 
 /**
@@ -3798,6 +3817,7 @@ void intel_runtime_pm_put(struct drm_i915_private *dev_priv)
  */
 void intel_runtime_pm_enable(struct drm_i915_private *dev_priv)
 {
+#ifdef __linux__
 	struct pci_dev *pdev = dev_priv->drm.pdev;
 	struct device *kdev = &pdev->dev;
 
@@ -3826,4 +3846,5 @@ void intel_runtime_pm_enable(struct drm_i915_private *dev_priv)
 	 * intel_power_domains_fini().
 	 */
 	pm_runtime_put_autosuspend(kdev);
+#endif
 }

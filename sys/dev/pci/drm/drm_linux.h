@@ -113,6 +113,7 @@ typedef __ptrdiff_t ptrdiff_t;
 #define CONFIG_DRM_FBDEV_OVERALLOC	0
 #define CONFIG_DRM_I915_DEBUG		0
 #define CONFIG_DRM_I915_DEBUG_GEM	0
+#define CONFIG_PM			0
 
 #define __printf(x, y)
 
@@ -211,6 +212,8 @@ hweight64(uint64_t x)
 #else
 #define BITS_PER_LONG		32
 #endif
+#define BITS_PER_LONG_LONG	64
+#define GENMASK_ULL(h, l)	(((~0ULL) >> (BITS_PER_LONG_LONG - (h) - 1)) & ((~0ULL) << (l)))
 
 #define DECLARE_BITMAP(x, y)	unsigned long x[BITS_TO_LONGS(y)];
 #define bitmap_empty(p, n)	(find_first_bit(p, n) == n)
@@ -1033,6 +1036,8 @@ typedef void *async_cookie_t;
 
 #define local_irq_disable()	intr_disable()
 #define local_irq_enable()	intr_enable()
+#define disable_irq(x)		intr_disable()
+#define enable_irq(x)		intr_enable()
 
 #define setup_timer(x, y, z)	timeout_set((x), (void (*)(void *))(y), (void *)(z))
 #define mod_timer(x, y)		timeout_add((x), (y - jiffies))
@@ -2229,7 +2234,7 @@ pcie_capability_read_dword(struct pci_dev *pdev, int off, u32 *val)
 #define pci_save_state(x)
 #define pci_restore_state(x)
 
-#define pci_enable_msi(x)
+#define pci_enable_msi(x)	0
 #define pci_disable_msi(x)
 
 typedef enum {
@@ -2241,9 +2246,9 @@ typedef enum {
 } pci_power_t;
 
 #define pci_save_state(x)
-#define pci_enable_device(x)	0
+#define pci_enable_device(x)		0
 #define pci_disable_device(x)
-#define pci_set_power_state(d, s)
+#define pci_set_power_state(d, s)	0
 #define pci_is_thunderbolt_attached(x) false
 
 static inline int
@@ -2340,6 +2345,7 @@ struct i2c_algo_bit_data {
 int i2c_transfer(struct i2c_adapter *, struct i2c_msg *, int);
 #define i2c_add_adapter(x) 0
 #define i2c_del_adapter(x)
+#define __i2c_transfer(adap, msgs, num)	i2c_transfer(adap, msgs, num)
 
 static inline void *
 i2c_get_adapdata(struct i2c_adapter *adap)
@@ -3107,5 +3113,8 @@ struct hrtimer {
 
 #define ___stringify(x...)	#x
 #define __stringify(x...)	___stringify(x)
+
+#define sysfs_create_link(x, y, z)	0
+#define sysfs_remove_link(x, y)
 
 #endif

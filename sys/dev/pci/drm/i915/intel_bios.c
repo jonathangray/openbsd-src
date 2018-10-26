@@ -1639,6 +1639,12 @@ static const struct bdb_header *get_bdb_header(const struct vbt_header *vbt)
 	return _vbt + vbt->bdb_offset;
 }
 
+#include <dev/isa/isareg.h>
+#include <dev/isa/isavar.h>
+
+#define VGA_BIOS_ADDR	0xc0000
+#define VGA_BIOS_LEN	0x10000
+
 /**
  * intel_bios_is_valid_vbt - does the given buffer contain a valid VBT
  * @buf:	pointer to a buffer to validate
@@ -1716,7 +1722,9 @@ static const struct vbt_header *find_vbt(void __iomem *bios, size_t size)
  */
 void intel_bios_init(struct drm_i915_private *dev_priv)
 {
+#ifdef __linux__
 	struct pci_dev *pdev = dev_priv->drm.pdev;
+#endif
 	const struct vbt_header *vbt = dev_priv->opregion.vbt;
 	const struct bdb_header *bdb;
 	u8 __iomem *bios = NULL;
@@ -1732,9 +1740,14 @@ void intel_bios_init(struct drm_i915_private *dev_priv)
 	if (!vbt) {
 		size_t size;
 
+#ifdef __linux__
 		bios = pci_map_rom(pdev, &size);
 		if (!bios)
 			goto out;
+#else
+		bios = (u8 *)ISA_HOLE_VADDR(VGA_BIOS_ADDR);
+		size = VGA_BIOS_LEN;
+#endif
 
 		vbt = find_vbt(bios, size);
 		if (!vbt)
@@ -1770,8 +1783,10 @@ out:
 		init_vbt_missing_defaults(dev_priv);
 	}
 
+#ifdef __linux__
 	if (bios)
 		pci_unmap_rom(pdev, bios);
+#endif
 }
 
 /**

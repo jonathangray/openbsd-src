@@ -96,7 +96,7 @@ void intel_pipe_update_start(const struct intel_crtc_state *new_crtc_state)
 	if (min <= 0 || max <= 0)
 		goto irq_disable;
 
-	if (WARN_ON(drm_crtc_vblank_get(&crtc->base)))
+	if (WARN_ON(drm_crtc_vblank_get(&crtc->base)) || cold)
 		goto irq_disable;
 
 	/*

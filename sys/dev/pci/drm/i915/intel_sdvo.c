@@ -2210,7 +2210,9 @@ intel_sdvo_connector_atomic_set_property(struct drm_connector *connector,
 static int
 intel_sdvo_connector_register(struct drm_connector *connector)
 {
+#ifdef __linux__
 	struct intel_sdvo *sdvo = intel_attached_sdvo(connector);
+#endif
 	int ret;
 
 	ret = intel_connector_register(connector);
@@ -2225,7 +2227,9 @@ intel_sdvo_connector_register(struct drm_connector *connector)
 static void
 intel_sdvo_connector_unregister(struct drm_connector *connector)
 {
+#ifdef __linux__
 	struct intel_sdvo *sdvo = intel_attached_sdvo(connector);
+#endif
 
 	sysfs_remove_link(&connector->kdev->kobj,
 			  sdvo->ddc.dev.kobj.name);
@@ -3007,6 +3011,7 @@ static const struct i2c_algorithm intel_sdvo_ddc_proxy = {
 	.functionality	= intel_sdvo_ddc_proxy_func
 };
 
+#ifdef __linux__
 static void proxy_lock_bus(struct i2c_adapter *adapter,
 			   unsigned int flags)
 {
@@ -3033,11 +3038,13 @@ static const struct i2c_lock_operations proxy_lock_ops = {
 	.trylock_bus = proxy_trylock_bus,
 	.unlock_bus =  proxy_unlock_bus,
 };
+#endif
 
 static bool
 intel_sdvo_init_ddc_proxy(struct intel_sdvo *sdvo,
 			  struct drm_i915_private *dev_priv)
 {
+#ifdef __linux__
 	struct pci_dev *pdev = dev_priv->drm.pdev;
 
 	sdvo->ddc.owner = THIS_MODULE;
@@ -3047,6 +3054,11 @@ intel_sdvo_init_ddc_proxy(struct intel_sdvo *sdvo,
 	sdvo->ddc.algo_data = sdvo;
 	sdvo->ddc.algo = &intel_sdvo_ddc_proxy;
 	sdvo->ddc.lock_ops = &proxy_lock_ops;
+#else
+	snprintf(sdvo->ddc.name, I2C_NAME_SIZE, "SDVO DDC proxy");
+	sdvo->ddc.algo_data = sdvo;
+	sdvo->ddc.algo = &intel_sdvo_ddc_proxy;
+#endif
 
 	return i2c_add_adapter(&sdvo->ddc) == 0;
 }
