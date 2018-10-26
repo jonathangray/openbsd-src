@@ -145,7 +145,7 @@ file	dev/pci/drm/i915/intel_guc_ct.c			inteldrm
 file	dev/pci/drm/i915/intel_guc_fw.c			inteldrm
 file	dev/pci/drm/i915/intel_guc_log.c		inteldrm
 file	dev/pci/drm/i915/intel_guc_submission.c		inteldrm
-file	dev/pci/drm/i915/intel_gvt.c			inteldrm
+#file	dev/pci/drm/i915/intel_gvt.c			inteldrm
 file	dev/pci/drm/i915/intel_hangcheck.c		inteldrm
 file	dev/pci/drm/i915/intel_hdcp.c			inteldrm
 file	dev/pci/drm/i915/intel_hdmi.c			inteldrm
