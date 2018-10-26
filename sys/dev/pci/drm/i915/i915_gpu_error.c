@@ -31,14 +31,16 @@
 #include <generated/utsrelease.h>
 #include <linux/stop_machine.h>
 #include <linux/zlib.h>
+#else
+#include <dev/pci/drm/drm_linux.h>
 #endif
 #include <dev/pci/drm/drm_print.h>
 #ifdef __linux__
 #include <linux/ascii85.h>
 #endif
 
-#include "i915_gpu_error.h"
 #include "i915_drv.h"
+#include "i915_gpu_error.h"
 
 static inline const struct intel_engine_cs *
 engine_lookup(const struct drm_i915_private *i915, unsigned int id)
@@ -340,6 +342,9 @@ static int compress_page(struct compress *c,
 			 void *src,
 			 struct drm_i915_error_object *dst)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	unsigned long page;
 	void *ptr;
 
@@ -353,6 +358,7 @@ static int compress_page(struct compress *c,
 	dst->pages[dst->page_count++] = ptr;
 
 	return 0;
+#endif
 }
 
 static int compress_flush(struct compress *c,
@@ -565,6 +571,8 @@ static void print_error_obj(struct drm_i915_error_state_buf *m,
 			    const char *name,
 			    struct drm_i915_error_object *obj)
 {
+	STUB();
+#ifdef notyet
 	char out[ASCII85_BUFSZ];
 	int page;
 
@@ -591,6 +599,7 @@ static void print_error_obj(struct drm_i915_error_state_buf *m,
 			err_puts(m, ascii85_encode(obj->pages[page][i], out));
 	}
 	err_puts(m, "\n");
+#endif
 }
 
 static void err_print_capabilities(struct drm_i915_error_state_buf *m,
@@ -877,6 +886,8 @@ int i915_error_state_buf_init(struct drm_i915_error_state_buf *ebuf,
 
 static void i915_error_object_free(struct drm_i915_error_object *obj)
 {
+	STUB();
+#ifdef notyet
 	int page;
 
 	if (obj == NULL)
@@ -886,6 +897,7 @@ static void i915_error_object_free(struct drm_i915_error_object *obj)
 		free_page((unsigned long)obj->pages[page]);
 
 	kfree(obj);
+#endif
 }
 
 static __always_inline void free_param(const char *type, void *x)
@@ -952,6 +964,9 @@ static struct drm_i915_error_object *
 i915_error_object_create(struct drm_i915_private *i915,
 			 struct i915_vma *vma)
 {
+	STUB();
+	return NULL;
+#ifdef notyet
 	struct i915_ggtt *ggtt = &i915->ggtt;
 	const u64 slot = ggtt->error_capture.start;
 	struct drm_i915_error_object *dst;
@@ -988,9 +1003,18 @@ i915_error_object_create(struct drm_i915_private *i915,
 
 		ggtt->vm.insert_page(&ggtt->vm, dma, slot, I915_CACHE_NONE, 0);
 
+#ifdef __linux__
 		s = io_mapping_map_atomic_wc(&ggtt->iomap, slot);
+#else
+		agp_map_atomic(dev_priv->agph, reloc_offset, &bsh);
+		s = bus_space_vaddr(dev_priv->bst, bsh);
+#endif
 		ret = compress_page(&compress, (void  __force *)s, dst);
+#ifdef __linux__
 		io_mapping_unmap_atomic(s);
+#else
+		agp_unmap_atomic(dev_priv->agph, bsh);
+#endif
 		if (ret)
 			break;
 	}
@@ -1005,6 +1029,7 @@ i915_error_object_create(struct drm_i915_private *i915,
 	compress_fini(&compress, dst);
 	ggtt->vm.clear_range(&ggtt->vm, slot, PAGE_SIZE);
 	return dst;
+#endif
 }
 
 /* The error capture is special as tries to run underneath the normal
@@ -1139,6 +1164,8 @@ static void gen6_record_semaphore_state(struct intel_engine_cs *engine,
 static void error_record_engine_waiters(struct intel_engine_cs *engine,
 					struct drm_i915_error_engine *ee)
 {
+	STUB();
+#ifdef notyet
 	struct intel_breadcrumbs *b = &engine->breadcrumbs;
 	struct drm_i915_error_waiter *waiter;
 	struct rb_node *rb;
@@ -1187,6 +1214,7 @@ static void error_record_engine_waiters(struct intel_engine_cs *engine,
 			break;
 	}
 	spin_unlock_irq(&b->rb_lock);
+#endif
 }
 
 static void error_record_engine_registers(struct i915_gpu_state *error,
@@ -1308,15 +1336,19 @@ static void record_request(struct i915_request *request,
 	erq->head = request->head;
 	erq->tail = request->tail;
 
+#ifdef notyet
 	rcu_read_lock();
 	erq->pid = ctx->pid ? pid_nr(ctx->pid) : 0;
 	rcu_read_unlock();
+#endif
 }
 
 static void engine_record_requests(struct intel_engine_cs *engine,
 				   struct i915_request *first,
 				   struct drm_i915_error_engine *ee)
 {
+	STUB();
+#ifdef notyet
 	struct i915_request *request;
 	int count;
 
@@ -1358,6 +1390,7 @@ static void engine_record_requests(struct intel_engine_cs *engine,
 		record_request(request, &ee->requests[count++]);
 	}
 	ee->num_requests = count;
+#endif
 }
 
 static void error_record_engine_execlists(struct intel_engine_cs *engine,
@@ -1381,6 +1414,7 @@ static void error_record_engine_execlists(struct intel_engine_cs *engine,
 static void record_context(struct drm_i915_error_context *e,
 			   struct i915_gem_context *ctx)
 {
+#ifdef __linux__
 	if (ctx->pid) {
 		struct task_struct *task;
 
@@ -1392,6 +1426,7 @@ static void record_context(struct drm_i915_error_context *e,
 		}
 		rcu_read_unlock();
 	}
+#endif
 
 	e->handle = ctx->user_handle;
 	e->hw_id = ctx->hw_id;
@@ -1824,7 +1859,9 @@ i915_capture_gpu_state(struct drm_i915_private *i915)
 	kref_init(&error->ref);
 	error->i915 = i915;
 
+#ifdef notyet
 	stop_machine(capture, error, NULL);
+#endif
 
 	return error;
 }
@@ -1879,12 +1916,14 @@ void i915_capture_error_state(struct drm_i915_private *i915,
 
 	if (!warned &&
 	    ktime_get_real_seconds() - DRIVER_TIMESTAMP < DAY_AS_SECONDS(180)) {
+#ifdef __linux__
 		DRM_INFO("GPU hangs can indicate a bug anywhere in the entire gfx stack, including userspace.\n");
 		DRM_INFO("Please file a _new_ bug report on bugs.freedesktop.org against DRI -> DRM/Intel\n");
 		DRM_INFO("drm/i915 developers can then reassign to the right component if it's not a kernel issue.\n");
 		DRM_INFO("The gpu crash dump is required to analyze gpu hangs, so please always attach it.\n");
 		DRM_INFO("GPU crash dump saved to /sys/class/drm/card%d/error\n",
 			 i915->drm.primary->index);
+#endif
 		warned = true;
 	}
 }

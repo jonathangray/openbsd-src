@@ -1126,6 +1126,7 @@ round_jiffies_up_relative(unsigned long j)
 #define get_jiffies_64()	jiffies
 #define time_after(a,b)		((long)(b) - (long)(a) < 0)
 #define time_after_eq(a,b)	((long)(b) - (long)(a) <= 0)
+#define time_before(a,b)	((long)(a) - (long)(b) < 0)
 #define get_seconds()		time_second
 #define getrawmonotonic(x)	nanouptime(x)
 
@@ -1259,8 +1260,15 @@ ktime_after(const struct timeval a, const struct timeval b)
 
 #define ktime_mono_to_real(x) (x)
 #define ktime_get_real() ktime_get()
+#define ktime_get_boottime() ktime_get()
 
 #define do_gettimeofday(tv) getmicrouptime(tv)
+
+static inline int64_t
+ktime_get_real_seconds(void)
+{
+	return ktime_get().tv_sec;
+}
 
 static inline uint64_t
 local_clock(void)
@@ -1350,6 +1358,19 @@ kmemdup(const void *src, size_t len, int flags)
 	void *p = malloc(len, M_DRM, flags);
 	if (p)
 		memcpy(p, src, len);
+	return (p);
+}
+
+static inline void *
+kstrdup(const char *str, int flags)
+{
+	size_t len;
+	char *p;
+
+	len = strlen(str) + 1;
+	p = malloc(len, M_DRM, flags);
+	if (p)
+		memcpy(p, str, len);
 	return (p);
 }
 
