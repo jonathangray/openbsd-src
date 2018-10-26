@@ -3121,14 +3121,12 @@ struct dma_buf *dma_buf_export(const struct dma_buf_export_info *);
 struct pmu {
 };
 
-struct hrtimer {
-};
-
 #define NOTIFY_DONE	0
 #define NOTIFY_OK	1
 #define NOTIFY_BAD	2
 
 #define might_sleep()
+#define might_sleep_if(x)
 #define get_random_u32()	arc4random()
 
 #define add_taint(x, y)
@@ -3175,5 +3173,48 @@ memset64(uint64_t *b, uint64_t c, size_t len)
 #define SZ_16M	(16 * 1024 * 1024)
 
 #define typecheck(x, y)		1
+
+enum hrtimer_restart { HRTIMER_NORESTART, HRTIMER_RESTART };
+struct hrtimer {
+	enum hrtimer_restart	(*function)(struct hrtimer *);
+};
+
+#define HRTIMER_MODE_REL	1
+
+static inline void
+hrtimer_init(struct hrtimer *timer, int clock, int mode)
+{
+	STUB();
+}
+
+static inline void
+hrtimer_start_range_ns(struct hrtimer *timer, long tim, u64 range_ns,
+    int mode)
+{
+	STUB();
+}
+
+static inline bool
+hrtimer_active(const struct hrtimer *timer)
+{
+	STUB();
+	return false;
+}
+
+static inline int
+hrtimer_cancel(struct hrtimer *timer)
+{
+	STUB();
+	return -ENOSYS;
+}
+
+#define MBI_PMIC_BUS_ACCESS_BEGIN	1
+#define MBI_PMIC_BUS_ACCESS_END		2
+
+#define iosf_mbi_assert_punit_acquired()
+#define iosf_mbi_punit_acquire()
+#define iosf_mbi_punit_release()
+#define iosf_mbi_register_pmic_bus_access_notifier(x)			0
+#define iosf_mbi_unregister_pmic_bus_access_notifier_unlocked(x)	0
 
 #endif

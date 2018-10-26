@@ -3796,7 +3796,7 @@ static inline u64 intel_rc6_residency_us(struct drm_i915_private *dev_priv,
 #define POSTING_READ(reg)	(void)I915_READ_NOTRACE(reg)
 #define POSTING_READ16(reg)	(void)I915_READ16_NOTRACE(reg)
 
-#ifdef notyet
+#ifdef __linux__
 #define __raw_read(x, s) \
 static inline uint##x##_t __raw_i915_read##x(const struct drm_i915_private *dev_priv, \
 					     i915_reg_t reg) \
@@ -3819,10 +3819,31 @@ __raw_write(8, b)
 __raw_write(16, w)
 __raw_write(32, l)
 __raw_write(64, q)
+#else
+#define __raw_i915_read8(dev_priv__, reg__) \
+    bus_space_read_1((dev_priv__)->regs->bst, (dev_priv__)->regs->bsh, (reg__.reg))
+#define __raw_i915_write8(dev_priv__, reg__, val__) \
+    bus_space_write_1((dev_priv__)->regs->bst, (dev_priv__)->regs->bsh, (reg__.reg), (val__))
+
+#define __raw_i915_read16(dev_priv__, reg__) \
+    bus_space_read_2((dev_priv__)->regs->bst, (dev_priv__)->regs->bsh, (reg__.reg))
+#define __raw_i915_write16(dev_priv__, reg__, val__) \
+    bus_space_write_2((dev_priv__)->regs->bst, (dev_priv__)->regs->bsh, (reg__.reg), (val__))
+
+#define __raw_i915_read32(dev_priv__, reg__) \
+    bus_space_read_4((dev_priv__)->regs->bst, (dev_priv__)->regs->bsh, (reg__.reg))
+#define __raw_i915_write32(dev_priv__, reg__, val__) \
+    bus_space_write_4((dev_priv__)->regs->bst, (dev_priv__)->regs->bsh, (reg__.reg), (val__))
+
+#define __raw_i915_read64(dev_priv__, reg__) \
+    bus_space_read_8((dev_priv__)->regs->bst, (dev_priv__)->regs->bsh, (reg__.reg))
+#define __raw_i915_write64(dev_priv__, reg__, val__) \
+    bus_space_write_8((dev_priv__)->regs->bst, (dev_priv__)->regs->bsh, (reg__.reg), (val__))
+
+#endif
 
 #undef __raw_read
 #undef __raw_write
-#endif
 
 /* These are untraced mmio-accessors that are only valid to be used inside
  * critical sections, such as inside IRQ handlers, where forcewake is explicitly

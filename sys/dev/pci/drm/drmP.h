@@ -190,6 +190,8 @@ extern struct cfdriver drm_cd;
 #define smp_mb__before_atomic_inc()	DRM_MEMORYBARRIER()
 #define smp_mb__after_atomic_inc()	DRM_MEMORYBARRIER()
 
+#define smp_store_mb(x, v)		do { x = v; DRM_MEMORYBARRIER(); } while (0)
+
 #define mb()				DRM_MEMORYBARRIER()
 #define rmb()				DRM_READMEMORYBARRIER()
 #define wmb()				DRM_WRITEMEMORYBARRIER()

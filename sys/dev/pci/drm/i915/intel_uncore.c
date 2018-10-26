@@ -345,7 +345,11 @@ intel_uncore_fw_release_timer(struct hrtimer *timer)
 
 	assert_rpm_device_not_suspended(dev_priv);
 
+#ifdef notyet
 	if (xchg(&domain->active, false))
+#else
+	if (atomic_xchg((int *)&domain->active, false))
+#endif
 		return HRTIMER_RESTART;
 
 	spin_lock_irqsave(&dev_priv->uncore.lock, irqflags);
