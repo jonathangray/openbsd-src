@@ -35,8 +35,8 @@
 #include <dev/pci/drm/drmP.h>
 #include <dev/pci/drm/i915_drm.h>
 
-#include "intel_opregion.h"
 #include "i915_drv.h"
+#include "intel_opregion.h"
 #include "intel_drv.h"
 
 #define OPREGION_HEADER_OFFSET 0
@@ -445,10 +445,12 @@ static u32 asle_set_backlight(struct drm_i915_private *dev_priv, u32 bclp)
 
 	DRM_DEBUG_DRIVER("bclp = 0x%08x\n", bclp);
 
+#ifdef __linux__
 	if (acpi_video_get_backlight_type() == acpi_backlight_native) {
 		DRM_DEBUG_KMS("opregion backlight request ignored\n");
 		return 0;
 	}
+#endif
 
 	if (!(bclp & ASLE_BCLP_VALID))
 		return ASLC_BACKLIGHT_FAILED;
@@ -609,6 +611,8 @@ void intel_opregion_asle_intr(struct drm_i915_private *dev_priv)
 #define ACPI_EV_DISPLAY_SWITCH (1<<0)
 #define ACPI_EV_LID            (1<<1)
 #define ACPI_EV_DOCK           (1<<2)
+
+#ifdef notyet
 
 /*
  * The only video events relevant to opregion are 0x80. These indicate either a
@@ -775,6 +779,8 @@ static void intel_setup_cadls(struct drm_i915_private *dev_priv)
 		opregion->acpi->cadl[i] = 0;
 }
 
+#endif
+
 void intel_opregion_register(struct drm_i915_private *dev_priv)
 {
 	struct intel_opregion *opregion = &dev_priv->opregion;
@@ -783,8 +789,10 @@ void intel_opregion_register(struct drm_i915_private *dev_priv)
 		return;
 
 	if (opregion->acpi) {
+#ifdef notyet
 		intel_didl_outputs(dev_priv);
 		intel_setup_cadls(dev_priv);
+#endif
 
 		/* Notify BIOS we are ready to handle ACPI video ext notifs.
 		 * Right now, all the events are handled by the ACPI video module.
@@ -792,8 +800,10 @@ void intel_opregion_register(struct drm_i915_private *dev_priv)
 		opregion->acpi->csts = 0;
 		opregion->acpi->drdy = 1;
 
+#ifdef notyet
 		opregion->acpi_notifier.notifier_call = intel_opregion_video_event;
 		register_acpi_notifier(&opregion->acpi_notifier);
+#endif
 	}
 
 	if (opregion->asle) {
@@ -817,16 +827,27 @@ void intel_opregion_unregister(struct drm_i915_private *dev_priv)
 	if (opregion->acpi) {
 		opregion->acpi->drdy = 0;
 
+#ifdef notyet
 		unregister_acpi_notifier(&opregion->acpi_notifier);
+#endif
 		opregion->acpi_notifier.notifier_call = NULL;
 	}
 
 	/* just clear all opregion memory pointers now */
+#ifdef __linux__
 	memunmap(opregion->header);
 	if (opregion->rvda) {
 		memunmap(opregion->rvda);
 		opregion->rvda = NULL;
 	}
+#else
+	bus_space_unmap(dev_priv->bst, dev_priv->opregion_ioh, OPREGION_SIZE);
+	if (opregion->rvda) {
+		bus_space_unmap(dev_priv->bst, dev_priv->opregion_rvda_ioh,
+		    dev_priv->opregion_rvda_size);
+		opregion->rvda = NULL;
+	}
+#endif
 	if (opregion->vbt_firmware) {
 		kfree(opregion->vbt_firmware);
 		opregion->vbt_firmware = NULL;
@@ -924,7 +945,11 @@ static int intel_load_vbt_firmware(struct drm_i915_private *dev_priv)
 	if (!name || !*name)
 		return -ENOENT;
 
+#ifdef __linux__
 	ret = request_firmware(&fw, name, &dev_priv->drm.pdev->dev);
+#else
+	ret = request_firmware(&fw, name, NULL);
+#endif
 	if (ret) {
 		DRM_ERROR("Requesting VBT firmware \"%s\" failed (%d)\n",
 			  name, ret);
@@ -977,9 +1002,16 @@ int intel_opregion_setup(struct drm_i915_private *dev_priv)
 
 	INIT_WORK(&opregion->asle_work, asle_work);
 
+#ifdef __linux__
 	base = memremap(asls, OPREGION_SIZE, MEMREMAP_WB);
 	if (!base)
 		return -ENOMEM;
+#else
+	if (bus_space_map(dev_priv->bst, asls, OPREGION_SIZE,
+	    BUS_SPACE_MAP_LINEAR, &dev_priv->opregion_ioh))
+		return -ENOMEM;
+	base = bus_space_vaddr(dev_priv->bst, dev_priv->opregion_ioh);
+#endif
 
 	memcpy(buf, base, sizeof(buf));
 
@@ -1021,9 +1053,19 @@ int intel_opregion_setup(struct drm_i915_private *dev_priv)
 
 	if (opregion->header->opregion_ver >= 2 && opregion->asle &&
 	    opregion->asle->rvda && opregion->asle->rvds) {
+#ifdef __linux__
 		opregion->rvda = memremap(opregion->asle->rvda,
 					  opregion->asle->rvds,
 					  MEMREMAP_WB);
+#else
+		if (bus_space_map(dev_priv->bst, opregion->asle->rvda,
+		    opregion->asle->rvds, BUS_SPACE_MAP_LINEAR,
+		    &dev_priv->opregion_rvda_ioh))
+			return -ENOMEM;
+		opregion->rvda = bus_space_vaddr(dev_priv->bst,
+		    dev_priv->opregion_rvda_ioh);
+		dev_priv->opregion_rvda_size = opregion->asle->rvds;
+#endif
 		vbt = opregion->rvda;
 		vbt_size = opregion->asle->rvds;
 		if (intel_bios_is_valid_vbt(vbt, vbt_size)) {
@@ -1059,7 +1101,11 @@ out:
 	return 0;
 
 err_out:
+#ifdef __linux__
 	memunmap(base);
+#else
+	bus_space_unmap(dev_priv->bst, dev_priv->opregion_ioh, OPREGION_SIZE);
+#endif
 	return err;
 }
 

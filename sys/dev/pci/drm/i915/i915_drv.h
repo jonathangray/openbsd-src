@@ -60,6 +60,17 @@
 #endif
 #include <dev/pci/drm/drm_cache.h>
 
+#define CONFIG_DRM_I915_FBDEV 1
+#define CONFIG_DRM_I915_PRELIMINARY_HW_SUPPORT 1
+
+#include "acpi.h"
+#if NACPI > 0
+#define CONFIG_ACPI
+#endif
+
+#include "drm.h"
+#include "vga.h"
+
 struct inteldrm_softc;
 #define drm_i915_private inteldrm_softc
 
@@ -92,17 +103,6 @@ struct inteldrm_softc;
 #include "intel_gvt.h"
 
 struct sg_table;
-
-#define CONFIG_DRM_I915_FBDEV 1
-#define CONFIG_DRM_I915_PRELIMINARY_HW_SUPPORT 1
-
-#include "acpi.h"
-#if NACPI > 0
-#define CONFIG_ACPI
-#endif
-
-#include "drm.h"
-#include "vga.h"
 
 #include <dev/ic/mc6845reg.h>
 #include <dev/ic/pcdisplayvar.h>
@@ -1708,6 +1708,8 @@ struct inteldrm_softc {
 	bus_space_tag_t bst;
 	struct agp_map *agph;
 	bus_space_handle_t opregion_ioh;
+	bus_space_handle_t opregion_rvda_ioh;
+	bus_size_t opregion_rvda_size;
 
 	struct drm_device drm;
 
