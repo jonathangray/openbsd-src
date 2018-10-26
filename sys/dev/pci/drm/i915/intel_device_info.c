@@ -22,10 +22,11 @@
  *
  */
 
+#include <dev/pci/drm/drm_linux.h>
 #include <dev/pci/drm/drm_print.h>
 
-#include "intel_device_info.h"
 #include "i915_drv.h"
+#include "intel_device_info.h"
 
 #define PLATFORM_NAME(x) [INTEL_##x] = #x
 static const char * const platform_names[] = {
