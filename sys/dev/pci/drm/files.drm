@@ -102,7 +102,7 @@ file	dev/pci/drm/i915/i915_mm.c			inteldrm
 file	dev/pci/drm/i915/i915_params.c			inteldrm
 file	dev/pci/drm/i915/i915_pci.c			inteldrm
 file	dev/pci/drm/i915/i915_perf.c			inteldrm
-file	dev/pci/drm/i915/i915_pmu.c			inteldrm
+#file	dev/pci/drm/i915/i915_pmu.c			inteldrm
 file	dev/pci/drm/i915/i915_query.c			inteldrm
 file	dev/pci/drm/i915/i915_request.c			inteldrm
 file	dev/pci/drm/i915/i915_suspend.c			inteldrm
@@ -162,7 +162,7 @@ file	dev/pci/drm/i915/intel_modes.c			inteldrm
 file	dev/pci/drm/i915/intel_opregion.c		inteldrm
 file	dev/pci/drm/i915/intel_overlay.c		inteldrm
 file	dev/pci/drm/i915/intel_panel.c			inteldrm
-file	dev/pci/drm/i915/intel_pipe_crc.c		inteldrm
+#file	dev/pci/drm/i915/intel_pipe_crc.c		inteldrm
 file	dev/pci/drm/i915/intel_pm.c			inteldrm
 file	dev/pci/drm/i915/intel_psr.c			inteldrm
 file	dev/pci/drm/i915/intel_renderstate_gen6.c	inteldrm
