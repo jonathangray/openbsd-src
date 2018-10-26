@@ -713,9 +713,25 @@ __add_wait_queue(wait_queue_head_t *head, wait_queue_entry_t *new)
 }
 
 static inline void
+add_wait_queue(wait_queue_head_t *head, wait_queue_entry_t *new)
+{
+	mtx_enter(&head->lock);
+	__add_wait_queue(head, new);
+	mtx_leave(&head->lock);
+}
+
+static inline void
 __remove_wait_queue(wait_queue_head_t *head, wait_queue_entry_t *old)
 {
 	head->_wq = NULL;
+}
+
+static inline void
+remove_wait_queue(wait_queue_head_t *head, wait_queue_entry_t *old)
+{
+	mtx_enter(&head->lock);
+	__remove_wait_queue(head, old);
+	mtx_leave(&head->lock);
 }
 
 #define __wait_event_intr_timeout(wq, condition, timo, prio)		\
