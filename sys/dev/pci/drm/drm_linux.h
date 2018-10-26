@@ -453,9 +453,9 @@ do {									\
 
 #define BUILD_BUG()
 #define BUILD_BUG_ON(x) CTASSERT(!(x))
-#define BUILD_BUG_ON_NOT_POWER_OF_2(x)
-#define BUILD_BUG_ON_MSG(x, y)
-#define BUILD_BUG_ON_INVALID(x)
+#define BUILD_BUG_ON_NOT_POWER_OF_2(x)	0
+#define BUILD_BUG_ON_MSG(x, y)		do { } while (0)
+#define BUILD_BUG_ON_INVALID(x)		0
 #define BUILD_BUG_ON_ZERO(x)		0
 
 #define WARN(condition, fmt...) ({ 					\
@@ -3172,6 +3172,7 @@ memset64(uint64_t *b, uint64_t c, size_t len)
 #define SZ_8K	(1024 * 8)
 #define SZ_32K	(1024 * 32)
 #define SZ_1M	(1024 * 1024)
+#define SZ_16M	(16 * 1024 * 1024)
 
 #define typecheck(x, y)		1
 
