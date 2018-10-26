@@ -68,8 +68,8 @@ void intel_guc_init_early(struct intel_guc *guc)
 	intel_guc_ct_init_early(&guc->ct);
 	intel_guc_log_init_early(&guc->log);
 
-	rw_init(&guc->send_mutex);
-	mtx_init(&guc->irq_lock);
+	rw_init(&guc->send_mutex, "gucsm");
+	mtx_init(&guc->irq_lock, IPL_NONE);
 	guc->send = intel_guc_send_nop;
 	guc->handler = intel_guc_to_host_event_handler_nop;
 	guc->notify = gen8_guc_raise_irq;

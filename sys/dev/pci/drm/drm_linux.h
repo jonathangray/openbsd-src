@@ -899,6 +899,7 @@ struct workqueue_struct;
 #define system_long_wq (struct workqueue_struct *)systq
 
 #define WQ_HIGHPRI	1
+#define WQ_FREEZABLE	2
 
 static inline struct workqueue_struct *
 alloc_workqueue(const char *name, int flags, int max_active)
@@ -3165,5 +3166,12 @@ memset64(uint64_t *b, uint64_t c, size_t len)
 #define cec_notifier_phys_addr_invalidate(x)
 #define cec_notifier_put(x)
 #define cec_notifier_get_conn(x, y)			NULL
+
+#define SZ_4K	(1024 * 4)
+#define SZ_8K	(1024 * 8)
+#define SZ_32K	(1024 * 32)
+#define SZ_1M	(1024 * 1024)
+
+#define typecheck(x, y)		1
 
 #endif
