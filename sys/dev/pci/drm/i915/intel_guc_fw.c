@@ -127,6 +127,9 @@ static void guc_prepare_xfer(struct intel_guc *guc)
 /* Copy RSA signature from the fw image to HW for verification */
 static int guc_xfer_rsa(struct intel_guc *guc, struct i915_vma *vma)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct drm_i915_private *dev_priv = guc_to_i915(guc);
 	struct intel_uc_fw *guc_fw = &guc->fw;
 	struct sg_table *sg = vma->pages;
@@ -141,6 +144,7 @@ static int guc_xfer_rsa(struct intel_guc *guc, struct i915_vma *vma)
 		I915_WRITE(UOS_RSA_SCRATCH(i), rsa[i]);
 
 	return 0;
+#endif
 }
 
 /*
