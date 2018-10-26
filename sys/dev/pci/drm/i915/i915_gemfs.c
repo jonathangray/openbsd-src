@@ -33,6 +33,9 @@
 
 int i915_gemfs_init(struct drm_i915_private *i915)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct file_system_type *type;
 	struct vfsmount *gemfs;
 
@@ -69,9 +72,13 @@ int i915_gemfs_init(struct drm_i915_private *i915)
 	i915->mm.gemfs = gemfs;
 
 	return 0;
+#endif
 }
 
 void i915_gemfs_fini(struct drm_i915_private *i915)
 {
+	STUB();
+#ifdef notyet
 	kern_unmount(i915->mm.gemfs);
+#endif
 }
