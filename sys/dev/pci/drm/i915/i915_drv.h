@@ -61,7 +61,7 @@
 #include <dev/pci/drm/drm_cache.h>
 
 #define CONFIG_DRM_I915_FBDEV 1
-#define CONFIG_DRM_I915_PRELIMINARY_HW_SUPPORT 1
+#define CONFIG_DRM_I915_ALPHA_SUPPORT 0
 #define CONFIG_DRM_I915_CAPTURE_ERROR 1
 
 #include "acpi.h"
