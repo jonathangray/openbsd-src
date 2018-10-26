@@ -613,7 +613,7 @@ static const struct intel_device_info intel_icelake_11_info = {
  * and subvendor IDs, we need it to come before the more general IVB
  * PCI ID matches, otherwise we'll use the wrong info struct above.
  */
-static const struct pci_device_id pciidlist[] = {
+static const struct drm_pcidev pciidlist[] = {
 	INTEL_I830_IDS(&intel_i830_info),
 	INTEL_I845G_IDS(&intel_i845g_info),
 	INTEL_I85X_IDS(&intel_i85x_info),
@@ -673,6 +673,7 @@ static const struct pci_device_id pciidlist[] = {
 };
 MODULE_DEVICE_TABLE(pci, pciidlist);
 
+#ifdef __linux__
 static void i915_pci_remove(struct pci_dev *pdev)
 {
 	struct drm_device *dev;
@@ -778,6 +779,7 @@ static void __exit i915_exit(void)
 
 	pci_unregister_driver(&i915_pci_driver);
 }
+#endif
 
 module_init(i915_init);
 module_exit(i915_exit);
