@@ -264,6 +264,9 @@ intel_lr_context_descriptor_update(struct i915_gem_context *ctx,
 static struct i915_priolist *
 lookup_priolist(struct intel_engine_cs *engine, int prio)
 {
+	STUB();
+	return NULL;
+#ifdef notyet
 	struct intel_engine_execlists * const execlists = &engine->execlists;
 	struct i915_priolist *p;
 	struct rb_node **parent, *rb;
@@ -292,7 +295,11 @@ find_priolist:
 	if (prio == I915_PRIORITY_NORMAL) {
 		p = &execlists->default_priolist;
 	} else {
+#ifdef __linux__
 		p = kmem_cache_alloc(engine->i915->priorities, GFP_ATOMIC);
+#else
+		p = pool_get(engine->i915->priorities, PR_NOWAIT);
+#endif
 		/* Convert an allocation failure to a priority bump */
 		if (unlikely(!p)) {
 			prio = I915_PRIORITY_NORMAL; /* recurses just once */
@@ -316,6 +323,7 @@ find_priolist:
 	rb_insert_color_cached(&p->node, &execlists->queue, first);
 
 	return p;
+#endif
 }
 
 static void unwind_wa_tail(struct i915_request *rq)
@@ -376,8 +384,10 @@ execlists_context_status_change(struct i915_request *rq, unsigned long status)
 	if (!IS_ENABLED(CONFIG_DRM_I915_GVT))
 		return;
 
+#ifdef notyet
 	atomic_notifier_call_chain(&rq->engine->context_status_notifier,
 				   status, rq);
+#endif
 }
 
 inline void
@@ -735,7 +745,11 @@ static void execlists_dequeue(struct intel_engine_cs *engine)
 		rb_erase_cached(&p->node, &execlists->queue);
 		INIT_LIST_HEAD(&p->requests);
 		if (p->priority != I915_PRIORITY_NORMAL)
+#ifdef __linux__
 			kmem_cache_free(engine->i915->priorities, p);
+#else
+			pool_put(engine->i915->priorities, p);
+#endif
 	}
 
 done:
@@ -879,7 +893,11 @@ static void execlists_cancel_requests(struct intel_engine_cs *engine)
 		rb_erase_cached(&p->node, &execlists->queue);
 		INIT_LIST_HEAD(&p->requests);
 		if (p->priority != I915_PRIORITY_NORMAL)
+#ifdef __linux__
 			kmem_cache_free(engine->i915->priorities, p);
+#else
+			pool_put(engine->i915->priorities, p);
+#endif
 	}
 
 	/* Remaining _unready_ requests will be nop'ed when submitted */
@@ -1123,7 +1141,9 @@ static void execlists_submit_request(struct i915_request *request)
 
 	queue_request(engine, &request->sched, rq_prio(request));
 
+#ifdef notyet
 	GEM_BUG_ON(RB_EMPTY_ROOT(&engine->execlists.queue.rb_root));
+#endif
 	GEM_BUG_ON(list_empty(&request->sched.link));
 
 	submit_queue(engine, rq_prio(request));
@@ -1159,7 +1179,7 @@ static void execlists_schedule(struct i915_request *request,
 	struct i915_dependency *dep, *p;
 	struct i915_dependency stack;
 	const int prio = attr->priority;
-	LIST_HEAD(dfs);
+	DRM_LIST_HEAD(dfs);
 
 	GEM_BUG_ON(prio == I915_PRIORITY_INVALID);
 
@@ -1836,6 +1856,9 @@ static int gen9_init_render_ring(struct intel_engine_cs *engine)
 static struct i915_request *
 execlists_reset_prepare(struct intel_engine_cs *engine)
 {
+	STUB();
+	return NULL;
+#ifdef notyet
 	struct intel_engine_execlists * const execlists = &engine->execlists;
 	struct i915_request *request, *active;
 	unsigned long flags;
@@ -1892,6 +1915,7 @@ execlists_reset_prepare(struct intel_engine_cs *engine)
 	spin_unlock_irqrestore(&engine->timeline.lock, flags);
 
 	return active;
+#endif
 }
 
 static void execlists_reset(struct intel_engine_cs *engine,
@@ -1971,6 +1995,8 @@ static void execlists_reset(struct intel_engine_cs *engine,
 
 static void execlists_reset_finish(struct intel_engine_cs *engine)
 {
+	STUB();
+#ifdef notyet
 	struct intel_engine_execlists * const execlists = &engine->execlists;
 
 	/* After a GPU reset, we may have requests to replay */
@@ -1989,6 +2015,7 @@ static void execlists_reset_finish(struct intel_engine_cs *engine)
 	__tasklet_enable_sync_once(&execlists->tasklet);
 
 	GEM_TRACE("%s\n", engine->name);
+#endif
 }
 
 static int intel_logical_ring_emit_pdps(struct i915_request *rq)
@@ -2266,6 +2293,8 @@ static int gen8_init_rcs_context(struct i915_request *rq)
  */
 void intel_logical_ring_cleanup(struct intel_engine_cs *engine)
 {
+	STUB();
+#ifdef notyet
 	struct drm_i915_private *dev_priv;
 
 	/*
@@ -2292,6 +2321,7 @@ void intel_logical_ring_cleanup(struct intel_engine_cs *engine)
 	engine->i915 = NULL;
 	dev_priv->engine[engine->id] = NULL;
 	kfree(engine);
+#endif
 }
 
 void intel_execlists_set_default_submission(struct intel_engine_cs *engine)
@@ -2394,6 +2424,9 @@ static bool csb_force_mmio(struct drm_i915_private *i915)
 
 static int logical_ring_init(struct intel_engine_cs *engine)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct drm_i915_private *i915 = engine->i915;
 	struct intel_engine_execlists * const execlists = &engine->execlists;
 	int ret;
@@ -2446,6 +2479,7 @@ static int logical_ring_init(struct intel_engine_cs *engine)
 error:
 	intel_logical_ring_cleanup(engine);
 	return ret;
+#endif
 }
 
 int logical_render_ring_init(struct intel_engine_cs *engine)

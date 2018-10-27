@@ -82,6 +82,8 @@ list_del(struct list_head *entry) {
 	(entry)->prev->next = (entry)->next;
 }
 
+#define __list_del_entry(x) list_del(x)
+
 static inline void list_replace(struct list_head *old,
 				struct list_head *new)
 {
@@ -135,6 +137,12 @@ list_del_init(struct list_head *entry) {
     for (entry = (head)->next, temp = (entry)->next;		\
 	entry != head; 						\
 	entry = temp, temp = entry->next)
+
+#define list_for_each_entry_safe_reverse(pos, n, head, member)		\
+	for (pos = list_entry((head)->prev, __typeof(*pos), member),	\
+	    n = list_entry((pos)->member.prev, __typeof(*pos), member);	\
+	    &(pos)->member != (head);					\
+	    pos = n, n = list_entry(n->member.prev, __typeof(*n), member))
 
 #define list_for_each_entry_safe_from(pos, n, head, member) 		\
 	for (n = list_entry(pos->member.next, __typeof(*pos), member);	\

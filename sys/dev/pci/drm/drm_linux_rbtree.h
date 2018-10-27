@@ -45,6 +45,10 @@ struct rb_root {
 	struct	rb_node	*rb_node;
 };
 
+struct rb_root_cached {
+	struct	rb_node	*rb_node;
+};
+
 /*
  * In linux all of the comparisons are done by the caller.
  */
@@ -71,9 +75,12 @@ RB_PROTOTYPE(linux_root, rb_node, __entry, panic_cmp);
 	linux_root_RB_INSERT_COLOR((struct linux_root *)(root), (node))
 #define	rb_erase(node, root)						\
 	linux_root_RB_REMOVE((struct linux_root *)(root), (node))
+#define	rb_erase_cached(node, root)						\
+	linux_root_RB_REMOVE((struct linux_root *)(root), (node))
 #define	rb_next(node)	RB_NEXT(linux_root, NULL, (node))
 #define	rb_prev(node)	RB_PREV(linux_root, NULL, (node))
 #define	rb_first(root)	RB_MIN(linux_root, (struct linux_root *)(root))
+#define	rb_first_cached(root)	RB_MIN(linux_root, (struct linux_root *)(root))
 #define	rb_last(root)	RB_MAX(linux_root, (struct linux_root *)(root))
 #define	rbtree_postorder_for_each_entry_safe(x, y, head, member)			\
 	for ((x) = rb_entry_safe(RB_MIN(linux_root, (struct linux_root *)head),		\
@@ -115,6 +122,7 @@ rb_replace_node(struct rb_node *victim, struct rb_node *new,
 
 #undef RB_ROOT
 #define RB_ROOT		(struct rb_root) { NULL }
+#define RB_ROOT_CACHED	(struct rb_root) { NULL }
 
 struct interval_tree_node {
 	struct rb_node rb;

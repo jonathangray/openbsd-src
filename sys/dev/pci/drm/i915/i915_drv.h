@@ -63,6 +63,7 @@
 #define CONFIG_DRM_I915_FBDEV 1
 #define CONFIG_DRM_I915_ALPHA_SUPPORT 0
 #define CONFIG_DRM_I915_CAPTURE_ERROR 1
+#define CONFIG_DRM_I915_GVT 0
 
 #include "acpi.h"
 #if NACPI > 0
