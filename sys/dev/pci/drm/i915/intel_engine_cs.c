@@ -266,6 +266,9 @@ static int
 intel_engine_setup(struct drm_i915_private *dev_priv,
 		   enum intel_engine_id id)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	const struct engine_info *info = &intel_engines[id];
 	struct intel_engine_cs *engine;
 
@@ -316,6 +319,7 @@ intel_engine_setup(struct drm_i915_private *dev_priv,
 	dev_priv->engine_class[info->class][info->instance] = engine;
 	dev_priv->engine[id] = engine;
 	return 0;
+#endif
 }
 
 /**
@@ -335,8 +339,10 @@ int intel_engines_init_mmio(struct drm_i915_private *dev_priv)
 	int err;
 
 	WARN_ON(ring_mask == 0);
+#ifdef notyet
 	WARN_ON(ring_mask &
 		GENMASK(sizeof(mask) * BITS_PER_BYTE - 1, I915_NUM_ENGINES));
+#endif
 
 	for (i = 0; i < ARRAY_SIZE(intel_engines); i++) {
 		if (!HAS_ENGINE(dev_priv, i))
@@ -483,7 +489,9 @@ static void intel_engine_init_execlist(struct intel_engine_cs *engine)
 void intel_engine_setup_common(struct intel_engine_cs *engine)
 {
 	i915_timeline_init(engine->i915, &engine->timeline, engine->name);
+#ifdef notyet
 	lockdep_set_subclass(&engine->timeline.lock, TIMELINE_ENGINE);
+#endif
 
 	intel_engine_init_execlist(engine);
 	intel_engine_init_hangcheck(engine);
@@ -974,6 +982,9 @@ static bool ring_is_idle(struct intel_engine_cs *engine)
  */
 bool intel_engine_is_idle(struct intel_engine_cs *engine)
 {
+	STUB();
+	return true;
+#ifdef notyet
 	struct drm_i915_private *dev_priv = engine->i915;
 
 	/* More white lies, if wedged, hw state is inconsistent */
@@ -1014,6 +1025,7 @@ bool intel_engine_is_idle(struct intel_engine_cs *engine)
 		return false;
 
 	return true;
+#endif
 }
 
 bool intel_engines_are_idle(struct drm_i915_private *dev_priv)
@@ -1272,10 +1284,12 @@ static void hexdump(struct drm_printer *m, const void *buf, size_t len)
 			continue;
 		}
 
+#ifdef notyet
 		WARN_ON_ONCE(hex_dump_to_buffer(buf + pos, len - pos,
 						rowsize, sizeof(u32),
 						line, sizeof(line),
 						false) >= sizeof(line));
+#endif
 		drm_printf(m, "[%04zx] %s\n", pos, line);
 
 		prev = buf + pos;
@@ -1286,6 +1300,8 @@ static void hexdump(struct drm_printer *m, const void *buf, size_t len)
 static void intel_engine_print_registers(const struct intel_engine_cs *engine,
 					 struct drm_printer *m)
 {
+	STUB();
+#ifdef notyet
 	struct drm_i915_private *dev_priv = engine->i915;
 	const struct intel_engine_execlists * const execlists =
 		&engine->execlists;
@@ -1410,6 +1426,7 @@ static void intel_engine_print_registers(const struct intel_engine_cs *engine,
 		drm_printf(m, "\tPP_DIR_DCLV: 0x%08x\n",
 			   I915_READ(RING_PP_DIR_DCLV(engine)));
 	}
+#endif
 }
 
 static void print_request_ring(struct drm_printer *m, struct i915_request *rq)
@@ -1449,6 +1466,8 @@ void intel_engine_dump(struct intel_engine_cs *engine,
 		       struct drm_printer *m,
 		       const char *header, ...)
 {
+	STUB();
+#ifdef notyet
 	const int MAX_REQUESTS_TO_SHOW = 8;
 	struct intel_breadcrumbs * const b = &engine->breadcrumbs;
 	const struct intel_engine_execlists * const execlists = &engine->execlists;
@@ -1583,6 +1602,7 @@ void intel_engine_dump(struct intel_engine_cs *engine,
 	hexdump(m, engine->status_page.page_addr, PAGE_SIZE);
 
 	drm_printf(m, "Idle? %s\n", yesno(intel_engine_is_idle(engine)));
+#endif
 }
 
 static u8 user_class_map[] = {
