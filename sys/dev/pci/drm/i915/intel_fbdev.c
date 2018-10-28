@@ -99,6 +99,7 @@ static int intel_fbdev_pan_display(struct fb_var_screeninfo *var,
 	return ret;
 }
 
+#ifdef notyet
 static struct fb_ops intelfb_ops = {
 	.owner = THIS_MODULE,
 	DRM_FB_HELPER_DEFAULT_OPS,
@@ -109,6 +110,7 @@ static struct fb_ops intelfb_ops = {
 	.fb_pan_display = intel_fbdev_pan_display,
 	.fb_blank = intel_fbdev_blank,
 };
+#endif
 
 static int intelfb_alloc(struct drm_fb_helper *helper,
 			 struct drm_fb_helper_surface_size *sizes)
@@ -129,7 +131,7 @@ static int intelfb_alloc(struct drm_fb_helper *helper,
 	mode_cmd.width = sizes->surface_width;
 	mode_cmd.height = sizes->surface_height;
 
-	mode_cmd.pitches[0] = ALIGN(mode_cmd.width *
+	mode_cmd.pitches[0] = round_up(mode_cmd.width *
 				    DIV_ROUND_UP(sizes->surface_bpp, 8), 64);
 	mode_cmd.pixel_format = drm_mode_legacy_fb_format(sizes->surface_bpp,
 							  sizes->surface_depth);
@@ -175,14 +177,18 @@ static int intelfb_create(struct drm_fb_helper *helper,
 	struct intel_framebuffer *intel_fb = ifbdev->fb;
 	struct drm_device *dev = helper->dev;
 	struct drm_i915_private *dev_priv = to_i915(dev);
+#ifdef __linux__
 	struct pci_dev *pdev = dev_priv->drm.pdev;
 	struct i915_ggtt *ggtt = &dev_priv->ggtt;
+#endif
 	struct fb_info *info;
 	struct drm_framebuffer *fb;
 	struct i915_vma *vma;
 	unsigned long flags = 0;
 	bool prealloc = false;
+#ifdef __linux__
 	void __iomem *vaddr;
+#endif
 	int ret;
 
 	if (intel_fb &&
@@ -237,6 +243,7 @@ static int intelfb_create(struct drm_fb_helper *helper,
 
 	ifbdev->helper.fb = fb;
 
+#ifdef __linux__
 	strcpy(info->fix.id, "inteldrmfb");
 
 	info->fbops = &intelfb_ops;
@@ -271,6 +278,47 @@ static int intelfb_create(struct drm_fb_helper *helper,
 		memset_io(info->screen_base, 0, info->screen_size);
 
 	/* Use default scratch pixmap (info->pixmap.flags = FB_PIXMAP_SYSTEM) */
+#else
+{
+	struct rasops_info *ri = &dev_priv->ro;
+	bus_space_handle_t bsh;
+	int err;
+
+	err = agp_map_subregion(dev_priv->agph,
+	    i915_ggtt_offset(vma), vma->node.size, &bsh);
+	if (err) {
+		ret = -err;
+		goto out_unpin;
+	}
+
+	ri->ri_bits = bus_space_vaddr(dev->bst, bsh);
+	ri->ri_depth = fb->format->cpp[0] * 8;
+	ri->ri_stride = fb->pitches[0];
+	ri->ri_width = sizes->fb_width;
+	ri->ri_height = sizes->fb_height;
+
+	switch (fb->format->format) {
+	case DRM_FORMAT_XRGB8888:
+		ri->ri_rnum = 8;
+		ri->ri_rpos = 16;
+		ri->ri_gnum = 8;
+		ri->ri_gpos = 8;
+		ri->ri_bnum = 8;
+		ri->ri_bpos = 0;
+		break;
+	case DRM_FORMAT_RGB565:
+		ri->ri_rnum = 5;
+		ri->ri_rpos = 11;
+		ri->ri_gnum = 6;
+		ri->ri_gpos = 5;
+		ri->ri_bnum = 5;
+		ri->ri_bpos = 0;
+		break;
+	}
+
+	memset(ri->ri_bits, 0, vma->node.size);
+}
+#endif
 
 	DRM_DEBUG_KMS("allocated %dx%d fb: 0x%08x\n",
 		      fb->width, fb->height, i915_ggtt_offset(vma));
@@ -279,7 +327,9 @@ static int intelfb_create(struct drm_fb_helper *helper,
 
 	intel_runtime_pm_put(dev_priv);
 	mutex_unlock(&dev->struct_mutex);
+#ifdef __linux__
 	vga_switcheroo_client_fb_set(pdev, info);
+#endif
 	return 0;
 
 out_unpin:
@@ -708,6 +758,7 @@ static void intel_fbdev_initial_config(void *data, async_cookie_t cookie)
 		intel_fbdev_unregister(to_i915(ifbdev->helper.dev));
 }
 
+#ifdef __linux__
 void intel_fbdev_initial_config_async(struct drm_device *dev)
 {
 	struct intel_fbdev *ifbdev = to_i915(dev)->fbdev;
@@ -717,17 +768,21 @@ void intel_fbdev_initial_config_async(struct drm_device *dev)
 
 	ifbdev->cookie = async_schedule(intel_fbdev_initial_config, ifbdev);
 }
+#endif
 
 static void intel_fbdev_sync(struct intel_fbdev *ifbdev)
 {
+#ifdef __linux__
 	if (!ifbdev->cookie)
 		return;
 
 	/* Only serialises with all preceding async calls, hence +1 */
 	async_synchronize_cookie(ifbdev->cookie + 1);
 	ifbdev->cookie = 0;
+#endif
 }
 
+#ifdef __linux__
 void intel_fbdev_unregister(struct drm_i915_private *dev_priv)
 {
 	struct intel_fbdev *ifbdev = dev_priv->fbdev;
@@ -801,6 +856,7 @@ void intel_fbdev_set_suspend(struct drm_device *dev, int state, bool synchronous
 	drm_fb_helper_set_suspend(&ifbdev->helper, state);
 	console_unlock();
 }
+#endif
 
 void intel_fbdev_output_poll_changed(struct drm_device *dev)
 {
