@@ -58,7 +58,7 @@ void intel_guc_ct_init_early(struct intel_guc_ct *ct)
 	/* we're using static channel owners */
 	ct->host_channel.owner = CTB_OWNER_HOST;
 
-	mtx_init(&ct->lock);
+	mtx_init(&ct->lock, IPL_NONE);
 	INIT_LIST_HEAD(&ct->pending_requests);
 	INIT_LIST_HEAD(&ct->incoming_requests);
 	INIT_WORK(&ct->worker, ct_incoming_request_worker_func);
@@ -662,7 +662,9 @@ static int ct_handle_response(struct intel_guc_ct *ct, const u32 *msg)
 	bool found = false;
 
 	GEM_BUG_ON(!ct_header_is_response(header));
+#ifdef notyet
 	GEM_BUG_ON(!in_irq());
+#endif
 
 	/* Response payload shall at least include fence and status */
 	if (unlikely(len < 2)) {

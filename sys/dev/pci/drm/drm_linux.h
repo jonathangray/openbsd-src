@@ -896,6 +896,7 @@ _complete_all(struct completion *x LOCK_FL_VARS)
 struct workqueue_struct;
 
 #define system_wq (struct workqueue_struct *)systq
+#define system_unbound_wq (struct workqueue_struct *)systq
 #define system_long_wq (struct workqueue_struct *)systq
 
 #define WQ_HIGHPRI	1
