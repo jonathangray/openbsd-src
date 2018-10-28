@@ -2136,6 +2136,12 @@ struct resource {
 	u_long	end;
 };
 
+static inline resource_size_t
+resource_size(const struct resource *r)
+{
+	return r->end - r->start + 1;
+}
+
 struct pci_bus {
 	pci_chipset_tag_t pc;
 	unsigned char	number;
