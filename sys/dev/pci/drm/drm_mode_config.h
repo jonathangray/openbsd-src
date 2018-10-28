@@ -446,9 +446,7 @@ struct drm_mode_config {
 	 * &struct drm_connector_list_iter to savely free connectors using
 	 * @connector_free_work.
 	 */
-#ifdef notyet
 	struct llist_head connector_free_list;
-#endif
 	/**
 	 * @connector_free_work: Work to clean up @connector_free_list.
 	 */

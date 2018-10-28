@@ -388,9 +388,7 @@ void drm_mode_config_init(struct drm_device *dev)
 	ida_init(&dev->mode_config.connector_ida);
 	mtx_init(&dev->mode_config.connector_list_lock, IPL_NONE);
 
-#ifdef notyet
 	init_llist_head(&dev->mode_config.connector_free_list);
-#endif
 	INIT_WORK(&dev->mode_config.connector_free_work, drm_connector_free_work_fn);
 
 	drm_mode_create_standard_properties(dev);

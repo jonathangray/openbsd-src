@@ -3323,4 +3323,37 @@ match_string(const char * const *array,  size_t n, const char *str)
 	return -EINVAL;
 }
 
+struct llist_node {
+};
+
+struct llist_head {
+};
+
+static inline struct llist_node *
+llist_del_all(struct llist_head *head)
+{
+	STUB();
+	return NULL;
+}
+
+static inline bool
+llist_add(struct llist_node *new, struct llist_head *head)
+{
+	STUB();
+	return true;
+}
+
+static inline void
+init_llist_head(struct llist_head *list)
+{
+	STUB();
+}
+
+static inline bool
+llist_empty(struct llist_head *head)
+{
+	STUB();
+	return true;
+}
+
 #endif
