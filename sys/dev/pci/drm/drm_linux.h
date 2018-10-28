@@ -1106,6 +1106,7 @@ typedef void *async_cookie_t;
 #define KHZ2PICOS(a)	(1000000000UL/(a))
 
 extern struct timespec ns_to_timespec(const int64_t);
+extern int64_t timeval_to_ms(const struct timeval *);
 extern int64_t timeval_to_ns(const struct timeval *);
 extern int64_t timeval_to_us(const struct timeval *);
 extern struct timeval ns_to_timeval(const int64_t);
@@ -1217,6 +1218,12 @@ ktime_get_monotonic_offset(void)
 }
 
 static inline int64_t
+ktime_to_ms(struct timeval tv)
+{
+	return timeval_to_ms(&tv);
+}
+
+static inline int64_t
 ktime_to_us(struct timeval tv)
 {
 	return timeval_to_us(&tv);
@@ -1277,6 +1284,12 @@ static inline int64_t
 ktime_us_delta(struct timeval a, struct timeval b)
 {
 	return ktime_to_us(ktime_sub(a, b));
+}
+
+static inline int64_t
+ktime_ms_delta(struct timeval a, struct timeval b)
+{
+	return ktime_to_ms(ktime_sub(a, b));
 }
 
 static inline bool

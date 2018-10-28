@@ -4165,6 +4165,9 @@ intel_dp_needs_link_retrain(struct intel_dp *intel_dp)
 int intel_dp_retrain_link(struct intel_encoder *encoder,
 			  struct drm_modeset_acquire_ctx *ctx)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct drm_i915_private *dev_priv = to_i915(encoder->base.dev);
 	struct intel_dp *intel_dp = enc_to_intel_dp(&encoder->base);
 	struct intel_connector *connector = intel_dp->attached_connector;
@@ -4225,6 +4228,7 @@ int intel_dp_retrain_link(struct intel_encoder *encoder,
 						      intel_crtc_pch_transcoder(crtc), true);
 
 	return 0;
+#endif
 }
 
 /*
@@ -4858,8 +4862,10 @@ intel_dp_connector_register(struct drm_connector *connector)
 
 	i915_debugfs_connector_add(connector);
 
+#ifdef notyet
 	DRM_DEBUG_KMS("registering %s bus for %s\n",
 		      intel_dp->aux.name, connector->kdev->kobj.name);
+#endif
 
 	intel_dp->aux.dev = connector->kdev;
 	ret = drm_dp_aux_register(&intel_dp->aux);
@@ -5994,7 +6000,7 @@ intel_dp_drrs_init(struct intel_connector *connector,
 	struct drm_display_mode *downclock_mode = NULL;
 
 	INIT_DELAYED_WORK(&dev_priv->drrs.work, intel_edp_drrs_downclock_work);
-	rw_init(&dev_priv->drrs.mutex);
+	rw_init(&dev_priv->drrs.mutex, "drrs");
 
 	if (INTEL_GEN(dev_priv) <= 6) {
 		DRM_DEBUG_KMS("DRRS supported for Gen7 and above\n");

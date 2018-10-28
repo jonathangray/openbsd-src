@@ -148,6 +148,12 @@ ns_to_timeval(const int64_t nsec)
 }
 
 int64_t
+timeval_to_ms(const struct timeval *tv)
+{
+	return ((int64_t)tv->tv_sec * 1000) + (tv->tv_usec / 1000);
+}
+
+int64_t
 timeval_to_us(const struct timeval *tv)
 {
 	return ((int64_t)tv->tv_sec * 1000000) + tv->tv_usec;
