@@ -98,6 +98,9 @@ static inline bool is_high_priority(struct intel_guc_client *client)
 
 static int reserve_doorbell(struct intel_guc_client *client)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	unsigned long offset;
 	unsigned long end;
 	u16 id;
@@ -126,6 +129,7 @@ static int reserve_doorbell(struct intel_guc_client *client)
 			 client->stage_id, yesno(is_high_priority(client)),
 			 id);
 	return 0;
+#endif
 }
 
 static bool has_doorbell(struct intel_guc_client *client)
@@ -264,6 +268,9 @@ static int destroy_doorbell(struct intel_guc_client *client)
 
 static unsigned long __select_cacheline(struct intel_guc *guc)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	unsigned long offset;
 
 	/* Doorbell uses a single cache line within a page */
@@ -275,6 +282,7 @@ static unsigned long __select_cacheline(struct intel_guc *guc)
 	DRM_DEBUG_DRIVER("reserved cacheline 0x%lx, next 0x%x, linesize %u\n",
 			 offset, guc->db_cacheline, cache_line_size());
 	return offset;
+#endif
 }
 
 static inline struct guc_process_desc *
@@ -443,6 +451,8 @@ static void guc_wq_item_append(struct intel_guc_client *client,
 			       u32 target_engine, u32 context_desc,
 			       u32 ring_tail, u32 fence_id)
 {
+	STUB();
+#ifdef notyet
 	/* wqi_len is in DWords, and does not include the one-word header */
 	const size_t wqi_size = sizeof(struct guc_wq_item);
 	const u32 wqi_len = wqi_size / sizeof(u32) - 1;
@@ -482,6 +492,7 @@ static void guc_wq_item_append(struct intel_guc_client *client,
 
 	/* Make the update visible to GuC */
 	WRITE_ONCE(desc->tail, (wq_off + wqi_size) & (GUC_WQ_SIZE - 1));
+#endif
 }
 
 static void guc_reset_wq(struct intel_guc_client *client)
@@ -494,6 +505,8 @@ static void guc_reset_wq(struct intel_guc_client *client)
 
 static void guc_ring_doorbell(struct intel_guc_client *client)
 {
+	STUB();
+#ifdef notyet
 	struct guc_doorbell_info *db;
 	u32 cookie;
 
@@ -511,6 +524,7 @@ static void guc_ring_doorbell(struct intel_guc_client *client)
 
 	/* XXX: doorbell was lost and need to acquire it again */
 	GEM_BUG_ON(db->db_status != GUC_DOORBELL_ENABLED);
+#endif
 }
 
 static void guc_add_request(struct intel_guc *guc, struct i915_request *rq)
@@ -749,7 +763,11 @@ static bool __guc_dequeue(struct intel_engine_cs *engine)
 		rb_erase_cached(&p->node, &execlists->queue);
 		INIT_LIST_HEAD(&p->requests);
 		if (p->priority != I915_PRIORITY_NORMAL)
+#ifdef __linux__
 			kmem_cache_free(engine->i915->priorities, p);
+#else
+			pool_put(engine->i915->priorities, p);
+#endif
 	}
 done:
 	execlists->queue_priority = rb ? to_priolist(rb)->priority : INT_MIN;
@@ -957,7 +975,7 @@ guc_client_alloc(struct drm_i915_private *dev_priv,
 	client->engines = engines;
 	client->priority = priority;
 	client->doorbell_id = GUC_DOORBELL_INVALID;
-	mtx_init(&client->wq_lock);
+	mtx_init(&client->wq_lock, IPL_NONE);
 
 	ret = ida_simple_get(&guc->stage_ids, 0, GUC_MAX_STAGE_DESCRIPTORS,
 			     GFP_KERNEL);

@@ -1050,6 +1050,12 @@ struct tasklet_struct {
 };
 
 static inline void
+tasklet_schedule(struct tasklet_struct *ts)
+{
+	STUB();
+}
+
+static inline void
 tasklet_hi_schedule(struct tasklet_struct *ts)
 {
 	STUB();
