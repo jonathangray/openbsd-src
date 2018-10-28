@@ -26,6 +26,8 @@
 
 #ifdef __linux__
 #include <linux/i2c.h>
+#else
+#include <dev/pci/drm/drm_linux.h>
 #endif
 #include <dev/pci/drm/linux_types.h>
 

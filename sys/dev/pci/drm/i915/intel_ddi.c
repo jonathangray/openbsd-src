@@ -3364,6 +3364,9 @@ static int modeset_pipe(struct drm_crtc *crtc,
 static int intel_hdmi_reset_link(struct intel_encoder *encoder,
 				 struct drm_modeset_acquire_ctx *ctx)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct drm_i915_private *dev_priv = to_i915(encoder->base.dev);
 	struct intel_hdmi *hdmi = enc_to_intel_hdmi(&encoder->base);
 	struct intel_connector *connector = hdmi->attached_connector;
@@ -3430,6 +3433,7 @@ static int intel_hdmi_reset_link(struct intel_encoder *encoder,
 	 * the SCDC settings on the fly.
 	 */
 	return modeset_pipe(&crtc->base, ctx);
+#endif
 }
 
 static bool intel_ddi_hotplug(struct intel_encoder *encoder,
