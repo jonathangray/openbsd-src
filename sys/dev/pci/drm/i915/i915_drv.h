@@ -1085,9 +1085,7 @@ struct i915_gem_mm {
 	/**
 	 * List of objects which are pending destruction.
 	 */
-#ifdef notyet
 	struct llist_head free_list;
-#endif
 	struct work_struct free_work;
 	spinlock_t free_lock;
 	/**
@@ -1966,9 +1964,7 @@ struct inteldrm_softc {
 	struct i915_frontbuffer_tracking fb_tracking;
 
 	struct intel_atomic_helper {
-#ifdef notyet
 		struct llist_head free_list;
-#endif
 		struct work_struct free_work;
 	} atomic_helper;
 
@@ -2022,9 +2018,7 @@ struct inteldrm_softc {
 
 	struct {
 		struct list_head list;
-#ifdef notyet
 		struct llist_head free_list;
-#endif
 		struct work_struct free_work;
 
 		/* The hw wants to have a stable context identifier for the

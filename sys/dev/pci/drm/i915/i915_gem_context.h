@@ -103,9 +103,7 @@ struct i915_gem_context {
 
 	/** link: place with &drm_i915_private.context_list */
 	struct list_head link;
-#ifdef notyet
 	struct llist_node free_link;
-#endif
 
 	/**
 	 * @ref: reference count

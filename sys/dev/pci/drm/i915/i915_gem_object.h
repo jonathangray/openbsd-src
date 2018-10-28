@@ -123,9 +123,7 @@ struct drm_i915_gem_object {
 	struct drm_mm_node *stolen;
 	union {
 		struct rcu_head rcu;
-#ifdef notyet
 		struct llist_node freed;
-#endif
 	};
 
 	/**

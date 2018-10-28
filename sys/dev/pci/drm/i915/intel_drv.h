@@ -498,9 +498,7 @@ struct intel_atomic_state {
 
 	struct i915_sw_fence commit_ready;
 
-#ifdef notyet
 	struct llist_node freed;
-#endif
 };
 
 struct intel_plane_state {
