@@ -57,8 +57,8 @@ int i915_gem_stolen_insert_node_in_range(struct drm_i915_private *dev_priv,
 
 	mutex_lock(&dev_priv->mm.stolen_lock);
 	ret = drm_mm_insert_node_in_range(&dev_priv->mm.stolen, node,
-					  size, alignment, 0,
-					  start, end, DRM_MM_INSERT_BEST);
+					  size, alignment, start, end,
+					  DRM_MM_SEARCH_DEFAULT);
 	mutex_unlock(&dev_priv->mm.stolen_lock);
 
 	return ret;
@@ -84,7 +84,9 @@ static int i915_adjust_stolen(struct drm_i915_private *dev_priv,
 			      struct resource *dsm)
 {
 	struct i915_ggtt *ggtt = &dev_priv->ggtt;
+#ifdef notyet
 	struct resource *r;
+#endif
 
 	if (dsm->start == 0 || dsm->end <= dsm->start)
 		return -EINVAL;
@@ -130,6 +132,7 @@ static int i915_adjust_stolen(struct drm_i915_private *dev_priv,
 		}
 	}
 
+#ifdef __linux__
 	/*
 	 * Verify that nothing else uses this physical address. Stolen
 	 * memory should be reserved by the BIOS and hidden from the
@@ -163,6 +166,7 @@ static int i915_adjust_stolen(struct drm_i915_private *dev_priv,
 			return -EBUSY;
 		}
 	}
+#endif
 
 	return 0;
 }
@@ -378,7 +382,7 @@ int i915_gem_init_stolen(struct drm_i915_private *dev_priv)
 	resource_size_t reserved_base, stolen_top;
 	resource_size_t reserved_total, reserved_size;
 
-	rw_init(&dev_priv->mm.stolen_lock);
+	rw_init(&dev_priv->mm.stolen_lock, "stln");
 
 	if (intel_vgpu_active(dev_priv)) {
 		DRM_INFO("iGVT-g active, disabling use of stolen memory\n");
@@ -461,11 +465,13 @@ int i915_gem_init_stolen(struct drm_i915_private *dev_priv)
 	dev_priv->dsm_reserved =
 		(struct resource) DEFINE_RES_MEM(reserved_base, reserved_size);
 
+#ifdef notyet
 	if (!resource_contains(&dev_priv->dsm, &dev_priv->dsm_reserved)) {
 		DRM_ERROR("Stolen reserved area %pR outside stolen memory %pR\n",
 			  &dev_priv->dsm_reserved, &dev_priv->dsm);
 		return 0;
 	}
+#endif
 
 	/* It is possible for the reserved area to end before the end of stolen
 	 * memory, so just consider the start. */

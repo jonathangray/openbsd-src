@@ -2180,6 +2180,12 @@ resource_size(const struct resource *r)
 	return r->end - r->start + 1;
 }
 
+#define DEFINE_RES_MEM(_start, _size)		\
+	{					\
+		.start = (_start),		\
+		.end = (_start) + (_size) - 1,	\
+	}
+
 struct pci_bus {
 	pci_chipset_tag_t pc;
 	unsigned char	number;
