@@ -84,7 +84,11 @@ static void i915_fence_release(struct dma_fence *fence)
 	 */
 	i915_sw_fence_fini(&rq->submit);
 
+#ifdef __linux__
 	kmem_cache_free(rq->i915->requests, rq);
+#else
+	pool_put(rq->i915->requests, rq);
+#endif
 }
 
 const struct dma_fence_ops i915_fence_ops = {
@@ -116,14 +120,22 @@ i915_request_remove_from_client(struct i915_request *request)
 static struct i915_dependency *
 i915_dependency_alloc(struct drm_i915_private *i915)
 {
+#ifdef __linux__
 	return kmem_cache_alloc(i915->dependencies, GFP_KERNEL);
+#else
+	return pool_get(i915->dependencies, PR_WAITOK);
+#endif
 }
 
 static void
 i915_dependency_free(struct drm_i915_private *i915,
 		     struct i915_dependency *dep)
 {
+#ifdef __linux__
 	kmem_cache_free(i915->dependencies, dep);
+#else
+	pool_put(i915->dependencies, dep);
+#endif
 }
 
 static void
@@ -410,6 +422,8 @@ static void __retire_engine_upto(struct intel_engine_cs *engine,
 
 static void i915_request_retire(struct i915_request *request)
 {
+	STUB();
+#ifdef notyet
 	struct i915_gem_active *active, *next;
 
 	GEM_TRACE("%s fence %llx:%d, global=%d, current %d\n",
@@ -468,6 +482,7 @@ static void i915_request_retire(struct i915_request *request)
 
 	i915_sched_node_fini(request->i915, &request->sched);
 	i915_request_put(request);
+#endif
 }
 
 void i915_request_retire_upto(struct i915_request *rq)
@@ -732,8 +747,12 @@ i915_request_alloc(struct intel_engine_cs *engine, struct i915_gem_context *ctx)
 	 *
 	 * Do not use kmem_cache_zalloc() here!
 	 */
+#ifdef __linux__
 	rq = kmem_cache_alloc(i915->requests,
 			      GFP_KERNEL | __GFP_RETRY_MAYFAIL | __GFP_NOWARN);
+#else
+	rq = pool_get(i915->requests, PR_WAITOK);
+#endif
 	if (unlikely(!rq)) {
 		/* Ratelimit ourselves to prevent oom from malicious clients */
 		ret = i915_gem_wait_for_idle(i915,
@@ -751,10 +770,16 @@ i915_request_alloc(struct intel_engine_cs *engine, struct i915_gem_context *ctx)
 		 * Having already penalized the client to stall, we spend
 		 * a little extra time to re-optimise page allocation.
 		 */
+#ifdef notyet
 		kmem_cache_shrink(i915->requests);
+#endif
 		rcu_barrier(); /* Recover the TYPESAFE_BY_RCU pages */
 
+#ifdef __linux__
 		rq = kmem_cache_alloc(i915->requests, GFP_KERNEL);
+#else
+		rq = pool_get(i915->requests, PR_WAITOK);
+#endif
 		if (!rq) {
 			ret = -ENOMEM;
 			goto err_unreserve;
@@ -770,7 +795,7 @@ i915_request_alloc(struct intel_engine_cs *engine, struct i915_gem_context *ctx)
 	rq->timeline = ce->ring->timeline;
 	GEM_BUG_ON(rq->timeline == &engine->timeline);
 
-	mtx_init(&rq->lock);
+	mtx_init(&rq->lock, IPL_NONE);
 	dma_fence_init(&rq->fence,
 		       &i915_fence_ops,
 		       &rq->lock,
@@ -835,7 +860,11 @@ err_unwind:
 	GEM_BUG_ON(!list_empty(&rq->sched.signalers_list));
 	GEM_BUG_ON(!list_empty(&rq->sched.waiters_list));
 
+#ifdef __linux__
 	kmem_cache_free(i915->requests, rq);
+#else
+	pool_put(i915->requests, rq);
+#endif
 err_unreserve:
 	unreserve_gt(i915);
 err_unpin:
@@ -900,6 +929,9 @@ await_dma_fence:
 int
 i915_request_await_dma_fence(struct i915_request *rq, struct dma_fence *fence)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct dma_fence **child = &fence;
 	unsigned int nchild = 1;
 	int ret;
@@ -953,6 +985,7 @@ i915_request_await_dma_fence(struct i915_request *rq, struct dma_fence *fence)
 	} while (--nchild);
 
 	return 0;
+#endif
 }
 
 /**
@@ -1045,6 +1078,8 @@ void i915_request_skip(struct i915_request *rq, int error)
  */
 void i915_request_add(struct i915_request *request)
 {
+	STUB();
+#ifdef notyet
 	struct intel_engine_cs *engine = request->engine;
 	struct i915_timeline *timeline = request->timeline;
 	struct intel_ring *ring = request->ring;
@@ -1153,10 +1188,14 @@ void i915_request_add(struct i915_request *request)
 	 */
 	if (prev && i915_request_completed(prev))
 		i915_request_retire_upto(prev);
+#endif
 }
 
 static unsigned long local_clock_us(unsigned int *cpu)
 {
+	STUB();
+	return 0;
+#ifdef notyet
 	unsigned long t;
 
 	/*
@@ -1176,6 +1215,7 @@ static unsigned long local_clock_us(unsigned int *cpu)
 	put_cpu();
 
 	return t;
+#endif
 }
 
 static bool busywait_stop(unsigned long timeout, unsigned int cpu)
@@ -1243,7 +1283,7 @@ static bool __i915_spin_request(const struct i915_request *rq,
 			break;
 
 		cpu_relax();
-	} while (!need_resched());
+	} while (!drm_need_resched());
 
 	return false;
 }
@@ -1283,6 +1323,9 @@ long i915_request_wait(struct i915_request *rq,
 		       unsigned int flags,
 		       long timeout)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	const int state = flags & I915_WAIT_INTERRUPTIBLE ?
 		TASK_INTERRUPTIBLE : TASK_UNINTERRUPTIBLE;
 	wait_queue_head_t *errq = &rq->i915->gpu_error.wait_queue;
@@ -1417,6 +1460,7 @@ complete:
 	trace_i915_request_wait_end(rq);
 
 	return timeout;
+#endif
 }
 
 static void ring_retire_requests(struct intel_ring *ring)

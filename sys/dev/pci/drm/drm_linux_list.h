@@ -60,6 +60,13 @@ list_is_singular(const struct list_head *head) {
 	return !list_empty(head) && ((head)->next == (head)->prev);
 }
 
+static inline int
+list_is_last(const struct list_head *list,
+    const struct list_head *head)
+{
+	return list->next == head;
+}
+
 static inline void
 list_add(struct list_head *new, struct list_head *head) {
         (head)->next->prev = new;

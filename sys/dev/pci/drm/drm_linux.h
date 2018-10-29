@@ -117,7 +117,7 @@ typedef __ptrdiff_t ptrdiff_t;
 
 #define __printf(x, y)
 
-#define barrier()		__asm __volatile("" : : : "memory");
+#define barrier()		__asm __volatile("" : : : "memory")
 
 #define ACCESS_ONCE(x)		(*(volatile __typeof(x) *)&(x))
 
@@ -586,6 +586,7 @@ _spin_unlock_irqrestore(struct mutex *mtxp, __unused unsigned long flags
 
 
 #define spin_lock(mtxp)			mtx_enter(mtxp)
+#define spin_lock_nested(mtxp, l)	mtx_enter(mtxp)
 #define spin_unlock(mtxp)		mtx_leave(mtxp)
 #define spin_lock_irq(mtxp)		mtx_enter(mtxp)
 #define spin_unlock_irq(mtxp)		mtx_leave(mtxp)
@@ -1586,6 +1587,7 @@ kobject_del(struct kobject *obj)
 }
 
 #define	DEFINE_WAIT(wait)		wait_queue_head_t *wait = NULL
+#define	DEFINE_WAIT_FUNC(wait, func)	wait_queue_head_t *wait = NULL
 
 static inline void
 prepare_to_wait(wait_queue_head_t *wq, wait_queue_head_t **wait, int state)
