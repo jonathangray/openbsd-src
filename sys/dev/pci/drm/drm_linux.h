@@ -3231,6 +3231,7 @@ struct dma_buf_export_info {
 	size_t size;
 	int flags;
 	void *priv;
+	struct reservation_object *resv;
 };
 
 #define DEFINE_DMA_BUF_EXPORT_INFO(x)  struct dma_buf_export_info x 

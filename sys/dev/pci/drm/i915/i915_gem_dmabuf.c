@@ -41,6 +41,8 @@ static struct drm_i915_gem_object *dma_buf_to_obj(struct dma_buf *buf)
 	return to_intel_bo(buf->priv);
 }
 
+#ifdef notyet
+
 static struct sg_table *i915_gem_map_dma_buf(struct dma_buf_attachment *attachment,
 					     enum dma_data_direction dir)
 {
@@ -216,10 +218,15 @@ out:
 	return err;
 }
 
+#endif
+
 static const struct dma_buf_ops i915_dmabuf_ops =  {
+#ifdef notyet
 	.map_dma_buf = i915_gem_map_dma_buf,
 	.unmap_dma_buf = i915_gem_unmap_dma_buf,
+#endif
 	.release = drm_gem_dmabuf_release,
+#ifdef notyet
 	.map = i915_gem_dmabuf_kmap,
 	.unmap = i915_gem_dmabuf_kunmap,
 	.mmap = i915_gem_dmabuf_mmap,
@@ -227,6 +234,7 @@ static const struct dma_buf_ops i915_dmabuf_ops =  {
 	.vunmap = i915_gem_dmabuf_vunmap,
 	.begin_cpu_access = i915_gem_begin_cpu_access,
 	.end_cpu_access = i915_gem_end_cpu_access,
+#endif
 };
 
 struct dma_buf *i915_gem_prime_export(struct drm_device *dev,
@@ -249,6 +257,8 @@ struct dma_buf *i915_gem_prime_export(struct drm_device *dev,
 
 	return drm_gem_dmabuf_export(dev, &exp_info);
 }
+
+#ifdef notyet
 
 static int i915_gem_object_get_pages_dmabuf(struct drm_i915_gem_object *obj)
 {
@@ -279,6 +289,8 @@ static const struct drm_i915_gem_object_ops i915_gem_object_dmabuf_ops = {
 	.put_pages = i915_gem_object_put_pages_dmabuf,
 };
 
+#endif
+
 struct drm_gem_object *i915_gem_prime_import(struct drm_device *dev,
 					     struct dma_buf *dma_buf)
 {
@@ -304,6 +316,7 @@ struct drm_gem_object *i915_gem_prime_import(struct drm_device *dev,
 	if (IS_ERR(attach))
 		return ERR_CAST(attach);
 
+#ifdef notyet
 	get_dma_buf(dma_buf);
 
 	obj = i915_gem_object_alloc(to_i915(dev));
@@ -334,6 +347,10 @@ fail_detach:
 	dma_buf_put(dma_buf);
 
 	return ERR_PTR(ret);
+#else
+	ret = 0;
+	panic(__func__);
+#endif
 }
 
 #if IS_ENABLED(CONFIG_DRM_I915_SELFTEST)
