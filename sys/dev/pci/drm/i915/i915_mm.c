@@ -27,6 +27,8 @@
 #include <linux/io-mapping.h>
 
 #include <asm/pgtable.h>
+#else
+#include <dev/pci/drm/drm_linux.h>
 #endif
 
 #include "i915_drv.h"
@@ -37,6 +39,7 @@ struct remap_pfn {
 	pgprot_t prot;
 };
 
+#ifdef notyet
 static int remap_pfn(pte_t *pte, pgtable_t token,
 		     unsigned long addr, void *data)
 {
@@ -84,3 +87,4 @@ int remap_io_mapping(struct vm_area_struct *vma,
 
 	return 0;
 }
+#endif
