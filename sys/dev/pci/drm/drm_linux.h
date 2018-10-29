@@ -988,6 +988,13 @@ INIT_DELAYED_WORK(struct delayed_work *dwork, work_func_t func)
 	timeout_set(&dwork->to, __delayed_work_tick, &dwork->work);
 }
 
+static inline void
+INIT_DELAYED_WORK_ONSTACK(struct delayed_work *dwork, work_func_t func)
+{
+	INIT_WORK(&dwork->work, func);
+	timeout_set(&dwork->to, __delayed_work_tick, &dwork->work);
+}
+
 static inline bool
 schedule_work(struct work_struct *work)
 {
@@ -1046,6 +1053,7 @@ bool flush_delayed_work(struct delayed_work *);
 #define flush_scheduled_work()	flush_workqueue(system_wq)
 
 #define destroy_work_on_stack(x)
+#define destroy_delayed_work_on_stack(x)
 
 struct tasklet_struct {
 	void (*func)(unsigned long);
@@ -1075,6 +1083,12 @@ tasklet_init(struct tasklet_struct *ts, void (*func)(unsigned long),
 {
 	STUB();
 }
+
+struct task_struct {
+	int state;
+};
+
+#define TASK_NORMAL	1
 
 typedef void *async_cookie_t;
 #define async_schedule(func, data)	(func)((data), NULL)
@@ -1154,6 +1168,7 @@ round_jiffies_up_relative(unsigned long j)
 #define nsecs_to_jiffies64(x)	(((uint64_t)(x)) * hz / 1000000000)
 #define get_jiffies_64()	jiffies
 #define time_after(a,b)		((long)(b) - (long)(a) < 0)
+#define time_after32(a,b)	((uint32_t)(b) - (uint32_t)(a) < 0)
 #define time_after_eq(a,b)	((long)(b) - (long)(a) <= 0)
 #define time_before(a,b)	((long)(a) - (long)(b) < 0)
 #define get_seconds()		time_second
@@ -1585,6 +1600,8 @@ static inline void
 kobject_del(struct kobject *obj)
 {
 }
+
+#define kobject_uevent_env(obj, act, envp)
 
 #define	DEFINE_WAIT(wait)		wait_queue_head_t *wait = NULL
 #define	DEFINE_WAIT_FUNC(wait, func)	wait_queue_head_t *wait = NULL

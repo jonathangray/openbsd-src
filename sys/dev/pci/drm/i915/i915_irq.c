@@ -1239,6 +1239,9 @@ void gen6_rps_reset_ei(struct drm_i915_private *dev_priv)
 
 static u32 vlv_wa_c0_ei(struct drm_i915_private *dev_priv, u32 pm_iir)
 {
+	STUB();
+	return 0;
+#ifdef notyet
 	struct intel_rps *rps = &dev_priv->gt_pm.rps;
 	const struct intel_rps_ei *prev = &rps->ei;
 	struct intel_rps_ei now;
@@ -1275,6 +1278,7 @@ static u32 vlv_wa_c0_ei(struct drm_i915_private *dev_priv, u32 pm_iir)
 
 	rps->ei = now;
 	return events;
+#endif
 }
 
 static void gen6_pm_rps_work(struct work_struct *work)
@@ -3164,11 +3168,15 @@ static void i915_reset_device(struct drm_i915_private *dev_priv,
 			      u32 engine_mask,
 			      const char *reason)
 {
+	STUB();
+#ifdef notyet
 	struct i915_gpu_error *error = &dev_priv->gpu_error;
+#ifdef notyet
 	struct kobject *kobj = &dev_priv->drm.primary->kdev->kobj;
 	char *error_event[] = { I915_ERROR_UEVENT "=1", NULL };
 	char *reset_event[] = { I915_RESET_UEVENT "=1", NULL };
 	char *reset_done_event[] = { I915_ERROR_UEVENT "=0", NULL };
+#endif
 	struct wedge_me w;
 
 	kobject_uevent_env(kobj, KOBJ_CHANGE, error_event);
@@ -3209,6 +3217,7 @@ static void i915_reset_device(struct drm_i915_private *dev_priv,
 
 	if (!test_bit(I915_WEDGED, &error->flags))
 		kobject_uevent_env(kobj, KOBJ_CHANGE, reset_done_event);
+#endif
 }
 
 static void i915_clear_error_registers(struct drm_i915_private *dev_priv)
@@ -3254,6 +3263,8 @@ void i915_handle_error(struct drm_i915_private *dev_priv,
 		       unsigned long flags,
 		       const char *fmt, ...)
 {
+	STUB();
+#ifdef notyet
 	struct intel_engine_cs *engine;
 	unsigned int tmp;
 	char error_msg[80];
@@ -3263,7 +3274,7 @@ void i915_handle_error(struct drm_i915_private *dev_priv,
 		va_list args;
 
 		va_start(args, fmt);
-		vscnprintf(error_msg, sizeof(error_msg), fmt, args);
+		vsnprintf(error_msg, sizeof(error_msg), fmt, args);
 		va_end(args);
 
 		msg = error_msg;
@@ -3338,6 +3349,7 @@ void i915_handle_error(struct drm_i915_private *dev_priv,
 
 out:
 	intel_runtime_pm_put(dev_priv);
+#endif
 }
 
 /* Called from drm generic code, passed 'crtc' which
