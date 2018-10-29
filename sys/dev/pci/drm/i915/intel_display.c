@@ -15987,7 +15987,9 @@ void intel_modeset_cleanup(struct drm_device *dev)
 	/* poll work can call into fbdev, hence clean that up afterwards */
 	intel_fbdev_fini(dev_priv);
 
+#ifdef notyet
 	intel_unregister_dsm_handler();
+#endif
 
 	intel_fbc_global_disable(dev_priv);
 
