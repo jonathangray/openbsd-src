@@ -1349,6 +1349,9 @@ local_clock(void)
 #define __GFP_COMP		0
 #define GFP_TRANSHUGE_LIGHT	0
 #define __GFP_KSWAPD_RECLAIM	0
+#define __GFP_HIGHMEM		0
+#define __GFP_RECLAIMABLE	0
+#define __GFP_DMA32		0
 
 #define PageHighMem(x)	0
 
