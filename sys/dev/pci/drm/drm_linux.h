@@ -2591,11 +2591,16 @@ gcd(unsigned long a, unsigned long b)
 	return (b);
 }
 
-
 static inline unsigned long
 roundup_pow_of_two(unsigned long x)
 {
 	return (1UL << flsl(x - 1));
+}
+
+static inline unsigned long
+rounddown_pow_of_two(unsigned long x)
+{
+	return (1UL << (flsl(x) - 1));
 }
 
 #define is_power_of_2(x)	(((x) != 0) && (((x) - 1) & (x)) == 0)

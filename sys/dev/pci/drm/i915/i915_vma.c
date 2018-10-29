@@ -139,7 +139,11 @@ vma_create(struct drm_i915_gem_object *obj,
 	/* The aliasing_ppgtt should never be used directly! */
 	GEM_BUG_ON(vm == &vm->i915->mm.aliasing_ppgtt->vm);
 
+#ifdef __linux__
 	vma = kmem_cache_zalloc(vm->i915->vmas, GFP_KERNEL);
+#else
+	vma = pool_get(vm->i915->vmas, PR_WAITOK | PR_ZERO);
+#endif
 	if (vma == NULL)
 		return ERR_PTR(-ENOMEM);
 
@@ -224,7 +228,11 @@ vma_create(struct drm_i915_gem_object *obj,
 	return vma;
 
 err_vma:
+#ifdef __linux__
 	kmem_cache_free(vm->i915->vmas, vma);
+#else
+	pool_put(vm->i915->vmas, vma);
+#endif
 	return ERR_PTR(-E2BIG);
 }
 
@@ -343,6 +351,9 @@ int i915_vma_bind(struct i915_vma *vma, enum i915_cache_level cache_level,
 
 void __iomem *i915_vma_pin_iomap(struct i915_vma *vma)
 {
+	STUB();
+	return IO_ERR_PTR(-ENOSYS);
+#ifdef notyet
 	void __iomem *ptr;
 	int err;
 
@@ -384,6 +395,7 @@ err_unpin:
 	__i915_vma_unpin(vma);
 err:
 	return IO_ERR_PTR(err);
+#endif
 }
 
 void i915_vma_flush_writes(struct i915_vma *vma)
@@ -814,7 +826,11 @@ static void __i915_vma_destroy(struct i915_vma *vma)
 		kfree(iter);
 	}
 
+#ifdef __linux__
 	kmem_cache_free(i915->vmas, vma);
+#else
+	pool_put(i915->vmas, vma);
+#endif
 }
 
 void i915_vma_destroy(struct i915_vma *vma)
@@ -845,6 +861,8 @@ void i915_vma_parked(struct drm_i915_private *i915)
 
 static void __i915_vma_iounmap(struct i915_vma *vma)
 {
+	STUB();
+#ifdef notyet
 	GEM_BUG_ON(i915_vma_is_pinned(vma));
 
 	if (vma->iomap == NULL)
@@ -852,11 +870,14 @@ static void __i915_vma_iounmap(struct i915_vma *vma)
 
 	io_mapping_unmap(vma->iomap);
 	vma->iomap = NULL;
+#endif
 }
 
 void i915_vma_revoke_mmap(struct i915_vma *vma)
 {
+#ifdef notyet
 	struct drm_vma_offset_node *node = &vma->obj->base.vma_node;
+#endif
 	u64 vma_offset;
 
 	lockdep_assert_held(&vma->vm->i915->drm.struct_mutex);

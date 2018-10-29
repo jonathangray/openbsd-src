@@ -128,6 +128,11 @@ static inline bool drm_mm_initialized(struct drm_mm *mm)
 	return mm->hole_stack.next;
 }
 
+static inline bool drm_mm_hole_follows(const struct drm_mm_node *node)
+{
+	return node->hole_follows;
+}
+
 static inline u64 __drm_mm_hole_node_start(struct drm_mm_node *hole_node)
 {
 	return hole_node->start + hole_node->size;
