@@ -98,13 +98,19 @@
 
 static void lut_close(struct i915_gem_context *ctx)
 {
+	STUB();
+#ifdef notyet
 	struct i915_lut_handle *lut, *ln;
 	struct radix_tree_iter iter;
 	void __rcu **slot;
 
 	list_for_each_entry_safe(lut, ln, &ctx->handles_list, ctx_link) {
 		list_del(&lut->obj_link);
+#ifdef __linux__
 		kmem_cache_free(ctx->i915->luts, lut);
+#else
+		pool_put(ctx->i915->luts, lut);
+#endif
 	}
 
 	rcu_read_lock();
@@ -115,6 +121,7 @@ static void lut_close(struct i915_gem_context *ctx)
 		__i915_gem_object_release_unless_active(vma->obj);
 	}
 	rcu_read_unlock();
+#endif
 }
 
 static void i915_gem_context_free(struct i915_gem_context *ctx)
@@ -144,6 +151,8 @@ static void i915_gem_context_free(struct i915_gem_context *ctx)
 
 static void contexts_free(struct drm_i915_private *i915)
 {
+	STUB();
+#ifdef notyet
 	struct llist_node *freed = llist_del_all(&i915->contexts.free_list);
 	struct i915_gem_context *ctx, *cn;
 
@@ -151,10 +160,13 @@ static void contexts_free(struct drm_i915_private *i915)
 
 	llist_for_each_entry_safe(ctx, cn, freed, free_link)
 		i915_gem_context_free(ctx);
+#endif
 }
 
 static void contexts_free_first(struct drm_i915_private *i915)
 {
+	STUB();
+#ifdef notyet
 	struct i915_gem_context *ctx;
 	struct llist_node *freed;
 
@@ -166,6 +178,7 @@ static void contexts_free_first(struct drm_i915_private *i915)
 
 	ctx = container_of(freed, typeof(*ctx), free_link);
 	i915_gem_context_free(ctx);
+#endif
 }
 
 static void contexts_free_worker(struct work_struct *work)
@@ -270,6 +283,9 @@ static struct i915_gem_context *
 __create_hw_context(struct drm_i915_private *dev_priv,
 		    struct drm_i915_file_private *file_priv)
 {
+	STUB();
+	return NULL;
+#ifdef notyet
 	struct i915_gem_context *ctx;
 	unsigned int n;
 	int ret;
@@ -309,6 +325,7 @@ __create_hw_context(struct drm_i915_private *dev_priv,
 	ctx->user_handle = ret;
 
 	ctx->file_priv = file_priv;
+#ifdef notyet
 	if (file_priv) {
 		ctx->pid = get_task_pid(current, PIDTYPE_PID);
 		ctx->name = kasprintf(GFP_KERNEL, "%s[%d]/%x",
@@ -320,6 +337,7 @@ __create_hw_context(struct drm_i915_private *dev_priv,
 			goto err_pid;
 		}
 	}
+#endif
 
 	/* NB: Mark all slices as needing a remap so that when the context first
 	 * loads it will restore whatever remap state already exists. If there
@@ -349,6 +367,7 @@ err_pid:
 err_lut:
 	context_close(ctx);
 	return ERR_PTR(ret);
+#endif
 }
 
 static void __destroy_hw_context(struct i915_gem_context *ctx,
@@ -729,9 +748,8 @@ int i915_gem_context_create_ioctl(struct drm_device *dev, void *data,
 		return -EINVAL;
 
 	if (client_is_banned(file_priv)) {
-		DRM_DEBUG("client %s[%d] banned from creating ctx\n",
-			  current->comm,
-			  pid_nr(get_task_pid(current, PIDTYPE_PID)));
+		DRM_DEBUG("client [%d] banned from creating ctx\n",
+			  curproc->p_p->ps_pid);
 
 		return -EIO;
 	}
@@ -887,8 +905,12 @@ int i915_gem_context_setparam_ioctl(struct drm_device *dev, void *data,
 			else if (priority > I915_CONTEXT_MAX_USER_PRIORITY ||
 				 priority < I915_CONTEXT_MIN_USER_PRIORITY)
 				ret = -EINVAL;
+#ifdef notyet
 			else if (priority > I915_CONTEXT_DEFAULT_PRIORITY &&
 				 !capable(CAP_SYS_NICE))
+#else
+			else if (priority > I915_CONTEXT_DEFAULT_PRIORITY)
+#endif
 				ret = -EPERM;
 			else
 				ctx->sched.priority = priority;

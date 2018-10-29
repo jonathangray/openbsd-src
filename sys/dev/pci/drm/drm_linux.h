@@ -3484,4 +3484,9 @@ stop_machine(cpu_stop_fn_t fn, void *arg, void *cpus)
 	return r;
 }
 
+struct radix_tree_iter {
+};
+
+#define put_pid(x)
+
 #endif
