@@ -93,6 +93,7 @@ file	dev/pci/drm/i915/i915_gem_gtt.c			inteldrm
 file	dev/pci/drm/i915/i915_gem_internal.c		inteldrm
 file	dev/pci/drm/i915/i915_gem_object.c		inteldrm
 file	dev/pci/drm/i915/i915_gem_render_state.c	inteldrm
+file	dev/pci/drm/i915/i915_gem_shrinker.c		inteldrm
 file	dev/pci/drm/i915/i915_gem_stolen.c		inteldrm
 file	dev/pci/drm/i915/i915_gem_tiling.c		inteldrm
 file	dev/pci/drm/i915/i915_gem_userptr.c		inteldrm
