@@ -154,6 +154,11 @@ list_del_init(struct list_head *entry) {
 	&pos->member != (head);					 	\
 	pos = list_entry(pos->member.next, __typeof(*pos), member))
 
+#define list_for_each_entry_reverse(pos, head, member)			\
+    for (pos = list_entry((head)->prev, __typeof(*pos), member);	\
+	&pos->member != (head);					 	\
+	pos = list_entry(pos->member.prev, __typeof(*pos), member))
+
 #define list_for_each_entry_continue(pos, head, member)				\
     for (pos = list_entry((pos)->member.next, __typeof(*pos), member);	\
 	&pos->member != (head);					 	\

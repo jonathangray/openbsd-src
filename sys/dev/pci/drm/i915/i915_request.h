@@ -47,7 +47,9 @@ struct i915_timeline;
 
 struct intel_wait {
 	struct rb_node node;
+#ifdef notyet
 	struct task_struct *tsk;
+#endif
 	struct i915_request *request;
 	u32 seqno;
 };

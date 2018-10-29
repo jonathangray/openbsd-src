@@ -25,6 +25,8 @@
 #ifdef __linux__
 #include <linux/kthread.h>
 #include <uapi/linux/sched/types.h>
+#else
+#include <dev/pci/drm/drm_linux.h>
 #endif
 
 #include "i915_drv.h"
@@ -37,6 +39,9 @@
 
 static unsigned int __intel_breadcrumbs_wakeup(struct intel_breadcrumbs *b)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct intel_wait *wait;
 	unsigned int result = 0;
 
@@ -62,6 +67,7 @@ static unsigned int __intel_breadcrumbs_wakeup(struct intel_breadcrumbs *b)
 	}
 
 	return result;
+#endif
 }
 
 unsigned int intel_engine_wakeup(struct intel_engine_cs *engine)
@@ -95,6 +101,7 @@ static noinline void missed_breadcrumb(struct intel_engine_cs *engine)
 	set_bit(engine->id, &engine->i915->gpu_error.missed_irq_rings);
 }
 
+#ifdef notyet
 static void intel_breadcrumbs_hangcheck(struct timer_list *t)
 {
 	struct intel_engine_cs *engine =
@@ -161,6 +168,7 @@ static void intel_breadcrumbs_fake_irq(struct timer_list *t)
 
 	mod_timer(&b->fake_irq, jiffies + 1);
 }
+#endif
 
 static void irq_enable(struct intel_engine_cs *engine)
 {
@@ -235,6 +243,8 @@ void intel_engine_unpin_breadcrumbs_irq(struct intel_engine_cs *engine)
 
 void intel_engine_disarm_breadcrumbs(struct intel_engine_cs *engine)
 {
+	STUB();
+#ifdef notyet
 	struct intel_breadcrumbs *b = &engine->breadcrumbs;
 	struct intel_wait *wait, *n;
 
@@ -266,6 +276,7 @@ void intel_engine_disarm_breadcrumbs(struct intel_engine_cs *engine)
 	b->waiters = RB_ROOT;
 
 	spin_unlock_irq(&b->rb_lock);
+#endif
 }
 
 static bool use_fake_irq(const struct intel_breadcrumbs *b)
@@ -288,11 +299,14 @@ static bool use_fake_irq(const struct intel_breadcrumbs *b)
 
 static void enable_fake_irq(struct intel_breadcrumbs *b)
 {
+	STUB();
+#ifdef notyet
 	/* Ensure we never sleep indefinitely */
 	if (!b->irq_enabled || use_fake_irq(b))
 		mod_timer(&b->fake_irq, jiffies + 1);
 	else
 		mod_timer(&b->hangcheck, wait_timeout());
+#endif
 }
 
 static bool __intel_breadcrumbs_enable_irq(struct intel_breadcrumbs *b)
@@ -351,6 +365,8 @@ static inline struct intel_wait *to_wait(struct rb_node *node)
 static inline void __intel_breadcrumbs_finish(struct intel_breadcrumbs *b,
 					      struct intel_wait *wait)
 {
+	STUB();
+#ifdef notyet
 	lockdep_assert_held(&b->rb_lock);
 	GEM_BUG_ON(b->irq_wait == wait);
 
@@ -368,11 +384,14 @@ static inline void __intel_breadcrumbs_finish(struct intel_breadcrumbs *b,
 
 	if (wait->tsk->state != TASK_RUNNING)
 		wake_up_process(wait->tsk); /* implicit smp_wmb() */
+#endif
 }
 
 static inline void __intel_breadcrumbs_next(struct intel_engine_cs *engine,
 					    struct rb_node *next)
 {
+	STUB();
+#ifdef notyet
 	struct intel_breadcrumbs *b = &engine->breadcrumbs;
 
 	spin_lock(&b->irq_lock);
@@ -387,11 +406,15 @@ static inline void __intel_breadcrumbs_next(struct intel_engine_cs *engine,
 	 */
 	if (next)
 		wake_up_process(to_wait(next)->tsk);
+#endif
 }
 
 static bool __intel_engine_add_wait(struct intel_engine_cs *engine,
 				    struct intel_wait *wait)
 {
+	STUB();
+	return false;
+#ifdef notyet
 	struct intel_breadcrumbs *b = &engine->breadcrumbs;
 	struct rb_node **p, *parent, *completed;
 	bool first, armed;
@@ -495,6 +518,7 @@ static bool __intel_engine_add_wait(struct intel_engine_cs *engine,
 	GEM_BUG_ON(rb_first(&b->waiters) != &b->irq_wait->node);
 
 	return armed;
+#endif
 }
 
 bool intel_engine_add_wait(struct intel_engine_cs *engine,
@@ -516,21 +540,31 @@ bool intel_engine_add_wait(struct intel_engine_cs *engine,
 
 static inline bool chain_wakeup(struct rb_node *rb, int priority)
 {
+	STUB();
+	return false;
+#ifdef notyet
 	return rb && to_wait(rb)->tsk->prio <= priority;
+#endif
 }
 
 static inline int wakeup_priority(struct intel_breadcrumbs *b,
 				  struct task_struct *tsk)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	if (tsk == b->signaler)
 		return INT_MIN;
 	else
 		return tsk->prio;
+#endif
 }
 
 static void __intel_engine_remove_wait(struct intel_engine_cs *engine,
 				       struct intel_wait *wait)
 {
+	STUB();
+#ifdef notyet
 	struct intel_breadcrumbs *b = &engine->breadcrumbs;
 
 	lockdep_assert_held(&b->rb_lock);
@@ -587,6 +621,7 @@ out:
 	GEM_BUG_ON(b->irq_wait == wait);
 	GEM_BUG_ON(rb_first(&b->waiters) !=
 		   (b->irq_wait ? &b->irq_wait->node : NULL));
+#endif
 }
 
 void intel_engine_remove_wait(struct intel_engine_cs *engine,
@@ -610,13 +645,19 @@ void intel_engine_remove_wait(struct intel_engine_cs *engine,
 
 static void signaler_set_rtpriority(void)
 {
+	STUB();
+#ifdef notyet
 	 struct sched_param param = { .sched_priority = 1 };
 
 	 sched_setscheduler_nocheck(current, SCHED_FIFO, &param);
+#endif
 }
 
 static int intel_breadcrumbs_signaler(void *arg)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct intel_engine_cs *engine = arg;
 	struct intel_breadcrumbs *b = &engine->breadcrumbs;
 	struct i915_request *rq, *n;
@@ -626,7 +667,7 @@ static int intel_breadcrumbs_signaler(void *arg)
 
 	do {
 		bool do_schedule = true;
-		LIST_HEAD(list);
+		DRM_LIST_HEAD(list);
 		u32 seqno;
 
 		set_current_state(TASK_INTERRUPTIBLE);
@@ -714,6 +755,7 @@ sleep:
 	__set_current_state(TASK_RUNNING);
 
 	return 0;
+#endif
 }
 
 static void insert_signal(struct intel_breadcrumbs *b,
@@ -744,6 +786,9 @@ static void insert_signal(struct intel_breadcrumbs *b,
 
 bool intel_engine_enable_signaling(struct i915_request *request, bool wakeup)
 {
+	STUB();
+	return false;
+#ifdef notyet
 	struct intel_engine_cs *engine = request->engine;
 	struct intel_breadcrumbs *b = &engine->breadcrumbs;
 	struct intel_wait *wait = &request->signaling.wait;
@@ -790,6 +835,7 @@ bool intel_engine_enable_signaling(struct i915_request *request, bool wakeup)
 	}
 
 	return true;
+#endif
 }
 
 void intel_engine_cancel_signaling(struct i915_request *request)
@@ -812,11 +858,14 @@ void intel_engine_cancel_signaling(struct i915_request *request)
 
 int intel_engine_init_breadcrumbs(struct intel_engine_cs *engine)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct intel_breadcrumbs *b = &engine->breadcrumbs;
 	struct task_struct *tsk;
 
-	mtx_init(&b->rb_lock);
-	mtx_init(&b->irq_lock);
+	mtx_init(&b->rb_lock, IPL_NONE);
+	mtx_init(&b->irq_lock, IPL_NONE);
 
 	timer_setup(&b->fake_irq, intel_breadcrumbs_fake_irq, 0);
 	timer_setup(&b->hangcheck, intel_breadcrumbs_hangcheck, 0);
@@ -837,15 +886,19 @@ int intel_engine_init_breadcrumbs(struct intel_engine_cs *engine)
 	b->signaler = tsk;
 
 	return 0;
+#endif
 }
 
 static void cancel_fake_irq(struct intel_engine_cs *engine)
 {
+	STUB();
+#ifdef notyet
 	struct intel_breadcrumbs *b = &engine->breadcrumbs;
 
 	del_timer_sync(&b->fake_irq); /* may queue b->hangcheck */
 	del_timer_sync(&b->hangcheck);
 	clear_bit(engine->id, &engine->i915->gpu_error.missed_irq_rings);
+#endif
 }
 
 void intel_engine_reset_breadcrumbs(struct intel_engine_cs *engine)
@@ -882,6 +935,8 @@ void intel_engine_reset_breadcrumbs(struct intel_engine_cs *engine)
 
 void intel_engine_fini_breadcrumbs(struct intel_engine_cs *engine)
 {
+	STUB();
+#ifdef notyet
 	struct intel_breadcrumbs *b = &engine->breadcrumbs;
 
 	/* The engines should be idle and all requests accounted for! */
@@ -893,6 +948,7 @@ void intel_engine_fini_breadcrumbs(struct intel_engine_cs *engine)
 		kthread_stop(b->signaler);
 
 	cancel_fake_irq(engine);
+#endif
 }
 
 #if IS_ENABLED(CONFIG_DRM_I915_SELFTEST)
