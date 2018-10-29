@@ -1467,7 +1467,6 @@ struct i915_oa_reg {
 	u32 value;
 };
 
-#ifdef notyet
 struct i915_oa_config {
 	char uuid[UUID_STRING_LEN + 1];
 	int id;
@@ -1479,13 +1478,14 @@ struct i915_oa_config {
 	const struct i915_oa_reg *flex_regs;
 	u32 flex_regs_len;
 
+#ifdef notyet
 	struct attribute_group sysfs_metric;
 	struct attribute *attrs[2];
 	struct device_attribute sysfs_metric_id;
+#endif
 
 	atomic_t ref_count;
 };
-#endif
 
 struct i915_perf_stream;
 
@@ -1605,9 +1605,7 @@ struct i915_perf_stream {
 	/**
 	 * @oa_config: The OA configuration used by the stream.
 	 */
-#ifdef notyet
 	struct i915_oa_config *oa_config;
-#endif
 };
 
 /**
@@ -1656,10 +1654,8 @@ struct i915_oa_ops {
 	 * counter reports being sampled. May apply system constraints such as
 	 * disabling EU clock gating as required.
 	 */
-#ifdef notyet
 	int (*enable_metric_set)(struct drm_i915_private *dev_priv,
 				 const struct i915_oa_config *oa_config);
-#endif
 
 	/**
 	 * @disable_metric_set: Remove system constraints associated with using
@@ -2155,9 +2151,7 @@ struct inteldrm_softc {
 			bool periodic;
 			int period_exponent;
 
-#ifdef notyet
 			struct i915_oa_config test_config;
-#endif
 
 			struct {
 				struct i915_vma *vma;

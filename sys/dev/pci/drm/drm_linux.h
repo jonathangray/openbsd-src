@@ -3238,6 +3238,8 @@ struct pmu {
 
 #define sysfs_create_link(x, y, z)	0
 #define sysfs_remove_link(x, y)
+#define sysfs_create_group(x, y)	0
+#define sysfs_remove_group(x, y)
 
 static inline void *
 memset32(uint32_t *b, uint32_t c, size_t len)
@@ -3267,6 +3269,7 @@ memset64(uint64_t *b, uint64_t c, size_t len)
 #define SZ_4K	(1024 * 4)
 #define SZ_8K	(1024 * 8)
 #define SZ_32K	(1024 * 32)
+#define SZ_128K	(1024 * 128)
 #define SZ_1M	(1024 * 1024)
 #define SZ_16M	(16 * 1024 * 1024)
 
@@ -3304,6 +3307,20 @@ hrtimer_cancel(struct hrtimer *timer)
 {
 	STUB();
 	return -ENOSYS;
+}
+
+static inline void
+hrtimer_start(struct hrtimer *timer, ktime_t tim,
+    int mode)
+{
+	STUB();
+}
+
+static inline uint64_t
+hrtimer_forward_now(struct hrtimer *timer, ktime_t interval)
+{
+	STUB();
+	return 0;
 }
 
 #define MBI_PMIC_BUS_ACCESS_BEGIN	1
@@ -3362,5 +3379,7 @@ llist_empty(struct llist_head *head)
 	STUB();
 	return true;
 }
+
+#define UUID_STRING_LEN 36
 
 #endif

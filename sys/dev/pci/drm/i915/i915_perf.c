@@ -274,8 +274,10 @@
 #define POLL_PERIOD (NSEC_PER_SEC / POLL_FREQUENCY)
 
 /* for sysctl proc_dointvec_minmax of dev.i915.perf_stream_paranoid */
+#ifdef notyet
 static int zero;
 static int one = 1;
+#endif
 static u32 i915_perf_stream_paranoid = true;
 
 /* The maximum exponent the hardware accepts is 63 (essentially it selects one
@@ -452,6 +454,9 @@ static u32 gen7_oa_hw_tail_read(struct drm_i915_private *dev_priv)
  */
 static bool oa_buffer_check_unlocked(struct drm_i915_private *dev_priv)
 {
+	STUB();
+	return false;
+#ifdef notyet
 	int report_size = dev_priv->perf.oa.oa_buffer.format_size;
 	unsigned long flags;
 	unsigned int aged_idx;
@@ -540,6 +545,7 @@ static bool oa_buffer_check_unlocked(struct drm_i915_private *dev_priv)
 
 	return aged_tail == INVALID_TAIL_PTR ?
 		false : OA_TAKEN(aged_tail, head) >= report_size;
+#endif
 }
 
 /**
@@ -1151,6 +1157,9 @@ static int gen7_oa_read(struct i915_perf_stream *stream,
  */
 static int i915_oa_wait_unlocked(struct i915_perf_stream *stream)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct drm_i915_private *dev_priv = stream->dev_priv;
 
 	/* We would wait indefinitely if periodic sampling is not enabled */
@@ -1159,8 +1168,10 @@ static int i915_oa_wait_unlocked(struct i915_perf_stream *stream)
 
 	return wait_event_interruptible(dev_priv->perf.oa.poll_wq,
 					oa_buffer_check_unlocked(dev_priv));
+#endif
 }
 
+#ifdef notyet
 /**
  * i915_oa_poll_wait - call poll_wait() for an OA stream poll()
  * @stream: An i915-perf stream opened for OA metrics
@@ -1179,6 +1190,7 @@ static void i915_oa_poll_wait(struct i915_perf_stream *stream,
 
 	poll_wait(file, &dev_priv->perf.oa.poll_wq, wait);
 }
+#endif
 
 /**
  * i915_oa_read - just calls through to &i915_oa_ops->read
@@ -1354,6 +1366,8 @@ free_oa_buffer(struct drm_i915_private *i915)
 
 static void i915_oa_stream_destroy(struct i915_perf_stream *stream)
 {
+	STUB();
+#ifdef notyet
 	struct drm_i915_private *dev_priv = stream->dev_priv;
 
 	BUG_ON(stream != dev_priv->perf.oa.exclusive_stream);
@@ -1381,6 +1395,7 @@ static void i915_oa_stream_destroy(struct i915_perf_stream *stream)
 		DRM_NOTE("%d spurious OA report notices suppressed due to ratelimiting\n",
 			 dev_priv->perf.oa.spurious_report_rs.missed);
 	}
+#endif
 }
 
 static void gen7_init_oa_buffer(struct drm_i915_private *dev_priv)
@@ -2009,6 +2024,8 @@ static void gen8_oa_enable(struct drm_i915_private *dev_priv)
  */
 static void i915_oa_stream_enable(struct i915_perf_stream *stream)
 {
+	STUB();
+#ifdef notyet
 	struct drm_i915_private *dev_priv = stream->dev_priv;
 
 	dev_priv->perf.oa.ops.oa_enable(dev_priv);
@@ -2017,6 +2034,7 @@ static void i915_oa_stream_enable(struct i915_perf_stream *stream)
 		hrtimer_start(&dev_priv->perf.oa.poll_check_timer,
 			      ns_to_ktime(POLL_PERIOD),
 			      HRTIMER_MODE_REL_PINNED);
+#endif
 }
 
 static void gen7_oa_disable(struct drm_i915_private *dev_priv)
@@ -2055,6 +2073,7 @@ static void i915_oa_stream_disable(struct i915_perf_stream *stream)
 		hrtimer_cancel(&dev_priv->perf.oa.poll_check_timer);
 }
 
+#ifdef notyet
 static const struct i915_perf_stream_ops i915_oa_stream_ops = {
 	.destroy = i915_oa_stream_destroy,
 	.enable = i915_oa_stream_enable,
@@ -2063,6 +2082,7 @@ static const struct i915_perf_stream_ops i915_oa_stream_ops = {
 	.poll_wait = i915_oa_poll_wait,
 	.read = i915_oa_read,
 };
+#endif
 
 /**
  * i915_oa_stream_init - validate combined props for OA stream and init
@@ -2086,6 +2106,9 @@ static int i915_oa_stream_init(struct i915_perf_stream *stream,
 			       struct drm_i915_perf_open_param *param,
 			       struct perf_open_properties *props)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct drm_i915_private *dev_priv = stream->dev_priv;
 	int format_size;
 	int ret;
@@ -2231,6 +2254,7 @@ err_config:
 		oa_put_render_ctx_id(stream);
 
 	return ret;
+#endif
 }
 
 void i915_oa_init_reg_state(struct intel_engine_cs *engine,
@@ -2313,6 +2337,9 @@ static ssize_t i915_perf_read(struct file *file,
 			      size_t count,
 			      loff_t *ppos)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct i915_perf_stream *stream = file->private_data;
 	struct drm_i915_private *dev_priv = stream->dev_priv;
 	ssize_t ret;
@@ -2364,10 +2391,14 @@ static ssize_t i915_perf_read(struct file *file,
 	}
 
 	return ret;
+#endif
 }
 
 static enum hrtimer_restart oa_poll_check_timer_cb(struct hrtimer *hrtimer)
 {
+	STUB();
+	return 0;
+#ifdef notyet
 	struct drm_i915_private *dev_priv =
 		container_of(hrtimer, typeof(*dev_priv),
 			     perf.oa.poll_check_timer);
@@ -2380,8 +2411,10 @@ static enum hrtimer_restart oa_poll_check_timer_cb(struct hrtimer *hrtimer)
 	hrtimer_forward_now(hrtimer, ns_to_ktime(POLL_PERIOD));
 
 	return HRTIMER_RESTART;
+#endif
 }
 
+#ifdef notyet
 /**
  * i915_perf_poll_locked - poll_wait() with a suitable wait queue for stream
  * @dev_priv: i915 device instance
@@ -2444,6 +2477,7 @@ static __poll_t i915_perf_poll(struct file *file, poll_table *wait)
 
 	return ret;
 }
+#endif
 
 /**
  * i915_perf_enable_locked - handle `I915_PERF_IOCTL_ENABLE` ioctl
@@ -2536,6 +2570,9 @@ static long i915_perf_ioctl(struct file *file,
 			    unsigned int cmd,
 			    unsigned long arg)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct i915_perf_stream *stream = file->private_data;
 	struct drm_i915_private *dev_priv = stream->dev_priv;
 	long ret;
@@ -2545,6 +2582,7 @@ static long i915_perf_ioctl(struct file *file,
 	mutex_unlock(&dev_priv->perf.lock);
 
 	return ret;
+#endif
 }
 
 /**
@@ -2573,6 +2611,7 @@ static void i915_perf_destroy_locked(struct i915_perf_stream *stream)
 	kfree(stream);
 }
 
+#ifdef notyet
 /**
  * i915_perf_release - handles userspace close() of a stream file
  * @inode: anonymous inode associated with file
@@ -2609,6 +2648,7 @@ static const struct file_operations fops = {
 	 */
 	.compat_ioctl   = i915_perf_ioctl,
 };
+#endif
 
 
 /**
@@ -2641,6 +2681,9 @@ i915_perf_open_ioctl_locked(struct drm_i915_private *dev_priv,
 			    struct perf_open_properties *props,
 			    struct drm_file *file)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct i915_gem_context *specific_ctx = NULL;
 	struct i915_perf_stream *stream = NULL;
 	unsigned long f_flags = 0;
@@ -2742,6 +2785,7 @@ err_ctx:
 		i915_gem_context_put(specific_ctx);
 err:
 	return ret;
+#endif
 }
 
 static u64 oa_exponent_to_ns(struct drm_i915_private *dev_priv, int exponent)
@@ -2958,6 +3002,8 @@ int i915_perf_open_ioctl(struct drm_device *dev, void *data,
  */
 void i915_perf_register(struct drm_i915_private *dev_priv)
 {
+	STUB();
+#ifdef notyet
 	int ret;
 
 	if (!dev_priv->perf.initialized)
@@ -3028,6 +3074,7 @@ sysfs_error:
 
 exit:
 	mutex_unlock(&dev_priv->perf.lock);
+#endif
 }
 
 /**
@@ -3199,15 +3246,22 @@ static ssize_t show_dynamic_id(struct device *dev,
 			       struct device_attribute *attr,
 			       char *buf)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct i915_oa_config *oa_config =
 		container_of(attr, typeof(*oa_config), sysfs_metric_id);
 
 	return sprintf(buf, "%d\n", oa_config->id);
+#endif
 }
 
 static int create_dynamic_oa_sysfs_entry(struct drm_i915_private *dev_priv,
 					 struct i915_oa_config *oa_config)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	sysfs_attr_init(&oa_config->sysfs_metric_id.attr);
 	oa_config->sysfs_metric_id.attr.name = "id";
 	oa_config->sysfs_metric_id.attr.mode = S_IRUGO;
@@ -3222,6 +3276,7 @@ static int create_dynamic_oa_sysfs_entry(struct drm_i915_private *dev_priv,
 
 	return sysfs_create_group(dev_priv->perf.metrics_kobj,
 				  &oa_config->sysfs_metric);
+#endif
 }
 
 /**
@@ -3240,6 +3295,9 @@ static int create_dynamic_oa_sysfs_entry(struct drm_i915_private *dev_priv,
 int i915_perf_add_config_ioctl(struct drm_device *dev, void *data,
 			       struct drm_file *file)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct drm_i915_private *dev_priv = dev->dev_private;
 	struct drm_i915_perf_oa_config *args = data;
 	struct i915_oa_config *oa_config, *tmp;
@@ -3375,6 +3433,7 @@ reg_err:
 	put_oa_config(dev_priv, oa_config);
 	DRM_DEBUG("Failed to add new OA config\n");
 	return err;
+#endif
 }
 
 /**
@@ -3434,6 +3493,7 @@ lock_err:
 	return ret;
 }
 
+#ifdef notyet
 static struct ctl_table oa_table[] = {
 	{
 	 .procname = "perf_stream_paranoid",
@@ -3475,6 +3535,7 @@ static struct ctl_table dev_root[] = {
 	 },
 	{}
 };
+#endif
 
 /**
  * i915_perf_init - initialize i915-perf state on module load
@@ -3570,14 +3631,16 @@ void i915_perf_init(struct drm_i915_private *dev_priv)
 		init_waitqueue_head(&dev_priv->perf.oa.poll_wq);
 
 		INIT_LIST_HEAD(&dev_priv->perf.streams);
-		rw_init(&dev_priv->perf.lock);
-		mtx_init(&dev_priv->perf.oa.oa_buffer.ptr_lock);
+		rw_init(&dev_priv->perf.lock, "perflk");
+		mtx_init(&dev_priv->perf.oa.oa_buffer.ptr_lock, IPL_NONE);
 
 		oa_sample_rate_hard_limit = 1000 *
 			(INTEL_INFO(dev_priv)->cs_timestamp_frequency_khz / 2);
+#ifdef notyet
 		dev_priv->perf.sysctl_header = register_sysctl_table(dev_root);
+#endif
 
-		rw_init(&dev_priv->perf.metrics_lock);
+		rw_init(&dev_priv->perf.metrics_lock, "metricslk");
 		idr_init(&dev_priv->perf.metrics_idr);
 
 		dev_priv->perf.initialized = true;
@@ -3606,7 +3669,9 @@ void i915_perf_fini(struct drm_i915_private *dev_priv)
 	idr_for_each(&dev_priv->perf.metrics_idr, destroy_config, dev_priv);
 	idr_destroy(&dev_priv->perf.metrics_idr);
 
+#ifdef notyet
 	unregister_sysctl_table(dev_priv->perf.sysctl_header);
+#endif
 
 	memset(&dev_priv->perf.oa.ops, 0, sizeof(dev_priv->perf.oa.ops));
 
