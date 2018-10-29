@@ -51,6 +51,7 @@ file	dev/pci/drm/drm_mode_object.c		drm
 file	dev/pci/drm/drm_file.c			drm
 file	dev/pci/drm/drm_modeset_helper.c	drm
 file	dev/pci/drm/drm_gem_framebuffer_helper.c	drm
+file	dev/pci/drm/drm_scdc_helper.c		drm
 file	dev/pci/drm/linux_hdmi.c		drm
 file	dev/pci/drm/linux_list_sort.c		drm
 file	dev/pci/drm/linux_reservation.c		drm
