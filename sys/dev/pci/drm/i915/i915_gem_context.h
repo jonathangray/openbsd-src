@@ -192,9 +192,7 @@ struct i915_gem_context {
 	 * the user handle. (user handles are per fd, but the binding is
 	 * per vm, which may be one per context or shared with the global GTT)
 	 */
-#ifdef notyet
 	struct radix_tree_root handles_vma;
-#endif
 
 	/** handles_list: reverse list of all the rbtree entries in use for
 	 * this context, which allows us to free all the allocations on

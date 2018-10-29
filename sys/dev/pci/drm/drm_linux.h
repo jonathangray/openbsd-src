@@ -97,6 +97,7 @@ typedef __ptrdiff_t ptrdiff_t;
 
 #define __force
 #define __always_unused	__unused
+#define __maybe_unused
 #define __read_mostly
 #define __iomem
 #define __must_check
@@ -260,6 +261,13 @@ bitmap_weight(void *p, u_int n)
 	for (b = 0; b < n; b += 32)
 		sum += hweight32(ptr[b >> 5]);
 	return sum;
+}
+
+static inline uint64_t
+sign_extend64(uint64_t value, int index)
+{
+	uint8_t shift = 63 - index;
+	return ((int64_t)(value << shift) >> shift);
 }
 
 #define DECLARE_HASHTABLE(name, bits) struct hlist_head name[1 << (bits)]
@@ -2119,6 +2127,8 @@ copy_from_user(void *to, const void *from, unsigned len)
 	__typeof((x)) __tmp = (x);			\
 	-copyout(&(__tmp), ptr, sizeof(__tmp));		\
 })
+#define __get_user(x, ptr)	get_user((x), (ptr))
+#define __put_user(x, ptr)	put_user((x), (ptr))
 
 #define u64_to_user_ptr(x)	((void *)(uintptr_t)(x))
 
@@ -3484,8 +3494,26 @@ stop_machine(cpu_stop_fn_t fn, void *arg, void *cpus)
 	return r;
 }
 
+struct radix_tree_root {
+};
+
 struct radix_tree_iter {
 };
+
+static inline int
+radix_tree_insert(struct radix_tree_root *root,
+    unsigned long index, void *entry)
+{
+	STUB();
+	return -ENOSYS;
+}
+
+static inline void *
+radix_tree_lookup(const struct radix_tree_root *root, unsigned long index)
+{
+	STUB();
+	return NULL;
+}
 
 #define put_pid(x)
 

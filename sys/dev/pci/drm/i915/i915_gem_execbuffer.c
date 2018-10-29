@@ -507,6 +507,9 @@ eb_add_vma(struct i915_execbuffer *eb,
 	   unsigned int i, unsigned batch_idx,
 	   struct i915_vma *vma)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct drm_i915_gem_exec_object2 *entry = &eb->exec[i];
 	int err;
 
@@ -573,6 +576,7 @@ eb_add_vma(struct i915_execbuffer *eb,
 			vma->exec_flags = NULL;
 	}
 	return err;
+#endif
 }
 
 static inline int use_cpu_reloc(const struct reloc_cache *cache,
@@ -786,7 +790,11 @@ static int eb_lookup_vmas(struct i915_execbuffer *eb)
 			goto err_obj;
 		}
 
+#ifdef __linux__
 		lut = kmem_cache_alloc(eb->i915->luts, GFP_KERNEL);
+#else
+		lut = pool_get(eb->i915->luts, PR_WAITOK);
+#endif
 		if (unlikely(!lut)) {
 			err = -ENOMEM;
 			goto err_obj;
@@ -794,7 +802,11 @@ static int eb_lookup_vmas(struct i915_execbuffer *eb)
 
 		err = radix_tree_insert(handles_vma, handle, vma);
 		if (unlikely(err)) {
+#ifdef __linux__
 			kmem_cache_free(eb->i915->luts, lut);
+#else
+			pool_put(eb->i915->luts, lut);
+#endif
 			goto err_obj;
 		}
 
@@ -830,6 +842,9 @@ err_vma:
 static struct i915_vma *
 eb_get_vma(const struct i915_execbuffer *eb, unsigned long handle)
 {
+	STUB();
+	return NULL;
+#ifdef notyet
 	if (eb->lut_size < 0) {
 		if (handle >= -eb->lut_size)
 			return NULL;
@@ -845,6 +860,7 @@ eb_get_vma(const struct i915_execbuffer *eb, unsigned long handle)
 		}
 		return NULL;
 	}
+#endif
 }
 
 static void eb_release_vmas(const struct i915_execbuffer *eb)
@@ -942,6 +958,8 @@ static void reloc_gpu_flush(struct reloc_cache *cache)
 
 static void reloc_cache_reset(struct reloc_cache *cache)
 {
+	STUB();
+#ifdef notyet
 	void *vaddr;
 
 	if (cache->rq)
@@ -974,6 +992,7 @@ static void reloc_cache_reset(struct reloc_cache *cache)
 
 	cache->vaddr = 0;
 	cache->page = -1;
+#endif
 }
 
 static void *reloc_kmap(struct drm_i915_gem_object *obj,
@@ -993,7 +1012,9 @@ static void *reloc_kmap(struct drm_i915_gem_object *obj,
 			return ERR_PTR(err);
 
 		BUILD_BUG_ON(KMAP & CLFLUSH_FLAGS);
+#ifdef notyet
 		BUILD_BUG_ON((KMAP | CLFLUSH_FLAGS) & PAGE_MASK);
+#endif
 
 		cache->vaddr = flushes | KMAP;
 		cache->node.mm = (void *)obj;
@@ -1012,6 +1033,9 @@ static void *reloc_iomap(struct drm_i915_gem_object *obj,
 			 struct reloc_cache *cache,
 			 unsigned long page)
 {
+	STUB();
+	return NULL;
+#ifdef notyet
 	struct i915_ggtt *ggtt = cache_to_ggtt(cache);
 	unsigned long offset;
 	void *vaddr;
@@ -1070,6 +1094,7 @@ static void *reloc_iomap(struct drm_i915_gem_object *obj,
 	cache->vaddr = (unsigned long)vaddr;
 
 	return vaddr;
+#endif
 }
 
 static void *reloc_vaddr(struct drm_i915_gem_object *obj,
@@ -1093,6 +1118,8 @@ static void *reloc_vaddr(struct drm_i915_gem_object *obj,
 
 static void clflush_write32(u32 *addr, u32 value, unsigned int flushes)
 {
+	STUB();
+#ifdef notyet
 	if (unlikely(flushes & (CLFLUSH_BEFORE | CLFLUSH_AFTER))) {
 		if (flushes & CLFLUSH_BEFORE) {
 			clflushopt(addr);
@@ -1112,6 +1139,7 @@ static void clflush_write32(u32 *addr, u32 value, unsigned int flushes)
 			clflushopt(addr);
 	} else
 		*addr = value;
+#endif
 }
 
 static int __reloc_gpu_alloc(struct i915_execbuffer *eb,
@@ -1552,6 +1580,9 @@ static int check_relocations(const struct drm_i915_gem_exec_object2 *entry)
 
 static int eb_copy_relocations(const struct i915_execbuffer *eb)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	const unsigned int count = eb->buffer_count;
 	unsigned int i;
 	int err;
@@ -1628,6 +1659,7 @@ err:
 			kvfree(relocs);
 	}
 	return err;
+#endif
 }
 
 static int eb_prefault_relocations(const struct i915_execbuffer *eb)
@@ -1978,6 +2010,9 @@ static unsigned int
 gen8_dispatch_bsd_engine(struct drm_i915_private *dev_priv,
 			 struct drm_file *file)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct drm_i915_file_private *file_priv = file->driver_priv;
 
 	/* Check whether the file_priv has already selected one ring. */
@@ -1986,6 +2021,7 @@ gen8_dispatch_bsd_engine(struct drm_i915_private *dev_priv,
 			 &dev_priv->mm.bsd_engine_dispatch_index);
 
 	return file_priv->bsd_engine;
+#endif
 }
 
 #define I915_USER_RINGS (4)
@@ -2104,8 +2140,10 @@ get_fence_array(struct drm_i915_gem_execbuffer2 *args,
 			goto err;
 		}
 
+#ifdef notyet
 		BUILD_BUG_ON(~(ARCH_KMALLOC_MINALIGN - 1) &
 			     ~__I915_EXEC_FENCE_UNKNOWN_FLAGS);
+#endif
 
 		fences[n] = ptr_pack_bits(syncobj, fence.flags, 2);
 	}
@@ -2182,6 +2220,9 @@ i915_gem_do_execbuffer(struct drm_device *dev,
 		       struct drm_i915_gem_exec_object2 *exec,
 		       struct drm_syncobj **fences)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct i915_execbuffer eb;
 	struct dma_fence *in_fence = NULL;
 	struct sync_file *out_fence = NULL;
@@ -2433,6 +2474,7 @@ err_out_fence:
 err_in_fence:
 	dma_fence_put(in_fence);
 	return err;
+#endif
 }
 
 static size_t eb_element_size(void)
@@ -2554,6 +2596,9 @@ int
 i915_gem_execbuffer2_ioctl(struct drm_device *dev, void *data,
 			   struct drm_file *file)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct drm_i915_gem_execbuffer2 *args = data;
 	struct drm_i915_gem_exec_object2 *exec2_list;
 	struct drm_syncobj **fences = NULL;
@@ -2625,4 +2670,5 @@ end_user:
 	put_fence_array(args, fences);
 	kvfree(exec2_list);
 	return err;
+#endif
 }
