@@ -51,6 +51,7 @@ typedef uint32_t atomic_t;
 #define atomic_inc_and_test(v)	(atomic_inc_return(v) == 0)
 #define atomic_or(n, p)		atomic_setbits_int(p, n)
 #define atomic_cmpxchg(p, o, n)	__sync_val_compare_and_swap(p, o, n)
+#define atomic_set_release(p, v)	atomic_set((p), (v))
 
 static __inline int
 atomic_xchg(volatile int *v, int n)

@@ -19,6 +19,7 @@
 
 #include "i915_sw_fence.h"
 #include "i915_selftest.h"
+#include "i915_drv.h"
 
 #define I915_SW_FENCE_FLAG_ALLOC BIT(3) /* after WQ_FLAG_* for safety */
 
@@ -139,6 +140,8 @@ void i915_sw_fence_fini(struct i915_sw_fence *fence)
 static void __i915_sw_fence_wake_up_all(struct i915_sw_fence *fence,
 					struct list_head *continuation)
 {
+	STUB();
+#ifdef notyet
 	wait_queue_head_t *x = &fence->wait;
 	wait_queue_entry_t *pos, *next;
 	unsigned long flags;
@@ -162,7 +165,7 @@ static void __i915_sw_fence_wake_up_all(struct i915_sw_fence *fence,
 				list_move_tail(&pos->entry, continuation);
 		}
 	} else {
-		LIST_HEAD(extra);
+		DRM_LIST_HEAD(extra);
 
 		do {
 			list_for_each_entry_safe(pos, next, &x->head, entry)
@@ -177,6 +180,7 @@ static void __i915_sw_fence_wake_up_all(struct i915_sw_fence *fence,
 	spin_unlock_irqrestore(&x->lock, flags);
 
 	debug_fence_assert(fence);
+#endif
 }
 
 static void __i915_sw_fence_complete(struct i915_sw_fence *fence,
@@ -221,6 +225,8 @@ void __i915_sw_fence_init(struct i915_sw_fence *fence,
 			  const char *name,
 			  struct lock_class_key *key)
 {
+	STUB();
+#ifdef notyet
 	BUG_ON(!fn || (unsigned long)fn & ~I915_SW_FENCE_MASK);
 
 	debug_fence_init(fence);
@@ -228,6 +234,7 @@ void __i915_sw_fence_init(struct i915_sw_fence *fence,
 	__init_waitqueue_head(&fence->wait, name, key);
 	atomic_set(&fence->pending, 1);
 	fence->flags = (unsigned long)fn;
+#endif
 }
 
 void i915_sw_fence_commit(struct i915_sw_fence *fence)
@@ -238,17 +245,24 @@ void i915_sw_fence_commit(struct i915_sw_fence *fence)
 
 static int i915_sw_fence_wake(wait_queue_entry_t *wq, unsigned mode, int flags, void *key)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	list_del(&wq->entry);
 	__i915_sw_fence_complete(wq->private, key);
 
 	if (wq->flags & I915_SW_FENCE_FLAG_ALLOC)
 		kfree(wq);
 	return 0;
+#endif
 }
 
 static bool __i915_sw_fence_check_if_after(struct i915_sw_fence *fence,
 				    const struct i915_sw_fence * const signaler)
 {
+	STUB();
+	return false;
+#ifdef notyet
 	wait_queue_entry_t *wq;
 
 	if (__test_and_set_bit(I915_SW_FENCE_CHECKED_BIT, &fence->flags))
@@ -266,10 +280,13 @@ static bool __i915_sw_fence_check_if_after(struct i915_sw_fence *fence,
 	}
 
 	return false;
+#endif
 }
 
 static void __i915_sw_fence_clear_checked_bit(struct i915_sw_fence *fence)
 {
+	STUB();
+#ifdef notyet
 	wait_queue_entry_t *wq;
 
 	if (!__test_and_clear_bit(I915_SW_FENCE_CHECKED_BIT, &fence->flags))
@@ -281,6 +298,7 @@ static void __i915_sw_fence_clear_checked_bit(struct i915_sw_fence *fence)
 
 		__i915_sw_fence_clear_checked_bit(wq->private);
 	}
+#endif
 }
 
 static bool i915_sw_fence_check_if_after(struct i915_sw_fence *fence,
@@ -304,6 +322,9 @@ static int __i915_sw_fence_await_sw_fence(struct i915_sw_fence *fence,
 					  struct i915_sw_fence *signaler,
 					  wait_queue_entry_t *wq, gfp_t gfp)
 {
+	STUB();
+	return -1;
+#ifdef notyet
 	unsigned long flags;
 	int pending;
 
@@ -351,6 +372,7 @@ static int __i915_sw_fence_await_sw_fence(struct i915_sw_fence *fence,
 	spin_unlock_irqrestore(&signaler->wait.lock, flags);
 
 	return pending;
+#endif
 }
 
 int i915_sw_fence_await_sw_fence(struct i915_sw_fence *fence,
@@ -375,8 +397,10 @@ struct i915_sw_dma_fence_cb {
 struct i915_sw_dma_fence_cb_timer {
 	struct i915_sw_dma_fence_cb base;
 	struct dma_fence *dma;
+#ifdef notyet
 	struct timer_list timer;
 	struct irq_work work;
+#endif
 	struct rcu_head rcu;
 };
 
@@ -389,6 +413,7 @@ static void dma_i915_sw_fence_wake(struct dma_fence *dma,
 	kfree(cb);
 }
 
+#ifdef notyet
 static void timer_i915_sw_fence_wake(struct timer_list *t)
 {
 	struct i915_sw_dma_fence_cb_timer *cb = from_timer(cb, t, timer);
@@ -405,10 +430,13 @@ static void timer_i915_sw_fence_wake(struct timer_list *t)
 
 	i915_sw_fence_complete(fence);
 }
+#endif
 
 static void dma_i915_sw_fence_wake_timer(struct dma_fence *dma,
 					 struct dma_fence_cb *data)
 {
+	STUB();
+#ifdef notyet
 	struct i915_sw_dma_fence_cb_timer *cb =
 		container_of(data, typeof(*cb), base.base);
 	struct i915_sw_fence *fence;
@@ -418,8 +446,10 @@ static void dma_i915_sw_fence_wake_timer(struct dma_fence *dma,
 		i915_sw_fence_complete(fence);
 
 	irq_work_queue(&cb->work);
+#endif
 }
 
+#ifdef notyet
 static void irq_i915_sw_fence_work(struct irq_work *wrk)
 {
 	struct i915_sw_dma_fence_cb_timer *cb =
@@ -430,12 +460,16 @@ static void irq_i915_sw_fence_work(struct irq_work *wrk)
 
 	kfree_rcu(cb, rcu);
 }
+#endif
 
 int i915_sw_fence_await_dma_fence(struct i915_sw_fence *fence,
 				  struct dma_fence *dma,
 				  unsigned long timeout,
 				  gfp_t gfp)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct i915_sw_dma_fence_cb *cb;
 	dma_fence_func_t func;
 	int ret;
@@ -485,6 +519,7 @@ int i915_sw_fence_await_dma_fence(struct i915_sw_fence *fence,
 	}
 
 	return ret;
+#endif
 }
 
 int i915_sw_fence_await_reservation(struct i915_sw_fence *fence,
