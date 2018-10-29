@@ -385,7 +385,7 @@ static gen6_pte_t iris_pte_encode(dma_addr_t addr,
 static void stash_init(struct pagestash *stash)
 {
 	pagevec_init(&stash->pvec);
-	mtx_init(&stash->lock);
+	mtx_init(&stash->lock, IPL_NONE);
 }
 
 static struct vm_page *stash_pop_page(struct pagestash *stash)
@@ -419,6 +419,9 @@ static void stash_push_pagevec(struct pagestash *stash, struct pagevec *pvec)
 
 static struct vm_page *vm_alloc_page(struct i915_address_space *vm, gfp_t gfp)
 {
+	STUB();
+	return NULL;
+#ifdef notyet
 	struct pagevec stack;
 	struct vm_page *page;
 
@@ -474,11 +477,14 @@ static struct vm_page *vm_alloc_page(struct i915_address_space *vm, gfp_t gfp)
 	}
 
 	return page;
+#endif
 }
 
 static void vm_free_pages_release(struct i915_address_space *vm,
 				  bool immediate)
 {
+	STUB();
+#ifdef notyet
 	struct pagevec *pvec = &vm->free_pages.pvec;
 	struct pagevec stack;
 
@@ -517,6 +523,7 @@ static void vm_free_pages_release(struct i915_address_space *vm,
 	}
 
 	__pagevec_release(pvec);
+#endif
 }
 
 static void vm_free_page(struct i915_address_space *vm, struct vm_page *page)
@@ -543,7 +550,7 @@ static void i915_address_space_init(struct i915_address_space *vm,
 	 * Do a dummy acquire now under fs_reclaim so that any allocation
 	 * attempt holding the lock is immediately reported by lockdep.
 	 */
-	rw_init(&vm->mutex);
+	rw_init(&vm->mutex, "vmlk");
 	i915_gem_shrinker_taints_mutex(&vm->mutex);
 
 	GEM_BUG_ON(!vm->total);
@@ -570,6 +577,7 @@ static void i915_address_space_fini(struct i915_address_space *vm)
 	mutex_destroy(&vm->mutex);
 }
 
+#ifdef __linux__
 static int __setup_page_dma(struct i915_address_space *vm,
 			    struct i915_page_dma *p,
 			    gfp_t gfp)
@@ -590,6 +598,20 @@ static int __setup_page_dma(struct i915_address_space *vm,
 
 	return 0;
 }
+#else
+static int __setup_page_dma(struct i915_address_space *vm,
+			    struct i915_page_dma *p,
+			    gfp_t gfp)
+{
+	p->page = vm_alloc_page(vm, gfp | I915_GFP_ALLOW_FAIL);
+	if (!p->page)
+		return -ENOMEM;
+
+	p->daddr = VM_PAGE_TO_PHYS(p->page);
+
+	return 0;
+}
+#endif
 
 static int setup_page_dma(struct i915_address_space *vm,
 			  struct i915_page_dma *p)
@@ -600,7 +622,9 @@ static int setup_page_dma(struct i915_address_space *vm,
 static void cleanup_page_dma(struct i915_address_space *vm,
 			     struct i915_page_dma *p)
 {
+#ifdef __linux__
 	dma_unmap_page(vm->dma, p->daddr, PAGE_SIZE, PCI_DMA_BIDIRECTIONAL);
+#endif
 	vm_free_page(vm, p->page);
 }
 
@@ -632,6 +656,9 @@ static void fill_page_dma_32(struct i915_address_space *vm,
 static int
 setup_scratch_page(struct i915_address_space *vm, gfp_t gfp)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	unsigned long size;
 
 	/*
@@ -690,14 +717,17 @@ skip:
 		size = I915_GTT_PAGE_SIZE_4K;
 		gfp &= ~__GFP_NOWARN;
 	} while (1);
+#endif
 }
 
 static void cleanup_scratch_page(struct i915_address_space *vm)
 {
 	struct i915_page_dma *p = &vm->scratch_page;
 
+#ifdef __linux__
 	dma_unmap_page(vm->dma, p->daddr, BIT(p->order) << PAGE_SHIFT,
 		       PCI_DMA_BIDIRECTIONAL);
+#endif
 	__free_pages(p->page, p->order);
 }
 
@@ -764,14 +794,20 @@ static void free_pd(struct i915_address_space *vm,
 static void gen8_initialize_pd(struct i915_address_space *vm,
 			       struct i915_page_directory *pd)
 {
+	STUB();
+#ifdef notyet
 	fill_px(vm, pd,
 		gen8_pde_encode(px_dma(vm->scratch_pt), I915_CACHE_LLC));
 	memset_p((void **)pd->page_table, vm->scratch_pt, I915_PDES);
+#endif
 }
 
 static int __pdp_init(struct i915_address_space *vm,
 		      struct i915_page_directory_pointer *pdp)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	const unsigned int pdpes = i915_pdpes_per_pdp(vm);
 
 	pdp->page_directory = kmalloc_array(pdpes, sizeof(*pdp->page_directory),
@@ -782,6 +818,7 @@ static int __pdp_init(struct i915_address_space *vm,
 	memset_p((void **)pdp->page_directory, vm->scratch_pd, pdpes);
 
 	return 0;
+#endif
 }
 
 static void __pdp_fini(struct i915_page_directory_pointer *pdp)
@@ -850,9 +887,12 @@ static void gen8_initialize_pdp(struct i915_address_space *vm,
 static void gen8_initialize_pml4(struct i915_address_space *vm,
 				 struct i915_pml4 *pml4)
 {
+	STUB();
+#ifdef notyet
 	fill_px(vm, pml4,
 		gen8_pml4e_encode(px_dma(vm->scratch_pdp), I915_CACHE_LLC));
 	memset_p((void **)pml4->pdps, vm->scratch_pdp, GEN8_PML4ES_PER_PML4);
+#endif
 }
 
 /* PDE TLBs are a pain to invalidate on GEN8+. When we modify
@@ -1051,6 +1091,9 @@ gen8_ppgtt_insert_pte_entries(struct i915_hw_ppgtt *ppgtt,
 			      enum i915_cache_level cache_level,
 			      u32 flags)
 {
+	STUB();
+	return false;
+#ifdef notyet
 	struct i915_page_directory *pd;
 	const gen8_pte_t pte_encode = gen8_pte_encode(0, cache_level, flags);
 	gen8_pte_t *vaddr;
@@ -1098,6 +1141,7 @@ gen8_ppgtt_insert_pte_entries(struct i915_hw_ppgtt *ppgtt,
 	kunmap_atomic(vaddr);
 
 	return ret;
+#endif
 }
 
 static void gen8_ppgtt_insert_3lvl(struct i915_address_space *vm,
@@ -1121,6 +1165,8 @@ static void gen8_ppgtt_insert_huge_entries(struct i915_vma *vma,
 					   enum i915_cache_level cache_level,
 					   u32 flags)
 {
+	STUB();
+#ifdef notyet
 	const gen8_pte_t pte_encode = gen8_pte_encode(0, cache_level, flags);
 	u64 start = vma->node.start;
 	dma_addr_t rem = iter->sg->length;
@@ -1232,6 +1278,7 @@ static void gen8_ppgtt_insert_huge_entries(struct i915_vma *vma,
 
 		vma->page_sizes.gtt |= page_size;
 	} while (iter->sg);
+#endif
 }
 
 static void gen8_ppgtt_insert_4lvl(struct i915_address_space *vm,
@@ -1660,7 +1707,9 @@ static struct i915_hw_ppgtt *gen8_ppgtt_create(struct drm_i915_private *i915)
 	kref_init(&ppgtt->ref);
 
 	ppgtt->vm.i915 = i915;
+#ifdef notyet
 	ppgtt->vm.dma = &i915->drm.pdev->dev;
+#endif
 
 	ppgtt->vm.total = USES_FULL_48BIT_PPGTT(i915) ?
 		1ULL << 48 :
@@ -1900,6 +1949,8 @@ static void gen6_ppgtt_insert_entries(struct i915_address_space *vm,
 				      enum i915_cache_level cache_level,
 				      u32 flags)
 {
+	STUB();
+#ifdef notyet
 	struct i915_hw_ppgtt *ppgtt = i915_vm_to_ppgtt(vm);
 	unsigned first_entry = vma->node.start >> PAGE_SHIFT;
 	unsigned act_pt = first_entry / GEN6_PTES;
@@ -1933,6 +1984,7 @@ static void gen6_ppgtt_insert_entries(struct i915_address_space *vm,
 	kunmap_atomic(vaddr);
 
 	vma->page_sizes.gtt = I915_GTT_PAGE_SIZE;
+#endif
 }
 
 static int gen6_alloc_va_range(struct i915_address_space *vm,
@@ -2106,7 +2158,11 @@ static struct i915_vma *pd_vma_create(struct gen6_hw_ppgtt *ppgtt, int size)
 	GEM_BUG_ON(!IS_ALIGNED(size, I915_GTT_PAGE_SIZE));
 	GEM_BUG_ON(size > ggtt->vm.total);
 
+#ifdef __linux__
 	vma = kmem_cache_zalloc(i915->vmas, GFP_KERNEL);
+#else
+	vma = pool_get(i915->vmas, GFP_KERNEL);
+#endif
 	if (!vma)
 		return ERR_PTR(-ENOMEM);
 
@@ -2176,7 +2232,9 @@ static struct i915_hw_ppgtt *gen6_ppgtt_create(struct drm_i915_private *i915)
 	kref_init(&ppgtt->base.ref);
 
 	ppgtt->base.vm.i915 = i915;
+#ifdef notyet
 	ppgtt->base.vm.dma = &i915->drm.pdev->dev;
+#endif
 
 	ppgtt->base.vm.total = I915_PDES * GEN6_PTES * PAGE_SIZE;
 
@@ -2441,6 +2499,9 @@ void i915_gem_suspend_gtt_mappings(struct drm_i915_private *dev_priv)
 int i915_gem_gtt_prepare_pages(struct drm_i915_gem_object *obj,
 			       struct sg_table *pages)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	do {
 		if (dma_map_sg_attrs(&obj->base.dev->pdev->dev,
 				     pages->sgl, pages->nents,
@@ -2462,6 +2523,7 @@ int i915_gem_gtt_prepare_pages(struct drm_i915_gem_object *obj,
 				 I915_SHRINK_ACTIVE));
 
 	return -ENOSPC;
+#endif
 }
 
 static void gen8_set_pte(void __iomem *addr, gen8_pte_t pte)
@@ -2703,10 +2765,13 @@ static void i915_ggtt_insert_page(struct i915_address_space *vm,
 				  enum i915_cache_level cache_level,
 				  u32 unused)
 {
+	STUB();
+#ifdef notyet
 	unsigned int flags = (cache_level == I915_CACHE_NONE) ?
 		AGP_USER_MEMORY : AGP_USER_CACHED_MEMORY;
 
 	intel_gtt_insert_page(addr, offset >> PAGE_SHIFT, flags);
+#endif
 }
 
 static void i915_ggtt_insert_entries(struct i915_address_space *vm,
@@ -2823,7 +2888,9 @@ void i915_gem_gtt_finish_pages(struct drm_i915_gem_object *obj,
 			       struct sg_table *pages)
 {
 	struct drm_i915_private *dev_priv = to_i915(obj->base.dev);
+#ifdef notyet
 	struct device *kdev = &dev_priv->drm.pdev->dev;
+#endif
 	struct i915_ggtt *ggtt = &dev_priv->ggtt;
 
 	if (unlikely(ggtt->do_idle_maps)) {
@@ -2834,7 +2901,9 @@ void i915_gem_gtt_finish_pages(struct drm_i915_gem_object *obj,
 		}
 	}
 
+#ifdef notyet
 	dma_unmap_sg(kdev, pages->sgl, pages->nents, PCI_DMA_BIDIRECTIONAL);
+#endif
 }
 
 static int ggtt_set_pages(struct i915_vma *vma)
@@ -2946,10 +3015,10 @@ int i915_gem_init_ggtt(struct drm_i915_private *dev_priv)
 		return ret;
 
 	/* Reserve a mappable slot for our lockless error capture */
-	ret = drm_mm_insert_node_in_range(&ggtt->vm.mm, &ggtt->error_capture,
+	ret = drm_mm_insert_node_in_range_generic(&ggtt->vm.mm, &ggtt->error_capture,
 					  PAGE_SIZE, 0, I915_COLOR_UNEVICTABLE,
 					  0, ggtt->mappable_end,
-					  DRM_MM_INSERT_LOW);
+					  0, 0);
 	if (ret)
 		return ret;
 
@@ -2983,6 +3052,8 @@ err:
  */
 void i915_ggtt_cleanup_hw(struct drm_i915_private *dev_priv)
 {
+	STUB();
+#ifdef notyet
 	struct i915_ggtt *ggtt = &dev_priv->ggtt;
 	struct i915_vma *vma, *vn;
 	struct pagevec *pvec;
@@ -3018,6 +3089,7 @@ void i915_ggtt_cleanup_hw(struct drm_i915_private *dev_priv)
 	io_mapping_fini(&ggtt->iomap);
 
 	i915_gem_cleanup_stolen(&dev_priv->drm);
+#endif
 }
 
 static unsigned int gen6_get_total_gtt_size(u16 snb_gmch_ctl)
@@ -3056,6 +3128,9 @@ static unsigned int chv_get_total_gtt_size(u16 gmch_ctrl)
 
 static int ggtt_probe_common(struct i915_ggtt *ggtt, u64 size)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct drm_i915_private *dev_priv = ggtt->vm.i915;
 	struct pci_dev *pdev = dev_priv->drm.pdev;
 	phys_addr_t phys_addr;
@@ -3089,6 +3164,7 @@ static int ggtt_probe_common(struct i915_ggtt *ggtt, u64 size)
 	}
 
 	return 0;
+#endif
 }
 
 static struct intel_ppat_entry *
@@ -3214,6 +3290,8 @@ static void cnl_private_pat_update_hw(struct drm_i915_private *dev_priv)
 
 static void bdw_private_pat_update_hw(struct drm_i915_private *dev_priv)
 {
+	STUB();
+#ifdef notyet
 	struct intel_ppat *ppat = &dev_priv->ppat;
 	u64 pat = 0;
 	int i;
@@ -3225,6 +3303,7 @@ static void bdw_private_pat_update_hw(struct drm_i915_private *dev_priv)
 
 	I915_WRITE(GEN8_PRIVATE_PAT_LO, lower_32_bits(pat));
 	I915_WRITE(GEN8_PRIVATE_PAT_HI, upper_32_bits(pat));
+#endif
 }
 
 static unsigned int bdw_private_pat_match(u8 src, u8 dst)
@@ -3353,14 +3432,18 @@ static void chv_setup_private_ppat(struct intel_ppat *ppat)
 
 static void gen6_gmch_remove(struct i915_address_space *vm)
 {
+#ifdef __linux__
 	struct i915_ggtt *ggtt = i915_vm_to_ggtt(vm);
 
 	iounmap(ggtt->gsm);
+#endif
 	cleanup_scratch_page(vm);
 }
 
 static void setup_private_pat(struct drm_i915_private *dev_priv)
 {
+	STUB();
+#ifdef notyet
 	struct intel_ppat *ppat = &dev_priv->ppat;
 	int i;
 
@@ -3382,10 +3465,14 @@ static void setup_private_pat(struct drm_i915_private *dev_priv)
 	}
 
 	ppat->update_hw(dev_priv);
+#endif
 }
 
 static int gen8_gmch_probe(struct i915_ggtt *ggtt)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct drm_i915_private *dev_priv = ggtt->vm.i915;
 	struct pci_dev *pdev = dev_priv->drm.pdev;
 	unsigned int size;
@@ -3437,10 +3524,14 @@ static int gen8_gmch_probe(struct i915_ggtt *ggtt)
 	setup_private_pat(dev_priv);
 
 	return ggtt_probe_common(ggtt, size);
+#endif
 }
 
 static int gen6_gmch_probe(struct i915_ggtt *ggtt)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct drm_i915_private *dev_priv = ggtt->vm.i915;
 	struct pci_dev *pdev = dev_priv->drm.pdev;
 	unsigned int size;
@@ -3494,6 +3585,7 @@ static int gen6_gmch_probe(struct i915_ggtt *ggtt)
 	ggtt->vm.vma_ops.clear_pages = clear_pages;
 
 	return ggtt_probe_common(ggtt, size);
+#endif
 }
 
 static void i915_gmch_remove(struct i915_address_space *vm)
@@ -3548,7 +3640,9 @@ int i915_ggtt_probe_hw(struct drm_i915_private *dev_priv)
 	int ret;
 
 	ggtt->vm.i915 = dev_priv;
+#ifdef notyet
 	ggtt->vm.dma = &dev_priv->drm.pdev->dev;
+#endif
 
 	if (INTEL_GEN(dev_priv) <= 5)
 		ret = i915_gmch_probe(ggtt);
@@ -3603,6 +3697,9 @@ int i915_ggtt_probe_hw(struct drm_i915_private *dev_priv)
  */
 int i915_ggtt_init_hw(struct drm_i915_private *dev_priv)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct i915_ggtt *ggtt = &dev_priv->ggtt;
 	int ret;
 
@@ -3645,6 +3742,7 @@ int i915_ggtt_init_hw(struct drm_i915_private *dev_priv)
 out_gtt_cleanup:
 	ggtt->vm.cleanup(&ggtt->vm);
 	return ret;
+#endif
 }
 
 int i915_ggtt_enable_hw(struct drm_i915_private *dev_priv)
@@ -3722,6 +3820,9 @@ rotate_pages(const dma_addr_t *in, unsigned int offset,
 	     unsigned int stride,
 	     struct sg_table *st, struct scatterlist *sg)
 {
+	STUB();
+	return NULL;
+#ifdef notyet
 	unsigned int column, row;
 	unsigned int src_idx;
 
@@ -3742,6 +3843,7 @@ rotate_pages(const dma_addr_t *in, unsigned int offset,
 	}
 
 	return sg;
+#endif
 }
 
 static noinline struct sg_table *
@@ -3808,6 +3910,9 @@ static noinline struct sg_table *
 intel_partial_pages(const struct i915_ggtt_view *view,
 		    struct drm_i915_gem_object *obj)
 {
+	STUB();
+	return NULL;
+#ifdef notyet
 	struct sg_table *st;
 	struct scatterlist *sg, *iter;
 	unsigned int count = view->partial.size;
@@ -3853,6 +3958,7 @@ err_sg_alloc:
 	kfree(st);
 err_st_alloc:
 	return ERR_PTR(ret);
+#endif
 }
 
 static int
@@ -4016,6 +4122,9 @@ int i915_gem_gtt_insert(struct i915_address_space *vm,
 			u64 size, u64 alignment, unsigned long color,
 			u64 start, u64 end, unsigned int flags)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	enum drm_mm_insert_mode mode;
 	u64 offset;
 	int err;
@@ -4108,6 +4217,7 @@ int i915_gem_gtt_insert(struct i915_address_space *vm,
 	return drm_mm_insert_node_in_range(&vm->mm, node,
 					   size, alignment, color,
 					   start, end, DRM_MM_INSERT_EVICT);
+#endif
 }
 
 #if IS_ENABLED(CONFIG_DRM_I915_SELFTEST)

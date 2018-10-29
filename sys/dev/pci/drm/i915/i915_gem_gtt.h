@@ -274,9 +274,7 @@ struct i915_vma_ops {
 
 struct pagestash {
 	spinlock_t lock;
-#ifdef notyet
 	struct pagevec pvec;
-#endif
 };
 
 struct i915_address_space {
@@ -455,7 +453,7 @@ static inline struct gen6_hw_ppgtt *to_gen6_ppgtt(struct i915_hw_ppgtt *base)
 	for (iter = gen6_pde_index(start);				\
 	     length > 0 && iter < I915_PDES &&				\
 		(pt = (pd)->page_table[iter], true);			\
-	     ({ u32 temp = ALIGN(start+1, 1 << GEN6_PDE_SHIFT);		\
+	     ({ u32 temp = roundup2(start+1, 1 << GEN6_PDE_SHIFT);		\
 		    temp = min(temp - start, length);			\
 		    start += temp, length -= temp; }), ++iter)
 
@@ -529,7 +527,7 @@ i915_pdpes_per_pdp(const struct i915_address_space *vm)
 	for (iter = gen8_pde_index(start);				\
 	     length > 0 && iter < I915_PDES &&				\
 		(pt = (pd)->page_table[iter], true);			\
-	     ({ u64 temp = ALIGN(start+1, 1 << GEN8_PDE_SHIFT);		\
+	     ({ u64 temp = roundup2(start+1, 1 << GEN8_PDE_SHIFT);		\
 		    temp = min(temp - start, length);			\
 		    start += temp, length -= temp; }), ++iter)
 
@@ -537,7 +535,7 @@ i915_pdpes_per_pdp(const struct i915_address_space *vm)
 	for (iter = gen8_pdpe_index(start);				\
 	     length > 0 && iter < i915_pdpes_per_pdp(vm) &&		\
 		(pd = (pdp)->page_directory[iter], true);		\
-	     ({ u64 temp = ALIGN(start+1, 1 << GEN8_PDPE_SHIFT);	\
+	     ({ u64 temp = roundup2(start+1, 1 << GEN8_PDPE_SHIFT);	\
 		    temp = min(temp - start, length);			\
 		    start += temp, length -= temp; }), ++iter)
 
@@ -545,7 +543,7 @@ i915_pdpes_per_pdp(const struct i915_address_space *vm)
 	for (iter = gen8_pml4e_index(start);				\
 	     length > 0 && iter < GEN8_PML4ES_PER_PML4 &&		\
 		(pdp = (pml4)->pdps[iter], true);			\
-	     ({ u64 temp = ALIGN(start+1, 1ULL << GEN8_PML4E_SHIFT);	\
+	     ({ u64 temp = roundup2(start+1, 1ULL << GEN8_PML4E_SHIFT);	\
 		    temp = min(temp - start, length);			\
 		    start += temp, length -= temp; }), ++iter)
 

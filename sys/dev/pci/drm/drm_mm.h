@@ -94,7 +94,7 @@ struct drm_mm {
 	u64 scan_end;
 	struct drm_mm_node *prev_scanned_node;
 
-	void (*color_adjust)(struct drm_mm_node *node, unsigned long color,
+	void (*color_adjust)(const struct drm_mm_node *node, unsigned long color,
 			     u64 *start, u64 *end);
 };
 

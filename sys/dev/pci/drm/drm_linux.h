@@ -3252,6 +3252,25 @@ struct pmu {
 #define might_sleep()
 #define might_sleep_if(x)
 #define get_random_u32()	arc4random()
+#define get_random_int()	arc4random()
+
+static inline uint64_t
+get_random_u64(void)
+{
+	uint64_t r;
+	arc4random_buf(&r, sizeof(r));
+	return r;
+}
+
+static inline unsigned long
+get_random_long(void)
+{
+#ifdef __LP64__
+	return get_random_u64();
+#else
+	return get_random_u32();
+#endif
+}
 
 #define add_taint(x, y)
 #define TAINT_MACHINE_CHECK	0
@@ -3407,5 +3426,61 @@ llist_empty(struct llist_head *head)
 }
 
 #define UUID_STRING_LEN 36
+
+#define PAGEVEC_SIZE 15
+
+struct pagevec {
+	uint8_t	nr;
+	struct vm_page *pages[PAGEVEC_SIZE];
+};
+
+static inline unsigned int
+pagevec_space(struct pagevec *pvec)
+{
+	return PAGEVEC_SIZE - pvec->nr;
+}
+
+static inline void
+pagevec_init(struct pagevec *pvec)
+{
+	pvec->nr = 0;
+}
+
+static inline void
+pagevec_reinit(struct pagevec *pvec)
+{
+	pvec->nr = 0;
+}
+
+static inline unsigned int
+pagevec_count(struct pagevec *pvec)
+{
+	return pvec->nr;
+}
+
+static inline void
+__pagevec_release(struct pagevec *pvec)
+{
+	STUB();
+}
+
+static inline unsigned int
+pagevec_add(struct pagevec *pvec, struct vm_page *page)
+{
+	STUB();
+	return -ENOSYS;
+}
+
+typedef int (*cpu_stop_fn_t)(void *arg);
+
+static inline int
+stop_machine(cpu_stop_fn_t fn, void *arg, void *cpus)
+{
+	int r;
+	intr_disable();
+	r = (*fn)(arg);	
+	intr_enable();
+	return r;
+}
 
 #endif

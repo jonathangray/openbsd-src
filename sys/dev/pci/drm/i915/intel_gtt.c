@@ -164,14 +164,13 @@ intel_gmch_probe(struct pci_dev *bridge_dev, struct pci_dev *gpu_pdev,
 }
 
 void
-intel_gtt_get(u64 *gtt_total, size_t *stolen_size,
-    phys_addr_t *mappable_base, u64 *mappable_end)
+intel_gtt_get(u64 *gtt_total,
+    phys_addr_t *mappable_base, resource_size_t *mappable_end)
 {
 	struct inteldrm_softc *dev_priv = (void *)inteldrm_cd.cd_devs[0];
 	struct agp_info *ai = &dev_priv->drm.agp->info;
 	
 	*gtt_total = ai->ai_aperture_size;
-	*stolen_size = 0;
 	*mappable_base = ai->ai_aperture_base;
 	*mappable_end = ai->ai_aperture_size;
 }

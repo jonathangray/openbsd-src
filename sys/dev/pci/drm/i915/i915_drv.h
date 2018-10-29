@@ -121,7 +121,7 @@ struct sg_table;
 extern int intel_enable_gtt(void);
 extern void intel_gtt_chipset_flush(void);
 extern int intel_gmch_probe(struct pci_dev *, struct pci_dev *, void *);
-extern void intel_gtt_get(u64 *, size_t *, phys_addr_t *, u64 *);
+extern void intel_gtt_get(u64 *, phys_addr_t *, resource_size_t *);
 extern void intel_gtt_insert_sg_entries(struct sg_table *, unsigned int,
 					unsigned int);
 extern void intel_gtt_clear_range(unsigned int, unsigned int);
@@ -2407,12 +2407,13 @@ static __always_inline struct sgt_iter {
 	return s;
 }
 
-#ifdef notyet
 static inline struct scatterlist *____sg_next(struct scatterlist *sg)
 {
 	++sg;
+#ifdef notyet
 	if (unlikely(sg_is_chain(sg)))
 		sg = sg_chain_ptr(sg);
+#endif
 	return sg;
 }
 
@@ -2427,9 +2428,13 @@ static inline struct scatterlist *____sg_next(struct scatterlist *sg)
  **/
 static inline struct scatterlist *__sg_next(struct scatterlist *sg)
 {
+#ifdef notyet
 	return sg_is_last(sg) ? NULL : ____sg_next(sg);
-}
+#else
+	STUB();
+	return NULL;
 #endif
+}
 
 /**
  * for_each_sgt_dma - iterate over the DMA addresses of the given sg_table
