@@ -24,6 +24,8 @@
 #ifdef __linux__
 #include <linux/kernel.h>
 #include <linux/component.h>
+#else
+#include <dev/pci/drm/drm_linux.h>
 #endif
 #include <dev/pci/drm/i915_component.h>
 #include <dev/pci/drm/intel_lpe_audio.h>
@@ -727,6 +729,7 @@ void intel_init_audio_hooks(struct drm_i915_private *dev_priv)
 	}
 }
 
+#ifdef notyet
 static void i915_audio_component_get_power(struct device *kdev)
 {
 	intel_display_power_get(kdev_to_i915(kdev), POWER_DOMAIN_AUDIO);
@@ -777,6 +780,7 @@ static int i915_audio_component_get_cdclk_freq(struct device *kdev)
 
 	return dev_priv->cdclk.hw.cdclk;
 }
+#endif
 
 /*
  * get the intel_encoder according to the parameter port and pipe
@@ -828,6 +832,7 @@ static struct intel_encoder *get_saved_enc(struct drm_i915_private *dev_priv,
 	return NULL;
 }
 
+#ifdef notyet
 static int i915_audio_component_sync_audio_rate(struct device *kdev, int port,
 						int pipe, int rate)
 {
@@ -943,6 +948,7 @@ static const struct component_ops i915_audio_component_bind_ops = {
 	.bind	= i915_audio_component_bind,
 	.unbind	= i915_audio_component_unbind,
 };
+#endif
 
 /**
  * i915_audio_component_init - initialize and register the audio component
@@ -962,6 +968,8 @@ static const struct component_ops i915_audio_component_bind_ops = {
  */
 void i915_audio_component_init(struct drm_i915_private *dev_priv)
 {
+	STUB();
+#ifdef notyet
 	int ret;
 
 	ret = component_add(dev_priv->drm.dev, &i915_audio_component_bind_ops);
@@ -972,6 +980,7 @@ void i915_audio_component_init(struct drm_i915_private *dev_priv)
 	}
 
 	dev_priv->audio_component_registered = true;
+#endif
 }
 
 /**
@@ -983,11 +992,14 @@ void i915_audio_component_init(struct drm_i915_private *dev_priv)
  */
 void i915_audio_component_cleanup(struct drm_i915_private *dev_priv)
 {
+	STUB();
+#ifdef notyet
 	if (!dev_priv->audio_component_registered)
 		return;
 
 	component_del(dev_priv->drm.dev, &i915_audio_component_bind_ops);
 	dev_priv->audio_component_registered = false;
+#endif
 }
 
 /**
