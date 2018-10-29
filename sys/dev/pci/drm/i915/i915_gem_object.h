@@ -224,9 +224,7 @@ struct drm_i915_gem_object {
 			struct scatterlist *sg_pos;
 			unsigned int sg_idx; /* in pages, but 32bit eek! */
 
-#ifdef notyet
 			struct radix_tree_root radix;
-#endif
 			struct rwlock lock; /* protects this cache */
 		} get_page;
 

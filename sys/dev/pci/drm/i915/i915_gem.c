@@ -971,6 +971,9 @@ __copy_from_user_swizzled(char *gpu_vaddr, int gpu_offset,
 int i915_gem_obj_prepare_shmem_read(struct drm_i915_gem_object *obj,
 				    unsigned int *needs_clflush)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	int ret;
 
 	lockdep_assert_held(&obj->base.dev->struct_mutex);
@@ -1018,11 +1021,15 @@ out:
 err_unpin:
 	i915_gem_object_unpin_pages(obj);
 	return ret;
+#endif
 }
 
 int i915_gem_obj_prepare_shmem_write(struct drm_i915_gem_object *obj,
 				     unsigned int *needs_clflush)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	int ret;
 
 	lockdep_assert_held(&obj->base.dev->struct_mutex);
@@ -1080,6 +1087,7 @@ out:
 err_unpin:
 	i915_gem_object_unpin_pages(obj);
 	return ret;
+#endif
 }
 
 static void
@@ -1200,6 +1208,7 @@ i915_gem_shmem_pread(struct drm_i915_gem_object *obj,
 	return ret;
 }
 
+#ifdef notyet
 static inline bool
 gtt_user_read(struct io_mapping *mapping,
 	      loff_t base, int offset,
@@ -1223,11 +1232,15 @@ gtt_user_read(struct io_mapping *mapping,
 	}
 	return unwritten;
 }
+#endif
 
 static int
 i915_gem_gtt_pread(struct drm_i915_gem_object *obj,
 		   const struct drm_i915_gem_pread *args)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct drm_i915_private *i915 = to_i915(obj->base.dev);
 	struct i915_ggtt *ggtt = &i915->ggtt;
 	struct drm_mm_node node;
@@ -1317,6 +1330,7 @@ out_unlock:
 	mutex_unlock(&i915->drm.struct_mutex);
 
 	return ret;
+#endif
 }
 
 /**
@@ -1376,6 +1390,7 @@ out:
 	return ret;
 }
 
+#ifdef notyet
 /* This is the fast write path which cannot handle
  * page faults in the source data
  */
@@ -1402,6 +1417,7 @@ ggtt_write(struct io_mapping *mapping,
 
 	return unwritten;
 }
+#endif
 
 /**
  * This is the fast pwrite path, where we copy the data directly from the
@@ -1413,6 +1429,9 @@ static int
 i915_gem_gtt_pwrite_fast(struct drm_i915_gem_object *obj,
 			 const struct drm_i915_gem_pwrite *args)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct drm_i915_private *i915 = to_i915(obj->base.dev);
 	struct i915_ggtt *ggtt = &i915->ggtt;
 	struct drm_mm_node node;
@@ -1525,6 +1544,7 @@ out_rpm:
 out_unlock:
 	mutex_unlock(&i915->drm.struct_mutex);
 	return ret;
+#endif
 }
 
 static int
@@ -1592,6 +1612,9 @@ static int
 i915_gem_shmem_pwrite(struct drm_i915_gem_object *obj,
 		      const struct drm_i915_gem_pwrite *args)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct drm_i915_private *i915 = to_i915(obj->base.dev);
 	void __user *user_data;
 	u64 remain;
@@ -1648,6 +1671,7 @@ i915_gem_shmem_pwrite(struct drm_i915_gem_object *obj,
 	intel_fb_obj_flush(obj, ORIGIN_CPU);
 	i915_gem_obj_finish_shmem_access(obj);
 	return ret;
+#endif
 }
 
 /**
@@ -1910,6 +1934,9 @@ int
 i915_gem_mmap_ioctl(struct drm_device *dev, void *data,
 		    struct drm_file *file)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct drm_i915_gem_mmap *args = data;
 	struct drm_i915_gem_object *obj;
 	unsigned long addr;
@@ -1961,6 +1988,7 @@ i915_gem_mmap_ioctl(struct drm_device *dev, void *data,
 	args->addr_ptr = (uint64_t) addr;
 
 	return 0;
+#endif
 }
 
 static unsigned int tile_row_pages(struct drm_i915_gem_object *obj)
@@ -2027,6 +2055,10 @@ compute_partial_view(struct drm_i915_gem_object *obj,
 		     unsigned int chunk)
 {
 	struct i915_ggtt_view view;
+	STUB();
+	return view;
+#ifdef notyet
+	struct i915_ggtt_view view;
 
 	if (i915_gem_object_is_tiled(obj))
 		chunk = roundup(chunk, tile_row_pages(obj));
@@ -2042,7 +2074,10 @@ compute_partial_view(struct drm_i915_gem_object *obj,
 		view.type = I915_GGTT_VIEW_NORMAL;
 
 	return view;
+#endif
 }
+
+#ifdef __linux__
 
 /**
  * i915_gem_fault - fault a page into the GTT
@@ -2218,8 +2253,23 @@ err:
 	}
 }
 
+#else
+
+int
+i915_gem_fault(struct drm_gem_object *gem_obj, struct uvm_faultinfo *ufi,
+    off_t offset, vaddr_t vaddr, vm_page_t *pps, int npages, int centeridx,
+    vm_prot_t access_type, int flags)
+{
+	STUB();
+	return -ENOSYS;
+}
+
+#endif
+
 static void __i915_gem_object_release_mmap(struct drm_i915_gem_object *obj)
 {
+	STUB();
+#ifdef notyet
 	struct i915_vma *vma;
 
 	GEM_BUG_ON(!obj->userfault_count);
@@ -2231,6 +2281,7 @@ static void __i915_gem_object_release_mmap(struct drm_i915_gem_object *obj)
 
 	for_each_ggtt_vma(vma, obj)
 		i915_vma_unset_userfault(vma);
+#endif
 }
 
 /**
@@ -2404,6 +2455,8 @@ i915_gem_mmap_gtt_ioctl(struct drm_device *dev, void *data,
 static void
 i915_gem_object_truncate(struct drm_i915_gem_object *obj)
 {
+	STUB();
+#ifdef notyet
 	i915_gem_object_free_mmap_offset(obj);
 
 	if (obj->base.filp == NULL)
@@ -2417,11 +2470,14 @@ i915_gem_object_truncate(struct drm_i915_gem_object *obj)
 	shmem_truncate_range(file_inode(obj->base.filp), 0, (loff_t)-1);
 	obj->mm.madv = __I915_MADV_PURGED;
 	obj->mm.pages = ERR_PTR(-EFAULT);
+#endif
 }
 
 /* Try to discard unwanted pages */
 void __i915_gem_object_invalidate(struct drm_i915_gem_object *obj)
 {
+	STUB();
+#ifdef notyet
 	struct address_space *mapping;
 
 	lockdep_assert_held(&obj->mm.lock);
@@ -2439,12 +2495,15 @@ void __i915_gem_object_invalidate(struct drm_i915_gem_object *obj)
 
 	mapping = obj->base.filp->f_mapping,
 	invalidate_mapping_pages(mapping, 0, (loff_t)-1);
+#endif
 }
 
 static void
 i915_gem_object_put_pages_gtt(struct drm_i915_gem_object *obj,
 			      struct sg_table *pages)
 {
+	STUB();
+#ifdef notyet
 	struct sgt_iter sgt_iter;
 	struct vm_page *page;
 
@@ -2468,10 +2527,13 @@ i915_gem_object_put_pages_gtt(struct drm_i915_gem_object *obj,
 
 	sg_free_table(pages);
 	kfree(pages);
+#endif
 }
 
 static void __i915_gem_object_reset_page_iter(struct drm_i915_gem_object *obj)
 {
+	STUB();
+#ifdef notyet
 	struct radix_tree_iter iter;
 	void __rcu **slot;
 
@@ -2479,11 +2541,15 @@ static void __i915_gem_object_reset_page_iter(struct drm_i915_gem_object *obj)
 	radix_tree_for_each_slot(slot, &obj->mm.get_page.radix, &iter, 0)
 		radix_tree_delete(&obj->mm.get_page.radix, iter.index);
 	rcu_read_unlock();
+#endif
 }
 
 static struct sg_table *
 __i915_gem_object_unset_pages(struct drm_i915_gem_object *obj)
 {
+	STUB();
+	return NULL;
+#ifdef notyet
 	struct drm_i915_private *i915 = to_i915(obj->base.dev);
 	struct sg_table *pages;
 
@@ -2511,11 +2577,14 @@ __i915_gem_object_unset_pages(struct drm_i915_gem_object *obj)
 	obj->mm.page_sizes.phys = obj->mm.page_sizes.sg = 0;
 
 	return pages;
+#endif
 }
 
 void __i915_gem_object_put_pages(struct drm_i915_gem_object *obj,
 				 enum i915_mm_subclass subclass)
 {
+	STUB();
+#ifdef notyet
 	struct sg_table *pages;
 
 	if (i915_gem_object_has_pinned_pages(obj))
@@ -2541,10 +2610,14 @@ void __i915_gem_object_put_pages(struct drm_i915_gem_object *obj,
 
 unlock:
 	mutex_unlock(&obj->mm.lock);
+#endif
 }
 
 static bool i915_sg_trim(struct sg_table *orig_st)
 {
+	STUB();
+	return false;
+#ifdef notyet
 	struct sg_table new_st;
 	struct scatterlist *sg, *new_sg;
 	unsigned int i;
@@ -2567,10 +2640,14 @@ static bool i915_sg_trim(struct sg_table *orig_st)
 
 	*orig_st = new_st;
 	return true;
+#endif
 }
 
 static int i915_gem_object_get_pages_gtt(struct drm_i915_gem_object *obj)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct drm_i915_private *dev_priv = to_i915(obj->base.dev);
 	const unsigned long page_count = obj->base.size / PAGE_SIZE;
 	unsigned long i;
@@ -2736,6 +2813,7 @@ err_pages:
 		ret = -ENOMEM;
 
 	return ret;
+#endif
 }
 
 void __i915_gem_object_set_pages(struct drm_i915_gem_object *obj,
@@ -2833,6 +2911,9 @@ unlock:
 static void *i915_gem_object_map(const struct drm_i915_gem_object *obj,
 				 enum i915_map_type type)
 {
+	STUB();
+	return NULL;
+#ifdef notyet
 	unsigned long n_pages = obj->base.size >> PAGE_SHIFT;
 	struct sg_table *sgt = obj->mm.pages;
 	struct sgt_iter sgt_iter;
@@ -2877,12 +2958,16 @@ static void *i915_gem_object_map(const struct drm_i915_gem_object *obj,
 		kvfree(pages);
 
 	return addr;
+#endif
 }
 
 /* get, pin, and map the pages of the object into kernel space */
 void *i915_gem_object_pin_map(struct drm_i915_gem_object *obj,
 			      enum i915_map_type type)
 {
+	STUB();
+	return NULL;
+#ifdef notyet
 	enum i915_map_type has_type;
 	bool pinned;
 	void *ptr;
@@ -2947,12 +3032,16 @@ err_unpin:
 err_unlock:
 	ptr = ERR_PTR(ret);
 	goto out_unlock;
+#endif
 }
 
 static int
 i915_gem_object_pwrite_gtt(struct drm_i915_gem_object *obj,
 			   const struct drm_i915_gem_pwrite *arg)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct address_space *mapping = obj->base.filp->f_mapping;
 	char __user *user_data = u64_to_user_ptr(arg->data_ptr);
 	u64 remain, offset;
@@ -3019,11 +3108,14 @@ i915_gem_object_pwrite_gtt(struct drm_i915_gem_object *obj,
 	} while (remain);
 
 	return 0;
+#endif
 }
 
 static void i915_gem_client_mark_guilty(struct drm_i915_file_private *file_priv,
 					const struct i915_gem_context *ctx)
 {
+	STUB();
+#ifdef notyet
 	unsigned int score;
 	unsigned long prev_hang;
 
@@ -3043,6 +3135,7 @@ static void i915_gem_client_mark_guilty(struct drm_i915_file_private *file_priv,
 				 ctx->name, score,
 				 atomic_read(&file_priv->ban_score));
 	}
+#endif
 }
 
 static void i915_gem_context_mark_guilty(struct i915_gem_context *ctx)
@@ -3352,6 +3445,8 @@ static void nop_complete_submit_request(struct i915_request *request)
 
 void i915_gem_set_wedged(struct drm_i915_private *i915)
 {
+	STUB();
+#ifdef notyet
 	struct intel_engine_cs *engine;
 	enum intel_engine_id id;
 
@@ -3427,6 +3522,7 @@ void i915_gem_set_wedged(struct drm_i915_private *i915)
 	GEM_TRACE("end\n");
 
 	wake_up_all(&i915->gpu_error.reset_queue);
+#endif
 }
 
 bool i915_gem_unset_wedged(struct drm_i915_private *i915)
@@ -3521,6 +3617,8 @@ i915_gem_retire_work_handler(struct work_struct *work)
 
 static void shrink_caches(struct drm_i915_private *i915)
 {
+	STUB();
+#ifdef notyet
 	/*
 	 * kmem_cache_shrink() discards empty slabs and reorders partially
 	 * filled slabs to prioritise allocating from the mostly full slabs,
@@ -3532,6 +3630,7 @@ static void shrink_caches(struct drm_i915_private *i915)
 	kmem_cache_shrink(i915->luts);
 	kmem_cache_shrink(i915->vmas);
 	kmem_cache_shrink(i915->objects);
+#endif
 }
 
 struct sleep_rcu_work {
@@ -3581,8 +3680,12 @@ static void __sleep_rcu(struct rcu_head *rcu)
 static inline bool
 new_requests_since_last_retire(const struct drm_i915_private *i915)
 {
+	STUB();
+	return false;
+#ifdef notyet
 	return (READ_ONCE(i915->gt.active_requests) ||
 		work_pending(&i915->gt.idle_work.work));
+#endif
 }
 
 static void assert_kernel_context_is_current(struct drm_i915_private *i915)
@@ -3604,6 +3707,8 @@ static void assert_kernel_context_is_current(struct drm_i915_private *i915)
 static void
 i915_gem_idle_work_handler(struct work_struct *work)
 {
+	STUB();
+#ifdef notyet
 	struct drm_i915_private *dev_priv =
 		container_of(work, typeof(*dev_priv), gt.idle_work.work);
 	unsigned int epoch = I915_EPOCH_INVALID;
@@ -3691,6 +3796,7 @@ out_rearm:
 			call_rcu(&s->rcu, __sleep_rcu);
 		}
 	}
+#endif
 }
 
 void i915_gem_close_object(struct drm_gem_object *gem, struct drm_file *file)
@@ -3723,7 +3829,11 @@ void i915_gem_close_object(struct drm_gem_object *gem, struct drm_file *file)
 		list_del(&lut->obj_link);
 		list_del(&lut->ctx_link);
 
+#ifdef __linux__
 		kmem_cache_free(i915->luts, lut);
+#else
+		pool_put(i915->luts, lut);
+#endif
 		__i915_gem_object_release_unless_active(obj);
 	}
 
@@ -4466,6 +4576,9 @@ i915_gem_object_ggtt_pin(struct drm_i915_gem_object *obj,
 			 u64 alignment,
 			 u64 flags)
 {
+	STUB();
+	return NULL;
+#ifdef notyet
 	struct drm_i915_private *dev_priv = to_i915(obj->base.dev);
 	struct i915_address_space *vm = &dev_priv->ggtt.vm;
 	struct i915_vma *vma;
@@ -4536,6 +4649,7 @@ i915_gem_object_ggtt_pin(struct drm_i915_gem_object *obj,
 		return ERR_PTR(ret);
 
 	return vma;
+#endif
 }
 
 static __always_inline unsigned int __busy_read_flag(unsigned int id)
@@ -4607,6 +4721,9 @@ int
 i915_gem_busy_ioctl(struct drm_device *dev, void *data,
 		    struct drm_file *file)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct drm_i915_gem_busy *args = data;
 	struct drm_i915_gem_object *obj;
 	struct reservation_object_list *list;
@@ -4661,6 +4778,7 @@ retry:
 out:
 	rcu_read_unlock();
 	return err;
+#endif
 }
 
 int
@@ -4738,7 +4856,7 @@ frontbuffer_retire(struct i915_gem_active *active, struct i915_request *request)
 void i915_gem_object_init(struct drm_i915_gem_object *obj,
 			  const struct drm_i915_gem_object_ops *ops)
 {
-	rw_init(&obj->mm.lock);
+	rw_init(&obj->mm.lock, "mmlk");
 
 	INIT_LIST_HEAD(&obj->vma_list);
 	INIT_LIST_HEAD(&obj->lut_list);
@@ -4753,8 +4871,10 @@ void i915_gem_object_init(struct drm_i915_gem_object *obj,
 	init_request_active(&obj->frontbuffer_write, frontbuffer_retire);
 
 	obj->mm.madv = I915_MADV_WILLNEED;
+#ifdef notyet
 	INIT_RADIX_TREE(&obj->mm.get_page.radix, GFP_KERNEL | __GFP_NOWARN);
-	rw_init(&obj->mm.get_page.lock);
+#endif
+	rw_init(&obj->mm.get_page.lock, "mmget");
 
 	i915_gem_info_add_obj(to_i915(obj->base.dev), obj->base.size);
 }
@@ -4773,6 +4893,9 @@ static int i915_gem_object_create_shmem(struct drm_device *dev,
 					struct drm_gem_object *obj,
 					size_t size)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct drm_i915_private *i915 = to_i915(dev);
 	unsigned long flags = VM_NORESERVE;
 	struct file *filp;
@@ -4791,11 +4914,15 @@ static int i915_gem_object_create_shmem(struct drm_device *dev,
 	obj->filp = filp;
 
 	return 0;
+#endif
 }
 
 struct drm_i915_gem_object *
 i915_gem_object_create(struct drm_i915_private *dev_priv, u64 size)
 {
+	STUB();
+	return NULL;
+#ifdef notyet
 	struct drm_i915_gem_object *obj;
 	struct address_space *mapping;
 	unsigned int cache_level;
@@ -4863,10 +4990,14 @@ i915_gem_object_create(struct drm_i915_private *dev_priv, u64 size)
 fail:
 	i915_gem_object_free(obj);
 	return ERR_PTR(ret);
+#endif
 }
 
 static bool discard_backing_storage(struct drm_i915_gem_object *obj)
 {
+	STUB();
+	return false;
+#ifdef notyet
 	/* If we are the last user of the backing storage (be it shmemfs
 	 * pages or stolen etc), we know that the pages are going to be
 	 * immediately released. In this case, we can then skip copying
@@ -4887,11 +5018,14 @@ static bool discard_backing_storage(struct drm_i915_gem_object *obj)
 	 * freeing the object.
 	 */
 	return atomic_long_read(&obj->base.filp->f_count) == 1;
+#endif
 }
 
 static void __i915_gem_free_objects(struct drm_i915_private *i915,
 				    struct llist_node *freed)
 {
+	STUB();
+#ifdef notyet
 	struct drm_i915_gem_object *obj, *on;
 
 	intel_runtime_pm_get(i915);
@@ -4956,10 +5090,13 @@ static void __i915_gem_free_objects(struct drm_i915_private *i915,
 			cond_resched();
 	}
 	intel_runtime_pm_put(i915);
+#endif
 }
 
 static void i915_gem_flush_free_objects(struct drm_i915_private *i915)
 {
+	STUB();
+#ifdef notyet
 	struct llist_node *freed;
 
 	/* Free the oldest, most stale object to keep the free_list short */
@@ -4974,10 +5111,13 @@ static void i915_gem_flush_free_objects(struct drm_i915_private *i915)
 		freed->next = NULL;
 		__i915_gem_free_objects(i915, freed);
 	}
+#endif
 }
 
 static void __i915_gem_free_work(struct work_struct *work)
 {
+	STUB();
+#ifdef notyet
 	struct drm_i915_private *i915 =
 		container_of(work, struct drm_i915_private, mm.free_work);
 	struct llist_node *freed;
@@ -5002,6 +5142,7 @@ static void __i915_gem_free_work(struct work_struct *work)
 		spin_lock(&i915->mm.free_lock);
 	}
 	spin_unlock(&i915->mm.free_lock);
+#endif
 }
 
 static void __i915_gem_free_object_rcu(struct rcu_head *head)
@@ -5026,6 +5167,8 @@ static void __i915_gem_free_object_rcu(struct rcu_head *head)
 
 void i915_gem_free_object(struct drm_gem_object *gem_obj)
 {
+	STUB();
+#ifdef notyet
 	struct drm_i915_gem_object *obj = to_intel_bo(gem_obj);
 
 	if (obj->mm.quirked)
@@ -5042,6 +5185,7 @@ void i915_gem_free_object(struct drm_gem_object *gem_obj)
 	 */
 	atomic_inc(&to_i915(obj->base.dev)->mm.free_count);
 	call_rcu(&obj->rcu, __i915_gem_free_object_rcu);
+#endif
 }
 
 void __i915_gem_object_release_unless_active(struct drm_i915_gem_object *obj)
@@ -5737,9 +5881,9 @@ i915_gem_load_init_fences(struct drm_i915_private *dev_priv)
 
 static void i915_gem_init__mm(struct drm_i915_private *i915)
 {
-	mtx_init(&i915->mm.object_stat_lock);
-	mtx_init(&i915->mm.obj_lock);
-	mtx_init(&i915->mm.free_lock);
+	mtx_init(&i915->mm.object_stat_lock, IPL_NONE);
+	mtx_init(&i915->mm.obj_lock, IPL_NONE);
+	mtx_init(&i915->mm.free_lock, IPL_NONE);
 
 	init_llist_head(&i915->mm.free_list);
 
@@ -5753,6 +5897,9 @@ static void i915_gem_init__mm(struct drm_i915_private *i915)
 
 int i915_gem_init_early(struct drm_i915_private *dev_priv)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	int err = -ENOMEM;
 
 	dev_priv->objects = KMEM_CACHE(drm_i915_gem_object, SLAB_HWCACHE_ALIGN);
@@ -5819,10 +5966,13 @@ err_objects:
 	kmem_cache_destroy(dev_priv->objects);
 err_out:
 	return err;
+#endif
 }
 
 void i915_gem_cleanup_early(struct drm_i915_private *dev_priv)
 {
+	STUB();
+#ifdef notyet
 	i915_gem_drain_freed_objects(dev_priv);
 	GEM_BUG_ON(!llist_empty(&dev_priv->mm.free_list));
 	GEM_BUG_ON(atomic_read(&dev_priv->mm.free_count));
@@ -5840,6 +5990,7 @@ void i915_gem_cleanup_early(struct drm_i915_private *dev_priv)
 	rcu_barrier();
 
 	i915_gemfs_fini(dev_priv);
+#endif
 }
 
 int i915_gem_freeze(struct drm_i915_private *dev_priv)
@@ -5919,7 +6070,7 @@ int i915_gem_open(struct drm_i915_private *i915, struct drm_file *file)
 	file_priv->dev_priv = i915;
 	file_priv->file = file;
 
-	mtx_init(&file_priv->mm.lock);
+	mtx_init(&file_priv->mm.lock, IPL_NONE);
 	INIT_LIST_HEAD(&file_priv->mm.request_list);
 
 	file_priv->bsd_engine = -1;
@@ -5945,6 +6096,8 @@ void i915_gem_track_fb(struct drm_i915_gem_object *old,
 		       struct drm_i915_gem_object *new,
 		       unsigned frontbuffer_bits)
 {
+	STUB();
+#ifdef notyet
 	/* Control of individual bits within the mask are guarded by
 	 * the owning plane->mutex, i.e. we can never see concurrent
 	 * manipulation of individual bits. But since the bitfield as a whole
@@ -5963,6 +6116,7 @@ void i915_gem_track_fb(struct drm_i915_gem_object *old,
 		WARN_ON(atomic_read(&new->frontbuffer_bits) & frontbuffer_bits);
 		atomic_or(frontbuffer_bits, &new->frontbuffer_bits);
 	}
+#endif
 }
 
 /* Allocate a new GEM object and fill it with the supplied data */
@@ -5970,6 +6124,9 @@ struct drm_i915_gem_object *
 i915_gem_object_create_from_data(struct drm_i915_private *dev_priv,
 			         const void *data, size_t size)
 {
+	STUB();
+	return NULL;
+#ifdef notyet
 	struct drm_i915_gem_object *obj;
 	struct file *file;
 	size_t offset;
@@ -6014,6 +6171,7 @@ i915_gem_object_create_from_data(struct drm_i915_private *dev_priv,
 fail:
 	i915_gem_object_put(obj);
 	return ERR_PTR(err);
+#endif
 }
 
 struct scatterlist *
@@ -6135,6 +6293,9 @@ lookup:
 struct vm_page *
 i915_gem_object_get_page(struct drm_i915_gem_object *obj, unsigned int n)
 {
+	STUB();
+	return NULL;
+#ifdef notyet
 	struct scatterlist *sg;
 	unsigned int offset;
 
@@ -6142,6 +6303,7 @@ i915_gem_object_get_page(struct drm_i915_gem_object *obj, unsigned int n)
 
 	sg = i915_gem_object_get_sg(obj, n, &offset);
 	return nth_page(sg_page(sg), offset);
+#endif
 }
 
 /* Like i915_gem_object_get_page(), but mark the returned page dirty */
@@ -6171,6 +6333,9 @@ i915_gem_object_get_dma_address(struct drm_i915_gem_object *obj,
 
 int i915_gem_object_attach_phys(struct drm_i915_gem_object *obj, int align)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notdef
 	struct sg_table *pages;
 	int err;
 
@@ -6230,6 +6395,7 @@ err_xfer:
 err_unlock:
 	mutex_unlock(&obj->mm.lock);
 	return err;
+#endif
 }
 
 #if IS_ENABLED(CONFIG_DRM_I915_SELFTEST)

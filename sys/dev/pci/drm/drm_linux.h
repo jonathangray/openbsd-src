@@ -1173,6 +1173,7 @@ round_jiffies_up_relative(unsigned long j)
 #define jiffies_to_usecs(x)	(((uint64_t)(x)) * 1000000 / hz)
 #define msecs_to_jiffies(x)	(((uint64_t)(x)) * hz / 1000)
 #define usecs_to_jiffies(x)	(((uint64_t)(x)) * hz / 1000000)
+#define nsecs_to_jiffies(x)	(((uint64_t)(x)) * hz / 1000000000)
 #define nsecs_to_jiffies64(x)	(((uint64_t)(x)) * hz / 1000000000)
 #define get_jiffies_64()	jiffies
 #define time_after(a,b)		((long)(b) - (long)(a) < 0)
@@ -3514,6 +3515,23 @@ radix_tree_lookup(const struct radix_tree_root *root, unsigned long index)
 	STUB();
 	return NULL;
 }
+
+static inline void *
+radix_tree_delete(struct radix_tree_root *root, unsigned long index)
+{
+	STUB();
+	return NULL;
+}
+
+static inline int
+radix_tree_exception(void *arg)
+{
+	STUB();
+	return -ENOSYS;
+}
+
+#define RADIX_TREE_EXCEPTIONAL_ENTRY	0
+#define RADIX_TREE_EXCEPTIONAL_SHIFT	0
 
 #define put_pid(x)
 
