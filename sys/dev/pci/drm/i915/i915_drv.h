@@ -3618,7 +3618,7 @@ bool intel_bios_is_lspcon_present(struct drm_i915_private *dev_priv,
 				enum port port);
 
 /* intel_acpi.c */
-#ifdef CONFIG_ACPI
+#if defined(CONFIG_ACPI) && defined(__linux__)
 extern void intel_register_dsm_handler(void);
 extern void intel_unregister_dsm_handler(void);
 #else

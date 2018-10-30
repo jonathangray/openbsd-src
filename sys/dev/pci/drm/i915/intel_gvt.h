@@ -26,7 +26,7 @@
 
 struct intel_gvt;
 
-#ifdef CONFIG_DRM_I915_GVT
+#if CONFIG_DRM_I915_GVT != 0
 int intel_gvt_init(struct drm_i915_private *dev_priv);
 void intel_gvt_cleanup(struct drm_i915_private *dev_priv);
 int intel_gvt_init_device(struct drm_i915_private *dev_priv);

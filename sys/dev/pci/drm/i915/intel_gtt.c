@@ -14,6 +14,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+#include <dev/pci/drm/drm_linux.h>
 #include "i915_drv.h"
 
 /* MCH IFP BARs */
@@ -21,6 +22,8 @@
 #define I965_IFPADDR	0x70
 
 extern struct cfdriver inteldrm_cd;
+
+struct resource intel_graphics_stolen_res = DEFINE_RES_MEM(0, 0);
 
 /*
  * We're intel IGD, bus 0 function 0 dev 0 should be the GMCH, so it should
