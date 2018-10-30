@@ -937,18 +937,24 @@ static void intel_detect_preproduction_hw(struct drm_i915_private *dev_priv)
 static int i915_driver_init_early(struct drm_i915_private *dev_priv,
 				  const struct drm_pcidev *ent)
 {
+#ifdef __linux__
 	const struct intel_device_info *match_info =
 		(struct intel_device_info *)ent->driver_data;
+#endif
 	struct intel_device_info *device_info;
 	int ret = 0;
 
 	if (i915_inject_load_failure())
 		return -ENODEV;
 
+#ifdef __linux__
 	/* Setup the write-once "constant" device info */
 	device_info = mkwrite_device_info(dev_priv);
 	memcpy(device_info, match_info, sizeof(*device_info));
 	device_info->device_id = dev_priv->drm.pdev->device;
+#else
+	device_info = &dev_priv->info;
+#endif
 
 	BUILD_BUG_ON(INTEL_MAX_PLATFORMS >
 		     sizeof(device_info->platform_mask) * BITS_PER_BYTE);
