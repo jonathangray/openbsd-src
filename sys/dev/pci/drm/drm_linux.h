@@ -214,11 +214,11 @@ hweight64(uint64_t x)
 #define BITS_PER_LONG		32
 #endif
 #define BITS_PER_LONG_LONG	64
+#define GENMASK(h, l)		(((~0UL) >> (BITS_PER_LONG - (h) - 1)) & ((~0UL) << (l)))
 #define GENMASK_ULL(h, l)	(((~0ULL) >> (BITS_PER_LONG_LONG - (h) - 1)) & ((~0ULL) << (l)))
 
 #define DECLARE_BITMAP(x, y)	unsigned long x[BITS_TO_LONGS(y)];
 #define bitmap_empty(p, n)	(find_first_bit(p, n) == n)
-#define GENMASK(h, l)		((~0U >> (32 - h -1)) & (~0U << l))
 
 static inline void
 bitmap_set(void *p, int b, u_int n)
