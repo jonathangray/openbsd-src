@@ -1507,7 +1507,6 @@ void drm_atomic_helper_commit_tail_rpm(struct drm_atomic_state *old_state)
 }
 EXPORT_SYMBOL(drm_atomic_helper_commit_tail_rpm);
 
-#ifdef notyet
 static void commit_tail(struct drm_atomic_state *old_state)
 {
 	struct drm_device *dev = old_state->dev;
@@ -1528,9 +1527,7 @@ static void commit_tail(struct drm_atomic_state *old_state)
 
 	drm_atomic_state_put(old_state);
 }
-#endif
 
-#ifdef notyet
 static void commit_work(struct work_struct *work)
 {
 	struct drm_atomic_state *state = container_of(work,
@@ -1538,7 +1535,6 @@ static void commit_work(struct work_struct *work)
 						      commit_work);
 	commit_tail(state);
 }
-#endif
 
 /**
  * drm_atomic_helper_async_check - check if state can be commited asynchronously
@@ -1663,9 +1659,6 @@ int drm_atomic_helper_commit(struct drm_device *dev,
 			     struct drm_atomic_state *state,
 			     bool nonblock)
 {
-	STUB();
-	return -ENOSYS;
-#if 0
 	int ret;
 
 	if (state->async_update) {
@@ -1736,7 +1729,6 @@ int drm_atomic_helper_commit(struct drm_device *dev,
 err:
 	drm_atomic_helper_cleanup_planes(dev, state);
 	return ret;
-#endif
 }
 EXPORT_SYMBOL(drm_atomic_helper_commit);
 
@@ -1781,7 +1773,6 @@ EXPORT_SYMBOL(drm_atomic_helper_commit);
  * drm_atomic_helper_setup_commit() for a starting point.
  */
 
-#ifdef notyet
 static int stall_checks(struct drm_crtc *crtc, bool nonblock)
 {
 	STUB();
@@ -1870,7 +1861,6 @@ crtc_or_fake_commit(struct drm_atomic_state *state, struct drm_crtc *crtc)
 
 	return state->fake_commit;
 }
-#endif
 
 /**
  * drm_atomic_helper_setup_commit - setup possibly nonblocking commit
