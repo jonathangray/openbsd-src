@@ -3107,8 +3107,6 @@ void i915_gem_free_object(struct drm_gem_object *obj);
 
 static inline void i915_gem_drain_freed_objects(struct drm_i915_private *i915)
 {
-	STUB();
-#ifdef notyet
 	if (!atomic_read(&i915->mm.free_count))
 		return;
 
@@ -3121,7 +3119,6 @@ static inline void i915_gem_drain_freed_objects(struct drm_i915_private *i915)
 	do {
 		rcu_barrier();
 	} while (flush_work(&i915->mm.free_work));
-#endif
 }
 
 static inline void i915_gem_drain_workqueue(struct drm_i915_private *i915)

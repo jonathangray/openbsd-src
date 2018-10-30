@@ -1056,7 +1056,7 @@ delayed_work_pending(struct delayed_work *dwork)
 }
 
 void flush_workqueue(struct workqueue_struct *);
-void flush_work(struct work_struct *);
+bool flush_work(struct work_struct *);
 bool flush_delayed_work(struct delayed_work *);
 #define flush_scheduled_work()	flush_workqueue(system_wq)
 
@@ -3486,6 +3486,9 @@ pagevec_add(struct pagevec *pvec, struct vm_page *page)
 	STUB();
 	return -ENOSYS;
 }
+
+#define set_pages_array_wb(x, y)
+#define set_pages_array_wc(x, y)
 
 typedef int (*cpu_stop_fn_t)(void *arg);
 

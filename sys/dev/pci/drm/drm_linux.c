@@ -55,7 +55,7 @@ flush_workqueue(struct workqueue_struct *wq)
 	}
 }
 
-void
+bool
 flush_work(struct work_struct *work)
 {
 	struct sleep_state sls;
@@ -63,7 +63,7 @@ flush_work(struct work_struct *work)
 	int barrier = 0;
 
 	if (cold)
-		return;
+		return false;
 
 	task_set(&task, flush_barrier, &barrier);
 	task_add(work->tq, &task);
@@ -71,6 +71,8 @@ flush_work(struct work_struct *work)
 		sleep_setup(&sls, &barrier, PWAIT, "flwkbar");
 		sleep_finish(&sls, !barrier);
 	}
+
+	return false;
 }
 
 bool

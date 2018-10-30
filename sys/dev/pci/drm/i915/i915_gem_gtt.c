@@ -3052,8 +3052,6 @@ err:
  */
 void i915_ggtt_cleanup_hw(struct drm_i915_private *dev_priv)
 {
-	STUB();
-#ifdef notyet
 	struct i915_ggtt *ggtt = &dev_priv->ggtt;
 	struct i915_vma *vma, *vn;
 	struct pagevec *pvec;
@@ -3085,11 +3083,12 @@ void i915_ggtt_cleanup_hw(struct drm_i915_private *dev_priv)
 
 	mutex_unlock(&dev_priv->drm.struct_mutex);
 
+#ifdef __linux__
 	arch_phys_wc_del(ggtt->mtrr);
 	io_mapping_fini(&ggtt->iomap);
+#endif
 
 	i915_gem_cleanup_stolen(&dev_priv->drm);
-#endif
 }
 
 static unsigned int gen6_get_total_gtt_size(u16 snb_gmch_ctl)
@@ -3697,11 +3696,9 @@ int i915_ggtt_probe_hw(struct drm_i915_private *dev_priv)
  */
 int i915_ggtt_init_hw(struct drm_i915_private *dev_priv)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
 	struct i915_ggtt *ggtt = &dev_priv->ggtt;
 	int ret;
+	int i;
 
 	stash_init(&dev_priv->mm.wc_stash);
 
@@ -3720,6 +3717,7 @@ int i915_ggtt_init_hw(struct drm_i915_private *dev_priv)
 		ggtt->vm.mm.color_adjust = i915_gtt_color_adjust;
 	mutex_unlock(&dev_priv->drm.struct_mutex);
 
+#ifdef __linux
 	if (!io_mapping_init_wc(&dev_priv->ggtt.iomap,
 				dev_priv->ggtt.gmadr.start,
 				dev_priv->ggtt.mappable_end)) {
@@ -3728,6 +3726,28 @@ int i915_ggtt_init_hw(struct drm_i915_private *dev_priv)
 	}
 
 	ggtt->mtrr = arch_phys_wc_add(ggtt->gmadr.start, ggtt->mappable_end);
+#else
+	/* XXX would be a lot nicer to get agp info before now */
+	uvm_page_physload(atop(dev_priv->ggtt.gmadr.start),
+	    atop(dev_priv->ggtt.gmadr.start + dev_priv->ggtt.mappable_end),
+	    atop(dev_priv->ggtt.gmadr.start),
+	    atop(dev_priv->ggtt.gmadr.start + dev_priv->ggtt.mappable_end),
+	    PHYSLOAD_DEVICE);
+	/* array of vm pages that physload introduced. */
+	dev_priv->pgs = PHYS_TO_VM_PAGE(dev_priv->ggtt.gmadr.start);
+	KASSERT(dev_priv->pgs != NULL);
+	/*
+	 * XXX mark all pages write combining so user mmaps get the right
+	 * bits. We really need a proper MI api for doing this, but for now
+	 * this allows us to use PAT where available.
+	 */
+	for (i = 0; i < atop(dev_priv->ggtt.mappable_end); i++)
+		atomic_setbits_int(&(dev_priv->pgs[i].pg_flags), PG_PMAP_WC);
+	if (agp_init_map(dev_priv->bst, dev_priv->ggtt.gmadr.start,
+	    dev_priv->ggtt.mappable_end, BUS_SPACE_MAP_LINEAR | BUS_SPACE_MAP_PREFETCHABLE,
+	    &dev_priv->agph))
+		panic("can't map aperture");
+#endif
 
 	/*
 	 * Initialise stolen early so that we may reserve preallocated
@@ -3742,7 +3762,6 @@ int i915_ggtt_init_hw(struct drm_i915_private *dev_priv)
 out_gtt_cleanup:
 	ggtt->vm.cleanup(&ggtt->vm);
 	return ret;
-#endif
 }
 
 int i915_ggtt_enable_hw(struct drm_i915_private *dev_priv)
