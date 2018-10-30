@@ -581,12 +581,8 @@ i915_page_dir_dma_addr(const struct i915_hw_ppgtt *ppgtt, const unsigned n)
 static inline struct i915_ggtt *
 i915_vm_to_ggtt(struct i915_address_space *vm)
 {
-	STUB();
-	return NULL;
-#ifdef notyet
 	GEM_BUG_ON(!i915_is_ggtt(vm));
 	return container_of(vm, struct i915_ggtt, vm);
-#endif
 }
 
 #define INTEL_MAX_PPAT_ENTRIES 8
