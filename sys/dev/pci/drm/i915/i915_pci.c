@@ -613,7 +613,7 @@ static const struct intel_device_info intel_icelake_11_info = {
  * and subvendor IDs, we need it to come before the more general IVB
  * PCI ID matches, otherwise we'll use the wrong info struct above.
  */
-static const struct drm_pcidev pciidlist[] = {
+const struct drm_pcidev pciidlist[] = {
 	INTEL_I830_IDS(&intel_i830_info),
 	INTEL_I845G_IDS(&intel_i845g_info),
 	INTEL_I85X_IDS(&intel_i85x_info),

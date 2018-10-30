@@ -2406,6 +2406,8 @@ typedef enum {
 #define pci_disable_device(x)
 #define pci_set_power_state(d, s)	0
 #define pci_is_thunderbolt_attached(x) false
+#define pci_set_drvdata(x, y)
+#define dev_pm_set_driver_flags(x, y)
 
 static inline int
 vga_client_register(struct pci_dev *a, void *b, void *c, void *d)
