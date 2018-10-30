@@ -142,7 +142,7 @@ vma_create(struct drm_i915_gem_object *obj,
 #ifdef __linux__
 	vma = kmem_cache_zalloc(vm->i915->vmas, GFP_KERNEL);
 #else
-	vma = pool_get(vm->i915->vmas, PR_WAITOK | PR_ZERO);
+	vma = pool_get(&vm->i915->vmas, PR_WAITOK | PR_ZERO);
 #endif
 	if (vma == NULL)
 		return ERR_PTR(-ENOMEM);
@@ -231,7 +231,7 @@ err_vma:
 #ifdef __linux__
 	kmem_cache_free(vm->i915->vmas, vma);
 #else
-	pool_put(vm->i915->vmas, vma);
+	pool_put(&vm->i915->vmas, vma);
 #endif
 	return ERR_PTR(-E2BIG);
 }
@@ -829,7 +829,7 @@ static void __i915_vma_destroy(struct i915_vma *vma)
 #ifdef __linux__
 	kmem_cache_free(i915->vmas, vma);
 #else
-	pool_put(i915->vmas, vma);
+	pool_put(&i915->vmas, vma);
 #endif
 }
 

@@ -793,7 +793,7 @@ static int eb_lookup_vmas(struct i915_execbuffer *eb)
 #ifdef __linux__
 		lut = kmem_cache_alloc(eb->i915->luts, GFP_KERNEL);
 #else
-		lut = pool_get(eb->i915->luts, PR_WAITOK);
+		lut = pool_get(&eb->i915->luts, PR_WAITOK);
 #endif
 		if (unlikely(!lut)) {
 			err = -ENOMEM;
@@ -805,7 +805,7 @@ static int eb_lookup_vmas(struct i915_execbuffer *eb)
 #ifdef __linux__
 			kmem_cache_free(eb->i915->luts, lut);
 #else
-			pool_put(eb->i915->luts, lut);
+			pool_put(&eb->i915->luts, lut);
 #endif
 			goto err_obj;
 		}

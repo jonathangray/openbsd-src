@@ -1709,12 +1709,12 @@ struct inteldrm_softc {
 	struct drm_device *drmdev;
 	struct drm_device drm;
 
-	struct pool *objects;
-	struct pool *vmas;
-	struct pool *luts;
-	struct pool *requests;
-	struct pool *dependencies;
-	struct pool *priorities;
+	struct pool objects;
+	struct pool vmas;
+	struct pool luts;
+	struct pool requests;
+	struct pool dependencies;
+	struct pool priorities;
 
 	const struct intel_device_info info;
 	struct intel_driver_caps caps;

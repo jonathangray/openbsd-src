@@ -87,7 +87,7 @@ static void i915_fence_release(struct dma_fence *fence)
 #ifdef __linux__
 	kmem_cache_free(rq->i915->requests, rq);
 #else
-	pool_put(rq->i915->requests, rq);
+	pool_put(&rq->i915->requests, rq);
 #endif
 }
 
@@ -123,7 +123,7 @@ i915_dependency_alloc(struct drm_i915_private *i915)
 #ifdef __linux__
 	return kmem_cache_alloc(i915->dependencies, GFP_KERNEL);
 #else
-	return pool_get(i915->dependencies, PR_WAITOK);
+	return pool_get(&i915->dependencies, PR_WAITOK);
 #endif
 }
 
@@ -134,7 +134,7 @@ i915_dependency_free(struct drm_i915_private *i915,
 #ifdef __linux__
 	kmem_cache_free(i915->dependencies, dep);
 #else
-	pool_put(i915->dependencies, dep);
+	pool_put(&i915->dependencies, dep);
 #endif
 }
 
@@ -751,7 +751,7 @@ i915_request_alloc(struct intel_engine_cs *engine, struct i915_gem_context *ctx)
 	rq = kmem_cache_alloc(i915->requests,
 			      GFP_KERNEL | __GFP_RETRY_MAYFAIL | __GFP_NOWARN);
 #else
-	rq = pool_get(i915->requests, PR_WAITOK);
+	rq = pool_get(&i915->requests, PR_WAITOK);
 #endif
 	if (unlikely(!rq)) {
 		/* Ratelimit ourselves to prevent oom from malicious clients */
@@ -778,7 +778,7 @@ i915_request_alloc(struct intel_engine_cs *engine, struct i915_gem_context *ctx)
 #ifdef __linux__
 		rq = kmem_cache_alloc(i915->requests, GFP_KERNEL);
 #else
-		rq = pool_get(i915->requests, PR_WAITOK);
+		rq = pool_get(&i915->requests, PR_WAITOK);
 #endif
 		if (!rq) {
 			ret = -ENOMEM;
@@ -863,7 +863,7 @@ err_unwind:
 #ifdef __linux__
 	kmem_cache_free(i915->requests, rq);
 #else
-	pool_put(i915->requests, rq);
+	pool_put(&i915->requests, rq);
 #endif
 err_unreserve:
 	unreserve_gt(i915);

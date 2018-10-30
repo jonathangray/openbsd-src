@@ -109,7 +109,7 @@ static void lut_close(struct i915_gem_context *ctx)
 #ifdef __linux__
 		kmem_cache_free(ctx->i915->luts, lut);
 #else
-		pool_put(ctx->i915->luts, lut);
+		pool_put(&ctx->i915->luts, lut);
 #endif
 	}
 

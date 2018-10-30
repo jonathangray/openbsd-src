@@ -766,7 +766,7 @@ static bool __guc_dequeue(struct intel_engine_cs *engine)
 #ifdef __linux__
 			kmem_cache_free(engine->i915->priorities, p);
 #else
-			pool_put(engine->i915->priorities, p);
+			pool_put(&engine->i915->priorities, p);
 #endif
 	}
 done:

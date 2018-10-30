@@ -751,7 +751,7 @@ void *i915_gem_object_alloc(struct drm_i915_private *dev_priv)
 #ifdef __linux__
 	return kmem_cache_zalloc(dev_priv->objects, GFP_KERNEL);
 #else
-	return pool_get(dev_priv->objects, PR_WAITOK | PR_ZERO);
+	return pool_get(&dev_priv->objects, PR_WAITOK | PR_ZERO);
 #endif
 }
 
@@ -761,7 +761,7 @@ void i915_gem_object_free(struct drm_i915_gem_object *obj)
 #ifdef __linux__
 	kmem_cache_free(dev_priv->objects, obj);
 #else
-	pool_put(dev_priv->objects, obj);
+	pool_put(&dev_priv->objects, obj);
 #endif
 }
 
@@ -3832,7 +3832,7 @@ void i915_gem_close_object(struct drm_gem_object *gem, struct drm_file *file)
 #ifdef __linux__
 		kmem_cache_free(i915->luts, lut);
 #else
-		pool_put(i915->luts, lut);
+		pool_put(&i915->luts, lut);
 #endif
 		__i915_gem_object_release_unless_active(obj);
 	}
@@ -5897,11 +5897,9 @@ static void i915_gem_init__mm(struct drm_i915_private *i915)
 
 int i915_gem_init_early(struct drm_i915_private *dev_priv)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
 	int err = -ENOMEM;
 
+#ifdef __linux__
 	dev_priv->objects = KMEM_CACHE(drm_i915_gem_object, SLAB_HWCACHE_ALIGN);
 	if (!dev_priv->objects)
 		goto err_out;
@@ -5930,6 +5928,18 @@ int i915_gem_init_early(struct drm_i915_private *dev_priv)
 	dev_priv->priorities = KMEM_CACHE(i915_priolist, SLAB_HWCACHE_ALIGN);
 	if (!dev_priv->priorities)
 		goto err_dependencies;
+#else
+	pool_init(&dev_priv->objects,  sizeof(struct drm_i915_gem_object),
+	    0, IPL_NONE, 0, "drmobj", NULL);
+	pool_init(&dev_priv->vmas,  sizeof(struct i915_vma),
+	    0, IPL_NONE, 0, "drmvma", NULL);
+	pool_init(&dev_priv->luts, sizeof(struct i915_lut_handle),
+	    0, IPL_NONE, 0, "drmlut", NULL);
+	pool_init(&dev_priv->requests, sizeof(struct i915_request),
+	    0, IPL_NONE, 0, "drmreq", NULL);
+	pool_init(&dev_priv->priorities, sizeof(struct i915_priolist),
+	    0, IPL_NONE, 0, "drmpri", NULL);
+#endif
 
 	INIT_LIST_HEAD(&dev_priv->gt.timelines);
 	INIT_LIST_HEAD(&dev_priv->gt.active_rings);
@@ -5946,7 +5956,7 @@ int i915_gem_init_early(struct drm_i915_private *dev_priv)
 
 	atomic_set(&dev_priv->mm.bsd_engine_dispatch_index, 0);
 
-	mtx_init(&dev_priv->fb_tracking.lock);
+	mtx_init(&dev_priv->fb_tracking.lock, IPL_TTY);
 
 	err = i915_gemfs_init(dev_priv);
 	if (err)
@@ -5954,6 +5964,7 @@ int i915_gem_init_early(struct drm_i915_private *dev_priv)
 
 	return 0;
 
+#ifdef __linux__
 err_dependencies:
 	kmem_cache_destroy(dev_priv->dependencies);
 err_requests:

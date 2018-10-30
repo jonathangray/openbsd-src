@@ -298,7 +298,7 @@ find_priolist:
 #ifdef __linux__
 		p = kmem_cache_alloc(engine->i915->priorities, GFP_ATOMIC);
 #else
-		p = pool_get(engine->i915->priorities, PR_NOWAIT);
+		p = pool_get(&engine->i915->priorities, PR_NOWAIT);
 #endif
 		/* Convert an allocation failure to a priority bump */
 		if (unlikely(!p)) {
@@ -748,7 +748,7 @@ static void execlists_dequeue(struct intel_engine_cs *engine)
 #ifdef __linux__
 			kmem_cache_free(engine->i915->priorities, p);
 #else
-			pool_put(engine->i915->priorities, p);
+			pool_put(&engine->i915->priorities, p);
 #endif
 	}
 
@@ -896,7 +896,7 @@ static void execlists_cancel_requests(struct intel_engine_cs *engine)
 #ifdef __linux__
 			kmem_cache_free(engine->i915->priorities, p);
 #else
-			pool_put(engine->i915->priorities, p);
+			pool_put(&engine->i915->priorities, p);
 #endif
 	}
 
