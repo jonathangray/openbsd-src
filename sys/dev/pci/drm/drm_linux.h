@@ -1973,6 +1973,23 @@ dma_fence_set_error(struct dma_fence *fence, int error)
 	fence->error = error;
 }
 
+struct sync_file {
+};
+
+static inline struct dma_fence *
+sync_file_get_fence(int fd)
+{
+	STUB();
+	return NULL;
+}
+
+static inline struct sync_file *
+sync_file_create(struct dma_fence *fence)
+{
+	STUB();
+	return NULL;
+}
+
 struct idr_entry {
 	SPLAY_ENTRY(idr_entry) entry;
 	int id;
@@ -3563,5 +3580,12 @@ radix_tree_exception(void *arg)
 #define INIT_RADIX_TREE(x, y)
 
 #define put_pid(x)
+
+static inline int
+get_unused_fd_flags(unsigned int flags)
+{
+	STUB();
+	return -1;
+}
 
 #endif

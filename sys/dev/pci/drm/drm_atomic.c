@@ -316,7 +316,6 @@ drm_atomic_get_crtc_state(struct drm_atomic_state *state,
 }
 EXPORT_SYMBOL(drm_atomic_get_crtc_state);
 
-#ifdef notyet
 static void set_out_fence_for_crtc(struct drm_atomic_state *state,
 				   struct drm_crtc *crtc, s32 __user *fence_ptr)
 {
@@ -333,7 +332,6 @@ static s32 __user *get_out_fence_for_crtc(struct drm_atomic_state *state,
 
 	return fence_ptr;
 }
-#endif
 
 static int set_out_fence_for_connector(struct drm_atomic_state *state,
 					struct drm_connector *connector,
@@ -352,7 +350,6 @@ static int set_out_fence_for_connector(struct drm_atomic_state *state,
 	return 0;
 }
 
-#ifdef notyet
 static s32 __user *get_out_fence_for_connector(struct drm_atomic_state *state,
 					       struct drm_connector *connector)
 {
@@ -364,7 +361,6 @@ static s32 __user *get_out_fence_for_connector(struct drm_atomic_state *state,
 
 	return fence_ptr;
 }
-#endif
 
 /**
  * drm_atomic_set_mode_for_crtc - set mode for CRTC
@@ -499,7 +495,6 @@ EXPORT_SYMBOL(drm_atomic_set_mode_prop_for_crtc);
  * RETURNS:
  * Zero on success, error code on failure.
  */
-#ifdef notyet
 static int
 drm_atomic_replace_property_blob_from_id(struct drm_device *dev,
 					 struct drm_property_blob **blob,
@@ -532,7 +527,6 @@ drm_atomic_replace_property_blob_from_id(struct drm_device *dev,
 
 	return 0;
 }
-#endif
 
 /**
  * drm_atomic_crtc_set_property - set property on CRTC
@@ -553,9 +547,6 @@ int drm_atomic_crtc_set_property(struct drm_crtc *crtc,
 		struct drm_crtc_state *state, struct drm_property *property,
 		uint64_t val)
 {
-	STUB();
-	return -ENOSYS;
-#if 0
 	struct drm_device *dev = crtc->dev;
 	struct drm_mode_config *config = &dev->mode_config;
 	bool replaced = false;
@@ -613,7 +604,6 @@ int drm_atomic_crtc_set_property(struct drm_crtc *crtc,
 	}
 
 	return 0;
-#endif
 }
 EXPORT_SYMBOL(drm_atomic_crtc_set_property);
 
@@ -875,9 +865,6 @@ static int drm_atomic_plane_set_property(struct drm_plane *plane,
 		struct drm_plane_state *state, struct drm_property *property,
 		uint64_t val)
 {
-	STUB();
-	return -ENOSYS;
-#if 0
 	struct drm_device *dev = plane->dev;
 	struct drm_mode_config *config = &dev->mode_config;
 
@@ -942,7 +929,6 @@ static int drm_atomic_plane_set_property(struct drm_plane *plane,
 	}
 
 	return 0;
-#endif
 }
 
 /**
@@ -2184,7 +2170,6 @@ int drm_atomic_debugfs_init(struct drm_minor *minor)
  * The big monster ioctl
  */
 
-#if 0
 static struct drm_pending_vblank_event *create_vblank_event(
 		struct drm_crtc *crtc, uint64_t user_data)
 {
@@ -2201,7 +2186,6 @@ static struct drm_pending_vblank_event *create_vblank_event(
 
 	return e;
 }
-#endif
 
 int drm_atomic_connector_commit_dpms(struct drm_atomic_state *state,
 				     struct drm_connector *connector,
@@ -2374,7 +2358,6 @@ struct drm_out_fence_state {
 	int fd;
 };
 
-#ifdef notyet
 static int setup_out_fence(struct drm_out_fence_state *fence_state,
 			   struct dma_fence *fence)
 {
@@ -2391,7 +2374,6 @@ static int setup_out_fence(struct drm_out_fence_state *fence_state,
 
 	return 0;
 }
-#endif
 
 static int prepare_signaling(struct drm_device *dev,
 				  struct drm_atomic_state *state,
