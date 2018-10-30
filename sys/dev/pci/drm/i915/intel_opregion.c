@@ -327,6 +327,10 @@ static int swsci(struct drm_i915_private *dev_priv,
 	swsci_val |= SWSCI_GSSCIE;
 	pci_write_config_word(pdev, SWSCI, swsci_val);
 
+/* XXX wait_for hangs */
+STUB();
+return -ENOSYS;
+
 	/* Poll for the result. */
 #define C (((scic = swsci->scic) & SWSCI_SCIC_INDICATOR) == 0)
 	if (wait_for(C, dslp)) {
