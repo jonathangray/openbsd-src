@@ -3485,9 +3485,10 @@ inteldrm_attach(struct device *parent, struct device *self, void *aux)
 
 	printf("\n");
 
-	dev_priv->drmdev = dev = (struct drm_device *)
+	dev_priv->drmdev = (struct drm_device *)
 	    drm_attach_pci(&driver, pa, 0, console, self);
 	memcpy(&dev_priv->drm, dev_priv->drmdev, sizeof(struct drm_device));
+	dev = &dev_priv->drm;
 
 	id = drm_find_description(PCI_VENDOR(pa->pa_id),
 	    PCI_PRODUCT(pa->pa_id), pciidlist);
