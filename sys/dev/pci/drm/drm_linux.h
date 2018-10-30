@@ -3547,6 +3547,8 @@ radix_tree_exception(void *arg)
 #define RADIX_TREE_EXCEPTIONAL_ENTRY	0
 #define RADIX_TREE_EXCEPTIONAL_SHIFT	0
 
+#define INIT_RADIX_TREE(x, y)
+
 #define put_pid(x)
 
 #endif

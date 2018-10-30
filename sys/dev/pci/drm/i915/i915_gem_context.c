@@ -280,9 +280,6 @@ static struct i915_gem_context *
 __create_hw_context(struct drm_i915_private *dev_priv,
 		    struct drm_i915_file_private *file_priv)
 {
-	STUB();
-	return NULL;
-#ifdef notyet
 	struct i915_gem_context *ctx;
 	unsigned int n;
 	int ret;
@@ -358,13 +355,14 @@ __create_hw_context(struct drm_i915_private *dev_priv,
 
 	return ctx;
 
+#ifdef notyet
 err_pid:
+#endif
 	put_pid(ctx->pid);
 	idr_remove(&file_priv->context_idr, ctx->user_handle);
 err_lut:
 	context_close(ctx);
 	return ERR_PTR(ret);
-#endif
 }
 
 static void __destroy_hw_context(struct i915_gem_context *ctx,
