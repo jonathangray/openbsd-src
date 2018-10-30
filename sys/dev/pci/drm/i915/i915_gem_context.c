@@ -165,8 +165,6 @@ static void contexts_free(struct drm_i915_private *i915)
 
 static void contexts_free_first(struct drm_i915_private *i915)
 {
-	STUB();
-#ifdef notyet
 	struct i915_gem_context *ctx;
 	struct llist_node *freed;
 
@@ -178,7 +176,6 @@ static void contexts_free_first(struct drm_i915_private *i915)
 
 	ctx = container_of(freed, typeof(*ctx), free_link);
 	i915_gem_context_free(ctx);
-#endif
 }
 
 static void contexts_free_worker(struct work_struct *work)

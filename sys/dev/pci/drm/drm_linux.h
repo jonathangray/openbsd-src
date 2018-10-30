@@ -3421,6 +3421,13 @@ llist_del_all(struct llist_head *head)
 	return NULL;
 }
 
+static inline struct llist_node *
+llist_del_first(struct llist_head *head)
+{
+	STUB();
+	return NULL;
+}
+
 static inline bool
 llist_add(struct llist_node *new, struct llist_head *head)
 {
