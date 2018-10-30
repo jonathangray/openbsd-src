@@ -115,9 +115,6 @@
  */
 uint32_t drm_color_lut_extract(uint32_t user_input, uint32_t bit_precision)
 {
-	STUB();
-	return 0;
-#ifdef notyet
 	uint32_t val = user_input;
 	uint32_t max = 0xffff >> (16 - bit_precision);
 
@@ -128,7 +125,6 @@ uint32_t drm_color_lut_extract(uint32_t user_input, uint32_t bit_precision)
 	}
 
 	return clamp_val(val, 0, max);
-#endif
 }
 EXPORT_SYMBOL(drm_color_lut_extract);
 
