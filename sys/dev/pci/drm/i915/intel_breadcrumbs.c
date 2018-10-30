@@ -243,8 +243,6 @@ void intel_engine_unpin_breadcrumbs_irq(struct intel_engine_cs *engine)
 
 void intel_engine_disarm_breadcrumbs(struct intel_engine_cs *engine)
 {
-	STUB();
-#ifdef notyet
 	struct intel_breadcrumbs *b = &engine->breadcrumbs;
 	struct intel_wait *wait, *n;
 
@@ -276,7 +274,6 @@ void intel_engine_disarm_breadcrumbs(struct intel_engine_cs *engine)
 	b->waiters = RB_ROOT;
 
 	spin_unlock_irq(&b->rb_lock);
-#endif
 }
 
 static bool use_fake_irq(const struct intel_breadcrumbs *b)
@@ -365,8 +362,6 @@ static inline struct intel_wait *to_wait(struct rb_node *node)
 static inline void __intel_breadcrumbs_finish(struct intel_breadcrumbs *b,
 					      struct intel_wait *wait)
 {
-	STUB();
-#ifdef notyet
 	lockdep_assert_held(&b->rb_lock);
 	GEM_BUG_ON(b->irq_wait == wait);
 
@@ -384,14 +379,11 @@ static inline void __intel_breadcrumbs_finish(struct intel_breadcrumbs *b,
 
 	if (wait->tsk->state != TASK_RUNNING)
 		wake_up_process(wait->tsk); /* implicit smp_wmb() */
-#endif
 }
 
 static inline void __intel_breadcrumbs_next(struct intel_engine_cs *engine,
 					    struct rb_node *next)
 {
-	STUB();
-#ifdef notyet
 	struct intel_breadcrumbs *b = &engine->breadcrumbs;
 
 	spin_lock(&b->irq_lock);
@@ -406,7 +398,6 @@ static inline void __intel_breadcrumbs_next(struct intel_engine_cs *engine,
 	 */
 	if (next)
 		wake_up_process(to_wait(next)->tsk);
-#endif
 }
 
 static bool __intel_engine_add_wait(struct intel_engine_cs *engine,
@@ -563,8 +554,6 @@ static inline int wakeup_priority(struct intel_breadcrumbs *b,
 static void __intel_engine_remove_wait(struct intel_engine_cs *engine,
 				       struct intel_wait *wait)
 {
-	STUB();
-#ifdef notyet
 	struct intel_breadcrumbs *b = &engine->breadcrumbs;
 
 	lockdep_assert_held(&b->rb_lock);
@@ -621,7 +610,6 @@ out:
 	GEM_BUG_ON(b->irq_wait == wait);
 	GEM_BUG_ON(rb_first(&b->waiters) !=
 		   (b->irq_wait ? &b->irq_wait->node : NULL));
-#endif
 }
 
 void intel_engine_remove_wait(struct intel_engine_cs *engine,
