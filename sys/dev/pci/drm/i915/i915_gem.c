@@ -5982,26 +5982,25 @@ err_out:
 
 void i915_gem_cleanup_early(struct drm_i915_private *dev_priv)
 {
-	STUB();
-#ifdef notyet
 	i915_gem_drain_freed_objects(dev_priv);
 	GEM_BUG_ON(!llist_empty(&dev_priv->mm.free_list));
 	GEM_BUG_ON(atomic_read(&dev_priv->mm.free_count));
 	WARN_ON(dev_priv->mm.object_count);
 	WARN_ON(!list_empty(&dev_priv->gt.timelines));
 
+#ifdef __linux__
 	kmem_cache_destroy(dev_priv->priorities);
 	kmem_cache_destroy(dev_priv->dependencies);
 	kmem_cache_destroy(dev_priv->requests);
 	kmem_cache_destroy(dev_priv->luts);
 	kmem_cache_destroy(dev_priv->vmas);
 	kmem_cache_destroy(dev_priv->objects);
+#endif
 
 	/* And ensure that our DESTROY_BY_RCU slabs are truly destroyed */
 	rcu_barrier();
 
 	i915_gemfs_fini(dev_priv);
-#endif
 }
 
 int i915_gem_freeze(struct drm_i915_private *dev_priv)
