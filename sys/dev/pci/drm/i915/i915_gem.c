@@ -547,9 +547,6 @@ i915_gem_object_wait_reservation(struct reservation_object *resv,
 				 long timeout,
 				 struct intel_rps_client *rps_client)
 {
-	STUB();
-	return -1;
-#ifdef notyet
 	unsigned int seq = __read_seqcount_begin(&resv->seq);
 	struct dma_fence *excl;
 	bool prune_fences = false;
@@ -612,7 +609,6 @@ i915_gem_object_wait_reservation(struct reservation_object *resv,
 	}
 
 	return timeout;
-#endif
 }
 
 static void __fence_set_priority(struct dma_fence *fence,

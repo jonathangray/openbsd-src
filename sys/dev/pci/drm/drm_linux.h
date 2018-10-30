@@ -2706,7 +2706,7 @@ __seqcount_init(seqcount_t *s, const char *name,
 }
 
 static inline unsigned int
-read_seqcount_begin(const seqcount_t *s)
+__read_seqcount_begin(const seqcount_t *s)
 {
 	unsigned int r;
 	for (;;) {
@@ -2715,15 +2715,28 @@ read_seqcount_begin(const seqcount_t *s)
 			break;
 		cpu_relax();
 	}
+	return r;
+}
+
+static inline unsigned int
+read_seqcount_begin(const seqcount_t *s)
+{
+	unsigned int r = __read_seqcount_begin(s);
 	membar_consumer();
 	return r;
+}
+
+static inline int
+__read_seqcount_retry(const seqcount_t *s, unsigned start)
+{
+	return (s->sequence != start);
 }
 
 static inline int
 read_seqcount_retry(const seqcount_t *s, unsigned start)
 {
 	membar_consumer();
-	return (s->sequence != start);
+	return __read_seqcount_retry(s, start);
 }
 
 static inline void
