@@ -483,8 +483,6 @@ static struct vm_page *vm_alloc_page(struct i915_address_space *vm, gfp_t gfp)
 static void vm_free_pages_release(struct i915_address_space *vm,
 				  bool immediate)
 {
-	STUB();
-#ifdef notyet
 	struct pagevec *pvec = &vm->free_pages.pvec;
 	struct pagevec stack;
 
@@ -523,7 +521,6 @@ static void vm_free_pages_release(struct i915_address_space *vm,
 	}
 
 	__pagevec_release(pvec);
-#endif
 }
 
 static void vm_free_page(struct i915_address_space *vm, struct vm_page *page)
@@ -1091,9 +1088,6 @@ gen8_ppgtt_insert_pte_entries(struct i915_hw_ppgtt *ppgtt,
 			      enum i915_cache_level cache_level,
 			      u32 flags)
 {
-	STUB();
-	return false;
-#ifdef notyet
 	struct i915_page_directory *pd;
 	const gen8_pte_t pte_encode = gen8_pte_encode(0, cache_level, flags);
 	gen8_pte_t *vaddr;
@@ -1141,7 +1135,6 @@ gen8_ppgtt_insert_pte_entries(struct i915_hw_ppgtt *ppgtt,
 	kunmap_atomic(vaddr);
 
 	return ret;
-#endif
 }
 
 static void gen8_ppgtt_insert_3lvl(struct i915_address_space *vm,
@@ -1165,8 +1158,6 @@ static void gen8_ppgtt_insert_huge_entries(struct i915_vma *vma,
 					   enum i915_cache_level cache_level,
 					   u32 flags)
 {
-	STUB();
-#ifdef notyet
 	const gen8_pte_t pte_encode = gen8_pte_encode(0, cache_level, flags);
 	u64 start = vma->node.start;
 	dma_addr_t rem = iter->sg->length;
@@ -1278,7 +1269,6 @@ static void gen8_ppgtt_insert_huge_entries(struct i915_vma *vma,
 
 		vma->page_sizes.gtt |= page_size;
 	} while (iter->sg);
-#endif
 }
 
 static void gen8_ppgtt_insert_4lvl(struct i915_address_space *vm,
@@ -1949,8 +1939,6 @@ static void gen6_ppgtt_insert_entries(struct i915_address_space *vm,
 				      enum i915_cache_level cache_level,
 				      u32 flags)
 {
-	STUB();
-#ifdef notyet
 	struct i915_hw_ppgtt *ppgtt = i915_vm_to_ppgtt(vm);
 	unsigned first_entry = vma->node.start >> PAGE_SHIFT;
 	unsigned act_pt = first_entry / GEN6_PTES;
@@ -1984,7 +1972,6 @@ static void gen6_ppgtt_insert_entries(struct i915_address_space *vm,
 	kunmap_atomic(vaddr);
 
 	vma->page_sizes.gtt = I915_GTT_PAGE_SIZE;
-#endif
 }
 
 static int gen6_alloc_va_range(struct i915_address_space *vm,
