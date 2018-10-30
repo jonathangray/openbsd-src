@@ -266,9 +266,6 @@ static int
 intel_engine_setup(struct drm_i915_private *dev_priv,
 		   enum intel_engine_id id)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
 	const struct engine_info *info = &intel_engines[id];
 	struct intel_engine_cs *engine;
 
@@ -319,7 +316,6 @@ intel_engine_setup(struct drm_i915_private *dev_priv,
 	dev_priv->engine_class[info->class][info->instance] = engine;
 	dev_priv->engine[id] = engine;
 	return 0;
-#endif
 }
 
 /**

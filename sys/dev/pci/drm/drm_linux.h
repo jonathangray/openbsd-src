@@ -2015,6 +2015,8 @@ struct notifier_block {
 #define register_reboot_notifier(x)
 #define unregister_reboot_notifier(x)
 
+#define ATOMIC_INIT_NOTIFIER_HEAD(x)
+
 #define SYS_RESTART 0
 
 #define min_t(t, a, b) ({ \
