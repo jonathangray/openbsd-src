@@ -265,8 +265,7 @@ void drm_dev_printk(const struct device *dev, const char *level,
 	va_list args;
 
 	va_start(args, format);
-	printk("%s" "[" DRM_NAME ":%p] ",
-	       level, __builtin_return_address(0));
+	printk("%s" "[" DRM_NAME "] ", level);
 	vprintf(format, args);
 	va_end(args);
 }
@@ -280,8 +279,7 @@ void drm_dev_dbg(const struct device *dev, unsigned int category,
 		return;
 
 	va_start(args, format);
-	printf(KERN_DEBUG "[" DRM_NAME ":%p] ",
-	    __builtin_return_address(0));
+	printf(KERN_DEBUG "[" DRM_NAME "] ");
 	vprintf(format, args);
 	va_end(args);
 }
@@ -294,8 +292,7 @@ void drm_dbg(unsigned int category, const char *format, ...)
 		return;
 
 	va_start(args, format);
-	printf(KERN_DEBUG "[" DRM_NAME ":%p] ",
-	    __builtin_return_address(0));
+	printf(KERN_DEBUG "[" DRM_NAME "] ");
 	vprintf(format, args);
 	va_end(args);
 }
@@ -305,8 +302,7 @@ void drm_err(const char *format, ...)
 	va_list args;
 
 	va_start(args, format);
-	printf(KERN_ERR "[" DRM_NAME ":%p] *ERROR* ",
-	    __builtin_return_address(0));
+	printf(KERN_ERR "[" DRM_NAME "] *ERROR* ");
 	vprintf(format, args);
 	va_end(args);
 }
