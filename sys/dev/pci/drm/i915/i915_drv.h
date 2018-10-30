@@ -3472,12 +3472,9 @@ void i915_gem_flush_ggtt_writes(struct drm_i915_private *dev_priv);
 /* belongs in i915_gem_gtt.h */
 static inline void i915_gem_chipset_flush(struct drm_i915_private *dev_priv)
 {
-	STUB();
-#ifdef notyet
 	wmb();
 	if (INTEL_GEN(dev_priv) < 6)
 		intel_gtt_chipset_flush();
-#endif
 }
 
 /* i915_gem_stolen.c */
