@@ -231,9 +231,6 @@ static inline void __sync_set_child(struct i915_syncmap *p,
 
 static noinline int __sync_set(struct i915_syncmap **root, u64 id, u32 seqno)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
 	struct i915_syncmap *p = *root;
 	unsigned int idx;
 
@@ -340,7 +337,6 @@ found:
 	__sync_set_seqno(p, id, seqno);
 	*root = p;
 	return 0;
-#endif
 }
 
 /**
