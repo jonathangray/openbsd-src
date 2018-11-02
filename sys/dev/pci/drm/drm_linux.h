@@ -2702,6 +2702,18 @@ rounddown_pow_of_two(unsigned long x)
 	return (1UL << (flsl(x) - 1));
 }
 
+static inline int
+fls64(long long mask)
+{
+	int bit;
+
+	if (mask == 0)
+		return (0);
+	for (bit = 1; mask != 1; bit++)
+		mask = (unsigned long long)mask >> 1;
+	return (bit);
+}
+
 #define is_power_of_2(x)	(((x) != 0) && (((x) - 1) & (x)) == 0)
 
 #define PAGE_ALIGN(addr)	(((addr) + PAGE_MASK) & ~PAGE_MASK)
