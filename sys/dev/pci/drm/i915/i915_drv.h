@@ -55,9 +55,9 @@
 #ifdef __linux__
 #include <dev/pci/drm/intel-gtt.h>
 #include <dev/pci/drm/drm_legacy.h> /* for struct drm_dma_handle */
-#include <dev/pci/drm/drm_gem.h>
 #include <dev/pci/drm/drm_auth.h>
 #endif
+#include <dev/pci/drm/drm_gem.h>
 #include <dev/pci/drm/drm_cache.h>
 
 #define CONFIG_DRM_I915_FBDEV 1

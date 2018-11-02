@@ -32,9 +32,7 @@
 #include <linux/rbtree.h>
 #endif
 #include <dev/pci/drm/drm_prime.h>
-#ifdef notyet
-#include <drm/drm_gem.h>
-#endif
+#include <dev/pci/drm/drm_gem.h>
 #include <dev/pci/drm/drmP.h>
 
 #include "drm_internal.h"
@@ -633,7 +631,7 @@ int drm_gem_prime_handle_to_fd(struct drm_device *dev,
 	struct dma_buf *dmabuf;
 
 	mutex_lock(&file_priv->prime.lock);
-	obj = drm_gem_object_lookup(dev, file_priv, handle);
+	obj = drm_gem_object_lookup(file_priv, handle);
 	if (!obj)  {
 		ret = -ENOENT;
 		goto out_unlock;

@@ -32,9 +32,7 @@
 #endif
 
 #include <dev/pci/drm/drm_vma_manager.h>
-#ifdef notyet
 #include <dev/pci/drm/drm_gem.h>
-#endif
 #include <dev/pci/drm/drmP.h>
 
 #include <dev/pci/drm/i915_drm.h>

@@ -82,6 +82,7 @@
 #include "drm_print.h"
 #include "drm_file.h"
 #include "drm_vblank.h"
+#include "drm_gem.h"
 #include "agp.h"
 
 struct fb_cmap;
@@ -319,97 +320,6 @@ struct drm_agp_head {
 #define DRM_ATI_GART_IGP  3
 #define DRM_ATI_GART_R600 4
 
-/**
- * This structure defines the drm_mm memory object, which will be used by the
- * DRM for its buffer objects.
- */
-struct drm_gem_object {
-	/** Reference count of this object */
-	struct kref refcount;
-
-	/**
-	 * handle_count - gem file_priv handle count of this object
-	 *
-	 * Each handle also holds a reference. Note that when the handle_count
-	 * drops to 0 any global names (e.g. the id in the flink namespace) will
-	 * be cleared.
-	 *
-	 * Protected by dev->object_name_lock.
-	 * */
-	unsigned handle_count;
-
-	/** Related drm device */
-	struct drm_device *dev;
-
-	/** File representing the shmem storage */
-	struct file *filp;
-
-	/* Mapping info for this object */
-	struct drm_vma_offset_node vma_node;
-
-	/**
-	 * Size of the object, in bytes.  Immutable over the object's
-	 * lifetime.
-	 */
-	size_t size;
-
-	/**
-	 * Global name for this object, starts at 1. 0 means unnamed.
-	 * Access is covered by the object_name_lock in the related drm_device
-	 */
-	int name;
-
-	/**
-	 * Memory domains. These monitor which caches contain read/write data
-	 * related to the object. When transitioning from one set of domains
-	 * to another, the driver is called to ensure that caches are suitably
-	 * flushed and invalidated
-	 */
-	uint32_t read_domains;
-	uint32_t write_domain;
-
-	/**
-	 * While validating an exec operation, the
-	 * new read/write domain values are computed here.
-	 * They will be transferred to the above values
-	 * at the point that any cache flushing occurs
-	 */
-	uint32_t pending_read_domains;
-	uint32_t pending_write_domain;
-
-	/**
-	 * dma_buf - dma buf associated with this GEM object
-	 *
-	 * Pointer to the dma-buf associated with this gem object (either
-	 * through importing or exporting). We break the resulting reference
-	 * loop when the last gem handle for this object is released.
-	 *
-	 * Protected by obj->object_name_lock
-	 */
-	struct dma_buf *dma_buf;
-
-	/**
-	 * import_attach - dma buf attachment backing this object
-	 *
-	 * Any foreign dma_buf imported as a gem object has this set to the
-	 * attachment point for the device. This is invariant over the lifetime
-	 * of a gem object.
-	 *
-	 * The driver's ->gem_free_object callback is responsible for cleaning
-	 * up the dma_buf attachment and references acquired at import time.
-	 *
-	 * Note that the drm gem/prime core does not depend upon drivers setting
-	 * this field any more. So for drivers where this doesn't make sense
-	 * (e.g. virtual devices or a displaylink behind an usb bus) they can
-	 * simply leave it as NULL.
-	 */
-	struct dma_buf_attachment *import_attach;
-
-	struct uvm_object uobj;
-	SPLAY_ENTRY(drm_gem_object) entry;
-	struct uvm_object *uao;
-};
-
 /* Size of ringbuffer for vblank timestamps. Just double-buffer
  * in initial implementation.
  */
@@ -568,6 +478,8 @@ struct drm_driver {
 	void (*gem_free_object_unlocked) (struct drm_gem_object *obj);
 	int (*gem_open_object) (struct drm_gem_object *, struct drm_file *);
 	void (*gem_close_object) (struct drm_gem_object *, struct drm_file *);
+	void (*gem_print_info)(struct drm_printer *, unsigned int,
+	    const struct drm_gem_object *);
 
 	int	(*gem_fault)(struct drm_gem_object *, struct uvm_faultinfo *,
 		    off_t, vaddr_t, vm_page_t *, int, int, vm_prot_t, int);
@@ -844,18 +756,6 @@ extern void drm_calc_timestamping_constants(struct drm_crtc *crtc,
 extern void drm_vblank_pre_modeset(struct drm_device *dev, unsigned int pipe);
 extern void drm_vblank_post_modeset(struct drm_device *dev, unsigned int pipe);
 
-extern struct dma_buf *drm_gem_prime_export(struct drm_device *dev,
-					    struct drm_gem_object *obj,
-					    int flags);
-extern int drm_gem_prime_handle_to_fd(struct drm_device *dev,
-		struct drm_file *file_priv, uint32_t handle, uint32_t flags,
-		int *prime_fd);
-extern struct drm_gem_object *drm_gem_prime_import(struct drm_device *dev,
-		struct dma_buf *dma_buf);
-extern int drm_gem_prime_fd_to_handle(struct drm_device *dev,
-		struct drm_file *file_priv, int prime_fd, uint32_t *handle);
-extern void drm_gem_dmabuf_release(struct dma_buf *dma_buf);
-
 bool	drm_mode_parse_command_line_for_connector(const char *,
 	    struct drm_connector *, struct drm_cmdline_mode *);
 struct drm_display_mode *
@@ -901,77 +801,6 @@ static inline void
 drm_sysfs_connector_remove(struct drm_connector *connector)
 {
 }
-
-/* Graphics Execution Manager library functions (drm_gem.c) */
-int drm_gem_init(struct drm_device *dev);
-void drm_gem_destroy(struct drm_device *dev);
-void drm_gem_object_release(struct drm_gem_object *obj);
-void drm_gem_object_free(struct kref *kref);
-int drm_gem_object_init(struct drm_device *dev,
-			struct drm_gem_object *obj, size_t size);
-void drm_gem_private_object_init(struct drm_device *dev,
-				 struct drm_gem_object *obj, size_t size);
-
-int drm_gem_handle_create_tail(struct drm_file *file_priv,
-			       struct drm_gem_object *obj,
-			       u32 *handlep);
-int drm_gem_handle_create(struct drm_file *file_priv,
-			  struct drm_gem_object *obj,
-			  u32 *handlep);
-int drm_gem_handle_delete(struct drm_file *filp, u32 handle);
-
-void drm_gem_free_mmap_offset(struct drm_gem_object *obj);
-int drm_gem_create_mmap_offset(struct drm_gem_object *obj);
-
-struct drm_gem_object *drm_gem_object_lookup(struct drm_device *dev,
-					     struct drm_file *filp,
-					     u32 handle);
-struct drm_gem_object *drm_gem_object_find(struct drm_file *, u32);
-int drm_gem_close_ioctl(struct drm_device *dev, void *data,
-			struct drm_file *file_priv);
-int drm_gem_flink_ioctl(struct drm_device *dev, void *data,
-			struct drm_file *file_priv);
-int drm_gem_open_ioctl(struct drm_device *dev, void *data,
-		       struct drm_file *file_priv);
-void drm_gem_open(struct drm_device *dev, struct drm_file *file_private);
-void drm_gem_release(struct drm_device *dev,struct drm_file *file_private);
-
-static inline void drm_gem_object_get(struct drm_gem_object *obj)
-{
-	kref_get(&obj->refcount);
-}
-
-static __inline void
-drm_gem_object_reference(struct drm_gem_object *obj)
-{
-	kref_get(&obj->refcount);
-}
-
-static __inline void
-drm_gem_object_unreference(struct drm_gem_object *obj)
-{
-	if (obj != NULL)
-		kref_put(&obj->refcount, drm_gem_object_free);
-}
-
-static __inline void
-drm_gem_object_unreference_unlocked(struct drm_gem_object *obj)
-{
-	if (obj && !atomic_add_unless(&obj->refcount.refcount, -1, 1)) {
-		struct drm_device *dev = obj->dev;
-
-		mutex_lock(&dev->struct_mutex);
-		if (likely(atomic_dec_and_test(&obj->refcount.refcount)))
-			drm_gem_object_free(&obj->refcount);
-		mutex_unlock(&dev->struct_mutex);
-	}
-}
-
-#define drm_gem_object_put_unlocked(x) drm_gem_object_unreference_unlocked(x)
-
-int drm_gem_dumb_destroy(struct drm_file *file,
-			 struct drm_device *dev,
-			 uint32_t handle);
 
 static __inline__ int drm_core_check_feature(struct drm_device *dev,
 					     int feature)

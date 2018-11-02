@@ -24,9 +24,7 @@
  */
 
 #include <dev/pci/drm/drmP.h>
-#ifdef notyet
 #include <dev/pci/drm/drm_gem.h>
-#endif
 
 #include "drm_crtc_internal.h"
 
