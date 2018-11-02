@@ -115,9 +115,6 @@ int drm_mode_create_dumb_ioctl(struct drm_device *dev,
 int drm_mode_mmap_dumb_ioctl(struct drm_device *dev,
 			     void *data, struct drm_file *file_priv)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
 	struct drm_mode_map_dumb *args = data;
 
 	if (!dev->driver->dumb_create)
@@ -130,7 +127,6 @@ int drm_mode_mmap_dumb_ioctl(struct drm_device *dev,
 	else
 		return drm_gem_dumb_map_offset(file_priv, dev, args->handle,
 					       &args->offset);
-#endif
 }
 
 int drm_mode_destroy_dumb(struct drm_device *dev, u32 handle,
