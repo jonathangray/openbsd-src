@@ -33,8 +33,8 @@
 #include <linux/hdmi.h>
 #include <linux/media-bus-format.h>
 #endif
-#include <dev/pci/drm/drm_mode.h>
-#include <dev/pci/drm/drm_fourcc.h>
+#include <dev/pci/drm/uapi/drm_mode.h>
+#include <dev/pci/drm/uapi/drm_fourcc.h>
 #include <dev/pci/drm/linux_hdmi.h>
 #include <dev/pci/drm/drm_modeset_lock.h>
 #include <dev/pci/drm/drm_rect.h>

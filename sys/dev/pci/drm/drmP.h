@@ -75,7 +75,7 @@
 #include "drm.h"
 #include "drm_vma_manager.h"
 #include "drm_crtc.h"
-#include "drm_fourcc_internal.h"
+#include "drm_fourcc.h"
 #include "drm_mm.h"
 #include "drm_linux_atomic.h"
 #include "drm_prime.h"

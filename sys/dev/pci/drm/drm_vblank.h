@@ -34,7 +34,7 @@
 
 #include <dev/pci/drm/drm_file.h>
 #include <dev/pci/drm/drm_modes.h>
-#include <dev/pci/drm/drm.h>
+#include <dev/pci/drm/uapi/drm.h>
 
 struct drm_device;
 struct drm_crtc;

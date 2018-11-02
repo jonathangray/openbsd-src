@@ -32,7 +32,7 @@
 #include <dev/pci/drm/linux_hdmi.h>
 #include <dev/pci/drm/drm_mode_object.h>
 
-#include <dev/pci/drm/drm_mode.h>
+#include <dev/pci/drm/uapi/drm_mode.h>
 
 struct drm_connector_helper_funcs;
 struct drm_modeset_acquire_ctx;
