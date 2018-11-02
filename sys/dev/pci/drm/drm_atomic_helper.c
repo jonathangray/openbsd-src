@@ -1420,8 +1420,6 @@ EXPORT_SYMBOL(drm_atomic_helper_wait_for_vblanks);
 void drm_atomic_helper_wait_for_flip_done(struct drm_device *dev,
 					  struct drm_atomic_state *old_state)
 {
-	STUB();
-#if 0
 	struct drm_crtc *crtc;
 	int i;
 
@@ -1439,7 +1437,6 @@ void drm_atomic_helper_wait_for_flip_done(struct drm_device *dev,
 			DRM_ERROR("[CRTC:%d:%s] flip_done timed out\n",
 				  crtc->base.id, crtc->name);
 	}
-#endif
 }
 EXPORT_SYMBOL(drm_atomic_helper_wait_for_flip_done);
 
@@ -2015,8 +2012,6 @@ EXPORT_SYMBOL(drm_atomic_helper_setup_commit);
  */
 void drm_atomic_helper_wait_for_dependencies(struct drm_atomic_state *old_state)
 {
-	STUB();
-#if 0
 	struct drm_crtc *crtc;
 	struct drm_crtc_state *old_crtc_state;
 	struct drm_plane *plane;
@@ -2089,7 +2084,6 @@ void drm_atomic_helper_wait_for_dependencies(struct drm_atomic_state *old_state)
 			DRM_ERROR("[PLANE:%d:%s] flip_done timed out\n",
 				  plane->base.id, plane->name);
 	}
-#endif
 }
 EXPORT_SYMBOL(drm_atomic_helper_wait_for_dependencies);
 
@@ -2589,9 +2583,6 @@ EXPORT_SYMBOL(drm_atomic_helper_cleanup_planes);
 int drm_atomic_helper_swap_state(struct drm_atomic_state *state,
 				  bool stall)
 {
-	STUB();
-	return -ENOSYS;
-#if 0
 	int i, ret;
 	struct drm_connector *connector;
 	struct drm_connector_state *old_conn_state, *new_conn_state;
@@ -2697,7 +2688,6 @@ int drm_atomic_helper_swap_state(struct drm_atomic_state *state,
 	}
 
 	return 0;
-#endif
 }
 EXPORT_SYMBOL(drm_atomic_helper_swap_state);
 
