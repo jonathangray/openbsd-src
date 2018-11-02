@@ -72,7 +72,7 @@
 
 #include "drm_linux.h"
 #include "drm_linux_list.h"
-#include "drm.h"
+#include <dev/pci/drm/uapi/drm.h>
 #include "drm_vma_manager.h"
 #include "drm_crtc.h"
 #include "drm_fourcc.h"

@@ -33,7 +33,7 @@
 #ifndef __RADEON_DRM_H__
 #define __RADEON_DRM_H__
 
-#include "drm.h"
+#include <dev/pci/drm/uapi/drm.h>
 
 #if defined(__cplusplus)
 extern "C" {

@@ -33,7 +33,7 @@
 #ifndef _DRM_SAREA_H_
 #define _DRM_SAREA_H_
 
-#include "drm.h"
+#include <dev/pci/drm/uapi/drm.h>
 
 /* SAREA area needs to be at least a page */
 #if defined(__alpha__)
