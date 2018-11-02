@@ -11687,11 +11687,7 @@ int intel_plane_atomic_calc_changes(struct drm_crtc_state *crtc_state,
 	struct drm_i915_private *dev_priv = dev->dev_private;
 	struct intel_plane_state *old_plane_state =
 		to_intel_plane_state(plane->state);
-#ifdef DRMDEBUG
 	int idx = intel_crtc->base.base.id, ret;
-#else
-	int ret;
-#endif
 	int i = drm_plane_index(plane);
 	bool mode_changed = needs_modeset(crtc_state);
 	bool was_crtc_enabled = crtc->state->active;
