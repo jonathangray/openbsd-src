@@ -967,9 +967,6 @@ __copy_from_user_swizzled(char *gpu_vaddr, int gpu_offset,
 int i915_gem_obj_prepare_shmem_read(struct drm_i915_gem_object *obj,
 				    unsigned int *needs_clflush)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
 	int ret;
 
 	lockdep_assert_held(&obj->base.dev->struct_mutex);
@@ -1017,15 +1014,11 @@ out:
 err_unpin:
 	i915_gem_object_unpin_pages(obj);
 	return ret;
-#endif
 }
 
 int i915_gem_obj_prepare_shmem_write(struct drm_i915_gem_object *obj,
 				     unsigned int *needs_clflush)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
 	int ret;
 
 	lockdep_assert_held(&obj->base.dev->struct_mutex);
@@ -1083,7 +1076,6 @@ out:
 err_unpin:
 	i915_gem_object_unpin_pages(obj);
 	return ret;
-#endif
 }
 
 static void
