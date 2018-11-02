@@ -48,11 +48,35 @@ enum mipi_dsi_dcs_tear_mode {
 	MIPI_DSI_DCS_TEAR_MODE_UNUSED
 };
 
+enum mipi_dsi_pixel_format {
+	MIPI_DSI_FMT_RGB888,
+	MIPI_DSI_FMT_RGB666,
+	MIPI_DSI_FMT_RGB666_PACKED,
+	MIPI_DSI_FMT_RGB565,
+};
+
 int mipi_dsi_attach(struct mipi_dsi_device *);
 int mipi_dsi_create_packet(struct mipi_dsi_packet *,
     const struct mipi_dsi_msg *);
 ssize_t mipi_dsi_generic_write(struct mipi_dsi_device *, const void *, size_t);
 ssize_t mipi_dsi_dcs_write_buffer(struct mipi_dsi_device *, const void *,
     size_t);
+ssize_t mipi_dsi_dcs_read(struct mipi_dsi_device *, u8, void *, size_t);
+ssize_t mipi_dsi_dcs_write(struct mipi_dsi_device *, u8, const void *, size_t);
+
+static inline int
+mipi_dsi_pixel_format_to_bpp(enum mipi_dsi_pixel_format fmt)
+{
+	switch (fmt) {
+	case MIPI_DSI_FMT_RGB888:
+	case MIPI_DSI_FMT_RGB666:
+		return 24;
+	case MIPI_DSI_FMT_RGB666_PACKED:
+		return 18;
+	case MIPI_DSI_FMT_RGB565:
+		return 16;
+	}
+	return -EINVAL;
+}
 
 #endif
