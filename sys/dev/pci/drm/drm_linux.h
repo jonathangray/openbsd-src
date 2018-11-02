@@ -54,6 +54,7 @@
 #pragma clang diagnostic ignored "-Wunused-const-variable"
 #pragma clang diagnostic ignored "-Wincompatible-pointer-types-discards-qualifiers"
 #pragma clang diagnostic ignored "-Wunused-function"
+#pragma clang diagnostic ignored "-Wunused-variable"
 #else
 #pragma GCC diagnostic ignored "-Wformat-zero-length"
 #endif
