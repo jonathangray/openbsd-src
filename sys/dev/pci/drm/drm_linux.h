@@ -874,6 +874,44 @@ init_completion(struct completion *x)
 }
 
 static inline u_long
+_wait_for_completion_timeout(struct completion *x, u_long timo LOCK_FL_VARS)
+{
+	int ret;
+
+	_mtx_enter(&x->wait.lock LOCK_FL_ARGS);
+	while (x->done == 0) {
+		ret = msleep(x, &x->wait.lock, 0, "wfcit", 0);
+		if (ret) {
+			_mtx_leave(&x->wait.lock LOCK_FL_ARGS);
+			return (ret == EWOULDBLOCK) ? 0 : -ret;
+		}
+	}
+
+	return 1;
+}
+#define wait_for_completion_timeout(x, timo)	\
+	_wait_for_completion_timeout(x, timo LOCK_FILE_LINE)
+
+static inline u_long
+_wait_for_completion_interruptible(struct completion *x LOCK_FL_VARS)
+{
+	int ret;
+
+	_mtx_enter(&x->wait.lock LOCK_FL_ARGS);
+	while (x->done == 0) {
+		ret = msleep(x, &x->wait.lock, PCATCH, "wfcit", 0);
+		if (ret) {
+			_mtx_leave(&x->wait.lock LOCK_FL_ARGS);
+			return (ret == EWOULDBLOCK) ? 0 : -ret;
+		}
+	}
+
+	return 1;
+}
+#define wait_for_completion_interruptible(x)	\
+	_wait_for_completion_interruptible(x LOCK_FILE_LINE)
+
+static inline u_long
 _wait_for_completion_interruptible_timeout(struct completion *x, u_long timo
     LOCK_FL_VARS)
 {
