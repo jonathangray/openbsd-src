@@ -2049,6 +2049,7 @@ void idr_remove(struct idr *, int);
 void idr_destroy(struct idr *);
 int idr_for_each(struct idr *, int (*)(int, void *, void *), void *);
 void *idr_get_next(struct idr *, int *);
+#define idr_init_base(idr, base)	idr_init(idr)
 
 #define idr_for_each_entry(idp, entry, id) \
 	for (id = 0; ((entry) = idr_get_next(idp, &(id))) != NULL; id++)
