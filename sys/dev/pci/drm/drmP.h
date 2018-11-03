@@ -691,14 +691,6 @@ int	 drm_order(unsigned long);
 struct drm_file	*drm_find_file_by_minor(struct drm_device *, int);
 struct drm_device *drm_get_device_from_kdev(dev_t);
 
-/* Memory management support (drm_memory.c) */
-void	*drm_alloc(size_t);
-void	*drm_calloc(size_t, size_t);
-void	*drm_realloc(void *, size_t, size_t);
-void	 drm_free(void *);
-
-#include "drm_mem_util.h"
-
 /* XXX until we get PAT support */
 #define drm_core_ioremap_wc drm_core_ioremap
 void	drm_core_ioremap(struct drm_local_map *, struct drm_device *);

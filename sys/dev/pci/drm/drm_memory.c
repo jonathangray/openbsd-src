@@ -30,11 +30,7 @@
  */
 
 /** @file drm_memory.c
- * Wrappers for kernel memory allocation routines, and MTRR management support.
- *
- * This file previously implemented a memory consumption tracking system using
- * the "area" argument for various different types of allocations, but that
- * has been stripped out for now.
+ * Wrappers for MTRR management support.
  */
 
 #include "drmP.h"
@@ -42,43 +38,6 @@
 #if !defined(__amd64__) && !defined(__i386__)
 #define DRM_NO_MTRR	1
 #endif
-
-void*
-drm_alloc(size_t size)
-{
-	return (malloc(size, M_DRM, M_NOWAIT));
-}
-
-void *
-drm_calloc(size_t nmemb, size_t size)
-{
-	if (nmemb == 0 || SIZE_MAX / nmemb < size)
-		return (NULL);
-	else
-		return mallocarray(size, nmemb, M_DRM, M_NOWAIT | M_ZERO);
-}
-
-void *
-drm_realloc(void *oldpt, size_t oldsize, size_t size)
-{
-	void *pt;
-
-	pt = malloc(size, M_DRM, M_NOWAIT);
-	if (pt == NULL)
-		return NULL;
-	if (oldpt && oldsize) {
-		memcpy(pt, oldpt, min(oldsize, size));
-		free(oldpt, M_DRM, 0);
-	}
-	return pt;
-}
-
-void
-drm_free(void *pt)
-{
-	if (pt != NULL)
-		free(pt, M_DRM, 0);
-}
 
 int
 drm_mtrr_add(unsigned long offset, size_t size, int flags)

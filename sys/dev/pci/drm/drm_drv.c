@@ -502,11 +502,8 @@ drm_detach(struct device *self, int flags)
 		DRM_DEBUG("mtrr_del = %d", retcode);
 	}
 
-
-	if (dev->agp != NULL) {
-		drm_free(dev->agp);
-		dev->agp = NULL;
-	}
+	free(dev->agp, M_DRM, 0);
+	dev->agp = NULL;
 
 	return 0;
 }
@@ -714,8 +711,8 @@ drmopen(dev_t kdev, int flags, int fmt, struct proc *p)
 	}
 
 	/* always allocate at least enough space for our data */
-	file_priv = drm_calloc(1, max(dev->driver->file_priv_size,
-	    sizeof(*file_priv)));
+	file_priv = mallocarray(1, max(dev->driver->file_priv_size,
+	    sizeof(*file_priv)), M_DRM, M_NOWAIT | M_ZERO);
 	if (file_priv == NULL) {
 		ret = ENOMEM;
 		goto err;
@@ -765,7 +762,7 @@ drmopen(dev_t kdev, int flags, int fmt, struct proc *p)
 	return (0);
 
 free_priv:
-	drm_free(file_priv);
+	free(file_priv, M_DRM, 0);
 err:
 	mutex_lock(&dev->struct_mutex);
 	--dev->open_count;
@@ -824,7 +821,7 @@ drmclose(dev_t kdev, int flags, int fmt, struct proc *p)
 		drm_prime_destroy_file_private(&file_priv->prime);
 
 	SPLAY_REMOVE(drm_file_tree, &dev->files, file_priv);
-	drm_free(file_priv);
+	free(file_priv, M_DRM, 0);
 
 done:
 	if (--dev->open_count == 0) {

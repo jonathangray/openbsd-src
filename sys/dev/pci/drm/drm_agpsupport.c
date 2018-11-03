@@ -126,7 +126,7 @@ drm_agp_init(void)
 	DRM_DEBUG("agp_available = %d\n", agp_available);
 
 	if (agp_available) {
-		head = drm_calloc(1, sizeof(*head));
+		head = mallocarray(1, sizeof(*head), M_DRM, M_NOWAIT | M_ZERO);
 		if (head == NULL)
 			return (NULL);
 		head->agpdev = agpdev;
