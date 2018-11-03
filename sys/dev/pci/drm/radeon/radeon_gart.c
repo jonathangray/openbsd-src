@@ -26,7 +26,7 @@
  *          Jerome Glisse
  */
 #include <dev/pci/drm/drmP.h>
-#include <dev/pci/drm/radeon_drm.h>
+#include <dev/pci/drm/uapi/radeon_drm.h>
 #ifdef CONFIG_X86
 #include <asm/set_memory.h>
 #endif

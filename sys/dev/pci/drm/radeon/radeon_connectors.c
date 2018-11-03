@@ -28,7 +28,7 @@
 #include <dev/pci/drm/drm_crtc_helper.h>
 #include <dev/pci/drm/drm_fb_helper.h>
 #include <dev/pci/drm/drm_dp_mst_helper.h>
-#include <dev/pci/drm/radeon_drm.h>
+#include <dev/pci/drm/uapi/radeon_drm.h>
 #include "radeon.h"
 #include "radeon_audio.h"
 #include "atom.h"

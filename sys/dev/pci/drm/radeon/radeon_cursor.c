@@ -24,7 +24,7 @@
  *          Alex Deucher
  */
 #include <dev/pci/drm/drmP.h>
-#include <dev/pci/drm/radeon_drm.h>
+#include <dev/pci/drm/uapi/radeon_drm.h>
 #include "radeon.h"
 
 static void radeon_lock_cursor(struct drm_crtc *crtc, bool lock)

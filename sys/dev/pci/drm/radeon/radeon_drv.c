@@ -30,7 +30,7 @@
  */
 
 #include <dev/pci/drm/drmP.h>
-#include <dev/pci/drm/radeon_drm.h>
+#include <dev/pci/drm/uapi/radeon_drm.h>
 #include "radeon_drv.h"
 #include "radeon.h"
 

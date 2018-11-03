@@ -33,7 +33,7 @@
 #ifndef __RADEON_DRM_H__
 #define __RADEON_DRM_H__
 
-#include "drm.h"
+#include <dev/pci/drm/uapi/drm.h>
 
 #if defined(__cplusplus)
 extern "C" {
@@ -765,7 +765,7 @@ typedef struct drm_radeon_irq_wait {
 
 typedef struct drm_radeon_setparam {
 	unsigned int param;
-	__s64 value;
+	int64_t value;
 } drm_radeon_setparam_t;
 
 #define RADEON_SETPARAM_FB_LOCATION    1	/* determined framebuffer location */
