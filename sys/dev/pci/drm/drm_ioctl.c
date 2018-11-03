@@ -215,6 +215,37 @@ drm_setclientcap(struct drm_device *dev, void *data, struct drm_file *file_priv)
 			return -EINVAL;
 		file_priv->stereo_allowed = req->value;
 		break;
+	case DRM_CLIENT_CAP_UNIVERSAL_PLANES:
+		if (req->value > 1)
+			return -EINVAL;
+		file_priv->universal_planes = req->value;
+		break;
+	case DRM_CLIENT_CAP_ATOMIC:
+		if (!drm_core_check_feature(dev, DRIVER_ATOMIC))
+			return -EINVAL;
+		if (req->value > 1)
+			return -EINVAL;
+		file_priv->atomic = req->value;
+		file_priv->universal_planes = req->value;
+		/*
+		 * No atomic user-space blows up on aspect ratio mode bits.
+		 */
+		file_priv->aspect_ratio_allowed = req->value;
+		break;
+	case DRM_CLIENT_CAP_ASPECT_RATIO:
+		if (req->value > 1)
+			return -EINVAL;
+		file_priv->aspect_ratio_allowed = req->value;
+		break;
+#ifdef notyet
+	case DRM_CLIENT_CAP_WRITEBACK_CONNECTORS:
+		if (!file_priv->atomic)
+			return -EINVAL;
+		if (req->value > 1)
+			return -EINVAL;
+		file_priv->writeback_connectors = req->value;
+		break;
+#endif
 	default:
 		return -EINVAL;
 	}
