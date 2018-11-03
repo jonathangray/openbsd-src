@@ -85,6 +85,7 @@
 #include "drm_gem.h"
 #include "drm_drv.h"
 #include "drm_device.h"
+#include "drm_irq.h"
 #include "agp.h"
 
 struct fb_cmap;
@@ -94,27 +95,16 @@ struct fb_image;
 
 #define drm_debug	0
 
-/***********************************************************************/
-/** \name DRM template customization defaults */
-/*@{*/
-
-#define	DRM_DEBUGBITS_DEBUG		0x1
-#define	DRM_DEBUGBITS_KMS		0x2
-#define	DRM_DEBUGBITS_FAILED_IOCTL	0x4
-
 #define __OS_HAS_AGP		(NAGP > 0)
 
 				/* Internal types and structures */
 #define DRM_IF_VERSION(maj, min) (maj << 16 | min)
 
 #define DRM_CURRENTPID		curproc->p_p->ps_pid
-#define DRM_MAXUNITS		8
 
 /* DRM_SUSER returns true if the user is superuser */
 #define DRM_SUSER(p)		(suser(p) == 0)
 #define DRM_MTRR_WC		MDF_WRITECOMBINE
-
-#define DRM_WAKEUP(x)		wakeup(x)
 
 #define drm_msleep(x)		mdelay(x)
 
@@ -129,8 +119,6 @@ extern struct cfdriver drm_cd;
 		TAILQ_INIT((head2));					\
 	}								\
 } while (0)
-
-#define DRM_ARRAY_SIZE nitems
 
 /* DRM_READMEMORYBARRIER() prevents reordering of reads.
  * DRM_WRITEMEMORYBARRIER() prevents reordering of writes.
@@ -186,7 +174,6 @@ extern struct cfdriver drm_cd;
 #define mmiowb()			DRM_WRITEMEMORYBARRIER()
 
 #define	DRM_COPY_TO_USER(user, kern, size)	copyout(kern, user, size)
-#define	DRM_COPY_FROM_USER(kern, user, size)	copyin(user, kern, size)
 
 #define DRM_UDELAY(udelay)	DELAY(udelay)
 
@@ -219,9 +206,6 @@ struct drm_pcidev {
 	uint32_t class_mask;
 	unsigned long driver_data;
 };
-
-struct drm_file;
-struct drm_device;
 
 /**
  * Ioctl function type.
@@ -290,33 +274,13 @@ struct drm_agp_head {
    	int					 mtrr;
 };
 
-/* location of GART table */
-#define DRM_ATI_GART_MAIN 1
-#define DRM_ATI_GART_FB   2
-
-#define DRM_ATI_GART_PCI  1
-#define DRM_ATI_GART_PCIE 2
-#define DRM_ATI_GART_IGP  3
-#define DRM_ATI_GART_R600 4
-
-/* Size of ringbuffer for vblank timestamps. Just double-buffer
- * in initial implementation.
- */
-#define DRM_VBLANKTIME_RBSIZE 2
-
 /* Flags and return codes for get_vblank_timestamp() driver function. */
 #define DRM_CALLED_FROM_VBLIRQ 1
-#define DRM_VBLANKTIME_SCANOUTPOS_METHOD (1 << 0)
-#define DRM_VBLANKTIME_IN_VBLANK         (1 << 1)
 
 /* get_scanout_position() return flags */
 #define DRM_SCANOUTPOS_VALID        (1 << 0)
 #define DRM_SCANOUTPOS_IN_VBLANK    (1 << 1)
 #define DRM_SCANOUTPOS_ACCURATE     (1 << 2)
-
-#include "drm_crtc.h"
-
-struct drm_minor;
 
 struct drm_attach_args {
 	struct drm_driver		*driver;
@@ -354,7 +318,6 @@ dev_type_poll(drmpoll);
 dev_type_open(drmopen);
 dev_type_close(drmclose);
 dev_type_mmap(drmmmap);
-struct drm_local_map	*drm_getsarea(struct drm_device *);
 struct drm_dmamem	*drm_dmamem_alloc(bus_dma_tag_t, bus_size_t, bus_size_t,
 			     int, bus_size_t, int, int);
 void			 drm_dmamem_free(bus_dma_tag_t, struct drm_dmamem *);
@@ -371,11 +334,6 @@ int	 drm_order(unsigned long);
 struct drm_file	*drm_find_file_by_minor(struct drm_device *, int);
 struct drm_device *drm_get_device_from_kdev(dev_t);
 
-/* XXX until we get PAT support */
-#define drm_core_ioremap_wc drm_core_ioremap
-void	drm_core_ioremap(struct drm_local_map *, struct drm_device *);
-void	drm_core_ioremapfree(struct drm_local_map *, struct drm_device *);
-
 int	drm_mtrr_add(unsigned long, size_t, int);
 int	drm_mtrr_del(int, unsigned long, size_t, int);
 
@@ -389,50 +347,6 @@ int drm_invalid_op(struct drm_device *dev, void *data,
 void drm_clflush_pages(struct vm_page *pages[], unsigned long num_pages);
 void drm_clflush_sg(struct sg_table *st);
 void drm_clflush_virt_range(void *addr, unsigned long length);
-
-/*
- * These are exported to drivers so that they can implement fencing using
- * DMA quiscent + idle. DMA quiescent usually requires the hardware lock.
- */
-
-				/* IRQ support (drm_irq.h) */
-extern int drm_irq_install(struct drm_device *dev, int irq);
-extern int drm_irq_uninstall(struct drm_device *dev);
-
-extern int drm_vblank_init(struct drm_device *dev, unsigned int num_crtcs);
-extern int drm_wait_vblank(struct drm_device *dev, void *data,
-			   struct drm_file *filp);
-extern void drm_crtc_send_vblank_event(struct drm_crtc *crtc,
-				       struct drm_pending_vblank_event *e);
-extern void drm_arm_vblank_event(struct drm_device *dev, unsigned int pipe,
-				 struct drm_pending_vblank_event *e);
-extern void drm_crtc_arm_vblank_event(struct drm_crtc *crtc,
-				      struct drm_pending_vblank_event *e);
-extern bool drm_handle_vblank(struct drm_device *dev, unsigned int pipe);
-extern bool drm_crtc_handle_vblank(struct drm_crtc *crtc);
-extern int drm_crtc_vblank_get(struct drm_crtc *crtc);
-extern void drm_crtc_vblank_put(struct drm_crtc *crtc);
-extern void drm_wait_one_vblank(struct drm_device *dev, unsigned int pipe);
-extern void drm_crtc_wait_one_vblank(struct drm_crtc *crtc);
-extern void drm_vblank_off(struct drm_device *dev, unsigned int pipe);
-extern void drm_vblank_on(struct drm_device *dev, unsigned int pipe);
-extern void drm_crtc_vblank_off(struct drm_crtc *crtc);
-extern void drm_crtc_vblank_reset(struct drm_crtc *crtc);
-extern void drm_crtc_vblank_on(struct drm_crtc *crtc);
-extern void drm_vblank_cleanup(struct drm_device *dev);
-
-extern void drm_calc_timestamping_constants(struct drm_crtc *crtc,
-					    const struct drm_display_mode *mode);
-
-/* Modesetting support */
-extern void drm_vblank_pre_modeset(struct drm_device *dev, unsigned int pipe);
-extern void drm_vblank_post_modeset(struct drm_device *dev, unsigned int pipe);
-
-bool	drm_mode_parse_command_line_for_connector(const char *,
-	    struct drm_connector *, struct drm_cmdline_mode *);
-struct drm_display_mode *
-	 drm_mode_create_from_cmdline_mode(struct drm_device *,
-	     struct drm_cmdline_mode *);
 
 /* AGP/PCI Express/GART support (drm_agpsupport.c) */
 struct drm_agp_head *drm_agp_init(void);
