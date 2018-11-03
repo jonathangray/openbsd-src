@@ -50,6 +50,7 @@ file	dev/pci/drm/drm_probe_helper.c		drm
 file	dev/pci/drm/drm_property.c		drm
 file	dev/pci/drm/drm_rect.c			drm
 file	dev/pci/drm/drm_scdc_helper.c		drm
+file	dev/pci/drm/drm_syncobj.c		drm
 file	dev/pci/drm/drm_vblank.c		drm
 file	dev/pci/drm/drm_vma_manager.c		drm
 file	dev/pci/drm/linux_hdmi.c		drm
