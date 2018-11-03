@@ -1374,6 +1374,12 @@ ktime_get_real_seconds(void)
 	return ktime_get().tv_sec;
 }
 
+static inline struct timeval
+ns_to_ktime(uint64_t ns)
+{
+	return ns_to_timeval(ns);
+}
+
 static inline uint64_t
 local_clock(void)
 {
