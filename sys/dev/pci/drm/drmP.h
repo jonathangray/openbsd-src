@@ -86,6 +86,7 @@
 #include "drm_drv.h"
 #include "drm_device.h"
 #include "drm_irq.h"
+#include "drm_ioctl.h"
 #include "agp.h"
 
 struct fb_cmap;
@@ -207,44 +208,6 @@ struct drm_pcidev {
 	unsigned long driver_data;
 };
 
-/**
- * Ioctl function type.
- *
- * \param inode device inode.
- * \param file_priv DRM file private pointer.
- * \param cmd command.
- * \param arg argument.
- */
-typedef int drm_ioctl_t(struct drm_device *dev, void *data,
-			struct drm_file *file_priv);
-
-typedef int drm_ioctl_compat_t(struct file *filp, unsigned int cmd,
-			       unsigned long arg);
-
-#define DRM_IOCTL_NR(n)		((n) & 0xff)
-
-#define DRM_AUTH	0x1
-#define DRM_MASTER	0x2
-#define DRM_ROOT_ONLY	0x4
-#define DRM_CONTROL_ALLOW 0x8
-#define DRM_UNLOCKED	0x10
-#define DRM_RENDER_ALLOW 0x20
-
-struct drm_ioctl_desc {
-	unsigned int cmd;
-	int flags;
-	drm_ioctl_t *func;
-	unsigned int cmd_drv;
-};
-
-/**
- * Creates a driver or general drm_ioctl_desc array entry for the given
- * ioctl, for use by drm_ioctl().
- */
-
-#define DRM_IOCTL_DEF_DRV(ioctl, _func, _flags)			\
-	[DRM_IOCTL_NR(DRM_##ioctl)] = {.cmd = DRM_##ioctl, .func = _func, .flags = _flags, .cmd_drv = DRM_IOCTL_##ioctl}
-
 struct drm_dmamem {
 	bus_dmamap_t		map;
 	caddr_t			kva;
@@ -336,12 +299,6 @@ struct drm_device *drm_get_device_from_kdev(dev_t);
 
 int	drm_mtrr_add(unsigned long, size_t, int);
 int	drm_mtrr_del(int, unsigned long, size_t, int);
-
-/* Misc. IOCTL support (drm_ioctl.c) */
-int drm_noop(struct drm_device *dev, void *data,
-	     struct drm_file *file_priv);
-int drm_invalid_op(struct drm_device *dev, void *data,
-		   struct drm_file *file_priv);
 
 /* Cache management (drm_cache.c) */
 void drm_clflush_pages(struct vm_page *pages[], unsigned long num_pages);
