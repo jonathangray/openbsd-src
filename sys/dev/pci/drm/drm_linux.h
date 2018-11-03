@@ -2504,6 +2504,9 @@ pci_dma_mapping_error(struct pci_dev *pdev, dma_addr_t dma_addr)
 	return 0;
 }
 
+#define pci_set_dma_mask(x, y)			0
+#define pci_set_consistent_dma_mask(x, y)	0
+
 #define dma_set_coherent_mask(x, y)	0
 
 #define VGA_RSRC_LEGACY_IO	0x01

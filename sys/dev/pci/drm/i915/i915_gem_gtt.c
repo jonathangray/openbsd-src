@@ -653,9 +653,6 @@ static void fill_page_dma_32(struct i915_address_space *vm,
 static int
 setup_scratch_page(struct i915_address_space *vm, gfp_t gfp)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
 	unsigned long size;
 
 	/*
@@ -687,6 +684,7 @@ setup_scratch_page(struct i915_address_space *vm, gfp_t gfp)
 		if (unlikely(!page))
 			goto skip;
 
+#ifdef __linux__
 		addr = dma_map_page_attrs(vm->dma,
 					  page, 0, size,
 					  PCI_DMA_BIDIRECTIONAL,
@@ -694,6 +692,9 @@ setup_scratch_page(struct i915_address_space *vm, gfp_t gfp)
 					  DMA_ATTR_NO_WARN);
 		if (unlikely(dma_mapping_error(vm->dma, addr)))
 			goto free_page;
+#else
+		addr = VM_PAGE_TO_PHYS(page);
+#endif
 
 		if (unlikely(!IS_ALIGNED(addr, size)))
 			goto unmap_page;
@@ -704,8 +705,10 @@ setup_scratch_page(struct i915_address_space *vm, gfp_t gfp)
 		return 0;
 
 unmap_page:
+#ifdef __linux__
 		dma_unmap_page(vm->dma, addr, size, PCI_DMA_BIDIRECTIONAL);
 free_page:
+#endif
 		__free_pages(page, order);
 skip:
 		if (size == I915_GTT_PAGE_SIZE_4K)
@@ -714,7 +717,6 @@ skip:
 		size = I915_GTT_PAGE_SIZE_4K;
 		gfp &= ~__GFP_NOWARN;
 	} while (1);
-#endif
 }
 
 static void cleanup_scratch_page(struct i915_address_space *vm)
@@ -3112,11 +3114,10 @@ static unsigned int chv_get_total_gtt_size(u16 gmch_ctrl)
 	return 0;
 }
 
+#ifdef __linux__
+
 static int ggtt_probe_common(struct i915_ggtt *ggtt, u64 size)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
 	struct drm_i915_private *dev_priv = ggtt->vm.i915;
 	struct pci_dev *pdev = dev_priv->drm.pdev;
 	phys_addr_t phys_addr;
@@ -3150,8 +3151,62 @@ static int ggtt_probe_common(struct i915_ggtt *ggtt, u64 size)
 	}
 
 	return 0;
-#endif
 }
+
+#else
+
+static int ggtt_probe_common(struct i915_ggtt *ggtt, u64 size)
+{
+	struct drm_i915_private *dev_priv = ggtt->vm.i915;
+	bus_space_handle_t gsm;
+	bus_addr_t addr;
+	bus_size_t len;
+	pcireg_t type;
+	int flags;
+	int ret;
+
+	/* For Modern GENs the PTEs and register space are split in the BAR */
+	type = pci_mapreg_type(dev_priv->pc, dev_priv->tag, 0x10);
+	ret = -pci_mapreg_info(dev_priv->pc, dev_priv->tag, 0x10, type,
+	    &addr, &len, NULL);
+	if (ret)
+		return ret;
+
+	/*
+	 * On BXT+/CNL+ writes larger than 64 bit to the GTT pagetable range
+	 * will be dropped. For WC mappings in general we have 64 byte burst
+	 * writes when the WC buffer is flushed, so we can't use it, but have to
+	 * resort to an uncached mapping. The WC issue is easily caught by the
+	 * readback check when writing GTT PTE entries.
+	 */
+	if (IS_GEN9_LP(dev_priv) || INTEL_GEN(dev_priv) >= 10)
+		flags = 0;
+	else
+		flags = BUS_SPACE_MAP_PREFETCHABLE;
+	ret = -bus_space_map(dev_priv->bst, addr + len / 2, size,
+	    flags | BUS_SPACE_MAP_LINEAR, &gsm);
+	if (ret) {
+		DRM_ERROR("Failed to map the gtt page table\n");
+		return ret;
+	}
+	ggtt->gsm = bus_space_vaddr(dev_priv->bst, gsm);
+	if (!ggtt->gsm) {
+		DRM_ERROR("Failed to map the ggtt page table\n");
+		return -ENOMEM;
+	}
+
+	ret = setup_scratch_page(&ggtt->vm, GFP_DMA32);
+	if (ret) {
+		DRM_ERROR("Scratch setup failed\n");
+		/* iounmap will also get called at remove, but meh */
+		bus_space_unmap(dev_priv->bst, gsm, size);
+		return ret;
+	}
+
+	return 0;
+}
+
+#endif
 
 static struct intel_ppat_entry *
 __alloc_ppat_entry(struct intel_ppat *ppat, unsigned int index, u8 value)
@@ -3456,20 +3511,33 @@ static void setup_private_pat(struct drm_i915_private *dev_priv)
 
 static int gen8_gmch_probe(struct i915_ggtt *ggtt)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
 	struct drm_i915_private *dev_priv = ggtt->vm.i915;
 	struct pci_dev *pdev = dev_priv->drm.pdev;
+#ifdef __linux__
 	unsigned int size;
+#endif
 	u16 snb_gmch_ctl;
 	int err;
 
 	/* TODO: We're not aware of mappable constraints on gen8 yet */
+#ifdef __linux__
 	ggtt->gmadr =
 		(struct resource) DEFINE_RES_MEM(pci_resource_start(pdev, 2),
 						 pci_resource_len(pdev, 2));
 	ggtt->mappable_end = resource_size(&ggtt->gmadr);
+#else
+	bus_addr_t base;
+	bus_size_t size;
+	pcireg_t type;
+
+	type = pci_mapreg_type(dev_priv->pc, dev_priv->tag, 0x18);
+	err = -pci_mapreg_info(dev_priv->pc, dev_priv->tag, 0x18, type,
+	    &base, &size, NULL);
+	if (err)
+		return err;
+	ggtt->gmadr.start = base;
+	ggtt->mappable_end = size;
+#endif
 
 	err = pci_set_dma_mask(pdev, DMA_BIT_MASK(39));
 	if (!err)
@@ -3510,24 +3578,36 @@ static int gen8_gmch_probe(struct i915_ggtt *ggtt)
 	setup_private_pat(dev_priv);
 
 	return ggtt_probe_common(ggtt, size);
-#endif
 }
 
 static int gen6_gmch_probe(struct i915_ggtt *ggtt)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
 	struct drm_i915_private *dev_priv = ggtt->vm.i915;
 	struct pci_dev *pdev = dev_priv->drm.pdev;
+#ifdef __linux__
 	unsigned int size;
+#endif
 	u16 snb_gmch_ctl;
 	int err;
 
+#ifdef __linux__
 	ggtt->gmadr =
 		(struct resource) DEFINE_RES_MEM(pci_resource_start(pdev, 2),
 						 pci_resource_len(pdev, 2));
 	ggtt->mappable_end = resource_size(&ggtt->gmadr);
+#else
+	bus_addr_t base;
+	bus_size_t size;
+	pcireg_t type;
+
+	type = pci_mapreg_type(dev_priv->pc, dev_priv->tag, 0x18);
+	err = -pci_mapreg_info(dev_priv->pc, dev_priv->tag, 0x18, type,
+	    &base, &size, NULL);
+	if (err)
+		return err;
+	ggtt->gmadr.start = base;
+	ggtt->mappable_end = size;
+#endif
 
 	/* 64/512MB is the current min/max we actually know of, but this is just
 	 * a coarse sanity check.
@@ -3571,7 +3651,6 @@ static int gen6_gmch_probe(struct i915_ggtt *ggtt)
 	ggtt->vm.vma_ops.clear_pages = clear_pages;
 
 	return ggtt_probe_common(ggtt, size);
-#endif
 }
 
 static void i915_gmch_remove(struct i915_address_space *vm)
