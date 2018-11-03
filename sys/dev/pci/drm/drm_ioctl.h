@@ -31,6 +31,10 @@
 #ifndef _DRM_IOCTL_H_
 #define _DRM_IOCTL_H_
 
+struct drm_device;
+struct drm_file;
+struct file;
+
 /**
  * Ioctl function type.
  *

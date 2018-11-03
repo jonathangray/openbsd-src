@@ -30,6 +30,7 @@ file	dev/pci/drm/drm_gem.c			drm
 file	dev/pci/drm/drm_gem_framebuffer_helper.c	drm
 file	dev/pci/drm/drm_global.c		drm
 file	dev/pci/drm/drm_hashtab.c		drm
+file	dev/pci/drm/drm_ioctl.c			drm
 file	dev/pci/drm/drm_irq.c			drm
 file	dev/pci/drm/drm_linux.c			drm
 file	dev/pci/drm/drm_memory.c		drm
