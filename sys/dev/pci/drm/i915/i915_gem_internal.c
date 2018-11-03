@@ -35,8 +35,6 @@
 
 static void internal_free_pages(struct sg_table *st)
 {
-	STUB();
-#ifdef notyet
 	struct scatterlist *sg;
 
 	for (sg = st->sgl; sg; sg = __sg_next(sg)) {
@@ -46,14 +44,10 @@ static void internal_free_pages(struct sg_table *st)
 
 	sg_free_table(st);
 	kfree(st);
-#endif
 }
 
 static int i915_gem_object_get_pages_internal(struct drm_i915_gem_object *obj)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
 	struct drm_i915_private *i915 = to_i915(obj->base.dev);
 	struct sg_table *st;
 	struct scatterlist *sg;
@@ -154,7 +148,6 @@ err:
 	internal_free_pages(st);
 
 	return -ENOMEM;
-#endif
 }
 
 static void i915_gem_object_put_pages_internal(struct drm_i915_gem_object *obj,

@@ -2484,9 +2484,7 @@ void i915_gem_suspend_gtt_mappings(struct drm_i915_private *dev_priv)
 int i915_gem_gtt_prepare_pages(struct drm_i915_gem_object *obj,
 			       struct sg_table *pages)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
+#ifdef __linux__
 	do {
 		if (dma_map_sg_attrs(&obj->base.dev->pdev->dev,
 				     pages->sgl, pages->nents,
@@ -2508,6 +2506,8 @@ int i915_gem_gtt_prepare_pages(struct drm_i915_gem_object *obj,
 				 I915_SHRINK_ACTIVE));
 
 	return -ENOSPC;
+#else
+	return 0;
 #endif
 }
 

@@ -2912,6 +2912,8 @@ of_machine_is_compatible(const char *model)
 
 typedef unsigned int gfp_t;
 
+#define MAX_ORDER	11
+
 struct vm_page *alloc_pages(unsigned int, unsigned int);
 void	__free_pages(struct vm_page *, unsigned int);
 
@@ -3210,6 +3212,7 @@ struct scatterlist {
 	dma_addr_t dma_address;
 	unsigned int offset;
 	unsigned int length;
+	bool end;
 };
 
 struct sg_table {
@@ -3224,10 +3227,18 @@ struct sg_page_iter {
 	unsigned int __nents;
 };
 
+#define sg_is_chain(sg)		false
+#define sg_is_last(sg)		((sg)->end)
+#define sg_chain_ptr(sg)	NULL
+
 int sg_alloc_table(struct sg_table *, unsigned int, gfp_t);
 void sg_free_table(struct sg_table *);
 
-#define sg_mark_end(x)
+static inline void
+sg_mark_end(struct scatterlist *sgl)
+{
+	sgl->end = true;
+}
 
 static __inline void
 __sg_page_iter_start(struct sg_page_iter *iter, struct scatterlist *sgl,
@@ -3268,6 +3279,16 @@ static inline struct vm_page *
 sg_page(struct scatterlist *sgl)
 {
 	return PHYS_TO_VM_PAGE(sgl->dma_address);
+}
+
+static inline void
+sg_set_page(struct scatterlist *sgl, struct vm_page *page,
+    unsigned int length, unsigned int offset)
+{
+	sgl->dma_address = VM_PAGE_TO_PHYS(page);
+	sgl->offset = offset;
+	sgl->length = length;
+	sgl->end = false;
 }
 
 #define sg_dma_address(sg)	((sg)->dma_address)

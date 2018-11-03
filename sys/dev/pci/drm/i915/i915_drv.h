@@ -2411,10 +2411,8 @@ static __always_inline struct sgt_iter {
 static inline struct scatterlist *____sg_next(struct scatterlist *sg)
 {
 	++sg;
-#ifdef notyet
 	if (unlikely(sg_is_chain(sg)))
 		sg = sg_chain_ptr(sg);
-#endif
 	return sg;
 }
 
@@ -2429,12 +2427,7 @@ static inline struct scatterlist *____sg_next(struct scatterlist *sg)
  **/
 static inline struct scatterlist *__sg_next(struct scatterlist *sg)
 {
-#ifdef notyet
 	return sg_is_last(sg) ? NULL : ____sg_next(sg);
-#else
-	STUB();
-	return NULL;
-#endif
 }
 
 /**

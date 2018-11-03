@@ -349,10 +349,7 @@ __attribute__((nonnull))
 static inline void
 i915_gem_object_put(struct drm_i915_gem_object *obj)
 {
-	STUB();
-#ifdef notyet
 	__drm_gem_object_put(&obj->base);
-#endif
 }
 
 static inline void i915_gem_object_lock(struct drm_i915_gem_object *obj)
