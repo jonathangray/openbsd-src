@@ -419,9 +419,6 @@ static void stash_push_pagevec(struct pagestash *stash, struct pagevec *pvec)
 
 static struct vm_page *vm_alloc_page(struct i915_address_space *vm, gfp_t gfp)
 {
-	STUB();
-	return NULL;
-#ifdef notyet
 	struct pagevec stack;
 	struct vm_page *page;
 
@@ -477,7 +474,6 @@ static struct vm_page *vm_alloc_page(struct i915_address_space *vm, gfp_t gfp)
 	}
 
 	return page;
-#endif
 }
 
 static void vm_free_pages_release(struct i915_address_space *vm,
