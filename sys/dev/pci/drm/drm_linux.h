@@ -3500,43 +3500,56 @@ match_string(const char * const *array,  size_t n, const char *str)
 }
 
 struct llist_node {
+	struct llist_node *next;
 };
 
 struct llist_head {
+	struct llist_node *first;
 };
 
 static inline struct llist_node *
 llist_del_all(struct llist_head *head)
 {
-	STUB();
-	return NULL;
+	return atomic_swap_ptr(&head->first, NULL);
 }
 
 static inline struct llist_node *
 llist_del_first(struct llist_head *head)
 {
-	STUB();
-	return NULL;
+	struct llist_node *first, *next;
+
+	do {
+		first = head->first;
+		if (first == NULL)
+			return NULL;
+		next = first->next;
+	} while (atomic_cas_ptr(&head->first, first, next) != first);
+
+	return first;
 }
 
 static inline bool
 llist_add(struct llist_node *new, struct llist_head *head)
 {
-	STUB();
-	return true;
+	struct llist_node *first;
+
+	do {
+		first = head->first;
+	} while (atomic_cas_ptr(&head->first, first, new) != first);
+
+	return (first == NULL);
 }
 
 static inline void
-init_llist_head(struct llist_head *list)
+init_llist_head(struct llist_head *head)
 {
-	STUB();
+	head->first = NULL;
 }
 
 static inline bool
 llist_empty(struct llist_head *head)
 {
-	STUB();
-	return true;
+	return (head->first == NULL);
 }
 
 #define UUID_STRING_LEN 36
