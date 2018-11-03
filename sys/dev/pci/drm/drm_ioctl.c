@@ -196,9 +196,6 @@ drm_setclientcap(struct drm_device *dev, void *data, struct drm_file *file_priv)
 	return 0;
 }
 
-#define DRM_IF_MAJOR	1
-#define DRM_IF_MINOR	4
-
 /*
  * Setversion ioctl.
  *
