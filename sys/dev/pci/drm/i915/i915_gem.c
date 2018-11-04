@@ -2485,8 +2485,6 @@ static void
 i915_gem_object_put_pages_gtt(struct drm_i915_gem_object *obj,
 			      struct sg_table *pages)
 {
-	STUB();
-#ifdef notyet
 	struct sgt_iter sgt_iter;
 	struct vm_page *page;
 
@@ -2515,7 +2513,6 @@ i915_gem_object_put_pages_gtt(struct drm_i915_gem_object *obj,
 
 	sg_free_table(pages);
 	kfree(pages);
-#endif
 }
 
 static void __i915_gem_object_reset_page_iter(struct drm_i915_gem_object *obj)
