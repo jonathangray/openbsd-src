@@ -151,8 +151,6 @@ static void i915_gem_context_free(struct i915_gem_context *ctx)
 
 static void contexts_free(struct drm_i915_private *i915)
 {
-	STUB();
-#ifdef notyet
 	struct llist_node *freed = llist_del_all(&i915->contexts.free_list);
 	struct i915_gem_context *ctx, *cn;
 
@@ -160,7 +158,6 @@ static void contexts_free(struct drm_i915_private *i915)
 
 	llist_for_each_entry_safe(ctx, cn, freed, free_link)
 		i915_gem_context_free(ctx);
-#endif
 }
 
 static void contexts_free_first(struct drm_i915_private *i915)
