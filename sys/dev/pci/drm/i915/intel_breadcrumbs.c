@@ -716,7 +716,7 @@ static int intel_breadcrumbs_signaler(void *arg)
 			 * and relinquish the CPU if we burn through the
 			 * entire RT timeslice!
 			 */
-			do_schedule = need_resched();
+			do_schedule = drm_need_resched();
 		}
 
 		if (unlikely(do_schedule)) {

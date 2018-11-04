@@ -5124,7 +5124,7 @@ static void __i915_gem_free_work(struct work_struct *work)
 		spin_unlock(&i915->mm.free_lock);
 
 		__i915_gem_free_objects(i915, freed);
-		if (need_resched())
+		if (drm_need_resched())
 			return;
 
 		spin_lock(&i915->mm.free_lock);

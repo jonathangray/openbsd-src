@@ -57,7 +57,7 @@ static bool shrinker_lock(struct drm_i915_private *i915, bool *unlock)
 				*unlock = true;
 				break;
 			}
-		} while (!need_resched());
+		} while (!drm_need_resched());
 		preempt_enable();
 		return *unlock;
 
