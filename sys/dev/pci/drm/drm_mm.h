@@ -62,6 +62,95 @@ enum drm_mm_allocator_flags {
 #define DRM_MM_BOTTOMUP DRM_MM_SEARCH_DEFAULT, DRM_MM_CREATE_DEFAULT
 #define DRM_MM_TOPDOWN DRM_MM_SEARCH_BELOW, DRM_MM_CREATE_TOP
 
+/**
+ * enum drm_mm_insert_mode - control search and allocation behaviour
+ *
+ * The &struct drm_mm range manager supports finding a suitable modes using
+ * a number of search trees. These trees are oranised by size, by address and
+ * in most recent eviction order. This allows the user to find either the
+ * smallest hole to reuse, the lowest or highest address to reuse, or simply
+ * reuse the most recent eviction that fits. When allocating the &drm_mm_node
+ * from within the hole, the &drm_mm_insert_mode also dictate whether to
+ * allocate the lowest matching address or the highest.
+ */
+enum drm_mm_insert_mode {
+	/**
+	 * @DRM_MM_INSERT_BEST:
+	 *
+	 * Search for the smallest hole (within the search range) that fits
+	 * the desired node.
+	 *
+	 * Allocates the node from the bottom of the found hole.
+	 */
+	DRM_MM_INSERT_BEST = 0,
+
+	/**
+	 * @DRM_MM_INSERT_LOW:
+	 *
+	 * Search for the lowest hole (address closest to 0, within the search
+	 * range) that fits the desired node.
+	 *
+	 * Allocates the node from the bottom of the found hole.
+	 */
+	DRM_MM_INSERT_LOW,
+
+	/**
+	 * @DRM_MM_INSERT_HIGH:
+	 *
+	 * Search for the highest hole (address closest to U64_MAX, within the
+	 * search range) that fits the desired node.
+	 *
+	 * Allocates the node from the *top* of the found hole. The specified
+	 * alignment for the node is applied to the base of the node
+	 * (&drm_mm_node.start).
+	 */
+	DRM_MM_INSERT_HIGH,
+
+	/**
+	 * @DRM_MM_INSERT_EVICT:
+	 *
+	 * Search for the most recently evicted hole (within the search range)
+	 * that fits the desired node. This is appropriate for use immediately
+	 * after performing an eviction scan (see drm_mm_scan_init()) and
+	 * removing the selected nodes to form a hole.
+	 *
+	 * Allocates the node from the bottom of the found hole.
+	 */
+	DRM_MM_INSERT_EVICT,
+
+	/**
+	 * @DRM_MM_INSERT_ONCE:
+	 *
+	 * Only check the first hole for suitablity and report -ENOSPC
+	 * immediately otherwise, rather than check every hole until a
+	 * suitable one is found. Can only be used in conjunction with another
+	 * search method such as DRM_MM_INSERT_HIGH or DRM_MM_INSERT_LOW.
+	 */
+	DRM_MM_INSERT_ONCE = BIT(31),
+
+	/**
+	 * @DRM_MM_INSERT_HIGHEST:
+	 *
+	 * Only check the highest hole (the hole with the largest address) and
+	 * insert the node at the top of the hole or report -ENOSPC if
+	 * unsuitable.
+	 *
+	 * Does not search all holes.
+	 */
+	DRM_MM_INSERT_HIGHEST = DRM_MM_INSERT_HIGH | DRM_MM_INSERT_ONCE,
+
+	/**
+	 * @DRM_MM_INSERT_LOWEST:
+	 *
+	 * Only check the lowest hole (the hole with the smallest address) and
+	 * insert the node at the bottom of the hole or report -ENOSPC if
+	 * unsuitable.
+	 *
+	 * Does not search all holes.
+	 */
+	DRM_MM_INSERT_LOWEST  = DRM_MM_INSERT_LOW | DRM_MM_INSERT_ONCE,
+};
+
 struct drm_mm_node {
 	struct list_head node_list;
 	struct list_head hole_stack;
@@ -287,13 +376,34 @@ static inline int drm_mm_insert_node_in_range(struct drm_mm *mm,
 					      struct drm_mm_node *node,
 					      u64 size,
 					      unsigned alignment,
+					      unsigned long color,
 					      u64 start,
 					      u64 end,
-					      enum drm_mm_search_flags flags)
+					      enum drm_mm_insert_mode mode)
 {
+	enum drm_mm_search_flags sflags;
+	enum drm_mm_allocator_flags aflags;
+	switch (mode) {
+	case DRM_MM_INSERT_HIGHEST:
+		sflags = DRM_MM_SEARCH_BELOW;
+		aflags = DRM_MM_CREATE_TOP;
+		break;
+	case DRM_MM_INSERT_BEST:
+		sflags = DRM_MM_SEARCH_BEST;
+		aflags = DRM_MM_CREATE_DEFAULT;
+	case DRM_MM_INSERT_LOW:
+	case DRM_MM_INSERT_HIGH:
+	case DRM_MM_INSERT_EVICT:
+	case DRM_MM_INSERT_ONCE:
+	case DRM_MM_INSERT_LOWEST:
+	default:
+		sflags = DRM_MM_SEARCH_DEFAULT; 
+		aflags = DRM_MM_CREATE_DEFAULT;
+		break;
+	}
 	return drm_mm_insert_node_in_range_generic(mm, node, size, alignment,
-						   0, start, end, flags,
-						   DRM_MM_CREATE_DEFAULT);
+						   color, start, end,
+						   sflags, aflags);
 }
 
 void drm_mm_remove_node(struct drm_mm_node *node);

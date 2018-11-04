@@ -4199,9 +4199,6 @@ int i915_gem_gtt_insert(struct i915_address_space *vm,
 			u64 size, u64 alignment, unsigned long color,
 			u64 start, u64 end, unsigned int flags)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
 	enum drm_mm_insert_mode mode;
 	u64 offset;
 	int err;
@@ -4294,7 +4291,6 @@ int i915_gem_gtt_insert(struct i915_address_space *vm,
 	return drm_mm_insert_node_in_range(&vm->mm, node,
 					   size, alignment, color,
 					   start, end, DRM_MM_INSERT_EVICT);
-#endif
 }
 
 #if IS_ENABLED(CONFIG_DRM_I915_SELFTEST)

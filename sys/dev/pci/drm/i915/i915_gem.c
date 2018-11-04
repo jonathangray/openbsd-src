@@ -69,15 +69,11 @@ static int
 insert_mappable_node(struct i915_ggtt *ggtt,
                      struct drm_mm_node *node, u32 size)
 {
-	STUB();
-	return -1;
-#ifdef notyet
 	memset(node, 0, sizeof(*node));
 	return drm_mm_insert_node_in_range(&ggtt->vm.mm, node,
 					   size, 0, I915_COLOR_UNEVICTABLE,
 					   0, ggtt->mappable_end,
 					   DRM_MM_INSERT_LOW);
-#endif
 }
 
 static void
