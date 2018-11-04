@@ -3991,9 +3991,6 @@ static noinline struct sg_table *
 intel_partial_pages(const struct i915_ggtt_view *view,
 		    struct drm_i915_gem_object *obj)
 {
-	STUB();
-	return NULL;
-#ifdef notyet
 	struct sg_table *st;
 	struct scatterlist *sg, *iter;
 	unsigned int count = view->partial.size;
@@ -4039,7 +4036,6 @@ err_sg_alloc:
 	kfree(st);
 err_st_alloc:
 	return ERR_PTR(ret);
-#endif
 }
 
 static int

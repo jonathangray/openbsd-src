@@ -1600,9 +1600,6 @@ static int
 i915_gem_shmem_pwrite(struct drm_i915_gem_object *obj,
 		      const struct drm_i915_gem_pwrite *args)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
 	struct drm_i915_private *i915 = to_i915(obj->base.dev);
 	void __user *user_data;
 	u64 remain;
@@ -1631,7 +1628,7 @@ i915_gem_shmem_pwrite(struct drm_i915_gem_object *obj,
 	 */
 	partial_cacheline_write = 0;
 	if (needs_clflush & CLFLUSH_BEFORE)
-		partial_cacheline_write = boot_cpu_data.x86_clflush_size - 1;
+		partial_cacheline_write = curcpu()->ci_cflushsz - 1;
 
 	user_data = u64_to_user_ptr(args->data_ptr);
 	remain = args->size;
@@ -1659,7 +1656,6 @@ i915_gem_shmem_pwrite(struct drm_i915_gem_object *obj,
 	intel_fb_obj_flush(obj, ORIGIN_CPU);
 	i915_gem_obj_finish_shmem_access(obj);
 	return ret;
-#endif
 }
 
 /**
@@ -2443,8 +2439,6 @@ i915_gem_mmap_gtt_ioctl(struct drm_device *dev, void *data,
 static void
 i915_gem_object_truncate(struct drm_i915_gem_object *obj)
 {
-	STUB();
-#ifdef notyet
 	i915_gem_object_free_mmap_offset(obj);
 
 	if (obj->base.filp == NULL)
@@ -2455,18 +2449,22 @@ i915_gem_object_truncate(struct drm_i915_gem_object *obj)
 	 * To do this we must instruct the shmfs to drop all of its
 	 * backing pages, *now*.
 	 */
+#ifdef __linux__
 	shmem_truncate_range(file_inode(obj->base.filp), 0, (loff_t)-1);
+#else
+	obj->base.uao->pgops->pgo_flush(obj->base.uao, 0, obj->base.size,
+	    PGO_ALLPAGES | PGO_FREE);
+#endif
 	obj->mm.madv = __I915_MADV_PURGED;
 	obj->mm.pages = ERR_PTR(-EFAULT);
-#endif
 }
 
 /* Try to discard unwanted pages */
 void __i915_gem_object_invalidate(struct drm_i915_gem_object *obj)
 {
-	STUB();
-#ifdef notyet
+#ifdef __linux__
 	struct address_space *mapping;
+#endif
 
 	lockdep_assert_held(&obj->mm.lock);
 	GEM_BUG_ON(i915_gem_object_has_pages(obj));
@@ -2481,6 +2479,7 @@ void __i915_gem_object_invalidate(struct drm_i915_gem_object *obj)
 	if (obj->base.filp == NULL)
 		return;
 
+#ifdef __linux__
 	mapping = obj->base.filp->f_mapping,
 	invalidate_mapping_pages(mapping, 0, (loff_t)-1);
 #endif
@@ -2506,11 +2505,16 @@ i915_gem_object_put_pages_gtt(struct drm_i915_gem_object *obj,
 		if (obj->mm.dirty)
 			set_page_dirty(page);
 
+#ifdef __linux__
 		if (obj->mm.madv == I915_MADV_WILLNEED)
 			mark_page_accessed(page);
 
 		put_page(page);
+#endif
 	}
+#ifdef __OpenBSD__
+	uvm_objunwire(obj->base.uao, 0, obj->base.size);
+#endif
 	obj->mm.dirty = false;
 
 	sg_free_table(pages);
@@ -4564,9 +4568,6 @@ i915_gem_object_ggtt_pin(struct drm_i915_gem_object *obj,
 			 u64 alignment,
 			 u64 flags)
 {
-	STUB();
-	return NULL;
-#ifdef notyet
 	struct drm_i915_private *dev_priv = to_i915(obj->base.dev);
 	struct i915_address_space *vm = &dev_priv->ggtt.vm;
 	struct i915_vma *vma;
@@ -4637,7 +4638,6 @@ i915_gem_object_ggtt_pin(struct drm_i915_gem_object *obj,
 		return ERR_PTR(ret);
 
 	return vma;
-#endif
 }
 
 static __always_inline unsigned int __busy_read_flag(unsigned int id)
@@ -6325,9 +6325,6 @@ i915_gem_object_get_dma_address(struct drm_i915_gem_object *obj,
 
 int i915_gem_object_attach_phys(struct drm_i915_gem_object *obj, int align)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notdef
 	struct sg_table *pages;
 	int err;
 
@@ -6387,7 +6384,6 @@ err_xfer:
 err_unlock:
 	mutex_unlock(&obj->mm.lock);
 	return err;
-#endif
 }
 
 #if IS_ENABLED(CONFIG_DRM_I915_SELFTEST)
