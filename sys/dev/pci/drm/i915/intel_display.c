@@ -12531,15 +12531,12 @@ static void skl_update_crtcs(struct drm_atomic_state *state)
 
 static void intel_atomic_helper_free_state(struct drm_i915_private *dev_priv)
 {
-	STUB();
-#ifdef notyet
 	struct intel_atomic_state *state, *next;
 	struct llist_node *freed;
 
 	freed = llist_del_all(&dev_priv->atomic_helper.free_list);
 	llist_for_each_entry_safe(state, next, freed, freed)
 		drm_atomic_state_put(&state->base);
-#endif
 }
 
 static void intel_atomic_helper_free_state_worker(struct work_struct *work)
