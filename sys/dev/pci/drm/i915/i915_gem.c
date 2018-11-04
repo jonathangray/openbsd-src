@@ -2535,9 +2535,6 @@ static void __i915_gem_object_reset_page_iter(struct drm_i915_gem_object *obj)
 static struct sg_table *
 __i915_gem_object_unset_pages(struct drm_i915_gem_object *obj)
 {
-	STUB();
-	return NULL;
-#ifdef notyet
 	struct drm_i915_private *i915 = to_i915(obj->base.dev);
 	struct sg_table *pages;
 
@@ -2554,7 +2551,7 @@ __i915_gem_object_unset_pages(struct drm_i915_gem_object *obj)
 
 		ptr = page_mask_bits(obj->mm.mapping);
 		if (is_vmalloc_addr(ptr))
-			vunmap(ptr);
+			vunmap(ptr, obj->base.size);
 		else
 			kunmap(kmap_to_page(ptr));
 
@@ -2565,7 +2562,6 @@ __i915_gem_object_unset_pages(struct drm_i915_gem_object *obj)
 	obj->mm.page_sizes.phys = obj->mm.page_sizes.sg = 0;
 
 	return pages;
-#endif
 }
 
 void __i915_gem_object_put_pages(struct drm_i915_gem_object *obj,
