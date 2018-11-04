@@ -752,8 +752,6 @@ void
 i915_gem_object_do_bit_17_swizzle(struct drm_i915_gem_object *obj,
 				  struct sg_table *pages)
 {
-	STUB();
-#ifdef notyet
 	struct sgt_iter sgt_iter;
 	struct vm_page *page;
 	int i;
@@ -770,7 +768,6 @@ i915_gem_object_do_bit_17_swizzle(struct drm_i915_gem_object *obj,
 		}
 		i++;
 	}
-#endif
 }
 
 /**
@@ -786,8 +783,6 @@ void
 i915_gem_object_save_bit_17_swizzle(struct drm_i915_gem_object *obj,
 				    struct sg_table *pages)
 {
-	STUB();
-#ifdef notyet
 	const unsigned int page_count = obj->base.size >> PAGE_SHIFT;
 	struct sgt_iter sgt_iter;
 	struct vm_page *page;
@@ -812,5 +807,4 @@ i915_gem_object_save_bit_17_swizzle(struct drm_i915_gem_object *obj,
 			__clear_bit(i, obj->bit_17);
 		i++;
 	}
-#endif
 }
