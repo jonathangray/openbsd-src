@@ -5083,8 +5083,6 @@ static void __i915_gem_free_objects(struct drm_i915_private *i915,
 
 static void i915_gem_flush_free_objects(struct drm_i915_private *i915)
 {
-	STUB();
-#ifdef notyet
 	struct llist_node *freed;
 
 	/* Free the oldest, most stale object to keep the free_list short */
@@ -5099,13 +5097,10 @@ static void i915_gem_flush_free_objects(struct drm_i915_private *i915)
 		freed->next = NULL;
 		__i915_gem_free_objects(i915, freed);
 	}
-#endif
 }
 
 static void __i915_gem_free_work(struct work_struct *work)
 {
-	STUB();
-#ifdef notyet
 	struct drm_i915_private *i915 =
 		container_of(work, struct drm_i915_private, mm.free_work);
 	struct llist_node *freed;
@@ -5130,7 +5125,6 @@ static void __i915_gem_free_work(struct work_struct *work)
 		spin_lock(&i915->mm.free_lock);
 	}
 	spin_unlock(&i915->mm.free_lock);
-#endif
 }
 
 static void __i915_gem_free_object_rcu(struct rcu_head *head)
