@@ -3528,6 +3528,9 @@ struct llist_head {
 	struct llist_node *first;
 };
 
+#define llist_entry(ptr, type, member) \
+	((ptr) ? container_of(ptr, type, member) : NULL)
+
 static inline struct llist_node *
 llist_del_all(struct llist_head *head)
 {
@@ -3572,6 +3575,12 @@ llist_empty(struct llist_head *head)
 {
 	return (head->first == NULL);
 }
+
+#define llist_for_each_entry_safe(pos, n, node, member) 		\
+	for (pos = llist_entry((node), __typeof(*pos), member); 	\
+	    pos != NULL &&						\
+	    (n = llist_entry(pos->member.next, __typeof(*pos), member)); \
+	    pos = n)
 
 #define UUID_STRING_LEN 36
 
