@@ -2633,9 +2633,6 @@ static bool i915_sg_trim(struct sg_table *orig_st)
 
 static int i915_gem_object_get_pages_gtt(struct drm_i915_gem_object *obj)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
 	struct drm_i915_private *dev_priv = to_i915(obj->base.dev);
 	const unsigned long page_count = obj->base.size / PAGE_SIZE;
 	unsigned long i;
@@ -2643,6 +2640,7 @@ static int i915_gem_object_get_pages_gtt(struct drm_i915_gem_object *obj)
 	struct sg_table *st;
 	struct scatterlist *sg;
 	struct sgt_iter sgt_iter;
+	struct pglist plist;
 	struct vm_page *page;
 	unsigned long last_pfn = 0;	/* suppress gcc warning */
 	unsigned int max_segment = i915_sg_segment_size();
@@ -2667,6 +2665,7 @@ rebuild_st:
 		return -ENOMEM;
 	}
 
+#ifdef __linux__
 	/* Get the list of pages out of our struct file.  They'll be pinned
 	 * at this point until we release them.
 	 *
@@ -2749,6 +2748,25 @@ rebuild_st:
 		sg_page_sizes |= sg->length;
 		sg_mark_end(sg);
 	}
+#else
+	sg = st->sgl;
+	st->nents = 0;
+
+	TAILQ_INIT(&plist);
+	if (uvm_objwire(obj->base.uao, 0, obj->base.size, &plist)) {
+		ret = -ENOMEM;
+		goto err_pages;
+	}
+
+	i = 0;
+	TAILQ_FOREACH(page, &plist, pageq) {
+		st->nents++;
+		sg_dma_address(sg) = VM_PAGE_TO_PHYS(page);
+		sg_dma_len(sg) = PAGE_SIZE;
+		sg++;
+		i++;
+	}
+#endif
 
 	/* Trim unused sg entries to avoid wasting memory. */
 	i915_sg_trim(st);
@@ -2760,8 +2778,10 @@ rebuild_st:
 		 * for PAGE_SIZE chunks instead may be helpful.
 		 */
 		if (max_segment > PAGE_SIZE) {
+#ifdef __linux__
 			for_each_sgt_page(page, sgt_iter, st)
 				put_page(page);
+#endif
 			sg_free_table(st);
 
 			max_segment = PAGE_SIZE;
@@ -2781,11 +2801,15 @@ rebuild_st:
 
 	return 0;
 
+#ifdef __linux__
 err_sg:
+#endif
 	sg_mark_end(sg);
 err_pages:
+#ifdef __linux__
 	for_each_sgt_page(page, sgt_iter, st)
 		put_page(page);
+#endif
 	sg_free_table(st);
 	kfree(st);
 
@@ -2801,7 +2825,6 @@ err_pages:
 		ret = -ENOMEM;
 
 	return ret;
-#endif
 }
 
 void __i915_gem_object_set_pages(struct drm_i915_gem_object *obj,
@@ -2899,9 +2922,6 @@ unlock:
 static void *i915_gem_object_map(const struct drm_i915_gem_object *obj,
 				 enum i915_map_type type)
 {
-	STUB();
-	return NULL;
-#ifdef notyet
 	unsigned long n_pages = obj->base.size >> PAGE_SHIFT;
 	struct sg_table *sgt = obj->mm.pages;
 	struct sgt_iter sgt_iter;
@@ -2912,9 +2932,11 @@ static void *i915_gem_object_map(const struct drm_i915_gem_object *obj,
 	pgprot_t pgprot;
 	void *addr;
 
+#if 0
 	/* A single page can always be kmapped */
 	if (n_pages == 1 && type == I915_MAP_WB)
 		return kmap(sg_page(sgt->sgl));
+#endif
 
 	if (n_pages > ARRAY_SIZE(stack_pages)) {
 		/* Too big for stack -- allocate temporary array instead */
@@ -2946,16 +2968,12 @@ static void *i915_gem_object_map(const struct drm_i915_gem_object *obj,
 		kvfree(pages);
 
 	return addr;
-#endif
 }
 
 /* get, pin, and map the pages of the object into kernel space */
 void *i915_gem_object_pin_map(struct drm_i915_gem_object *obj,
 			      enum i915_map_type type)
 {
-	STUB();
-	return NULL;
-#ifdef notyet
 	enum i915_map_type has_type;
 	bool pinned;
 	void *ptr;
@@ -2994,7 +3012,7 @@ void *i915_gem_object_pin_map(struct drm_i915_gem_object *obj,
 		}
 
 		if (is_vmalloc_addr(ptr))
-			vunmap(ptr);
+			vunmap(ptr, obj->base.size);
 		else
 			kunmap(kmap_to_page(ptr));
 
@@ -3020,7 +3038,6 @@ err_unpin:
 err_unlock:
 	ptr = ERR_PTR(ret);
 	goto out_unlock;
-#endif
 }
 
 static int
@@ -4877,9 +4894,7 @@ static int i915_gem_object_create_shmem(struct drm_device *dev,
 					struct drm_gem_object *obj,
 					size_t size)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
+#ifdef __linux__
 	struct drm_i915_private *i915 = to_i915(dev);
 	unsigned long flags = VM_NORESERVE;
 	struct file *filp;
@@ -4898,15 +4913,16 @@ static int i915_gem_object_create_shmem(struct drm_device *dev,
 	obj->filp = filp;
 
 	return 0;
+#else
+	drm_gem_private_object_init(dev, obj, size);
+
+	return 0;
 #endif
 }
 
 struct drm_i915_gem_object *
 i915_gem_object_create(struct drm_i915_private *dev_priv, u64 size)
 {
-	STUB();
-	return NULL;
-#ifdef notyet
 	struct drm_i915_gem_object *obj;
 	struct address_space *mapping;
 	unsigned int cache_level;
@@ -4939,9 +4955,11 @@ i915_gem_object_create(struct drm_i915_private *dev_priv, u64 size)
 		mask |= __GFP_DMA32;
 	}
 
+#ifdef __linux__
 	mapping = obj->base.filp->f_mapping;
 	mapping_set_gfp_mask(mapping, mask);
 	GEM_BUG_ON(!(mapping_gfp_mask(mapping) & __GFP_RECLAIM));
+#endif
 
 	i915_gem_object_init(obj, &i915_gem_object_ops);
 
@@ -4974,7 +4992,6 @@ i915_gem_object_create(struct drm_i915_private *dev_priv, u64 size)
 fail:
 	i915_gem_object_free(obj);
 	return ERR_PTR(ret);
-#endif
 }
 
 static bool discard_backing_storage(struct drm_i915_gem_object *obj)
@@ -5008,8 +5025,6 @@ static bool discard_backing_storage(struct drm_i915_gem_object *obj)
 static void __i915_gem_free_objects(struct drm_i915_private *i915,
 				    struct llist_node *freed)
 {
-	STUB();
-#ifdef notyet
 	struct drm_i915_gem_object *obj, *on;
 
 	intel_runtime_pm_get(i915);
@@ -5057,8 +5072,10 @@ static void __i915_gem_free_objects(struct drm_i915_private *i915,
 		__i915_gem_object_put_pages(obj, I915_MM_NORMAL);
 		GEM_BUG_ON(i915_gem_object_has_pages(obj));
 
+#ifdef notyet
 		if (obj->base.import_attach)
 			drm_prime_gem_destroy(&obj->base, NULL);
+#endif
 
 		reservation_object_fini(&obj->__builtin_resv);
 		drm_gem_object_release(&obj->base);
@@ -5074,7 +5091,6 @@ static void __i915_gem_free_objects(struct drm_i915_private *i915,
 			cond_resched();
 	}
 	intel_runtime_pm_put(i915);
-#endif
 }
 
 static void i915_gem_flush_free_objects(struct drm_i915_private *i915)
