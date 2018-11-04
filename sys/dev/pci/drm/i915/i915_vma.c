@@ -349,9 +349,6 @@ int i915_vma_bind(struct i915_vma *vma, enum i915_cache_level cache_level,
 
 void __iomem *i915_vma_pin_iomap(struct i915_vma *vma)
 {
-	STUB();
-	return IO_ERR_PTR(-ENOSYS);
-#ifdef notyet
 	void __iomem *ptr;
 	int err;
 
@@ -369,9 +366,17 @@ void __iomem *i915_vma_pin_iomap(struct i915_vma *vma)
 
 	ptr = vma->iomap;
 	if (ptr == NULL) {
+#ifdef __linux__
 		ptr = io_mapping_map_wc(&i915_vm_to_ggtt(vma->vm)->iomap,
 					vma->node.start,
 					vma->node.size);
+#else
+		struct drm_i915_private *dev_priv = vma->vm->i915;
+		bus_space_handle_t bsh;
+		agp_map_subregion(dev_priv->agph, vma->node.start,
+				  vma->node.size, &bsh);
+		ptr = bus_space_vaddr(dev_priv->bst, bsh);
+#endif
 		if (ptr == NULL) {
 			err = -ENOMEM;
 			goto err;
@@ -393,7 +398,6 @@ err_unpin:
 	__i915_vma_unpin(vma);
 err:
 	return IO_ERR_PTR(err);
-#endif
 }
 
 void i915_vma_flush_writes(struct i915_vma *vma)
