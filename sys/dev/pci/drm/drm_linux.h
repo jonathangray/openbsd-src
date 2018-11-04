@@ -2622,6 +2622,7 @@ iowrite64(u64 val, volatile void __iomem *addr)
 
 #define page_to_phys(page)	(VM_PAGE_TO_PHYS(page))
 #define page_to_pfn(pp)		(VM_PAGE_TO_PHYS(pp) / PAGE_SIZE)
+#define pfn_to_page(pfn)	(PHYS_TO_VM_PAGE(ptoa(pfn)))
 #define offset_in_page(off)	((off) & PAGE_MASK)
 #define set_page_dirty(page)	atomic_clearbits_int(&page->pg_flags, PG_CLEAN)
 
@@ -2645,6 +2646,7 @@ typedef unsigned long pgoff_t;
 typedef int pgprot_t;
 #define pgprot_val(v)	(v)
 #define PAGE_KERNEL	0
+#define PAGE_KERNEL_IO	0
 
 static inline pgprot_t
 pgprot_writecombine(pgprot_t prot)
@@ -2670,6 +2672,9 @@ void	*kmap(struct vm_page *);
 void	 kunmap(void *addr);
 void	*vmap(struct vm_page **, unsigned int, unsigned long, pgprot_t);
 void	 vunmap(void *, size_t);
+
+#define is_vmalloc_addr(ptr)	true
+#define kmap_to_page(ptr)	(ptr)
 
 #define round_up(x, y) ((((x) + ((y) - 1)) / (y)) * (y))
 #define round_down(x, y) (((x) / (y)) * (y))
