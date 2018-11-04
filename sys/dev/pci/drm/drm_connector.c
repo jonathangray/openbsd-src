@@ -158,8 +158,6 @@ static void drm_connector_free(struct kref *kref)
 
 void drm_connector_free_work_fn(struct work_struct *work)
 {
-	STUB();
-#ifdef notyet
 	struct drm_connector *connector, *n;
 	struct drm_device *dev =
 		container_of(work, struct drm_device, mode_config.connector_free_work);
@@ -175,7 +173,6 @@ void drm_connector_free_work_fn(struct work_struct *work)
 		drm_mode_object_unregister(dev, &connector->base);
 		connector->funcs->destroy(connector);
 	}
-#endif
 }
 
 /**
