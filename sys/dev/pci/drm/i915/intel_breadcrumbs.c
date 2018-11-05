@@ -839,9 +839,6 @@ void intel_engine_cancel_signaling(struct i915_request *request)
 
 int intel_engine_init_breadcrumbs(struct intel_engine_cs *engine)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
 	struct intel_breadcrumbs *b = &engine->breadcrumbs;
 	struct task_struct *tsk;
 
@@ -853,6 +850,9 @@ int intel_engine_init_breadcrumbs(struct intel_engine_cs *engine)
 
 	INIT_LIST_HEAD(&b->signals);
 
+	STUB();
+	return 0;
+#ifdef notyet
 	/* Spawn a thread to provide a common bottom-half for all signals.
 	 * As this is an asynchronous interface we cannot steal the current
 	 * task for handling the bottom-half to the user interrupt, therefore
@@ -913,8 +913,6 @@ void intel_engine_reset_breadcrumbs(struct intel_engine_cs *engine)
 
 void intel_engine_fini_breadcrumbs(struct intel_engine_cs *engine)
 {
-	STUB();
-#ifdef notyet
 	struct intel_breadcrumbs *b = &engine->breadcrumbs;
 
 	/* The engines should be idle and all requests accounted for! */
@@ -926,7 +924,6 @@ void intel_engine_fini_breadcrumbs(struct intel_engine_cs *engine)
 		kthread_stop(b->signaler);
 
 	cancel_fake_irq(engine);
-#endif
 }
 
 #if IS_ENABLED(CONFIG_DRM_I915_SELFTEST)

@@ -3748,4 +3748,6 @@ static_cpu_has(uint16_t f)
 
 #endif
 
+#define kthread_stop(a)			STUB()
+
 #endif
