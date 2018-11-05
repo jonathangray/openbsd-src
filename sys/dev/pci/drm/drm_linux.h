@@ -3755,4 +3755,6 @@ static_cpu_has(uint16_t f)
 
 #define kthread_stop(a)			STUB()
 
+#define prefetchw(x)	__builtin_prefetch(x,1)
+
 #endif
