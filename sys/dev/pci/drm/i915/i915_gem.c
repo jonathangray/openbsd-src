@@ -1911,12 +1911,19 @@ int
 i915_gem_mmap_ioctl(struct drm_device *dev, void *data,
 		    struct drm_file *file)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
 	struct drm_i915_gem_mmap *args = data;
 	struct drm_i915_gem_object *obj;
-	unsigned long addr;
+	vaddr_t addr;
+	vsize_t size;
+	int ret;
+
+#ifdef __OpenBSD__
+	if (args->size == 0 || args->offset & PAGE_MASK)
+		return -EINVAL;
+	size = round_page(args->size);
+	if (args->offset + size < args->offset)
+		return -EINVAL;
+#endif
 
 	if (args->flags & ~(I915_MMAP_WC))
 		return -EINVAL;
@@ -1936,6 +1943,7 @@ i915_gem_mmap_ioctl(struct drm_device *dev, void *data,
 		return -ENXIO;
 	}
 
+#ifdef __linux__
 	addr = vm_mmap(obj->base.filp, 0, args->size,
 		       PROT_READ | PROT_WRITE, MAP_SHARED,
 		       args->offset);
@@ -1961,11 +1969,22 @@ i915_gem_mmap_ioctl(struct drm_device *dev, void *data,
 	i915_gem_object_put(obj);
 	if (IS_ERR((void *)addr))
 		return addr;
+#else
+	addr = 0;
+	ret = -uvm_map(&curproc->p_vmspace->vm_map, &addr, size,
+	    obj->base.uao, args->offset, 0, UVM_MAPFLAG(PROT_READ | PROT_WRITE,
+	    PROT_READ | PROT_WRITE, MAP_INHERIT_SHARE, MADV_RANDOM,
+	    (args->flags & I915_MMAP_WC) ? UVM_FLAG_WC : 0));
+	if (ret == 0)
+		uao_reference(obj->base.uao);
+	i915_gem_object_put(obj);
+	if (ret)
+		return ret;
+#endif
 
 	args->addr_ptr = (uint64_t) addr;
 
 	return 0;
-#endif
 }
 
 static unsigned int tile_row_pages(struct drm_i915_gem_object *obj)
