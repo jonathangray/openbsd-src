@@ -5154,8 +5154,6 @@ static void __i915_gem_free_object_rcu(struct rcu_head *head)
 
 void i915_gem_free_object(struct drm_gem_object *gem_obj)
 {
-	STUB();
-#ifdef notyet
 	struct drm_i915_gem_object *obj = to_intel_bo(gem_obj);
 
 	if (obj->mm.quirked)
@@ -5172,7 +5170,6 @@ void i915_gem_free_object(struct drm_gem_object *gem_obj)
 	 */
 	atomic_inc(&to_i915(obj->base.dev)->mm.free_count);
 	call_rcu(&obj->rcu, __i915_gem_free_object_rcu);
-#endif
 }
 
 void __i915_gem_object_release_unless_active(struct drm_i915_gem_object *obj)
