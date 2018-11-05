@@ -225,8 +225,6 @@ void __i915_sw_fence_init(struct i915_sw_fence *fence,
 			  const char *name,
 			  struct lock_class_key *key)
 {
-	STUB();
-#ifdef notyet
 	BUG_ON(!fn || (unsigned long)fn & ~I915_SW_FENCE_MASK);
 
 	debug_fence_init(fence);
@@ -234,7 +232,6 @@ void __i915_sw_fence_init(struct i915_sw_fence *fence,
 	__init_waitqueue_head(&fence->wait, name, key);
 	atomic_set(&fence->pending, 1);
 	fence->flags = (unsigned long)fn;
-#endif
 }
 
 void i915_sw_fence_commit(struct i915_sw_fence *fence)
@@ -243,19 +240,24 @@ void i915_sw_fence_commit(struct i915_sw_fence *fence)
 	i915_sw_fence_complete(fence);
 }
 
+
+#ifdef __linux__
 static int i915_sw_fence_wake(wait_queue_entry_t *wq, unsigned mode, int flags, void *key)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
 	list_del(&wq->entry);
 	__i915_sw_fence_complete(wq->private, key);
 
 	if (wq->flags & I915_SW_FENCE_FLAG_ALLOC)
 		kfree(wq);
 	return 0;
-#endif
 }
+#else
+static int i915_sw_fence_wake(wait_queue_entry_t *wq, unsigned mode, int flags, void *key)
+{
+	__i915_sw_fence_complete(wq->private, key);
+	return 0;
+}
+#endif
 
 static bool __i915_sw_fence_check_if_after(struct i915_sw_fence *fence,
 				    const struct i915_sw_fence * const signaler)
