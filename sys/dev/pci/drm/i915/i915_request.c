@@ -422,8 +422,6 @@ static void __retire_engine_upto(struct intel_engine_cs *engine,
 
 static void i915_request_retire(struct i915_request *request)
 {
-	STUB();
-#ifdef notyet
 	struct i915_gem_active *active, *next;
 
 	GEM_TRACE("%s fence %llx:%d, global=%d, current %d\n",
@@ -482,7 +480,6 @@ static void i915_request_retire(struct i915_request *request)
 
 	i915_sched_node_fini(request->i915, &request->sched);
 	i915_request_put(request);
-#endif
 }
 
 void i915_request_retire_upto(struct i915_request *rq)
