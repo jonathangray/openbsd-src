@@ -2760,6 +2760,7 @@ rebuild_st:
 #else
 	sg = st->sgl;
 	st->nents = 0;
+	sg_page_sizes = PAGE_SIZE;
 
 	TAILQ_INIT(&plist);
 	if (uvm_objwire(obj->base.uao, 0, obj->base.size, &plist)) {
