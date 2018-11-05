@@ -2051,10 +2051,6 @@ compute_partial_view(struct drm_i915_gem_object *obj,
 		     unsigned int chunk)
 {
 	struct i915_ggtt_view view;
-	STUB();
-	return view;
-#ifdef notyet
-	struct i915_ggtt_view view;
 
 	if (i915_gem_object_is_tiled(obj))
 		chunk = roundup(chunk, tile_row_pages(obj));
@@ -2070,7 +2066,6 @@ compute_partial_view(struct drm_i915_gem_object *obj,
 		view.type = I915_GGTT_VIEW_NORMAL;
 
 	return view;
-#endif
 }
 
 #ifdef __linux__
