@@ -2146,7 +2146,7 @@ static struct i915_vma *pd_vma_create(struct gen6_hw_ppgtt *ppgtt, int size)
 #ifdef __linux__
 	vma = kmem_cache_zalloc(i915->vmas, GFP_KERNEL);
 #else
-	vma = pool_get(&i915->vmas, GFP_KERNEL);
+	vma = pool_get(&i915->vmas, PR_WAITOK | PR_ZERO);
 #endif
 	if (!vma)
 		return ERR_PTR(-ENOMEM);
