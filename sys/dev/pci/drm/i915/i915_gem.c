@@ -6293,9 +6293,6 @@ lookup:
 struct vm_page *
 i915_gem_object_get_page(struct drm_i915_gem_object *obj, unsigned int n)
 {
-	STUB();
-	return NULL;
-#ifdef notyet
 	struct scatterlist *sg;
 	unsigned int offset;
 
@@ -6303,7 +6300,6 @@ i915_gem_object_get_page(struct drm_i915_gem_object *obj, unsigned int n)
 
 	sg = i915_gem_object_get_sg(obj, n, &offset);
 	return nth_page(sg_page(sg), offset);
-#endif
 }
 
 /* Like i915_gem_object_get_page(), but mark the returned page dirty */

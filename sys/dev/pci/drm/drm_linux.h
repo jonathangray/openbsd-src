@@ -2649,6 +2649,7 @@ iowrite64(u64 val, volatile void __iomem *addr)
 #define page_to_phys(page)	(VM_PAGE_TO_PHYS(page))
 #define page_to_pfn(pp)		(VM_PAGE_TO_PHYS(pp) / PAGE_SIZE)
 #define pfn_to_page(pfn)	(PHYS_TO_VM_PAGE(ptoa(pfn)))
+#define nth_page(page, n)	(&(page)[(n)])
 #define offset_in_page(off)	((off) & PAGE_MASK)
 #define set_page_dirty(page)	atomic_clearbits_int(&page->pg_flags, PG_CLEAN)
 
