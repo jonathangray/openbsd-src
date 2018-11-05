@@ -351,6 +351,7 @@ find_next_bit(volatile void *p, int max, int b)
 #endif
 
 #define smp_mb__before_atomic()		DRM_MEMORYBARRIER()
+#define smp_mb__after_atomic()		DRM_MEMORYBARRIER()
 #define smp_mb__before_atomic_dec()	DRM_MEMORYBARRIER()
 #define smp_mb__after_atomic_dec()	DRM_MEMORYBARRIER()
 #define smp_mb__before_atomic_inc()	DRM_MEMORYBARRIER()
