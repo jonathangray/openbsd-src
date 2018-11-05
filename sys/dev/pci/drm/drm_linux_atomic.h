@@ -74,6 +74,21 @@ atomic_add_unless(volatile int *v, int n, int u)
 	return 1;
 }
 
+static inline int
+atomic_dec_if_positive(volatile int *v)
+{
+	int r, o;
+
+	do {
+		o = *v;
+		r = o - 1;
+		if (r < 0)
+			break;
+	} while (__sync_val_compare_and_swap(v, o, r) != o);
+
+	return r;
+}
+
 #define atomic_long_read(p)	(*(p))
 
 #ifdef __LP64__
