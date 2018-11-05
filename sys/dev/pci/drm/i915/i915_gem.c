@@ -4939,7 +4939,11 @@ i915_gem_object_create(struct drm_i915_private *dev_priv, u64 size)
 	if (obj == NULL)
 		return ERR_PTR(-ENOMEM);
 
+#ifdef __linux__
 	ret = i915_gem_object_create_shmem(&dev_priv->drm, &obj->base, size);
+#else
+	ret = drm_gem_object_init(&dev_priv->drm, &obj->base, size);
+#endif
 	if (ret)
 		goto fail;
 
