@@ -1156,8 +1156,15 @@ struct task_struct {
 #define local_bh_disable()
 #define local_bh_enable()
 
-typedef void *async_cookie_t;
-#define async_schedule(func, data)	(func)((data), NULL)
+typedef uint64_t async_cookie_t;
+typedef void (*async_func_t) (void *, async_cookie_t);
+
+static inline async_cookie_t
+async_schedule(async_func_t func, void *data)
+{
+	func(data, 0);
+	return 0;
+}
 
 #define local_irq_disable()	intr_disable()
 #define local_irq_enable()	intr_enable()
