@@ -1137,6 +1137,9 @@ struct task_struct {
 
 #define TASK_NORMAL	1
 
+#define local_bh_disable()
+#define local_bh_enable()
+
 typedef void *async_cookie_t;
 #define async_schedule(func, data)	(func)((data), NULL)
 
