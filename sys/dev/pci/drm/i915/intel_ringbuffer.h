@@ -399,10 +399,8 @@ struct intel_engine_cs {
 		struct list_head signals; /* sorted by retirement */
 		struct task_struct *signaler; /* used for fence signalling */
 
-#ifdef notyet
-		struct timer_list fake_irq; /* used after a missed interrupt */
-		struct timer_list hangcheck; /* detect missed interrupts */
-#endif
+		struct timeout fake_irq; /* used after a missed interrupt */
+		struct timeout hangcheck; /* detect missed interrupts */
 
 		unsigned int hangcheck_interrupts;
 		unsigned int irq_enabled;

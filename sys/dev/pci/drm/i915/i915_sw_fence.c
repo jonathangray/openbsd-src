@@ -397,8 +397,8 @@ struct i915_sw_dma_fence_cb {
 struct i915_sw_dma_fence_cb_timer {
 	struct i915_sw_dma_fence_cb base;
 	struct dma_fence *dma;
+	struct timeout timer;
 #ifdef notyet
-	struct timer_list timer;
 	struct irq_work work;
 #endif
 	struct rcu_head rcu;
@@ -413,10 +413,11 @@ static void dma_i915_sw_fence_wake(struct dma_fence *dma,
 	kfree(cb);
 }
 
-#ifdef notyet
-static void timer_i915_sw_fence_wake(struct timer_list *t)
+static void timer_i915_sw_fence_wake(void *arg)
 {
-	struct i915_sw_dma_fence_cb_timer *cb = from_timer(cb, t, timer);
+	STUB();
+#ifdef notyet
+	struct i915_sw_dma_fence_cb_timer *cb = arg;
 	struct i915_sw_fence *fence;
 
 	fence = xchg(&cb->base.fence, NULL);
@@ -429,8 +430,8 @@ static void timer_i915_sw_fence_wake(struct timer_list *t)
 		cb->dma->seqno);
 
 	i915_sw_fence_complete(fence);
-}
 #endif
+}
 
 static void dma_i915_sw_fence_wake_timer(struct dma_fence *dma,
 					 struct dma_fence_cb *data)
@@ -502,8 +503,8 @@ int i915_sw_fence_await_dma_fence(struct i915_sw_fence *fence,
 		timer->dma = dma_fence_get(dma);
 		init_irq_work(&timer->work, irq_i915_sw_fence_work);
 
-		timer_setup(&timer->timer,
-			    timer_i915_sw_fence_wake, TIMER_IRQSAFE);
+		timeout_set(&timer->timer,
+			    timer_i915_sw_fence_wake, timer);
 		mod_timer(&timer->timer, round_jiffies_up(jiffies + timeout));
 
 		func = dma_i915_sw_fence_wake_timer;

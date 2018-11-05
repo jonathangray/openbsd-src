@@ -101,11 +101,9 @@ static noinline void missed_breadcrumb(struct intel_engine_cs *engine)
 	set_bit(engine->id, &engine->i915->gpu_error.missed_irq_rings);
 }
 
-#ifdef notyet
-static void intel_breadcrumbs_hangcheck(struct timer_list *t)
+static void intel_breadcrumbs_hangcheck(void *arg)
 {
-	struct intel_engine_cs *engine =
-		from_timer(engine, t, breadcrumbs.hangcheck);
+	struct intel_engine_cs *engine = arg;
 	struct intel_breadcrumbs *b = &engine->breadcrumbs;
 	unsigned int irq_count;
 
@@ -139,10 +137,9 @@ static void intel_breadcrumbs_hangcheck(struct timer_list *t)
 	}
 }
 
-static void intel_breadcrumbs_fake_irq(struct timer_list *t)
+static void intel_breadcrumbs_fake_irq(void *arg)
 {
-	struct intel_engine_cs *engine =
-		from_timer(engine, t, breadcrumbs.fake_irq);
+	struct intel_engine_cs *engine = arg;
 	struct intel_breadcrumbs *b = &engine->breadcrumbs;
 
 	/*
@@ -168,7 +165,6 @@ static void intel_breadcrumbs_fake_irq(struct timer_list *t)
 
 	mod_timer(&b->fake_irq, jiffies + 1);
 }
-#endif
 
 static void irq_enable(struct intel_engine_cs *engine)
 {
@@ -855,8 +851,8 @@ int intel_engine_init_breadcrumbs(struct intel_engine_cs *engine)
 	mtx_init(&b->rb_lock, IPL_NONE);
 	mtx_init(&b->irq_lock, IPL_NONE);
 
-	timer_setup(&b->fake_irq, intel_breadcrumbs_fake_irq, 0);
-	timer_setup(&b->hangcheck, intel_breadcrumbs_hangcheck, 0);
+	timeout_set(&b->fake_irq, intel_breadcrumbs_fake_irq, engine);
+	timeout_set(&b->hangcheck, intel_breadcrumbs_hangcheck, engine);
 
 	INIT_LIST_HEAD(&b->signals);
 
