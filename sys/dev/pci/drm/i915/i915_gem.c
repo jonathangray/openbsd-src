@@ -610,8 +610,6 @@ i915_gem_object_wait_reservation(struct reservation_object *resv,
 static void __fence_set_priority(struct dma_fence *fence,
 				 const struct i915_sched_attr *attr)
 {
-	STUB();
-#ifdef notyet
 	struct i915_request *rq;
 	struct intel_engine_cs *engine;
 
@@ -627,7 +625,6 @@ static void __fence_set_priority(struct dma_fence *fence,
 		engine->schedule(rq, attr);
 	rcu_read_unlock();
 	local_bh_enable(); /* kick the tasklets if queues were reprioritised */
-#endif
 }
 
 static void fence_set_priority(struct dma_fence *fence,
