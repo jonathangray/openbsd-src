@@ -3440,8 +3440,6 @@ static void nop_complete_submit_request(struct i915_request *request)
 
 void i915_gem_set_wedged(struct drm_i915_private *i915)
 {
-	STUB();
-#ifdef notyet
 	struct intel_engine_cs *engine;
 	enum intel_engine_id id;
 
@@ -3517,7 +3515,6 @@ void i915_gem_set_wedged(struct drm_i915_private *i915)
 	GEM_TRACE("end\n");
 
 	wake_up_all(&i915->gpu_error.reset_queue);
-#endif
 }
 
 bool i915_gem_unset_wedged(struct drm_i915_private *i915)
