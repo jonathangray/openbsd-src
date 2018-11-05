@@ -2863,6 +2863,14 @@ write_seqcount_end(seqcount_t *s)
 	s->sequence++;
 }
 
+static inline unsigned int
+raw_read_seqcount(const seqcount_t *s)
+{
+	unsigned int r = s->sequence;
+	membar_consumer();
+	return r;
+}
+
 static inline uint32_t ror32(uint32_t word, unsigned int shift)
 {
 	return (word >> shift) | (word << (32 - shift));
