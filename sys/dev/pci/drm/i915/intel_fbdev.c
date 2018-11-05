@@ -760,15 +760,12 @@ static void intel_fbdev_initial_config(void *data, async_cookie_t cookie)
 
 void intel_fbdev_initial_config_async(struct drm_device *dev)
 {
-	STUB();
-#ifdef notyet
 	struct intel_fbdev *ifbdev = to_i915(dev)->fbdev;
 
 	if (!ifbdev)
 		return;
 
 	ifbdev->cookie = async_schedule(intel_fbdev_initial_config, ifbdev);
-#endif
 }
 
 static void intel_fbdev_sync(struct intel_fbdev *ifbdev)
@@ -783,7 +780,6 @@ static void intel_fbdev_sync(struct intel_fbdev *ifbdev)
 #endif
 }
 
-#ifdef __linux__
 void intel_fbdev_unregister(struct drm_i915_private *dev_priv)
 {
 	struct intel_fbdev *ifbdev = dev_priv->fbdev;
@@ -792,12 +788,13 @@ void intel_fbdev_unregister(struct drm_i915_private *dev_priv)
 		return;
 
 	cancel_work_sync(&dev_priv->fbdev_suspend_work);
+#ifdef __linux__
 	if (!current_is_async())
 		intel_fbdev_sync(ifbdev);
 
 	drm_fb_helper_unregister_fbi(&ifbdev->helper);
-}
 #endif
+}
 
 void intel_fbdev_fini(struct drm_i915_private *dev_priv)
 {
