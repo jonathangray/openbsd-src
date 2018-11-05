@@ -28,4 +28,6 @@ call_rcu(struct rcu_head *head, void (*fn)(struct rcu_head *))
 	fn(head);
 }
 
+#define synchronize_rcu()
+
 #endif
