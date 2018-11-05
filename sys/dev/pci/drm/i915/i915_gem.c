@@ -3719,8 +3719,6 @@ static void assert_kernel_context_is_current(struct drm_i915_private *i915)
 static void
 i915_gem_idle_work_handler(struct work_struct *work)
 {
-	STUB();
-#ifdef notyet
 	struct drm_i915_private *dev_priv =
 		container_of(work, typeof(*dev_priv), gt.idle_work.work);
 	unsigned int epoch = I915_EPOCH_INVALID;
@@ -3808,7 +3806,6 @@ out_rearm:
 			call_rcu(&s->rcu, __sleep_rcu);
 		}
 	}
-#endif
 }
 
 void i915_gem_close_object(struct drm_gem_object *gem, struct drm_file *file)
