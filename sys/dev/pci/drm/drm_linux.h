@@ -2703,7 +2703,8 @@ void	 vunmap(void *, size_t);
 #define kmap_to_page(ptr)	(ptr)
 
 #define round_up(x, y) ((((x) + ((y) - 1)) / (y)) * (y))
-#define round_down(x, y) (((x) / (y)) * (y))
+#define round_down(x, y) (((x) / (y)) * (y)) /* y is power of two */
+#define rounddown(x, y) (((x) / (y)) * (y)) /* arbitary y */
 #define roundup2(x, y) (((x)+((y)-1))&(~((y)-1))) /* if y is powers of two */
 #define DIV_ROUND_UP(x, y)	(((x) + ((y) - 1)) / (y))
 #define DIV_ROUND_UP_ULL(x, y)	DIV_ROUND_UP(x, y)
