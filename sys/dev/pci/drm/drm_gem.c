@@ -69,7 +69,7 @@ drm_ref(struct uvm_object *uobj)
 	struct drm_gem_object *obj =
 	    container_of(uobj, struct drm_gem_object, uobj);
 
-	drm_gem_object_reference(obj);
+	drm_gem_object_get(obj);
 }
 
 void
@@ -78,7 +78,7 @@ drm_unref(struct uvm_object *uobj)
 	struct drm_gem_object *obj =
 	    container_of(uobj, struct drm_gem_object, uobj);
 
-	drm_gem_object_unreference_unlocked(obj);
+	drm_gem_object_put_unlocked(obj);
 }
 
 int
@@ -184,7 +184,7 @@ udv_attach_drm(dev_t device, vm_prot_t accessprot, voff_t off, vsize_t size)
 	}
 
 	obj = container_of(node, struct drm_gem_object, vma_node);
-	drm_gem_object_reference(obj);
+	drm_gem_object_get(obj);
 
 	mutex_unlock(&dev->struct_mutex);
 	return &obj->uobj;
