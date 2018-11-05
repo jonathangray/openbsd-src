@@ -978,9 +978,6 @@ static bool ring_is_idle(struct intel_engine_cs *engine)
  */
 bool intel_engine_is_idle(struct intel_engine_cs *engine)
 {
-	STUB();
-	return true;
-#ifdef notyet
 	struct drm_i915_private *dev_priv = engine->i915;
 
 	/* More white lies, if wedged, hw state is inconsistent */
@@ -1013,7 +1010,7 @@ bool intel_engine_is_idle(struct intel_engine_cs *engine)
 	}
 
 	/* ELSP is empty, but there are ready requests? E.g. after reset */
-	if (!RB_EMPTY_ROOT(&engine->execlists.queue.rb_root))
+	if (!RB_EMPTY_ROOT(&engine->execlists.queue))
 		return false;
 
 	/* Ring stopped? */
@@ -1021,7 +1018,6 @@ bool intel_engine_is_idle(struct intel_engine_cs *engine)
 		return false;
 
 	return true;
-#endif
 }
 
 bool intel_engines_are_idle(struct drm_i915_private *dev_priv)
