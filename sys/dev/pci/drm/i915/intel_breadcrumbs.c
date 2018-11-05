@@ -292,14 +292,11 @@ static bool use_fake_irq(const struct intel_breadcrumbs *b)
 
 static void enable_fake_irq(struct intel_breadcrumbs *b)
 {
-	STUB();
-#ifdef notyet
 	/* Ensure we never sleep indefinitely */
 	if (!b->irq_enabled || use_fake_irq(b))
 		mod_timer(&b->fake_irq, jiffies + 1);
 	else
 		mod_timer(&b->hangcheck, wait_timeout());
-#endif
 }
 
 static bool __intel_breadcrumbs_enable_irq(struct intel_breadcrumbs *b)
@@ -875,14 +872,11 @@ int intel_engine_init_breadcrumbs(struct intel_engine_cs *engine)
 
 static void cancel_fake_irq(struct intel_engine_cs *engine)
 {
-	STUB();
-#ifdef notyet
 	struct intel_breadcrumbs *b = &engine->breadcrumbs;
 
 	del_timer_sync(&b->fake_irq); /* may queue b->hangcheck */
 	del_timer_sync(&b->hangcheck);
 	clear_bit(engine->id, &engine->i915->gpu_error.missed_irq_rings);
-#endif
 }
 
 void intel_engine_reset_breadcrumbs(struct intel_engine_cs *engine)
