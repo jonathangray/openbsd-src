@@ -4721,9 +4721,6 @@ int
 i915_gem_busy_ioctl(struct drm_device *dev, void *data,
 		    struct drm_file *file)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
 	struct drm_i915_gem_busy *args = data;
 	struct drm_i915_gem_object *obj;
 	struct reservation_object_list *list;
@@ -4778,7 +4775,6 @@ retry:
 out:
 	rcu_read_unlock();
 	return err;
-#endif
 }
 
 int
