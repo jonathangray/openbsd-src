@@ -20,4 +20,12 @@ struct rcu_head {
 
 #define rcu_barrier()		__asm __volatile("" : : : "memory")
 
+typedef void (*rcu_callback_t)(struct rcu_head *head);
+
+static inline void
+call_rcu(struct rcu_head *head, void (*fn)(struct rcu_head *))
+{
+	fn(head);
+}
+
 #endif
