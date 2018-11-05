@@ -391,6 +391,7 @@ static inline int drm_mm_insert_node_in_range(struct drm_mm *mm,
 	case DRM_MM_INSERT_BEST:
 		sflags = DRM_MM_SEARCH_BEST;
 		aflags = DRM_MM_CREATE_DEFAULT;
+		break;
 	case DRM_MM_INSERT_LOW:
 	case DRM_MM_INSERT_HIGH:
 	case DRM_MM_INSERT_EVICT:
