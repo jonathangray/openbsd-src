@@ -1078,8 +1078,6 @@ void i915_request_skip(struct i915_request *rq, int error)
  */
 void i915_request_add(struct i915_request *request)
 {
-	STUB();
-#ifdef notyet
 	struct intel_engine_cs *engine = request->engine;
 	struct i915_timeline *timeline = request->timeline;
 	struct intel_ring *ring = request->ring;
@@ -1188,14 +1186,11 @@ void i915_request_add(struct i915_request *request)
 	 */
 	if (prev && i915_request_completed(prev))
 		i915_request_retire_upto(prev);
-#endif
 }
 
+#ifdef __linux__
 static unsigned long local_clock_us(unsigned int *cpu)
 {
-	STUB();
-	return 0;
-#ifdef notyet
 	unsigned long t;
 
 	/*
@@ -1215,8 +1210,14 @@ static unsigned long local_clock_us(unsigned int *cpu)
 	put_cpu();
 
 	return t;
-#endif
 }
+#else
+static unsigned long local_clock_us(unsigned *cpu)
+{
+	*cpu = cpu_number();
+	return ticks * tick;
+}
+#endif
 
 static bool busywait_stop(unsigned long timeout, unsigned int cpu)
 {
