@@ -1106,6 +1106,7 @@ bool flush_delayed_work(struct delayed_work *);
 
 struct tasklet_struct {
 	void (*func)(unsigned long);
+	unsigned long data;
 };
 
 static inline void
@@ -1129,6 +1130,19 @@ tasklet_hi_schedule(struct tasklet_struct *ts)
 static inline void
 tasklet_init(struct tasklet_struct *ts, void (*func)(unsigned long),
     unsigned long data)
+{
+	STUB();
+}
+
+static inline int
+tasklet_trylock(struct tasklet_struct *ts)
+{
+	STUB();
+	return 1;
+}
+
+static inline void
+tasklet_unlock(struct tasklet_struct *ts)
 {
 	STUB();
 }
