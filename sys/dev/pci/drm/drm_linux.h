@@ -716,6 +716,8 @@ init_waitqueue_head(wait_queue_head_t *wq)
 	wq->_wq = NULL;
 }
 
+#define __init_waitqueue_head(wq, name, key)	init_waitqueue_head(wq)
+
 static inline void
 __add_wait_queue(wait_queue_head_t *head, wait_queue_entry_t *new)
 {
