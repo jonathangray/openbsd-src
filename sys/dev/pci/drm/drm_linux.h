@@ -1441,6 +1441,12 @@ local_clock(void)
 #define __GFP_RECLAIMABLE	0
 #define __GFP_DMA32		0
 
+static inline bool
+gfpflags_allow_blocking(const unsigned int flags)
+{
+	return (flags & M_WAITOK) != 0;
+}
+
 #define PageHighMem(x)	0
 
 #define array_size(x, y) ((x) * (y))
