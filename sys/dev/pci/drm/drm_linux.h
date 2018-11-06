@@ -952,6 +952,18 @@ _complete_all(struct completion *x LOCK_FL_VARS)
 }
 #define complete_all(x)	_complete_all(x LOCK_FILE_LINE)
 
+static inline bool
+_try_wait_for_completion(struct completion *x)
+{
+	if (!x->done)
+		return false;
+	_mtx_enter(&x->wait.lock LOCK_FL_ARGS);
+	x->done--;
+	_mtx_leave(&x->wait.lock LOCK_FL_ARGS);
+	return true;
+}
+#define try_wait_for_completion(x)	_try_wait_for_completion(x LOCK_FILE_LINE)
+
 struct workqueue_struct;
 
 #define system_wq (struct workqueue_struct *)systq
