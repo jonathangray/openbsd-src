@@ -2575,8 +2575,6 @@ __i915_gem_object_unset_pages(struct drm_i915_gem_object *obj)
 void __i915_gem_object_put_pages(struct drm_i915_gem_object *obj,
 				 enum i915_mm_subclass subclass)
 {
-	STUB();
-#ifdef notyet
 	struct sg_table *pages;
 
 	if (i915_gem_object_has_pinned_pages(obj))
@@ -2602,7 +2600,6 @@ void __i915_gem_object_put_pages(struct drm_i915_gem_object *obj,
 
 unlock:
 	mutex_unlock(&obj->mm.lock);
-#endif
 }
 
 static bool i915_sg_trim(struct sg_table *orig_st)
@@ -6096,8 +6093,6 @@ void i915_gem_track_fb(struct drm_i915_gem_object *old,
 		       struct drm_i915_gem_object *new,
 		       unsigned frontbuffer_bits)
 {
-	STUB();
-#ifdef notyet
 	/* Control of individual bits within the mask are guarded by
 	 * the owning plane->mutex, i.e. we can never see concurrent
 	 * manipulation of individual bits. But since the bitfield as a whole
@@ -6116,7 +6111,6 @@ void i915_gem_track_fb(struct drm_i915_gem_object *old,
 		WARN_ON(atomic_read(&new->frontbuffer_bits) & frontbuffer_bits);
 		atomic_or(frontbuffer_bits, &new->frontbuffer_bits);
 	}
-#endif
 }
 
 /* Allocate a new GEM object and fill it with the supplied data */
