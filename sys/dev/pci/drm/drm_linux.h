@@ -583,6 +583,12 @@ _spin_lock_irqsave(struct mutex *mtxp, __unused unsigned long flags
 	_mtx_enter(mtxp LOCK_FL_ARGS);
 }
 static inline void
+_spin_lock_irqsave_nested(struct mutex *mtxp, __unused unsigned long flags,
+    __unused int subclass LOCK_FL_VARS)
+{
+	_mtx_enter(mtxp LOCK_FL_ARGS);
+}
+static inline void
 _spin_unlock_irqrestore(struct mutex *mtxp, __unused unsigned long flags
     LOCK_FL_VARS)
 {
@@ -590,6 +596,8 @@ _spin_unlock_irqrestore(struct mutex *mtxp, __unused unsigned long flags
 }
 #define spin_lock_irqsave(m, fl)	\
 	_spin_lock_irqsave(m, fl LOCK_FILE_LINE)
+#define spin_lock_irqsave_nested(m, fl, subc)	\
+	_spin_lock_irqsave_nested(m, fl, subc LOCK_FILE_LINE)
 #define spin_unlock_irqrestore(m, fl)	\
 	_spin_unlock_irqrestore(m, fl LOCK_FILE_LINE)
 
