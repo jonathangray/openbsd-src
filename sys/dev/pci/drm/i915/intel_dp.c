@@ -4165,9 +4165,6 @@ intel_dp_needs_link_retrain(struct intel_dp *intel_dp)
 int intel_dp_retrain_link(struct intel_encoder *encoder,
 			  struct drm_modeset_acquire_ctx *ctx)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
 	struct drm_i915_private *dev_priv = to_i915(encoder->base.dev);
 	struct intel_dp *intel_dp = enc_to_intel_dp(&encoder->base);
 	struct intel_connector *connector = intel_dp->attached_connector;
@@ -4228,7 +4225,6 @@ int intel_dp_retrain_link(struct intel_encoder *encoder,
 						      intel_crtc_pch_transcoder(crtc), true);
 
 	return 0;
-#endif
 }
 
 /*
