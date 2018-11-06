@@ -1805,6 +1805,13 @@ schedule_timeout(long timeout)
 	return timeout;
 }
 
+static inline void
+schedule(void)
+{
+	msleep(sch_ident, &sch_mtx, sch_priority, "schto", 0);
+	sch_ident = curproc;
+}
+
 struct seq_file;
 
 static inline void
