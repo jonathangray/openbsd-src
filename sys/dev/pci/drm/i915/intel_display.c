@@ -4385,9 +4385,6 @@ static void ironlake_fdi_disable(struct drm_crtc *crtc)
 
 bool intel_has_pending_fb_unpin(struct drm_i915_private *dev_priv)
 {
-	STUB();
-	return false;
-#ifdef notyet
 	struct drm_crtc *crtc;
 	bool cleanup_done;
 
@@ -4409,7 +4406,6 @@ bool intel_has_pending_fb_unpin(struct drm_i915_private *dev_priv)
 	}
 
 	return false;
-#endif
 }
 
 void lpt_disable_iclkip(struct drm_i915_private *dev_priv)
@@ -13498,9 +13494,6 @@ intel_legacy_cursor_update(struct drm_plane *plane,
 			   uint32_t src_w, uint32_t src_h,
 			   struct drm_modeset_acquire_ctx *ctx)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
 	struct drm_i915_private *dev_priv = to_i915(crtc->dev);
 	int ret;
 	struct drm_plane_state *old_plane_state, *new_plane_state;
@@ -13603,7 +13596,6 @@ slow:
 	return drm_atomic_helper_update_plane(plane, crtc, fb,
 					      crtc_x, crtc_y, crtc_w, crtc_h,
 					      src_x, src_y, src_w, src_h, ctx);
-#endif
 }
 
 static const struct drm_plane_funcs intel_cursor_plane_funcs = {
