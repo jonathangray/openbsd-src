@@ -132,6 +132,7 @@ void __drm_printfn_seq_file(struct drm_printer *p, struct va_format *vaf)
 }
 EXPORT_SYMBOL(__drm_printfn_seq_file);
 
+#ifdef __linux__
 void __drm_printfn_info(struct drm_printer *p, struct va_format *vaf)
 {
 	dev_info(p->arg, "[" DRM_NAME "] %pV", vaf);
@@ -143,6 +144,23 @@ void __drm_printfn_debug(struct drm_printer *p, struct va_format *vaf)
 	pr_debug("%s %pV", p->prefix, vaf);
 }
 EXPORT_SYMBOL(__drm_printfn_debug);
+#else
+void __drm_printfn_info(struct drm_printer *p, struct va_format *vaf)
+{
+#ifdef DRMDEBUG
+	printf("[" DRM_NAME "] ");
+	vprintf(vaf->fmt, *vaf->va);
+#endif
+}
+
+void __drm_printfn_debug(struct drm_printer *p, struct va_format *vaf)
+{
+#ifdef DRMDEBUG
+	printf("%s ", p->prefix);
+	vprintf(vaf->fmt, *vaf->va);
+#endif
+}
+#endif
 
 /**
  * drm_puts - print a const string to a &drm_printer stream
