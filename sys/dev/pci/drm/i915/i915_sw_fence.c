@@ -400,9 +400,7 @@ struct i915_sw_dma_fence_cb_timer {
 	struct i915_sw_dma_fence_cb base;
 	struct dma_fence *dma;
 	struct timeout timer;
-#ifdef notyet
 	struct irq_work work;
-#endif
 	struct rcu_head rcu;
 };
 
@@ -452,7 +450,6 @@ static void dma_i915_sw_fence_wake_timer(struct dma_fence *dma,
 #endif
 }
 
-#ifdef notyet
 static void irq_i915_sw_fence_work(struct irq_work *wrk)
 {
 	struct i915_sw_dma_fence_cb_timer *cb =
@@ -463,16 +460,12 @@ static void irq_i915_sw_fence_work(struct irq_work *wrk)
 
 	kfree_rcu(cb, rcu);
 }
-#endif
 
 int i915_sw_fence_await_dma_fence(struct i915_sw_fence *fence,
 				  struct dma_fence *dma,
 				  unsigned long timeout,
 				  gfp_t gfp)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
 	struct i915_sw_dma_fence_cb *cb;
 	dma_fence_func_t func;
 	int ret;
@@ -522,7 +515,6 @@ int i915_sw_fence_await_dma_fence(struct i915_sw_fence *fence,
 	}
 
 	return ret;
-#endif
 }
 
 int i915_sw_fence_await_reservation(struct i915_sw_fence *fence,
