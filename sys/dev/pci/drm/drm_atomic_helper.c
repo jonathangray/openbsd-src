@@ -1549,9 +1549,6 @@ static void commit_work(struct work_struct *work)
 int drm_atomic_helper_async_check(struct drm_device *dev,
 				   struct drm_atomic_state *state)
 {
-	STUB();
-	return -ENOSYS;
-#if 0
 	struct drm_crtc *crtc;
 	struct drm_crtc_state *crtc_state;
 	struct drm_plane *plane = NULL;
@@ -1593,7 +1590,6 @@ int drm_atomic_helper_async_check(struct drm_device *dev,
 		return -EBUSY;
 
 	return funcs->atomic_async_check(plane, new_plane_state);
-#endif
 }
 EXPORT_SYMBOL(drm_atomic_helper_async_check);
 
@@ -1772,9 +1768,6 @@ EXPORT_SYMBOL(drm_atomic_helper_commit);
 
 static int stall_checks(struct drm_crtc *crtc, bool nonblock)
 {
-	STUB();
-	return -ENOSYS;
-#if 0
 	struct drm_crtc_commit *commit, *stall_commit = NULL;
 	bool completed = true;
 	int i;
@@ -1815,7 +1808,6 @@ static int stall_checks(struct drm_crtc *crtc, bool nonblock)
 	drm_crtc_commit_put(stall_commit);
 
 	return ret < 0 ? ret : 0;
-#endif
 }
 
 static void release_crtc_commit(struct completion *completion)
@@ -1905,9 +1897,6 @@ crtc_or_fake_commit(struct drm_atomic_state *state, struct drm_crtc *crtc)
 int drm_atomic_helper_setup_commit(struct drm_atomic_state *state,
 				   bool nonblock)
 {
-	STUB();
-	return -ENOSYS;
-#if 0
 	struct drm_crtc *crtc;
 	struct drm_crtc_state *old_crtc_state, *new_crtc_state;
 	struct drm_connector *conn;
@@ -1994,7 +1983,6 @@ int drm_atomic_helper_setup_commit(struct drm_atomic_state *state,
 	}
 
 	return 0;
-#endif
 }
 EXPORT_SYMBOL(drm_atomic_helper_setup_commit);
 
@@ -2188,8 +2176,6 @@ EXPORT_SYMBOL(drm_atomic_helper_commit_hw_done);
  */
 void drm_atomic_helper_commit_cleanup_done(struct drm_atomic_state *old_state)
 {
-	STUB();
-#if 0
 	struct drm_crtc *crtc;
 	struct drm_crtc_state *old_crtc_state;
 	struct drm_crtc_commit *commit;
@@ -2210,7 +2196,6 @@ void drm_atomic_helper_commit_cleanup_done(struct drm_atomic_state *old_state)
 
 	if (old_state->fake_commit)
 		complete_all(&old_state->fake_commit->cleanup_done);
-#endif
 }
 EXPORT_SYMBOL(drm_atomic_helper_commit_cleanup_done);
 
