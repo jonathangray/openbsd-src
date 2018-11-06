@@ -1022,6 +1022,26 @@ struct delayed_work {
 	struct taskq *tq;
 };
 
+struct irq_work {
+	struct task task;
+	struct taskq *tq;
+};
+
+typedef void (*irq_work_func_t)(struct irq_work *);
+
+static inline void
+init_irq_work(struct irq_work *work, irq_work_func_t func)
+{
+	work->tq = systq;
+	task_set(&work->task, (void (*)(void *))func, work);
+}
+
+static inline bool
+irq_work_queue(struct irq_work *work)
+{
+	return task_add(work->tq, &work->task);
+}
+
 #define system_power_efficient_wq ((struct workqueue_struct *)systq)
 
 static inline struct delayed_work *
