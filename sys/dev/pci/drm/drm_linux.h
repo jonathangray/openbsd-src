@@ -2816,25 +2816,25 @@ fls64(long long mask)
 #define PAGE_ALIGN(addr)	(((addr) + PAGE_MASK) & ~PAGE_MASK)
 #define IS_ALIGNED(x, y)	(((x) & ((y) - 1)) == 0)
 
-static __inline void
+static inline void
 udelay(unsigned long usecs)
 {
 	DELAY(usecs);
 }
 
-static __inline void
+static inline void
 ndelay(unsigned long nsecs)
 {
 	DELAY(max(nsecs / 1000, 1));
 }
 
-static __inline void
+static inline void
 usleep_range(unsigned long min, unsigned long max)
 {
 	DELAY(min);
 }
 
-static __inline void
+static inline void
 mdelay(unsigned long msecs)
 {
 	int loops = msecs;
@@ -2842,7 +2842,7 @@ mdelay(unsigned long msecs)
 		DELAY(1000);
 }
 
-static __inline void
+static inline void
 cpu_relax(void)
 {
 	CPU_BUSY_CYCLE();
@@ -2997,7 +2997,7 @@ isprint(int c)
 }
 
 #ifdef __macppc__
-static __inline int
+static inline int
 of_machine_is_compatible(const char *model)
 {
 	extern char *hw_prod;
@@ -3335,7 +3335,7 @@ sg_mark_end(struct scatterlist *sgl)
 	sgl->end = true;
 }
 
-static __inline void
+static inline void
 __sg_page_iter_start(struct sg_page_iter *iter, struct scatterlist *sgl,
     unsigned int nents, unsigned long pgoffset)
 {

@@ -53,14 +53,14 @@ typedef uint32_t atomic_t;
 #define atomic_cmpxchg(p, o, n)	__sync_val_compare_and_swap(p, o, n)
 #define atomic_set_release(p, v)	atomic_set((p), (v))
 
-static __inline int
+static inline int
 atomic_xchg(volatile int *v, int n)
 {
 	__sync_synchronize();
 	return __sync_lock_test_and_set(v, n);
 }
 
-static __inline int
+static inline int
 atomic_add_unless(volatile int *v, int n, int u)
 {
 	int o = *v;
@@ -97,7 +97,7 @@ typedef uint64_t atomic64_t;
 #define atomic64_set(p, v)	(*(p) = (v))
 #define atomic64_read(p)	(*(p))
 
-static __inline int64_t
+static inline int64_t
 atomic64_xchg(volatile int64_t *v, int64_t n)
 {
 	__sync_synchronize();
@@ -114,14 +114,14 @@ typedef struct {
 	struct mutex lock;
 } atomic64_t;
 
-static __inline void
+static inline void
 atomic64_set(atomic64_t *v, int64_t i)
 {
 	mtx_init(&v->lock, IPL_HIGH);
 	v->val = i;
 }
 
-static __inline int64_t
+static inline int64_t
 atomic64_read(atomic64_t *v)
 {
 	int64_t val;
@@ -133,7 +133,7 @@ atomic64_read(atomic64_t *v)
 	return val;
 }
 
-static __inline int64_t
+static inline int64_t
 atomic64_xchg(atomic64_t *v, int64_t n)
 {
 	int64_t val;
@@ -146,7 +146,7 @@ atomic64_xchg(atomic64_t *v, int64_t n)
 	return val;
 }
 
-static __inline void
+static inline void
 atomic64_add(int i, atomic64_t *v)
 {
 	mtx_enter(&v->lock);
@@ -154,7 +154,7 @@ atomic64_add(int i, atomic64_t *v)
 	mtx_leave(&v->lock);
 }
 
-static __inline void
+static inline void
 atomic64_sub(int i, atomic64_t *v)
 {
 	mtx_enter(&v->lock);
@@ -184,7 +184,7 @@ atomic_inc_not_zero(atomic_t *p)
 #define atomic_fetch_inc(p) __sync_fetch_and_add(p, 1)
 
 #if defined(__i386__) || defined(__amd64__)
-static __inline int
+static inline int
 atomic_cmpset_int(volatile u_int *dst, u_int exp, u_int src)
 {
 	int res = exp;
@@ -204,7 +204,7 @@ atomic_cmpset_int(volatile u_int *dst, u_int exp, u_int src)
 	return (res);
 }
 #else /* __i386__ */
-static __inline int
+static inline int
 atomic_cmpset_int(__volatile__ u_int *dst, u_int old, u_int new)
 {
 	int s = splhigh();
@@ -218,7 +218,7 @@ atomic_cmpset_int(__volatile__ u_int *dst, u_int old, u_int new)
 }
 #endif /* !__i386__ */
 
-static __inline atomic_t
+static inline atomic_t
 test_and_set_bit(u_int b, volatile void *p)
 {
 	int s = splhigh();
@@ -229,33 +229,33 @@ test_and_set_bit(u_int b, volatile void *p)
 	return r;
 }
 
-static __inline void
+static inline void
 clear_bit(u_int b, volatile void *p)
 {
 	atomic_clear_int(((volatile u_int *)p) + (b >> 5), 1 << (b & 0x1f));
 }
 
-static __inline void
+static inline void
 set_bit(u_int b, volatile void *p)
 {
 	atomic_set_int(((volatile u_int *)p) + (b >> 5), 1 << (b & 0x1f));
 }
 
-static __inline void
+static inline void
 __clear_bit(u_int b, volatile void *p)
 {
 	volatile u_int *ptr = (volatile u_int *)p;
 	ptr[b >> 5] &= ~(1 << (b & 0x1f));
 }
 
-static __inline void
+static inline void
 __set_bit(u_int b, volatile void *p)
 {
 	volatile u_int *ptr = (volatile u_int *)p;
 	ptr[b >> 5] |= (1 << (b & 0x1f));
 }
 
-static __inline int
+static inline int
 test_bit(u_int b, volatile void *p)
 {
 	return !!(((volatile u_int *)p)[b >> 5] & (1 << (b & 0x1f)));
@@ -270,7 +270,7 @@ __test_and_set_bit(u_int b, volatile void *p)
 	return r;
 }
 
-static __inline int
+static inline int
 __test_and_clear_bit(u_int b, volatile void *p)
 {
 	volatile u_int *ptr = (volatile u_int *)p;
@@ -279,7 +279,7 @@ __test_and_clear_bit(u_int b, volatile void *p)
 	return rv;
 }
 
-static __inline int
+static inline int
 find_first_zero_bit(volatile void *p, int max)
 {
 	int b;
@@ -297,7 +297,7 @@ find_first_zero_bit(volatile void *p, int max)
 	return max;
 }
 
-static __inline int
+static inline int
 find_first_bit(volatile void *p, int max)
 {
 	int b;
@@ -315,7 +315,7 @@ find_first_bit(volatile void *p, int max)
 	return max;
 }
 
-static __inline int
+static inline int
 find_next_bit(volatile void *p, int max, int b)
 {
 	volatile u_int *ptr = (volatile u_int *)p;
