@@ -3303,6 +3303,11 @@ pwm_disable(struct pwm_device *pwm)
 {
 }
 
+static inline void
+pwm_apply_args(struct pwm_device *pwm)
+{
+}
+
 struct scatterlist {
 	dma_addr_t dma_address;
 	unsigned int offset;
