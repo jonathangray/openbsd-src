@@ -1740,9 +1740,6 @@ cnp_setup_backlight(struct intel_connector *connector, enum pipe unused)
 static int pwm_setup_backlight(struct intel_connector *connector,
 			       enum pipe pipe)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
 	struct drm_device *dev = connector->base.dev;
 	struct intel_panel *panel = &connector->panel;
 	int retval;
@@ -1778,7 +1775,6 @@ static int pwm_setup_backlight(struct intel_connector *connector,
 	panel->backlight.enabled = panel->backlight.level != 0;
 
 	return 0;
-#endif
 }
 
 int intel_panel_setup_backlight(struct drm_connector *connector, enum pipe pipe)
