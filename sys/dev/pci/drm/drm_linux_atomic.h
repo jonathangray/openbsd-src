@@ -271,6 +271,15 @@ __test_and_set_bit(u_int b, volatile void *p)
 }
 
 static inline int
+test_and_clear_bit(u_int b, volatile void *p)
+{
+	volatile u_int *ptr = (volatile u_int *)p;
+	int rv = !!(ptr[b >> 5] & (1 << (b & 0x1f)));
+	atomic_clear_int(((volatile u_int *)p) + (b >> 5), 1 << (b & 0x1f));
+	return rv;
+}
+
+static inline int
 __test_and_clear_bit(u_int b, volatile void *p)
 {
 	volatile u_int *ptr = (volatile u_int *)p;
