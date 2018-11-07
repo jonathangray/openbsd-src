@@ -261,6 +261,15 @@ test_bit(u_int b, volatile void *p)
 	return !!(((volatile u_int *)p)[b >> 5] & (1 << (b & 0x1f)));
 }
 
+static inline int
+__test_and_set_bit(u_int b, volatile void *p)
+{
+	unsigned int m = 1<<b;
+	unsigned int r = *(volatile int *)p & m;
+	*(volatile int *)p |= m;
+	return r;
+}
+
 static __inline int
 __test_and_clear_bit(u_int b, volatile void *p)
 {
