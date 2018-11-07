@@ -953,7 +953,7 @@ _complete_all(struct completion *x LOCK_FL_VARS)
 #define complete_all(x)	_complete_all(x LOCK_FILE_LINE)
 
 static inline bool
-_try_wait_for_completion(struct completion *x)
+_try_wait_for_completion(struct completion *x LOCK_FL_VARS)
 {
 	if (!x->done)
 		return false;
