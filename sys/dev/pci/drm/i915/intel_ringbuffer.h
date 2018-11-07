@@ -686,11 +686,7 @@ static inline bool
 execlists_set_active_once(struct intel_engine_execlists *execlists,
 			  unsigned int bit)
 {
-	STUB();
-	return false;
-#ifdef notyet
 	return !__test_and_set_bit(bit, (unsigned long *)&execlists->active);
-#endif
 }
 
 static inline void
