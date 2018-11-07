@@ -188,12 +188,8 @@ static inline bool i915_vma_is_closed(const struct i915_vma *vma)
 
 static inline bool i915_vma_set_userfault(struct i915_vma *vma)
 {
-	STUB();
-	return false;
-#ifdef notyet
 	GEM_BUG_ON(!i915_vma_is_map_and_fenceable(vma));
 	return __test_and_set_bit(I915_VMA_USERFAULT_BIT, &vma->flags);
-#endif
 }
 
 static inline void i915_vma_unset_userfault(struct i915_vma *vma)
