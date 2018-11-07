@@ -926,9 +926,6 @@ await_dma_fence:
 int
 i915_request_await_dma_fence(struct i915_request *rq, struct dma_fence *fence)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
 	struct dma_fence **child = &fence;
 	unsigned int nchild = 1;
 	int ret;
@@ -982,7 +979,6 @@ i915_request_await_dma_fence(struct i915_request *rq, struct dma_fence *fence)
 	} while (--nchild);
 
 	return 0;
-#endif
 }
 
 /**
