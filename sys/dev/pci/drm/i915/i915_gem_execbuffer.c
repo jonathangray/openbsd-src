@@ -2010,9 +2010,6 @@ static unsigned int
 gen8_dispatch_bsd_engine(struct drm_i915_private *dev_priv,
 			 struct drm_file *file)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
 	struct drm_i915_file_private *file_priv = file->driver_priv;
 
 	/* Check whether the file_priv has already selected one ring. */
@@ -2021,7 +2018,6 @@ gen8_dispatch_bsd_engine(struct drm_i915_private *dev_priv,
 			 &dev_priv->mm.bsd_engine_dispatch_index);
 
 	return file_priv->bsd_engine;
-#endif
 }
 
 #define I915_USER_RINGS (4)
