@@ -630,8 +630,6 @@ static void __fence_set_priority(struct dma_fence *fence,
 static void fence_set_priority(struct dma_fence *fence,
 			       const struct i915_sched_attr *attr)
 {
-	STUB();
-#ifdef notyet
 	/* Recurse once into a fence-array */
 	if (dma_fence_is_array(fence)) {
 		struct dma_fence_array *array = to_dma_fence_array(fence);
@@ -642,7 +640,6 @@ static void fence_set_priority(struct dma_fence *fence,
 	} else {
 		__fence_set_priority(fence, attr);
 	}
-#endif
 }
 
 int
