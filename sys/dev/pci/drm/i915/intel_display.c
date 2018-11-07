@@ -12594,6 +12594,9 @@ static void intel_atomic_commit_tail(struct drm_atomic_state *state)
 	u64 put_domains[I915_MAX_PIPES] = {};
 	int i;
 
+/* XXX hangs */
+STUB();
+return;
 	intel_atomic_commit_fence_wait(intel_state);
 
 	drm_atomic_helper_wait_for_dependencies(state);
