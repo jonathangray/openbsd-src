@@ -231,6 +231,15 @@ bitmap_set(void *p, int b, u_int n)
 }
 
 static inline void
+bitmap_clear(void *p, int b, u_int n)
+{
+	u_int end = b + n;
+
+	for (; b < end; b++)
+		__clear_bit(b, p);
+}
+
+static inline void
 bitmap_zero(void *p, u_int n)
 {
 	u_int *ptr = p;
