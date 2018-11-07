@@ -3327,8 +3327,6 @@ static void cnl_private_pat_update_hw(struct drm_i915_private *dev_priv)
 
 static void bdw_private_pat_update_hw(struct drm_i915_private *dev_priv)
 {
-	STUB();
-#ifdef notyet
 	struct intel_ppat *ppat = &dev_priv->ppat;
 	u64 pat = 0;
 	int i;
@@ -3340,7 +3338,6 @@ static void bdw_private_pat_update_hw(struct drm_i915_private *dev_priv)
 
 	I915_WRITE(GEN8_PRIVATE_PAT_LO, lower_32_bits(pat));
 	I915_WRITE(GEN8_PRIVATE_PAT_HI, upper_32_bits(pat));
-#endif
 }
 
 static unsigned int bdw_private_pat_match(u8 src, u8 dst)
