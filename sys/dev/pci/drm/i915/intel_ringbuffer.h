@@ -969,8 +969,8 @@ static inline void intel_wait_init(struct intel_wait *wait)
 	STUB();
 #ifdef notyet
 	wait->tsk = current;
-	wait->request = NULL;
 #endif
+	wait->request = NULL;
 }
 
 static inline void intel_wait_init_for_seqno(struct intel_wait *wait, u32 seqno)
@@ -978,8 +978,8 @@ static inline void intel_wait_init_for_seqno(struct intel_wait *wait, u32 seqno)
 	STUB();
 #ifdef notyet
 	wait->tsk = current;
-	wait->seqno = seqno;
 #endif
+	wait->seqno = seqno;
 }
 
 static inline bool intel_wait_has_seqno(const struct intel_wait *wait)
