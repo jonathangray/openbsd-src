@@ -3754,6 +3754,8 @@ pagevec_add(struct pagevec *pvec, struct vm_page *page)
 	return -ENOSYS;
 }
 
+#define page_address(x)	VM_PAGE_TO_PHYS(x)
+
 #if defined(__amd64__) || defined(__i386__)
 
 static inline int
@@ -3775,6 +3777,28 @@ set_pages_array_wc(struct vm_page **pages, int addrinarray)
 	for (i = 0; i < addrinarray; i++)
 		atomic_setbits_int(&pages[i]->pg_flags, PG_PMAP_WC);
 
+	return 0;
+}
+
+static inline int
+set_pages_array_uc(struct vm_page **pages, int addrinarray)
+{
+	/* XXX */
+	return 0;
+}
+
+static inline int
+set_pages_wb(struct vm_page *page, int numpages)
+{
+	KASSERT(numpages == 1);
+	atomic_clearbits_int(&page->pg_flags, PG_PMAP_WC);
+	return 0;
+}
+
+static inline int
+set_pages_uc(struct vm_page *page, int numpages)
+{
+	/* XXX */
 	return 0;
 }
 
