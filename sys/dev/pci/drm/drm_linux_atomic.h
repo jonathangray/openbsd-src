@@ -187,12 +187,9 @@ atomic_inc_not_zero(atomic_t *p)
 static inline atomic_t
 test_and_set_bit(u_int b, volatile void *p)
 {
-	int s = splhigh();
-	unsigned int m = 1<<b;
-	unsigned int r = *(volatile int *)p & m;
-	*(volatile int *)p |= m;
-	splx(s);
-	return r;
+	unsigned int m = 1 << (b & 0x1f);
+	unsigned int prev = __sync_fetch_and_or((volatile u_int *)p + (b >> 5), m);
+	return (prev & m) != 0;
 }
 
 static inline void
@@ -230,10 +227,12 @@ test_bit(u_int b, volatile void *p)
 static inline int
 __test_and_set_bit(u_int b, volatile void *p)
 {
-	unsigned int m = 1<<b;
-	unsigned int r = *(volatile int *)p & m;
-	*(volatile int *)p |= m;
-	return r;
+	unsigned int m = 1 << (b & 0x1f);
+	volatile u_int *ptr = (volatile u_int *)p;
+	unsigned int prev = ptr[b >> 5];
+	ptr[b >> 5] |= m;
+	
+	return (prev & m) != 0;
 }
 
 static inline int
