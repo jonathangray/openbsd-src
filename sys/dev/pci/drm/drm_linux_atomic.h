@@ -184,41 +184,6 @@ atomic_inc_not_zero(atomic_t *p)
 #define atomic_fetch_inc(p) __sync_fetch_and_add(p, 1)
 #define atomic_fetch_xor(n, p) __sync_fetch_and_xor(p, n)
 
-#if defined(__i386__) || defined(__amd64__)
-static inline int
-atomic_cmpset_int(volatile u_int *dst, u_int exp, u_int src)
-{
-	int res = exp;
-
-	__asm __volatile (
-	"	lock ;			"
-	"	cmpxchgl %1,%2 ;	"
-	"       setz	%%al ;		"
-	"	movzbl	%%al,%0 ;	"
-	"1:				"
-	"# atomic_cmpset_int"
-	: "+a" (res)			/* 0 (result) */
-	: "r" (src),			/* 1 */
-	  "m" (*(dst))			/* 2 */
-	: "memory");				 
-
-	return (res);
-}
-#else /* __i386__ */
-static inline int
-atomic_cmpset_int(__volatile__ u_int *dst, u_int old, u_int new)
-{
-	int s = splhigh();
-	if (*dst==old) {
-		*dst = new;
-		splx(s);
-		return 1;
-	}
-	splx(s);
-	return 0;
-}
-#endif /* !__i386__ */
-
 static inline atomic_t
 test_and_set_bit(u_int b, volatile void *p)
 {
