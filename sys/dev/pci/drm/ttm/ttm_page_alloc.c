@@ -1208,8 +1208,7 @@ EXPORT_SYMBOL(ttm_populate_and_map_pages);
 
 void ttm_unmap_and_unpopulate_pages(struct device *dev, struct ttm_dma_tt *tt)
 {
-	STUB();
-#if 0
+#ifdef __linux__
 	unsigned i, j;
 
 	for (i = 0; i < tt->ttm.num_pages;) {
