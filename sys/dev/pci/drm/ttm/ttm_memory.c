@@ -552,9 +552,6 @@ ttm_check_under_lowerlimit(struct ttm_mem_global *glob,
 			uint64_t num_pages,
 			struct ttm_operation_ctx *ctx)
 {
-	STUB();
-	return false;
-#if 0
 	int64_t available;
 
 	if (ctx->flags & TTM_OPT_FLAG_FORCE_ALLOC)
@@ -566,7 +563,6 @@ ttm_check_under_lowerlimit(struct ttm_mem_global *glob,
 		return true;
 
 	return false;
-#endif
 }
 EXPORT_SYMBOL(ttm_check_under_lowerlimit);
 
