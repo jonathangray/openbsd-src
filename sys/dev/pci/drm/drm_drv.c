@@ -912,58 +912,6 @@ drm_order(unsigned long size)
 	return order;
 }
 
-int drm_pcie_get_speed_cap_mask(struct drm_device *dev, u32 *mask)
-{
-	pci_chipset_tag_t	pc = dev->pc;
-	pcitag_t		tag;
-	int			pos ;
-	pcireg_t		xcap, lnkcap = 0, lnkcap2 = 0;
-	pcireg_t		id;
-
-	*mask = 0;
-
-	if (dev->bridgetag == NULL)
-		return -EINVAL;
-	tag = *dev->bridgetag;
-
-	if (!pci_get_capability(pc, tag, PCI_CAP_PCIEXPRESS,
-	    &pos, NULL)) 
-		return -EINVAL;
-
-	id = pci_conf_read(pc, tag, PCI_ID_REG);
-
-	/* we've been informed via and serverworks don't make the cut */
-	if (PCI_VENDOR(id) == PCI_VENDOR_VIATECH ||
-	    PCI_VENDOR(id) == PCI_VENDOR_RCC)
-		return -EINVAL;
-
-	lnkcap = pci_conf_read(pc, tag, pos + PCI_PCIE_LCAP);
-	xcap = pci_conf_read(pc, tag, pos + PCI_PCIE_XCAP);
-	if (PCI_PCIE_XCAP_VER(xcap) >= 2)
-		lnkcap2 = pci_conf_read(pc, tag, pos + PCI_PCIE_LCAP2);
-
-	lnkcap &= 0x0f;
-	lnkcap2 &= 0xfe;
-
-	if (lnkcap2) { /* PCIE GEN 3.0 */
-		if (lnkcap2 & 2)
-			*mask |= DRM_PCIE_SPEED_25;
-		if (lnkcap2 & 4)
-			*mask |= DRM_PCIE_SPEED_50;
-		if (lnkcap2 & 8)
-			*mask |= DRM_PCIE_SPEED_80;
-	} else {
-		if (lnkcap & 1)
-			*mask |= DRM_PCIE_SPEED_25;
-		if (lnkcap & 2)
-			*mask |= DRM_PCIE_SPEED_50;
-	}
-
-	DRM_INFO("probing gen 2 caps for device 0x%04x:0x%04x = %x/%x\n",
-	    PCI_VENDOR(id), PCI_PRODUCT(id), lnkcap, lnkcap2);
-	return 0;
-}
-
 int
 drm_getpciinfo(struct drm_device *dev, void *data, struct drm_file *file_priv)
 {

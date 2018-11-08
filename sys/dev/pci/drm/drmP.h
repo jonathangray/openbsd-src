@@ -292,12 +292,6 @@ drm_sysfs_connector_remove(struct drm_connector *connector)
 {
 }
 
-#define DRM_PCIE_SPEED_25 1
-#define DRM_PCIE_SPEED_50 2
-#define DRM_PCIE_SPEED_80 4
-
-int	 drm_pcie_get_speed_cap_mask(struct drm_device *, u32 *);
-
 /* helper for handling conditionals in various for_each macros */
 #define for_each_if(condition) if (!(condition)) {} else
 
