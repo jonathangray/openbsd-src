@@ -464,8 +464,7 @@ out_err:
 
 static void ttm_tt_add_mapping(struct ttm_tt *ttm)
 {
-	STUB();
-#if 0
+#ifdef __linux__
 	pgoff_t i;
 
 	if (ttm->page_flags & TTM_PAGE_FLAG_SG)
