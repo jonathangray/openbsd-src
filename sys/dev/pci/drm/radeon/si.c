@@ -7085,19 +7085,12 @@ int si_set_uvd_clocks(struct radeon_device *rdev, u32 vclk, u32 dclk)
 
 static void si_pcie_gen3_enable(struct radeon_device *rdev)
 {
-	STUB();
-#ifdef notyet
-	struct pci_dev _root;
-	struct pci_dev *root;
+	struct pci_dev *root = rdev->pdev->bus->self;
 	enum pci_bus_speed speed_cap;
 	int bridge_pos, gpu_pos;
 	u32 speed_cntl, current_data_rate;
 	int i;
 	u16 tmp16;
-
-	root = &_root;
-	root->pc = rdev->pdev->pc;
-	root->tag = *rdev->ddev->bridgetag;
 
 	if (pci_is_root_bus(rdev->pdev->bus))
 		return;
@@ -7250,7 +7243,6 @@ static void si_pcie_gen3_enable(struct radeon_device *rdev)
 			break;
 		udelay(1);
 	}
-#endif
 }
 
 static void si_program_aspm(struct radeon_device *rdev)
@@ -7383,13 +7375,8 @@ static void si_program_aspm(struct radeon_device *rdev)
 
 			if (!disable_clkreq &&
 			    !pci_is_root_bus(rdev->pdev->bus)) {
+				struct pci_dev *root = rdev->pdev->bus->self;
 				u32 lnkcap;
-				struct pci_dev _root;
-				struct pci_dev *root;
-				
-				root = &_root;
-				root->pc = rdev->pdev->pc;
-				root->tag = *rdev->ddev->bridgetag;
 
 				clk_req_support = false;
 				pcie_capability_read_dword(root, PCI_EXP_LNKCAP, &lnkcap);

@@ -5668,9 +5668,6 @@ void ci_dpm_fini(struct radeon_device *rdev)
 
 int ci_dpm_init(struct radeon_device *rdev)
 {
-	STUB();
-	return -ENOMEM;
-#if 0
 	int index = GetIndexIntoMasterTable(DATA, ASIC_InternalSS_Info);
 	SMU7_Discrete_DpmTable  *dpm_table;
 	struct radeon_gpio_rec gpio;
@@ -5933,7 +5930,6 @@ int ci_dpm_init(struct radeon_device *rdev)
 	pi->fan_ctrl_is_in_default_mode = true;
 
 	return 0;
-#endif
 }
 
 void ci_dpm_debugfs_print_current_performance_level(struct radeon_device *rdev,

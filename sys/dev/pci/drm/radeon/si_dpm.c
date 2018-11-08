@@ -6896,9 +6896,6 @@ static int si_parse_power_table(struct radeon_device *rdev)
 
 int si_dpm_init(struct radeon_device *rdev)
 {
-	STUB();
-	return -ENOSYS;
-#if 0
 	struct rv7xx_power_info *pi;
 	struct evergreen_power_info *eg_pi;
 	struct ni_power_info *ni_pi;
@@ -7073,7 +7070,6 @@ int si_dpm_init(struct radeon_device *rdev)
 	si_pi->fan_ctrl_is_in_default_mode = true;
 
 	return 0;
-#endif
 }
 
 void si_dpm_fini(struct radeon_device *rdev)
