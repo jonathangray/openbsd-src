@@ -35,9 +35,15 @@
 #include <linux/mm.h>
 #endif
 
+#if defined(__amd64__) || defined(__i386__)
+#define CONFIG_X86
+#endif
+
 #ifdef CONFIG_X86
 
+#ifdef __linux__
 #include <asm/set_memory.h>
+#endif
 
 static inline int ttm_set_pages_array_wb(struct vm_page **pages, int addrinarray)
 {
@@ -61,9 +67,15 @@ static inline int ttm_set_pages_wb(struct vm_page *page, int numpages)
 
 static inline int ttm_set_pages_wc(struct vm_page *page, int numpages)
 {
+#ifdef __linux__
 	unsigned long addr = (unsigned long)page_address(page);
 
 	return set_memory_wc(addr, numpages);
+#else
+	KASSERT(numpages == 1);
+	atomic_setbits_int(&page->pg_flags, PG_PMAP_WC);
+	return 0;
+#endif
 }
 
 static inline int ttm_set_pages_uc(struct vm_page *page, int numpages)
