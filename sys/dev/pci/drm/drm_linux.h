@@ -3873,4 +3873,16 @@ static_cpu_has(uint16_t f)
 
 #define prefetchw(x)	__builtin_prefetch(x,1)
 
+static inline long
+get_nr_swap_pages(void)
+{
+	return uvmexp.swpages - uvmexp.swpginuse;
+}
+
+static inline long
+si_mem_available(void)
+{
+	return uvmexp.free;
+}
+
 #endif
