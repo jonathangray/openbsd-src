@@ -238,10 +238,9 @@ __test_and_set_bit(u_int b, volatile void *p)
 static inline int
 test_and_clear_bit(u_int b, volatile void *p)
 {
-	volatile u_int *ptr = (volatile u_int *)p;
-	int rv = !!(ptr[b >> 5] & (1 << (b & 0x1f)));
-	atomic_clear_int(((volatile u_int *)p) + (b >> 5), 1 << (b & 0x1f));
-	return rv;
+	unsigned int m = 1 << (b & 0x1f);
+	unsigned int prev = __sync_fetch_and_and((volatile u_int *)p + (b >> 5), ~m);
+	return (prev & m) != 0;
 }
 
 static inline int
