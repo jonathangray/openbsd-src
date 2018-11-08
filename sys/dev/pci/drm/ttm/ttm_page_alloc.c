@@ -659,9 +659,6 @@ static int ttm_page_pool_get_pages(struct ttm_page_pool *pool,
 				   enum ttm_caching_state cstate,
 				   unsigned count, unsigned order)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
 	unsigned long irq_flags;
 	vm_page_t p;
 	unsigned i;
@@ -711,9 +708,8 @@ out:
 
 	/* clear the pages coming from the pool if requested */
 	if (ttm_flags & TTM_PAGE_FLAG_ZERO_ALLOC) {
-#ifdef __linux__
 		struct vm_page *page;
-
+#ifdef __linux__
 		list_for_each_entry(page, pages, lru) {
 			if (PageHighMem(page))
 				clear_highpage(page);
@@ -721,8 +717,8 @@ out:
 				clear_page(page_address(page));
 		}
 #else
-		TAILQ_FOREACH(p, &plist, pageq) {
-			pmap_zero_page(p);
+		TAILQ_FOREACH(page, pages, pageq) {
+			pmap_zero_page(page);
 		}
 #endif
 	}
@@ -746,7 +742,6 @@ out:
 	}
 
 	return r;
-#endif
 }
 
 /* Put all pages in pages list to correct pool to wait for reuse */
