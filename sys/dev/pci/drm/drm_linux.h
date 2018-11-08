@@ -2371,10 +2371,13 @@ resource_size(const struct resource *r)
 		.end = (_start) + (_size) - 1,	\
 	}
 
+struct pci_dev;
+
 struct pci_bus {
 	pci_chipset_tag_t pc;
 	unsigned char	number;
 	pcitag_t	*bridgetag;
+	struct pci_dev	*self;
 };
 
 struct pci_dev {
@@ -2571,6 +2574,15 @@ typedef enum {
 	PCI_D3hot,
 	PCI_D3cold
 } pci_power_t;
+
+enum pci_bus_speed {
+	PCIE_SPEED_2_5GT,
+	PCIE_SPEED_5_0GT,
+	PCIE_SPEED_8_0GT,
+	PCI_SPEED_UNKNOWN
+};
+
+enum pci_bus_speed pcie_get_speed_cap(struct pci_dev *);
 
 #define pci_save_state(x)
 #define pci_enable_device(x)		0

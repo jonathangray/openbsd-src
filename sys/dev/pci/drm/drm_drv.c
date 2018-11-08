@@ -213,6 +213,14 @@ drm_attach(struct device *parent, struct device *self, void *aux)
 	dev->pdev->bus->bridgetag = da->bridgetag;
 	dev->pdev->devfn = PCI_DEVFN(slot, func);
 
+	dev->pdev->bus->self = malloc(sizeof(struct pci_dev), M_DRM,
+	    M_NOWAIT | M_ZERO);
+	if (dev->pdev->bus->self == NULL)
+		goto error;
+	dev->pdev->bus->self->pc = da->pc;
+	if (da->bridgetag != NULL)
+		dev->pdev->bus->self->tag = *da->bridgetag;
+
 	dev->pc = da->pc;
 	dev->pdev->pc = da->pc;
 	dev->bridgetag = da->bridgetag;
@@ -286,6 +294,7 @@ drm_detach(struct device *self, int flags)
 
 	free(dev->agp, M_DRM, 0);
 	dev->agp = NULL;
+	free(dev->pdev->bus->self, M_DRM, sizeof(struct pci_dev));
 
 	return 0;
 }

@@ -993,3 +993,57 @@ get_dma_buf(struct dma_buf *dmabuf)
 {
 	FREF(dmabuf->file);
 }
+
+enum pci_bus_speed
+pcie_get_speed_cap(struct pci_dev *pdev)
+{
+	pci_chipset_tag_t	pc = pdev->pc;
+	pcitag_t		tag = pdev->tag;
+	int			pos ;
+	pcireg_t		xcap, lnkcap = 0, lnkcap2 = 0;
+	pcireg_t		id;
+	enum pci_bus_speed	cap = PCI_SPEED_UNKNOWN;
+	int			bus, device, function;
+
+	if (tag == 0)
+		return PCI_SPEED_UNKNOWN;
+
+	if (!pci_get_capability(pc, tag, PCI_CAP_PCIEXPRESS,
+	    &pos, NULL)) 
+		return PCI_SPEED_UNKNOWN;
+
+	id = pci_conf_read(pc, tag, PCI_ID_REG);
+	pci_decompose_tag(pc, tag, &bus, &device, &function);
+
+	/* we've been informed via and serverworks don't make the cut */
+	if (PCI_VENDOR(id) == PCI_VENDOR_VIATECH ||
+	    PCI_VENDOR(id) == PCI_VENDOR_RCC)
+		return PCI_SPEED_UNKNOWN;
+
+	lnkcap = pci_conf_read(pc, tag, pos + PCI_PCIE_LCAP);
+	xcap = pci_conf_read(pc, tag, pos + PCI_PCIE_XCAP);
+	if (PCI_PCIE_XCAP_VER(xcap) >= 2)
+		lnkcap2 = pci_conf_read(pc, tag, pos + PCI_PCIE_LCAP2);
+
+	lnkcap &= 0x0f;
+	lnkcap2 &= 0xfe;
+
+	if (lnkcap2) { /* PCIE GEN 3.0 */
+		if (lnkcap2 & 2)
+			cap = PCIE_SPEED_2_5GT;
+		if (lnkcap2 & 4)
+			cap = PCIE_SPEED_5_0GT;
+		if (lnkcap2 & 8)
+			cap = PCIE_SPEED_8_0GT;
+	} else {
+		if (lnkcap & 1)
+			cap = PCIE_SPEED_2_5GT;
+		if (lnkcap & 2)
+			cap = PCIE_SPEED_5_0GT;
+	}
+
+	DRM_INFO("probing pcie caps for device %d:%d:%d 0x%04x:0x%04x = %x/%x\n",
+	    bus, device, function, PCI_VENDOR(id), PCI_PRODUCT(id), lnkcap,
+	    lnkcap2);
+	return cap;
+}
