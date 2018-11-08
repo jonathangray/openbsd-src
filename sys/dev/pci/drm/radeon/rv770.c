@@ -2024,7 +2024,7 @@ static void rv770_pcie_gen2_enable(struct radeon_device *rdev)
 {
 	u32 link_width_cntl, lanes, speed_cntl, tmp;
 	u16 link_cntl2;
-	u32 mask;
+	enum pci_bus_speed max_bus_speed;
 
 	if (radeon_pcie_gen2 == 0)
 		return;
@@ -2039,10 +2039,9 @@ static void rv770_pcie_gen2_enable(struct radeon_device *rdev)
 	if (ASIC_IS_X2(rdev))
 		return;
 
-	if (drm_pcie_get_speed_cap_mask(rdev->ddev, &mask))
-		return;
-
-	if (!(mask & (DRM_PCIE_SPEED_50|DRM_PCIE_SPEED_80)))
+	max_bus_speed = pcie_get_speed_cap(rdev->pdev->bus->self);
+	if ((max_bus_speed != PCIE_SPEED_5_0GT) &&
+		(max_bus_speed != PCIE_SPEED_8_0GT))
 		return;
 
 	DRM_INFO("enabling PCIE gen 2 link speeds, disable with radeon.pcie_gen2=0\n");
