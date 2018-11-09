@@ -186,9 +186,7 @@ static int intelfb_create(struct drm_fb_helper *helper,
 	struct i915_vma *vma;
 	unsigned long flags = 0;
 	bool prealloc = false;
-#ifdef __linux__
 	void __iomem *vaddr;
-#endif
 	int ret;
 
 	if (intel_fb &&
@@ -284,14 +282,14 @@ static int intelfb_create(struct drm_fb_helper *helper,
 	bus_space_handle_t bsh;
 	int err;
 
-	err = agp_map_subregion(dev_priv->agph,
-	    i915_ggtt_offset(vma), vma->node.size, &bsh);
-	if (err) {
-		ret = -err;
+	vaddr = i915_vma_pin_iomap(vma);
+	if (IS_ERR(vaddr)) {
+		DRM_ERROR("Failed to remap framebuffer into virtual memory\n");
+		ret = PTR_ERR(vaddr);
 		goto out_unpin;
 	}
 
-	ri->ri_bits = bus_space_vaddr(dev->bst, bsh);
+	ri->ri_bits = vaddr;
 	ri->ri_depth = fb->format->cpp[0] * 8;
 	ri->ri_stride = fb->pitches[0];
 	ri->ri_width = sizes->fb_width;
