@@ -418,11 +418,7 @@ intel_gpio_setup(struct intel_gmbus *bus, unsigned int pin)
 
 static int gmbus_wait(struct drm_i915_private *dev_priv, u32 status, u32 irq_en)
 {
-#ifdef notyet
 	DEFINE_WAIT(wait);
-#else
-	wait_queue_entry_t wait;
-#endif
 	u32 gmbus2;
 	int ret;
 
@@ -453,11 +449,7 @@ static int gmbus_wait(struct drm_i915_private *dev_priv, u32 status, u32 irq_en)
 static int
 gmbus_wait_idle(struct drm_i915_private *dev_priv)
 {
-#ifdef notyet
 	DEFINE_WAIT(wait);
-#else
-	wait_queue_entry_t wait;
-#endif
 	u32 irq_enable;
 	int ret;
 
