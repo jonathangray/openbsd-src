@@ -1756,10 +1756,15 @@ kobject_del(struct kobject *obj)
 
 #define	DEFINE_WAIT(name)				\
 	struct wait_queue_entry name = {		\
+		.private = NULL,			\
+		.func = NULL,				\
+		.entry = LIST_HEAD_INIT((name).entry),	\
 	}						
 #define	DEFINE_WAIT_FUNC(name, func)			\
 	struct wait_queue_entry name = {		\
+		.private = NULL,			\
 		.func = func,				\
+		.entry = LIST_HEAD_INIT((name).entry),	\
 	}
 
 static inline void
