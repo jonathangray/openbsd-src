@@ -712,6 +712,7 @@ struct wait_queue_entry {
 	unsigned int flags;
 	void *private;
 	int (*func)(struct wait_queue_entry *, unsigned, int, void *);
+	struct list_head entry;
 };
 
 typedef struct wait_queue_entry wait_queue_entry_t;
@@ -738,6 +739,14 @@ init_waitqueue_head(wait_queue_head_t *wq)
 }
 
 #define __init_waitqueue_head(wq, name, key)	init_waitqueue_head(wq)
+
+static inline void
+init_wait_entry(wait_queue_entry_t *wqe, int flags)
+{
+	wqe->flags = flags;
+	wqe->private = NULL;
+	wqe->func = NULL;
+}
 
 static inline void
 __add_wait_queue(wait_queue_head_t *head, wait_queue_entry_t *new)
