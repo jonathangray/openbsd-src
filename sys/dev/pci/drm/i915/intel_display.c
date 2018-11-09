@@ -12545,8 +12545,6 @@ static void intel_atomic_helper_free_state_worker(struct work_struct *work)
 
 static void intel_atomic_commit_fence_wait(struct intel_atomic_state *intel_state)
 {
-	STUB();
-#ifdef notyet
 	struct wait_queue_entry wait_fence, wait_reset;
 	struct drm_i915_private *dev_priv = to_i915(intel_state->base.dev);
 
@@ -12567,7 +12565,6 @@ static void intel_atomic_commit_fence_wait(struct intel_atomic_state *intel_stat
 	}
 	finish_wait(&intel_state->commit_ready.wait, &wait_fence);
 	finish_wait(&dev_priv->gpu_error.wait_queue, &wait_reset);
-#endif
 }
 
 static void intel_atomic_cleanup_work(struct work_struct *work)
@@ -12915,15 +12912,12 @@ static const struct drm_crtc_funcs intel_crtc_funcs = {
 };
 
 struct wait_rps_boost {
-#ifdef notyet
 	struct wait_queue_entry wait;
-#endif
 
 	struct drm_crtc *crtc;
 	struct i915_request *request;
 };
 
-#ifdef notyet
 static int do_rps_boost(struct wait_queue_entry *_wait,
 			unsigned mode, int sync, void *key)
 {
@@ -12945,13 +12939,10 @@ static int do_rps_boost(struct wait_queue_entry *_wait,
 	kfree(wait);
 	return 1;
 }
-#endif
 
 static void add_rps_boost_after_vblank(struct drm_crtc *crtc,
 				       struct dma_fence *fence)
 {
-	STUB();
-#ifdef notyet
 	struct wait_rps_boost *wait;
 
 	if (!dma_fence_is_i915(fence))
@@ -12976,7 +12967,6 @@ static void add_rps_boost_after_vblank(struct drm_crtc *crtc,
 	wait->wait.flags = 0;
 
 	add_wait_queue(drm_crtc_vblank_waitqueue(crtc), &wait->wait);
-#endif
 }
 
 static int intel_plane_pin_fb(struct intel_plane_state *plane_state)
