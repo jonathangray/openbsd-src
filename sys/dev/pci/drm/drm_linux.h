@@ -706,12 +706,15 @@ read_seqretry(seqlock_t *sl, unsigned int pos)
 #define free_irq(irq, dev)
 #define synchronize_irq(x)
 
-typedef struct wait_queue wait_queue_entry_t;
-struct wait_queue {
+struct wait_queue_entry;
+
+struct wait_queue_entry {
 	unsigned int flags;
 	void *private;
-	int (*func)(wait_queue_entry_t *, unsigned, int, void *);
+	int (*func)(struct wait_queue_entry *, unsigned, int, void *);
 };
+
+typedef struct wait_queue_entry wait_queue_entry_t;
 
 extern struct mutex sch_mtx;
 extern void *sch_ident;
@@ -720,7 +723,7 @@ extern int sch_priority;
 struct wait_queue_head {
 	struct mutex lock;
 	unsigned int count;
-	struct wait_queue *_wq;
+	struct wait_queue_entry *_wqe;
 };
 typedef struct wait_queue_head wait_queue_head_t;
 
@@ -731,7 +734,7 @@ init_waitqueue_head(wait_queue_head_t *wq)
 {
 	mtx_init(&wq->lock, IPL_TTY);
 	wq->count = 0;
-	wq->_wq = NULL;
+	wq->_wqe = NULL;
 }
 
 #define __init_waitqueue_head(wq, name, key)	init_waitqueue_head(wq)
@@ -739,7 +742,7 @@ init_waitqueue_head(wait_queue_head_t *wq)
 static inline void
 __add_wait_queue(wait_queue_head_t *head, wait_queue_entry_t *new)
 {
-	head->_wq = new;
+	head->_wqe = new;
 }
 
 static inline void
@@ -753,7 +756,7 @@ add_wait_queue(wait_queue_head_t *head, wait_queue_entry_t *new)
 static inline void
 __remove_wait_queue(wait_queue_head_t *head, wait_queue_entry_t *old)
 {
-	head->_wq = NULL;
+	head->_wqe = NULL;
 }
 
 static inline void
@@ -844,8 +847,8 @@ static inline void
 _wake_up(wait_queue_head_t *wq LOCK_FL_VARS)
 {
 	_mtx_enter(&wq->lock LOCK_FL_ARGS);
-	if (wq->_wq != NULL && wq->_wq->func != NULL)
-		wq->_wq->func(wq->_wq, 0, wq->_wq->flags, NULL);
+	if (wq->_wqe != NULL && wq->_wqe->func != NULL)
+		wq->_wqe->func(wq->_wqe, 0, wq->_wqe->flags, NULL);
 	else {
 		mtx_enter(&sch_mtx);
 		wakeup(wq);
@@ -867,8 +870,8 @@ do {						\
 static inline void
 wake_up_all_locked(wait_queue_head_t *wq)
 {
-	if (wq->_wq != NULL && wq->_wq->func != NULL)
-		wq->_wq->func(wq->_wq, 0, wq->_wq->flags, NULL);
+	if (wq->_wqe != NULL && wq->_wqe->func != NULL)
+		wq->_wqe->func(wq->_wqe, 0, wq->_wqe->flags, NULL);
 	else {
 		mtx_enter(&sch_mtx);
 		wakeup(wq);
@@ -1742,25 +1745,30 @@ kobject_del(struct kobject *obj)
 
 #define kobject_uevent_env(obj, act, envp)
 
-#define	DEFINE_WAIT(wait)		wait_queue_head_t *wait = NULL
-#define	DEFINE_WAIT_FUNC(wait, func)	wait_queue_head_t *wait = NULL
+#define	DEFINE_WAIT(name)				\
+	struct wait_queue_entry name = {		\
+	}						
+#define	DEFINE_WAIT_FUNC(name, func)			\
+	struct wait_queue_entry name = {		\
+		.func = func,				\
+	}
 
 static inline void
-prepare_to_wait(wait_queue_head_t *wq, wait_queue_head_t **wait, int state)
+prepare_to_wait(wait_queue_head_t *wqh, wait_queue_entry_t *wqe, int state)
 {
-	if (*wait == NULL) {
+	if (wqh->_wqe == NULL) {
 		mtx_enter(&sch_mtx);
-		*wait = wq;
+		wqh->_wqe = wqe;
 	}
 	MUTEX_ASSERT_LOCKED(&sch_mtx);
-	sch_ident = wq;
+	sch_ident = wqh;
 	sch_priority = state;
 }
 
 static inline void
-finish_wait(wait_queue_head_t *wq, wait_queue_head_t **wait)
+finish_wait(wait_queue_head_t *wqh, wait_queue_entry_t *wqe)
 {
-	if (*wait) {
+	if (wqh->_wqe) {
 		MUTEX_ASSERT_LOCKED(&sch_mtx);
 		sch_ident = NULL;
 		mtx_leave(&sch_mtx);
