@@ -755,6 +755,12 @@ __add_wait_queue(wait_queue_head_t *head, wait_queue_entry_t *new)
 }
 
 static inline void
+__add_wait_queue_entry_tail(wait_queue_head_t *head, wait_queue_entry_t *new)
+{
+	head->_wqe = new;
+}
+
+static inline void
 add_wait_queue(wait_queue_head_t *head, wait_queue_entry_t *new)
 {
 	mtx_enter(&head->lock);
