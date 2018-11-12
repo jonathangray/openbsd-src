@@ -1360,7 +1360,14 @@ ktime_get(void)
 	return tv;
 }
 
-#define ktime_get_raw(x) ktime_get(x)
+static inline struct timeval
+ktime_get_raw(void)
+{
+	struct timeval tv;
+	
+	microuptime(&tv);
+	return tv;
+}
 
 static inline struct timeval
 ktime_get_monotonic_offset(void)
