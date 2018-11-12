@@ -3867,10 +3867,11 @@ static inline bool
 new_requests_since_last_retire(const struct drm_i915_private *i915)
 {
 	STUB();
-	return false;
 #ifdef notyet
 	return (READ_ONCE(i915->gt.active_requests) ||
 		work_pending(&i915->gt.idle_work.work));
+#else
+	return READ_ONCE(i915->gt.active_requests);
 #endif
 }
 
