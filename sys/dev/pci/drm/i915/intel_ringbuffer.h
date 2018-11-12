@@ -756,8 +756,6 @@ intel_read_status_page(const struct intel_engine_cs *engine, int reg)
 static inline void
 intel_write_status_page(struct intel_engine_cs *engine, int reg, u32 value)
 {
-	STUB();
-#ifdef notyet
 	/* Writing into the status page should be done sparingly. Since
 	 * we do when we are uncertain of the device state, we take a bit
 	 * of extra paranoia to try and ensure that the HWS takes the value
@@ -765,14 +763,13 @@ intel_write_status_page(struct intel_engine_cs *engine, int reg, u32 value)
 	 */
 	if (static_cpu_has(X86_FEATURE_CLFLUSH)) {
 		mb();
-		clflush(&engine->status_page.page_addr[reg]);
+		clflush((vaddr_t)&engine->status_page.page_addr[reg]);
 		engine->status_page.page_addr[reg] = value;
-		clflush(&engine->status_page.page_addr[reg]);
+		clflush((vaddr_t)&engine->status_page.page_addr[reg]);
 		mb();
 	} else {
 		WRITE_ONCE(engine->status_page.page_addr[reg], value);
 	}
-#endif
 }
 
 /*
