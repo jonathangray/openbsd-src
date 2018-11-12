@@ -2433,20 +2433,31 @@ err:
 
 static void __i915_gem_object_release_mmap(struct drm_i915_gem_object *obj)
 {
-	STUB();
-#ifdef notyet
 	struct i915_vma *vma;
 
 	GEM_BUG_ON(!obj->userfault_count);
 
 	obj->userfault_count = 0;
 	list_del(&obj->userfault_link);
+#ifdef __linux__
 	drm_vma_node_unmap(&obj->base.vma_node,
 			   obj->base.dev->anon_inode->i_mapping);
+#else
+	if (drm_vma_node_has_offset(&obj->base.vma_node)) {
+		struct drm_i915_private *dev_priv = obj->base.dev->dev_private;
+		struct vm_page *pg;
+		uint64_t offset = drm_vma_node_offset_addr(&obj->base.vma_node);
+		uint64_t size = drm_vma_node_size(&obj->base.vma_node) << PAGE_SHIFT;
+
+		for (pg = &dev_priv->pgs[atop(offset)];
+		     pg != &dev_priv->pgs[atop(offset + size)];
+		     pg++)
+			pmap_page_protect(pg, PROT_NONE);
+	}
+#endif
 
 	for_each_ggtt_vma(vma, obj)
 		i915_vma_unset_userfault(vma);
-#endif
 }
 
 /**
