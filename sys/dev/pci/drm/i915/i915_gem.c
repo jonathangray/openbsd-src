@@ -3306,8 +3306,6 @@ i915_gem_object_pwrite_gtt(struct drm_i915_gem_object *obj,
 static void i915_gem_client_mark_guilty(struct drm_i915_file_private *file_priv,
 					const struct i915_gem_context *ctx)
 {
-	STUB();
-#ifdef notyet
 	unsigned int score;
 	unsigned long prev_hang;
 
@@ -3327,7 +3325,6 @@ static void i915_gem_client_mark_guilty(struct drm_i915_file_private *file_priv,
 				 ctx->name, score,
 				 atomic_read(&file_priv->ban_score));
 	}
-#endif
 }
 
 static void i915_gem_context_mark_guilty(struct i915_gem_context *ctx)
