@@ -411,8 +411,6 @@ static void dma_i915_sw_fence_wake(struct dma_fence *dma,
 
 static void timer_i915_sw_fence_wake(void *arg)
 {
-	STUB();
-#ifdef notyet
 	struct i915_sw_dma_fence_cb_timer *cb = arg;
 	struct i915_sw_fence *fence;
 
@@ -426,14 +424,11 @@ static void timer_i915_sw_fence_wake(void *arg)
 		cb->dma->seqno);
 
 	i915_sw_fence_complete(fence);
-#endif
 }
 
 static void dma_i915_sw_fence_wake_timer(struct dma_fence *dma,
 					 struct dma_fence_cb *data)
 {
-	STUB();
-#ifdef notyet
 	struct i915_sw_dma_fence_cb_timer *cb =
 		container_of(data, typeof(*cb), base.base);
 	struct i915_sw_fence *fence;
@@ -443,7 +438,6 @@ static void dma_i915_sw_fence_wake_timer(struct dma_fence *dma,
 		i915_sw_fence_complete(fence);
 
 	irq_work_queue(&cb->work);
-#endif
 }
 
 static void irq_i915_sw_fence_work(struct irq_work *wrk)
