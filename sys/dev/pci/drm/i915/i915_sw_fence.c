@@ -324,9 +324,6 @@ static int __i915_sw_fence_await_sw_fence(struct i915_sw_fence *fence,
 					  struct i915_sw_fence *signaler,
 					  wait_queue_entry_t *wq, gfp_t gfp)
 {
-	STUB();
-	return -1;
-#ifdef notyet
 	unsigned long flags;
 	int pending;
 
@@ -374,7 +371,6 @@ static int __i915_sw_fence_await_sw_fence(struct i915_sw_fence *fence,
 	spin_unlock_irqrestore(&signaler->wait.lock, flags);
 
 	return pending;
-#endif
 }
 
 int i915_sw_fence_await_sw_fence(struct i915_sw_fence *fence,
