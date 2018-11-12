@@ -30,9 +30,7 @@
 #include <dev/pci/drm/drm_atomic.h>
 #include <dev/pci/drm/uapi/drm_mode.h>
 #include <dev/pci/drm/drm_print.h>
-#ifdef notyet
 #include <dev/pci/drm/drm_writeback.h>
-#endif
 #include <dev/pci/drm/drm_plane_helper.h>
 
 #include <dev/pci/drm/drm_crtc_internal.h>
@@ -748,8 +746,6 @@ static void drm_atomic_crtc_print_state(struct drm_printer *p,
 static int drm_atomic_connector_check(struct drm_connector *connector,
 		struct drm_connector_state *state)
 {
-	return 0;
-#ifdef notyet
 	struct drm_crtc_state *crtc_state;
 	struct drm_writeback_job *writeback_job = state->writeback_job;
 
@@ -780,7 +776,6 @@ static int drm_atomic_connector_check(struct drm_connector *connector,
 	}
 
 	return 0;
-#endif
 }
 
 /**
@@ -1453,11 +1448,9 @@ static void drm_atomic_connector_print_state(struct drm_printer *p,
 	drm_printf(p, "connector[%u]: %s\n", connector->base.id, connector->name);
 	drm_printf(p, "\tcrtc=%s\n", state->crtc ? state->crtc->name : "(null)");
 
-#ifdef notyet
 	if (connector->connector_type == DRM_MODE_CONNECTOR_WRITEBACK)
 		if (state->writeback_job && state->writeback_job->fb)
 			drm_printf(p, "\tfb=%d\n", state->writeback_job->fb->base.id);
-#endif
 
 	if (connector->funcs->atomic_print_state)
 		connector->funcs->atomic_print_state(p, state);
@@ -1764,7 +1757,6 @@ EXPORT_SYMBOL(drm_atomic_set_crtc_for_connector);
  *
  * Returns: The writeback job for the given connector state
  */
-#ifdef notyet
 static struct drm_writeback_job *
 drm_atomic_get_writeback_job(struct drm_connector_state *conn_state)
 {
@@ -1776,7 +1768,6 @@ drm_atomic_get_writeback_job(struct drm_connector_state *conn_state)
 
 	return conn_state->writeback_job;
 }
-#endif
 
 /**
  * drm_atomic_set_writeback_fb_for_connector - set writeback framebuffer
@@ -1801,9 +1792,6 @@ int drm_atomic_set_writeback_fb_for_connector(
 		struct drm_connector_state *conn_state,
 		struct drm_framebuffer *fb)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
 	struct drm_writeback_job *job =
 		drm_atomic_get_writeback_job(conn_state);
 	if (!job)
@@ -1819,7 +1807,6 @@ int drm_atomic_set_writeback_fb_for_connector(
 				 conn_state);
 
 	return 0;
-#endif
 }
 EXPORT_SYMBOL(drm_atomic_set_writeback_fb_for_connector);
 
@@ -2382,9 +2369,6 @@ static int prepare_signaling(struct drm_device *dev,
 				  struct drm_out_fence_state **fence_state,
 				  unsigned int *num_fences)
 {
-	STUB();
-	return -ENOSYS;
-#if 0
 	struct drm_crtc *crtc;
 	struct drm_crtc_state *crtc_state;
 	struct drm_connector *conn;
@@ -2507,7 +2491,6 @@ static int prepare_signaling(struct drm_device *dev,
 		return -EINVAL;
 
 	return 0;
-#endif
 }
 
 static void complete_signaling(struct drm_device *dev,
@@ -2516,16 +2499,16 @@ static void complete_signaling(struct drm_device *dev,
 			       unsigned int num_fences,
 			       bool install_fds)
 {
-	STUB();
-#if 0
 	struct drm_crtc *crtc;
 	struct drm_crtc_state *crtc_state;
 	int i;
 
 	if (install_fds) {
+#ifdef __linux__
 		for (i = 0; i < num_fences; i++)
 			fd_install(fence_state[i].fd,
 				   fence_state[i].sync_file->file);
+#endif
 
 		kfree(fence_state);
 		return;
@@ -2548,10 +2531,12 @@ static void complete_signaling(struct drm_device *dev,
 		return;
 
 	for (i = 0; i < num_fences; i++) {
+#ifdef __linux__
 		if (fence_state[i].sync_file)
 			fput(fence_state[i].sync_file->file);
 		if (fence_state[i].fd >= 0)
 			put_unused_fd(fence_state[i].fd);
+#endif
 
 		/* If this fails log error to the user */
 		if (fence_state[i].out_fence_ptr &&
@@ -2560,7 +2545,6 @@ static void complete_signaling(struct drm_device *dev,
 	}
 
 	kfree(fence_state);
-#endif
 }
 
 int drm_mode_atomic_ioctl(struct drm_device *dev,
