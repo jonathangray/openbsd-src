@@ -60,6 +60,8 @@ atomic_xchg(volatile int *v, int n)
 	return __sync_lock_test_and_set(v, n);
 }
 
+#define xchg(v, n)	__sync_lock_test_and_set(v, n)
+
 static inline int
 atomic_add_unless(volatile int *v, int n, int u)
 {
