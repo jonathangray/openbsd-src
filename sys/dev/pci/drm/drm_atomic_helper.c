@@ -1178,8 +1178,6 @@ EXPORT_SYMBOL(drm_atomic_helper_commit_modeset_disables);
 static void drm_atomic_helper_commit_writebacks(struct drm_device *dev,
 						struct drm_atomic_state *old_state)
 {
-	STUB();
-#if 0
 	struct drm_connector *connector;
 	struct drm_connector_state *new_conn_state;
 	int i;
@@ -1196,7 +1194,6 @@ static void drm_atomic_helper_commit_writebacks(struct drm_device *dev,
 			funcs->atomic_commit(connector, new_conn_state);
 		}
 	}
-#endif
 }
 
 /**
