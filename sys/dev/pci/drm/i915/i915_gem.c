@@ -2248,8 +2248,185 @@ i915_gem_fault(struct drm_gem_object *gem_obj, struct uvm_faultinfo *ufi,
     off_t offset, vaddr_t vaddr, vm_page_t *pps, int npages, int centeridx,
     vm_prot_t access_type, int flags)
 {
-	STUB();
-	return -ENOSYS;
+	struct drm_i915_gem_object *obj = to_intel_bo(gem_obj);
+	struct drm_device *dev = obj->base.dev;
+	struct drm_i915_private *dev_priv = dev->dev_private;
+	struct i915_ggtt *ggtt = &dev_priv->ggtt;
+	paddr_t paddr;
+	int lcv, ret = 0;
+	int write = !!(access_type & PROT_WRITE);
+	struct i915_vma *vma;
+	vm_prot_t mapprot;
+	boolean_t locked = TRUE;
+
+	/* Sanity check that we allow writing into this object */
+	if (i915_gem_object_is_readonly(obj) && write) {
+		uvmfault_unlockall(ufi, ufi->entry->aref.ar_amap,
+		    &obj->base.uobj, NULL);
+		return VM_PAGER_BAD;
+	}
+
+	/*
+	 * If we already own the lock, we must be doing a copyin or
+	 * copyout in one of the fast paths.  Return failure such that
+	 * we fall back on the slow path.
+	 */
+	if (!drm_vma_node_has_offset(&obj->base.vma_node) ||
+	    RWLOCK_OWNER(&dev->struct_mutex) == curproc) {
+		uvmfault_unlockall(ufi, ufi->entry->aref.ar_amap,
+		    &obj->base.uobj, NULL);
+		return VM_PAGER_BAD;
+	}
+
+	offset -= drm_vma_node_offset_addr(&obj->base.vma_node);
+
+	if (!mutex_trylock(&dev->struct_mutex)) {
+		uvmfault_unlockall(ufi, NULL, &obj->base.uobj, NULL);
+		mutex_lock(&dev->struct_mutex);
+		locked = uvmfault_relock(ufi);
+	}
+	if (!locked) {
+		mutex_unlock(&dev->struct_mutex);
+		return VM_PAGER_REFAULT;
+	}
+
+	/* Try to flush the object off the GPU first without holding the lock.
+	 * Upon acquiring the lock, we will perform our sanity checks and then
+	 * repeat the flush holding the lock in the normal manner to catch cases
+	 * where we are gazumped.
+	 */
+	ret = i915_gem_object_wait(obj,
+				   I915_WAIT_INTERRUPTIBLE,
+				   MAX_SCHEDULE_TIMEOUT,
+				   NULL);
+	if (ret)
+		goto err;
+
+	ret = i915_gem_object_pin_pages(obj);
+	if (ret)
+		goto err;
+
+	intel_runtime_pm_get(dev_priv);
+
+	/* Access to snoopable pages through the GTT is incoherent. */
+	if (obj->cache_level != I915_CACHE_NONE && !HAS_LLC(dev_priv)) {
+		ret = -EINVAL;
+		goto err_unlock;
+	}
+
+	/* Now pin it into the GTT as needed */
+	vma = i915_gem_object_ggtt_pin(obj, NULL, 0, 0,
+				       PIN_MAPPABLE |
+				       PIN_NONBLOCK |
+				       PIN_NONFAULT);
+	if (IS_ERR(vma)) {
+		ret = PTR_ERR(vma);
+		goto err_unlock;
+	}
+
+	ret = i915_gem_object_set_to_gtt_domain(obj, write);
+	if (ret)
+		goto err_unpin;
+
+	ret = i915_vma_pin_fence(vma);
+	if (ret)
+		goto err_unpin;
+
+	mapprot = ufi->entry->protection;
+	/*
+	 * if it's only a read fault, we only put ourselves into the gtt
+	 * read domain, so make sure we fault again and set ourselves to write.
+	 * this prevents us needing userland to do domain management and get
+	 * it wrong, and makes us fully coherent with the gpu re mmap.
+	 */
+	if (write == 0)
+		mapprot &= ~PROT_WRITE;
+	/* XXX try and  be more efficient when we do this */
+	for (lcv = 0 ; lcv < npages ; lcv++, offset += PAGE_SIZE,
+	    vaddr += PAGE_SIZE) {
+		if ((flags & PGO_ALLPAGES) == 0 && lcv != centeridx)
+			continue;
+
+		if (pps[lcv] == PGO_DONTCARE)
+			continue;
+
+		paddr = ggtt->gmadr.start + vma->node.start + offset;
+
+		if (pmap_enter(ufi->orig_map->pmap, vaddr, paddr,
+		    mapprot, PMAP_CANFAIL | mapprot) != 0) {
+			i915_vma_unpin_fence(vma);
+			__i915_vma_unpin(vma);
+			uvmfault_unlockall(ufi, ufi->entry->aref.ar_amap,
+			    NULL, NULL);
+			mutex_unlock(&dev->struct_mutex);
+			pmap_update(ufi->orig_map->pmap);
+			uvm_wait("intelflt");
+			ret = VM_PAGER_REFAULT;
+			intel_runtime_pm_put(dev_priv);
+			i915_gem_object_unpin_pages(obj);
+			return ret;
+		}
+	}
+
+	/* Mark as being mmapped into userspace for later revocation */
+	assert_rpm_wakelock_held(dev_priv);
+	if (!i915_vma_set_userfault(vma) && !obj->userfault_count++)
+		list_add(&obj->userfault_link, &dev_priv->mm.userfault_list);
+	GEM_BUG_ON(!obj->userfault_count);
+
+	i915_vma_set_ggtt_write(vma);
+
+#ifdef notyet
+err_fence:
+#endif
+	i915_vma_unpin_fence(vma);
+err_unpin:
+	__i915_vma_unpin(vma);
+err_unlock:
+	uvmfault_unlockall(ufi, ufi->entry->aref.ar_amap, NULL, NULL);
+	mutex_unlock(&dev->struct_mutex);
+	pmap_update(ufi->orig_map->pmap);
+#ifdef notyet
+err_rpm:
+#endif
+	intel_runtime_pm_put(dev_priv);
+	i915_gem_object_unpin_pages(obj);
+err:
+	switch (ret) {
+	case -EIO:
+		/*
+		 * We eat errors when the gpu is terminally wedged to avoid
+		 * userspace unduly crashing (gl has no provisions for mmaps to
+		 * fail). But any other -EIO isn't ours (e.g. swap in failure)
+		 * and so needs to be reported.
+		 */
+		if (!i915_terminally_wedged(&dev_priv->gpu_error))
+			return VM_PAGER_ERROR;
+		/* else: fall through */
+	case -EAGAIN:
+		/*
+		 * EAGAIN means the gpu is hung and we'll wait for the error
+		 * handler to reset everything when re-faulting in
+		 * i915_mutex_lock_interruptible.
+		 */
+	case 0:
+	case -ERESTART:
+	case -EINTR:
+	case -EBUSY:
+		/*
+		 * EBUSY is ok: this just means that another thread
+		 * already did the job.
+		 */
+		return VM_PAGER_OK;
+	case -ENOMEM:
+		return VM_PAGER_ERROR;
+	case -ENOSPC:
+	case -EFAULT:
+		return VM_PAGER_ERROR;
+	default:
+		WARN_ONCE(ret, "unhandled error in i915_gem_fault: %i\n", ret);
+		return VM_PAGER_ERROR;
+	}
 }
 
 #endif
