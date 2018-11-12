@@ -1239,9 +1239,6 @@ void gen6_rps_reset_ei(struct drm_i915_private *dev_priv)
 
 static u32 vlv_wa_c0_ei(struct drm_i915_private *dev_priv, u32 pm_iir)
 {
-	STUB();
-	return 0;
-#ifdef notyet
 	struct intel_rps *rps = &dev_priv->gt_pm.rps;
 	const struct intel_rps_ei *prev = &rps->ei;
 	struct intel_rps_ei now;
@@ -1252,7 +1249,11 @@ static u32 vlv_wa_c0_ei(struct drm_i915_private *dev_priv, u32 pm_iir)
 
 	vlv_c0_read(dev_priv, &now);
 
+#ifdef __linux__
 	if (prev->ktime) {
+#else
+	if (ktime_to_ns(prev->ktime)) {
+#endif
 		u64 time, c0;
 		u32 render, media;
 
@@ -1278,7 +1279,6 @@ static u32 vlv_wa_c0_ei(struct drm_i915_private *dev_priv, u32 pm_iir)
 
 	rps->ei = now;
 	return events;
-#endif
 }
 
 static void gen6_pm_rps_work(struct work_struct *work)
