@@ -98,8 +98,6 @@
 
 static void lut_close(struct i915_gem_context *ctx)
 {
-	STUB();
-#ifdef notyet
 	struct i915_lut_handle *lut, *ln;
 	struct radix_tree_iter iter;
 	void __rcu **slot;
@@ -113,6 +111,8 @@ static void lut_close(struct i915_gem_context *ctx)
 #endif
 	}
 
+	STUB();
+#ifdef notyet
 	rcu_read_lock();
 	radix_tree_for_each_slot(slot, &ctx->handles_vma, &iter, 0) {
 		struct i915_vma *vma = rcu_dereference_raw(*slot);
