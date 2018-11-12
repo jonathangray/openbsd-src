@@ -505,8 +505,6 @@ static void guc_reset_wq(struct intel_guc_client *client)
 
 static void guc_ring_doorbell(struct intel_guc_client *client)
 {
-	STUB();
-#ifdef notyet
 	struct guc_doorbell_info *db;
 	u32 cookie;
 
@@ -524,7 +522,6 @@ static void guc_ring_doorbell(struct intel_guc_client *client)
 
 	/* XXX: doorbell was lost and need to acquire it again */
 	GEM_BUG_ON(db->db_status != GUC_DOORBELL_ENABLED);
-#endif
 }
 
 static void guc_add_request(struct intel_guc *guc, struct i915_request *rq)
