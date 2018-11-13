@@ -273,6 +273,23 @@ find_first_zero_bit(volatile void *p, int max)
 }
 
 static inline int
+find_next_zero_bit(volatile void *p, int max, int b)
+{
+	volatile u_int *ptr = (volatile u_int *)p;
+
+	for (; b < max; b += 32) {
+		if (ptr[b >> 5] != ~0) {
+			for (;;) {
+				if ((ptr[b >> 5] & (1 << (b & 0x1f))) == 0)
+					return b;
+				b++;
+			}
+		}
+	}
+	return max;
+}
+
+static inline int
 find_first_bit(volatile void *p, int max)
 {
 	int b;
@@ -311,6 +328,11 @@ find_next_bit(volatile void *p, int max, int b)
 	for ((b) = find_first_bit((p), (max));			\
 	     (b) < (max);					\
 	     (b) = find_next_bit((p), (max), (b) + 1))
+
+#define for_each_clear_bit(b, p, max) \
+	for ((b) = find_first_zero_bit((p), (max));		\
+	     (b) < (max);					\
+	     (b) = find_next_zero_bit((p), (max), (b) + 1))
 
 /* DRM_READMEMORYBARRIER() prevents reordering of reads.
  * DRM_WRITEMEMORYBARRIER() prevents reordering of writes.
