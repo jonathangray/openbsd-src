@@ -3606,6 +3606,16 @@ memset64(uint64_t *b, uint64_t c, size_t len)
 	return b;
 }
 
+static inline void *
+memset_p(void **p, void *v, size_t n)
+{
+#ifdef __LP64__
+	return memset64((uint64_t *)p, (uintptr_t)v, n);
+#else
+	return memset32((uint32_t *)p, (uintptr_t)v, n);
+#endif
+}
+
 #define POISON_INUSE	0xdb
 
 #define cec_notifier_set_phys_addr_from_edid(x, y)
