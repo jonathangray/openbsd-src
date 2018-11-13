@@ -27,6 +27,7 @@
 #include <uapi/linux/sched/types.h>
 #else
 #include <dev/pci/drm/drm_linux.h>
+#include <sys/kthread.h>
 #endif
 
 #include "i915_drv.h"
@@ -634,11 +635,8 @@ static void signaler_set_rtpriority(void)
 #endif
 }
 
-static int intel_breadcrumbs_signaler(void *arg)
+static void intel_breadcrumbs_signaler(void *arg)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
 	struct intel_engine_cs *engine = arg;
 	struct intel_breadcrumbs *b = &engine->breadcrumbs;
 	struct i915_request *rq, *n;
@@ -714,7 +712,7 @@ static int intel_breadcrumbs_signaler(void *arg)
 
 		if (unlikely(do_schedule)) {
 			/* Before we sleep, check for a missed seqno */
-			if (current->state & TASK_NORMAL &&
+			if (/*current->state & TASK_NORMAL && */
 			    !list_empty(&b->signals) &&
 			    engine->irq_seqno_barrier &&
 			    test_and_clear_bit(ENGINE_IRQ_BREADCRUMB,
@@ -724,19 +722,18 @@ static int intel_breadcrumbs_signaler(void *arg)
 			}
 
 sleep:
+#ifdef __linux__
 			if (kthread_should_park())
 				kthread_parkme();
 
 			if (unlikely(kthread_should_stop()))
 				break;
+#endif
 
 			schedule();
 		}
 	} while (1);
 	__set_current_state(TASK_RUNNING);
-
-	return 0;
-#endif
 }
 
 static void insert_signal(struct intel_breadcrumbs *b,
@@ -837,6 +834,8 @@ void intel_engine_cancel_signaling(struct i915_request *request)
 	spin_unlock(&b->rb_lock);
 }
 
+#ifdef __linux__
+
 int intel_engine_init_breadcrumbs(struct intel_engine_cs *engine)
 {
 	struct intel_breadcrumbs *b = &engine->breadcrumbs;
@@ -850,9 +849,6 @@ int intel_engine_init_breadcrumbs(struct intel_engine_cs *engine)
 
 	INIT_LIST_HEAD(&b->signals);
 
-	STUB();
-	return 0;
-#ifdef notyet
 	/* Spawn a thread to provide a common bottom-half for all signals.
 	 * As this is an asynchronous interface we cannot steal the current
 	 * task for handling the bottom-half to the user interrupt, therefore
@@ -867,8 +863,48 @@ int intel_engine_init_breadcrumbs(struct intel_engine_cs *engine)
 	b->signaler = tsk;
 
 	return 0;
-#endif
 }
+
+#else
+
+void
+intel_create_breadcrumbs_thread(void *arg)
+{
+	struct intel_engine_cs *engine = arg;
+	struct intel_breadcrumbs *b = &engine->breadcrumbs;
+	char name[32];
+
+	snprintf(name, sizeof(name), "i915/signal:%d", engine->id);
+	if (kthread_create(intel_breadcrumbs_signaler, engine, NULL, name) != 0)
+		printf("%s: failed to create thread\n", __func__);
+}
+
+int intel_engine_init_breadcrumbs(struct intel_engine_cs *engine)
+{
+	struct intel_breadcrumbs *b = &engine->breadcrumbs;
+	struct task_struct *tsk;
+
+	mtx_init(&b->rb_lock, IPL_NONE);
+	mtx_init(&b->irq_lock, IPL_NONE);
+
+	timeout_set(&b->fake_irq, intel_breadcrumbs_fake_irq, engine);
+	timeout_set(&b->hangcheck, intel_breadcrumbs_hangcheck, engine);
+
+	INIT_LIST_HEAD(&b->signals);
+
+	/* Spawn a thread to provide a common bottom-half for all signals.
+	 * As this is an asynchronous interface we cannot steal the current
+	 * task for handling the bottom-half to the user interrupt, therefore
+	 * we create a thread to do the coherent seqno dance after the
+	 * interrupt and then signal the waitqueue (via the dma-buf/fence).
+	 */
+	kthread_create_deferred(intel_create_breadcrumbs_thread, engine);
+	b->signaler = NULL;
+
+	return 0;
+}
+
+#endif
 
 static void cancel_fake_irq(struct intel_engine_cs *engine)
 {
