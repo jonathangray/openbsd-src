@@ -317,6 +317,15 @@ __hash_empty(struct hlist_head *table, u_int size)
 	for (i = 0; i < nitems(table); i++)		\
 	       hlist_for_each_entry_safe(obj, tmp, &table[i], member)
 
+/* 2^32 * ((sqrt(5) - 1) / 2) from Knuth */
+#define GOLDEN_RATIO_32	0x9e3779b9
+
+static inline uint32_t
+hash_32(uint32_t val, unsigned int bits)
+{
+	return (val * GOLDEN_RATIO_32) >> (32 - bits);
+}
+
 #define EXPORT_SYMBOL(x)
 #define EXPORT_SYMBOL_GPL(x)
 
