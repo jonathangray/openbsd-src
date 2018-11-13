@@ -3466,8 +3466,6 @@ static void gen6_gmch_remove(struct i915_address_space *vm)
 
 static void setup_private_pat(struct drm_i915_private *dev_priv)
 {
-	STUB();
-#ifdef notyet
 	struct intel_ppat *ppat = &dev_priv->ppat;
 	int i;
 
@@ -3489,7 +3487,6 @@ static void setup_private_pat(struct drm_i915_private *dev_priv)
 	}
 
 	ppat->update_hw(dev_priv);
-#endif
 }
 
 static int gen8_gmch_probe(struct i915_ggtt *ggtt)
