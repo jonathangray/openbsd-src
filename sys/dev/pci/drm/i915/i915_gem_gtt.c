@@ -789,20 +789,14 @@ static void free_pd(struct i915_address_space *vm,
 static void gen8_initialize_pd(struct i915_address_space *vm,
 			       struct i915_page_directory *pd)
 {
-	STUB();
-#ifdef notyet
 	fill_px(vm, pd,
 		gen8_pde_encode(px_dma(vm->scratch_pt), I915_CACHE_LLC));
 	memset_p((void **)pd->page_table, vm->scratch_pt, I915_PDES);
-#endif
 }
 
 static int __pdp_init(struct i915_address_space *vm,
 		      struct i915_page_directory_pointer *pdp)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
 	const unsigned int pdpes = i915_pdpes_per_pdp(vm);
 
 	pdp->page_directory = kmalloc_array(pdpes, sizeof(*pdp->page_directory),
@@ -813,7 +807,6 @@ static int __pdp_init(struct i915_address_space *vm,
 	memset_p((void **)pdp->page_directory, vm->scratch_pd, pdpes);
 
 	return 0;
-#endif
 }
 
 static void __pdp_fini(struct i915_page_directory_pointer *pdp)
@@ -882,12 +875,9 @@ static void gen8_initialize_pdp(struct i915_address_space *vm,
 static void gen8_initialize_pml4(struct i915_address_space *vm,
 				 struct i915_pml4 *pml4)
 {
-	STUB();
-#ifdef notyet
 	fill_px(vm, pml4,
 		gen8_pml4e_encode(px_dma(vm->scratch_pdp), I915_CACHE_LLC));
 	memset_p((void **)pml4->pdps, vm->scratch_pdp, GEN8_PML4ES_PER_PML4);
-#endif
 }
 
 /* PDE TLBs are a pain to invalidate on GEN8+. When we modify
