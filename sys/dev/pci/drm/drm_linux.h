@@ -1168,6 +1168,7 @@ void flush_workqueue(struct workqueue_struct *);
 bool flush_work(struct work_struct *);
 bool flush_delayed_work(struct delayed_work *);
 #define flush_scheduled_work()	flush_workqueue(system_wq)
+#define drain_workqueue(x)	flush_workqueue(x)
 
 #define destroy_work_on_stack(x)
 #define destroy_delayed_work_on_stack(x)
