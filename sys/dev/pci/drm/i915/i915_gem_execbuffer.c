@@ -507,9 +507,6 @@ eb_add_vma(struct i915_execbuffer *eb,
 	   unsigned int i, unsigned batch_idx,
 	   struct i915_vma *vma)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
 	struct drm_i915_gem_exec_object2 *entry = &eb->exec[i];
 	int err;
 
@@ -576,7 +573,6 @@ eb_add_vma(struct i915_execbuffer *eb,
 			vma->exec_flags = NULL;
 	}
 	return err;
-#endif
 }
 
 static inline int use_cpu_reloc(const struct reloc_cache *cache,
@@ -842,9 +838,6 @@ err_vma:
 static struct i915_vma *
 eb_get_vma(const struct i915_execbuffer *eb, unsigned long handle)
 {
-	STUB();
-	return NULL;
-#ifdef notyet
 	if (eb->lut_size < 0) {
 		if (handle >= -eb->lut_size)
 			return NULL;
@@ -860,7 +853,6 @@ eb_get_vma(const struct i915_execbuffer *eb, unsigned long handle)
 		}
 		return NULL;
 	}
-#endif
 }
 
 static void eb_release_vmas(const struct i915_execbuffer *eb)
