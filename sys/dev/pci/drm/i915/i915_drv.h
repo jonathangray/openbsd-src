@@ -3119,8 +3119,6 @@ static inline void i915_gem_drain_freed_objects(struct drm_i915_private *i915)
 
 static inline void i915_gem_drain_workqueue(struct drm_i915_private *i915)
 {
-	STUB();
-#ifdef notyet
 	/*
 	 * Similar to objects above (see i915_gem_drain_freed-objects), in
 	 * general we have workers that are armed by RCU and then rearm
@@ -3137,7 +3135,6 @@ static inline void i915_gem_drain_workqueue(struct drm_i915_private *i915)
 		rcu_barrier();
 		drain_workqueue(i915->wq);
 	} while (--pass);
-#endif
 }
 
 struct i915_vma * __must_check
