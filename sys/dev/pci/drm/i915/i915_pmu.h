@@ -55,7 +55,7 @@ struct i915_pmu {
 	/**
 	 * @timer: Timer for internal i915 PMU sampling.
 	 */
-	struct hrtimer timer;
+	struct timeout timer;
 	/**
 	 * @enable: Bitmask of all currently enabled events.
 	 *

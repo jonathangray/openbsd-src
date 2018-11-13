@@ -2024,16 +2024,18 @@ static void gen8_oa_enable(struct drm_i915_private *dev_priv)
  */
 static void i915_oa_stream_enable(struct i915_perf_stream *stream)
 {
-	STUB();
-#ifdef notyet
 	struct drm_i915_private *dev_priv = stream->dev_priv;
 
 	dev_priv->perf.oa.ops.oa_enable(dev_priv);
 
 	if (dev_priv->perf.oa.periodic)
+#ifdef __linux__
 		hrtimer_start(&dev_priv->perf.oa.poll_check_timer,
 			      ns_to_ktime(POLL_PERIOD),
 			      HRTIMER_MODE_REL_PINNED);
+#else
+		timeout_add_nsec(&dev_priv->perf.oa.poll_check_timer,
+		    POLL_PERIOD);
 #endif
 }
 
@@ -2394,11 +2396,10 @@ static ssize_t i915_perf_read(struct file *file,
 #endif
 }
 
+#ifdef __linux__
+
 static enum hrtimer_restart oa_poll_check_timer_cb(struct hrtimer *hrtimer)
 {
-	STUB();
-	return 0;
-#ifdef notyet
 	struct drm_i915_private *dev_priv =
 		container_of(hrtimer, typeof(*dev_priv),
 			     perf.oa.poll_check_timer);
@@ -2411,8 +2412,25 @@ static enum hrtimer_restart oa_poll_check_timer_cb(struct hrtimer *hrtimer)
 	hrtimer_forward_now(hrtimer, ns_to_ktime(POLL_PERIOD));
 
 	return HRTIMER_RESTART;
-#endif
 }
+
+#else
+
+static void oa_poll_check_timer_cb(void *arg)
+{
+	struct timeout *hrtimer = arg;
+	struct drm_i915_private *dev_priv =
+		container_of(hrtimer, typeof(*dev_priv),
+			     perf.oa.poll_check_timer);
+
+	if (oa_buffer_check_unlocked(dev_priv)) {
+		dev_priv->perf.oa.pollin = true;
+		wake_up(&dev_priv->perf.oa.poll_wq);
+	}
+
+	timeout_add_nsec(hrtimer, POLL_PERIOD);
+}
+#endif
 
 #ifdef notyet
 /**
@@ -3625,9 +3643,14 @@ void i915_perf_init(struct drm_i915_private *dev_priv)
 	}
 
 	if (dev_priv->perf.oa.ops.enable_metric_set) {
+#ifdef __linux__
 		hrtimer_init(&dev_priv->perf.oa.poll_check_timer,
 				CLOCK_MONOTONIC, HRTIMER_MODE_REL);
 		dev_priv->perf.oa.poll_check_timer.function = oa_poll_check_timer_cb;
+#else
+		timeout_set(&dev_priv->perf.oa.poll_check_timer,
+		    oa_poll_check_timer_cb, &dev_priv->perf.oa.poll_check_timer);
+#endif
 		init_waitqueue_head(&dev_priv->perf.oa.poll_wq);
 
 		INIT_LIST_HEAD(&dev_priv->perf.streams);

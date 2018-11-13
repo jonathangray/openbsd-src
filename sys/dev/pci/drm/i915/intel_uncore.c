@@ -76,10 +76,14 @@ static inline void
 fw_domain_arm_timer(struct intel_uncore_forcewake_domain *d)
 {
 	d->wake_count++;
+#ifdef __linux__
 	hrtimer_start_range_ns(&d->timer,
 			       NSEC_PER_MSEC,
 			       NSEC_PER_MSEC,
 			       HRTIMER_MODE_REL);
+#else
+	timeout_add_msec(&d->timer, 1);
+#endif
 }
 
 static inline int
@@ -334,6 +338,8 @@ static void __gen6_gt_wait_for_fifo(struct drm_i915_private *dev_priv)
 	dev_priv->uncore.fifo_count = n - 1;
 }
 
+#ifdef __linux__
+
 static enum hrtimer_restart
 intel_uncore_fw_release_timer(struct hrtimer *timer)
 {
@@ -345,11 +351,7 @@ intel_uncore_fw_release_timer(struct hrtimer *timer)
 
 	assert_rpm_device_not_suspended(dev_priv);
 
-#ifdef notyet
 	if (xchg(&domain->active, false))
-#else
-	if (atomic_xchg((int *)&domain->active, false))
-#endif
 		return HRTIMER_RESTART;
 
 	spin_lock_irqsave(&dev_priv->uncore.lock, irqflags);
@@ -363,6 +365,33 @@ intel_uncore_fw_release_timer(struct hrtimer *timer)
 
 	return HRTIMER_NORESTART;
 }
+
+#else
+
+void
+intel_uncore_fw_release_timer(void *arg)
+{
+	struct intel_uncore_forcewake_domain *domain = arg;
+	struct drm_i915_private *dev_priv =
+		container_of(domain, struct drm_i915_private, uncore.fw_domain[domain->id]);
+	unsigned long irqflags;
+
+	assert_rpm_device_not_suspended(dev_priv);
+
+	if (xchg(&domain->active, false))
+		return;
+
+	spin_lock_irqsave(&dev_priv->uncore.lock, irqflags);
+	if (WARN_ON(domain->wake_count == 0))
+		domain->wake_count++;
+
+	if (--domain->wake_count == 0)
+		dev_priv->uncore.funcs.force_wake_put(dev_priv, domain->mask);
+
+	spin_unlock_irqrestore(&dev_priv->uncore.lock, irqflags);
+}
+
+#endif
 
 /* Note callers must have acquired the PUNIT->PMIC bus, before calling this. */
 static unsigned int
@@ -1364,8 +1393,12 @@ static void fw_domain_init(struct drm_i915_private *dev_priv,
 
 	d->mask = BIT(domain_id);
 
+#ifdef __linux__
 	hrtimer_init(&d->timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
 	d->timer.function = intel_uncore_fw_release_timer;
+#else
+	timeout_set(&d->timer, intel_uncore_fw_release_timer, d);
+#endif
 
 	dev_priv->uncore.fw_domains |= BIT(domain_id);
 

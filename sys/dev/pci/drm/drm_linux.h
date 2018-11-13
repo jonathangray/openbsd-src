@@ -3639,46 +3639,8 @@ struct hrtimer {
 
 #define HRTIMER_MODE_REL	1
 
-static inline void
-hrtimer_init(struct hrtimer *timer, int clock, int mode)
-{
-	STUB();
-}
-
-static inline void
-hrtimer_start_range_ns(struct hrtimer *timer, long tim, u64 range_ns,
-    int mode)
-{
-	STUB();
-}
-
-static inline bool
-hrtimer_active(const struct hrtimer *timer)
-{
-	STUB();
-	return false;
-}
-
-static inline int
-hrtimer_cancel(struct hrtimer *timer)
-{
-	STUB();
-	return -ENOSYS;
-}
-
-static inline void
-hrtimer_start(struct hrtimer *timer, ktime_t tim,
-    int mode)
-{
-	STUB();
-}
-
-static inline uint64_t
-hrtimer_forward_now(struct hrtimer *timer, ktime_t interval)
-{
-	STUB();
-	return 0;
-}
+#define hrtimer_cancel(x)	timeout_del(x)
+#define hrtimer_active(x)	timeout_pending(x)
 
 #define MBI_PMIC_BUS_ACCESS_BEGIN	1
 #define MBI_PMIC_BUS_ACCESS_END		2
