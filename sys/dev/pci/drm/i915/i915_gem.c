@@ -1186,7 +1186,7 @@ i915_gem_shmem_pread(struct drm_i915_gem_object *obj,
 	return ret;
 }
 
-#ifdef notyet
+#ifdef __linux__
 static inline bool
 gtt_user_read(struct io_mapping *mapping,
 	      loff_t base, int offset,
@@ -1210,15 +1210,39 @@ gtt_user_read(struct io_mapping *mapping,
 	}
 	return unwritten;
 }
+#else
+static inline bool
+gtt_user_read(struct drm_i915_private *dev_priv,
+	      loff_t base, int offset,
+	      char __user *user_data, int length)
+{
+	bus_space_handle_t bsh;
+	void __iomem *vaddr;
+	unsigned long unwritten;
+
+	/* We can use the cpu mem copy function because this is X86. */
+	agp_map_atomic(dev_priv->agph, base, &bsh);
+	vaddr = bus_space_vaddr(dev_priv->bst, bsh);
+	unwritten = __copy_to_user_inatomic(user_data,
+					    (void __force *)vaddr + offset,
+					    length);
+	agp_unmap_atomic(dev_priv->agph, bsh);
+	if (unwritten) {
+		agp_map_subregion(dev_priv->agph, base, PAGE_SIZE, &bsh);
+		vaddr = bus_space_vaddr(dev_priv->bst, bsh);
+		unwritten = copy_to_user(user_data,
+					 (void __force *)vaddr + offset,
+					 length);
+		agp_unmap_subregion(dev_priv->agph, bsh, PAGE_SIZE);
+	}
+	return unwritten;
+}
 #endif
 
 static int
 i915_gem_gtt_pread(struct drm_i915_gem_object *obj,
 		   const struct drm_i915_gem_pread *args)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
 	struct drm_i915_private *i915 = to_i915(obj->base.dev);
 	struct i915_ggtt *ggtt = &i915->ggtt;
 	struct drm_mm_node node;
@@ -1283,7 +1307,7 @@ i915_gem_gtt_pread(struct drm_i915_gem_object *obj,
 			page_base += offset & PAGE_MASK;
 		}
 
-		if (gtt_user_read(&ggtt->iomap, page_base, page_offset,
+		if (gtt_user_read(i915, page_base, page_offset,
 				  user_data, page_length)) {
 			ret = -EFAULT;
 			break;
@@ -1308,7 +1332,6 @@ out_unlock:
 	mutex_unlock(&i915->drm.struct_mutex);
 
 	return ret;
-#endif
 }
 
 /**
@@ -1368,11 +1391,10 @@ out:
 	return ret;
 }
 
-#ifdef notyet
 /* This is the fast write path which cannot handle
  * page faults in the source data
  */
-
+#ifdef __linux__
 static inline bool
 ggtt_write(struct io_mapping *mapping,
 	   loff_t base, int offset,
@@ -1395,6 +1417,32 @@ ggtt_write(struct io_mapping *mapping,
 
 	return unwritten;
 }
+#else
+static inline bool
+ggtt_write(struct drm_i915_private *dev_priv,
+	   loff_t base, int offset,
+	   char __user *user_data, int length)
+{
+	bus_space_handle_t bsh;
+	void __iomem *vaddr;
+	unsigned long unwritten;
+
+	/* We can use the cpu mem copy function because this is X86. */
+	agp_map_atomic(dev_priv->agph, base, &bsh);
+	vaddr = bus_space_vaddr(dev_priv->bst, bsh);
+	unwritten = __copy_from_user_inatomic_nocache((void __force *)vaddr + offset,
+						      user_data, length);
+	agp_unmap_atomic(dev_priv->agph, bsh);
+	if (unwritten) {
+		agp_map_subregion(dev_priv->agph, base, PAGE_SIZE, &bsh);
+		vaddr = bus_space_vaddr(dev_priv->bst, bsh);
+		unwritten = copy_from_user((void __force *)vaddr + offset,
+					   user_data, length);
+		agp_unmap_subregion(dev_priv->agph, bsh, PAGE_SIZE);
+	}
+
+	return unwritten;
+}
 #endif
 
 /**
@@ -1407,9 +1455,6 @@ static int
 i915_gem_gtt_pwrite_fast(struct drm_i915_gem_object *obj,
 			 const struct drm_i915_gem_pwrite *args)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
 	struct drm_i915_private *i915 = to_i915(obj->base.dev);
 	struct i915_ggtt *ggtt = &i915->ggtt;
 	struct drm_mm_node node;
@@ -1496,7 +1541,7 @@ i915_gem_gtt_pwrite_fast(struct drm_i915_gem_object *obj,
 		 * If the object is non-shmem backed, we retry again with the
 		 * path that handles page fault.
 		 */
-		if (ggtt_write(&ggtt->iomap, page_base, page_offset,
+		if (ggtt_write(i915, page_base, page_offset,
 			       user_data, page_length)) {
 			ret = -EFAULT;
 			break;
@@ -1522,7 +1567,6 @@ out_rpm:
 out_unlock:
 	mutex_unlock(&i915->drm.struct_mutex);
 	return ret;
-#endif
 }
 
 static int
