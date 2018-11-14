@@ -397,9 +397,6 @@ static inline void __intel_breadcrumbs_next(struct intel_engine_cs *engine,
 static bool __intel_engine_add_wait(struct intel_engine_cs *engine,
 				    struct intel_wait *wait)
 {
-	STUB();
-	return false;
-#ifdef notyet
 	struct intel_breadcrumbs *b = &engine->breadcrumbs;
 	struct rb_node **p, *parent, *completed;
 	bool first, armed;
@@ -503,7 +500,6 @@ static bool __intel_engine_add_wait(struct intel_engine_cs *engine,
 	GEM_BUG_ON(rb_first(&b->waiters) != &b->irq_wait->node);
 
 	return armed;
-#endif
 }
 
 bool intel_engine_add_wait(struct intel_engine_cs *engine,
@@ -525,24 +521,16 @@ bool intel_engine_add_wait(struct intel_engine_cs *engine,
 
 static inline bool chain_wakeup(struct rb_node *rb, int priority)
 {
-	STUB();
-	return false;
-#ifdef notyet
 	return rb && to_wait(rb)->tsk->prio <= priority;
-#endif
 }
 
 static inline int wakeup_priority(struct intel_breadcrumbs *b,
 				  struct task_struct *tsk)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
 	if (tsk == b->signaler)
 		return INT_MIN;
 	else
 		return tsk->prio;
-#endif
 }
 
 static void __intel_engine_remove_wait(struct intel_engine_cs *engine,

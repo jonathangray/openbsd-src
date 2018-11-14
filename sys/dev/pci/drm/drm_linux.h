@@ -1227,6 +1227,7 @@ tasklet_unlock(struct tasklet_struct *ts)
 
 struct task_struct {
 	int state;
+	int prio;
 };
 
 #define TASK_NORMAL	1
