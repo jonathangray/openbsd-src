@@ -886,18 +886,18 @@ int i915_error_state_buf_init(struct drm_i915_error_state_buf *ebuf,
 
 static void i915_error_object_free(struct drm_i915_error_object *obj)
 {
-	STUB();
-#ifdef notyet
 	int page;
 
 	if (obj == NULL)
 		return;
 
+	STUB();
+#ifdef notyet
 	for (page = 0; page < obj->page_count; page++)
 		free_page((unsigned long)obj->pages[page]);
+#endif
 
 	kfree(obj);
-#endif
 }
 
 static __always_inline void free_param(const char *type, void *x)
@@ -964,9 +964,6 @@ static struct drm_i915_error_object *
 i915_error_object_create(struct drm_i915_private *i915,
 			 struct i915_vma *vma)
 {
-	STUB();
-	return NULL;
-#ifdef notyet
 	struct i915_ggtt *ggtt = &i915->ggtt;
 	const u64 slot = ggtt->error_capture.start;
 	struct drm_i915_error_object *dst;
@@ -975,6 +972,7 @@ i915_error_object_create(struct drm_i915_private *i915,
 	struct sgt_iter iter;
 	dma_addr_t dma;
 	int ret;
+	bus_space_handle_t bsh;
 
 	if (!vma)
 		return NULL;
@@ -1006,22 +1004,25 @@ i915_error_object_create(struct drm_i915_private *i915,
 #ifdef __linux__
 		s = io_mapping_map_atomic_wc(&ggtt->iomap, slot);
 #else
-		agp_map_atomic(dev_priv->agph, reloc_offset, &bsh);
-		s = bus_space_vaddr(dev_priv->bst, bsh);
+		agp_map_atomic(i915->agph, slot, &bsh);
+		s = bus_space_vaddr(i915->bst, bsh);
 #endif
 		ret = compress_page(&compress, (void  __force *)s, dst);
 #ifdef __linux__
 		io_mapping_unmap_atomic(s);
 #else
-		agp_unmap_atomic(dev_priv->agph, bsh);
+		agp_unmap_atomic(i915->agph, bsh);
 #endif
 		if (ret)
 			break;
 	}
 
 	if (ret || compress_flush(&compress, dst)) {
+		STUB();
+#ifdef notyet
 		while (dst->page_count--)
 			free_page((unsigned long)dst->pages[dst->page_count]);
+#endif
 		kfree(dst);
 		dst = NULL;
 	}
@@ -1029,7 +1030,6 @@ i915_error_object_create(struct drm_i915_private *i915,
 	compress_fini(&compress, dst);
 	ggtt->vm.clear_range(&ggtt->vm, slot, PAGE_SIZE);
 	return dst;
-#endif
 }
 
 /* The error capture is special as tries to run underneath the normal
