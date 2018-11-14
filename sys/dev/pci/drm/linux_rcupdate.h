@@ -8,6 +8,7 @@ struct rcu_head {
 
 #define __rcu
 #define rcu_dereference(p)	(p)
+#define rcu_dereference_raw(p)	(p)
 #define rcu_dereference_protected(p, c)	(p)
 #define rcu_access_pointer(p)	(p)
 #define RCU_INIT_POINTER(p, v)		do { (p) = (v); } while(0)
