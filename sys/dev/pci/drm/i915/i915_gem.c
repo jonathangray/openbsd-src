@@ -2713,8 +2713,6 @@ i915_gem_object_put_pages_gtt(struct drm_i915_gem_object *obj,
 
 static void __i915_gem_object_reset_page_iter(struct drm_i915_gem_object *obj)
 {
-	STUB();
-#ifdef notyet
 	struct radix_tree_iter iter;
 	void __rcu **slot;
 
@@ -2722,7 +2720,6 @@ static void __i915_gem_object_reset_page_iter(struct drm_i915_gem_object *obj)
 	radix_tree_for_each_slot(slot, &obj->mm.get_page.radix, &iter, 0)
 		radix_tree_delete(&obj->mm.get_page.radix, iter.index);
 	rcu_read_unlock();
-#endif
 }
 
 static struct sg_table *
