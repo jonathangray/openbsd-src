@@ -3845,46 +3845,6 @@ stop_machine(cpu_stop_fn_t fn, void *arg, void *cpus)
 	return r;
 }
 
-struct radix_tree_root {
-};
-
-struct radix_tree_iter {
-};
-
-static inline int
-radix_tree_insert(struct radix_tree_root *root,
-    unsigned long index, void *entry)
-{
-	STUB();
-	return -ENOSYS;
-}
-
-static inline void *
-radix_tree_lookup(const struct radix_tree_root *root, unsigned long index)
-{
-	STUB();
-	return NULL;
-}
-
-static inline void *
-radix_tree_delete(struct radix_tree_root *root, unsigned long index)
-{
-	STUB();
-	return NULL;
-}
-
-static inline int
-radix_tree_exception(void *arg)
-{
-	STUB();
-	return -ENOSYS;
-}
-
-#define RADIX_TREE_EXCEPTIONAL_ENTRY	0
-#define RADIX_TREE_EXCEPTIONAL_SHIFT	0
-
-#define INIT_RADIX_TREE(x, y)
-
 #define put_pid(x)
 
 static inline int

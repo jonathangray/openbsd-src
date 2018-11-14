@@ -29,6 +29,7 @@
 #include <linux/reservation.h>
 #else
 #include <dev/pci/drm/linux_reservation.h>
+#include <dev/pci/drm/linux_radix-tree.h>
 #endif
 
 #include <dev/pci/drm/drm_vma_manager.h>
