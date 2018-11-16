@@ -40,9 +40,6 @@
 
 static unsigned int __intel_breadcrumbs_wakeup(struct intel_breadcrumbs *b)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
 	struct intel_wait *wait;
 	unsigned int result = 0;
 
@@ -68,7 +65,6 @@ static unsigned int __intel_breadcrumbs_wakeup(struct intel_breadcrumbs *b)
 	}
 
 	return result;
-#endif
 }
 
 unsigned int intel_engine_wakeup(struct intel_engine_cs *engine)
