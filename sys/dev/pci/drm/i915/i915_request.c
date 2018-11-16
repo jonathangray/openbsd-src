@@ -1317,9 +1317,6 @@ long i915_request_wait(struct i915_request *rq,
 		       unsigned int flags,
 		       long timeout)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
 	const int state = flags & I915_WAIT_INTERRUPTIBLE ?
 		TASK_INTERRUPTIBLE : TASK_UNINTERRUPTIBLE;
 	wait_queue_head_t *errq = &rq->i915->gpu_error.wait_queue;
@@ -1454,7 +1451,6 @@ complete:
 	trace_i915_request_wait_end(rq);
 
 	return timeout;
-#endif
 }
 
 static void ring_retire_requests(struct intel_ring *ring)
