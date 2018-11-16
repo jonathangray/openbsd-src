@@ -254,6 +254,7 @@ static int i915_sw_fence_wake(wait_queue_entry_t *wq, unsigned mode, int flags, 
 #else
 static int i915_sw_fence_wake(wait_queue_entry_t *wq, unsigned mode, int flags, void *key)
 {
+	list_del(&wq->entry);
 	__i915_sw_fence_complete(wq->private, key);
 	return 0;
 }
@@ -262,9 +263,6 @@ static int i915_sw_fence_wake(wait_queue_entry_t *wq, unsigned mode, int flags, 
 static bool __i915_sw_fence_check_if_after(struct i915_sw_fence *fence,
 				    const struct i915_sw_fence * const signaler)
 {
-	STUB();
-	return false;
-#ifdef notyet
 	wait_queue_entry_t *wq;
 
 	if (__test_and_set_bit(I915_SW_FENCE_CHECKED_BIT, &fence->flags))
@@ -282,13 +280,10 @@ static bool __i915_sw_fence_check_if_after(struct i915_sw_fence *fence,
 	}
 
 	return false;
-#endif
 }
 
 static void __i915_sw_fence_clear_checked_bit(struct i915_sw_fence *fence)
 {
-	STUB();
-#ifdef notyet
 	wait_queue_entry_t *wq;
 
 	if (!__test_and_clear_bit(I915_SW_FENCE_CHECKED_BIT, &fence->flags))
@@ -300,7 +295,6 @@ static void __i915_sw_fence_clear_checked_bit(struct i915_sw_fence *fence)
 
 		__i915_sw_fence_clear_checked_bit(wq->private);
 	}
-#endif
 }
 
 static bool i915_sw_fence_check_if_after(struct i915_sw_fence *fence,
