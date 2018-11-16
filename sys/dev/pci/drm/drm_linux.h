@@ -749,6 +749,7 @@ init_waitqueue_head(wait_queue_head_t *wqh)
 
 #define __init_waitqueue_head(wq, name, key)	init_waitqueue_head(wq)
 
+int default_wake_function(struct wait_queue_entry *, unsigned int, int, void *);
 int autoremove_wake_function(struct wait_queue_entry *, unsigned int, int, void *);
 
 static inline void
@@ -1791,10 +1792,10 @@ kobject_del(struct kobject *obj)
 		.func = autoremove_wake_function,	\
 		.entry = LIST_HEAD_INIT((name).entry),	\
 	}						
-#define	DEFINE_WAIT_FUNC(name, func)			\
+#define	DEFINE_WAIT_FUNC(name, cb)			\
 	struct wait_queue_entry name = {		\
 		.private = NULL,			\
-		.func = func,				\
+		.func = cb,				\
 		.entry = LIST_HEAD_INIT((name).entry),	\
 	}
 

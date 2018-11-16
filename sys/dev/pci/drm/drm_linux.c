@@ -1049,6 +1049,13 @@ pcie_get_speed_cap(struct pci_dev *pdev)
 }
 
 int
+default_wake_function(struct wait_queue_entry *wqe, unsigned int mode,
+    int sync, void *key)
+{
+	return 0;
+}
+
+int
 autoremove_wake_function(struct wait_queue_entry *wqe, unsigned int mode,
     int sync, void *key)
 {
