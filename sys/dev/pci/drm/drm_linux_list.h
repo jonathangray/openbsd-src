@@ -230,6 +230,16 @@ list_splice_tail(const struct list_head *list, struct list_head *head)
 	__list_splice(list, head->prev, head);
 }
 
+static inline void
+list_splice_tail_init(struct list_head *list, struct list_head *head)
+{
+	if (list_empty(list))
+		return;
+
+	__list_splice(list, head->prev, head);
+	INIT_LIST_HEAD(list);
+}
+
 void	list_sort(void *, struct list_head *,
 	    int (*)(void *, struct list_head *, struct list_head *));
 
