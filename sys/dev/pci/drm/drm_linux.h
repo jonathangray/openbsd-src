@@ -1869,6 +1869,8 @@ schedule_timeout(long timeout)
 	return timeout;
 }
 
+#define io_schedule_timeout(x)	schedule_timeout(x)
+
 static inline void
 schedule(void)
 {
