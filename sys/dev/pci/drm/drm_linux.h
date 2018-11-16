@@ -887,12 +887,14 @@ _wake_up(wait_queue_head_t *wqh LOCK_FL_VARS)
 	_mtx_leave(&wqh->lock LOCK_FL_ARGS);
 }
 
-#define wake_up_process(task)			\
-do {						\
-	mtx_enter(&sch_mtx);			\
-	wakeup(task);				\
-	mtx_leave(&sch_mtx);			\
-} while (0)
+static inline int
+wake_up_process(void *task)
+{
+	mtx_enter(&sch_mtx);
+	wakeup(task);
+	mtx_leave(&sch_mtx);
+	return 1; /* process woken up */
+}
 
 #define wake_up(wq)			_wake_up(wq LOCK_FILE_LINE)
 #define wake_up_all(wq)			_wake_up(wq LOCK_FILE_LINE)
