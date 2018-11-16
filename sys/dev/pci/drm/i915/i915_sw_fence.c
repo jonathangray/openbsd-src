@@ -140,8 +140,6 @@ void i915_sw_fence_fini(struct i915_sw_fence *fence)
 static void __i915_sw_fence_wake_up_all(struct i915_sw_fence *fence,
 					struct list_head *continuation)
 {
-	STUB();
-#ifdef notyet
 	wait_queue_head_t *x = &fence->wait;
 	wait_queue_entry_t *pos, *next;
 	unsigned long flags;
@@ -180,7 +178,6 @@ static void __i915_sw_fence_wake_up_all(struct i915_sw_fence *fence,
 	spin_unlock_irqrestore(&x->lock, flags);
 
 	debug_fence_assert(fence);
-#endif
 }
 
 static void __i915_sw_fence_complete(struct i915_sw_fence *fence,
