@@ -1047,3 +1047,11 @@ pcie_get_speed_cap(struct pci_dev *pdev)
 	    lnkcap2);
 	return cap;
 }
+
+int
+autoremove_wake_function(struct wait_queue_entry *wqe, unsigned int mode,
+    int sync, void *key)
+{
+	list_del_init(&wqe->entry);
+	return 0;
+}
