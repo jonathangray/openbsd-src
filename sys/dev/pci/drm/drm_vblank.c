@@ -837,9 +837,6 @@ static void send_vblank_event(struct drm_device *dev,
 		e->event.seq.time_ns = ktime_to_ns(now);
 		break;
 	}
-#ifdef __OpenBSD__
-	selwakeup(&e->base.file_priv->rsel);
-#endif
 	trace_drm_vblank_event_delivered(e->base.file_priv, e->pipe, seq);
 	drm_send_event_locked(dev, &e->base);
 }
