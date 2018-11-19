@@ -1005,9 +1005,6 @@ pcie_get_speed_cap(struct pci_dev *pdev)
 	enum pci_bus_speed	cap = PCI_SPEED_UNKNOWN;
 	int			bus, device, function;
 
-	if (tag == 0)
-		return PCI_SPEED_UNKNOWN;
-
 	if (!pci_get_capability(pc, tag, PCI_CAP_PCIEXPRESS,
 	    &pos, NULL)) 
 		return PCI_SPEED_UNKNOWN;
