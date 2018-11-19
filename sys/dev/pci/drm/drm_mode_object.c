@@ -283,6 +283,23 @@ static int __drm_object_property_get_value(struct drm_mode_object *obj,
 {
 	int i;
 
+#ifdef __OpenBSD__
+	if (obj->type == DRM_MODE_OBJECT_CONNECTOR) {
+		struct drm_connector *connector = obj_to_connector(obj);
+
+		if (property == connector->backlight_property) {
+			struct backlight_device *bd =
+				connector->backlight_device;
+
+			if (bd->props.type == BACKLIGHT_FIRMWARE)
+				*val = bd->ops->get_brightness(bd);
+			else
+				*val = bd->props.brightness;
+			return 0;
+		}
+	}
+#endif
+
 	/* read-only properties bypass atomic mechanism and still store
 	 * their value in obj->properties->values[].. mostly to avoid
 	 * having to deal w/ EDID and similar props in atomic paths:
