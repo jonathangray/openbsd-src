@@ -748,9 +748,6 @@ static void insert_signal(struct intel_breadcrumbs *b,
 
 bool intel_engine_enable_signaling(struct i915_request *request, bool wakeup)
 {
-	STUB();
-	return false;
-#ifdef notyet
 	struct intel_engine_cs *engine = request->engine;
 	struct intel_breadcrumbs *b = &engine->breadcrumbs;
 	struct intel_wait *wait = &request->signaling.wait;
@@ -797,7 +794,6 @@ bool intel_engine_enable_signaling(struct i915_request *request, bool wakeup)
 	}
 
 	return true;
-#endif
 }
 
 void intel_engine_cancel_signaling(struct i915_request *request)
