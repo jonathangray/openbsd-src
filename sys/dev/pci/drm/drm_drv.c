@@ -584,9 +584,8 @@ drmclose(dev_t kdev, int flags, int fmt, struct proc *p)
 	}
 	mutex_unlock(&dev->struct_mutex);
 
-	if (dev->driver->close != NULL)
-		dev->driver->close(dev, file_priv);
-	if (dev->driver->preclose != NULL)
+	if (drm_core_check_feature(dev, DRIVER_LEGACY) &&
+	    dev->driver->preclose)
 		dev->driver->preclose(dev, file_priv);
 
 	DRM_DEBUG("pid = %d, device = 0x%lx, open_count = %d\n",
@@ -594,10 +593,15 @@ drmclose(dev_t kdev, int flags, int fmt, struct proc *p)
 
 	drm_events_release(file_priv, dev);
 
-	if (dev->driver->driver_features & DRIVER_MODESET)
+	if (drm_core_check_feature(dev, DRIVER_MODESET)) {
 		drm_fb_release(file_priv);
+		drm_property_destroy_user_blobs(dev, file_priv);
+	}
 
-	if (dev->driver->driver_features & DRIVER_GEM)
+	if (drm_core_check_feature(dev, DRIVER_SYNCOBJ))
+		drm_syncobj_release(file_priv);
+
+	if (drm_core_check_feature(dev, DRIVER_GEM))
 		drm_gem_release(dev, file_priv);
 
 	mutex_lock(&dev->struct_mutex);
@@ -606,7 +610,6 @@ drmclose(dev_t kdev, int flags, int fmt, struct proc *p)
 
 	if (dev->driver->postclose)
 		dev->driver->postclose(dev, file_priv);
-
 
 	if (drm_core_check_feature(dev, DRIVER_PRIME))
 		drm_prime_destroy_file_private(&file_priv->prime);

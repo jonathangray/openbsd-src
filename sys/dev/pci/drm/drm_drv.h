@@ -59,7 +59,6 @@ struct drm_printer;
 struct drm_driver {
 	int	(*firstopen)(struct drm_device *);
 	int	(*open)(struct drm_device *, struct drm_file *);
-	void	(*close)(struct drm_device *, struct drm_file *);
 	void	(*preclose)(struct drm_device *, struct drm_file *);
 	void	(*postclose)(struct drm_device *, struct drm_file *);
 	void	(*lastclose)(struct drm_device *);
