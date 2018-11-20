@@ -524,8 +524,13 @@ drmopen(dev_t kdev, int flags, int fmt, struct proc *p)
 	/* for compatibility root is always authenticated */
 	file_priv->authenticated = DRM_SUSER(p);
 
-	if (dev->driver->driver_features & DRIVER_GEM)
+	rw_init(&file_priv->event_read_lock, "evread");
+
+	if (drm_core_check_feature(dev, DRIVER_GEM))
 		drm_gem_open(dev, file_priv);
+
+	if (drm_core_check_feature(dev, DRIVER_SYNCOBJ))
+		drm_syncobj_open(file_priv);
 
 	if (drm_core_check_feature(dev, DRIVER_PRIME))
 		drm_prime_init_file_private(&file_priv->prime);
@@ -533,7 +538,7 @@ drmopen(dev_t kdev, int flags, int fmt, struct proc *p)
 	if (dev->driver->open) {
 		ret = dev->driver->open(dev, file_priv);
 		if (ret != 0) {
-			goto free_priv;
+			goto out_prime_destroy;
 		}
 	}
 
@@ -542,7 +547,7 @@ drmopen(dev_t kdev, int flags, int fmt, struct proc *p)
 	if (SPLAY_EMPTY(&dev->files) && !DRM_SUSER(p)) {
 		mutex_unlock(&dev->struct_mutex);
 		ret = EPERM;
-		goto free_priv;
+		goto out_prime_destroy;
 	}
 
 	file_priv->is_master = SPLAY_EMPTY(&dev->files);
@@ -552,7 +557,13 @@ drmopen(dev_t kdev, int flags, int fmt, struct proc *p)
 
 	return (0);
 
-free_priv:
+out_prime_destroy:
+	if (drm_core_check_feature(dev, DRIVER_PRIME))
+		drm_prime_destroy_file_private(&file_priv->prime);
+	if (drm_core_check_feature(dev, DRIVER_SYNCOBJ))
+		drm_syncobj_release(file_priv);
+	if (drm_core_check_feature(dev, DRIVER_GEM))
+		drm_gem_release(dev, file_priv);
 	free(file_priv, M_DRM, 0);
 err:
 	mutex_lock(&dev->struct_mutex);
