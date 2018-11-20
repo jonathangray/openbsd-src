@@ -1347,8 +1347,6 @@ static void engine_record_requests(struct intel_engine_cs *engine,
 				   struct i915_request *first,
 				   struct drm_i915_error_engine *ee)
 {
-	STUB();
-#ifdef notyet
 	struct i915_request *request;
 	int count;
 
@@ -1390,7 +1388,6 @@ static void engine_record_requests(struct intel_engine_cs *engine,
 		record_request(request, &ee->requests[count++]);
 	}
 	ee->num_requests = count;
-#endif
 }
 
 static void error_record_engine_execlists(struct intel_engine_cs *engine,
