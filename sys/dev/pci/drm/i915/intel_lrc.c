@@ -1856,9 +1856,6 @@ static int gen9_init_render_ring(struct intel_engine_cs *engine)
 static struct i915_request *
 execlists_reset_prepare(struct intel_engine_cs *engine)
 {
-	STUB();
-	return NULL;
-#ifdef notyet
 	struct intel_engine_execlists * const execlists = &engine->execlists;
 	struct i915_request *request, *active;
 	unsigned long flags;
@@ -1915,7 +1912,6 @@ execlists_reset_prepare(struct intel_engine_cs *engine)
 	spin_unlock_irqrestore(&engine->timeline.lock, flags);
 
 	return active;
-#endif
 }
 
 static void execlists_reset(struct intel_engine_cs *engine,
