@@ -5088,9 +5088,7 @@ void i915_gem_object_init(struct drm_i915_gem_object *obj,
 	init_request_active(&obj->frontbuffer_write, frontbuffer_retire);
 
 	obj->mm.madv = I915_MADV_WILLNEED;
-#ifdef notyet
 	INIT_RADIX_TREE(&obj->mm.get_page.radix, GFP_KERNEL | __GFP_NOWARN);
-#endif
 	rw_init(&obj->mm.get_page.lock, "mmget");
 
 	i915_gem_info_add_obj(to_i915(obj->base.dev), obj->base.size);
