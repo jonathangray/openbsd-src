@@ -3734,9 +3734,7 @@ __drm_atomic_helper_connector_duplicate_state(struct drm_connector *connector,
 	state->commit = NULL;
 
 	/* Don't copy over a writeback job, they are used only once */
-#ifdef notyet
 	state->writeback_job = NULL;
-#endif
 }
 EXPORT_SYMBOL(__drm_atomic_helper_connector_duplicate_state);
 
