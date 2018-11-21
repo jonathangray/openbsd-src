@@ -210,6 +210,4 @@ bool drm_calc_vbltimestamp_from_scanoutpos(struct drm_device *dev,
 void drm_calc_timestamping_constants(struct drm_crtc *crtc,
 				     const struct drm_display_mode *mode);
 wait_queue_head_t *drm_crtc_vblank_waitqueue(struct drm_crtc *crtc);
-
-void drm_vblank_put(struct drm_device *dev, unsigned int pipe);
 #endif
