@@ -1858,9 +1858,7 @@ i915_capture_gpu_state(struct drm_i915_private *i915)
 	kref_init(&error->ref);
 	error->i915 = i915;
 
-#ifdef notyet
 	stop_machine(capture, error, NULL);
-#endif
 
 	return error;
 }
