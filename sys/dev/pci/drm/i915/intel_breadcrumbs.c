@@ -32,10 +32,16 @@
 
 #include "i915_drv.h"
 
+#ifdef __linux__
+
 #ifdef CONFIG_SMP
 #define task_asleep(tsk) ((tsk)->state & TASK_NORMAL && !(tsk)->on_cpu)
 #else
 #define task_asleep(tsk) ((tsk)->state & TASK_NORMAL)
+#endif
+
+#else
+#define task_asleep(p)	((p)->p_stat == SSLEEP)
 #endif
 
 static unsigned int __intel_breadcrumbs_wakeup(struct intel_breadcrumbs *b)
@@ -367,7 +373,11 @@ static inline void __intel_breadcrumbs_finish(struct intel_breadcrumbs *b,
 	rb_erase(&wait->node, &b->waiters);
 	RB_CLEAR_NODE(&wait->node);
 
+#ifdef __linux__
 	if (wait->tsk->state != TASK_RUNNING)
+#else
+	if (wait->tsk->p_stat != SONPROC)
+#endif
 		wake_up_process(wait->tsk); /* implicit smp_wmb() */
 }
 
@@ -437,7 +447,11 @@ static bool __intel_engine_add_wait(struct intel_engine_cs *engine,
 			 * task->prio) to serve as the bottom-half for this
 			 * group.
 			 */
+#ifdef __linux__
 			if (wait->tsk->prio > to_wait(parent)->tsk->prio) {
+#else
+			if (wait->tsk->p_priority > to_wait(parent)->tsk->p_priority) {
+#endif
 				p = &parent->rb_right;
 				first = false;
 			} else {
@@ -515,11 +529,19 @@ bool intel_engine_add_wait(struct intel_engine_cs *engine,
 				 wait->seqno - 1);
 }
 
+#ifdef __linux__
 static inline bool chain_wakeup(struct rb_node *rb, int priority)
 {
 	return rb && to_wait(rb)->tsk->prio <= priority;
 }
+#else
+static inline bool chain_wakeup(struct rb_node *rb, int priority)
+{
+	return rb && to_wait(rb)->tsk->p_priority <= priority;
+}
+#endif
 
+#ifdef __linux__
 static inline int wakeup_priority(struct intel_breadcrumbs *b,
 				  struct task_struct *tsk)
 {
@@ -528,6 +550,16 @@ static inline int wakeup_priority(struct intel_breadcrumbs *b,
 	else
 		return tsk->prio;
 }
+#else
+static inline int wakeup_priority(struct intel_breadcrumbs *b,
+				  struct proc *p)
+{
+	if (p == b->signaler)
+		return INT_MIN;
+	else
+		return p->p_priority;
+}
+#endif
 
 static void __intel_engine_remove_wait(struct intel_engine_cs *engine,
 				       struct intel_wait *wait)
@@ -855,14 +887,13 @@ intel_create_breadcrumbs_thread(void *arg)
 	char name[32];
 
 	snprintf(name, sizeof(name), "i915/signal:%d", engine->id);
-	if (kthread_create(intel_breadcrumbs_signaler, engine, NULL, name) != 0)
+	if (kthread_create(intel_breadcrumbs_signaler, engine, &b->signaler, name) != 0)
 		printf("%s: failed to create thread\n", __func__);
 }
 
 int intel_engine_init_breadcrumbs(struct intel_engine_cs *engine)
 {
 	struct intel_breadcrumbs *b = &engine->breadcrumbs;
-	struct task_struct *tsk;
 
 	mtx_init(&b->rb_lock, IPL_NONE);
 	mtx_init(&b->irq_lock, IPL_NONE);
@@ -871,6 +902,7 @@ int intel_engine_init_breadcrumbs(struct intel_engine_cs *engine)
 	timeout_set(&b->hangcheck, intel_breadcrumbs_hangcheck, engine);
 
 	INIT_LIST_HEAD(&b->signals);
+	b->signaler = NULL;
 
 	/* Spawn a thread to provide a common bottom-half for all signals.
 	 * As this is an asynchronous interface we cannot steal the current
@@ -879,7 +911,6 @@ int intel_engine_init_breadcrumbs(struct intel_engine_cs *engine)
 	 * interrupt and then signal the waitqueue (via the dma-buf/fence).
 	 */
 	kthread_create_deferred(intel_create_breadcrumbs_thread, engine);
-	b->signaler = NULL;
 
 	return 0;
 }

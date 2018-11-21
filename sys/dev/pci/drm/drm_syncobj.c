@@ -681,7 +681,11 @@ drm_syncobj_fd_to_handle_ioctl(struct drm_device *dev, void *data,
 }
 
 struct syncobj_wait_entry {
+#ifdef __linux__
 	struct task_struct *task;
+#else
+	struct proc *task;
+#endif
 	struct dma_fence *fence;
 	struct dma_fence_cb fence_cb;
 	struct drm_syncobj_cb syncobj_cb;
@@ -714,9 +718,6 @@ static signed long drm_syncobj_array_wait_timeout(struct drm_syncobj **syncobjs,
 						  signed long timeout,
 						  uint32_t *idx)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
 	struct syncobj_wait_entry *entries;
 	struct dma_fence *fence;
 	signed long ret;
@@ -733,7 +734,11 @@ static signed long drm_syncobj_array_wait_timeout(struct drm_syncobj **syncobjs,
 	 */
 	signaled_count = 0;
 	for (i = 0; i < count; ++i) {
+#ifdef __linux__
 		entries[i].task = current;
+#else
+		entries[i].task = curproc;
+#endif
 		entries[i].fence = drm_syncobj_fence_get(syncobjs[i]);
 		if (!entries[i].fence) {
 			if (flags & DRM_SYNCOBJ_WAIT_FLAGS_WAIT_FOR_SUBMIT) {
@@ -839,7 +844,6 @@ cleanup_entries:
 	kfree(entries);
 
 	return ret;
-#endif
 }
 
 /**

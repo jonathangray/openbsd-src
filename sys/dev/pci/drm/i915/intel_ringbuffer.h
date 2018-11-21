@@ -397,7 +397,11 @@ struct intel_engine_cs {
 		spinlock_t rb_lock; /* protects the rb and wraps irq_lock */
 		struct rb_root waiters; /* sorted by retirement, priority */
 		struct list_head signals; /* sorted by retirement */
+#ifdef __linux__
 		struct task_struct *signaler; /* used for fence signalling */
+#else
+		struct proc *signaler; /* used for fence signalling */
+#endif
 
 		struct timeout fake_irq; /* used after a missed interrupt */
 		struct timeout hangcheck; /* detect missed interrupts */
@@ -963,18 +967,20 @@ int intel_engine_init_breadcrumbs(struct intel_engine_cs *engine);
 
 static inline void intel_wait_init(struct intel_wait *wait)
 {
-	STUB();
-#ifdef notyet
+#ifdef __linux__
 	wait->tsk = current;
+#else
+	wait->tsk = curproc;
 #endif
 	wait->request = NULL;
 }
 
 static inline void intel_wait_init_for_seqno(struct intel_wait *wait, u32 seqno)
 {
-	STUB();
-#ifdef notyet
+#ifdef __linux__
 	wait->tsk = current;
+#else
+	wait->tsk = curproc;
 #endif
 	wait->seqno = seqno;
 }

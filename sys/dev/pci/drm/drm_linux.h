@@ -888,12 +888,18 @@ _wake_up(wait_queue_head_t *wqh LOCK_FL_VARS)
 }
 
 static inline int
-wake_up_process(void *task)
+wake_up_process(struct proc *p)
 {
-	mtx_enter(&sch_mtx);
-	wakeup(task);
-	mtx_leave(&sch_mtx);
-	return 1; /* process woken up */
+	int s, r = 0;
+
+	SCHED_LOCK(s);
+	if (p->p_stat == SSLEEP) {
+		setrunnable(p);
+		r = 1;
+	}
+	SCHED_UNLOCK(s);
+	
+	return r;
 }
 
 #define wake_up(wq)			_wake_up(wq LOCK_FILE_LINE)
@@ -1234,11 +1240,6 @@ tasklet_unlock(struct tasklet_struct *ts)
 {
 	STUB();
 }
-
-struct task_struct {
-	int state;
-	int prio;
-};
 
 #define TASK_NORMAL	1
 

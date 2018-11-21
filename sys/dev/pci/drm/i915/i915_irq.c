@@ -1158,7 +1158,12 @@ static void notify_ring(struct intel_engine_cs *engine)
 {
 	const u32 seqno = intel_engine_get_seqno(engine);
 	struct i915_request *rq = NULL;
+#ifdef __linux__
 	struct task_struct *tsk = NULL;
+#else
+	struct proc *tsk = NULL;
+#endif
+
 	struct intel_wait *wait;
 
 	if (unlikely(!engine->breadcrumbs.irq_armed))
@@ -1216,7 +1221,11 @@ static void notify_ring(struct intel_engine_cs *engine)
 		i915_request_put(rq);
 	}
 
+#ifdef __linux__
 	if (tsk && tsk->state & TASK_NORMAL)
+#else
+	if (tsk)
+#endif
 		wake_up_process(tsk);
 
 	rcu_read_unlock();
