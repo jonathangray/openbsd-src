@@ -2325,6 +2325,9 @@ abs64(int64_t x)
 	return (x < 0 ? -x : x);
 }
 
+#define user_access_begin()
+#define user_access_end()
+
 static inline unsigned long
 __copy_to_user(void *to, const void *from, unsigned len)
 {
@@ -2360,6 +2363,12 @@ copy_from_user(void *to, const void *from, unsigned len)
 })
 #define __get_user(x, ptr)	get_user((x), (ptr))
 #define __put_user(x, ptr)	put_user((x), (ptr))
+
+#define unsafe_put_user(x, ptr, err) ({				\
+	__typeof((x)) __tmp = (x);				\
+	if (copyout(&(__tmp), ptr, sizeof(__tmp)) != 0)		\
+		goto err;					\
+})
 
 #define u64_to_user_ptr(x)	((void *)(uintptr_t)(x))
 
