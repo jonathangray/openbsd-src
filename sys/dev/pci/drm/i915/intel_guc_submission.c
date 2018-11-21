@@ -98,9 +98,6 @@ static inline bool is_high_priority(struct intel_guc_client *client)
 
 static int reserve_doorbell(struct intel_guc_client *client)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
 	unsigned long offset;
 	unsigned long end;
 	u16 id;
@@ -129,7 +126,6 @@ static int reserve_doorbell(struct intel_guc_client *client)
 			 client->stage_id, yesno(is_high_priority(client)),
 			 id);
 	return 0;
-#endif
 }
 
 static bool has_doorbell(struct intel_guc_client *client)
