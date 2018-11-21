@@ -313,19 +313,25 @@ __create_hw_context(struct drm_i915_private *dev_priv,
 	ctx->user_handle = ret;
 
 	ctx->file_priv = file_priv;
-#ifdef notyet
 	if (file_priv) {
+#ifdef __linux__
 		ctx->pid = get_task_pid(current, PIDTYPE_PID);
 		ctx->name = kasprintf(GFP_KERNEL, "%s[%d]/%x",
 				      current->comm,
 				      pid_nr(ctx->pid),
 				      ctx->user_handle);
+#else
+		ctx->pid = curproc->p_p->ps_pid;
+		ctx->name = kasprintf(GFP_KERNEL, "%s[%d]/%x",
+				      curproc->p_p->ps_comm,
+				      ctx->pid,
+				      ctx->user_handle);
+#endif
 		if (!ctx->name) {
 			ret = -ENOMEM;
 			goto err_pid;
 		}
 	}
-#endif
 
 	/* NB: Mark all slices as needing a remap so that when the context first
 	 * loads it will restore whatever remap state already exists. If there
@@ -349,9 +355,7 @@ __create_hw_context(struct drm_i915_private *dev_priv,
 
 	return ctx;
 
-#ifdef notyet
 err_pid:
-#endif
 	put_pid(ctx->pid);
 	idr_remove(&file_priv->context_idr, ctx->user_handle);
 err_lut:
