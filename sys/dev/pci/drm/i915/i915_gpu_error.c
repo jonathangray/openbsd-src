@@ -1336,11 +1336,13 @@ static void record_request(struct i915_request *request,
 	erq->head = request->head;
 	erq->tail = request->tail;
 
-#ifdef notyet
 	rcu_read_lock();
+#ifdef __linux__
 	erq->pid = ctx->pid ? pid_nr(ctx->pid) : 0;
-	rcu_read_unlock();
+#else
+	erq->pid = ctx->pid;
 #endif
+	rcu_read_unlock();
 }
 
 static void engine_record_requests(struct intel_engine_cs *engine,
