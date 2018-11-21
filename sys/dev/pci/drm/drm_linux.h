@@ -1735,6 +1735,12 @@ kref_put_mutex(struct kref *kref, void (*release)(struct kref *kref),
 	return 0;
 }
 
+static inline bool
+refcount_dec_and_test(uint32_t *p)
+{
+	return atomic_dec_and_test(p);
+}
+
 struct kobject {
 	struct kref kref;
 	struct kobj_type *type;
