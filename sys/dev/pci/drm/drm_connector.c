@@ -601,13 +601,11 @@ __drm_connector_put_safe(struct drm_connector *conn)
 
 	lockdep_assert_held(&config->connector_list_lock);
 
-#ifdef notyet
 	if (!refcount_dec_and_test(&conn->base.refcount.refcount))
 		return;
 
 	llist_add(&conn->free_node, &config->connector_free_list);
 	schedule_work(&config->connector_free_work);
-#endif
 }
 
 /**
