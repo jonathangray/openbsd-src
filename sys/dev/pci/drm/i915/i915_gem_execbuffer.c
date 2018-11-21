@@ -1572,9 +1572,6 @@ static int check_relocations(const struct drm_i915_gem_exec_object2 *entry)
 
 static int eb_copy_relocations(const struct i915_execbuffer *eb)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
 	const unsigned int count = eb->buffer_count;
 	unsigned int i;
 	int err;
@@ -1651,7 +1648,6 @@ err:
 			kvfree(relocs);
 	}
 	return err;
-#endif
 }
 
 static int eb_prefault_relocations(const struct i915_execbuffer *eb)
@@ -2584,9 +2580,6 @@ int
 i915_gem_execbuffer2_ioctl(struct drm_device *dev, void *data,
 			   struct drm_file *file)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
 	struct drm_i915_gem_execbuffer2 *args = data;
 	struct drm_i915_gem_exec_object2 *exec2_list;
 	struct drm_syncobj **fences = NULL;
@@ -2658,5 +2651,4 @@ end_user:
 	put_fence_array(args, fences);
 	kvfree(exec2_list);
 	return err;
-#endif
 }
