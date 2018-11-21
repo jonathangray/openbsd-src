@@ -3912,4 +3912,6 @@ si_mem_available(void)
 	return uvmexp.free;
 }
 
+#define array_index_nospec(a, b)	(a)
+
 #endif
