@@ -295,5 +295,11 @@ drm_sysfs_connector_remove(struct drm_connector *connector)
 /* helper for handling conditionals in various for_each macros */
 #define for_each_if(condition) if (!(condition)) {} else
 
+static inline bool
+drm_is_current_master(struct drm_file *file_priv)
+{
+	return (file_priv->is_master == 1);
+}
+
 #endif /* __KERNEL__ */
 #endif /* _DRM_P_H_ */
