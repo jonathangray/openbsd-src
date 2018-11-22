@@ -35,7 +35,7 @@
 
 #include <machine/atomic.h>
 
-typedef uint32_t atomic_t;
+typedef int atomic_t;
 
 #define atomic_set(p, v)	(*(p) = (v))
 #define atomic_read(p)		(*(p))
@@ -94,7 +94,7 @@ atomic_dec_if_positive(volatile int *v)
 #define atomic_long_read(p)	(*(p))
 
 #ifdef __LP64__
-typedef uint64_t atomic64_t;
+typedef int64_t atomic64_t;
 
 #define atomic64_set(p, v)	(*(p) = (v))
 #define atomic64_read(p)	(*(p))
@@ -112,7 +112,7 @@ atomic64_xchg(volatile int64_t *v, int64_t n)
 #else
 
 typedef struct {
-	volatile uint64_t val;
+	volatile int64_t val;
 	struct mutex lock;
 } atomic64_t;
 
