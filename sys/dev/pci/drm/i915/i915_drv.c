@@ -3687,7 +3687,7 @@ inteldrm_native_backlight(struct inteldrm_softc *dev_priv)
 		struct intel_panel *panel = &intel_connector->panel;
 		struct backlight_device *bd = panel->backlight.device;
 
-		if (!panel->backlight.present)
+		if (!panel->backlight.present || bd == NULL)
 			continue;
 
 		connector->backlight_device = bd;
