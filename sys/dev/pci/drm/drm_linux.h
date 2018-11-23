@@ -941,6 +941,8 @@ _wait_for_completion_timeout(struct completion *x, u_long timo LOCK_FL_VARS)
 {
 	int ret;
 
+	KASSERT(!cold);
+
 	_mtx_enter(&x->wait.lock LOCK_FL_ARGS);
 	while (x->done == 0) {
 		ret = msleep(x, &x->wait.lock, 0, "wfcit", 0);
@@ -959,6 +961,8 @@ static inline u_long
 _wait_for_completion_interruptible(struct completion *x LOCK_FL_VARS)
 {
 	int ret;
+
+	KASSERT(!cold);
 
 	_mtx_enter(&x->wait.lock LOCK_FL_ARGS);
 	while (x->done == 0) {
@@ -979,6 +983,8 @@ _wait_for_completion_interruptible_timeout(struct completion *x, u_long timo
     LOCK_FL_VARS)
 {
 	int ret;
+
+	KASSERT(!cold);
 
 	_mtx_enter(&x->wait.lock LOCK_FL_ARGS);
 	while (x->done == 0) {
@@ -1883,6 +1889,7 @@ schedule_timeout(long timeout)
 static inline void
 schedule(void)
 {
+	KASSERT(!cold);
 	msleep(sch_ident, &sch_mtx, sch_priority, "schto", 0);
 	sch_ident = curproc;
 }

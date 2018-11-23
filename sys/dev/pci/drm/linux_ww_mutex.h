@@ -171,6 +171,7 @@ __ww_mutex_lock(struct ww_mutex *lock, struct ww_acquire_ctx *ctx, bool slow, bo
 			 */
 			if (slow || ctx == NULL ||
 			    (lock->ctx && ctx->stamp < lock->ctx->stamp)) {
+				KASSERT(!cold);
 				int s = msleep(lock, &lock->base,
 					       intr ? PCATCH : 0,
 					       ctx ? ctx->ww_class->name : "ww_mutex_lock", 0);
