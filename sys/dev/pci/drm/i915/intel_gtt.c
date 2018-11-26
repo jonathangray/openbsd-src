@@ -25,6 +25,13 @@ extern struct cfdriver inteldrm_cd;
 
 struct resource intel_graphics_stolen_res = DEFINE_RES_MEM(0, 0);
 
+#ifdef __amd64__
+#define membar_producer_wc()	__asm __volatile("sfence":::"memory")
+#else
+#define membar_producer_wc()	__asm __volatile(\
+				"lock; addl $0,0(%%esp)":::"memory")
+#endif
+
 /*
  * We're intel IGD, bus 0 function 0 dev 0 should be the GMCH, so it should
  * be Intel
@@ -227,6 +234,8 @@ intel_gtt_insert_sg_entries(struct sg_table *pages, unsigned int pg_start,
 		    sg_page_iter_dma_address(&sg_iter), flags);
 		addr += PAGE_SIZE;
 	}
+	membar_producer_wc();
+	intel_gtt_chipset_flush();
 }
 
 void
@@ -241,4 +250,5 @@ intel_gtt_clear_range(unsigned int first_entry, unsigned int num_entries)
 		sc->sc_methods->unbind_page(sc->sc_chipc, addr);
 		addr += PAGE_SIZE;
 	}
+	membar_producer_wc();
 }
