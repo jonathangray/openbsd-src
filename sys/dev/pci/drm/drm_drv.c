@@ -227,6 +227,11 @@ drm_attach(struct device *parent, struct device *self, void *aux)
 	dev->pdev->tag = da->tag;
 	dev->pdev->pci = (struct pci_softc *)parent->dv_parent;
 
+	if (strcmp(parent->dv_cfdata->cf_driver->cd_name, "inteldrm") == 0) {
+		printf("\n");
+		return;
+	}
+
 	rw_init(&dev->struct_mutex, "drmdevlk");
 	mtx_init(&dev->event_lock, IPL_TTY);
 	mtx_init(&dev->quiesce_mtx, IPL_NONE);

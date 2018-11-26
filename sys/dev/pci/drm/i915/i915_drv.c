@@ -3454,6 +3454,8 @@ inteldrm_match(struct device *parent, void *match, void *aux)
 	return 0;
 }
 
+int drm_gem_init(struct drm_device *);
+
 void
 inteldrm_attach(struct device *parent, struct device *self, void *aux)
 {
@@ -3467,6 +3469,7 @@ inteldrm_attach(struct device *parent, struct device *self, void *aux)
 	extern int vga_console_attached;
 	int mmio_bar, mmio_size, mmio_type;
 	int console = 0;
+	int ret;
 
 	dev_priv->pc = pa->pa_pc;
 	dev_priv->tag = pa->pa_tag;
@@ -3495,6 +3498,31 @@ inteldrm_attach(struct device *parent, struct device *self, void *aux)
 	    drm_attach_pci(&driver, pa, 0, console, self);
 	memcpy(&dev_priv->drm, dev_priv->drmdev, sizeof(struct drm_device));
 	dev = &dev_priv->drm;
+
+#if 1
+	/* XXX duplicates drm_attach() due to above */
+	rw_init(&dev->struct_mutex, "drmdevlk");
+	mtx_init(&dev->event_lock, IPL_TTY);
+	mtx_init(&dev->quiesce_mtx, IPL_NONE);
+	
+	SPLAY_INIT(&dev->files);
+	INIT_LIST_HEAD(&dev->vblank_event_list);
+
+	if (dev->driver->gem_size > 0) {
+		KASSERT(dev->driver->gem_size >= sizeof(struct drm_gem_object));
+		/* XXX unique name */
+		pool_init(&dev->objpl, dev->driver->gem_size, 0, IPL_NONE, 0,
+		    "drmobjpl", NULL);
+	}
+
+	if (dev->driver->driver_features & DRIVER_GEM) {
+		ret = drm_gem_init(dev);
+		if (ret) {
+			DRM_ERROR("Cannot initialize graphics execution manager (GEM)\n");
+			return;
+		}
+	}	
+#endif
 
 	id = drm_find_description(PCI_VENDOR(pa->pa_id),
 	    PCI_PRODUCT(pa->pa_id), pciidlist);
