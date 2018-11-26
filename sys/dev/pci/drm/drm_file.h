@@ -146,8 +146,6 @@ struct drm_pending_event {
 	 * userspace closes the file before the event is delivered.
 	 */
 	struct list_head pending_link;
-
-	void (*destroy)(struct drm_pending_event *event);
 };
 
 /**
