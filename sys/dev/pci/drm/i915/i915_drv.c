@@ -1313,17 +1313,17 @@ static void i915_driver_register(struct drm_i915_private *dev_priv)
 	if (intel_vgpu_active(dev_priv))
 		I915_WRITE(vgtif_reg(display_ready), VGT_DRV_DISPLAY_READY);
 
-#ifdef notyet
 	/* Reveal our presence to userspace */
 	if (drm_dev_register(dev, 0) == 0) {
+#ifdef notyet
 		i915_debugfs_register(dev_priv);
 		i915_setup_sysfs(dev_priv);
 
 		/* Depends on sysfs having been initialized */
 		i915_perf_register(dev_priv);
+#endif
 	} else
 		DRM_ERROR("Failed to register driver for userspace access!\n");
-#endif
 
 	if (INTEL_INFO(dev_priv)->num_pipes) {
 		/* Must be done after probing outputs */
@@ -1377,9 +1377,7 @@ static void i915_driver_unregister(struct drm_i915_private *dev_priv)
 	i915_pmu_unregister(dev_priv);
 
 	i915_teardown_sysfs(dev_priv);
-#ifdef notyet
 	drm_dev_unregister(&dev_priv->drm);
-#endif
 
 	i915_gem_shrinker_unregister(dev_priv);
 }
