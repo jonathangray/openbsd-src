@@ -373,8 +373,12 @@ void __iomem *i915_vma_pin_iomap(struct i915_vma *vma)
 #else
 		struct drm_i915_private *dev_priv = vma->vm->i915;
 		bus_space_handle_t bsh;
-		agp_map_subregion(dev_priv->agph, vma->node.start,
+		err = agp_map_subregion(dev_priv->agph, vma->node.start,
 				  vma->node.size, &bsh);
+		if (err) {
+			err = -err;
+			goto err;
+		}
 		ptr = bus_space_vaddr(dev_priv->bst, bsh);
 #endif
 		if (ptr == NULL) {
