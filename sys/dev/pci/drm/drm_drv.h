@@ -277,6 +277,8 @@ static inline bool drm_drv_uses_atomic_modeset(struct drm_device *dev)
 		(dev->mode_config.funcs && dev->mode_config.funcs->atomic_commit != NULL);
 }
 
+int	drm_dev_register(struct drm_device *, unsigned long);
+void	drm_dev_unregister(struct drm_device *);
 int	drm_getpciinfo(struct drm_device *, void *, struct drm_file *);
 
 #endif

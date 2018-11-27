@@ -948,3 +948,63 @@ drm_getpciinfo(struct drm_device *dev, void *data, struct drm_file *file_priv)
 
 	return 0;
 }
+
+/**
+ * drm_dev_register - Register DRM device
+ * @dev: Device to register
+ * @flags: Flags passed to the driver's .load() function
+ *
+ * Register the DRM device @dev with the system, advertise device to user-space
+ * and start normal device operation. @dev must be allocated via drm_dev_alloc()
+ * previously.
+ *
+ * Never call this twice on any device!
+ *
+ * NOTE: To ensure backward compatibility with existing drivers method this
+ * function calls the &drm_driver.load method after registering the device
+ * nodes, creating race conditions. Usage of the &drm_driver.load methods is
+ * therefore deprecated, drivers must perform all initialization before calling
+ * drm_dev_register().
+ *
+ * RETURNS:
+ * 0 on success, negative error code on failure.
+ */
+int drm_dev_register(struct drm_device *dev, unsigned long flags)
+{
+	dev->registered = true;
+
+	if (drm_core_check_feature(dev, DRIVER_MODESET))
+		drm_modeset_register_all(dev);
+
+	return 0;
+}
+EXPORT_SYMBOL(drm_dev_register);
+
+/**
+ * drm_dev_unregister - Unregister DRM device
+ * @dev: Device to unregister
+ *
+ * Unregister the DRM device from the system. This does the reverse of
+ * drm_dev_register() but does not deallocate the device. The caller must call
+ * drm_dev_put() to drop their final reference.
+ *
+ * A special form of unregistering for hotpluggable devices is drm_dev_unplug(),
+ * which can be called while there are still open users of @dev.
+ *
+ * This should be called first in the device teardown code to make sure
+ * userspace can't access the device instance any more.
+ */
+void drm_dev_unregister(struct drm_device *dev)
+{
+	struct drm_map_list *r_list, *list_temp;
+
+	if (drm_core_check_feature(dev, DRIVER_LEGACY))
+		drm_lastclose(dev);
+
+	dev->registered = false;
+
+	if (drm_core_check_feature(dev, DRIVER_MODESET))
+		drm_modeset_unregister_all(dev);
+}
+EXPORT_SYMBOL(drm_dev_unregister);
+

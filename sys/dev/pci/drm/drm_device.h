@@ -72,6 +72,7 @@ struct drm_device {
 	int		  unique_len;	/* Length of unique field	   */
 	
 	int		  if_version;	/* Highest interface version set */
+	bool		 registered;
 				/* Locks */
 	struct rwlock	  struct_mutex;	/* protects everything else */
 
