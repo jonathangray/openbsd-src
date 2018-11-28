@@ -29,9 +29,9 @@
 #define pr_fmt(fmt) "[TTM] " fmt
 
 #include <dev/pci/drm/drm_linux.h>
-#include <dev/pci/drm/ttm/ttm_memory.h>
-#include <dev/pci/drm/ttm/ttm_module.h>
-#include <dev/pci/drm/ttm/ttm_page_alloc.h>
+#include <drm/ttm/ttm_memory.h>
+#include <drm/ttm/ttm_module.h>
+#include <drm/ttm/ttm_page_alloc.h>
 #ifdef __linux__
 #include <linux/spinlock.h>
 #include <linux/sched.h>
