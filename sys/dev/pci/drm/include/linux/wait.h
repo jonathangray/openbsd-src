@@ -46,8 +46,6 @@ struct wait_queue_head {
 };
 typedef struct wait_queue_head wait_queue_head_t;
 
-#define MAX_SCHEDULE_TIMEOUT (INT32_MAX)
-
 static inline void
 init_waitqueue_head(wait_queue_head_t *wqh)
 {
@@ -194,21 +192,6 @@ _wake_up(wait_queue_head_t *wqh LOCK_FL_VARS)
 	wakeup(wqh);
 	mtx_leave(&sch_mtx);
 	_mtx_leave(&wqh->lock LOCK_FL_ARGS);
-}
-
-static inline int
-wake_up_process(struct proc *p)
-{
-	int s, r = 0;
-
-	SCHED_LOCK(s);
-	if (p->p_stat == SSLEEP) {
-		setrunnable(p);
-		r = 1;
-	}
-	SCHED_UNLOCK(s);
-	
-	return r;
 }
 
 #define wake_up(wq)			_wake_up(wq LOCK_FILE_LINE)
