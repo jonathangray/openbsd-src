@@ -725,8 +725,6 @@ tasklet_unlock(struct tasklet_struct *ts)
 	STUB();
 }
 
-#define TASK_NORMAL	1
-
 #define local_bh_disable()
 #define local_bh_enable()
 
@@ -750,14 +748,6 @@ async_schedule(async_func_t func, void *data)
 #define mod_timer_pinned(x, y)	timeout_add((x), (y - jiffies))
 #define del_timer_sync(x)	timeout_del((x))
 #define timer_pending(x)	timeout_pending((x))
-
-#define cond_resched()		sched_pause(yield)
-#define drm_need_resched() \
-    (curcpu()->ci_schedstate.spc_schedflags & SPCF_SHOULDYIELD)
-
-#define TASK_UNINTERRUPTIBLE	0
-#define TASK_INTERRUPTIBLE	PCATCH
-#define TASK_RUNNING		-1
 
 #define signal_pending_state(x, y) CURSIG(curproc)
 #define signal_pending(y) CURSIG(curproc)

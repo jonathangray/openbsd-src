@@ -24,11 +24,16 @@
 #include <sys/mutex.h>
 #include <linux/wait.h>
 
+#define TASK_NORMAL		1
 #define TASK_UNINTERRUPTIBLE	0
 #define TASK_INTERRUPTIBLE	PCATCH
 #define TASK_RUNNING		-1
 
 #define MAX_SCHEDULE_TIMEOUT (INT32_MAX)
+
+#define cond_resched()		sched_pause(yield)
+#define drm_need_resched() \
+    (curcpu()->ci_schedstate.spc_schedflags & SPCF_SHOULDYIELD)
 
 static inline void
 set_current_state(int state)
