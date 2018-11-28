@@ -21,10 +21,8 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
-#ifdef __linux__
 #include <linux/err.h>
 #include <linux/module.h>
-#endif
 
 #include <drm/drmP.h>
 #include <drm/drm_crtc.h>

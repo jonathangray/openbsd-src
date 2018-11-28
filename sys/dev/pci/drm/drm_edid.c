@@ -27,21 +27,19 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  */
-#ifdef __linux__
 #include <linux/kernel.h>
 #include <linux/slab.h>
 #include <linux/hdmi.h>
 #include <linux/i2c.h>
 #include <linux/module.h>
 #include <linux/vga_switcheroo.h>
-#endif
 #include <drm/drmP.h>
 #include <drm/drm_edid.h>
 #include <drm/drm_encoder.h>
 #include <drm/drm_displayid.h>
 #include <drm/drm_scdc_helper.h>
 
-#include <dev/pci/drm/drm_crtc_internal.h>
+#include "drm_crtc_internal.h"
 
 #define version_greater(edid, maj, min) \
 	(((edid)->version > (maj)) || \

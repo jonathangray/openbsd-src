@@ -24,8 +24,11 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include "drm_mm.h"
+#include <drm/drm_mm.h>
+#include <linux/mm.h>
 #include <linux/rbtree.h>
+#include <linux/spinlock.h>
+#include <linux/types.h>
 
 struct drm_vma_offset_file {
 	struct rb_node vm_rb;

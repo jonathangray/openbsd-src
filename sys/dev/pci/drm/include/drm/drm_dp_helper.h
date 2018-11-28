@@ -23,13 +23,9 @@
 #ifndef _DRM_DP_HELPER_H_
 #define _DRM_DP_HELPER_H_
 
-#ifdef __linux__
 #include <linux/types.h>
 #include <linux/i2c.h>
 #include <linux/delay.h>
-#else
-#include <dev/pci/drm/drm_linux.h>
-#endif
 
 /*
  * Unless otherwise noted, all values are from the DP 1.1a spec.  Note that

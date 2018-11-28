@@ -26,9 +26,7 @@
 
 #include <drm/drmP.h>
 #include <drm/drm_vblank.h>
-#ifdef __linux__
 #include <linux/export.h>
-#endif
 
 #include "drm_trace.h"
 #include "drm_internal.h"

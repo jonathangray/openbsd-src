@@ -23,10 +23,8 @@
 #ifndef __DRM_PLANE_H__
 #define __DRM_PLANE_H__
 
-#ifdef __linux__
 #include <linux/list.h>
 #include <linux/ctype.h>
-#endif
 #include <drm/drm_mode_object.h>
 #include <drm/drm_color_mgmt.h>
 

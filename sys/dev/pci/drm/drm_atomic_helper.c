@@ -31,9 +31,7 @@
 #include <drm/drm_crtc_helper.h>
 #include <drm/drm_atomic_helper.h>
 #include <drm/drm_writeback.h>
-#ifdef __linux__
 #include <linux/dma-fence.h>
-#endif
 
 #include "drm_crtc_helper_internal.h"
 #include "drm_crtc_internal.h"

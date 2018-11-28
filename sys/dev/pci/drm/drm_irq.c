@@ -54,12 +54,10 @@
 #include <drm/drm_irq.h>
 #include <drm/drmP.h>
 
-#ifdef __linux__
 #include <linux/interrupt.h>	/* For task queue support */
 
 #include <linux/vgaarb.h>
 #include <linux/export.h>
-#endif
 
 #include "drm_internal.h"
 

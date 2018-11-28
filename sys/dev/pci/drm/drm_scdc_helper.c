@@ -21,12 +21,8 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
-#ifdef __linux__
 #include <linux/slab.h>
 #include <linux/delay.h>
-#else
-#include <dev/pci/drm/drm_linux.h>
-#endif
 
 #include <drm/drm_scdc_helper.h>
 #include <drm/drmP.h>

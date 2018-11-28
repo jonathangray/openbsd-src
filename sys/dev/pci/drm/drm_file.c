@@ -31,11 +31,9 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifdef __linux__
 #include <linux/poll.h>
 #include <linux/slab.h>
 #include <linux/module.h>
-#endif
 
 #include <drm/drmP.h>
 #ifdef notyet

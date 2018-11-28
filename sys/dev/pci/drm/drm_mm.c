@@ -43,11 +43,9 @@
 
 #include <drm/drmP.h>
 #include <drm/drm_mm.h>
-#ifdef __linux__
 #include <linux/slab.h>
 #include <linux/seq_file.h>
 #include <linux/export.h>
-#endif
 
 /**
  * DOC: Overview

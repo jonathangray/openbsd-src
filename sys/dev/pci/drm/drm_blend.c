@@ -26,11 +26,9 @@
 #include <drm/drmP.h>
 #include <drm/drm_atomic.h>
 #include <drm/drm_blend.h>
-#ifdef __linux__
 #include <linux/export.h>
 #include <linux/slab.h>
 #include <linux/sort.h>
-#endif
 
 #include "drm_crtc_internal.h"
 

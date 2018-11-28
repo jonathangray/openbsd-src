@@ -47,16 +47,11 @@
  */
 
 #include <drm/drmP.h>
-#ifdef __linux__
 #include <linux/file.h>
 #include <linux/fs.h>
 #include <linux/anon_inodes.h>
 #include <linux/sync_file.h>
 #include <linux/sched/signal.h>
-#else
-#include <dev/pci/drm/drm_linux.h>
-#include <linux/rcupdate.h>
-#endif
 
 #include "drm_internal.h"
 #include <drm/drm_syncobj.h>

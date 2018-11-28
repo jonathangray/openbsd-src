@@ -23,12 +23,9 @@
 #ifndef __DRM_CONNECTOR_H__
 #define __DRM_CONNECTOR_H__
 
-#ifdef __linux__
 #include <linux/list.h>
 #include <linux/llist.h>
 #include <linux/ctype.h>
-#include <linux/hdmi.h>
-#endif
 #include <linux/hdmi.h>
 #include <drm/drm_mode_object.h>
 

@@ -26,11 +26,7 @@
 #ifndef __DRM_SYNCOBJ_H__
 #define __DRM_SYNCOBJ_H__
 
-#ifdef __linux__
 #include "linux/dma-fence.h"
-#else
-#include <dev/pci/drm/drm_linux.h>
-#endif
 
 struct drm_syncobj_cb;
 

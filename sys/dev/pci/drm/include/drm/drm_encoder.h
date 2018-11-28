@@ -23,12 +23,10 @@
 #ifndef __DRM_ENCODER_H__
 #define __DRM_ENCODER_H__
 
-#ifdef __linux__
 #include <linux/list.h>
 #include <linux/ctype.h>
-#endif
 #include <drm/drm_crtc.h>
-#include <uapi/drm/drm_mode.h>
+#include <drm/drm_mode.h>
 #include <drm/drm_mode_object.h>
 
 struct drm_encoder;

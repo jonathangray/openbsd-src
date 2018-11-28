@@ -28,13 +28,13 @@
 
 #include <drm/drmP.h>
 #include <drm/drm_atomic.h>
-#include <uapi/drm/drm_mode.h>
+#include <drm/drm_mode.h>
 #include <drm/drm_print.h>
 #include <drm/drm_writeback.h>
-#include <drm/drm_plane_helper.h>
+#include <linux/sync_file.h>
 
-#include <dev/pci/drm/drm_crtc_internal.h>
-#include <dev/pci/drm/drm_internal.h>
+#include "drm_crtc_internal.h"
+#include "drm_internal.h"
 
 void __drm_crtc_commit_free(struct kref *kref)
 {

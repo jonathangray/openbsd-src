@@ -1,4 +1,3 @@
-/*	$OpenBSD: drm_global.c,v 1.3 2015/09/23 23:12:11 kettenis Exp $	*/
 // SPDX-License-Identifier: GPL-2.0 OR MIT
 /**************************************************************************
  *
@@ -29,9 +28,11 @@
  * Authors: Thomas Hellstrom <thellstrom-at-vmware-dot-com>
  */
 
+#include <linux/mutex.h>
+#include <linux/slab.h>
+#include <linux/module.h>
 #include <drm/drmP.h>
 #include <drm/drm_global.h>
-#include <sys/rwlock.h>
 
 struct drm_global_item {
 	struct rwlock mutex;

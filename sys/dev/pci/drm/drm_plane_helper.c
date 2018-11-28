@@ -23,9 +23,7 @@
  * SOFTWARE.
  */
 
-#ifdef __linux__
 #include <linux/list.h>
-#endif
 #include <drm/drmP.h>
 #include <drm/drm_plane_helper.h>
 #include <drm/drm_rect.h>

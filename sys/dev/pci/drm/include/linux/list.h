@@ -33,6 +33,8 @@
 #ifndef _DRM_LINUX_LIST_H_
 #define _DRM_LINUX_LIST_H_
 
+#include <sys/param.h>
+
 struct list_head {
 	struct list_head *next, *prev;
 };

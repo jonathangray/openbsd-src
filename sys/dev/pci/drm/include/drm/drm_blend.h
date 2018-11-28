@@ -23,11 +23,9 @@
 #ifndef __DRM_BLEND_H__
 #define __DRM_BLEND_H__
 
-#ifdef __linux__
 #include <linux/list.h>
 #include <linux/ctype.h>
-#endif
-#include <uapi/drm/drm_mode.h>
+#include <drm/drm_mode.h>
 
 struct drm_device;
 struct drm_atomic_state;

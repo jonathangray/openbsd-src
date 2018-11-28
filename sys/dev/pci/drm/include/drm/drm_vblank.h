@@ -24,13 +24,9 @@
 #ifndef _DRM_VBLANK_H_
 #define _DRM_VBLANK_H_
 
-#ifdef __linux__
 #include <linux/seqlock.h>
 #include <linux/idr.h>
 #include <linux/poll.h>
-#else
-#include <dev/pci/drm/drm_linux.h>
-#endif
 
 #include <drm/drm_file.h>
 #include <drm/drm_modes.h>

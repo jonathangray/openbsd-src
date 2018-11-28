@@ -25,7 +25,6 @@
  *
  */
 
-#ifdef __linux__
 #include <linux/types.h>
 #include <linux/slab.h>
 #include <linux/mm.h>
@@ -38,9 +37,6 @@
 #include <linux/shmem_fs.h>
 #include <linux/dma-buf.h>
 #include <linux/mem_encrypt.h>
-#else
-#include <dev/pci/drm/drm_linux.h>
-#endif
 #include <drm/drmP.h>
 #include <drm/drm_vma_manager.h>
 #include <drm/drm_gem.h>

@@ -24,11 +24,7 @@
 #ifndef DRM_SCDC_HELPER_H
 #define DRM_SCDC_HELPER_H
 
-#ifdef __linux__
 #include <linux/i2c.h>
-#else
-#include <dev/pci/drm/drm_linux.h>
-#endif
 #include <linux/types.h>
 
 #define SCDC_SINK_VERSION 0x01

@@ -30,17 +30,13 @@
  * authorization from the copyright holder(s) and author(s).
  */
 
-#ifdef __linux__
 #include <linux/list.h>
 #include <linux/list_sort.h>
 #include <linux/export.h>
-#endif
 #include <drm/drmP.h>
 #include <drm/drm_crtc.h>
-#ifdef __linux__
 #include <video/of_videomode.h>
 #include <video/videomode.h>
-#endif
 #include <drm/drm_modes.h>
 
 #include "drm_crtc_internal.h"

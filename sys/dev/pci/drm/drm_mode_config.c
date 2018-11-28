@@ -20,7 +20,6 @@
  * OF THIS SOFTWARE.
  */
 
-#include <dev/pci/drm/drm_linux.h>
 #include <drm/drm_encoder.h>
 #include <drm/drm_mode_config.h>
 #include <drm/drmP.h>

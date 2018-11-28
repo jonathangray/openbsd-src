@@ -26,11 +26,9 @@
  *
  */
 
-#ifdef __linux__
 #include <linux/export.h>
 #include <linux/dma-buf.h>
 #include <linux/rbtree.h>
-#endif
 #include <drm/drm_prime.h>
 #include <drm/drm_gem.h>
 #include <drm/drmP.h>

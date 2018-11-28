@@ -25,10 +25,8 @@
 
 #define DEBUG /* for pr_debug() */
 
-#ifdef __linux__
-#include <stdarg.h>
+#include <sys/stdarg.h>
 #include <linux/seq_file.h>
-#endif
 #include <drm/drmP.h>
 #include <drm/drm_print.h>
 

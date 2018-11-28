@@ -40,6 +40,9 @@
 #include "drm_internal.h"
 #include "drm_crtc_internal.h"
 
+#include <linux/pci.h>
+#include <linux/export.h>
+
 int	drm_setunique(struct drm_device *, void *, struct drm_file *);
 
 /**

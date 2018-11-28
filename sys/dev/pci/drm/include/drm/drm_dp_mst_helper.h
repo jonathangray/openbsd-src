@@ -22,8 +22,7 @@
 #ifndef _DRM_DP_MST_HELPER_H_
 #define _DRM_DP_MST_HELPER_H_
 
-#include <dev/pci/drm/drm_linux.h>
-#include <linux/list.h>
+#include <linux/types.h>
 #include <drm/drm_dp_helper.h>
 #include <drm/drm_atomic.h>
 

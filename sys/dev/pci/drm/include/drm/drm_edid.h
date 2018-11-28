@@ -23,7 +23,7 @@
 #ifndef __DRM_EDID_H__
 #define __DRM_EDID_H__
 
-#include <dev/pci/drm/drm_linux.h>
+#include <linux/types.h>
 #include <linux/hdmi.h>
 
 #define EDID_LENGTH 128

@@ -36,12 +36,8 @@ struct drm_fb_helper;
 #include <drm/drm_client.h>
 #endif
 #include <drm/drm_crtc.h>
-#ifdef notyet
 #include <drm/drm_device.h>
-#endif
-#ifdef __linux__
 #include <linux/kgdb.h>
-#endif
 
 enum mode_set_atomic {
 	LEAVE_ATOMIC_MODE_SET,

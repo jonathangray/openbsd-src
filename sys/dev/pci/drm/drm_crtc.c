@@ -29,13 +29,11 @@
  *      Dave Airlie <airlied@linux.ie>
  *      Jesse Barnes <jesse.barnes@intel.com>
  */
-#ifdef __linux__
 #include <linux/ctype.h>
 #include <linux/list.h>
 #include <linux/slab.h>
 #include <linux/export.h>
 #include <linux/dma-fence.h>
-#endif
 #include <drm/drmP.h>
 #include <drm/drm_crtc.h>
 #include <drm/drm_edid.h>

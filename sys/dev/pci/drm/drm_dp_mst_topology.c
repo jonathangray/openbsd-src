@@ -20,7 +20,6 @@
  * OF THIS SOFTWARE.
  */
 
-#ifdef __linux__
 #include <linux/kernel.h>
 #include <linux/delay.h>
 #include <linux/init.h>
@@ -28,7 +27,6 @@
 #include <linux/sched.h>
 #include <linux/seq_file.h>
 #include <linux/i2c.h>
-#endif
 #include <drm/drmP.h>
 #include <drm/drm_dp_mst_helper.h>
 

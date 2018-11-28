@@ -1,9 +1,11 @@
 /* Public domain. */
 
-#include <sys/types.h>
-
 #ifndef _DEV_PCI_DRM_DRM_MIPI_DSI_H_
 #define _DEV_PCI_DRM_DRM_MIPI_DSI_H_
+
+#include <sys/types.h>
+#include <linux/errno.h>
+#include <linux/types.h>
 
 struct mipi_dsi_host;
 struct mipi_dsi_device;

@@ -29,6 +29,10 @@
 #ifndef	_LINUX_RBTREE_H_
 #define	_LINUX_RBTREE_H_
 
+/* for printf */
+#include <sys/types.h>
+#include <sys/systm.h>
+
 #include <sys/tree.h>
 
 struct rb_node {

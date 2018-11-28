@@ -23,10 +23,8 @@
 #ifndef __DRM_FRAMEBUFFER_H__
 #define __DRM_FRAMEBUFFER_H__
 
-#ifdef __linux__
 #include <linux/list.h>
 #include <linux/ctype.h>
-#endif
 #include <drm/drm_mode_object.h>
 
 struct drm_framebuffer;

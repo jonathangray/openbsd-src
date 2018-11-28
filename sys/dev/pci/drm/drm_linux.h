@@ -42,8 +42,15 @@
 #include <dev/pci/pcivar.h>
 
 #include <linux/types.h>
+#include <linux/kernel.h>
 #include <linux/atomic.h>
 #include <linux/list.h>
+#include <linux/workqueue.h>
+#include <linux/slab.h>
+#include <linux/errno.h>
+#include <linux/export.h>
+#include <linux/seq_file.h>
+#include <video/mipi_display.h>
 
 /* The Linux code doesn't meet our usual standards! */
 #ifdef __clang__
@@ -66,15 +73,6 @@ enum irqreturn {
 	IRQ_NONE = 0,
 	IRQ_HANDLED = 1
 };
-
-typedef int8_t   s8;
-typedef uint8_t  u8;
-typedef int16_t  s16;
-typedef uint16_t u16;
-typedef int32_t  s32;
-typedef uint32_t u32;
-typedef int64_t  s64;
-typedef uint64_t u64;
 
 #define U8_MAX UINT8_MAX
 #define U16_MAX UINT16_MAX
@@ -205,10 +203,7 @@ hweight64(uint64_t x)
 #define lower_32_bits(n)	((u32)(n))
 #define upper_32_bits(_val)	((u32)(((_val) >> 16) >> 16))
 #define DMA_BIT_MASK(n) (((n) == 64) ? ~0ULL : (1ULL<<(n)) -1)
-#define BIT(x)			(1UL << (x))
-#define BIT_ULL(x)		(1ULL << (x))
 #define BITS_TO_LONGS(x)	howmany((x), 8 * sizeof(long))
-#define BITS_PER_BYTE		8
 #ifdef __LP64__
 #define BITS_PER_LONG		64
 #else
@@ -326,9 +321,6 @@ hash_32(uint32_t val, unsigned int bits)
 	return (val * GOLDEN_RATIO_32) >> (32 - bits);
 }
 
-#define EXPORT_SYMBOL(x)
-#define EXPORT_SYMBOL_GPL(x)
-
 #define IS_ENABLED(x) x - 0
 
 #define IS_BUILTIN(x) 1
@@ -363,13 +355,6 @@ struct module;
 #define THIS_MODULE	NULL
 
 #define ARRAY_SIZE nitems
-
-#define ERESTARTSYS	EINTR
-#define ETIME		ETIMEDOUT
-#define EREMOTEIO	EIO
-#define ENOTSUPP	ENOTSUP
-#define ENODATA		ENOTSUP
-#define ECHRNG		EINVAL
 
 #define KERN_INFO	""
 #define KERN_WARNING	""
@@ -577,13 +562,6 @@ PTR_ERR_OR_ZERO(const void *ptr)
 {
 	return IS_ERR(ptr)? PTR_ERR(ptr) : 0;
 }
-
-#define swap(a, b) \
-	do { __typeof(a) __tmp = (a); (a) = (b); (b) = __tmp; } while(0)
-
-#define container_of(ptr, type, member) ({                      \
-	const __typeof( ((type *)0)->member ) *__mptr = (ptr);        \
-	(type *)( (char *)__mptr - offsetof(type,member) );})
 
 #ifndef __DECONST
 #define __DECONST(type, var)    ((type)(__uintptr_t)(const void *)(var))
@@ -1022,188 +1000,6 @@ _try_wait_for_completion(struct completion *x LOCK_FL_VARS)
 }
 #define try_wait_for_completion(x)	_try_wait_for_completion(x LOCK_FILE_LINE)
 
-struct workqueue_struct;
-
-#define system_wq (struct workqueue_struct *)systq
-#define system_unbound_wq (struct workqueue_struct *)systq
-#define system_long_wq (struct workqueue_struct *)systq
-
-#define WQ_HIGHPRI	1
-#define WQ_FREEZABLE	2
-
-static inline struct workqueue_struct *
-alloc_workqueue(const char *name, int flags, int max_active)
-{
-	struct taskq *tq = taskq_create(name, 1, IPL_TTY, 0);
-	return (struct workqueue_struct *)tq;
-}
-
-static inline struct workqueue_struct *
-alloc_ordered_workqueue(const char *name, int flags)
-{
-	struct taskq *tq = taskq_create(name, 1, IPL_TTY, 0);
-	return (struct workqueue_struct *)tq;
-}
-
-static inline struct workqueue_struct *
-create_singlethread_workqueue(const char *name)
-{
-	struct taskq *tq = taskq_create(name, 1, IPL_TTY, 0);
-	return (struct workqueue_struct *)tq;
-}
-
-static inline void
-destroy_workqueue(struct workqueue_struct *wq)
-{
-	taskq_destroy((struct taskq *)wq);
-}
-
-struct work_struct {
-	struct task task;
-	struct taskq *tq;
-};
-
-typedef void (*work_func_t)(struct work_struct *);
-
-static inline void
-INIT_WORK(struct work_struct *work, work_func_t func)
-{
-	work->tq = systq;
-	task_set(&work->task, (void (*)(void *))func, work);
-}
-
-#define INIT_WORK_ONSTACK(x, y)	INIT_WORK((x), (y))
-
-static inline bool
-queue_work(struct workqueue_struct *wq, struct work_struct *work)
-{
-	work->tq = (struct taskq *)wq;
-	return task_add(work->tq, &work->task);
-}
-
-static inline void
-cancel_work_sync(struct work_struct *work)
-{
-	task_del(work->tq, &work->task);
-}
-
-struct delayed_work {
-	struct work_struct work;
-	struct timeout to;
-	struct taskq *tq;
-};
-
-struct irq_work {
-	struct task task;
-	struct taskq *tq;
-};
-
-typedef void (*irq_work_func_t)(struct irq_work *);
-
-static inline void
-init_irq_work(struct irq_work *work, irq_work_func_t func)
-{
-	work->tq = systq;
-	task_set(&work->task, (void (*)(void *))func, work);
-}
-
-static inline bool
-irq_work_queue(struct irq_work *work)
-{
-	return task_add(work->tq, &work->task);
-}
-
-#define system_power_efficient_wq ((struct workqueue_struct *)systq)
-
-static inline struct delayed_work *
-to_delayed_work(struct work_struct *work)
-{
-	return container_of(work, struct delayed_work, work);
-}
-
-static void
-__delayed_work_tick(void *arg)
-{
-	struct delayed_work *dwork = arg;
-
-	task_add(dwork->tq, &dwork->work.task);
-}
-
-static inline void
-INIT_DELAYED_WORK(struct delayed_work *dwork, work_func_t func)
-{
-	INIT_WORK(&dwork->work, func);
-	timeout_set(&dwork->to, __delayed_work_tick, &dwork->work);
-}
-
-static inline void
-INIT_DELAYED_WORK_ONSTACK(struct delayed_work *dwork, work_func_t func)
-{
-	INIT_WORK(&dwork->work, func);
-	timeout_set(&dwork->to, __delayed_work_tick, &dwork->work);
-}
-
-static inline bool
-schedule_work(struct work_struct *work)
-{
-	return task_add(work->tq, &work->task);
-}
-
-static inline bool
-schedule_delayed_work(struct delayed_work *dwork, int jiffies)
-{
-	dwork->tq = systq;
-	return timeout_add(&dwork->to, jiffies);
-}
-
-static inline bool
-queue_delayed_work(struct workqueue_struct *wq,
-    struct delayed_work *dwork, int jiffies)
-{
-	dwork->tq = (struct taskq *)wq;
-	return timeout_add(&dwork->to, jiffies);
-}
-
-static inline bool
-mod_delayed_work(struct workqueue_struct *wq,
-    struct delayed_work *dwork, int jiffies)
-{
-	dwork->tq = (struct taskq *)wq;
-	return (timeout_add(&dwork->to, jiffies) == 0);
-}
-
-static inline bool
-cancel_delayed_work(struct delayed_work *dwork)
-{
-	if (timeout_del(&dwork->to))
-		return true;
-	return task_del(dwork->tq, &dwork->work.task);
-}
-
-static inline bool
-cancel_delayed_work_sync(struct delayed_work *dwork)
-{
-	if (timeout_del(&dwork->to))
-		return true;
-	return task_del(dwork->tq, &dwork->work.task);
-}
-
-static inline bool
-delayed_work_pending(struct delayed_work *dwork)
-{
-	STUB();
-	return false;
-}
-
-void flush_workqueue(struct workqueue_struct *);
-bool flush_work(struct work_struct *);
-bool flush_delayed_work(struct delayed_work *);
-#define flush_scheduled_work()	flush_workqueue(system_wq)
-#define drain_workqueue(x)	flush_workqueue(x)
-
-#define destroy_work_on_stack(x)
-#define destroy_delayed_work_on_stack(x)
-
 struct tasklet_struct {
 	void (*func)(unsigned long);
 	unsigned long data;
@@ -1517,48 +1313,9 @@ local_clock(void)
 	return (ts.tv_sec * NSEC_PER_SEC) + ts.tv_nsec;
 }
 
-#define GFP_ATOMIC	M_NOWAIT
-#define GFP_NOWAIT	M_NOWAIT
-#define GFP_KERNEL	(M_WAITOK | M_CANFAIL)
-#define GFP_USER	(M_WAITOK | M_CANFAIL)
-#define GFP_TEMPORARY	(M_WAITOK | M_CANFAIL)
-#define GFP_HIGHUSER	0
-#define GFP_DMA32	0
-#define __GFP_NOWARN	0
-#define __GFP_NORETRY	0
-#define __GFP_ZERO	M_ZERO
-#define __GFP_RETRY_MAYFAIL	0
-#define __GFP_MOVABLE		0
-#define __GFP_COMP		0
-#define GFP_TRANSHUGE_LIGHT	0
-#define __GFP_KSWAPD_RECLAIM	0
-#define __GFP_HIGHMEM		0
-#define __GFP_RECLAIMABLE	0
-#define __GFP_DMA32		0
-
-static inline bool
-gfpflags_allow_blocking(const unsigned int flags)
-{
-	return (flags & M_WAITOK) != 0;
-}
-
 #define PageHighMem(x)	0
 
 #define array_size(x, y) ((x) * (y))
-
-static inline void *
-kmalloc(size_t size, int flags)
-{
-	return malloc(size, M_DRM, flags);
-}
-
-static inline void *
-kmalloc_array(size_t n, size_t size, int flags)
-{
-	if (n == 0 || SIZE_MAX / n < size)
-		return NULL;
-	return malloc(n * size, M_DRM, flags);
-}
 
 static inline void *
 kvmalloc_array(size_t n, size_t size, int flags)
@@ -1569,29 +1326,9 @@ kvmalloc_array(size_t n, size_t size, int flags)
 }
 
 static inline void *
-kcalloc(size_t n, size_t size, int flags)
-{
-	if (n == 0 || SIZE_MAX / n < size)
-		return NULL;
-	return malloc(n * size, M_DRM, flags | M_ZERO);
-}
-
-static inline void *
-kzalloc(size_t size, int flags)
-{
-	return malloc(size, M_DRM, flags | M_ZERO);
-}
-
-static inline void *
 kvzalloc(size_t size, int flags)
 {
 	return malloc(size, M_DRM, flags | M_ZERO);
-}
-
-static inline void
-kfree(const void *objp)
-{
-	free((void *)objp, M_DRM, 0);
 }
 
 static inline void
@@ -1893,13 +1630,6 @@ schedule(void)
 	msleep(sch_ident, &sch_mtx, sch_priority, "schto", 0);
 	sch_ident = curproc;
 }
-
-struct seq_file;
-
-static inline void
-seq_printf(struct seq_file *m, const char *fmt, ...) {};
-static inline void
-seq_puts(struct seq_file *m, const char *s) {};
 
 #define preempt_enable()
 #define preempt_disable()
@@ -2726,67 +2456,6 @@ void vga_put(struct pci_dev *, int);
 
 #define VGA_SWITCHEROO_CAN_SWITCH_DDC	1
 
-struct i2c_algorithm;
-
-#define I2C_FUNC_I2C			0
-#define I2C_FUNC_SMBUS_EMUL		0
-#define I2C_FUNC_SMBUS_READ_BLOCK_DATA	0
-#define I2C_FUNC_SMBUS_BLOCK_PROC_CALL	0
-#define I2C_FUNC_10BIT_ADDR		0
-
-struct i2c_adapter {
-	struct i2c_controller ic;
-
-	char name[48];
-	const struct i2c_algorithm *algo;
-	void *algo_data;
-	int retries;
-
-	void *data;
-};
-
-#define I2C_NAME_SIZE	20
-
-struct i2c_msg {
-	uint16_t addr;
-	uint16_t flags;
-	uint16_t len;
-	uint8_t *buf;
-};
-
-#define I2C_M_RD	0x0001
-#define I2C_M_NOSTART	0x0002
-
-struct i2c_algorithm {
-	int (*master_xfer)(struct i2c_adapter *, struct i2c_msg *, int);
-	u32 (*functionality)(struct i2c_adapter *);
-};
-
-extern struct i2c_algorithm i2c_bit_algo;
-
-struct i2c_algo_bit_data {
-	struct i2c_controller ic;
-};
-
-int i2c_transfer(struct i2c_adapter *, struct i2c_msg *, int);
-#define i2c_add_adapter(x) 0
-#define i2c_del_adapter(x)
-#define __i2c_transfer(adap, msgs, num)	i2c_transfer(adap, msgs, num)
-
-static inline void *
-i2c_get_adapdata(struct i2c_adapter *adap)
-{
-	return adap->data;
-}
-
-static inline void
-i2c_set_adapdata(struct i2c_adapter *adap, void *data)
-{
-	adap->data = data;
-}
-
-int i2c_bit_add_bus(struct i2c_adapter *);
-
 #define memcpy_toio(d, s, n)	memcpy(d, s, n)
 #define memcpy_fromio(d, s, n)	memcpy(d, s, n)
 #define memset_io(d, b, n)	memset(d, b, n)
@@ -3331,61 +3000,6 @@ backlight_update_status(struct backlight_device *bd)
 }
 
 void backlight_schedule_update_status(struct backlight_device *);
-
-#define MIPI_DSI_V_SYNC_START			0x01
-#define MIPI_DSI_V_SYNC_END			0x11
-#define MIPI_DSI_H_SYNC_START			0x21
-#define MIPI_DSI_H_SYNC_END			0x31
-#define MIPI_DSI_COLOR_MODE_OFF			0x02
-#define MIPI_DSI_COLOR_MODE_ON			0x12
-#define MIPI_DSI_SHUTDOWN_PERIPHERAL		0x22
-#define MIPI_DSI_TURN_ON_PERIPHERAL		0x32
-#define MIPI_DSI_GENERIC_SHORT_WRITE_0_PARAM	0x03
-#define MIPI_DSI_GENERIC_SHORT_WRITE_1_PARAM	0x13
-#define MIPI_DSI_GENERIC_SHORT_WRITE_2_PARAM	0x23
-#define MIPI_DSI_GENERIC_READ_REQUEST_0_PARAM	0x04
-#define MIPI_DSI_GENERIC_READ_REQUEST_1_PARAM	0x14
-#define MIPI_DSI_GENERIC_READ_REQUEST_2_PARAM	0x24
-#define MIPI_DSI_DCS_SHORT_WRITE		0x05
-#define MIPI_DSI_DCS_SHORT_WRITE_PARAM		0x15
-#define MIPI_DSI_DCS_READ			0x06
-#define MIPI_DSI_DCS_COMPRESSION_MODE		0x07
-#define MIPI_DSI_PPS_LONG_WRITE			0x0a
-#define MIPI_DSI_SET_MAXIMUM_RETURN_PACKET_SIZE	0x37
-#define MIPI_DSI_END_OF_TRANSMISSION		0x08
-#define MIPI_DSI_NULL_PACKET			0x09
-#define MIPI_DSI_BLANKING_PACKET		0x19
-#define MIPI_DSI_GENERIC_LONG_WRITE		0x29
-#define MIPI_DSI_DCS_LONG_WRITE			0x39
-#define MIPI_DSI_LOOSELY_PACKED_PIXEL_STREAM_YCBCR20	0x0c
-#define MIPI_DSI_PACKED_PIXEL_STREAM_YCBCR24	0x1c
-#define MIPI_DSI_PACKED_PIXEL_STREAM_YCBCR16	0x2c
-#define MIPI_DSI_PACKED_PIXEL_STREAM_30		0x0d
-#define MIPI_DSI_PACKED_PIXEL_STREAM_36		0x1d
-#define MIPI_DSI_PACKED_PIXEL_STREAM_YCBCR12	0x3d
-#define MIPI_DSI_PACKED_PIXEL_STREAM_16		0x0e
-#define MIPI_DSI_PACKED_PIXEL_STREAM_18		0x1e
-#define MIPI_DSI_PIXEL_STREAM_3BYTE_18		0x2e
-#define MIPI_DSI_PACKED_PIXEL_STREAM_24		0x3e
-
-#define MIPI_DCS_NOP				0x00
-#define MIPI_DCS_SOFT_RESET			0x01
-#define MIPI_DCS_GET_POWER_MODE			0x0a
-#define MIPI_DCS_GET_PIXEL_FORMAT		0x0c
-#define MIPI_DCS_ENTER_SLEEP_MODE		0x10
-#define MIPI_DCS_EXIT_SLEEP_MODE		0x11
-#define MIPI_DCS_SET_DISPLAY_OFF		0x28
-#define MIPI_DCS_SET_DISPLAY_ON			0x29
-#define MIPI_DCS_SET_COLUMN_ADDRESS		0x2a
-#define MIPI_DCS_SET_PAGE_ADDRESS		0x2b
-#define MIPI_DCS_SET_TEAR_OFF			0x34
-#define MIPI_DCS_SET_TEAR_ON			0x35
-#define MIPI_DCS_SET_PIXEL_FORMAT		0x3a
-#define MIPI_DCS_SET_DISPLAY_BRIGHTNESS		0x51
-#define MIPI_DCS_GET_DISPLAY_BRIGHTNESS		0x52
-#define MIPI_DCS_WRITE_CONTROL_DISPLAY		0x53
-#define MIPI_DCS_GET_CONTROL_DISPLAY		0x54
-#define MIPI_DCS_WRITE_POWER_SAVE		0x55
 
 struct pwm_device;
 

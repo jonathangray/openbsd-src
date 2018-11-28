@@ -20,9 +20,7 @@
  * OF THIS SOFTWARE.
  */
 
-#ifdef __linux__
 #include <linux/export.h>
-#endif
 #include <drm/drmP.h>
 #include <drm/drm_mode_object.h>
 #include <drm/drm_atomic.h>

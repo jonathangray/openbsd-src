@@ -20,9 +20,7 @@
  * OF THIS SOFTWARE.
  */
 
-#ifdef __linux__
 #include <linux/export.h>
-#endif
 #include <drm/drmP.h>
 #ifdef _notyet
 #include <drm/drm_auth.h>

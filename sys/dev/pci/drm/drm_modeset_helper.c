@@ -20,7 +20,6 @@
  * OF THIS SOFTWARE.
  */
 
-#include <dev/pci/drm/drm_linux.h>
 #include <drm/drm_atomic_helper.h>
 #include <drm/drm_crtc_helper.h>
 #include <drm/drm_fb_helper.h>

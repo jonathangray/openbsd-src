@@ -8,12 +8,8 @@
  * must not depend on other drm code.
  */
 
-#ifdef __linux__
 #include <linux/dmi.h>
 #include <linux/module.h>
-#else
-#include <dev/pci/drm/drm_linux.h>
-#endif
 #include <drm/drm_connector.h>
 #include <drm/drm_utils.h>
 

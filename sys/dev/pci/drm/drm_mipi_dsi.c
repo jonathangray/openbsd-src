@@ -25,10 +25,8 @@
  * USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <dev/pci/drm/drm_linux.h>
 #include <drm/drm_mipi_dsi.h>
 
-#ifdef __linux__
 #include <linux/device.h>
 #include <linux/module.h>
 #include <linux/of_device.h>
@@ -36,7 +34,6 @@
 #include <linux/slab.h>
 
 #include <video/mipi_display.h>
-#endif
 
 /**
  * DOC: dsi helpers

@@ -31,6 +31,7 @@
 #define _DRM_FILE_H_
 
 #include <linux/types.h>
+#include <linux/completion.h>
 
 #include <uapi/drm/drm.h>
 

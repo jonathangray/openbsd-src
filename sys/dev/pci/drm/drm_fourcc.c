@@ -22,12 +22,10 @@
  * OF THIS SOFTWARE.
  */
 
-#ifdef __linux__
 #include <linux/bug.h>
 #include <linux/ctype.h>
 #include <linux/export.h>
 #include <linux/kernel.h>
-#endif
 
 #include <drm/drmP.h>
 #include <drm/drm_fourcc.h>

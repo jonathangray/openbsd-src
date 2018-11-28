@@ -26,12 +26,10 @@
 #ifndef DRM_PRINT_H_
 #define DRM_PRINT_H_
 
-#ifdef __linux__
 #include <linux/compiler.h>
 #include <linux/printk.h>
 #include <linux/seq_file.h>
 #include <linux/device.h>
-#endif
 
 /**
  * DOC: print

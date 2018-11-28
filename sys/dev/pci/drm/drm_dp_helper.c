@@ -20,7 +20,6 @@
  * OF THIS SOFTWARE.
  */
 
-#ifdef __linux__
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/delay.h>
@@ -29,11 +28,10 @@
 #include <linux/sched.h>
 #include <linux/i2c.h>
 #include <linux/seq_file.h>
-#endif
 #include <drm/drm_dp_helper.h>
 #include <drm/drmP.h>
 
-#include <dev/pci/drm/drm_crtc_helper_internal.h>
+#include "drm_crtc_helper_internal.h"
 
 /**
  * DOC: dp helpers

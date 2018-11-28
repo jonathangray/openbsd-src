@@ -32,13 +32,9 @@
 #ifndef __DRM_PRIME_H__
 #define __DRM_PRIME_H__
 
-#ifdef __linux__
 #include <linux/mutex.h>
 #include <linux/rbtree.h>
 #include <linux/scatterlist.h>
-#endif
-#include <dev/pci/drm/drm_linux.h>
-#include <linux/rbtree.h>
 
 /**
  * struct drm_prime_file_private - per-file tracking for PRIME

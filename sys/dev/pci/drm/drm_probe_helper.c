@@ -29,10 +29,8 @@
  *      Jesse Barnes <jesse.barnes@intel.com>
  */
 
-#ifdef __linux__
 #include <linux/export.h>
 #include <linux/moduleparam.h>
-#endif
 
 #include <drm/drmP.h>
 #ifdef notyet
@@ -45,7 +43,7 @@
 #include <drm/drm_edid.h>
 #include <drm/drm_modeset_helper_vtables.h>
 
-#include <dev/pci/drm/drm_crtc_helper_internal.h>
+#include "drm_crtc_helper_internal.h"
 
 /**
  * DOC: output probing helper overview
