@@ -33,7 +33,7 @@
 #include "radeon.h"
 #include "radeon_asic.h"
 #include "radeon_audio.h"
-#include <dev/pci/drm/uapi/radeon_drm.h>
+#include <dev/pci/drm/uapi/drm/radeon_drm.h>
 #include "rv770d.h"
 #include "atom.h"
 #include "avivod.h"

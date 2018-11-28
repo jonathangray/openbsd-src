@@ -23,7 +23,7 @@
 #define __DRM_FOURCC_H__
 
 #include "linux_types.h"
-#include <dev/pci/drm/uapi/drm_fourcc.h>
+#include <dev/pci/drm/uapi/drm/drm_fourcc.h>
 
 struct drm_device;
 struct drm_mode_fb_cmd2;

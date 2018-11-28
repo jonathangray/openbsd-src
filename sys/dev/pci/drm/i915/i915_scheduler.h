@@ -13,7 +13,7 @@
 #include <dev/pci/drm/drm_linux.h>
 #endif
 
-#include <dev/pci/drm/uapi/i915_drm.h>
+#include <dev/pci/drm/uapi/drm/i915_drm.h>
 
 enum {
 	I915_PRIORITY_MIN = I915_CONTEXT_MIN_USER_PRIORITY - 1,

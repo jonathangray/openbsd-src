@@ -30,8 +30,8 @@
 #ifndef _I915_DRV_H_
 #define _I915_DRV_H_
 
-#include <dev/pci/drm/uapi/i915_drm.h>
-#include <dev/pci/drm/uapi/drm_fourcc.h>
+#include <dev/pci/drm/uapi/drm/i915_drm.h>
+#include <dev/pci/drm/uapi/drm/drm_fourcc.h>
 
 #ifdef __linux__
 #include <linux/io-mapping.h>

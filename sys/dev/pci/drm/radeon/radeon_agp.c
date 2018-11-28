@@ -26,7 +26,7 @@
  */
 #include <dev/pci/drm/drmP.h>
 #include "radeon.h"
-#include <dev/pci/drm/uapi/radeon_drm.h>
+#include <dev/pci/drm/uapi/drm/radeon_drm.h>
 
 #if __OS_HAS_AGP
 

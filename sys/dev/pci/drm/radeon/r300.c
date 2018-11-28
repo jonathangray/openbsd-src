@@ -26,12 +26,12 @@
  *          Jerome Glisse
  */
 #include <dev/pci/drm/drmP.h>
-#include <dev/pci/drm/uapi/drm.h>
+#include <dev/pci/drm/uapi/drm/drm.h>
 #include <dev/pci/drm/drm_crtc_helper.h>
 #include "radeon_reg.h"
 #include "radeon.h"
 #include "radeon_asic.h"
-#include <dev/pci/drm/uapi/radeon_drm.h>
+#include <dev/pci/drm/uapi/drm/radeon_drm.h>
 #include "r100_track.h"
 #include "r300d.h"
 #include "rv350d.h"

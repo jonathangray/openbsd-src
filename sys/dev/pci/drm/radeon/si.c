@@ -30,7 +30,7 @@
 #include "radeon.h"
 #include "radeon_asic.h"
 #include "radeon_audio.h"
-#include <dev/pci/drm/uapi/radeon_drm.h>
+#include <dev/pci/drm/uapi/drm/radeon_drm.h>
 #include "sid.h"
 #include "atom.h"
 #include "si_blit_shaders.h"

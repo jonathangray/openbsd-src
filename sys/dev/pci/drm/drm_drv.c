@@ -56,7 +56,7 @@
 #include <uvm/uvm_device.h>
 
 #include "drmP.h"
-#include <dev/pci/drm/uapi/drm.h>
+#include <dev/pci/drm/uapi/drm/drm.h>
 #include "drm_internal.h"
 #include "drm_crtc_internal.h"
 #include "drm_vblank.h"

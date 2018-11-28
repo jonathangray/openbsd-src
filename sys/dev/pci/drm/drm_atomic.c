@@ -28,7 +28,7 @@
 
 #include <dev/pci/drm/drmP.h>
 #include <dev/pci/drm/drm_atomic.h>
-#include <dev/pci/drm/uapi/drm_mode.h>
+#include <dev/pci/drm/uapi/drm/drm_mode.h>
 #include <dev/pci/drm/drm_print.h>
 #include <dev/pci/drm/drm_writeback.h>
 #include <dev/pci/drm/drm_plane_helper.h>

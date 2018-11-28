@@ -10,7 +10,7 @@
 
 #include "i915_drv.h"
 #include "i915_query.h"
-#include <dev/pci/drm/uapi/i915_drm.h>
+#include <dev/pci/drm/uapi/drm/i915_drm.h>
 
 static int query_topology_info(struct drm_i915_private *dev_priv,
 			       struct drm_i915_query_item *query_item)

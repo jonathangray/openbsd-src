@@ -34,7 +34,7 @@
 #include <linux/slab.h>
 #endif
 #include <dev/pci/drm/drmP.h>
-#include <dev/pci/drm/uapi/radeon_drm.h>
+#include <dev/pci/drm/uapi/drm/radeon_drm.h>
 #include <dev/pci/drm/drm_cache.h>
 #include "radeon.h"
 #include "radeon_trace.h"

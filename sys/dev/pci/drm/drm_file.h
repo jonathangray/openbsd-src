@@ -32,7 +32,7 @@
 
 #include "linux_types.h"
 
-#include <dev/pci/drm/uapi/drm.h>
+#include <dev/pci/drm/uapi/drm/drm.h>
 
 #include <dev/pci/drm/drm_prime.h>
 

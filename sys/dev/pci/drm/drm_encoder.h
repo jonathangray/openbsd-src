@@ -28,7 +28,7 @@
 #include <linux/ctype.h>
 #endif
 #include <dev/pci/drm/drm_crtc.h>
-#include <dev/pci/drm/uapi/drm_mode.h>
+#include <dev/pci/drm/uapi/drm/drm_mode.h>
 #include <dev/pci/drm/drm_mode_object.h>
 
 struct drm_encoder;

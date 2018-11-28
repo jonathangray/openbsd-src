@@ -27,7 +27,7 @@
 #include <linux/list.h>
 #include <linux/ctype.h>
 #endif
-#include <dev/pci/drm/uapi/drm_mode.h>
+#include <dev/pci/drm/uapi/drm/drm_mode.h>
 
 struct drm_device;
 struct drm_atomic_state;

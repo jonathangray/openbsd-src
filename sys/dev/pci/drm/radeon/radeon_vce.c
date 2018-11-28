@@ -30,7 +30,7 @@
 #include <linux/module.h>
 #endif
 #include <dev/pci/drm/drmP.h>
-#include <dev/pci/drm/uapi/drm.h>
+#include <dev/pci/drm/uapi/drm/drm.h>
 
 #include "radeon.h"
 #include "radeon_asic.h"
