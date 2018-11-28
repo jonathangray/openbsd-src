@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 
-#include <dev/pci/drm/drmP.h>
-#include <dev/pci/drm/drm_dp_mst_helper.h>
-#include <dev/pci/drm/drm_fb_helper.h>
+#include <drm/drmP.h>
+#include <drm/drm_dp_mst_helper.h>
+#include <drm/drm_fb_helper.h>
 
 #include "radeon.h"
 #include "atom.h"

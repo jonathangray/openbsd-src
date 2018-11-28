@@ -23,9 +23,9 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include "drmP.h"
-#include "drm_mm.h"
-#include "drm_vma_manager.h"
+#include <drm/drmP.h>
+#include <drm/drm_mm.h>
+#include <drm/drm_vma_manager.h>
 #include "drm_linux_rbtree.h"
 
 /**

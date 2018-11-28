@@ -72,7 +72,7 @@
 #ifdef __linux__
 #include <linux/delay.h>
 #endif
-#include <dev/pci/drm/intel_lpe_audio.h>
+#include <drm/intel_lpe_audio.h>
 
 #define HAS_LPE_AUDIO(dev_priv) ((dev_priv)->lpe_audio.platdev != NULL)
 

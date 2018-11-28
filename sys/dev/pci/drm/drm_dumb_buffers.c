@@ -23,8 +23,8 @@
  * OF THIS SOFTWARE.
  */
 
-#include <dev/pci/drm/drmP.h>
-#include <dev/pci/drm/drm_gem.h>
+#include <drm/drmP.h>
+#include <drm/drm_gem.h>
 
 #include "drm_crtc_internal.h"
 

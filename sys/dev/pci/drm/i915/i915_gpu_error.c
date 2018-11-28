@@ -34,7 +34,7 @@
 #else
 #include <dev/pci/drm/drm_linux.h>
 #endif
-#include <dev/pci/drm/drm_print.h>
+#include <drm/drm_print.h>
 #ifdef __linux__
 #include <linux/ascii85.h>
 #endif

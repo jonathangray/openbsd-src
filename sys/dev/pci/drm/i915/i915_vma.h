@@ -32,7 +32,7 @@
 #include <dev/pci/drm/drm_linux.h>
 #endif
 
-#include <dev/pci/drm/drm_mm.h>
+#include <drm/drm_mm.h>
 
 #include "i915_gem_gtt.h"
 #include "i915_gem_fence_reg.h"

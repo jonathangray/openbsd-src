@@ -29,10 +29,10 @@
  * See intel_atomic_plane.c for the plane-specific atomic functionality.
  */
 
-#include <dev/pci/drm/drmP.h>
-#include <dev/pci/drm/drm_atomic.h>
-#include <dev/pci/drm/drm_atomic_helper.h>
-#include <dev/pci/drm/drm_plane_helper.h>
+#include <drm/drmP.h>
+#include <drm/drm_atomic.h>
+#include <drm/drm_atomic_helper.h>
+#include <drm/drm_plane_helper.h>
 #include "intel_drv.h"
 
 /**

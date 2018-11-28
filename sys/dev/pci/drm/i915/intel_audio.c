@@ -27,12 +27,12 @@
 #else
 #include <dev/pci/drm/drm_linux.h>
 #endif
-#include <dev/pci/drm/i915_component.h>
-#include <dev/pci/drm/intel_lpe_audio.h>
+#include <drm/i915_component.h>
+#include <drm/intel_lpe_audio.h>
 #include "intel_drv.h"
 
-#include <dev/pci/drm/drmP.h>
-#include <dev/pci/drm/drm_edid.h>
+#include <drm/drmP.h>
+#include <drm/drm_edid.h>
 #include "i915_drv.h"
 
 /**

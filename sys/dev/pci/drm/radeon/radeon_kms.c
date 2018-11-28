@@ -25,10 +25,10 @@
  *          Alex Deucher
  *          Jerome Glisse
  */
-#include <dev/pci/drm/drmP.h>
-#include <dev/pci/drm/drm_fb_helper.h>
+#include <drm/drmP.h>
+#include <drm/drm_fb_helper.h>
 #include "radeon.h"
-#include <dev/pci/drm/uapi/drm/radeon_drm.h>
+#include <drm/radeon_drm.h>
 #include "radeon_asic.h"
 
 #include "radeon_kfd.h"

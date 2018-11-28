@@ -29,8 +29,8 @@
 #else
 #include <dev/pci/drm/drm_linux.h>
 #endif
-#include <dev/pci/drm/drm_dp_dual_mode_helper.h>
-#include <dev/pci/drm/drmP.h>
+#include <drm/drm_dp_dual_mode_helper.h>
+#include <drm/drmP.h>
 
 /**
  * DOC: dp dual mode helpers

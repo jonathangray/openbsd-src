@@ -20,9 +20,9 @@
  * OF THIS SOFTWARE.
  */
 
-#include <dev/pci/drm/drmP.h>
-#include <dev/pci/drm/drm_crtc.h>
-#include <dev/pci/drm/drm_color_mgmt.h>
+#include <drm/drmP.h>
+#include <drm/drm_crtc.h>
+#include <drm/drm_color_mgmt.h>
 
 #include "drm_crtc_internal.h"
 

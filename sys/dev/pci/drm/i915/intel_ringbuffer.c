@@ -31,8 +31,8 @@
 #include <linux/log2.h>
 #endif
 
-#include <dev/pci/drm/drmP.h>
-#include <dev/pci/drm/i915_drm.h>
+#include <drm/drmP.h>
+#include <drm/i915_drm.h>
 
 #include "i915_drv.h"
 #include "i915_gem_render_state.h"

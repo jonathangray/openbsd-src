@@ -26,8 +26,8 @@
 #include <sys/types.h>
 #include <sys/device.h>
 #include <dev/i2c/i2cvar.h>
-#include <dev/pci/drm/drmP.h>
-#include <dev/pci/drm/drm_crtc.h>
+#include <drm/drmP.h>
+#include <drm/drm_crtc.h>
 #include "intel_drv.h"
 
 struct intel_dvo_device {

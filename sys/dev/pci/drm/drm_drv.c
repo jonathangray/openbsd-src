@@ -55,11 +55,11 @@
 #include <uvm/uvm.h>
 #include <uvm/uvm_device.h>
 
-#include "drmP.h"
-#include <dev/pci/drm/uapi/drm/drm.h>
+#include <drm/drmP.h>
+#include <uapi/drm/drm.h>
 #include "drm_internal.h"
 #include "drm_crtc_internal.h"
-#include "drm_vblank.h"
+#include <drm/drm_vblank.h>
 
 #ifdef DRMDEBUG
 int drm_debug_flag = 1;

@@ -60,7 +60,7 @@
  * functions is deprecated and should be avoided.
  */
 
-#include <dev/pci/drm/drmP.h>
+#include <drm/drmP.h>
 
 #include "intel_drv.h"
 #include "intel_frontbuffer.h"

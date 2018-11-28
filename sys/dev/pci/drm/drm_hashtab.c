@@ -33,8 +33,8 @@
  * Thomas Hellström <thomas-at-tungstengraphics-dot-com>
  */
 
-#include <dev/pci/drm/drmP.h>
-#include <dev/pci/drm/drm_hashtab.h>
+#include <drm/drmP.h>
+#include <drm/drm_hashtab.h>
 
 struct hlist_node *
 	 drm_ht_find_key(struct drm_open_hash *, unsigned long);

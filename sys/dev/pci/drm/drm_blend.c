@@ -23,9 +23,9 @@
  * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE
  * OF THIS SOFTWARE.
  */
-#include <dev/pci/drm/drmP.h>
-#include <dev/pci/drm/drm_atomic.h>
-#include <dev/pci/drm/drm_blend.h>
+#include <drm/drmP.h>
+#include <drm/drm_atomic.h>
+#include <drm/drm_blend.h>
 #ifdef __linux__
 #include <linux/export.h>
 #include <linux/slab.h>

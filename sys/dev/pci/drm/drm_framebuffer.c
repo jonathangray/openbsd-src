@@ -23,13 +23,13 @@
 #ifdef __linux__
 #include <linux/export.h>
 #endif
-#include <dev/pci/drm/drmP.h>
+#include <drm/drmP.h>
 #ifdef _notyet
-#include <dev/pci/drm/drm_auth.h>
+#include <drm/drm_auth.h>
 #endif
-#include <dev/pci/drm/drm_framebuffer.h>
-#include <dev/pci/drm/drm_atomic.h>
-#include <dev/pci/drm/drm_print.h>
+#include <drm/drm_framebuffer.h>
+#include <drm/drm_atomic.h>
+#include <drm/drm_print.h>
 
 #include "drm_internal.h"
 #include "drm_crtc_internal.h"

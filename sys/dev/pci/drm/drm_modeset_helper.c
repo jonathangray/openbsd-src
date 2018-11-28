@@ -21,11 +21,11 @@
  */
 
 #include <dev/pci/drm/drm_linux.h>
-#include <dev/pci/drm/drm_atomic_helper.h>
-#include <dev/pci/drm/drm_crtc_helper.h>
-#include <dev/pci/drm/drm_fb_helper.h>
-#include <dev/pci/drm/drm_modeset_helper.h>
-#include <dev/pci/drm/drm_plane_helper.h>
+#include <drm/drm_atomic_helper.h>
+#include <drm/drm_crtc_helper.h>
+#include <drm/drm_fb_helper.h>
+#include <drm/drm_modeset_helper.h>
+#include <drm/drm_plane_helper.h>
 
 /**
  * DOC: aux kms helpers

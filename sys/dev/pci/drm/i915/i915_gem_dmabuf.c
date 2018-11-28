@@ -32,7 +32,7 @@
 #include <dev/pci/drm/linux_reservation.h>
 #endif
 
-#include <dev/pci/drm/drmP.h>
+#include <drm/drmP.h>
 
 #include "i915_drv.h"
 

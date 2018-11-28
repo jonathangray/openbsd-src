@@ -14,8 +14,8 @@
 #else
 #include <dev/pci/drm/drm_linux.h>
 #endif
-#include <dev/pci/drm/drm_connector.h>
-#include <dev/pci/drm/drm_utils.h>
+#include <drm/drm_connector.h>
+#include <drm/drm_utils.h>
 
 #ifdef CONFIG_DMI
 

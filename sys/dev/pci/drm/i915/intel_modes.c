@@ -27,8 +27,8 @@
 #include <linux/slab.h>
 #include <linux/i2c.h>
 #endif
-#include <dev/pci/drm/drmP.h>
-#include <dev/pci/drm/drm_edid.h>
+#include <drm/drmP.h>
+#include <drm/drm_edid.h>
 #include "intel_drv.h"
 #include "i915_drv.h"
 

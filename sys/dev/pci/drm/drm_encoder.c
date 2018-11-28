@@ -23,8 +23,8 @@
 #ifdef __linux__
 #include <linux/export.h>
 #endif
-#include <dev/pci/drm/drmP.h>
-#include <dev/pci/drm/drm_encoder.h>
+#include <drm/drmP.h>
+#include <drm/drm_encoder.h>
 
 #include "drm_crtc_internal.h"
 

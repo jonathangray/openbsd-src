@@ -51,7 +51,7 @@
  * must be correctly synchronized/cancelled when shutting down the pipe."
  */
 
-#include <dev/pci/drm/drmP.h>
+#include <drm/drmP.h>
 
 #include "intel_drv.h"
 #include "i915_drv.h"

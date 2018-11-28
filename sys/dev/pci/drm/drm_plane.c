@@ -20,8 +20,8 @@
  * OF THIS SOFTWARE.
  */
 
-#include <dev/pci/drm/drmP.h>
-#include <dev/pci/drm/drm_plane.h>
+#include <drm/drmP.h>
+#include <drm/drm_plane.h>
 
 #include "drm_crtc_internal.h"
 

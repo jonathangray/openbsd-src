@@ -1,7 +1,7 @@
 /* Public domain. */
 
-#include <dev/pci/drm/drmP.h>
-#include <dev/pci/drm/drm_framebuffer.h>
+#include <drm/drmP.h>
+#include <drm/drm_framebuffer.h>
 
 void
 drm_gem_fb_destroy(struct drm_framebuffer *fb)

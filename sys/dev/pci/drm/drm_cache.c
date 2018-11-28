@@ -15,7 +15,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <dev/pci/drm/drmP.h>
+#include <drm/drmP.h>
 
 #if defined(__i386__) || defined(__amd64__)
 static void

@@ -51,8 +51,8 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <dev/pci/drm/drm_irq.h>
-#include <dev/pci/drm/drmP.h>
+#include <drm/drm_irq.h>
+#include <drm/drmP.h>
 
 #ifdef __linux__
 #include <linux/interrupt.h>	/* For task queue support */

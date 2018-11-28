@@ -33,7 +33,7 @@
  * Wrappers for MTRR management support.
  */
 
-#include "drmP.h"
+#include <drm/drmP.h>
 
 #if !defined(__amd64__) && !defined(__i386__)
 #define DRM_NO_MTRR	1

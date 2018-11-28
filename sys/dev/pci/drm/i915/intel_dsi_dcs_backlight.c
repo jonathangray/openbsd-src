@@ -29,7 +29,7 @@
 #ifdef __linux__
 #include <video/mipi_display.h>
 #endif
-#include <dev/pci/drm/drm_mipi_dsi.h>
+#include <drm/drm_mipi_dsi.h>
 
 #define CONTROL_DISPLAY_BCTRL		(1 << 5)
 #define CONTROL_DISPLAY_DD		(1 << 3)

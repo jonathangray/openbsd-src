@@ -23,9 +23,9 @@
 #ifdef __linux__
 #include <linux/export.h>
 #endif
-#include <dev/pci/drm/drmP.h>
-#include <dev/pci/drm/drm_mode_object.h>
-#include <dev/pci/drm/drm_atomic.h>
+#include <drm/drmP.h>
+#include <drm/drm_mode_object.h>
+#include <drm/drm_atomic.h>
 
 #include "drm_crtc_internal.h"
 

@@ -21,9 +21,9 @@
  */
 
 #include <dev/pci/drm/drm_linux.h>
-#include <dev/pci/drm/drm_encoder.h>
-#include <dev/pci/drm/drm_mode_config.h>
-#include <dev/pci/drm/drmP.h>
+#include <drm/drm_encoder.h>
+#include <drm/drm_mode_config.h>
+#include <drm/drmP.h>
 
 #include "drm_crtc_internal.h"
 #include "drm_internal.h"

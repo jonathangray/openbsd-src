@@ -26,9 +26,9 @@
 #include <linux/module.h>
 #endif
 
-#include <dev/pci/drm/drmP.h>
-#include <dev/pci/drm/drm_crtc.h>
-#include <dev/pci/drm/drm_panel.h>
+#include <drm/drmP.h>
+#include <drm/drm_crtc.h>
+#include <drm/drm_panel.h>
 
 static DEFINE_MUTEX(panel_lock);
 static DRM_LIST_HEAD(panel_list);

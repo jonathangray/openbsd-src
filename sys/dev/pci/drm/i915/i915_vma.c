@@ -29,7 +29,7 @@
 #include "intel_ringbuffer.h"
 #include "intel_frontbuffer.h"
 
-#include <dev/pci/drm/drm_gem.h>
+#include <drm/drm_gem.h>
 
 #if IS_ENABLED(CONFIG_DRM_I915_ERRLOG_GEM) && IS_ENABLED(CONFIG_DRM_DEBUG_MM)
 

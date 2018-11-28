@@ -31,10 +31,10 @@
 #define _TTM_BO_DRIVER_H_
 
 #include <dev/pci/drm/drm_linux.h>
-#include <dev/pci/drm/drm_mm.h>
-#include <dev/pci/drm/drm_global.h>
-#include <dev/pci/drm/drm_vma_manager.h>
-#include <dev/pci/drm/drm_print.h>
+#include <drm/drm_mm.h>
+#include <drm/drm_global.h>
+#include <drm/drm_vma_manager.h>
+#include <drm/drm_print.h>
 #ifdef __linux__
 #include <linux/workqueue.h>
 #include <linux/fs.h>

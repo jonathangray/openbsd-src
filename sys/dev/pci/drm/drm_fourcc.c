@@ -29,8 +29,8 @@
 #include <linux/kernel.h>
 #endif
 
-#include <dev/pci/drm/drmP.h>
-#include <dev/pci/drm/drm_fourcc.h>
+#include <drm/drmP.h>
+#include <drm/drm_fourcc.h>
 
 static char printable_char(int c)
 {

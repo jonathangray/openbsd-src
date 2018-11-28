@@ -31,8 +31,8 @@
 #include <linux/firmware.h>
 #include <linux/module.h>
 #include <linux/mmu_notifier.h>
-#include <dev/pci/drm/drmP.h>
-#include <dev/pci/drm/uapi/drm/drm.h>
+#include <drm/drmP.h>
+#include <drm/drm.h>
 
 #include "radeon.h"
 

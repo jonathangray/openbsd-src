@@ -14,7 +14,7 @@
 #else
 #include <dev/pci/drm/drm_linux.h>
 #endif
-#include <dev/pci/drm/i915_drm.h>
+#include <drm/i915_drm.h>
 
 struct drm_i915_private;
 

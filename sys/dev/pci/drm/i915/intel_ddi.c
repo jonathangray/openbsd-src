@@ -25,7 +25,7 @@
  *
  */
 
-#include <dev/pci/drm/drm_scdc_helper.h>
+#include <drm/drm_scdc_helper.h>
 #include "i915_drv.h"
 #include "intel_drv.h"
 

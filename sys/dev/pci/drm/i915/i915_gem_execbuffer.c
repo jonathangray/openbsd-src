@@ -36,9 +36,9 @@
 #include <dev/pci/drm/linux_reservation.h>
 #endif
 
-#include <dev/pci/drm/drmP.h>
-#include <dev/pci/drm/drm_syncobj.h>
-#include <dev/pci/drm/i915_drm.h>
+#include <drm/drmP.h>
+#include <drm/drm_syncobj.h>
+#include <drm/i915_drm.h>
 
 #include "i915_drv.h"
 #include "i915_gem_clflush.h"

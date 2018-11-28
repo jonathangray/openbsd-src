@@ -27,7 +27,7 @@
  * Authors:
  *    Christian König <deathsimple@vodafone.de>
  */
-#include <dev/pci/drm/drmP.h>
+#include <drm/drmP.h>
 #include "radeon.h"
 #include "radeon_trace.h"
 

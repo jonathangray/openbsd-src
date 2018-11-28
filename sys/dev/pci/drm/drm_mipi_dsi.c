@@ -26,7 +26,7 @@
  */
 
 #include <dev/pci/drm/drm_linux.h>
-#include <dev/pci/drm/drm_mipi_dsi.h>
+#include <drm/drm_mipi_dsi.h>
 
 #ifdef __linux__
 #include <linux/device.h>

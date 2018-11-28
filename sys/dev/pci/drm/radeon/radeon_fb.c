@@ -24,13 +24,13 @@
  *     David Airlie
  */
 
-#include <dev/pci/drm/drmP.h>
-#include <dev/pci/drm/drm_crtc.h>
-#include <dev/pci/drm/drm_crtc_helper.h>
-#include <dev/pci/drm/uapi/drm/radeon_drm.h>
+#include <drm/drmP.h>
+#include <drm/drm_crtc.h>
+#include <drm/drm_crtc_helper.h>
+#include <drm/radeon_drm.h>
 #include "radeon.h"
 
-#include <dev/pci/drm/drm_fb_helper.h>
+#include <drm/drm_fb_helper.h>
 
 /* object hierarchy -
  * this contains a helper + a radeon fb

@@ -28,8 +28,8 @@
 #include <dev/pci/drm/drm_linux.h>
 #endif
 
-#include <dev/pci/drm/drm_scdc_helper.h>
-#include <dev/pci/drm/drmP.h>
+#include <drm/drm_scdc_helper.h>
+#include <drm/drmP.h>
 
 /**
  * DOC: scdc helpers

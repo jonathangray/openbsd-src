@@ -27,7 +27,7 @@
 #else
 #include <dev/pci/drm/drm_linux.h>
 #endif
-#include <dev/pci/drm/drm_print.h>
+#include <drm/drm_print.h>
 
 #include "i915_drv.h"
 #include "intel_uc_fw.h"

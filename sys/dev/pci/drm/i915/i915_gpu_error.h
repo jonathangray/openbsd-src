@@ -15,7 +15,7 @@
 #include <dev/pci/drm/drm_linux.h>
 #endif
 
-#include <dev/pci/drm/drm_mm.h>
+#include <drm/drm_mm.h>
 
 #include "intel_device_info.h"
 #include "intel_ringbuffer.h"

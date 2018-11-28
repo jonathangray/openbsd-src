@@ -31,9 +31,9 @@
 #include <linux/dma-buf.h>
 #include <linux/rbtree.h>
 #endif
-#include <dev/pci/drm/drm_prime.h>
-#include <dev/pci/drm/drm_gem.h>
-#include <dev/pci/drm/drmP.h>
+#include <drm/drm_prime.h>
+#include <drm/drm_gem.h>
+#include <drm/drmP.h>
 
 #include "drm_internal.h"
 

@@ -31,7 +31,7 @@
 
 #include <dev/pci/drm/ttm/ttm_bo_driver.h>
 #include <dev/pci/drm/ttm/ttm_placement.h>
-#include <dev/pci/drm/drm_vma_manager.h>
+#include <drm/drm_vma_manager.h>
 #ifdef __linux__
 #include <linux/io.h>
 #include <linux/highmem.h>
@@ -42,7 +42,7 @@
 #include <linux/reservation.h>
 #else
 #include <dev/pci/drm/linux_ww_mutex.h>
-#include <dev/pci/drm/drmP.h> /* for mb() */
+#include <drm/drmP.h> /* for mb() */
 #endif
 
 struct ttm_transfer_obj {

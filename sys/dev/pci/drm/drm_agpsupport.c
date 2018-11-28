@@ -33,7 +33,7 @@
  * Support code for tying the kernel AGP support to DRM drivers.
  */
 
-#include "drmP.h"
+#include <drm/drmP.h>
 
 #if __OS_HAS_AGP
 

@@ -41,8 +41,8 @@
  * Thomas Hellström <thomas-at-tungstengraphics-dot-com>
  */
 
-#include <dev/pci/drm/drmP.h>
-#include <dev/pci/drm/drm_mm.h>
+#include <drm/drmP.h>
+#include <drm/drm_mm.h>
 #ifdef __linux__
 #include <linux/slab.h>
 #include <linux/seq_file.h>

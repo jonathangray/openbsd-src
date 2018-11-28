@@ -28,7 +28,7 @@
 #ifdef __linux__
 #include <linux/firmware.h>
 #endif
-#include <dev/pci/drm/drmP.h>
+#include <drm/drmP.h>
 #include "radeon.h"
 #include "radeon_asic.h"
 #include "cikd.h"

@@ -68,7 +68,7 @@
 #include <dev/pci/drm/ttm/ttm_module.h>
 #include <dev/pci/drm/ttm/ttm_execbuf_util.h>
 
-#include <dev/pci/drm/drmP.h>
+#include <drm/drmP.h>
 
 #include <dev/wscons/wsconsio.h>
 #include <dev/wscons/wsdisplayvar.h>

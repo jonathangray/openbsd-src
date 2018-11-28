@@ -32,8 +32,8 @@
 #include <linux/firmware.h>
 #include <linux/module.h>
 #endif
-#include <dev/pci/drm/drmP.h>
-#include <dev/pci/drm/uapi/drm/drm.h>
+#include <drm/drmP.h>
+#include <drm/drm.h>
 
 #include "radeon.h"
 #include "radeon_ucode.h"

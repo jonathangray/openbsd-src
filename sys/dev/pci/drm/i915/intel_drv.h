@@ -33,16 +33,16 @@
 #else
 #include <dev/pci/drm/linux_hdmi.h>
 #endif
-#include <dev/pci/drm/i915_drm.h>
+#include <drm/i915_drm.h>
 #include "i915_drv.h"
-#include <dev/pci/drm/drm_crtc.h>
-#include <dev/pci/drm/drm_crtc_helper.h>
-#include <dev/pci/drm/drm_encoder.h>
-#include <dev/pci/drm/drm_fb_helper.h>
-#include <dev/pci/drm/drm_dp_dual_mode_helper.h>
-#include <dev/pci/drm/drm_dp_mst_helper.h>
-#include <dev/pci/drm/drm_rect.h>
-#include <dev/pci/drm/drm_atomic.h>
+#include <drm/drm_crtc.h>
+#include <drm/drm_crtc_helper.h>
+#include <drm/drm_encoder.h>
+#include <drm/drm_fb_helper.h>
+#include <drm/drm_dp_dual_mode_helper.h>
+#include <drm/drm_dp_mst_helper.h>
+#include <drm/drm_rect.h>
+#include <drm/drm_atomic.h>
 #ifdef __linux__
 #include <media/cec-notifier.h>
 #endif

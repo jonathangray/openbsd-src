@@ -24,9 +24,9 @@
  *    Dave Airlie
  *    Jerome Glisse <glisse@freedesktop.org>
  */
-#include <dev/pci/drm/drmP.h>
+#include <drm/drmP.h>
 #include "radeon.h"
-#include <dev/pci/drm/uapi/drm/radeon_drm.h>
+#include <drm/radeon_drm.h>
 
 #if __OS_HAS_AGP
 

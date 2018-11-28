@@ -29,7 +29,7 @@
  *    Dave Airlie
  */
 #include <dev/pci/drm/drm_linux.h>
-#include <dev/pci/drm/drmP.h>
+#include <drm/drmP.h>
 #include "radeon_reg.h"
 #include "radeon.h"
 #include "radeon_trace.h"

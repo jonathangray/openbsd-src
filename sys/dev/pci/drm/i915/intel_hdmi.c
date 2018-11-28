@@ -32,15 +32,15 @@
 #include <linux/delay.h>
 #include <linux/hdmi.h>
 #endif
-#include <dev/pci/drm/drmP.h>
-#include <dev/pci/drm/drm_atomic_helper.h>
-#include <dev/pci/drm/drm_crtc.h>
-#include <dev/pci/drm/drm_edid.h>
-#include <dev/pci/drm/drm_hdcp.h>
-#include <dev/pci/drm/drm_scdc_helper.h>
+#include <drm/drmP.h>
+#include <drm/drm_atomic_helper.h>
+#include <drm/drm_crtc.h>
+#include <drm/drm_edid.h>
+#include <drm/drm_hdcp.h>
+#include <drm/drm_scdc_helper.h>
 #include "intel_drv.h"
-#include <dev/pci/drm/i915_drm.h>
-#include <dev/pci/drm/intel_lpe_audio.h>
+#include <drm/i915_drm.h>
+#include <drm/intel_lpe_audio.h>
 #include "i915_drv.h"
 
 static struct drm_device *intel_hdmi_to_dev(struct intel_hdmi *intel_hdmi)

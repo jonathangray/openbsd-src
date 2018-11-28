@@ -20,11 +20,11 @@
  * OF THIS SOFTWARE.
  */
 
-#include <dev/pci/drm/drmP.h>
-#include <dev/pci/drm/drm_connector.h>
-#include <dev/pci/drm/drm_edid.h>
-#include <dev/pci/drm/drm_encoder.h>
-#include <dev/pci/drm/drm_utils.h>
+#include <drm/drmP.h>
+#include <drm/drm_connector.h>
+#include <drm/drm_edid.h>
+#include <drm/drm_encoder.h>
+#include <drm/drm_utils.h>
 
 #include "drm_crtc_internal.h"
 #include "drm_internal.h"

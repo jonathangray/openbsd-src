@@ -35,13 +35,13 @@
 #include <linux/list_sort.h>
 #include <linux/export.h>
 #endif
-#include <dev/pci/drm/drmP.h>
-#include <dev/pci/drm/drm_crtc.h>
+#include <drm/drmP.h>
+#include <drm/drm_crtc.h>
 #ifdef __linux__
 #include <video/of_videomode.h>
 #include <video/videomode.h>
 #endif
-#include <dev/pci/drm/drm_modes.h>
+#include <drm/drm_modes.h>
 
 #include "drm_crtc_internal.h"
 

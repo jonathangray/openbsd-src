@@ -26,11 +26,11 @@
  * implementation details and are not exported to drivers.
  */
 
-#include <dev/pci/drm/drm_connector.h>
-#include <dev/pci/drm/drm_crtc.h>
-#include <dev/pci/drm/drm_dp_helper.h>
-#include <dev/pci/drm/drm_encoder.h>
-#include <dev/pci/drm/drm_modes.h>
+#include <drm/drm_connector.h>
+#include <drm/drm_crtc.h>
+#include <drm/drm_dp_helper.h>
+#include <drm/drm_encoder.h>
+#include <drm/drm_modes.h>
 
 /* drm_fb_helper.c */
 #ifdef CONFIG_DRM_FBDEV_EMULATION

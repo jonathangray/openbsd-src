@@ -32,7 +32,7 @@
 #include <dev/pci/drm/ttm/ttm_module.h>
 #include <dev/pci/drm/ttm/ttm_bo_driver.h>
 #include <dev/pci/drm/ttm/ttm_placement.h>
-#include <dev/pci/drm/drm_mm.h>
+#include <drm/drm_mm.h>
 #ifdef __linux__
 #include <linux/slab.h>
 #include <linux/spinlock.h>

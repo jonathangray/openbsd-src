@@ -35,11 +35,11 @@
 #include <linux/module.h>
 #include <linux/vga_switcheroo.h>
 #endif
-#include <dev/pci/drm/drmP.h>
-#include <dev/pci/drm/drm_edid.h>
-#include <dev/pci/drm/drm_encoder.h>
-#include <dev/pci/drm/drm_displayid.h>
-#include <dev/pci/drm/drm_scdc_helper.h>
+#include <drm/drmP.h>
+#include <drm/drm_edid.h>
+#include <drm/drm_encoder.h>
+#include <drm/drm_displayid.h>
+#include <drm/drm_scdc_helper.h>
 
 #include <dev/pci/drm/drm_crtc_internal.h>
 

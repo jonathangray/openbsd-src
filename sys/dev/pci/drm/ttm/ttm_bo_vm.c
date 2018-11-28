@@ -34,7 +34,7 @@
 #include <dev/pci/drm/ttm/ttm_module.h>
 #include <dev/pci/drm/ttm/ttm_bo_driver.h>
 #include <dev/pci/drm/ttm/ttm_placement.h>
-#include <dev/pci/drm/drm_vma_manager.h>
+#include <drm/drm_vma_manager.h>
 #ifdef __linux__
 #include <linux/mm.h>
 #include <linux/pfn_t.h>

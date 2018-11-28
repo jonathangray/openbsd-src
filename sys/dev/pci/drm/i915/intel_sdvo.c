@@ -31,12 +31,12 @@
 #include <linux/delay.h>
 #include <linux/export.h>
 #endif
-#include <dev/pci/drm/drmP.h>
-#include <dev/pci/drm/drm_atomic_helper.h>
-#include <dev/pci/drm/drm_crtc.h>
-#include <dev/pci/drm/drm_edid.h>
+#include <drm/drmP.h>
+#include <drm/drm_atomic_helper.h>
+#include <drm/drm_crtc.h>
+#include <drm/drm_edid.h>
 #include "intel_drv.h"
-#include <dev/pci/drm/i915_drm.h>
+#include <drm/i915_drm.h>
 #include "i915_drv.h"
 #include "intel_sdvo_regs.h"
 

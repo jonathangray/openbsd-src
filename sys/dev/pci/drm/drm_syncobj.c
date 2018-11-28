@@ -46,7 +46,7 @@
  * The file takes a reference on the kref.
  */
 
-#include <dev/pci/drm/drmP.h>
+#include <drm/drmP.h>
 #ifdef __linux__
 #include <linux/file.h>
 #include <linux/fs.h>
@@ -59,7 +59,7 @@
 #endif
 
 #include "drm_internal.h"
-#include <dev/pci/drm/drm_syncobj.h>
+#include <drm/drm_syncobj.h>
 
 /**
  * drm_syncobj_find - lookup and reference a sync object.

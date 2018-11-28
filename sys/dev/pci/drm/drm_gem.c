@@ -41,10 +41,10 @@
 #else
 #include <dev/pci/drm/drm_linux.h>
 #endif
-#include <dev/pci/drm/drmP.h>
-#include <dev/pci/drm/drm_vma_manager.h>
-#include <dev/pci/drm/drm_gem.h>
-#include <dev/pci/drm/drm_print.h>
+#include <drm/drmP.h>
+#include <drm/drm_vma_manager.h>
+#include <drm/drm_gem.h>
+#include <drm/drm_print.h>
 #include "drm_internal.h"
 
 #include <uvm/uvm.h>

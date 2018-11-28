@@ -21,9 +21,9 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <dev/pci/drm/drmP.h>
-#include <dev/pci/drm/drm_crtc.h>
-#include <dev/pci/drm/drm_modeset_lock.h>
+#include <drm/drmP.h>
+#include <drm/drm_crtc.h>
+#include <drm/drm_modeset_lock.h>
 
 /**
  * DOC: kms locking

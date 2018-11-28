@@ -29,8 +29,8 @@
 #include <stdarg.h>
 #include <linux/seq_file.h>
 #endif
-#include <dev/pci/drm/drmP.h>
-#include <dev/pci/drm/drm_print.h>
+#include <drm/drmP.h>
+#include <drm/drm_print.h>
 
 void __drm_puts_coredump(struct drm_printer *p, const char *str)
 {

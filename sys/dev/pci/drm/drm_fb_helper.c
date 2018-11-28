@@ -37,12 +37,12 @@
 #include <linux/slab.h>
 #include <linux/module.h>
 #endif
-#include <dev/pci/drm/drmP.h>
-#include <dev/pci/drm/drm_crtc.h>
-#include <dev/pci/drm/drm_fb_helper.h>
-#include <dev/pci/drm/drm_crtc_helper.h>
-#include <dev/pci/drm/drm_atomic.h>
-#include <dev/pci/drm/drm_atomic_helper.h>
+#include <drm/drmP.h>
+#include <drm/drm_crtc.h>
+#include <drm/drm_fb_helper.h>
+#include <drm/drm_crtc_helper.h>
+#include <drm/drm_atomic.h>
+#include <drm/drm_atomic_helper.h>
 
 #include "drm_crtc_internal.h"
 #include "drm_crtc_helper_internal.h"

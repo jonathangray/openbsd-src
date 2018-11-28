@@ -37,11 +37,11 @@
 #include <linux/module.h>
 #endif
 
-#include <dev/pci/drm/drmP.h>
+#include <drm/drmP.h>
 #ifdef notyet
-#include <dev/pci/drm/drm_client.h>
+#include <drm/drm_client.h>
 #endif
-#include <dev/pci/drm/drm_file.h>
+#include <drm/drm_file.h>
 
 #ifdef __linux__
 #include "drm_legacy.h"

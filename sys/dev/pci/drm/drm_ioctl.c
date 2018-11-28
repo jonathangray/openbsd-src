@@ -31,10 +31,10 @@
 #include <sys/filio.h>
 #include <sys/ttycom.h> /* for TIOCSGRP */
 
-#include <dev/pci/drm/drm_ioctl.h>
-#include <dev/pci/drm/drmP.h>
+#include <drm/drm_ioctl.h>
+#include <drm/drmP.h>
 #ifdef __linux__
-#include <dev/pci/drm/drm_auth.h>
+#include <drm/drm_auth.h>
 #include "drm_legacy.h"
 #endif
 #include "drm_internal.h"

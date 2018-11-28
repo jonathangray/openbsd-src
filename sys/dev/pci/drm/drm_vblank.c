@@ -24,8 +24,8 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <dev/pci/drm/drmP.h>
-#include <dev/pci/drm/drm_vblank.h>
+#include <drm/drmP.h>
+#include <drm/drm_vblank.h>
 #ifdef __linux__
 #include <linux/export.h>
 #endif

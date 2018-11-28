@@ -22,7 +22,7 @@
  * Authors: Alex Deucher
  */
 
-#include <dev/pci/drm/drmP.h>
+#include <drm/drmP.h>
 #include "radeon.h"
 #include "sid.h"
 #include "ppsmc.h"

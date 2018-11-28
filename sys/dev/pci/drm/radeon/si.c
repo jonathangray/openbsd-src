@@ -26,11 +26,11 @@
 #include <linux/slab.h>
 #include <linux/module.h>
 #endif
-#include <dev/pci/drm/drmP.h>
+#include <drm/drmP.h>
 #include "radeon.h"
 #include "radeon_asic.h"
 #include "radeon_audio.h"
-#include <dev/pci/drm/uapi/drm/radeon_drm.h>
+#include <drm/radeon_drm.h>
 #include "sid.h"
 #include "atom.h"
 #include "si_blit_shaders.h"

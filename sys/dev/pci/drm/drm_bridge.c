@@ -1,7 +1,7 @@
 /* Public domain. */
 
-#include <dev/pci/drm/drmP.h>
-#include <dev/pci/drm/drm_crtc.h>
+#include <drm/drmP.h>
+#include <drm/drm_crtc.h>
 
 bool
 drm_bridge_mode_fixup(struct drm_bridge *bridge,

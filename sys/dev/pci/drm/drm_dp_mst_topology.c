@@ -29,12 +29,12 @@
 #include <linux/seq_file.h>
 #include <linux/i2c.h>
 #endif
-#include <dev/pci/drm/drmP.h>
-#include <dev/pci/drm/drm_dp_mst_helper.h>
+#include <drm/drmP.h>
+#include <drm/drm_dp_mst_helper.h>
 
-#include <dev/pci/drm/drm_fixed.h>
-#include <dev/pci/drm/drm_atomic.h>
-#include <dev/pci/drm/drm_atomic_helper.h>
+#include <drm/drm_fixed.h>
+#include <drm/drm_atomic.h>
+#include <drm/drm_atomic_helper.h>
 
 /**
  * DOC: dp mst helper

@@ -26,12 +26,12 @@
  */
 
 
-#include <dev/pci/drm/drmP.h>
-#include <dev/pci/drm/drm_atomic.h>
-#include <dev/pci/drm/uapi/drm/drm_mode.h>
-#include <dev/pci/drm/drm_print.h>
-#include <dev/pci/drm/drm_writeback.h>
-#include <dev/pci/drm/drm_plane_helper.h>
+#include <drm/drmP.h>
+#include <drm/drm_atomic.h>
+#include <uapi/drm/drm_mode.h>
+#include <drm/drm_print.h>
+#include <drm/drm_writeback.h>
+#include <drm/drm_plane_helper.h>
 
 #include <dev/pci/drm/drm_crtc_internal.h>
 #include <dev/pci/drm/drm_internal.h>

@@ -34,15 +34,15 @@
 #include <linux/reboot.h>
 #include <asm/byteorder.h>
 #endif
-#include <dev/pci/drm/drmP.h>
-#include <dev/pci/drm/drm_atomic_helper.h>
-#include <dev/pci/drm/drm_crtc.h>
-#include <dev/pci/drm/drm_crtc_helper.h>
-#include <dev/pci/drm/drm_dp_helper.h>
-#include <dev/pci/drm/drm_edid.h>
-#include <dev/pci/drm/drm_hdcp.h>
+#include <drm/drmP.h>
+#include <drm/drm_atomic_helper.h>
+#include <drm/drm_crtc.h>
+#include <drm/drm_crtc_helper.h>
+#include <drm/drm_dp_helper.h>
+#include <drm/drm_edid.h>
+#include <drm/drm_hdcp.h>
 #include "intel_drv.h"
-#include <dev/pci/drm/i915_drm.h>
+#include <drm/i915_drm.h>
 #include "i915_drv.h"
 
 #define DP_DPRX_ESI_LEN 14

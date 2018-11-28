@@ -30,12 +30,12 @@
  * Integrated TV-out support for the 915GM and 945GM.
  */
 
-#include <dev/pci/drm/drmP.h>
-#include <dev/pci/drm/drm_atomic_helper.h>
-#include <dev/pci/drm/drm_crtc.h>
-#include <dev/pci/drm/drm_edid.h>
+#include <drm/drmP.h>
+#include <drm/drm_atomic_helper.h>
+#include <drm/drm_crtc.h>
+#include <drm/drm_edid.h>
 #include "intel_drv.h"
-#include <dev/pci/drm/i915_drm.h>
+#include <drm/i915_drm.h>
 #include "i915_drv.h"
 
 enum tv_margin {

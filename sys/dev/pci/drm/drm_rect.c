@@ -26,8 +26,8 @@
 #include <linux/export.h>
 #include <linux/kernel.h>
 #endif
-#include <dev/pci/drm/drmP.h>
-#include <dev/pci/drm/drm_rect.h>
+#include <drm/drmP.h>
+#include <drm/drm_rect.h>
 
 /**
  * drm_rect_intersect - intersect two rectangles

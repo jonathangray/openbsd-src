@@ -26,7 +26,7 @@
 #define ATOM_H
 
 #include <sys/types.h>
-#include <dev/pci/drm/drmP.h>
+#include <drm/drmP.h>
 
 #define ATOM_BIOS_MAGIC		0xAA55
 #define ATOM_ATI_MAGIC_PTR	0x30

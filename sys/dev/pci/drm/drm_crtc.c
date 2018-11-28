@@ -36,16 +36,16 @@
 #include <linux/export.h>
 #include <linux/dma-fence.h>
 #endif
-#include <dev/pci/drm/drmP.h>
-#include <dev/pci/drm/drm_crtc.h>
-#include <dev/pci/drm/drm_edid.h>
-#include <dev/pci/drm/drm_fourcc.h>
-#include <dev/pci/drm/drm_modeset_lock.h>
-#include <dev/pci/drm/drm_atomic.h>
+#include <drm/drmP.h>
+#include <drm/drm_crtc.h>
+#include <drm/drm_edid.h>
+#include <drm/drm_fourcc.h>
+#include <drm/drm_modeset_lock.h>
+#include <drm/drm_atomic.h>
 #ifdef notyet
-#include <dev/pci/drm/drm_auth.h>
+#include <drm/drm_auth.h>
 #endif
-#include <dev/pci/drm/drm_debugfs_crc.h>
+#include <drm/drm_debugfs_crc.h>
 
 #include "drm_crtc_internal.h"
 #include "drm_internal.h"
