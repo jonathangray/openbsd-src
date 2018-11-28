@@ -7,6 +7,73 @@
 #include <sys/atomic.h>
 
 typedef struct {
+	unsigned int sequence;
+} seqcount_t;
+
+static inline void
+__seqcount_init(seqcount_t *s, const char *name,
+    struct lock_class_key *key)
+{
+	s->sequence = 0;
+}
+
+static inline unsigned int
+__read_seqcount_begin(const seqcount_t *s)
+{
+	unsigned int r;
+	for (;;) {
+		r = s->sequence;
+		if ((r & 1) == 0)
+			break;
+		cpu_relax();
+	}
+	return r;
+}
+
+static inline unsigned int
+read_seqcount_begin(const seqcount_t *s)
+{
+	unsigned int r = __read_seqcount_begin(s);
+	membar_consumer();
+	return r;
+}
+
+static inline int
+__read_seqcount_retry(const seqcount_t *s, unsigned start)
+{
+	return (s->sequence != start);
+}
+
+static inline int
+read_seqcount_retry(const seqcount_t *s, unsigned start)
+{
+	membar_consumer();
+	return __read_seqcount_retry(s, start);
+}
+
+static inline void
+write_seqcount_begin(seqcount_t *s)
+{
+	s->sequence++;
+	membar_producer();
+}
+
+static inline void
+write_seqcount_end(seqcount_t *s)
+{
+	membar_producer();
+	s->sequence++;
+}
+
+static inline unsigned int
+raw_read_seqcount(const seqcount_t *s)
+{
+	unsigned int r = s->sequence;
+	membar_consumer();
+	return r;
+}
+
+typedef struct {
 	unsigned int seq;
 	struct mutex lock;
 } seqlock_t;

@@ -54,6 +54,10 @@
 #include <linux/dma-fence.h>
 #include <linux/compiler.h>
 #include <linux/bug.h>
+#include <linux/completion.h>
+#include <linux/kobject.h>
+#include <linux/lockdep.h>
+#include <linux/bitmap.h>
 #include <video/mipi_display.h>
 
 /* The Linux code doesn't meet our usual standards! */
@@ -162,48 +166,6 @@ typedef __ptrdiff_t ptrdiff_t;
 #define cpu_to_be16(x) htobe16(x)
 #define cpu_to_be32(x) htobe32(x)
 
-static inline uint8_t
-hweight8(uint32_t x)
-{
-	x = (x & 0x55) + ((x & 0xaa) >> 1);
-	x = (x & 0x33) + ((x & 0xcc) >> 2);
-	x = (x + (x >> 4)) & 0x0f;
-	return (x);
-}
-
-static inline uint16_t
-hweight16(uint32_t x)
-{
-	x = (x & 0x5555) + ((x & 0xaaaa) >> 1);
-	x = (x & 0x3333) + ((x & 0xcccc) >> 2);
-	x = (x + (x >> 4)) & 0x0f0f;
-	x = (x + (x >> 8)) & 0x00ff;
-	return (x);
-}
-
-static inline uint32_t
-hweight32(uint32_t x)
-{
-	x = (x & 0x55555555) + ((x & 0xaaaaaaaa) >> 1);
-	x = (x & 0x33333333) + ((x & 0xcccccccc) >> 2);
-	x = (x + (x >> 4)) & 0x0f0f0f0f;
-	x = (x + (x >> 8));
-	x = (x + (x >> 16)) & 0x000000ff;
-	return x;
-}
-
-static inline uint32_t
-hweight64(uint64_t x)
-{
-	x = (x & 0x5555555555555555ULL) + ((x & 0xaaaaaaaaaaaaaaaaULL) >> 1);
-	x = (x & 0x3333333333333333ULL) + ((x & 0xccccccccccccccccULL) >> 2);
-	x = (x + (x >> 4)) & 0x0f0f0f0f0f0f0f0fULL;
-	x = (x + (x >> 8));
-	x = (x + (x >> 16));
-	x = (x + (x >> 32)) & 0x000000ff;
-	return x;
-}
-
 #define lower_32_bits(n)	((u32)(n))
 #define upper_32_bits(_val)	((u32)(((_val) >> 16) >> 16))
 #define DMA_BIT_MASK(n) (((n) == 64) ? ~0ULL : (1ULL<<(n)) -1)
@@ -218,59 +180,6 @@ hweight64(uint64_t x)
 #define GENMASK_ULL(h, l)	(((~0ULL) >> (BITS_PER_LONG_LONG - (h) - 1)) & ((~0ULL) << (l)))
 
 #define DECLARE_BITMAP(x, y)	unsigned long x[BITS_TO_LONGS(y)];
-#define bitmap_empty(p, n)	(find_first_bit(p, n) == n)
-
-static inline void
-bitmap_set(void *p, int b, u_int n)
-{
-	u_int end = b + n;
-
-	for (; b < end; b++)
-		__set_bit(b, p);
-}
-
-static inline void
-bitmap_clear(void *p, int b, u_int n)
-{
-	u_int end = b + n;
-
-	for (; b < end; b++)
-		__clear_bit(b, p);
-}
-
-static inline void
-bitmap_zero(void *p, u_int n)
-{
-	u_int *ptr = p;
-	u_int b;
-
-	for (b = 0; b < n; b += 32)
-		ptr[b >> 5] = 0;
-}
-
-static inline void
-bitmap_or(void *d, void *s1, void *s2, u_int n)
-{
-	u_int *dst = d;
-	u_int *src1 = s1;
-	u_int *src2 = s2;
-	u_int b;
-
-	for (b = 0; b < n; b += 32)
-		dst[b >> 5] = src1[b >> 5] | src2[b >> 5];
-}
-
-static inline int
-bitmap_weight(void *p, u_int n)
-{
-	u_int *ptr = p;
-	u_int b;
-	int sum = 0;
-
-	for (b = 0; b < n; b += 32)
-		sum += hweight32(ptr[b >> 5]);
-	return sum;
-}
 
 static inline uint64_t
 sign_extend64(uint64_t value, int index)
@@ -567,12 +476,6 @@ _spin_unlock_irqrestore(struct mutex *mtxp, __unused unsigned long flags
 #define write_lock(rwl)			rw_enter_write(rwl)
 #define write_unlock(rwl)		rw_exit_write(rwl)
 
-#define might_lock(lock)
-#define lockdep_assert_held(lock)	do { (void)(lock); } while(0)
-#define lock_acquire(lock, a, b, c, d, e, f)
-#define lock_release(lock, a, b)
-#define lock_acquire_shared_recursive(lock, a, b, c, d)
-
 #define IRQF_SHARED	0
 
 #define local_irq_save(x)		(x) = splhigh()
@@ -581,106 +484,6 @@ _spin_unlock_irqrestore(struct mutex *mtxp, __unused unsigned long flags
 #define request_irq(irq, hdlr, flags, name, dev)	(0)
 #define free_irq(irq, dev)
 #define synchronize_irq(x)
-
-struct completion {
-	u_int done;
-	wait_queue_head_t wait;
-};
-
-#define INIT_COMPLETION(x) ((x).done = 0)
-
-static inline void
-init_completion(struct completion *x)
-{
-	x->done = 0;
-	mtx_init(&x->wait.lock, IPL_NONE);
-}
-
-static inline u_long
-_wait_for_completion_timeout(struct completion *x, u_long timo LOCK_FL_VARS)
-{
-	int ret;
-
-	KASSERT(!cold);
-
-	_mtx_enter(&x->wait.lock LOCK_FL_ARGS);
-	while (x->done == 0) {
-		ret = msleep(x, &x->wait.lock, 0, "wfcit", 0);
-		if (ret) {
-			_mtx_leave(&x->wait.lock LOCK_FL_ARGS);
-			return (ret == EWOULDBLOCK) ? 0 : -ret;
-		}
-	}
-
-	return 1;
-}
-#define wait_for_completion_timeout(x, timo)	\
-	_wait_for_completion_timeout(x, timo LOCK_FILE_LINE)
-
-static inline u_long
-_wait_for_completion_interruptible(struct completion *x LOCK_FL_VARS)
-{
-	int ret;
-
-	KASSERT(!cold);
-
-	_mtx_enter(&x->wait.lock LOCK_FL_ARGS);
-	while (x->done == 0) {
-		ret = msleep(x, &x->wait.lock, PCATCH, "wfcit", 0);
-		if (ret) {
-			_mtx_leave(&x->wait.lock LOCK_FL_ARGS);
-			return (ret == EWOULDBLOCK) ? 0 : -ret;
-		}
-	}
-
-	return 1;
-}
-#define wait_for_completion_interruptible(x)	\
-	_wait_for_completion_interruptible(x LOCK_FILE_LINE)
-
-static inline u_long
-_wait_for_completion_interruptible_timeout(struct completion *x, u_long timo
-    LOCK_FL_VARS)
-{
-	int ret;
-
-	KASSERT(!cold);
-
-	_mtx_enter(&x->wait.lock LOCK_FL_ARGS);
-	while (x->done == 0) {
-		ret = msleep(x, &x->wait.lock, PCATCH, "wfcit", timo);
-		if (ret) {
-			_mtx_leave(&x->wait.lock LOCK_FL_ARGS);
-			return (ret == EWOULDBLOCK) ? 0 : -ret;
-		}
-	}
-
-	return 1;
-}
-#define wait_for_completion_interruptible_timeout(x, timo)	\
-	_wait_for_completion_interruptible_timeout(x, timo LOCK_FILE_LINE)
-
-static inline void
-_complete_all(struct completion *x LOCK_FL_VARS)
-{
-	_mtx_enter(&x->wait.lock LOCK_FL_ARGS);
-	x->done = 1;
-	_mtx_leave(&x->wait.lock LOCK_FL_ARGS);
-	wakeup(x);
-}
-#define complete_all(x)	_complete_all(x LOCK_FILE_LINE)
-
-static inline bool
-_try_wait_for_completion(struct completion *x LOCK_FL_VARS)
-{
-	if (!x->done)
-		return false;
-	_mtx_enter(&x->wait.lock LOCK_FL_ARGS);
-	x->done--;
-	_mtx_leave(&x->wait.lock LOCK_FL_ARGS);
-	return true;
-}
-#define try_wait_for_completion(x)	_try_wait_for_completion(x LOCK_FILE_LINE)
 
 struct tasklet_struct {
 	void (*func)(unsigned long);
@@ -1091,60 +894,6 @@ refcount_dec_and_test(uint32_t *p)
 {
 	return atomic_dec_and_test(p);
 }
-
-struct kobject {
-	struct kref kref;
-	struct kobj_type *type;
-};
-
-struct kobj_type {
-	void (*release)(struct kobject *);
-};
-
-static inline void
-kobject_init(struct kobject *obj, struct kobj_type *type)
-{
-	kref_init(&obj->kref);
-	obj->type = type;
-}
-
-static inline int
-kobject_init_and_add(struct kobject *obj, struct kobj_type *type,
-    struct kobject *parent, const char *fmt, ...)
-{
-	kobject_init(obj, type);
-	return (0);
-}
-
-static inline struct kobject *
-kobject_get(struct kobject *obj)
-{
-	if (obj != NULL)
-		kref_get(&obj->kref);
-	return (obj);
-}
-
-static inline void
-kobject_release(struct kref *ref)
-{
-	struct kobject *obj = container_of(ref, struct kobject, kref);
-	if (obj->type && obj->type->release)
-		obj->type->release(obj);
-}
-
-static inline void
-kobject_put(struct kobject *obj)
-{
-	if (obj != NULL)
-		kref_put(&obj->kref, kobject_release);
-}
-
-static inline void
-kobject_del(struct kobject *obj)
-{
-}
-
-#define kobject_uevent_env(obj, act, envp)
 
 #define preempt_enable()
 #define preempt_disable()
@@ -1883,76 +1632,6 @@ cpu_relax(void)
 #define cpu_relax_lowlatency() CPU_BUSY_CYCLE()
 #define cpu_has_pat	1
 #define cpu_has_clflush	1
-
-struct lock_class_key {
-};
-
-typedef struct {
-	unsigned int sequence;
-} seqcount_t;
-
-static inline void
-__seqcount_init(seqcount_t *s, const char *name,
-    struct lock_class_key *key)
-{
-	s->sequence = 0;
-}
-
-static inline unsigned int
-__read_seqcount_begin(const seqcount_t *s)
-{
-	unsigned int r;
-	for (;;) {
-		r = s->sequence;
-		if ((r & 1) == 0)
-			break;
-		cpu_relax();
-	}
-	return r;
-}
-
-static inline unsigned int
-read_seqcount_begin(const seqcount_t *s)
-{
-	unsigned int r = __read_seqcount_begin(s);
-	membar_consumer();
-	return r;
-}
-
-static inline int
-__read_seqcount_retry(const seqcount_t *s, unsigned start)
-{
-	return (s->sequence != start);
-}
-
-static inline int
-read_seqcount_retry(const seqcount_t *s, unsigned start)
-{
-	membar_consumer();
-	return __read_seqcount_retry(s, start);
-}
-
-static inline void
-write_seqcount_begin(seqcount_t *s)
-{
-	s->sequence++;
-	membar_producer();
-}
-
-static inline void
-write_seqcount_end(seqcount_t *s)
-{
-	membar_producer();
-	s->sequence++;
-}
-
-static inline unsigned int
-raw_read_seqcount(const seqcount_t *s)
-{
-	unsigned int r = s->sequence;
-	membar_consumer();
-	return r;
-}
 
 static inline uint32_t ror32(uint32_t word, unsigned int shift)
 {
@@ -2804,6 +2483,5 @@ wake_up_process(struct proc *p)
 	
 	return r;
 }
-
 
 #endif

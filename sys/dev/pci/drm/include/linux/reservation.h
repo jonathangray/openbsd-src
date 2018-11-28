@@ -39,8 +39,10 @@
 #ifndef _LINUX_RESERVATION_H
 #define _LINUX_RESERVATION_H
 
-#include <dev/pci/drm/drm_linux.h>
 #include <linux/ww_mutex.h>
+#include <linux/dma-fence.h>
+#include <linux/slab.h>
+#include <linux/seqlock.h>
 #include <linux/rcupdate.h>
 
 extern struct ww_class reservation_ww_class;
