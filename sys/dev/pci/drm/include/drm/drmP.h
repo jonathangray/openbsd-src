@@ -71,13 +71,13 @@
 #define CONFIG_BACKLIGHT_CLASS_DEVICE 1
 
 #include <dev/pci/drm/drm_linux.h>
-#include <dev/pci/drm/drm_linux_list.h>
+#include <linux/list.h>
 #include <uapi/drm/drm.h>
 #include "drm_vma_manager.h"
 #include "drm_crtc.h"
 #include "drm_fourcc.h"
 #include "drm_mm.h"
-#include <dev/pci/drm/drm_linux_atomic.h>
+#include <linux/atomic.h>
 #include "drm_prime.h"
 #include "drm_print.h"
 #include "drm_file.h"

@@ -38,7 +38,7 @@
 #include <linux/scatterlist.h>
 #endif
 #include <dev/pci/drm/drm_linux.h>
-#include <dev/pci/drm/drm_linux_rbtree.h>
+#include <linux/rbtree.h>
 
 /**
  * struct drm_prime_file_private - per-file tracking for PRIME

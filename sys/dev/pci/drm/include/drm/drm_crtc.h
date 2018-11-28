@@ -35,7 +35,7 @@
 #endif
 #include <uapi/drm/drm_mode.h>
 #include <uapi/drm/drm_fourcc.h>
-#include <dev/pci/drm/linux_hdmi.h>
+#include <linux/hdmi.h>
 #include <drm/drm_modeset_lock.h>
 #include <drm/drm_rect.h>
 #include <drm/drm_mode_object.h>

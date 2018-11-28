@@ -31,7 +31,7 @@
 #ifndef _TTM_PLACEMENT_H_
 #define _TTM_PLACEMENT_H_
 
-#include <dev/pci/drm/linux_types.h>
+#include <linux/types.h>
 
 /*
  * Memory regions for data placement.

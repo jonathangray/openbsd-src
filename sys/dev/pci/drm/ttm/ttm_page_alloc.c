@@ -47,7 +47,7 @@
 #include <linux/atomic.h>
 #else
 #include <dev/pci/drm/drm_linux.h>
-#include <dev/pci/drm/drm_linux_list.h>
+#include <linux/list.h>
 #endif
 
 #include <drm/ttm/ttm_bo_driver.h>

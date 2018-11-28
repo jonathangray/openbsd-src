@@ -27,7 +27,7 @@
 #ifndef _TTM_TT_H_
 #define _TTM_TT_H_
 
-#include <dev/pci/drm/linux_types.h>
+#include <linux/types.h>
 
 struct ttm_tt;
 struct ttm_mem_reg;

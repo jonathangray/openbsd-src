@@ -29,7 +29,7 @@
 #include <linux/ctype.h>
 #include <linux/hdmi.h>
 #endif
-#include <dev/pci/drm/linux_hdmi.h>
+#include <linux/hdmi.h>
 #include <drm/drm_mode_object.h>
 
 #include <uapi/drm/drm_mode.h>

@@ -33,8 +33,8 @@
  */
 
 #include <dev/pci/drm/drm_linux.h>
-#include <dev/pci/drm/linux_ww_mutex.h>
-#include <dev/pci/drm/linux_reservation.h>
+#include <linux/ww_mutex.h>
+#include <linux/reservation.h>
 
 /**
  * DOC: Reservation Object Overview

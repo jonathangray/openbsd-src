@@ -31,8 +31,8 @@
 #include <linux/radix-tree.h>
 #else
 #include <dev/pci/drm/drm_linux.h>
-#include <dev/pci/drm/drm_linux_list.h>
-#include <dev/pci/drm/linux_radix-tree.h>
+#include <linux/list.h>
+#include <linux/radix-tree.h>
 #endif
 
 #include "i915_gem.h"

@@ -29,7 +29,7 @@
 #include <linux/reservation.h>
 #else
 #include <dev/pci/drm/drm_linux.h>
-#include <dev/pci/drm/linux_reservation.h>
+#include <linux/reservation.h>
 #endif
 
 #include <drm/drmP.h>

@@ -49,7 +49,7 @@
 #include <linux/dma-buf.h>
 #else
 #include <dev/pci/drm/drm_linux.h>
-#include <dev/pci/drm/linux_reservation.h>
+#include <linux/reservation.h>
 #endif
 
 static void i915_gem_flush_free_objects(struct drm_i915_private *i915);

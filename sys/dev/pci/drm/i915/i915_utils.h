@@ -120,7 +120,7 @@ static inline u64 ptr_to_u64(const void *ptr)
 	__idx;								\
 })
 
-#include <dev/pci/drm/drm_linux_list.h>
+#include <linux/list.h>
 
 static inline int list_is_first(const struct list_head *list,
 				const struct list_head *head)

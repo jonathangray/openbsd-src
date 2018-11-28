@@ -40,8 +40,8 @@
 #define _LINUX_RESERVATION_H
 
 #include <dev/pci/drm/drm_linux.h>
-#include <dev/pci/drm/linux_ww_mutex.h>
-#include <dev/pci/drm/linux_rcupdate.h>
+#include <linux/ww_mutex.h>
+#include <linux/rcupdate.h>
 
 extern struct ww_class reservation_ww_class;
 extern struct lock_class_key reservation_seqcount_class;

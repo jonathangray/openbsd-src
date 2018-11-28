@@ -25,12 +25,8 @@
 #ifndef __I915_GEM_OBJECT_H__
 #define __I915_GEM_OBJECT_H__
 
-#ifdef __linux__
 #include <linux/reservation.h>
-#else
-#include <dev/pci/drm/linux_reservation.h>
-#include <dev/pci/drm/linux_radix-tree.h>
-#endif
+#include <linux/radix-tree.h>
 
 #include <drm/drm_vma_manager.h>
 #include <drm/drm_gem.h>

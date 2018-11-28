@@ -41,9 +41,9 @@
 #include <dev/pci/pcireg.h>
 #include <dev/pci/pcivar.h>
 
-#include <dev/pci/drm/linux_types.h>
-#include <dev/pci/drm/drm_linux_atomic.h>
-#include <dev/pci/drm/drm_linux_list.h>
+#include <linux/types.h>
+#include <linux/atomic.h>
+#include <linux/list.h>
 
 /* The Linux code doesn't meet our usual standards! */
 #ifdef __clang__

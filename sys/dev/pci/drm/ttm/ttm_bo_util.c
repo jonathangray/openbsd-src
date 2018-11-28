@@ -41,7 +41,7 @@
 #include <linux/module.h>
 #include <linux/reservation.h>
 #else
-#include <dev/pci/drm/linux_ww_mutex.h>
+#include <linux/ww_mutex.h>
 #include <drm/drmP.h> /* for mb() */
 #endif
 

@@ -35,7 +35,7 @@
 #include <sys/kernel.h>
 #include <sys/sysctl.h>
 
-#include <dev/pci/drm/linux_radix-tree.h>
+#include <linux/radix-tree.h>
 
 #define M_RADIX M_DRM
 

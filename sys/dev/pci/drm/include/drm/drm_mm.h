@@ -42,7 +42,7 @@
 #include <linux/list.h>
 #include <linux/spinlock.h>
 #else
-#include <dev/pci/drm/drm_linux_list.h>
+#include <linux/list.h>
 #endif
 #ifdef CONFIG_DEBUG_FS
 #include <linux/seq_file.h>

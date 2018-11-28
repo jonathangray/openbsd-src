@@ -24,7 +24,7 @@
 #ifndef __DRM_PANEL_H__
 #define __DRM_PANEL_H__
 
-#include <dev/pci/drm/drm_linux_list.h>
+#include <linux/list.h>
 
 struct device_node;
 struct drm_connector;

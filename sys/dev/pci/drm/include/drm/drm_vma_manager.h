@@ -25,7 +25,7 @@
  */
 
 #include "drm_mm.h"
-#include <dev/pci/drm/drm_linux_rbtree.h>
+#include <linux/rbtree.h>
 
 struct drm_vma_offset_file {
 	struct rb_node vm_rb;

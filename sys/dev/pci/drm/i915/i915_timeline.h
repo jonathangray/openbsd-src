@@ -30,7 +30,7 @@
 #include <linux/kref.h>
 #else
 #include <dev/pci/drm/drm_linux.h>
-#include <dev/pci/drm/drm_linux_list.h>
+#include <linux/list.h>
 #endif
 
 #include "i915_request.h"

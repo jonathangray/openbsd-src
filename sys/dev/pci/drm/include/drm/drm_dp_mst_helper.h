@@ -23,7 +23,7 @@
 #define _DRM_DP_MST_HELPER_H_
 
 #include <dev/pci/drm/drm_linux.h>
-#include <dev/pci/drm/drm_linux_list.h>
+#include <linux/list.h>
 #include <drm/drm_dp_helper.h>
 #include <drm/drm_atomic.h>
 

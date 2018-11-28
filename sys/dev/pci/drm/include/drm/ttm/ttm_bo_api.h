@@ -32,8 +32,8 @@
 #define _TTM_BO_API_H_
 
 #include <dev/pci/drm/drm_linux.h>
-#include <dev/pci/drm/linux_ww_mutex.h>
-#include <dev/pci/drm/linux_reservation.h>
+#include <linux/ww_mutex.h>
+#include <linux/reservation.h>
 #include <drm/drm_hashtab.h>
 #include <drm/drm_vma_manager.h>
 #ifdef __linux__

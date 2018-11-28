@@ -45,9 +45,9 @@
 #include <linux/reservation.h>
 #else
 #include <dev/pci/drm/drm_linux.h>
-#include <dev/pci/drm/drm_linux_atomic.h>
-#include <dev/pci/drm/linux_rcupdate.h>
-#include <dev/pci/drm/linux_ww_mutex.h>
+#include <linux/atomic.h>
+#include <linux/rcupdate.h>
+#include <linux/ww_mutex.h>
 #endif
 
 static void ttm_bo_global_kobj_release(struct kobject *kobj);

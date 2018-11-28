@@ -30,7 +30,7 @@
 #ifndef _DRM_FILE_H_
 #define _DRM_FILE_H_
 
-#include <dev/pci/drm/linux_types.h>
+#include <linux/types.h>
 
 #include <uapi/drm/drm.h>
 

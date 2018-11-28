@@ -29,8 +29,8 @@
 #include <linux/dma-fence.h>
 #else
 #include <dev/pci/drm/drm_linux.h>
-#include <dev/pci/drm/drm_linux_rbtree.h>
-#include <dev/pci/drm/linux_rcupdate.h>
+#include <linux/rbtree.h>
+#include <linux/rcupdate.h>
 #endif
 
 #include "i915_gem.h"

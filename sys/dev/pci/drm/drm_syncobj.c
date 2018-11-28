@@ -55,7 +55,7 @@
 #include <linux/sched/signal.h>
 #else
 #include <dev/pci/drm/drm_linux.h>
-#include <dev/pci/drm/linux_rcupdate.h>
+#include <linux/rcupdate.h>
 #endif
 
 #include "drm_internal.h"

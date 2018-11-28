@@ -22,7 +22,7 @@
 #ifndef __DRM_FOURCC_H__
 #define __DRM_FOURCC_H__
 
-#include <dev/pci/drm/linux_types.h>
+#include <linux/types.h>
 #include <uapi/drm/drm_fourcc.h>
 
 struct drm_device;

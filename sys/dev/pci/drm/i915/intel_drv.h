@@ -31,7 +31,7 @@
 #include <linux/hdmi.h>
 #include <linux/sched/clock.h>
 #else
-#include <dev/pci/drm/linux_hdmi.h>
+#include <linux/hdmi.h>
 #endif
 #include <drm/i915_drm.h>
 #include "i915_drv.h"

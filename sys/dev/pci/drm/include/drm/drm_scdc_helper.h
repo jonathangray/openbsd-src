@@ -29,7 +29,7 @@
 #else
 #include <dev/pci/drm/drm_linux.h>
 #endif
-#include <dev/pci/drm/linux_types.h>
+#include <linux/types.h>
 
 #define SCDC_SINK_VERSION 0x01
 
