@@ -33,6 +33,7 @@
 #ifndef _DRM_LINUX_ATOMIC_H_
 #define _DRM_LINUX_ATOMIC_H_
 
+#include <sys/types.h>
 #include <sys/mutex.h>
 #include <sys/srp.h>
 #include <machine/intr.h>

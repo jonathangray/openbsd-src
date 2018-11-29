@@ -25,10 +25,8 @@
  *          Alex Deucher
  *          Jerome Glisse
  */
-#ifdef __linux__
 #include <linux/firmware.h>
 #include <linux/slab.h>
-#endif
 #include <drm/drmP.h>
 #include "radeon.h"
 #include "radeon_asic.h"

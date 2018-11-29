@@ -27,9 +27,7 @@
 
 #include "radeon.h"
 #include <drm/radeon_drm.h>
-#ifdef __linux__
 #include <linux/dma-buf.h>
-#endif
 
 #ifdef notyet
 

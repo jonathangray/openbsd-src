@@ -30,6 +30,8 @@
 #include "radeon_audio.h"
 #include "radeon_asic.h"
 #include "atom.h"
+#include <linux/backlight.h>
+#include <linux/dmi.h>
 
 extern int atom_debug;
 

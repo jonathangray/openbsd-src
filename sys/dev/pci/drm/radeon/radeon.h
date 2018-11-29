@@ -60,13 +60,21 @@
  *                          are considered as fatal)
  */
 
-#include <dev/pci/drm/drm_linux.h>
+#include <linux/atomic.h>
+#include <linux/wait.h>
+#include <linux/list.h>
+#include <linux/kref.h>
+#include <linux/interval_tree.h>
+#include <linux/hashtable.h>
+#include <linux/dma-fence.h>
 
 #include <drm/ttm/ttm_bo_api.h>
 #include <drm/ttm/ttm_bo_driver.h>
 #include <drm/ttm/ttm_placement.h>
 #include <drm/ttm/ttm_module.h>
 #include <drm/ttm/ttm_execbuf_util.h>
+
+#include <drm/drm_gem.h>
 
 #include <drm/drmP.h>
 

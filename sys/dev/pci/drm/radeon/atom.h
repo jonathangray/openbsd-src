@@ -25,7 +25,7 @@
 #ifndef ATOM_H
 #define ATOM_H
 
-#include <sys/types.h>
+#include <linux/types.h>
 #include <drm/drmP.h>
 
 #define ATOM_BIOS_MAGIC		0xAA55

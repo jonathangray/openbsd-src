@@ -30,6 +30,9 @@
 #include "radeon.h"
 #include "atom.h"
 
+#include <linux/slab.h>
+#include <linux/acpi.h>
+
 #if defined(__amd64__) || defined(__i386__)
 #include <dev/isa/isareg.h>
 #include <dev/isa/isavar.h>

@@ -25,6 +25,8 @@
  *          Alex Deucher
  *          Jerome Glisse
  */
+#include <linux/seq_file.h>
+#include <linux/slab.h>
 #include <drm/drmP.h>
 #include <drm/drm.h>
 #include <drm/drm_crtc_helper.h>

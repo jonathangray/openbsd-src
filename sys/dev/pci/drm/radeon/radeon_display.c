@@ -28,13 +28,16 @@
 #include "radeon.h"
 
 #include "atom.h"
+#include <asm/div64.h>
 
+#include <linux/pm_runtime.h>
 #include <drm/drm_crtc_helper.h>
 #include <drm/drm_gem_framebuffer_helper.h>
 #include <drm/drm_fb_helper.h>
 #include <drm/drm_plane_helper.h>
 #include <drm/drm_edid.h>
 
+#include <linux/gcd.h>
 
 static void avivo_crtc_load_lut(struct drm_crtc *crtc)
 {

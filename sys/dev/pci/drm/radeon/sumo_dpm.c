@@ -28,9 +28,7 @@
 #include "r600_dpm.h"
 #include "cypress_dpm.h"
 #include "sumo_dpm.h"
-#ifdef __linux__
 #include <linux/seq_file.h>
-#endif
 
 #define SUMO_MAX_DEEPSLEEP_DIVIDER_ID 5
 #define SUMO_MINIMUM_ENGINE_CLOCK 800

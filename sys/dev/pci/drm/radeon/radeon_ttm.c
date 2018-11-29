@@ -36,14 +36,12 @@
 #include <drm/ttm/ttm_module.h>
 #include <drm/ttm/ttm_page_alloc.h>
 #include <drm/radeon_drm.h>
-#ifdef __linux__
 #include <linux/seq_file.h>
 #include <linux/slab.h>
 #include <linux/swiotlb.h>
 #include <linux/swap.h>
 #include <linux/pagemap.h>
 #include <linux/debugfs.h>
-#endif
 #include "radeon_reg.h"
 #include "radeon.h"
 

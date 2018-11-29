@@ -25,6 +25,8 @@
  *          Alex Deucher
  *          Jerome Glisse
  */
+#include <linux/seq_file.h>
+#include <linux/slab.h>
 #include <drm/drmP.h>
 #include <drm/radeon_drm.h>
 #include "radeon_reg.h"
@@ -35,6 +37,9 @@
 #include "rv200d.h"
 #include "rv250d.h"
 #include "atom.h"
+
+#include <linux/firmware.h>
+#include <linux/module.h>
 
 #include "r100_reg_safe.h"
 #include "rn50_reg_safe.h"

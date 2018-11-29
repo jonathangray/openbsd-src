@@ -29,9 +29,7 @@
 #include "radeon.h"
 #include "radeon_asic.h"
 #include "atom.h"
-#ifdef __linux__
 #include <linux/backlight.h>
-#endif
 #ifdef CONFIG_PMAC_BACKLIGHT
 #include <asm/backlight.h>
 #endif

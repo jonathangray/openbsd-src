@@ -24,6 +24,7 @@
  * Authors:
  *    Jerome Glisse <glisse@freedesktop.org>
  */
+#include <linux/list_sort.h>
 #include <drm/drmP.h>
 #include <drm/radeon_drm.h>
 #include "radeon_reg.h"

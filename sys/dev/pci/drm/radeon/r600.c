@@ -25,6 +25,10 @@
  *          Alex Deucher
  *          Jerome Glisse
  */
+#include <linux/slab.h>
+#include <linux/seq_file.h>
+#include <linux/firmware.h>
+#include <linux/module.h>
 #include <drm/drmP.h>
 #include <drm/radeon_drm.h>
 #include "radeon.h"

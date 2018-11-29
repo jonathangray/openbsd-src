@@ -25,10 +25,8 @@
  * Authors: Christian König <christian.koenig@amd.com>
  */
 
-#ifdef __linux__
 #include <linux/firmware.h>
 #include <linux/module.h>
-#endif
 #include <drm/drmP.h>
 #include <drm/drm.h>
 
