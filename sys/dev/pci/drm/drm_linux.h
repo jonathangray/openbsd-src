@@ -52,12 +52,19 @@
 #include <linux/seq_file.h>
 #include <linux/wait.h>
 #include <linux/dma-fence.h>
+#include <linux/dma-fence-array.h>
 #include <linux/compiler.h>
 #include <linux/bug.h>
 #include <linux/completion.h>
 #include <linux/kobject.h>
 #include <linux/lockdep.h>
 #include <linux/bitmap.h>
+#include <linux/idr.h>
+#include <linux/hashtable.h>
+#include <linux/module.h>
+#include <linux/moduleparam.h>
+#include <linux/llist.h>
+#include <linux/irq.h>
 #include <video/mipi_display.h>
 
 /* The Linux code doesn't meet our usual standards! */
@@ -76,47 +83,10 @@
 
 #define STUB() do { printf("%s: stub\n", __func__); } while(0)
 
-typedef int irqreturn_t;
-enum irqreturn {
-	IRQ_NONE = 0,
-	IRQ_HANDLED = 1
-};
-
-#define U8_MAX UINT8_MAX
-#define U16_MAX UINT16_MAX
-#define U32_MAX UINT32_MAX
-#define U64_C(x) UINT64_C(x)
-#define U64_MAX UINT64_MAX
-
 typedef uint16_t __le16;
 typedef uint16_t __be16;
 typedef uint32_t __le32;
 typedef uint32_t __be32;
-
-typedef bus_addr_t dma_addr_t;
-typedef bus_addr_t phys_addr_t;
-
-typedef bus_addr_t resource_size_t;
-
-typedef off_t loff_t;
-
-typedef __ptrdiff_t ptrdiff_t;
-
-#define __force
-#define __always_unused	__unused
-#define __maybe_unused
-#define __read_mostly
-#define __iomem
-#define __must_check
-#define __init
-#define __exit
-#define __deprecated
-#define __always_inline inline
-#define noinline __attribute__((noinline))
-
-#ifndef __user
-#define __user
-#endif
 
 #define CONFIG_DRM_FBDEV_OVERALLOC	0
 #define CONFIG_DRM_I915_DEBUG		0
@@ -188,43 +158,6 @@ sign_extend64(uint64_t value, int index)
 	return ((int64_t)(value << shift) >> shift);
 }
 
-#define DECLARE_HASHTABLE(name, bits) struct hlist_head name[1 << (bits)]
-
-static inline void
-__hash_init(struct hlist_head *table, u_int size)
-{
-	u_int i;
-
-	for (i = 0; i < size; i++)
-		INIT_HLIST_HEAD(&table[i]);
-}
-
-static inline bool
-__hash_empty(struct hlist_head *table, u_int size)
-{
-	u_int i;
-
-	for (i = 0; i < size; i++) {
-		if (!hlist_empty(&table[i]))
-			return false;
-	}
-
-	return true;
-}
-
-#define __hash(table, key)	&table[key % (nitems(table) - 1)]
-
-#define hash_init(table)	__hash_init(table, nitems(table))
-#define hash_add(table, node, key) \
-	hlist_add_head(node, __hash(table, key))
-#define hash_del(node)		hlist_del_init(node)
-#define hash_empty(table)	__hash_empty(table, nitems(table))
-#define hash_for_each_possible(table, obj, member, key) \
-	hlist_for_each_entry(obj, __hash(table, key), member)
-#define hash_for_each_safe(table, i, tmp, obj, member) 	\
-	for (i = 0; i < nitems(table); i++)		\
-	       hlist_for_each_entry_safe(obj, tmp, &table[i], member)
-
 /* 2^32 * ((sqrt(5) - 1) / 2) from Knuth */
 #define GOLDEN_RATIO_32	0x9e3779b9
 
@@ -249,23 +182,6 @@ struct device_driver {
 #define dev_name(dev)		""
 
 #define devm_kzalloc(x, y, z)	kzalloc(y, z)
-
-struct module;
-
-#define MODULE_AUTHOR(x)
-#define MODULE_DESCRIPTION(x)
-#define MODULE_LICENSE(x)
-#define MODULE_FIRMWARE(x)
-#define MODULE_DEVICE_TABLE(x, y)
-#define MODULE_PARM_DESC(parm, desc)
-#define module_param(name, type, perm)
-#define module_param_named(name, value, type, perm)
-#define module_param_named_unsafe(name, value, type, perm)
-#define module_param_unsafe(name, type, perm)
-#define module_init(x)
-#define module_exit(x)
-
-#define THIS_MODULE	NULL
 
 #define ARRAY_SIZE nitems
 
@@ -898,23 +814,6 @@ refcount_dec_and_test(uint32_t *p)
 #define preempt_enable()
 #define preempt_disable()
 
-struct dma_fence_array {
-	unsigned int num_fences;
-	struct dma_fence **fences;
-};
-
-static inline struct dma_fence_array *
-to_dma_fence_array(struct dma_fence *fence)
-{
-	return NULL;
-}
-
-static inline bool
-dma_fence_is_array(struct dma_fence *fence)
-{
-	return false;
-}
-
 struct sync_file {
 };
 
@@ -931,42 +830,6 @@ sync_file_create(struct dma_fence *fence)
 	STUB();
 	return NULL;
 }
-
-struct idr_entry {
-	SPLAY_ENTRY(idr_entry) entry;
-	int id;
-	void *ptr;
-};
-
-struct idr {
-	SPLAY_HEAD(idr_tree, idr_entry) tree;
-};
-
-void idr_init(struct idr *);
-void idr_preload(unsigned int);
-int idr_alloc(struct idr *, void *, int, int, unsigned int);
-#define idr_preload_end()
-void *idr_find(struct idr *, int);
-void *idr_replace(struct idr *, void *ptr, int);
-void idr_remove(struct idr *, int);
-void idr_destroy(struct idr *);
-int idr_for_each(struct idr *, int (*)(int, void *, void *), void *);
-void *idr_get_next(struct idr *, int *);
-#define idr_init_base(idr, base)	idr_init(idr)
-
-#define idr_for_each_entry(idp, entry, id) \
-	for (id = 0; ((entry) = idr_get_next(idp, &(id))) != NULL; id++)
-
-
-struct ida {
-	int counter;
-};
-
-void ida_init(struct ida *);
-void ida_destroy(struct ida *);
-int ida_simple_get(struct ida *, unsigned int, unsigned nt, int);
-void ida_remove(struct ida *, int);
-void ida_simple_remove(struct ida *, int);
 
 struct notifier_block {
 	void *notifier_call;
@@ -2243,68 +2106,6 @@ match_string(const char * const *array,  size_t n, const char *str)
 
 	return -EINVAL;
 }
-
-struct llist_node {
-	struct llist_node *next;
-};
-
-struct llist_head {
-	struct llist_node *first;
-};
-
-#define llist_entry(ptr, type, member) \
-	((ptr) ? container_of(ptr, type, member) : NULL)
-
-static inline struct llist_node *
-llist_del_all(struct llist_head *head)
-{
-	return atomic_swap_ptr(&head->first, NULL);
-}
-
-static inline struct llist_node *
-llist_del_first(struct llist_head *head)
-{
-	struct llist_node *first, *next;
-
-	do {
-		first = head->first;
-		if (first == NULL)
-			return NULL;
-		next = first->next;
-	} while (atomic_cas_ptr(&head->first, first, next) != first);
-
-	return first;
-}
-
-static inline bool
-llist_add(struct llist_node *new, struct llist_head *head)
-{
-	struct llist_node *first;
-
-	do {
-		first = head->first;
-	} while (atomic_cas_ptr(&head->first, first, new) != first);
-
-	return (first == NULL);
-}
-
-static inline void
-init_llist_head(struct llist_head *head)
-{
-	head->first = NULL;
-}
-
-static inline bool
-llist_empty(struct llist_head *head)
-{
-	return (head->first == NULL);
-}
-
-#define llist_for_each_entry_safe(pos, n, node, member) 		\
-	for (pos = llist_entry((node), __typeof(*pos), member); 	\
-	    pos != NULL &&						\
-	    (n = llist_entry(pos->member.next, __typeof(*pos), member)); \
-	    pos = n)
 
 #define UUID_STRING_LEN 36
 

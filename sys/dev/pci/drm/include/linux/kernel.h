@@ -3,6 +3,7 @@
 #ifndef _LINUX_KERNEL_H
 #define _LINUX_KERNEL_H
 
+#include <sys/stdint.h>
 #include <linux/types.h>
 #include <linux/compiler.h>
 #include <linux/bitops.h>
@@ -13,5 +14,11 @@
 #define container_of(ptr, type, member) ({			\
 	const __typeof( ((type *)0)->member ) *__mptr = (ptr);	\
 	(type *)( (char *)__mptr - offsetof(type,member) );})
+
+#define U8_MAX UINT8_MAX
+#define U16_MAX UINT16_MAX
+#define U32_MAX UINT32_MAX
+#define U64_C(x) UINT64_C(x)
+#define U64_MAX UINT64_MAX
 
 #endif

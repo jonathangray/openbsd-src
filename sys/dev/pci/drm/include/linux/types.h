@@ -5,6 +5,7 @@
 
 #include <sys/types.h>
 #include <sys/stdint.h>
+#include <machine/bus.h>
 
 typedef int8_t   __s8;
 typedef uint8_t  __u8;
@@ -23,5 +24,13 @@ typedef int32_t  s32;
 typedef uint32_t u32;
 typedef int64_t  s64;
 typedef uint64_t u64;
+
+typedef bus_addr_t dma_addr_t;
+typedef bus_addr_t phys_addr_t;
+typedef bus_addr_t resource_size_t;
+
+typedef off_t loff_t;
+
+typedef __ptrdiff_t ptrdiff_t;
 
 #endif /* _LINUX_TYPES_H_ */

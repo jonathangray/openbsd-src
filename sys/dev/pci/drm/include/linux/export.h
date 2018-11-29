@@ -6,4 +6,6 @@
 #define EXPORT_SYMBOL(x)
 #define EXPORT_SYMBOL_GPL(x)
 
+#define THIS_MODULE	NULL
+
 #endif
