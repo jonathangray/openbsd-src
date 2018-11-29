@@ -35,14 +35,12 @@
 #include <drm/ttm/ttm_bo_driver.h>
 #include <drm/ttm/ttm_placement.h>
 #include <drm/drm_vma_manager.h>
-#ifdef __linux__
 #include <linux/mm.h>
 #include <linux/pfn_t.h>
 #include <linux/rbtree.h>
 #include <linux/module.h>
 #include <linux/uaccess.h>
 #include <linux/mem_encrypt.h>
-#endif
 
 #define TTM_BO_VM_NUM_PREFAULT 16
 

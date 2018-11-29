@@ -34,7 +34,6 @@
 #include <drm/ttm/ttm_module.h>
 #include <drm/ttm/ttm_bo_driver.h>
 #include <drm/ttm/ttm_placement.h>
-#ifdef __linux__
 #include <linux/jiffies.h>
 #include <linux/slab.h>
 #include <linux/sched.h>
@@ -43,12 +42,6 @@
 #include <linux/module.h>
 #include <linux/atomic.h>
 #include <linux/reservation.h>
-#else
-#include <dev/pci/drm/drm_linux.h>
-#include <linux/atomic.h>
-#include <linux/rcupdate.h>
-#include <linux/ww_mutex.h>
-#endif
 
 static void ttm_bo_global_kobj_release(struct kobject *kobj);
 

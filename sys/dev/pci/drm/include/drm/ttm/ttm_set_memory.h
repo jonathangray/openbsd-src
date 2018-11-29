@@ -31,9 +31,7 @@
 #ifndef TTM_SET_MEMORY
 #define TTM_SET_MEMORY
 
-#ifdef __linux__
 #include <linux/mm.h>
-#endif
 
 #if defined(__amd64__) || defined(__i386__)
 #define CONFIG_X86
@@ -41,9 +39,8 @@
 
 #ifdef CONFIG_X86
 
-#ifdef __linux__
 #include <asm/set_memory.h>
-#endif
+
 
 static inline int ttm_set_pages_array_wb(struct vm_page **pages, int addrinarray)
 {

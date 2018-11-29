@@ -21,6 +21,7 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>
+#include <sys/stdint.h>
 #include <sys/mutex.h>
 #include <linux/wait.h>
 

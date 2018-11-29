@@ -35,12 +35,10 @@
 #include <drm/drm_global.h>
 #include <drm/drm_vma_manager.h>
 #include <drm/drm_print.h>
-#ifdef __linux__
 #include <linux/workqueue.h>
 #include <linux/fs.h>
 #include <linux/spinlock.h>
 #include <linux/reservation.h>
-#endif
 
 #include "ttm_bo_api.h"
 #include "ttm_memory.h"

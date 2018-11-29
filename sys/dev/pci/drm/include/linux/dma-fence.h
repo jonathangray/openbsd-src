@@ -3,6 +3,8 @@
 #ifndef _LINUX_DMA_FENCE_H
 #define _LINUX_DMA_FENCE_H
 
+#include <sys/types.h>
+#include <sys/malloc.h>
 #include <sys/mutex.h>
 #include <linux/kref.h>
 #include <linux/list.h>

@@ -28,11 +28,9 @@
 
 #define pr_fmt(fmt) "[TTM] " fmt
 
-#include <dev/pci/drm/drm_linux.h>
 #include <drm/ttm/ttm_memory.h>
 #include <drm/ttm/ttm_module.h>
 #include <drm/ttm/ttm_page_alloc.h>
-#ifdef __linux__
 #include <linux/spinlock.h>
 #include <linux/sched.h>
 #include <linux/wait.h>
@@ -40,7 +38,6 @@
 #include <linux/module.h>
 #include <linux/slab.h>
 #include <linux/swap.h>
-#endif
 
 #define TTM_MEMORY_ALLOC_RETRIES 4
 

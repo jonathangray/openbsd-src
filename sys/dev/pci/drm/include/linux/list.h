@@ -34,6 +34,7 @@
 #define _DRM_LINUX_LIST_H_
 
 #include <sys/param.h>
+#include <linux/kernel.h>
 
 struct list_head {
 	struct list_head *next, *prev;

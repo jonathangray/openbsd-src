@@ -32,11 +32,8 @@
 #define _TTM_BO_API_H_
 
 #include <dev/pci/drm/drm_linux.h>
-#include <linux/ww_mutex.h>
-#include <linux/reservation.h>
 #include <drm/drm_hashtab.h>
 #include <drm/drm_vma_manager.h>
-#ifdef __linux__
 #include <linux/kref.h>
 #include <linux/list.h>
 #include <linux/wait.h>
@@ -44,7 +41,6 @@
 #include <linux/mm.h>
 #include <linux/bitmap.h>
 #include <linux/reservation.h>
-#endif
 
 struct ttm_bo_global;
 

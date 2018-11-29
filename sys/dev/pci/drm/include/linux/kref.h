@@ -20,6 +20,7 @@
 
 #include <sys/rwlock.h>
 #include <sys/atomic.h>
+#include <linux/atomic.h>
 
 struct kref {
 	uint32_t refcount;

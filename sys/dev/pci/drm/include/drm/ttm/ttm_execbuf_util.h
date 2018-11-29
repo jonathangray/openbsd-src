@@ -31,6 +31,8 @@
 #ifndef _TTM_EXECBUF_UTIL_H_
 #define _TTM_EXECBUF_UTIL_H_
 
+#include <linux/list.h>
+
 #include "ttm_bo_api.h"
 
 /**

@@ -39,4 +39,6 @@
 	barrier();		\
 } while(0)
 
+#define barrier()	__asm __volatile("" : : : "memory")
+
 #endif

@@ -28,7 +28,6 @@
 #ifndef TTM_MEMORY_H
 #define TTM_MEMORY_H
 
-#ifdef __linux__
 #include <linux/workqueue.h>
 #include <linux/spinlock.h>
 #include <linux/bug.h>
@@ -36,9 +35,6 @@
 #include <linux/errno.h>
 #include <linux/kobject.h>
 #include <linux/mm.h>
-#else
-#include <sys/task.h>
-#endif
 #include "ttm_bo_api.h"
 
 /**

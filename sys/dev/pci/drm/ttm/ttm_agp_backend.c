@@ -37,6 +37,11 @@
 #include <drm/ttm/ttm_bo_driver.h>
 #include <drm/ttm/ttm_page_alloc.h>
 #include <drm/ttm/ttm_placement.h>
+#include <linux/agp_backend.h>
+#include <linux/module.h>
+#include <linux/slab.h>
+#include <linux/io.h>
+#include <asm/agp.h>
 
 struct ttm_agp_backend {
 	struct ttm_tt ttm;

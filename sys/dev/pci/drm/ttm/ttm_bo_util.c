@@ -32,7 +32,6 @@
 #include <drm/ttm/ttm_bo_driver.h>
 #include <drm/ttm/ttm_placement.h>
 #include <drm/drm_vma_manager.h>
-#ifdef __linux__
 #include <linux/io.h>
 #include <linux/highmem.h>
 #include <linux/wait.h>
@@ -40,10 +39,6 @@
 #include <linux/vmalloc.h>
 #include <linux/module.h>
 #include <linux/reservation.h>
-#else
-#include <linux/ww_mutex.h>
-#include <drm/drmP.h> /* for mb() */
-#endif
 
 struct ttm_transfer_obj {
 	struct ttm_buffer_object base;
