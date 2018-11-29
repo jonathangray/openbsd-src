@@ -33,4 +33,6 @@ typedef off_t loff_t;
 
 typedef __ptrdiff_t ptrdiff_t;
 
+typedef unsigned int gfp_t;
+
 #endif /* _LINUX_TYPES_H_ */

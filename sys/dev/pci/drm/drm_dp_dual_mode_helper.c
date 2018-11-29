@@ -20,15 +20,11 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifdef __linux__
 #include <linux/errno.h>
 #include <linux/export.h>
 #include <linux/i2c.h>
 #include <linux/slab.h>
 #include <linux/string.h>
-#else
-#include <dev/pci/drm/drm_linux.h>
-#endif
 #include <drm/drm_dp_dual_mode_helper.h>
 #include <drm/drmP.h>
 

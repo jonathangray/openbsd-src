@@ -31,7 +31,7 @@
 #ifndef	_LINUX_RADIX_TREE_H_
 #define	_LINUX_RADIX_TREE_H_
 
-#include <dev/pci/drm/drm_linux.h>
+#include <linux/types.h>
 
 #define	RADIX_TREE_MAP_SHIFT	6
 #define	RADIX_TREE_MAP_SIZE	(1UL << RADIX_TREE_MAP_SHIFT)

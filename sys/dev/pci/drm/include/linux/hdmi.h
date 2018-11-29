@@ -25,6 +25,8 @@
 #define __LINUX_HDMI_H_
 
 #include <dev/pci/drm/drm_linux.h>
+#include <linux/types.h>
+#include <linux/device.h>
 
 enum hdmi_infoframe_type {
 	HDMI_INFOFRAME_TYPE_VENDOR = 0x81,

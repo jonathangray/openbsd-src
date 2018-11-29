@@ -34,11 +34,7 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifdef __linux__
 #include <linux/kref.h>
-#else
-#include <dev/pci/drm/drm_linux.h>
-#endif
 
 #include <drm/drm_vma_manager.h>
 

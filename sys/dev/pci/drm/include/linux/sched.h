@@ -30,7 +30,9 @@
 #define TASK_INTERRUPTIBLE	PCATCH
 #define TASK_RUNNING		-1
 
-#define MAX_SCHEDULE_TIMEOUT (INT32_MAX)
+#define MAX_SCHEDULE_TIMEOUT	(INT32_MAX)
+
+#define TASK_COMM_LEN		(MAXCOMLEN + 1)
 
 #define cond_resched()		sched_pause(yield)
 #define drm_need_resched() \

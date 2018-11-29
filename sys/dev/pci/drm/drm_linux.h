@@ -171,8 +171,6 @@ hash_32(uint32_t val, unsigned int bits)
 
 #define UTS_RELEASE	""
 
-#define TASK_COMM_LEN	(MAXCOMLEN + 1)
-
 struct va_format {
 	const char *fmt;
 	va_list *va;
@@ -1141,8 +1139,6 @@ of_machine_is_compatible(const char *model)
 	return (strcmp(model, hw_prod) == 0);
 }
 #endif
-
-typedef unsigned int gfp_t;
 
 #define MAX_ORDER	11
 
