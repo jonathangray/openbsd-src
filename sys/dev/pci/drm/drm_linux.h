@@ -65,6 +65,14 @@
 #include <linux/moduleparam.h>
 #include <linux/llist.h>
 #include <linux/irq.h>
+#include <linux/printk.h>
+#include <linux/spinlock.h>
+#include <linux/mutex.h>
+#include <linux/pci.h>
+#include <linux/io.h>
+#include <linux/device.h>
+#include <linux/err.h>
+#include <linux/firmware.h>
 #include <video/mipi_display.h>
 
 /* The Linux code doesn't meet our usual standards! */
@@ -96,23 +104,6 @@ typedef uint32_t __be32;
 #define __printf(x, y)
 
 #define barrier()		__asm __volatile("" : : : "memory")
-
-#define ACCESS_ONCE(x)		(*(volatile __typeof(x) *)&(x))
-
-#define READ_ONCE(x) ({		\
-	__typeof(x) __tmp = ({	\
-		barrier();	\
-		ACCESS_ONCE(x);	\
-	});			\
-	barrier();		\
-	__tmp;			\
-})
-
-#define WRITE_ONCE(x, v) do {	\
-	barrier();		\
-	ACCESS_ONCE(x) = (v);	\
-	barrier();		\
-} while(0)
 
 #define uninitialized_var(x) x
 
@@ -171,20 +162,6 @@ hash_32(uint32_t val, unsigned int bits)
 
 #define IS_BUILTIN(x) 1
 
-struct device_node;
-
-struct device_driver {
-	struct device *dev;
-};
-
-#define dev_get_drvdata(x)	NULL
-#define dev_set_drvdata(x, y)
-#define dev_name(dev)		""
-
-#define devm_kzalloc(x, y, z)	kzalloc(y, z)
-
-#define ARRAY_SIZE nitems
-
 #define KERN_INFO	""
 #define KERN_WARNING	""
 #define KERN_NOTICE	""
@@ -202,65 +179,6 @@ struct va_format {
 	const char *fmt;
 	va_list *va;
 };
-
-#ifndef pr_fmt
-#define pr_fmt(fmt) fmt
-#endif
-
-#define printk_once(fmt, arg...) ({		\
-	static int __warned;			\
-	if (!__warned) {			\
-		printf(fmt, ## arg);		\
-		__warned = 1;			\
-	}					\
-})
-
-#define printk(fmt, arg...)	printf(fmt, ## arg)
-#define pr_warn(fmt, arg...)	printf(pr_fmt(fmt), ## arg)
-#define pr_warn_once(fmt, arg...)	printk_once(pr_fmt(fmt), ## arg)
-#define pr_notice(fmt, arg...)	printf(pr_fmt(fmt), ## arg)
-#define pr_crit(fmt, arg...)	printf(pr_fmt(fmt), ## arg)
-#define pr_err(fmt, arg...)	printf(pr_fmt(fmt), ## arg)
-#define pr_cont(fmt, arg...)	printf(pr_fmt(fmt), ## arg)
-
-#ifdef DRMDEBUG
-#define pr_info(fmt, arg...)	printf(pr_fmt(fmt), ## arg)
-#define pr_info_once(fmt, arg...)	printk_once(pr_fmt(fmt), ## arg)
-#define pr_debug(fmt, arg...)	printf(pr_fmt(fmt), ## arg)
-#else
-#define pr_info(fmt, arg...)	do { } while(0)
-#define pr_info_once(fmt, arg...)	do { } while(0)
-#define pr_debug(fmt, arg...)	do { } while(0)
-#endif
-
-#define dev_warn(dev, fmt, arg...)				\
-	printf("drm:pid%d:%s *WARNING* " fmt, curproc->p_p->ps_pid,	\
-	    __func__ , ## arg)
-#define dev_notice(dev, fmt, arg...)				\
-	printf("drm:pid%d:%s *NOTICE* " fmt, curproc->p_p->ps_pid,	\
-	    __func__ , ## arg)
-#define dev_crit(dev, fmt, arg...)				\
-	printf("drm:pid%d:%s *ERROR* " fmt, curproc->p_p->ps_pid,	\
-	    __func__ , ## arg)
-#define dev_err(dev, fmt, arg...)				\
-	printf("drm:pid%d:%s *ERROR* " fmt, curproc->p_p->ps_pid,	\
-	    __func__ , ## arg)
-#define dev_printk(level, dev, fmt, arg...)				\
-	printf("drm:pid%d:%s *PRINTK* " fmt, curproc->p_p->ps_pid,	\
-	    __func__ , ## arg)
-
-#ifdef DRMDEBUG
-#define dev_info(dev, fmt, arg...)				\
-	printf("drm: " fmt, ## arg)
-#define dev_debug(dev, fmt, arg...)				\
-	printf("drm:pid%d:%s *DEBUG* " fmt, curproc->p_p->ps_pid,	\
-	    __func__ , ## arg)
-#else
-#define dev_info(dev, fmt, arg...) 				\
-	    do { } while(0)
-#define dev_debug(dev, fmt, arg...) 				\
-	    do { } while(0)
-#endif
 
 #define DEFINE_RATELIMIT_STATE(name, interval, burst) \
 	int name __used = 1;
@@ -295,93 +213,8 @@ static inline void trace_##name(proto) {}
 #define DECLARE_EVENT_CLASS(name, proto, args, tstruct, assign, print) \
 static inline void trace_##name(proto) {}
 
-#define IS_ERR_VALUE(x) unlikely((x) >= (unsigned long)-ELAST)
-
-static inline void *
-ERR_PTR(long error)
-{
-	return (void *) error;
-}
-
-static inline long
-PTR_ERR(const void *ptr)
-{
-	return (long) ptr;
-}
-
-static inline long
-IS_ERR(const void *ptr)
-{
-        return IS_ERR_VALUE((unsigned long)ptr);
-}
-
-static inline long
-IS_ERR_OR_NULL(const void *ptr)
-{
-        return !ptr || IS_ERR_VALUE((unsigned long)ptr);
-}
-
-static inline void *
-ERR_CAST(const void *ptr)
-{
-	return (void *)ptr;
-}
-
-static inline int
-PTR_ERR_OR_ZERO(const void *ptr)
-{
-	return IS_ERR(ptr)? PTR_ERR(ptr) : 0;
-}
-
-#ifndef __DECONST
-#define __DECONST(type, var)    ((type)(__uintptr_t)(const void *)(var))
-#endif
-
 typedef struct rwlock rwlock_t;
-typedef struct mutex spinlock_t;
-#define DEFINE_SPINLOCK(x)	struct mutex x
-#define DEFINE_MUTEX(x)		struct rwlock x
 
-static inline void
-_spin_lock_irqsave(struct mutex *mtxp, __unused unsigned long flags
-    LOCK_FL_VARS)
-{
-	_mtx_enter(mtxp LOCK_FL_ARGS);
-}
-static inline void
-_spin_lock_irqsave_nested(struct mutex *mtxp, __unused unsigned long flags,
-    __unused int subclass LOCK_FL_VARS)
-{
-	_mtx_enter(mtxp LOCK_FL_ARGS);
-}
-static inline void
-_spin_unlock_irqrestore(struct mutex *mtxp, __unused unsigned long flags
-    LOCK_FL_VARS)
-{
-	_mtx_leave(mtxp LOCK_FL_ARGS);
-}
-#define spin_lock_irqsave(m, fl)	\
-	_spin_lock_irqsave(m, fl LOCK_FILE_LINE)
-#define spin_lock_irqsave_nested(m, fl, subc)	\
-	_spin_lock_irqsave_nested(m, fl, subc LOCK_FILE_LINE)
-#define spin_unlock_irqrestore(m, fl)	\
-	_spin_unlock_irqrestore(m, fl LOCK_FILE_LINE)
-
-
-#define spin_lock(mtxp)			mtx_enter(mtxp)
-#define spin_lock_nested(mtxp, l)	mtx_enter(mtxp)
-#define spin_unlock(mtxp)		mtx_leave(mtxp)
-#define spin_lock_irq(mtxp)		mtx_enter(mtxp)
-#define spin_unlock_irq(mtxp)		mtx_leave(mtxp)
-#define assert_spin_locked(mtxp)	MUTEX_ASSERT_LOCKED(mtxp)
-#define mutex_lock_interruptible(rwl)	-rw_enter(rwl, RW_WRITE | RW_INTR)
-#define mutex_lock(rwl)			rw_enter_write(rwl)
-#define mutex_lock_nest_lock(rwl, sub)	rw_enter_write(rwl)
-#define mutex_lock_nested(rwl, sub)	rw_enter_write(rwl)
-#define mutex_trylock(rwl)		(rw_enter(rwl, RW_WRITE | RW_NOSLEEP) == 0)
-#define mutex_unlock(rwl)		rw_exit_write(rwl)
-#define mutex_is_locked(rwl)		(rw_status(rwl) == RW_WRITE)
-#define mutex_destroy(rwl)
 #define down_read(rwl)			rw_enter_read(rwl)
 #define down_read_trylock(rwl)		(rw_enter(rwl, RW_READ | RW_NOSLEEP) == 0)
 #define up_read(rwl)			rw_exit_read(rwl)
@@ -1034,225 +867,6 @@ resource_size(const struct resource *r)
 		.end = (_start) + (_size) - 1,	\
 	}
 
-struct pci_dev;
-
-struct pci_bus {
-	pci_chipset_tag_t pc;
-	unsigned char	number;
-	pcitag_t	*bridgetag;
-	struct pci_dev	*self;
-};
-
-struct pci_dev {
-	struct pci_bus	_bus;
-	struct pci_bus	*bus;
-
-	unsigned int	devfn;
-	uint16_t	vendor;
-	uint16_t	device;
-	uint16_t	subsystem_vendor;
-	uint16_t	subsystem_device;
-	uint8_t		revision;
-
-	pci_chipset_tag_t pc;
-	pcitag_t	tag;
-	struct pci_softc *pci;
-
-	int		irq;
-	int		msi_enabled;
-	uint8_t		no_64bit_msi;
-};
-#define PCI_ANY_ID (uint16_t) (~0U)
-
-#define PCI_VENDOR_ID_APPLE	PCI_VENDOR_APPLE
-#define PCI_VENDOR_ID_ASUSTEK	PCI_VENDOR_ASUSTEK
-#define PCI_VENDOR_ID_ATI	PCI_VENDOR_ATI
-#define PCI_VENDOR_ID_DELL	PCI_VENDOR_DELL
-#define PCI_VENDOR_ID_HP	PCI_VENDOR_HP
-#define PCI_VENDOR_ID_IBM	PCI_VENDOR_IBM
-#define PCI_VENDOR_ID_INTEL	PCI_VENDOR_INTEL
-#define PCI_VENDOR_ID_SONY	PCI_VENDOR_SONY
-#define PCI_VENDOR_ID_VIA	PCI_VENDOR_VIATECH
-
-#define PCI_DEVICE_ID_ATI_RADEON_QY	PCI_PRODUCT_ATI_RADEON_QY
-
-#define PCI_SUBVENDOR_ID_REDHAT_QUMRANET	0x1af4
-#define PCI_SUBDEVICE_ID_QEMU			0x1100
-
-#define PCI_DEVFN(slot, func)	((slot) << 3 | (func))
-#define PCI_SLOT(devfn)		((devfn) >> 3)
-#define PCI_FUNC(devfn)		((devfn) & 0x7)
-
-#define pci_dev_put(x)
-
-#define PCI_EXP_DEVSTA		0x0a
-#define PCI_EXP_DEVSTA_TRPND	0x0020
-#define PCI_EXP_LNKCAP		0x0c
-#define PCI_EXP_LNKCAP_CLKPM	0x00040000
-#define PCI_EXP_LNKCTL		0x10
-#define PCI_EXP_LNKCTL_HAWD	0x0200
-#define PCI_EXP_LNKCTL2		0x30
-
-static inline int
-pci_read_config_dword(struct pci_dev *pdev, int reg, u32 *val)
-{
-	*val = pci_conf_read(pdev->pc, pdev->tag, reg);
-	return 0;
-} 
-
-static inline int
-pci_read_config_word(struct pci_dev *pdev, int reg, u16 *val)
-{
-	uint32_t v;
-
-	v = pci_conf_read(pdev->pc, pdev->tag, (reg & ~0x2));
-	*val = (v >> ((reg & 0x2) * 8));
-	return 0;
-} 
-
-static inline int
-pci_read_config_byte(struct pci_dev *pdev, int reg, u8 *val)
-{
-	uint32_t v;
-
-	v = pci_conf_read(pdev->pc, pdev->tag, (reg & ~0x3));
-	*val = (v >> ((reg & 0x3) * 8));
-	return 0;
-} 
-
-static inline int
-pci_write_config_dword(struct pci_dev *pdev, int reg, u32 val)
-{
-	pci_conf_write(pdev->pc, pdev->tag, reg, val);
-	return 0;
-} 
-
-static inline int
-pci_write_config_word(struct pci_dev *pdev, int reg, u16 val)
-{
-	uint32_t v;
-
-	v = pci_conf_read(pdev->pc, pdev->tag, (reg & ~0x2));
-	v &= ~(0xffff << ((reg & 0x2) * 8));
-	v |= (val << ((reg & 0x2) * 8));
-	pci_conf_write(pdev->pc, pdev->tag, (reg & ~0x2), v);
-	return 0;
-} 
-
-static inline int
-pci_write_config_byte(struct pci_dev *pdev, int reg, u8 val)
-{
-	uint32_t v;
-
-	v = pci_conf_read(pdev->pc, pdev->tag, (reg & ~0x3));
-	v &= ~(0xff << ((reg & 0x3) * 8));
-	v |= (val << ((reg & 0x3) * 8));
-	pci_conf_write(pdev->pc, pdev->tag, (reg & ~0x3), v);
-	return 0;
-}
-
-static inline int
-pci_bus_read_config_word(struct pci_bus *bus, unsigned int devfn,
-    int reg, u16 *val)
-{
-	pcitag_t tag = pci_make_tag(bus->pc, bus->number,
-	    PCI_SLOT(devfn), PCI_FUNC(devfn));
-	uint32_t v;
-
-	v = pci_conf_read(bus->pc, tag, (reg & ~0x2));
-	*val = (v >> ((reg & 0x2) * 8));
-	return 0;
-}
-
-static inline int
-pci_bus_read_config_byte(struct pci_bus *bus, unsigned int devfn,
-    int reg, u8 *val)
-{
-	pcitag_t tag = pci_make_tag(bus->pc, bus->number,
-	    PCI_SLOT(devfn), PCI_FUNC(devfn));
-	uint32_t v;
-
-	v = pci_conf_read(bus->pc, tag, (reg & ~0x3));
-	*val = (v >> ((reg & 0x3) * 8));
-	return 0;
-}
-
-static inline int
-pci_bus_write_config_byte(struct pci_bus *bus, unsigned int devfn,
-    int reg, u8 val)
-{
-	pcitag_t tag = pci_make_tag(bus->pc, bus->number,
-	    PCI_SLOT(devfn), PCI_FUNC(devfn));
-	uint32_t v;
-
-	v = pci_conf_read(bus->pc, tag, (reg & ~0x3));
-	v &= ~(0xff << ((reg & 0x3) * 8));
-	v |= (val << ((reg & 0x3) * 8));
-	pci_conf_write(bus->pc, tag, (reg & ~0x3), v);
-	return 0;
-}
-
-static inline int
-pci_pcie_cap(struct pci_dev *pdev)
-{
-	int pos;
-	if (!pci_get_capability(pdev->pc, pdev->tag, PCI_CAP_PCIEXPRESS,
-	    &pos, NULL))
-		return -EINVAL;
-	return pos;
-}
-
-static inline bool
-pci_is_root_bus(struct pci_bus *pbus)
-{
-	return (pbus->bridgetag == NULL);
-}
-
-static inline int
-pcie_capability_read_dword(struct pci_dev *pdev, int off, u32 *val)
-{
-	int pos;
-	if (!pci_get_capability(pdev->pc, pdev->tag, PCI_CAP_PCIEXPRESS,
-	    &pos, NULL)) {
-		*val = 0;
-		return -EINVAL;
-	}
-	*val = pci_conf_read(pdev->pc, pdev->tag, pos + off);
-	return 0;
-}
-
-#define pci_set_master(x)
-#define pci_clear_master(x)
-
-#define pci_save_state(x)
-#define pci_restore_state(x)
-
-#define pci_enable_msi(x)	0
-#define pci_disable_msi(x)
-
-typedef enum {
-	PCI_D0,
-	PCI_D1,
-	PCI_D2,
-	PCI_D3hot,
-	PCI_D3cold
-} pci_power_t;
-
-enum pci_bus_speed {
-	PCIE_SPEED_2_5GT,
-	PCIE_SPEED_5_0GT,
-	PCIE_SPEED_8_0GT,
-	PCI_SPEED_UNKNOWN
-};
-
-enum pci_bus_speed pcie_get_speed_cap(struct pci_dev *);
-
-#define pci_save_state(x)
-#define pci_enable_device(x)		0
-#define pci_disable_device(x)
-#define pci_set_power_state(d, s)	0
-#define pci_is_thunderbolt_attached(x) false
-#define pci_set_drvdata(x, y)
 #define dev_pm_set_driver_flags(x, y)
 
 static inline int
@@ -1306,39 +920,6 @@ void vga_put(struct pci_dev *, int);
 #define vga_switcheroo_handler_flags() 0
 
 #define VGA_SWITCHEROO_CAN_SWITCH_DDC	1
-
-#define memcpy_toio(d, s, n)	memcpy(d, s, n)
-#define memcpy_fromio(d, s, n)	memcpy(d, s, n)
-#define memset_io(d, b, n)	memset(d, b, n)
-
-static inline u32
-ioread32(const volatile void __iomem *addr)
-{
-	return (*(volatile uint32_t *)addr);
-}
-
-static inline u64
-ioread64(const volatile void __iomem *addr)
-{
-	return (*(volatile uint64_t *)addr);
-}
-
-static inline void
-iowrite32(u32 val, volatile void __iomem *addr)
-{
-	*(volatile uint32_t *)addr = val;
-}
-
-static inline void
-iowrite64(u64 val, volatile void __iomem *addr)
-{
-	*(volatile uint64_t *)addr = val;
-}
-
-#define readl(p) ioread32(p)
-#define writel(v, p) iowrite32(v, p)
-#define readq(p) ioread64(p)
-#define writeq(v, p) iowrite64(v, p)
 
 #define page_to_phys(page)	(VM_PAGE_TO_PHYS(page))
 #define page_to_pfn(pp)		(VM_PAGE_TO_PHYS(pp) / PAGE_SIZE)
@@ -1915,36 +1496,6 @@ sg_set_page(struct scatterlist *sgl, struct vm_page *page,
 
 size_t sg_copy_from_buffer(struct scatterlist *, unsigned int,
     const void *, size_t);
-
-struct firmware {
-	size_t size;
-	const u8 *data;
-};
-
-static inline int
-request_firmware(const struct firmware **fw, const char *name,
-    struct device *device)
-{
-	int r;
-	struct firmware *f = malloc(sizeof(struct firmware), M_DRM,
-	    M_WAITOK | M_ZERO);
-	*fw = f;
-	r = loadfirmware(name, __DECONST(u_char **, &f->data), &f->size);
-	if (r != 0)
-		return -r;
-	else
-		return 0;
-}
-
-#define request_firmware_nowait(a, b, c, d, e, f, g) -EINVAL
-
-static inline void
-release_firmware(const struct firmware *fw)
-{
-	if (fw)
-		free(__DECONST(u_char *, fw->data), M_DEVBUF, fw->size);
-	free(__DECONST(struct firmware *, fw), M_DRM, sizeof(*fw));
-}
 
 void *memchr_inv(const void *, int, size_t);
 

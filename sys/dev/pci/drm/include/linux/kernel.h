@@ -4,6 +4,7 @@
 #define _LINUX_KERNEL_H
 
 #include <sys/stdint.h>
+#include <sys/param.h>
 #include <linux/types.h>
 #include <linux/compiler.h>
 #include <linux/bitops.h>
@@ -20,5 +21,7 @@
 #define U32_MAX UINT32_MAX
 #define U64_C(x) UINT64_C(x)
 #define U64_MAX UINT64_MAX
+
+#define ARRAY_SIZE nitems
 
 #endif
