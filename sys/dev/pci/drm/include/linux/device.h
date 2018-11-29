@@ -7,6 +7,7 @@
 #include <sys/systm.h>
 #include <sys/device.h>
 #include <linux/slab.h>
+#include <linux/ioport.h>
 
 struct device_node;
 

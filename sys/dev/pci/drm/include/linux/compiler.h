@@ -41,4 +41,8 @@
 
 #define barrier()	__asm __volatile("" : : : "memory")
 
+#define __printf(x, y)
+
+#define uninitialized_var(x) x
+
 #endif

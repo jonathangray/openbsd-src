@@ -18,6 +18,8 @@
 #ifndef _LINUX_BITOPS_H
 #define _LINUX_BITOPS_H
 
+#include <sys/types.h>
+
 #define BIT(x)		(1UL << (x))
 #define BIT_ULL(x)	(1ULL << (x))
 #define BITS_PER_BYTE	8
@@ -62,6 +64,13 @@ hweight64(uint64_t x)
 	x = (x + (x >> 16));
 	x = (x + (x >> 32)) & 0x000000ff;
 	return x;
+}
+
+static inline uint64_t
+sign_extend64(uint64_t value, int index)
+{
+	uint8_t shift = 63 - index;
+	return ((int64_t)(value << shift) >> shift);
 }
 
 #endif

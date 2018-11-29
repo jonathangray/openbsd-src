@@ -36,4 +36,13 @@
 #define pr_debug(fmt, arg...)	do { } while(0)
 #endif
 
+enum {
+	DUMP_PREFIX_NONE,
+	DUMP_PREFIX_ADDRESS,
+	DUMP_PREFIX_OFFSET
+};
+
+void print_hex_dump(const char *, const char *, int, int, int,
+	 const void *, size_t, bool);
+
 #endif

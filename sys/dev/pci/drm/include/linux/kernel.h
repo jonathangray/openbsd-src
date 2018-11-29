@@ -5,6 +5,7 @@
 
 #include <sys/stdint.h>
 #include <sys/param.h>
+#include <sys/systm.h>
 #include <linux/types.h>
 #include <linux/compiler.h>
 #include <linux/bitops.h>
@@ -23,5 +24,31 @@
 #define U64_MAX UINT64_MAX
 
 #define ARRAY_SIZE nitems
+
+#define lower_32_bits(n)	((u32)(n))
+#define upper_32_bits(_val)	((u32)(((_val) >> 16) >> 16))
+
+#define scnprintf(str, size, fmt, arg...) snprintf(str, size, fmt, ## arg)
+
+#define min_t(t, a, b) ({ \
+	t __min_a = (a); \
+	t __min_b = (b); \
+	__min_a < __min_b ? __min_a : __min_b; })
+
+#define max_t(t, a, b) ({ \
+	t __max_a = (a); \
+	t __max_b = (b); \
+	__max_a > __max_b ? __max_a : __max_b; })
+
+#define clamp_t(t, x, a, b) min_t(t, max_t(t, x, a), b)
+#define clamp(x, a, b) clamp_t(__typeof(x), x, a, b)
+#define clamp_val(x, a, b) clamp_t(__typeof(x), x, a, b)
+
+#define min(a, b) MIN(a, b)
+#define max(a, b) MAX(a, b)
+#define min3(x, y, z) MIN(x, MIN(y, z))
+#define max3(x, y, z) MAX(x, MAX(y, z))
+
+#define mult_frac(x, n, d) (((x) * (n)) / (d))
 
 #endif

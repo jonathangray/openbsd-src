@@ -73,6 +73,10 @@
 #include <linux/device.h>
 #include <linux/err.h>
 #include <linux/firmware.h>
+#include <linux/interrupt.h>
+#include <linux/hash.h>
+#include <linux/fb.h>
+#include <linux/vga_switcheroo.h>
 #include <video/mipi_display.h>
 
 /* The Linux code doesn't meet our usual standards! */
@@ -101,10 +105,6 @@ typedef uint32_t __be32;
 #define CONFIG_DRM_I915_DEBUG_GEM	0
 #define CONFIG_PM			0
 
-#define __printf(x, y)
-
-#define uninitialized_var(x) x
-
 #if BYTE_ORDER == BIG_ENDIAN
 #define __BIG_ENDIAN
 #else
@@ -125,8 +125,6 @@ typedef uint32_t __be32;
 #define cpu_to_be16(x) htobe16(x)
 #define cpu_to_be32(x) htobe32(x)
 
-#define lower_32_bits(n)	((u32)(n))
-#define upper_32_bits(_val)	((u32)(((_val) >> 16) >> 16))
 #define DMA_BIT_MASK(n) (((n) == 64) ? ~0ULL : (1ULL<<(n)) -1)
 #define BITS_TO_LONGS(x)	howmany((x), 8 * sizeof(long))
 #ifdef __LP64__
@@ -139,22 +137,6 @@ typedef uint32_t __be32;
 #define GENMASK_ULL(h, l)	(((~0ULL) >> (BITS_PER_LONG_LONG - (h) - 1)) & ((~0ULL) << (l)))
 
 #define DECLARE_BITMAP(x, y)	unsigned long x[BITS_TO_LONGS(y)];
-
-static inline uint64_t
-sign_extend64(uint64_t value, int index)
-{
-	uint8_t shift = 63 - index;
-	return ((int64_t)(value << shift) >> shift);
-}
-
-/* 2^32 * ((sqrt(5) - 1) / 2) from Knuth */
-#define GOLDEN_RATIO_32	0x9e3779b9
-
-static inline uint32_t
-hash_32(uint32_t val, unsigned int bits)
-{
-	return (val * GOLDEN_RATIO_32) >> (32 - bits);
-}
 
 #define IS_ENABLED(x) x - 0
 
@@ -181,85 +163,9 @@ struct va_format {
 
 #define __ratelimit(x)	(1)
 
-enum {
-	DUMP_PREFIX_NONE,
-	DUMP_PREFIX_ADDRESS,
-	DUMP_PREFIX_OFFSET
-};
-
-void print_hex_dump(const char *, const char *, int, int, int,
-	 const void *, size_t, bool);
-
-#define scnprintf(str, size, fmt, arg...) snprintf(str, size, fmt, ## arg)
-
-#define TP_PROTO(x...) x
-
-#define DEFINE_EVENT(template, name, proto, args) \
-static inline void trace_##name(proto) {}
-
-#define DEFINE_EVENT_PRINT(template, name, proto, args, print) \
-static inline void trace_##name(proto) {}
-
-#define TRACE_EVENT(name, proto, args, tstruct, assign, print) \
-static inline void trace_##name(proto) {}
-
-#define TRACE_EVENT_CONDITION(name, proto, args, cond, tstruct, assign, print) \
-static inline void trace_##name(proto) {}
-
-#define DECLARE_EVENT_CLASS(name, proto, args, tstruct, assign, print) \
-static inline void trace_##name(proto) {}
-
-#define IRQF_SHARED	0
-
 #define local_irq_save(x)		(x) = splhigh()
 #define local_irq_restore(x)		splx((x))
-
-#define request_irq(irq, hdlr, flags, name, dev)	(0)
-#define free_irq(irq, dev)
 #define synchronize_irq(x)
-
-struct tasklet_struct {
-	void (*func)(unsigned long);
-	unsigned long data;
-};
-
-static inline void
-tasklet_kill(struct tasklet_struct *ts)
-{
-	STUB();
-}
-
-static inline void
-tasklet_schedule(struct tasklet_struct *ts)
-{
-	STUB();
-}
-
-static inline void
-tasklet_hi_schedule(struct tasklet_struct *ts)
-{
-	STUB();
-}
-
-static inline void
-tasklet_init(struct tasklet_struct *ts, void (*func)(unsigned long),
-    unsigned long data)
-{
-	STUB();
-}
-
-static inline int
-tasklet_trylock(struct tasklet_struct *ts)
-{
-	STUB();
-	return 1;
-}
-
-static inline void
-tasklet_unlock(struct tasklet_struct *ts)
-{
-	STUB();
-}
 
 #define local_bh_disable()
 #define local_bh_enable()
@@ -631,23 +537,6 @@ refcount_dec_and_test(uint32_t *p)
 #define preempt_enable()
 #define preempt_disable()
 
-struct sync_file {
-};
-
-static inline struct dma_fence *
-sync_file_get_fence(int fd)
-{
-	STUB();
-	return NULL;
-}
-
-static inline struct sync_file *
-sync_file_create(struct dma_fence *fence)
-{
-	STUB();
-	return NULL;
-}
-
 struct notifier_block {
 	void *notifier_call;
 };
@@ -658,25 +547,6 @@ struct notifier_block {
 #define ATOMIC_INIT_NOTIFIER_HEAD(x)
 
 #define SYS_RESTART 0
-
-#define min_t(t, a, b) ({ \
-	t __min_a = (a); \
-	t __min_b = (b); \
-	__min_a < __min_b ? __min_a : __min_b; })
-
-#define max_t(t, a, b) ({ \
-	t __max_a = (a); \
-	t __max_b = (b); \
-	__max_a > __max_b ? __max_a : __max_b; })
-
-#define clamp_t(t, x, a, b) min_t(t, max_t(t, x, a), b)
-#define clamp(x, a, b) clamp_t(__typeof(x), x, a, b)
-#define clamp_val(x, a, b) clamp_t(__typeof(x), x, a, b)
-
-#define min(a, b) MIN(a, b)
-#define max(a, b) MAX(a, b)
-#define min3(x, y, z) MIN(x, MIN(y, z))
-#define max3(x, y, z) MAX(x, MAX(y, z))
 
 #define do_div(n, base) ({				\
 	uint32_t __base = (base);			\
@@ -728,7 +598,6 @@ mul_u64_u32_div(uint64_t x, uint32_t y, uint32_t div)
 	return (x * y) / div;
 }
 
-#define mult_frac(x, n, d) (((x) * (n)) / (d))
 #define order_base_2(x) drm_order(x)
 
 static inline int64_t
@@ -834,23 +703,6 @@ struct dmi_system_id {
 int dmi_check_system(const struct dmi_system_id *);
 bool dmi_match(int, const char *);
 
-struct resource {
-	u_long	start;
-	u_long	end;
-};
-
-static inline resource_size_t
-resource_size(const struct resource *r)
-{
-	return r->end - r->start + 1;
-}
-
-#define DEFINE_RES_MEM(_start, _size)		\
-	{					\
-		.start = (_start),		\
-		.end = (_start) + (_size) - 1,	\
-	}
-
 #define dev_pm_set_driver_flags(x, y)
 
 static inline int
@@ -894,16 +746,6 @@ void vga_get_uninterruptible(struct pci_dev *, int);
 void vga_put(struct pci_dev *, int);
 
 #endif
-
-#define vga_switcheroo_register_client(a, b, c)	0
-#define vga_switcheroo_unregister_client(a)
-#define vga_switcheroo_process_delayed_switch()
-#define vga_switcheroo_fini_domain_pm_ops(x)
-#define vga_switcheroo_lock_ddc(x)
-#define vga_switcheroo_unlock_ddc(x)
-#define vga_switcheroo_handler_flags() 0
-
-#define VGA_SWITCHEROO_CAN_SWITCH_DDC	1
 
 #define page_to_phys(page)	(VM_PAGE_TO_PHYS(page))
 #define page_to_pfn(pp)		(VM_PAGE_TO_PHYS(pp) / PAGE_SIZE)
@@ -1253,38 +1095,6 @@ __copy_from_user_inatomic_nocache(void *to, const void *from, unsigned len)
 }
 
 #endif
-
-struct fb_var_screeninfo {
-	int pixclock;
-	uint32_t width;
-	uint32_t height;
-};
-
-struct fb_info {
-	struct fb_var_screeninfo var;
-	char *screen_buffer;
-	void *par;
-	int fbcon_rotate_hint;
-};
-
-#define FB_BLANK_UNBLANK	0
-#define FB_BLANK_NORMAL		1
-#define FB_BLANK_HSYNC_SUSPEND	2
-#define FB_BLANK_VSYNC_SUSPEND	3
-#define FB_BLANK_POWERDOWN	4
-
-#define FBINFO_STATE_RUNNING	0
-#define FBINFO_STATE_SUSPENDED	1
-
-#define FB_ROTATE_UR		0
-#define FB_ROTATE_CW		1
-#define FB_ROTATE_UD		2
-#define FB_ROTATE_CCW		3
-
-#define framebuffer_alloc(flags, device) \
-	kzalloc(sizeof(struct fb_info), GFP_KERNEL)
-
-#define fb_set_suspend(x, y)
 
 struct address_space;
 #define unmap_mapping_range(mapping, holebegin, holeend, even_cows)

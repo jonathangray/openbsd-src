@@ -21,6 +21,7 @@
 #include <dev/pci/pcireg.h>
 #include <dev/pci/pcivar.h>
 #include <linux/io.h>
+#include <linux/ioport.h>
 
 struct pci_dev;
 
