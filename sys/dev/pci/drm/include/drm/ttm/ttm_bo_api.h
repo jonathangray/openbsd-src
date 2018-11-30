@@ -31,7 +31,6 @@
 #ifndef _TTM_BO_API_H_
 #define _TTM_BO_API_H_
 
-#include <dev/pci/drm/drm_linux.h>
 #include <drm/drm_hashtab.h>
 #include <drm/drm_vma_manager.h>
 #include <linux/kref.h>

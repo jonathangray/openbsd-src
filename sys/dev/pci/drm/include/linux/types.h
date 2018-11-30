@@ -40,6 +40,9 @@ typedef __ptrdiff_t ptrdiff_t;
 
 typedef unsigned int gfp_t;
 
+typedef unsigned long pgoff_t;
+typedef int pgprot_t;
+
 typedef int atomic_t;
 
 struct list_head {

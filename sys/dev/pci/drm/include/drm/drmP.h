@@ -70,6 +70,32 @@
 #define CONFIG_DRM_FBDEV_EMULATION 1
 #define CONFIG_BACKLIGHT_CLASS_DEVICE 1
 
+#include <linux/agp_backend.h>
+#include <linux/cdev.h>
+#include <linux/dma-mapping.h>
+#include <linux/file.h>
+#include <linux/fs.h>
+#include <linux/highmem.h>
+#include <linux/idr.h>
+#include <linux/init.h>
+#include <linux/io.h>
+#include <linux/jiffies.h>
+#include <linux/kernel.h>
+#include <linux/kref.h>
+#include <linux/miscdevice.h>
+#include <linux/mm.h>
+#include <linux/mutex.h>
+#include <linux/platform_device.h>
+#include <linux/poll.h>
+#include <linux/ratelimit.h>
+#include <linux/sched.h>
+#include <linux/slab.h>
+#include <linux/types.h>
+#include <linux/vmalloc.h>
+#include <linux/workqueue.h>
+#include <linux/dma-fence.h>
+#include <linux/module.h>
+
 #include <dev/pci/drm/drm_linux.h>
 #include <linux/list.h>
 #include <uapi/drm/drm.h>

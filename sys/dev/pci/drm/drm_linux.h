@@ -398,29 +398,7 @@ local_clock(void)
 	return (ts.tv_sec * NSEC_PER_SEC) + ts.tv_nsec;
 }
 
-#define PageHighMem(x)	0
-
 #define array_size(x, y) ((x) * (y))
-
-static inline void *
-kvmalloc_array(size_t n, size_t size, int flags)
-{
-	if (n == 0 || SIZE_MAX / n < size)
-		return NULL;
-	return malloc(n * size, M_DRM, flags);
-}
-
-static inline void *
-kvzalloc(size_t size, int flags)
-{
-	return malloc(size, M_DRM, flags | M_ZERO);
-}
-
-static inline void
-kvfree(const void *objp)
-{
-	free((void *)objp, M_DRM, 0);
-}
 
 static inline void *
 kmemdup(const void *src, size_t len, int flags)
@@ -479,24 +457,6 @@ kvasprintf(int flags, const char *fmt, va_list ap)
 	}
 
 	return buf;
-}
-
-static inline void *
-vmalloc(unsigned long size)
-{
-	return malloc(size, M_DRM, M_WAITOK | M_CANFAIL);
-}
-
-static inline void *
-vzalloc(unsigned long size)
-{
-	return malloc(size, M_DRM, M_WAITOK | M_CANFAIL | M_ZERO);
-}
-
-static inline void
-vfree(void *objp)
-{
-	free(objp, M_DRM, 0);
 }
 
 static inline bool
@@ -712,13 +672,6 @@ void vga_put(struct pci_dev *, int);
 
 #endif
 
-#define page_to_phys(page)	(VM_PAGE_TO_PHYS(page))
-#define page_to_pfn(pp)		(VM_PAGE_TO_PHYS(pp) / PAGE_SIZE)
-#define pfn_to_page(pfn)	(PHYS_TO_VM_PAGE(ptoa(pfn)))
-#define nth_page(page, n)	(&(page)[(n)])
-#define offset_in_page(off)	((off) & PAGE_MASK)
-#define set_page_dirty(page)	atomic_clearbits_int(&page->pg_flags, PG_CLEAN)
-
 #define VERIFY_READ	0x1
 #define VERIFY_WRITE	0x2
 static inline int
@@ -727,47 +680,7 @@ access_ok(int type, const void *addr, unsigned long size)
 	return true;
 }
 
-#define CAP_SYS_ADMIN	0x1
-static inline int
-capable(int cap)
-{
-	KASSERT(cap == CAP_SYS_ADMIN);
-	return suser(curproc);
-}
-
-typedef unsigned long pgoff_t;
-typedef int pgprot_t;
-#define pgprot_val(v)	(v)
-#define PAGE_KERNEL	0
-#define PAGE_KERNEL_IO	0
-
-static inline pgprot_t
-pgprot_writecombine(pgprot_t prot)
-{
-#if PMAP_WC != 0
-	return prot | PMAP_WC;
-#else
-	return prot | PMAP_NOCACHE;
-#endif
-}
-
-static inline pgprot_t
-pgprot_noncached(pgprot_t prot)
-{
-#if PMAP_DEVICE != 0
-	return prot | PMAP_DEVICE;
-#else
-	return prot | PMAP_NOCACHE;
-#endif
-}
-
-void	*kmap(struct vm_page *);
-void	 kunmap(void *addr);
-void	*vmap(struct vm_page **, unsigned int, unsigned long, pgprot_t);
-void	 vunmap(void *, size_t);
-
 #define is_vmalloc_addr(ptr)	true
-#define kmap_to_page(ptr)	(ptr)
 
 #define roundup2(x, y) (((x)+((y)-1))&(~((y)-1))) /* if y is powers of two */
 
@@ -790,7 +703,6 @@ gcd(unsigned long a, unsigned long b)
 	return (b);
 }
 
-#define PAGE_ALIGN(addr)	(((addr) + PAGE_MASK) & ~PAGE_MASK)
 #define IS_ALIGNED(x, y)	(((x) & ((y) - 1)) == 0)
 
 static inline void
@@ -904,21 +816,6 @@ of_machine_is_compatible(const char *model)
 
 #define MAX_ORDER	11
 
-struct vm_page *alloc_pages(unsigned int, unsigned int);
-void	__free_pages(struct vm_page *, unsigned int);
-
-static inline struct vm_page *
-alloc_page(unsigned int gfp_mask)
-{
-	return alloc_pages(gfp_mask, 0);
-}
-
-static inline void
-__free_page(struct vm_page *page)
-{
-	return __free_pages(page, 0);
-}
-
 static inline unsigned int
 get_order(size_t size)
 {
@@ -951,31 +848,6 @@ static inline int
 pagefault_disabled(void)
 {
 	return curcpu()->ci_inatomic;
-}
-
-static inline void *
-kmap_atomic(struct vm_page *pg)
-{
-	vaddr_t va;
-
-#if defined (__HAVE_PMAP_DIRECT)
-	va = pmap_map_direct(pg);
-#else
-	extern vaddr_t pmap_tmpmap_pa(paddr_t);
-	va = pmap_tmpmap_pa(VM_PAGE_TO_PHYS(pg));
-#endif
-	return (void *)va;
-}
-
-static inline void
-kunmap_atomic(void *addr)
-{
-#if defined (__HAVE_PMAP_DIRECT)
-	pmap_unmap_direct((vaddr_t)addr);
-#else
-	extern void pmap_tmpunmap_pa(void);
-	pmap_tmpunmap_pa();
-#endif
 }
 
 static inline unsigned long
@@ -1362,54 +1234,6 @@ match_string(const char * const *array,  size_t n, const char *str)
 
 #define page_address(x)	VM_PAGE_TO_PHYS(x)
 
-#if defined(__amd64__) || defined(__i386__)
-
-static inline int
-set_pages_array_wb(struct vm_page **pages, int addrinarray)
-{
-	int i;
-
-	for (i = 0; i < addrinarray; i++)
-		atomic_clearbits_int(&pages[i]->pg_flags, PG_PMAP_WC);
-
-	return 0;
-}
-
-static inline int
-set_pages_array_wc(struct vm_page **pages, int addrinarray)
-{
-	int i;
-
-	for (i = 0; i < addrinarray; i++)
-		atomic_setbits_int(&pages[i]->pg_flags, PG_PMAP_WC);
-
-	return 0;
-}
-
-static inline int
-set_pages_array_uc(struct vm_page **pages, int addrinarray)
-{
-	/* XXX */
-	return 0;
-}
-
-static inline int
-set_pages_wb(struct vm_page *page, int numpages)
-{
-	KASSERT(numpages == 1);
-	atomic_clearbits_int(&page->pg_flags, PG_PMAP_WC);
-	return 0;
-}
-
-static inline int
-set_pages_uc(struct vm_page *page, int numpages)
-{
-	/* XXX */
-	return 0;
-}
-
-#endif
-
 typedef int (*cpu_stop_fn_t)(void *arg);
 
 static inline int
@@ -1462,18 +1286,6 @@ static_cpu_has(uint16_t f)
 #define kthread_stop(a)			STUB()
 
 #define prefetchw(x)	__builtin_prefetch(x,1)
-
-static inline long
-get_nr_swap_pages(void)
-{
-	return uvmexp.swpages - uvmexp.swpginuse;
-}
-
-static inline long
-si_mem_available(void)
-{
-	return uvmexp.free;
-}
 
 #define array_index_nospec(a, b)	(a)
 

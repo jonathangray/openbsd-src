@@ -30,7 +30,6 @@
 #ifndef _TTM_BO_DRIVER_H_
 #define _TTM_BO_DRIVER_H_
 
-#include <dev/pci/drm/drm_linux.h>
 #include <drm/drm_mm.h>
 #include <drm/drm_global.h>
 #include <drm/drm_vma_manager.h>

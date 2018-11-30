@@ -95,6 +95,7 @@ out_unlock:
 	return ret;
 }
 
+#ifdef __linux__
 static unsigned long ttm_bo_io_mem_pfn(struct ttm_buffer_object *bo,
 				       unsigned long page_offset)
 {
@@ -107,7 +108,6 @@ static unsigned long ttm_bo_io_mem_pfn(struct ttm_buffer_object *bo,
 		+ page_offset;
 }
 
-#ifdef __linux__
 static vm_fault_t ttm_bo_vm_fault(struct vm_fault *vmf)
 {
 	struct vm_area_struct *vma = vmf->vma;

@@ -5,6 +5,7 @@
 
 #include <sys/types.h>
 #include <sys/malloc.h>
+#include <uvm/uvm_extern.h>
 
 #define GFP_ATOMIC	M_NOWAIT
 #define GFP_NOWAIT	M_NOWAIT
@@ -29,6 +30,21 @@ static inline bool
 gfpflags_allow_blocking(const unsigned int flags)
 {
 	return (flags & M_WAITOK) != 0;
+}
+
+struct vm_page *alloc_pages(unsigned int, unsigned int);
+void	__free_pages(struct vm_page *, unsigned int);
+
+static inline struct vm_page *
+alloc_page(unsigned int gfp_mask)
+{
+	return alloc_pages(gfp_mask, 0);
+}
+
+static inline void
+__free_page(struct vm_page *page)
+{
+	return __free_pages(page, 0);
 }
 
 #endif

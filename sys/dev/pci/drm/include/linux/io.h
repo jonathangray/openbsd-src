@@ -4,6 +4,8 @@
 #define _LINUX_IO_H
 
 #include <sys/systm.h>
+#include <linux/types.h>
+#include <linux/compiler.h>
 
 #define memcpy_toio(d, s, n)	memcpy(d, s, n)
 #define memcpy_fromio(d, s, n)	memcpy(d, s, n)
