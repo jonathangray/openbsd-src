@@ -465,9 +465,6 @@ refcount_dec_and_test(uint32_t *p)
 	return atomic_dec_and_test(p);
 }
 
-#define preempt_enable()
-#define preempt_disable()
-
 #define register_reboot_notifier(x)
 #define unregister_reboot_notifier(x)
 

@@ -5,6 +5,7 @@
 
 #include <sys/stdint.h>
 #include <sys/rwlock.h>
+#include <linux/list.h>
 
 #define DEFINE_MUTEX(x)		struct rwlock x
 

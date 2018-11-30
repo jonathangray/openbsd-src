@@ -7,6 +7,7 @@
 #include <sys/atomic.h>
 #include <linux/lockdep.h>
 #include <linux/processor.h>
+#include <linux/preempt.h>
 
 typedef struct {
 	unsigned int sequence;

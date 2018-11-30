@@ -24,7 +24,6 @@
 #ifndef __LINUX_HDMI_H_
 #define __LINUX_HDMI_H_
 
-#include <dev/pci/drm/drm_linux.h>
 #include <linux/types.h>
 #include <linux/device.h>
 

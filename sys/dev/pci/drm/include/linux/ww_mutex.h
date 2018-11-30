@@ -41,6 +41,7 @@
 #include <sys/srp.h>
 #include <machine/intr.h>
 #include <linux/compiler.h>
+#include <linux/mutex.h>
 
 struct ww_class {
 	volatile u_long			stamp;

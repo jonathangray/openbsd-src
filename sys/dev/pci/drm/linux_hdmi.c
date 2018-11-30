@@ -21,7 +21,6 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
-#ifdef __linux__
 #include <linux/bitops.h>
 #include <linux/bug.h>
 #include <linux/errno.h>
@@ -29,7 +28,6 @@
 #include <linux/hdmi.h>
 #include <linux/string.h>
 #include <linux/device.h>
-#endif
 #include <linux/hdmi.h>
 
 #define hdmi_log(fmt, ...) dev_printk(level, dev, fmt, ##__VA_ARGS__)

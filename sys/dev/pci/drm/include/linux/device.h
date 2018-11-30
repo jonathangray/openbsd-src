@@ -6,6 +6,8 @@
 #include <sys/types.h>
 #include <sys/systm.h>
 #include <sys/device.h>
+#include <sys/param.h>
+#include <sys/proc.h>
 #include <linux/slab.h>
 #include <linux/ioport.h>
 #include <linux/lockdep.h>

@@ -5,6 +5,7 @@
 
 #include <linux/kernel.h>
 #include <linux/spinlock_types.h>
+#include <linux/preempt.h>
 
 static inline void
 _spin_lock_irqsave(struct mutex *mtxp, __unused unsigned long flags

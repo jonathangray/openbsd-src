@@ -32,7 +32,6 @@
  * Authors: Thomas Hellstrom <thellstrom-at-vmware-dot-com>
  */
 
-#include <dev/pci/drm/drm_linux.h>
 #include <linux/ww_mutex.h>
 #include <linux/reservation.h>
 

@@ -10,6 +10,7 @@
 #include <linux/compiler.h>
 #include <linux/bitops.h>
 #include <linux/log2.h>
+#include <linux/linkage.h>
 
 #define swap(a, b) \
 	do { __typeof(a) __tmp = (a); (a) = (b); (b) = __tmp; } while(0)
