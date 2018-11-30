@@ -22,12 +22,11 @@
  *
  */
 
-#ifdef __linux__
 #include <linux/circ_buf.h>
+#ifdef __linux__
 #include <trace/events/dma_fence.h>
-#else
-#include <dev/pci/drm/drm_linux.h>
 #endif
+#include <dev/pci/drm/drm_linux.h>
 
 #include "intel_guc_submission.h"
 #include "intel_lrc_reg.h"

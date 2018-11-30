@@ -60,18 +60,14 @@
  *
  */
 
-#ifdef __linux__
 #include <linux/acpi.h>
 #include <linux/device.h>
 #include <linux/irq.h>
 #include <linux/pci.h>
 #include <linux/pm_runtime.h>
-#endif
 
 #include "i915_drv.h"
-#ifdef __linux__
 #include <linux/delay.h>
-#endif
 #include <drm/intel_lpe_audio.h>
 
 #define HAS_LPE_AUDIO(dev_priv) ((dev_priv)->lpe_audio.platdev != NULL)

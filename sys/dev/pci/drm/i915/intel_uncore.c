@@ -25,10 +25,8 @@
 #include "intel_drv.h"
 #include "i915_vgpu.h"
 
-#ifdef __linux__
 #include <asm/iosf_mbi.h>
 #include <linux/pm_runtime.h>
-#endif
 
 #define FORCEWAKE_ACK_TIMEOUT_MS 50
 #define GT_FIFO_TIMEOUT_MS	 10

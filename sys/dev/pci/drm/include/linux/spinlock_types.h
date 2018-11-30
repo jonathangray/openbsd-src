@@ -3,6 +3,7 @@
 #ifndef _LINUX_SPINLOCK_TYPES_H
 #define _LINUX_SPINLOCK_TYPES_H
 
+#include <sys/types.h>
 #include <sys/mutex.h>
 #include <linux/rwlock_types.h>
 

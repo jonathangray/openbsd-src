@@ -7,11 +7,7 @@
 #ifndef _INTEL_WOPCM_H_
 #define _INTEL_WOPCM_H_
 
-#ifdef __linux__
 #include <linux/types.h>
-#else
-#include <dev/pci/drm/drm_linux.h>
-#endif
 
 /**
  * struct intel_wopcm - Overall WOPCM info and WOPCM regions.

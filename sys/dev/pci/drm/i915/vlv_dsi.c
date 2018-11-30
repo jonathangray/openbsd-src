@@ -29,10 +29,8 @@
 #include <drm/drm_edid.h>
 #include <drm/i915_drm.h>
 #include <drm/drm_mipi_dsi.h>
-#ifdef __linux__
 #include <linux/slab.h>
 #include <linux/gpio/consumer.h>
-#endif
 #include "i915_drv.h"
 #include "intel_drv.h"
 #include "intel_dsi.h"

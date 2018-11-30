@@ -27,13 +27,11 @@
  *      Jesse Barnes <jesse.barnes@intel.com>
  */
 
-#ifdef __linux__
 #include <acpi/button.h>
 #include <linux/dmi.h>
 #include <linux/i2c.h>
 #include <linux/slab.h>
 #include <linux/vga_switcheroo.h>
-#endif
 #include <drm/drmP.h>
 #include <drm/drm_atomic_helper.h>
 #include <drm/drm_crtc.h>
@@ -41,9 +39,7 @@
 #include "intel_drv.h"
 #include <drm/i915_drm.h>
 #include "i915_drv.h"
-#ifdef __linux__
 #include <linux/acpi.h>
-#endif
 
 /* Private structure for the integrated LVDS support */
 struct intel_lvds_connector {

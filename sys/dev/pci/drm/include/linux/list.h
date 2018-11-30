@@ -35,10 +35,7 @@
 
 #include <sys/param.h>
 #include <linux/kernel.h>
-
-struct list_head {
-	struct list_head *next, *prev;
-};
+#include <linux/types.h>
 
 #define list_entry(ptr, type, member) container_of(ptr, type, member)
 
@@ -255,14 +252,6 @@ list_splice_tail_init(struct list_head *list, struct list_head *head)
 
 void	list_sort(void *, struct list_head *,
 	    int (*)(void *, struct list_head *, struct list_head *));
-
-struct hlist_node {
-	struct hlist_node *next, **prev;
-};
-
-struct hlist_head {
-	struct hlist_node *first;
-};
 
 #define hlist_entry(ptr, type, member) \
 	((ptr) ? container_of(ptr, type, member) : NULL)

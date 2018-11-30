@@ -77,6 +77,7 @@
 #include <linux/hash.h>
 #include <linux/fb.h>
 #include <linux/vga_switcheroo.h>
+#include <linux/notifier.h>
 #include <video/mipi_display.h>
 
 /* The Linux code doesn't meet our usual standards! */
@@ -94,11 +95,6 @@
 #endif
 
 #define STUB() do { printf("%s: stub\n", __func__); } while(0)
-
-typedef uint16_t __le16;
-typedef uint16_t __be16;
-typedef uint32_t __le32;
-typedef uint32_t __be32;
 
 #define CONFIG_DRM_FBDEV_OVERALLOC	0
 #define CONFIG_DRM_I915_DEBUG		0
@@ -126,21 +122,8 @@ typedef uint32_t __be32;
 #define cpu_to_be32(x) htobe32(x)
 
 #define DMA_BIT_MASK(n) (((n) == 64) ? ~0ULL : (1ULL<<(n)) -1)
-#define BITS_TO_LONGS(x)	howmany((x), 8 * sizeof(long))
-#ifdef __LP64__
-#define BITS_PER_LONG		64
-#else
-#define BITS_PER_LONG		32
-#endif
-#define BITS_PER_LONG_LONG	64
 #define GENMASK(h, l)		(((~0UL) >> (BITS_PER_LONG - (h) - 1)) & ((~0UL) << (l)))
 #define GENMASK_ULL(h, l)	(((~0ULL) >> (BITS_PER_LONG_LONG - (h) - 1)) & ((~0ULL) << (l)))
-
-#define DECLARE_BITMAP(x, y)	unsigned long x[BITS_TO_LONGS(y)];
-
-#define IS_ENABLED(x) x - 0
-
-#define IS_BUILTIN(x) 1
 
 #define KERN_INFO	""
 #define KERN_WARNING	""
@@ -152,11 +135,6 @@ typedef uint32_t __be32;
 #define KBUILD_MODNAME "drm"
 
 #define UTS_RELEASE	""
-
-struct va_format {
-	const char *fmt;
-	va_list *va;
-};
 
 #define DEFINE_RATELIMIT_STATE(name, interval, burst) \
 	int name __used = 1;
@@ -220,13 +198,6 @@ timespec_sub(struct timespec t1, struct timespec t2)
 }
 
 #define time_in_range(x, min, max) ((x) >= (min) && (x) <= (max))
-
-extern volatile unsigned long jiffies;
-#define jiffies_64 jiffies /* XXX */
-#undef HZ
-#define HZ	hz
-
-#define MAX_JIFFY_OFFSET	((INT_MAX >> 1) - 1)
 
 static inline unsigned long
 round_jiffies_up(unsigned long j)
@@ -537,14 +508,8 @@ refcount_dec_and_test(uint32_t *p)
 #define preempt_enable()
 #define preempt_disable()
 
-struct notifier_block {
-	void *notifier_call;
-};
-
 #define register_reboot_notifier(x)
 #define unregister_reboot_notifier(x)
-
-#define ATOMIC_INIT_NOTIFIER_HEAD(x)
 
 #define SYS_RESTART 0
 
@@ -804,16 +769,7 @@ void	 vunmap(void *, size_t);
 #define is_vmalloc_addr(ptr)	true
 #define kmap_to_page(ptr)	(ptr)
 
-#define round_up(x, y) ((((x) + ((y) - 1)) / (y)) * (y))
-#define round_down(x, y) (((x) / (y)) * (y)) /* y is power of two */
-#define rounddown(x, y) (((x) / (y)) * (y)) /* arbitary y */
 #define roundup2(x, y) (((x)+((y)-1))&(~((y)-1))) /* if y is powers of two */
-#define DIV_ROUND_UP(x, y)	(((x) + ((y) - 1)) / (y))
-#define DIV_ROUND_UP_ULL(x, y)	DIV_ROUND_UP(x, y)
-#define DIV_ROUND_DOWN(x, y)	((x) / (y))
-#define DIV_ROUND_DOWN_ULL(x, y)	DIV_ROUND_DOWN(x, y)
-#define DIV_ROUND_CLOSEST(x, y)	(((x) + ((y) / 2)) / (y))
-#define DIV_ROUND_CLOSEST_ULL(x, y)	DIV_ROUND_CLOSEST(x, y)
 
 /*
  * Compute the greatest common divisor of a and b.
@@ -833,32 +789,6 @@ gcd(unsigned long a, unsigned long b)
 
 	return (b);
 }
-
-static inline unsigned long
-roundup_pow_of_two(unsigned long x)
-{
-	return (1UL << flsl(x - 1));
-}
-
-static inline unsigned long
-rounddown_pow_of_two(unsigned long x)
-{
-	return (1UL << (flsl(x) - 1));
-}
-
-static inline int
-fls64(long long mask)
-{
-	int bit;
-
-	if (mask == 0)
-		return (0);
-	for (bit = 1; mask != 1; bit++)
-		mask = (unsigned long long)mask >> 1;
-	return (bit);
-}
-
-#define is_power_of_2(x)	(((x) != 0) && (((x) - 1) & (x)) == 0)
 
 #define PAGE_ALIGN(addr)	(((addr) + PAGE_MASK) & ~PAGE_MASK)
 #define IS_ALIGNED(x, y)	(((x) & ((y) - 1)) == 0)
@@ -887,16 +817,6 @@ mdelay(unsigned long msecs)
 	int loops = msecs;
 	while (loops--)
 		DELAY(1000);
-}
-
-static inline void
-cpu_relax(void)
-{
-	CPU_BUSY_CYCLE();
-	if (cold) {
-		delay(tick);
-		jiffies++;
-	}
 }
 
 #define cpu_relax_lowlatency() CPU_BUSY_CYCLE()
@@ -1004,8 +924,6 @@ get_order(size_t size)
 {
 	return flsl((size - 1) >> PAGE_SHIFT);
 }
-
-#define ilog2(x) ((sizeof(x) <= 4) ? (fls(x) - 1) : (flsl(x) - 1))
 
 #if defined(__i386__) || defined(__amd64__)
 
@@ -1416,16 +1334,6 @@ memset_p(void **p, void *v, size_t n)
 
 #define typecheck(x, y)		1
 
-enum hrtimer_restart { HRTIMER_NORESTART, HRTIMER_RESTART };
-struct hrtimer {
-	enum hrtimer_restart	(*function)(struct hrtimer *);
-};
-
-#define HRTIMER_MODE_REL	1
-
-#define hrtimer_cancel(x)	timeout_del(x)
-#define hrtimer_active(x)	timeout_pending(x)
-
 #define MBI_PMIC_BUS_ACCESS_BEGIN	1
 #define MBI_PMIC_BUS_ACCESS_END		2
 
@@ -1451,50 +1359,6 @@ match_string(const char * const *array,  size_t n, const char *str)
 }
 
 #define UUID_STRING_LEN 36
-
-#define PAGEVEC_SIZE 15
-
-struct pagevec {
-	uint8_t	nr;
-	struct vm_page *pages[PAGEVEC_SIZE];
-};
-
-static inline unsigned int
-pagevec_space(struct pagevec *pvec)
-{
-	return PAGEVEC_SIZE - pvec->nr;
-}
-
-static inline void
-pagevec_init(struct pagevec *pvec)
-{
-	pvec->nr = 0;
-}
-
-static inline void
-pagevec_reinit(struct pagevec *pvec)
-{
-	pvec->nr = 0;
-}
-
-static inline unsigned int
-pagevec_count(struct pagevec *pvec)
-{
-	return pvec->nr;
-}
-
-static inline void
-__pagevec_release(struct pagevec *pvec)
-{
-	STUB();
-}
-
-static inline unsigned int
-pagevec_add(struct pagevec *pvec, struct vm_page *page)
-{
-	STUB();
-	return -ENOSYS;
-}
 
 #define page_address(x)	VM_PAGE_TO_PHYS(x)
 

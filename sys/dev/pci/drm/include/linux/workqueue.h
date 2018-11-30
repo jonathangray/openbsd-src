@@ -26,6 +26,7 @@
 #include <linux/atomic.h>
 #include <linux/rcupdate.h>
 #include <linux/kernel.h>
+#include <linux/lockdep.h>
 
 struct workqueue_struct;
 

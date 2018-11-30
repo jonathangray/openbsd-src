@@ -24,13 +24,8 @@
  *	Dave Airlie <airlied@redhat.com>
  */
 
-#ifdef __linux__
 #include <linux/dma-buf.h>
 #include <linux/reservation.h>
-#else
-#include <dev/pci/drm/drm_linux.h>
-#include <linux/reservation.h>
-#endif
 
 #include <drm/drmP.h>
 

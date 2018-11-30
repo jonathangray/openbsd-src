@@ -22,11 +22,7 @@
  *
  */
 
-#ifdef __linux__
 #include <linux/firmware.h>
-#else
-#include <dev/pci/drm/drm_linux.h>
-#endif
 #include <drm/drm_print.h>
 
 #include "i915_drv.h"

@@ -24,7 +24,6 @@
  *     David Airlie
  */
 
-#ifdef __linux__
 #include <linux/async.h>
 #include <linux/module.h>
 #include <linux/kernel.h>
@@ -37,7 +36,6 @@
 #include <linux/delay.h>
 #include <linux/init.h>
 #include <linux/vga_switcheroo.h>
-#endif
 
 #include <drm/drmP.h>
 #include <drm/drm_crtc.h>

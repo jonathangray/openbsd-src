@@ -27,13 +27,9 @@
  *
  */
 
-#ifdef __linux__
 #include <generated/utsrelease.h>
 #include <linux/stop_machine.h>
 #include <linux/zlib.h>
-#else
-#include <dev/pci/drm/drm_linux.h>
-#endif
 #include <drm/drm_print.h>
 #ifdef __linux__
 #include <linux/ascii85.h>

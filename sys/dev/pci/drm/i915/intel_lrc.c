@@ -131,9 +131,7 @@
  * preemption, but just sampling the new tail pointer).
  *
  */
-#ifdef __linux__
 #include <linux/interrupt.h>
-#endif
 
 #include <drm/drmP.h>
 #include <drm/i915_drm.h>

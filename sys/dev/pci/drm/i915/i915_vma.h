@@ -25,12 +25,8 @@
 #ifndef __I915_VMA_H__
 #define __I915_VMA_H__
 
-#ifdef __linux__
 #include <linux/io-mapping.h>
 #include <linux/rbtree.h>
-#else
-#include <dev/pci/drm/drm_linux.h>
-#endif
 
 #include <drm/drm_mm.h>
 

@@ -22,9 +22,7 @@
  *
  */
 
-#ifdef __linux__
 #include <linux/debugfs.h>
-#endif
 
 #include "intel_guc_log.h"
 #include "i915_drv.h"

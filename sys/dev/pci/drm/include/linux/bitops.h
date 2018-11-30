@@ -19,10 +19,14 @@
 #define _LINUX_BITOPS_H
 
 #include <sys/types.h>
+#include <sys/param.h>
+#include <asm/bitsperlong.h>
 
 #define BIT(x)		(1UL << (x))
 #define BIT_ULL(x)	(1ULL << (x))
 #define BITS_PER_BYTE	8
+
+#define BITS_TO_LONGS(x)	howmany((x), 8 * sizeof(long))
 
 static inline uint8_t
 hweight8(uint32_t x)
@@ -71,6 +75,18 @@ sign_extend64(uint64_t value, int index)
 {
 	uint8_t shift = 63 - index;
 	return ((int64_t)(value << shift) >> shift);
+}
+
+static inline int
+fls64(long long mask)
+{
+	int bit;
+
+	if (mask == 0)
+		return (0);
+	for (bit = 1; mask != 1; bit++)
+		mask = (unsigned long long)mask >> 1;
+	return (bit);
 }
 
 #endif

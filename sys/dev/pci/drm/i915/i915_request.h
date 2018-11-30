@@ -25,13 +25,7 @@
 #ifndef I915_REQUEST_H
 #define I915_REQUEST_H
 
-#ifdef __linux__
 #include <linux/dma-fence.h>
-#else
-#include <dev/pci/drm/drm_linux.h>
-#include <linux/rbtree.h>
-#include <linux/rcupdate.h>
-#endif
 
 #include "i915_gem.h"
 #include "i915_scheduler.h"

@@ -10,12 +10,10 @@
 #ifndef _I915_SW_FENCE_H_
 #define _I915_SW_FENCE_H_
 
-#ifdef __linux__
 #include <linux/gfp.h>
 #include <linux/kref.h>
 #include <linux/notifier.h> /* for NOTIFY_DONE */
 #include <linux/wait.h>
-#endif
 
 struct completion;
 struct dma_fence;

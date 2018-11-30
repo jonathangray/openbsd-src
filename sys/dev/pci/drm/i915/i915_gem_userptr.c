@@ -27,13 +27,11 @@
 #include "i915_drv.h"
 #include "i915_trace.h"
 #include "intel_drv.h"
-#ifdef __linux__
 #include <linux/mmu_context.h>
 #include <linux/mmu_notifier.h>
 #include <linux/mempolicy.h>
 #include <linux/swap.h>
 #include <linux/sched/mm.h>
-#endif
 
 #ifdef __linux__
 

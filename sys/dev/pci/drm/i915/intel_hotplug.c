@@ -21,9 +21,7 @@
  * IN THE SOFTWARE.
  */
 
-#ifdef __linux__
 #include <linux/kernel.h>
-#endif
 
 #include <drm/drmP.h>
 #include <drm/i915_drm.h>

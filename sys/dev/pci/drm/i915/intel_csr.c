@@ -21,9 +21,7 @@
  * IN THE SOFTWARE.
  *
  */
-#ifdef __linux__
 #include <linux/firmware.h>
-#endif
 #include "i915_drv.h"
 #include "i915_reg.h"
 

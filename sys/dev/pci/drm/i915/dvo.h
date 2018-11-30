@@ -23,9 +23,7 @@
 #ifndef _INTEL_DVO_H
 #define _INTEL_DVO_H
 
-#include <sys/types.h>
-#include <sys/device.h>
-#include <dev/i2c/i2cvar.h>
+#include <linux/i2c.h>
 #include <drm/drmP.h>
 #include <drm/drm_crtc.h>
 #include "intel_drv.h"

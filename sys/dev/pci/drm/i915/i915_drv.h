@@ -33,7 +33,6 @@
 #include <uapi/drm/i915_drm.h>
 #include <uapi/drm/drm_fourcc.h>
 
-#ifdef __linux__
 #include <linux/io-mapping.h>
 #include <linux/i2c.h>
 #include <linux/i2c-algo-bit.h>
@@ -46,10 +45,6 @@
 #include <linux/pm_qos.h>
 #include <linux/reservation.h>
 #include <linux/shmem_fs.h>
-#else
-#include <dev/pci/drm/drm_linux.h>
-#include <linux/reservation.h>
-#endif
 
 #include <drm/drmP.h>
 #ifdef __linux__

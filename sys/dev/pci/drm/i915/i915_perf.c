@@ -191,11 +191,9 @@
  *   with the rest of the i915 driver.
  */
 
-#ifdef __linux__
 #include <linux/anon_inodes.h>
 #include <linux/sizes.h>
 #include <linux/uuid.h>
-#endif
 
 #include "i915_drv.h"
 #ifdef notyet

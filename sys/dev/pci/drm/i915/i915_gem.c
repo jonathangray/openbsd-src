@@ -37,7 +37,6 @@
 #include "intel_mocs.h"
 #include "intel_workarounds.h"
 #include "i915_gemfs.h"
-#ifdef __linux__
 #include <linux/dma-fence-array.h>
 #include <linux/kthread.h>
 #include <linux/reservation.h>
@@ -47,10 +46,6 @@
 #include <linux/swap.h>
 #include <linux/pci.h>
 #include <linux/dma-buf.h>
-#else
-#include <dev/pci/drm/drm_linux.h>
-#include <linux/reservation.h>
-#endif
 
 static void i915_gem_flush_free_objects(struct drm_i915_private *i915);
 

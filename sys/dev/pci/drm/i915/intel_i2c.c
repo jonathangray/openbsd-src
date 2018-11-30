@@ -26,11 +26,9 @@
  *	Eric Anholt <eric@anholt.net>
  *	Chris Wilson <chris@chris-wilson.co.uk>
  */
-#ifdef __linux__
 #include <linux/i2c.h>
 #include <linux/i2c-algo-bit.h>
 #include <linux/export.h>
-#endif
 #include <drm/drmP.h>
 #include <drm/drm_hdcp.h>
 #include "intel_drv.h"

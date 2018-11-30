@@ -25,13 +25,9 @@
 #ifndef _INTEL_GUC_LOG_H_
 #define _INTEL_GUC_LOG_H_
 
-#ifdef __linux__
 #include <linux/mutex.h>
 #include <linux/relay.h>
 #include <linux/workqueue.h>
-#else
-#include <dev/pci/drm/drm_linux.h>
-#endif
 
 #include "intel_guc_fwif.h"
 #include "i915_gem.h"

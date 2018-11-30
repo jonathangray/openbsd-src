@@ -6,6 +6,7 @@
 #include <sys/mutex.h>
 #include <sys/atomic.h>
 #include <linux/lockdep.h>
+#include <linux/processor.h>
 
 typedef struct {
 	unsigned int sequence;

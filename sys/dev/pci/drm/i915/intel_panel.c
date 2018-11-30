@@ -30,11 +30,9 @@
 
 #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
 
-#ifdef __linux__
 #include <linux/kernel.h>
 #include <linux/moduleparam.h>
 #include <linux/pwm.h>
-#endif
 #include "intel_drv.h"
 
 #define CRC_PMIC_PWM_PERIOD_NS	21333

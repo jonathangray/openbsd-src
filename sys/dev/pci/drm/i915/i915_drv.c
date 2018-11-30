@@ -27,7 +27,6 @@
  *
  */
 
-#ifdef __linux__
 #include <linux/acpi.h>
 #include <linux/device.h>
 #include <linux/oom.h>
@@ -41,9 +40,6 @@
 #include <linux/vga_switcheroo.h>
 #include <linux/vt.h>
 #include <acpi/video.h>
-#else
-#include <dev/pci/drm/drm_linux.h>
-#endif
 
 #include <drm/drmP.h>
 #include <drm/drm_crtc_helper.h>

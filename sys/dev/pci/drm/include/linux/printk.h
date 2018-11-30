@@ -5,6 +5,7 @@
 
 #include <sys/types.h>
 #include <sys/systm.h>
+#include <sys/stdarg.h>
 
 #ifndef pr_fmt
 #define pr_fmt(fmt) fmt
@@ -44,5 +45,10 @@ enum {
 
 void print_hex_dump(const char *, const char *, int, int, int,
 	 const void *, size_t, bool);
+
+struct va_format {
+	const char *fmt;
+	va_list *va;
+};
 
 #endif

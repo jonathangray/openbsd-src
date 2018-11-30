@@ -23,7 +23,6 @@
  *
  */
 
-#ifdef __linux__
 #include <linux/slab.h> /* fault-inject.h is not standalone! */
 
 #include <linux/fault-inject.h>
@@ -33,9 +32,6 @@
 #include <linux/stop_machine.h>
 
 #include <asm/set_memory.h>
-#else
-#include <dev/pci/drm/drm_linux.h>
-#endif
 
 #include <drm/drmP.h>
 #include <drm/i915_drm.h>

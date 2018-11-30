@@ -38,8 +38,7 @@
 #include <sys/srp.h>
 #include <machine/intr.h>
 #include <machine/atomic.h>
-
-typedef int atomic_t;
+#include <linux/types.h>
 
 #define atomic_set(p, v)	(*(p) = (v))
 #define atomic_read(p)		(*(p))

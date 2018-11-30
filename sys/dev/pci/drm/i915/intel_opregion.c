@@ -25,12 +25,10 @@
  *
  */
 
-#ifdef __linux__
 #include <linux/acpi.h>
 #include <linux/dmi.h>
 #include <linux/firmware.h>
 #include <acpi/video.h>
-#endif
 
 #include <drm/drmP.h>
 #include <drm/i915_drm.h>

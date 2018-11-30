@@ -23,6 +23,7 @@
 #include <sys/systm.h>
 #include <sys/mutex.h>
 #include <linux/list.h>
+#include <linux/errno.h>
 
 struct wait_queue_entry;
 

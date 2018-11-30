@@ -22,7 +22,6 @@
  *
  */
 
-#include <dev/pci/drm/drm_linux.h>
 #include "i915_drv.h"
 #include "i915_vma.h"
 

@@ -24,7 +24,6 @@
  *	Eric Anholt <eric@anholt.net>
  */
 
-#ifdef __linux__
 #include <linux/dmi.h>
 #include <linux/module.h>
 #include <linux/input.h>
@@ -32,7 +31,6 @@
 #include <linux/kernel.h>
 #include <linux/slab.h>
 #include <linux/vgaarb.h>
-#endif
 #include <drm/drmP.h>
 #include <drm/drm_edid.h>
 #include "intel_drv.h"

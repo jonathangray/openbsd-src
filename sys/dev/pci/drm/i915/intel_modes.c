@@ -23,10 +23,8 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
-#ifdef __linux__
 #include <linux/slab.h>
 #include <linux/i2c.h>
-#endif
 #include <drm/drmP.h>
 #include <drm/drm_edid.h>
 #include "intel_drv.h"

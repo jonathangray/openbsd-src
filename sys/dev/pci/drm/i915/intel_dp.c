@@ -25,7 +25,6 @@
  *
  */
 
-#ifdef __linux__
 #include <linux/i2c.h>
 #include <linux/slab.h>
 #include <linux/export.h>
@@ -33,7 +32,6 @@
 #include <linux/notifier.h>
 #include <linux/reboot.h>
 #include <asm/byteorder.h>
-#endif
 #include <drm/drmP.h>
 #include <drm/drm_atomic_helper.h>
 #include <drm/drm_crtc.h>

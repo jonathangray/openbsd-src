@@ -27,9 +27,7 @@
  *
  */
 
-#ifdef __linux__
 #include <linux/log2.h>
-#endif
 
 #include <drm/drmP.h>
 #include <drm/i915_drm.h>

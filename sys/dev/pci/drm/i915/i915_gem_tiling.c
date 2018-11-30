@@ -25,10 +25,8 @@
  *
  */
 
-#ifdef __linux__
 #include <linux/string.h>
 #include <linux/bitops.h>
-#endif
 #include <drm/drmP.h>
 #include <drm/i915_drm.h>
 #include "i915_drv.h"

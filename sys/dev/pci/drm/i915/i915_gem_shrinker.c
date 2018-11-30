@@ -22,7 +22,6 @@
  *
  */
 
-#ifdef __linux__
 #include <linux/oom.h>
 #include <linux/sched/mm.h>
 #include <linux/shmem_fs.h>
@@ -31,9 +30,6 @@
 #include <linux/pci.h>
 #include <linux/dma-buf.h>
 #include <linux/vmalloc.h>
-#else
-#include <dev/pci/drm/drm_linux.h>
-#endif
 #include <drm/drmP.h>
 #include <drm/i915_drm.h>
 

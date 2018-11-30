@@ -25,14 +25,10 @@
 #ifndef __INTEL_DRV_H__
 #define __INTEL_DRV_H__
 
-#ifdef __linux__
 #include <linux/async.h>
 #include <linux/i2c.h>
 #include <linux/hdmi.h>
 #include <linux/sched/clock.h>
-#else
-#include <linux/hdmi.h>
-#endif
 #include <drm/i915_drm.h>
 #include "i915_drv.h"
 #include <drm/drm_crtc.h>
@@ -43,9 +39,7 @@
 #include <drm/drm_dp_mst_helper.h>
 #include <drm/drm_rect.h>
 #include <drm/drm_atomic.h>
-#ifdef __linux__
 #include <media/cec-notifier.h>
-#endif
 
 /**
  * __wait_for - magic wait macro

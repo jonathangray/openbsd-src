@@ -22,11 +22,12 @@
  *
  */
 
-#ifdef __linux__
 #include <linux/kthread.h>
+#ifdef __linux__
 #include <uapi/linux/sched/types.h>
 #else
-#include <dev/pci/drm/drm_linux.h>
+#include <sys/types.h>
+#include <sys/param.h>
 #include <sys/kthread.h>
 #endif
 

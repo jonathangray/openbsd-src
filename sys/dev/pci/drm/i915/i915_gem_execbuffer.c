@@ -26,15 +26,10 @@
  *
  */
 
-#ifdef __linux__
 #include <linux/dma_remapping.h>
 #include <linux/reservation.h>
 #include <linux/sync_file.h>
 #include <linux/uaccess.h>
-#else
-#include <dev/pci/drm/drm_linux.h>
-#include <linux/reservation.h>
-#endif
 
 #include <drm/drmP.h>
 #include <drm/drm_syncobj.h>

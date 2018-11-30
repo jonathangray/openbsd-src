@@ -26,9 +26,7 @@
 #include "intel_drv.h"
 #include "intel_dsi.h"
 #include "i915_drv.h"
-#ifdef __linux__
 #include <video/mipi_display.h>
-#endif
 #include <drm/drm_mipi_dsi.h>
 
 #define CONTROL_DISPLAY_BCTRL		(1 << 5)

@@ -34,11 +34,9 @@
 #ifndef __I915_GEM_GTT_H__
 #define __I915_GEM_GTT_H__
 
-#ifdef __linux__
 #include <linux/io-mapping.h>
 #include <linux/mm.h>
 #include <linux/pagevec.h>
-#endif
 
 #include "i915_request.h"
 #include "i915_selftest.h"

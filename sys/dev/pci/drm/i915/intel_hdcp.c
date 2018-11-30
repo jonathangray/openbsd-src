@@ -8,10 +8,8 @@
 
 #include <drm/drmP.h>
 #include <drm/drm_hdcp.h>
-#ifdef __linux__
 #include <linux/i2c.h>
 #include <linux/random.h>
-#endif
 
 #include "intel_drv.h"
 #include "i915_reg.h"

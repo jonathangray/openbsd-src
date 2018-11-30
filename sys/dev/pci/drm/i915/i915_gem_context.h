@@ -25,15 +25,9 @@
 #ifndef __I915_GEM_CONTEXT_H__
 #define __I915_GEM_CONTEXT_H__
 
-#ifdef __linux__
 #include <linux/bitops.h>
 #include <linux/list.h>
 #include <linux/radix-tree.h>
-#else
-#include <dev/pci/drm/drm_linux.h>
-#include <linux/list.h>
-#include <linux/radix-tree.h>
-#endif
 
 #include "i915_gem.h"
 #include "i915_scheduler.h"

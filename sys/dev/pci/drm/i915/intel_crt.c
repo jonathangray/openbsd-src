@@ -24,11 +24,9 @@
  *	Eric Anholt <eric@anholt.net>
  */
 
-#ifdef __linux__
 #include <linux/dmi.h>
 #include <linux/i2c.h>
 #include <linux/slab.h>
-#endif
 #include <drm/drmP.h>
 #include <drm/drm_atomic_helper.h>
 #include <drm/drm_crtc.h>

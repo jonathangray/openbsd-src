@@ -9,6 +9,7 @@
 #include <linux/types.h>
 #include <linux/compiler.h>
 #include <linux/bitops.h>
+#include <linux/log2.h>
 
 #define swap(a, b) \
 	do { __typeof(a) __tmp = (a); (a) = (b); (b) = __tmp; } while(0)
@@ -50,5 +51,15 @@
 #define max3(x, y, z) MAX(x, MAX(y, z))
 
 #define mult_frac(x, n, d) (((x) * (n)) / (d))
+
+#define round_up(x, y) ((((x) + ((y) - 1)) / (y)) * (y))
+#define round_down(x, y) (((x) / (y)) * (y)) /* y is power of two */
+#define rounddown(x, y) (((x) / (y)) * (y)) /* arbitary y */
+#define DIV_ROUND_UP(x, y)	(((x) + ((y) - 1)) / (y))
+#define DIV_ROUND_UP_ULL(x, y)	DIV_ROUND_UP(x, y)
+#define DIV_ROUND_DOWN(x, y)	((x) / (y))
+#define DIV_ROUND_DOWN_ULL(x, y)	DIV_ROUND_DOWN(x, y)
+#define DIV_ROUND_CLOSEST(x, y)	(((x) + ((y) / 2)) / (y))
+#define DIV_ROUND_CLOSEST_ULL(x, y)	DIV_ROUND_CLOSEST(x, y)
 
 #endif

@@ -25,13 +25,8 @@
 #ifndef I915_TIMELINE_H
 #define I915_TIMELINE_H
 
-#ifdef __linux__
 #include <linux/list.h>
 #include <linux/kref.h>
-#else
-#include <dev/pci/drm/drm_linux.h>
-#include <linux/list.h>
-#endif
 
 #include "i915_request.h"
 #include "i915_syncmap.h"

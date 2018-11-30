@@ -8,6 +8,7 @@
 #include <sys/device.h>
 #include <linux/slab.h>
 #include <linux/ioport.h>
+#include <linux/lockdep.h>
 
 struct device_node;
 
