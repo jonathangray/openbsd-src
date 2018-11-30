@@ -5,6 +5,7 @@
 
 #include <sys/types.h>
 #include <sys/timeout.h>
+#include <linux/ktime.h>
 
 enum hrtimer_restart { HRTIMER_NORESTART, HRTIMER_RESTART };
 struct hrtimer {

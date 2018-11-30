@@ -24,6 +24,7 @@
 #include <sys/stdint.h>
 #include <sys/mutex.h>
 #include <linux/wait.h>
+#include <linux/hrtimer.h>
 
 #define TASK_NORMAL		1
 #define TASK_UNINTERRUPTIBLE	0

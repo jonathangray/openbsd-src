@@ -27,6 +27,7 @@
 #include <linux/rcupdate.h>
 #include <linux/kernel.h>
 #include <linux/lockdep.h>
+#include <linux/timer.h>
 
 struct workqueue_struct;
 

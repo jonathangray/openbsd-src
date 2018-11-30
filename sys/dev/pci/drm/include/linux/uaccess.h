@@ -19,6 +19,7 @@
 #define _LINUX_UACCESS_H
 
 #include <sys/systm.h>
+#include <linux/sched.h>
 
 #define user_access_begin()
 #define user_access_end()
