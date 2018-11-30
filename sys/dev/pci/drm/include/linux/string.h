@@ -7,6 +7,7 @@
 #include <sys/systm.h>
 #include <sys/malloc.h>
 #include <sys/stdint.h>
+#include <sys/errno.h>
 
 static inline void *
 memset32(uint32_t *b, uint32_t c, size_t len)
@@ -56,6 +57,21 @@ kstrdup(const char *str, int flags)
 	if (p)
 		memcpy(p, str, len);
 	return (p);
+}
+
+static inline int
+match_string(const char * const *array,  size_t n, const char *str)
+{
+	int i;
+
+	for (i = 0; i < n; i++) {
+		if (array[i] == NULL)
+			break;
+		if (!strcmp(array[i], str))	
+			return i;
+	}
+
+	return -EINVAL;
 }
 
 #endif

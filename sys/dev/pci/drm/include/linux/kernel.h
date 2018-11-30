@@ -8,6 +8,9 @@
 #include <sys/systm.h>
 #include <sys/stdarg.h>
 #include <sys/malloc.h>
+
+#include <ddb/db_var.h>
+
 #include <linux/types.h>
 #include <linux/compiler.h>
 #include <linux/bitops.h>
@@ -101,5 +104,16 @@ kvasprintf(int flags, const char *fmt, va_list ap)
 
 	return buf;
 }
+
+static inline int
+_in_dbg_master(void)
+{
+#ifdef DDB
+	return (db_is_active);
+#endif
+	return (0);
+}
+
+#define oops_in_progress _in_dbg_master()
 
 #endif

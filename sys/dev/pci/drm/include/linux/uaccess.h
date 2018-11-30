@@ -65,4 +65,12 @@ copy_from_user(void *to, const void *from, unsigned len)
 		goto err;					\
 })
 
+#define VERIFY_READ     0x1
+#define VERIFY_WRITE    0x2
+static inline int
+access_ok(int type, const void *addr, unsigned long size)
+{
+	return true;
+}
+
 #endif

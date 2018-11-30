@@ -20,18 +20,14 @@
 #define _DRM_LINUX_H_
 
 #include <sys/param.h>
-#include <sys/errno.h>
 #include <sys/kernel.h>
 #include <sys/stdint.h>
 #include <sys/systm.h>
 #include <sys/time.h>
 #include <sys/timeout.h>
 #include <sys/proc.h>
-#include <sys/malloc.h>
 
 #include <uvm/uvm_extern.h>
-
-#include <ddb/db_var.h>
 
 #include <dev/pci/pcivar.h>
 
@@ -498,14 +494,6 @@ void vga_put(struct pci_dev *, int);
 
 #endif
 
-#define VERIFY_READ	0x1
-#define VERIFY_WRITE	0x2
-static inline int
-access_ok(int type, const void *addr, unsigned long size)
-{
-	return true;
-}
-
 #define is_vmalloc_addr(ptr)	true
 
 #define roundup2(x, y) (((x)+((y)-1))&(~((y)-1))) /* if y is powers of two */
@@ -531,32 +519,6 @@ gcd(unsigned long a, unsigned long b)
 
 #define IS_ALIGNED(x, y)	(((x) & ((y) - 1)) == 0)
 
-static inline void
-udelay(unsigned long usecs)
-{
-	DELAY(usecs);
-}
-
-static inline void
-ndelay(unsigned long nsecs)
-{
-	DELAY(max(nsecs / 1000, 1));
-}
-
-static inline void
-usleep_range(unsigned long min, unsigned long max)
-{
-	DELAY(min);
-}
-
-static inline void
-mdelay(unsigned long msecs)
-{
-	int loops = msecs;
-	while (loops--)
-		DELAY(1000);
-}
-
 #define cpu_relax_lowlatency() CPU_BUSY_CYCLE()
 #define cpu_has_pat	1
 #define cpu_has_clflush	1
@@ -571,17 +533,6 @@ irqs_disabled(void)
 {
 	return (cold);
 }
-
-static inline int
-in_dbg_master(void)
-{
-#ifdef DDB
-	return (db_is_active);
-#endif
-	return (0);
-}
-
-#define oops_in_progress in_dbg_master()
 
 static inline int
 power_supply_is_system_supplied(void)
@@ -744,21 +695,6 @@ struct pmu {
 #define iosf_mbi_punit_release()
 #define iosf_mbi_register_pmic_bus_access_notifier(x)			0
 #define iosf_mbi_unregister_pmic_bus_access_notifier_unlocked(x)	0
-
-static inline int
-match_string(const char * const *array,  size_t n, const char *str)
-{
-	int i;
-
-	for (i = 0; i < n; i++) {
-		if (array[i] == NULL)
-			break;
-		if (!strcmp(array[i], str))	
-			return i;
-	}
-
-	return -EINVAL;
-}
 
 #define UUID_STRING_LEN 36
 
