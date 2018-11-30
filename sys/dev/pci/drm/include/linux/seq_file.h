@@ -4,6 +4,7 @@
 #define _LINUX_SEQ_FILE_H
 
 #include <linux/bug.h>
+#include <linux/string.h>
 
 struct seq_file;
 

@@ -19,6 +19,7 @@
 #define _LINUX_HIGHMEM_H
 
 #include <uvm/uvm_extern.h>
+#include <linux/uaccess.h>
 
 void	*kmap(struct vm_page *);
 void	 kunmap(void *addr);

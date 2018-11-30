@@ -105,16 +105,6 @@
 #define local_bh_disable()
 #define local_bh_enable()
 
-typedef uint64_t async_cookie_t;
-typedef void (*async_func_t) (void *, async_cookie_t);
-
-static inline async_cookie_t
-async_schedule(async_func_t func, void *data)
-{
-	func(data, 0);
-	return 0;
-}
-
 #define local_irq_disable()	intr_disable()
 #define local_irq_enable()	intr_enable()
 #define disable_irq(x)		intr_disable()
@@ -354,33 +344,6 @@ local_clock(void)
 
 #define array_size(x, y) ((x) * (y))
 
-static inline void *
-kmemdup(const void *src, size_t len, int flags)
-{
-	void *p = malloc(len, M_DRM, flags);
-	if (p)
-		memcpy(p, src, len);
-	return (p);
-}
-
-static inline void *
-kstrdup(const char *str, int flags)
-{
-	size_t len;
-	char *p;
-
-	len = strlen(str) + 1;
-	p = malloc(len, M_DRM, flags);
-	if (p)
-		memcpy(p, str, len);
-	return (p);
-}
-
-#define register_reboot_notifier(x)
-#define unregister_reboot_notifier(x)
-
-#define SYS_RESTART 0
-
 #define do_div(n, base) ({				\
 	uint32_t __base = (base);			\
 	uint32_t __rem = ((uint64_t)(n)) % __base;	\
@@ -438,51 +401,6 @@ abs64(int64_t x)
 {
 	return (x < 0 ? -x : x);
 }
-
-#define user_access_begin()
-#define user_access_end()
-
-static inline unsigned long
-__copy_to_user(void *to, const void *from, unsigned len)
-{
-	if (copyout(from, to, len))
-		return len;
-	return 0;
-}
-
-static inline unsigned long
-copy_to_user(void *to, const void *from, unsigned len)
-{
-	return __copy_to_user(to, from, len);
-}
-
-static inline unsigned long
-__copy_from_user(void *to, const void *from, unsigned len)
-{
-	if (copyin(from, to, len))
-		return len;
-	return 0;
-}
-
-static inline unsigned long
-copy_from_user(void *to, const void *from, unsigned len)
-{
-	return __copy_from_user(to, from, len);
-}
-
-#define get_user(x, ptr)	-copyin(ptr, &(x), sizeof(x))
-#define put_user(x, ptr) ({				\
-	__typeof((x)) __tmp = (x);			\
-	-copyout(&(__tmp), ptr, sizeof(__tmp));		\
-})
-#define __get_user(x, ptr)	get_user((x), (ptr))
-#define __put_user(x, ptr)	put_user((x), (ptr))
-
-#define unsafe_put_user(x, ptr, err) ({				\
-	__typeof((x)) __tmp = (x);				\
-	if (copyout(&(__tmp), ptr, sizeof(__tmp)) != 0)		\
-		goto err;					\
-})
 
 #define u64_to_user_ptr(x)	((void *)(uintptr_t)(x))
 
@@ -688,31 +606,6 @@ pm_runtime_get_sync(struct device *dev)
 	return 0;
 }
 
-#define _U      0x01
-#define _L      0x02
-#define _N      0x04
-#define _S      0x08
-#define _P      0x10
-#define _C      0x20
-#define _X      0x40
-#define _B      0x80
-
-static inline int
-isascii(int c)
-{
-	return ((unsigned int)c <= 0177);
-}
-
-static inline int
-isprint(int c)
-{
-	if (c == -1)
-		return (0);
-	if ((unsigned char)c >= 040 && (unsigned char)c <= 0176)
-		return (1);
-	return (0);
-}
-
 #ifdef __macppc__
 static inline int
 of_machine_is_compatible(const char *model)
@@ -787,7 +680,6 @@ __copy_from_user_inatomic_nocache(void *to, const void *from, unsigned len)
 #endif
 
 struct address_space;
-#define unmap_mapping_range(mapping, holebegin, holeend, even_cows)
 
 /*
  * ACPI types and interfaces.
@@ -807,135 +699,7 @@ acpi_status acpi_get_table(const char *, int, struct acpi_table_header **);
 #define acpi_video_register()
 #define acpi_video_unregister()
 
-struct scatterlist {
-	dma_addr_t dma_address;
-	unsigned int offset;
-	unsigned int length;
-	bool end;
-};
-
-struct sg_table {
-	struct scatterlist *sgl;
-	unsigned int nents;
-	unsigned int orig_nents;
-};
-
-struct sg_page_iter {
-	struct scatterlist *sg;
-	unsigned int sg_pgoffset;
-	unsigned int __nents;
-};
-
-#define sg_is_chain(sg)		false
-#define sg_is_last(sg)		((sg)->end)
-#define sg_chain_ptr(sg)	NULL
-
-int sg_alloc_table(struct sg_table *, unsigned int, gfp_t);
-void sg_free_table(struct sg_table *);
-
-static inline void
-sg_mark_end(struct scatterlist *sgl)
-{
-	sgl->end = true;
-}
-
-static inline void
-__sg_page_iter_start(struct sg_page_iter *iter, struct scatterlist *sgl,
-    unsigned int nents, unsigned long pgoffset)
-{
-	iter->sg = sgl;
-	iter->sg_pgoffset = pgoffset - 1;
-	iter->__nents = nents;
-}
-
-static inline bool
-__sg_page_iter_next(struct sg_page_iter *iter)
-{
-	iter->sg_pgoffset++;
-	while (iter->__nents > 0 && 
-	    iter->sg_pgoffset >= (iter->sg->length / PAGE_SIZE)) {
-		iter->sg_pgoffset -= (iter->sg->length / PAGE_SIZE);
-		iter->sg++;
-		iter->__nents--;
-	}
-
-	return (iter->__nents > 0);
-}
-
-static inline paddr_t
-sg_page_iter_dma_address(struct sg_page_iter *iter)
-{
-	return iter->sg->dma_address + (iter->sg_pgoffset << PAGE_SHIFT);
-}
-
-static inline struct vm_page *
-sg_page_iter_page(struct sg_page_iter *iter)
-{
-	return PHYS_TO_VM_PAGE(sg_page_iter_dma_address(iter));
-}
-
-static inline struct vm_page *
-sg_page(struct scatterlist *sgl)
-{
-	return PHYS_TO_VM_PAGE(sgl->dma_address);
-}
-
-static inline void
-sg_set_page(struct scatterlist *sgl, struct vm_page *page,
-    unsigned int length, unsigned int offset)
-{
-	sgl->dma_address = VM_PAGE_TO_PHYS(page);
-	sgl->offset = offset;
-	sgl->length = length;
-	sgl->end = false;
-}
-
-#define sg_dma_address(sg)	((sg)->dma_address)
-#define sg_dma_len(sg)		((sg)->length)
-
-#define for_each_sg_page(sgl, iter, nents, pgoffset) \
-  __sg_page_iter_start((iter), (sgl), (nents), (pgoffset)); \
-  while (__sg_page_iter_next(iter))
-
-size_t sg_copy_from_buffer(struct scatterlist *, unsigned int,
-    const void *, size_t);
-
 void *memchr_inv(const void *, int, size_t);
-
-struct dma_buf_ops;
-
-struct dma_buf {
-	const struct dma_buf_ops *ops;
-	void *priv;
-	size_t size;
-	struct file *file;
-};
-
-struct dma_buf_attachment;
-
-void	get_dma_buf(struct dma_buf *);
-struct dma_buf *dma_buf_get(int);
-void	dma_buf_put(struct dma_buf *);
-int	dma_buf_fd(struct dma_buf *, int);
-
-struct dma_buf_ops {
-	void (*release)(struct dma_buf *);
-};
-
-struct dma_buf_export_info {
-	const struct dma_buf_ops *ops;
-	size_t size;
-	int flags;
-	void *priv;
-	struct reservation_object *resv;
-};
-
-#define DEFINE_DMA_BUF_EXPORT_INFO(x)  struct dma_buf_export_info x 
-
-struct dma_buf *dma_buf_export(const struct dma_buf_export_info *);
-
-#define dma_buf_attach(x, y) NULL
-#define dma_buf_detach(x, y) panic("dma_buf_detach")
 
 #define register_sysrq_key(x, y)
 
@@ -948,26 +712,6 @@ struct pmu {
 
 #define might_sleep()
 #define might_sleep_if(x)
-#define get_random_u32()	arc4random()
-#define get_random_int()	arc4random()
-
-static inline uint64_t
-get_random_u64(void)
-{
-	uint64_t r;
-	arc4random_buf(&r, sizeof(r));
-	return r;
-}
-
-static inline unsigned long
-get_random_long(void)
-{
-#ifdef __LP64__
-	return get_random_u64();
-#else
-	return get_random_u32();
-#endif
-}
 
 #define add_taint(x, y)
 #define TAINT_MACHINE_CHECK	0
@@ -983,47 +727,12 @@ get_random_long(void)
 #define sysfs_create_group(x, y)	0
 #define sysfs_remove_group(x, y)
 
-static inline void *
-memset32(uint32_t *b, uint32_t c, size_t len)
-{
-	uint32_t *dst = b;
-	while (len--)
-		*dst++ = c;
-	return b;
-}
-
-static inline void *
-memset64(uint64_t *b, uint64_t c, size_t len)
-{
-	uint64_t *dst = b;
-	while (len--)
-		*dst++ = c;
-	return b;
-}
-
-static inline void *
-memset_p(void **p, void *v, size_t n)
-{
-#ifdef __LP64__
-	return memset64((uint64_t *)p, (uintptr_t)v, n);
-#else
-	return memset32((uint32_t *)p, (uintptr_t)v, n);
-#endif
-}
-
 #define POISON_INUSE	0xdb
 
 #define cec_notifier_set_phys_addr_from_edid(x, y)
 #define cec_notifier_phys_addr_invalidate(x)
 #define cec_notifier_put(x)
 #define cec_notifier_get_conn(x, y)			NULL
-
-#define SZ_4K	(1024 * 4)
-#define SZ_8K	(1024 * 8)
-#define SZ_32K	(1024 * 32)
-#define SZ_128K	(1024 * 128)
-#define SZ_1M	(1024 * 1024)
-#define SZ_16M	(16 * 1024 * 1024)
 
 #define typecheck(x, y)		1
 

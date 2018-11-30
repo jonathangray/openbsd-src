@@ -23,6 +23,7 @@
 #include <sys/filedesc.h>
 #include <sys/stat.h>
 #include <sys/unistd.h>
+#include <linux/dma-buf.h>
 
 struct mutex sch_mtx = MUTEX_INITIALIZER(IPL_SCHED);
 void *sch_ident;
