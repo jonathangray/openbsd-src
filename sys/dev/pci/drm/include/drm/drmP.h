@@ -98,21 +98,29 @@
 
 #include <dev/pci/drm/drm_linux.h>
 #include <linux/list.h>
+#include <linux/pci.h>
+/* these match drm_os_linux.h includes */
+#include <linux/interrupt.h>
+#include <linux/sched/signal.h>
+#include <linux/delay.h>
+
 #include <uapi/drm/drm.h>
-#include "drm_vma_manager.h"
-#include "drm_crtc.h"
-#include "drm_fourcc.h"
-#include "drm_mm.h"
-#include <linux/atomic.h>
-#include "drm_prime.h"
-#include "drm_print.h"
-#include "drm_file.h"
-#include "drm_vblank.h"
-#include "drm_gem.h"
-#include "drm_drv.h"
-#include "drm_device.h"
-#include "drm_irq.h"
-#include "drm_ioctl.h"
+#include <uapi/drm/drm_mode.h>
+
+#include <drm/drm_crtc.h>
+#include <drm/drm_fourcc.h>
+#include <drm/drm_global.h>
+#include <drm/drm_hashtab.h>
+#include <drm/drm_mm.h>
+#include <drm/drm_drv.h>
+#include <drm/drm_prime.h>
+#include <drm/drm_print.h>
+#include <drm/drm_file.h>
+#include <drm/drm_ioctl.h>
+#include <drm/drm_vblank.h>
+#include <drm/drm_irq.h>
+#include <drm/drm_device.h>
+
 #include "agp.h"
 
 struct fb_cmap;

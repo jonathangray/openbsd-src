@@ -20,65 +20,22 @@
 #define _DRM_LINUX_H_
 
 #include <sys/param.h>
-#include <sys/atomic.h>
 #include <sys/errno.h>
-#include <sys/fcntl.h>
 #include <sys/kernel.h>
-#include <sys/signalvar.h>
 #include <sys/stdint.h>
 #include <sys/systm.h>
-#include <sys/task.h>
 #include <sys/time.h>
 #include <sys/timeout.h>
-#include <sys/tree.h>
 #include <sys/proc.h>
+#include <sys/malloc.h>
 
 #include <uvm/uvm_extern.h>
 
 #include <ddb/db_var.h>
 
-#include <dev/i2c/i2cvar.h>
-#include <dev/pci/pcireg.h>
 #include <dev/pci/pcivar.h>
 
 #include <linux/types.h>
-#include <linux/kernel.h>
-#include <linux/atomic.h>
-#include <linux/list.h>
-#include <linux/workqueue.h>
-#include <linux/slab.h>
-#include <linux/errno.h>
-#include <linux/export.h>
-#include <linux/seq_file.h>
-#include <linux/wait.h>
-#include <linux/dma-fence.h>
-#include <linux/dma-fence-array.h>
-#include <linux/compiler.h>
-#include <linux/bug.h>
-#include <linux/completion.h>
-#include <linux/kobject.h>
-#include <linux/lockdep.h>
-#include <linux/bitmap.h>
-#include <linux/idr.h>
-#include <linux/hashtable.h>
-#include <linux/module.h>
-#include <linux/moduleparam.h>
-#include <linux/llist.h>
-#include <linux/irq.h>
-#include <linux/printk.h>
-#include <linux/spinlock.h>
-#include <linux/mutex.h>
-#include <linux/pci.h>
-#include <linux/io.h>
-#include <linux/device.h>
-#include <linux/err.h>
-#include <linux/firmware.h>
-#include <linux/interrupt.h>
-#include <linux/hash.h>
-#include <linux/fb.h>
-#include <linux/vga_switcheroo.h>
-#include <linux/notifier.h>
-#include <video/mipi_display.h>
 
 /* The Linux code doesn't meet our usual standards! */
 #ifdef __clang__
@@ -168,9 +125,6 @@ async_schedule(async_func_t func, void *data)
 #define mod_timer_pinned(x, y)	timeout_add((x), (y - jiffies))
 #define del_timer_sync(x)	timeout_del((x))
 #define timer_pending(x)	timeout_pending((x))
-
-#define signal_pending_state(x, y) CURSIG(curproc)
-#define signal_pending(y) CURSIG(curproc)
 
 #define NSEC_PER_USEC	1000L
 #define NSEC_PER_MSEC	1000000L
@@ -420,49 +374,6 @@ kstrdup(const char *str, int flags)
 	if (p)
 		memcpy(p, str, len);
 	return (p);
-}
-
-static inline char *
-kasprintf(int flags, const char *fmt, ...)
-{
-	char *buf;
-	size_t len;
-	va_list ap;
-
-	va_start(ap, fmt);
-	len = vsnprintf(NULL, 0, fmt, ap);
-	va_end(ap);
-
-	buf = kmalloc(len, flags);
-	if (buf) {
-		va_start(ap, fmt);
-		vsnprintf(buf, len, fmt, ap);
-		va_end(ap);
-	}
-
-	return buf;
-}
-
-static inline char *
-kvasprintf(int flags, const char *fmt, va_list ap)
-{
-	char *buf;
-	size_t len;
-
-	len = vsnprintf(NULL, 0, fmt, ap);
-
-	buf = kmalloc(len, flags);
-	if (buf) {
-		vsnprintf(buf, len, fmt, ap);
-	}
-
-	return buf;
-}
-
-static inline bool
-refcount_dec_and_test(uint32_t *p)
-{
-	return atomic_dec_and_test(p);
 }
 
 #define register_reboot_notifier(x)
@@ -811,14 +722,6 @@ of_machine_is_compatible(const char *model)
 }
 #endif
 
-#define MAX_ORDER	11
-
-static inline unsigned int
-get_order(size_t size)
-{
-	return flsl((size - 1) >> PAGE_SHIFT);
-}
-
 #if defined(__i386__) || defined(__amd64__)
 
 #define _PAGE_PRESENT	PG_V
@@ -903,85 +806,6 @@ acpi_status acpi_get_table(const char *, int, struct acpi_table_header **);
 
 #define acpi_video_register()
 #define acpi_video_unregister()
-
-struct backlight_device;
-
-struct backlight_properties {
-	int type;
-	int max_brightness;
-	int brightness;
-	int power;
-};
-
-struct backlight_ops {
-	int (*update_status)(struct backlight_device *);
-	int (*get_brightness)(struct backlight_device *);
-};
-
-struct backlight_device {
-	const struct backlight_ops *ops;
-	struct backlight_properties props;
-	struct task task;
-	void *data;
-};
-
-#define bl_get_data(bd)	(bd)->data
-
-#define BACKLIGHT_RAW		0
-#define BACKLIGHT_FIRMWARE	1
-
-struct backlight_device *backlight_device_register(const char *, void *,
-     void *, const struct backlight_ops *, struct backlight_properties *);
-void backlight_device_unregister(struct backlight_device *);
-
-static inline void
-backlight_update_status(struct backlight_device *bd)
-{
-	bd->ops->update_status(bd);
-}
-
-void backlight_schedule_update_status(struct backlight_device *);
-
-struct pwm_device;
-
-static inline struct pwm_device *
-pwm_get(struct device *dev, const char *consumer)
-{
-	return ERR_PTR(-ENODEV);
-}
-
-static inline void
-pwm_put(struct pwm_device *pwm)
-{
-}
-
-static inline unsigned int
-pwm_get_duty_cycle(const struct pwm_device *pwm)
-{
-	return 0;
-}
-
-static inline int
-pwm_config(struct pwm_device *pwm, int duty_ns, int period_ns)
-{
-	return -EINVAL;
-}
-
-static inline int
-pwm_enable(struct pwm_device *pwm)
-{
-	return -EINVAL;
-}
-
-static inline void
-pwm_disable(struct pwm_device *pwm)
-{
-}
-
-static inline void
-pwm_apply_args(struct pwm_device *pwm)
-{
-}
 
 struct scatterlist {
 	dma_addr_t dma_address;

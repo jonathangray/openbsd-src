@@ -6,6 +6,8 @@
 #include <sys/stdint.h>
 #include <sys/param.h>
 #include <sys/systm.h>
+#include <sys/stdarg.h>
+#include <sys/malloc.h>
 #include <linux/types.h>
 #include <linux/compiler.h>
 #include <linux/bitops.h>
@@ -62,5 +64,42 @@
 #define DIV_ROUND_DOWN_ULL(x, y)	DIV_ROUND_DOWN(x, y)
 #define DIV_ROUND_CLOSEST(x, y)	(((x) + ((y) / 2)) / (y))
 #define DIV_ROUND_CLOSEST_ULL(x, y)	DIV_ROUND_CLOSEST(x, y)
+
+static inline char *
+kasprintf(int flags, const char *fmt, ...)
+{
+	char *buf;
+	size_t len;
+	va_list ap;
+
+	va_start(ap, fmt);
+	len = vsnprintf(NULL, 0, fmt, ap);
+	va_end(ap);
+
+	buf = malloc(len, M_DRM, flags);
+	if (buf) {
+		va_start(ap, fmt);
+		vsnprintf(buf, len, fmt, ap);
+		va_end(ap);
+	}
+
+	return buf;
+}
+
+static inline char *
+kvasprintf(int flags, const char *fmt, va_list ap)
+{
+	char *buf;
+	size_t len;
+
+	len = vsnprintf(NULL, 0, fmt, ap);
+
+	buf = malloc(len, M_DRM, flags);
+	if (buf) {
+		vsnprintf(buf, len, fmt, ap);
+	}
+
+	return buf;
+}
 
 #endif

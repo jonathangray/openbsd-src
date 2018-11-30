@@ -14,7 +14,6 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <dev/pci/drm/drm_linux.h>
 #include "i915_drv.h"
 
 /* MCH IFP BARs */

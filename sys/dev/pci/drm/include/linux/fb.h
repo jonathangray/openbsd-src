@@ -5,6 +5,8 @@
 
 #include <sys/types.h>
 #include <linux/slab.h>
+#include <linux/notifier.h>
+#include <linux/backlight.h>
 
 struct fb_var_screeninfo {
 	int pixclock;

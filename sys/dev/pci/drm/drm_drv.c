@@ -56,6 +56,7 @@
 #include <uvm/uvm_device.h>
 
 #include <drm/drmP.h>
+#include <drm/drm_gem.h>
 #include <uapi/drm/drm.h>
 #include "drm_internal.h"
 #include "drm_crtc_internal.h"

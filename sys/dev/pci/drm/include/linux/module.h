@@ -4,6 +4,7 @@
 #define _LINUX_MODULE_H
 
 #include <linux/export.h>
+#include <linux/moduleparam.h>
 
 struct module;
 

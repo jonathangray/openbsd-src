@@ -22,6 +22,7 @@
 #include <dev/pci/pcivar.h>
 #include <linux/io.h>
 #include <linux/ioport.h>
+#include <linux/kobject.h>
 
 struct pci_dev;
 

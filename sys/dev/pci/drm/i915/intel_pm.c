@@ -26,7 +26,7 @@
  */
 
 #include <linux/cpufreq.h>
-#include <dev/pci/drm/drm_linux.h>
+#include <sys/types.h>
 #include <drm/drm_plane_helper.h>
 #include "i915_drv.h"
 #include "intel_drv.h"

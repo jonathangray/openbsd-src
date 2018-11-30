@@ -3,6 +3,8 @@
 #ifndef LINUX_RCUPDATE_H
 #define LINUX_RCUPDATE_H
 
+#include <linux/cpumask.h>
+
 struct rcu_head {
 };
 

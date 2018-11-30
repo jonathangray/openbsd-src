@@ -21,6 +21,7 @@
 #include <sys/types.h>
 #include <sys/param.h>
 #include <asm/bitsperlong.h>
+#include <linux/atomic.h>
 
 #define BIT(x)		(1UL << (x))
 #define BIT_ULL(x)	(1ULL << (x))
