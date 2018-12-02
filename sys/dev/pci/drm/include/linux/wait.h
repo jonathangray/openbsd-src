@@ -183,9 +183,10 @@ static inline void
 _wake_up(wait_queue_head_t *wqh LOCK_FL_VARS)
 {
 	wait_queue_entry_t *wqe;
+	wait_queue_entry_t *tmp;
 	_mtx_enter(&wqh->lock LOCK_FL_ARGS);
 	
-	list_for_each_entry(wqe, &wqh->head, entry) {
+	list_for_each_entry_safe(wqe, tmp, &wqh->head, entry) {
 		if (wqe->func != NULL)
 			wqe->func(wqe, 0, wqe->flags, NULL);
 	}
@@ -202,8 +203,9 @@ static inline void
 wake_up_all_locked(wait_queue_head_t *wqh)
 {
 	wait_queue_entry_t *wqe;
+	wait_queue_entry_t *tmp;
 
-	list_for_each_entry(wqe, &wqh->head, entry) {
+	list_for_each_entry_safe(wqe, tmp, &wqh->head, entry) {
 		if (wqe->func != NULL)
 			wqe->func(wqe, 0, wqe->flags, NULL);
 	}
