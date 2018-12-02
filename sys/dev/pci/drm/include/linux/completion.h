@@ -52,6 +52,7 @@ _wait_for_completion_timeout(struct completion *x, u_long timo LOCK_FL_VARS)
 			return (ret == EWOULDBLOCK) ? 0 : -ret;
 		}
 	}
+	_mtx_leave(&x->wait.lock LOCK_FL_ARGS);
 
 	return 1;
 }
@@ -73,6 +74,7 @@ _wait_for_completion_interruptible(struct completion *x LOCK_FL_VARS)
 			return (ret == EWOULDBLOCK) ? 0 : -ret;
 		}
 	}
+	_mtx_leave(&x->wait.lock LOCK_FL_ARGS);
 
 	return 1;
 }
@@ -95,6 +97,7 @@ _wait_for_completion_interruptible_timeout(struct completion *x, u_long timo
 			return (ret == EWOULDBLOCK) ? 0 : -ret;
 		}
 	}
+	_mtx_leave(&x->wait.lock LOCK_FL_ARGS);
 
 	return 1;
 }
