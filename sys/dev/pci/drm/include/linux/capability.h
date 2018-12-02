@@ -3,7 +3,7 @@
 #ifndef _LINUX_CAPABILITY_H
 #define _LINUX_CAPABILITY_H
 
-#include <sys/types.h>
+#include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/ucred.h>
 #include <sys/srp.h>
