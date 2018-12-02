@@ -65,7 +65,7 @@ init_wait_entry(wait_queue_entry_t *wqe, int flags)
 {
 	wqe->flags = flags;
 	wqe->private = NULL;
-	wqe->func = NULL;
+	wqe->func = autoremove_wake_function;
 	INIT_LIST_HEAD(&wqe->entry);
 }
 
