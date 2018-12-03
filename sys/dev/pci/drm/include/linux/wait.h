@@ -233,24 +233,25 @@ wake_up_all_locked(wait_queue_head_t *wqh)
 static inline void
 prepare_to_wait(wait_queue_head_t *wqh, wait_queue_entry_t *wqe, int state)
 {
-	if (list_empty(&wqe->entry)) {
+	if (wqe->flags == 0) {
 		mtx_enter(&sch_mtx);
-		__add_wait_queue(wqh, wqe);
+		wqe->flags = 1;
 	}
 	MUTEX_ASSERT_LOCKED(&sch_mtx);
-	sch_ident = wqh;
+	if (list_empty(&wqe->entry))
+		__add_wait_queue(wqh, wqe);
+	sch_ident = wqe;
 	sch_priority = state;
 }
 
 static inline void
 finish_wait(wait_queue_head_t *wqh, wait_queue_entry_t *wqe)
 {
-	if (!list_empty(&wqe->entry)) {
-		MUTEX_ASSERT_LOCKED(&sch_mtx);
-		sch_ident = NULL;
+	MUTEX_ASSERT_LOCKED(&sch_mtx);
+	sch_ident = NULL;
+	if (!list_empty(&wqe->entry))
 		list_del_init(&wqe->entry);
-		mtx_leave(&sch_mtx);
-	}
+	mtx_leave(&sch_mtx);
 }
 
 #endif
