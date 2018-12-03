@@ -1747,6 +1747,9 @@ struct inteldrm_softc {
 	struct vga_pci_bar bar;
 	struct vga_pci_bar *regs;
 
+	struct drm_pcidev *id;
+
+	int console;
 	int nscreens;
 	void (*switchcb)(void *, int, int);
 	void *switchcbarg;

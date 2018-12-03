@@ -3425,6 +3425,7 @@ int	inteldrm_match(struct device *, void *, void *);
 void	inteldrm_attach(struct device *, struct device *, void *);
 int	inteldrm_detach(struct device *, int);
 int	inteldrm_activate(struct device *, int);
+void	inteldrm_attachhook(struct device *);
 
 struct cfattach inteldrm_ca = {
 	sizeof(struct inteldrm_softc), inteldrm_match, inteldrm_attach,
@@ -3458,11 +3459,8 @@ inteldrm_attach(struct device *parent, struct device *self, void *aux)
 	struct pci_attach_args *pa = aux;
 	const struct drm_pcidev *id;
 	struct intel_device_info *info, *device_info;
-	struct rasops_info *ri = &dev_priv->ro;
-	struct wsemuldisplaydev_attach_args aa;
 	extern int vga_console_attached;
 	int mmio_bar, mmio_size, mmio_type;
-	int console = 0;
 	int ret;
 
 	dev_priv->pc = pa->pa_pc;
@@ -3478,18 +3476,20 @@ inteldrm_attach(struct device *parent, struct device *self, void *aux)
 	    & (PCI_COMMAND_IO_ENABLE | PCI_COMMAND_MEM_ENABLE))
 	    == (PCI_COMMAND_IO_ENABLE | PCI_COMMAND_MEM_ENABLE)) {
 		vga_console_attached = 1;
-		console = 1;
+		dev_priv->console = 1;
 	}
 
 #if NEFIFB > 0
-	if (efifb_is_console(pa))
-		console = 1;
+	if (efifb_is_console(pa)) {
+		dev_priv->console = 1;
+		efifb_cndetach();
+	}
 #endif
 
 	printf("\n");
 
 	dev_priv->drmdev = (struct drm_device *)
-	    drm_attach_pci(&driver, pa, 0, console, self);
+	    drm_attach_pci(&driver, pa, 0, dev_priv->console, self);
 	memcpy(&dev_priv->drm, dev_priv->drmdev, sizeof(struct drm_device));
 	dev = &dev_priv->drm;
 
@@ -3520,6 +3520,7 @@ inteldrm_attach(struct device *parent, struct device *self, void *aux)
 
 	id = drm_find_description(PCI_VENDOR(pa->pa_id),
 	    PCI_PRODUCT(pa->pa_id), pciidlist);
+	dev_priv->id = id;
 	info = (struct intel_device_info *)id->driver_data;
 
 	/* Setup the write-once "constant" device info */
@@ -3583,13 +3584,20 @@ inteldrm_attach(struct device *parent, struct device *self, void *aux)
 	}
 	dev->pdev->irq = -1;
 
+	config_mountroot(self, inteldrm_attachhook);
+}
+
+void
+inteldrm_attachhook(struct device *self)
+{
+	struct inteldrm_softc *dev_priv = (struct inteldrm_softc *)self;
+	struct rasops_info *ri = &dev_priv->ro;
+	struct wsemuldisplaydev_attach_args aa;
+	const struct drm_pcidev *id = dev_priv->id;
+	struct drm_device *dev = &dev_priv->drm;
+
 	if (i915_driver_load(dev_priv, id))
 		return;
-
-#if NEFIFB > 0
-	if (efifb_is_console(pa))
-		efifb_cndetach();
-#endif
 
 	printf("%s: %dx%d, %dbpp\n", dev_priv->sc_dev.dv_xname,
 	    ri->ri_width, ri->ri_height, ri->ri_depth);
@@ -3609,7 +3617,7 @@ inteldrm_attach(struct device *parent, struct device *self, void *aux)
 		 * Everybody else seems to mount their panels the
 		 * other way around.
 		 */
-		subsys = pci_conf_read(pa->pa_pc, pa->pa_tag,
+		subsys = pci_conf_read(dev_priv->pc, dev_priv->tag,
 		    PCI_SUBSYS_ID_REG);
 		if (PCI_VENDOR(subsys) == PCI_VENDOR_ASUSTEK &&
 		    PCI_PRODUCT(subsys) == PCI_PRODUCT_ASUSTEK_T100HA)
@@ -3630,13 +3638,13 @@ inteldrm_attach(struct device *parent, struct device *self, void *aux)
 	inteldrm_stdscreen.fontwidth = ri->ri_font->fontwidth;
 	inteldrm_stdscreen.fontheight = ri->ri_font->fontheight;
 
-	aa.console = console;
+	aa.console = dev_priv->console;
 	aa.scrdata = &inteldrm_screenlist;
 	aa.accessops = &inteldrm_accessops;
 	aa.accesscookie = dev_priv;
 	aa.defaultscreens = 0;
 
-	if (console) {
+	if (dev_priv->console) {
 		long defattr;
 
 		/*
