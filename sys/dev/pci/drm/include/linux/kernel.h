@@ -17,6 +17,8 @@
 #include <linux/log2.h>
 #include <linux/linkage.h>
 #include <linux/printk.h>
+#include <linux/typecheck.h>
+#include <asm/byteorder.h>
 
 #define swap(a, b) \
 	do { __typeof(a) __tmp = (a); (a) = (b); (b) = __tmp; } while(0)

@@ -5,6 +5,7 @@
 
 #include <linux/kref.h>
 #include <linux/kernel.h>
+#include <linux/sysfs.h>
 
 struct kobject {
 	struct kref kref;

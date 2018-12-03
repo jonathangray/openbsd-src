@@ -23,6 +23,7 @@
 #include <sys/kernel.h>
 #include <sys/stdint.h>
 #include <sys/mutex.h>
+#include <sys/proc.h>
 #include <linux/wait.h>
 #include <linux/hrtimer.h>
 
@@ -94,6 +95,21 @@ schedule(void)
 	KASSERT(!cold);
 	msleep(sch_ident, &sch_mtx, sch_priority, "schto", 0);
 	sch_ident = curproc;
+}
+
+static inline int
+wake_up_process(struct proc *p)
+{
+	int s, r = 0;
+
+	SCHED_LOCK(s);
+	if (p->p_stat == SSLEEP) {
+		setrunnable(p);
+		r = 1;
+	}
+	SCHED_UNLOCK(s);
+	
+	return r;
 }
 
 #endif
