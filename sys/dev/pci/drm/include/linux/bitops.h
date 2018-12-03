@@ -27,6 +27,9 @@
 #define BIT_ULL(x)	(1ULL << (x))
 #define BITS_PER_BYTE	8
 
+#define GENMASK(h, l)		(((~0UL) >> (BITS_PER_LONG - (h) - 1)) & ((~0UL) << (l)))
+#define GENMASK_ULL(h, l)	(((~0ULL) >> (BITS_PER_LONG_LONG - (h) - 1)) & ((~0ULL) << (l)))
+
 #define BITS_TO_LONGS(x)	howmany((x), 8 * sizeof(long))
 
 static inline uint8_t
@@ -88,6 +91,12 @@ fls64(long long mask)
 	for (bit = 1; mask != 1; bit++)
 		mask = (unsigned long long)mask >> 1;
 	return (bit);
+}
+
+static inline uint32_t
+ror32(uint32_t word, unsigned int shift)
+{
+	return (word >> shift) | (word << (32 - shift));
 }
 
 #endif

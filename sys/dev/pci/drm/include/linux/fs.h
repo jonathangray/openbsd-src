@@ -7,6 +7,7 @@
 #include <sys/fcntl.h>
 #include <linux/capability.h>
 #include <linux/linkage.h>
+#include <linux/uuid.h>
 
 struct address_space;
 

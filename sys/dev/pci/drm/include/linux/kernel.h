@@ -30,6 +30,8 @@
 #define U64_C(x) UINT64_C(x)
 #define U64_MAX UINT64_MAX
 
+#define IS_ALIGNED(x, y)	(((x) & ((y) - 1)) == 0)
+
 #define ARRAY_SIZE nitems
 
 #define lower_32_bits(n)	((u32)(n))
@@ -115,5 +117,12 @@ _in_dbg_master(void)
 }
 
 #define oops_in_progress _in_dbg_master()
+
+#define might_sleep()
+#define might_sleep_if(x)
+
+#define add_taint(x, y)
+#define TAINT_MACHINE_CHECK	0
+#define LOCKDEP_STILL_OK	0
 
 #endif

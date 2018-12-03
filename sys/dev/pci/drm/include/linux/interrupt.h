@@ -3,6 +3,10 @@
 #ifndef _LINUX_INTERRUPT_H
 #define _LINUX_INTERRUPT_H
 
+#include <machine/intr.h>
+#include <linux/hardirq.h>
+#include <linux/irqflags.h>
+
 #ifndef STUB
 #include <sys/types.h>
 #include <sys/systm.h>
@@ -10,6 +14,9 @@
 #endif
 
 #define IRQF_SHARED	0
+
+#define disable_irq(x)		intr_disable()
+#define enable_irq(x)		intr_enable()
 
 #define request_irq(irq, hdlr, flags, name, dev)	(0)
 #define free_irq(irq, dev)

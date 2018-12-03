@@ -22,6 +22,7 @@
 #include <sys/malloc.h>
 #include <uvm/uvm_extern.h>
 #include <linux/types.h>
+#include <linux/overflow.h>
 
 void	*vmap(struct vm_page **, unsigned int, unsigned long, pgprot_t);
 void	 vunmap(void *, size_t);

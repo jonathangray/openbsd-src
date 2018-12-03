@@ -9,6 +9,8 @@
 #include <sys/stdint.h>
 #include <sys/errno.h>
 
+void *memchr_inv(const void *, int, size_t);
+
 static inline void *
 memset32(uint32_t *b, uint32_t c, size_t len)
 {

@@ -19,6 +19,7 @@
 #define _LINUX_TIME_H
 
 #include <sys/time.h>
+#include <linux/math64.h>
 
 #define NSEC_PER_USEC	1000L
 #define NSEC_PER_MSEC	1000000L

@@ -18,6 +18,7 @@
 
 #define PageHighMem(x)	0
 
+#define page_address(x)		VM_PAGE_TO_PHYS(x)
 #define page_to_phys(page)	(VM_PAGE_TO_PHYS(page))
 #define page_to_pfn(pp)		(VM_PAGE_TO_PHYS(pp) / PAGE_SIZE)
 #define pfn_to_page(pfn)	(PHYS_TO_VM_PAGE(ptoa(pfn)))
@@ -26,6 +27,8 @@
 #define set_page_dirty(page)	atomic_clearbits_int(&page->pg_flags, PG_CLEAN)
 
 #define PAGE_ALIGN(addr)	(((addr) + PAGE_MASK) & ~PAGE_MASK)
+
+#define is_vmalloc_addr(ptr)	true
 
 static inline void *
 kvmalloc_array(size_t n, size_t size, int flags)

@@ -23,8 +23,6 @@
 #include <sys/kernel.h>
 #include <sys/stdint.h>
 #include <sys/systm.h>
-#include <sys/time.h>
-#include <sys/timeout.h>
 #include <sys/proc.h>
 
 #include <uvm/uvm_extern.h>
@@ -74,105 +72,13 @@
 #define cpu_to_be16(x) htobe16(x)
 #define cpu_to_be32(x) htobe32(x)
 
-#define DMA_BIT_MASK(n) (((n) == 64) ? ~0ULL : (1ULL<<(n)) -1)
-#define GENMASK(h, l)		(((~0UL) >> (BITS_PER_LONG - (h) - 1)) & ((~0UL) << (l)))
-#define GENMASK_ULL(h, l)	(((~0ULL) >> (BITS_PER_LONG_LONG - (h) - 1)) & ((~0ULL) << (l)))
-
-#define KERN_INFO	""
-#define KERN_WARNING	""
-#define KERN_NOTICE	""
-#define KERN_DEBUG	""
-#define KERN_CRIT	""
-#define KERN_ERR	""
-
 #define KBUILD_MODNAME "drm"
-
-#define UTS_RELEASE	""
-
-#define DEFINE_RATELIMIT_STATE(name, interval, burst) \
-	int name __used = 1;
-
-#define __ratelimit(x)	(1)
-
-#define local_irq_save(x)		(x) = splhigh()
-#define local_irq_restore(x)		splx((x))
-#define synchronize_irq(x)
-
-#define local_bh_disable()
-#define local_bh_enable()
-
-#define local_irq_disable()	intr_disable()
-#define local_irq_enable()	intr_enable()
-#define disable_irq(x)		intr_disable()
-#define enable_irq(x)		intr_enable()
 
 #define KHZ2PICOS(a)	(1000000000UL/(a))
 
-#define array_size(x, y) ((x) * (y))
-
-#define do_div(n, base) ({				\
-	uint32_t __base = (base);			\
-	uint32_t __rem = ((uint64_t)(n)) % __base;	\
-	(n) = ((uint64_t)(n)) / __base;			\
-	__rem;						\
-})
-
-static inline uint64_t
-div_u64(uint64_t x, uint32_t y)
-{
-	return (x / y);
-}
-
-static inline int64_t
-div_s64(int64_t x, int64_t y)
-{
-	return (x / y);
-}
-
-static inline uint64_t
-div64_u64(uint64_t x, uint64_t y)
-{
-	return (x / y);
-}
-
-static inline uint64_t
-div64_u64_rem(uint64_t x, uint64_t y, uint64_t *rem)
-{
-	*rem = x % y;
-	return (x / y);
-}
-
-static inline int64_t
-div64_s64(int64_t x, int64_t y)
-{
-	return (x / y);
-}
-
-static inline uint64_t
-mul_u32_u32(uint32_t x, uint32_t y)
-{
-	return (uint64_t)x * y;
-}
-
-static inline uint64_t
-mul_u64_u32_div(uint64_t x, uint32_t y, uint32_t div)
-{
-	return (x * y) / div;
-}
-
 #define order_base_2(x) drm_order(x)
 
-static inline int64_t
-abs64(int64_t x)
-{
-	return (x < 0 ? -x : x);
-}
-
 #define u64_to_user_ptr(x)	((void *)(uintptr_t)(x))
-
-#define console_lock()
-#define console_trylock()	1
-#define console_unlock()
 
 #ifndef PCI_MEM_START
 #define PCI_MEM_START	0
@@ -264,8 +170,6 @@ void vga_put(struct pci_dev *, int);
 
 #endif
 
-#define is_vmalloc_addr(ptr)	true
-
 #define roundup2(x, y) (((x)+((y)-1))&(~((y)-1))) /* if y is powers of two */
 
 /*
@@ -287,45 +191,9 @@ gcd(unsigned long a, unsigned long b)
 	return (b);
 }
 
-#define IS_ALIGNED(x, y)	(((x) & ((y) - 1)) == 0)
-
 #define cpu_relax_lowlatency() CPU_BUSY_CYCLE()
 #define cpu_has_pat	1
 #define cpu_has_clflush	1
-
-static inline uint32_t ror32(uint32_t word, unsigned int shift)
-{
-	return (word >> shift) | (word << (32 - shift));
-}
-
-static inline int
-irqs_disabled(void)
-{
-	return (cold);
-}
-
-static inline int
-power_supply_is_system_supplied(void)
-{
-	/* XXX return 0 if on battery */
-	return (1);
-}
-
-#define pm_qos_update_request(x, y)
-#define pm_qos_remove_request(x)
-#define pm_runtime_mark_last_busy(x)
-#define pm_runtime_use_autosuspend(x)
-#define pm_runtime_put_autosuspend(x)
-#define pm_runtime_set_autosuspend_delay(x, y)
-#define pm_runtime_set_active(x)
-#define pm_runtime_allow(x)
-#define pm_runtime_put_noidle(x)
-
-static inline int
-pm_runtime_get_sync(struct device *dev)
-{
-	return 0;
-}
 
 #ifdef __macppc__
 static inline int
@@ -400,8 +268,6 @@ __copy_from_user_inatomic_nocache(void *to, const void *from, unsigned len)
 
 #endif
 
-struct address_space;
-
 /*
  * ACPI types and interfaces.
  */
@@ -420,28 +286,7 @@ acpi_status acpi_get_table(const char *, int, struct acpi_table_header **);
 #define acpi_video_register()
 #define acpi_video_unregister()
 
-void *memchr_inv(const void *, int, size_t);
-
-#define register_sysrq_key(x, y)
-
-struct pmu {
-};
-
-#define NOTIFY_DONE	0
-#define NOTIFY_OK	1
-#define NOTIFY_BAD	2
-
-#define might_sleep()
-#define might_sleep_if(x)
-
-#define add_taint(x, y)
-#define TAINT_MACHINE_CHECK	0
-#define LOCKDEP_STILL_OK	0
-
 #define smp_processor_id()	(curcpu()->ci_cpuid)
-
-#define ___stringify(x...)	#x
-#define __stringify(x...)	___stringify(x)
 
 #define sysfs_create_link(x, y, z)	0
 #define sysfs_remove_link(x, y)
@@ -450,37 +295,7 @@ struct pmu {
 
 #define POISON_INUSE	0xdb
 
-#define cec_notifier_set_phys_addr_from_edid(x, y)
-#define cec_notifier_phys_addr_invalidate(x)
-#define cec_notifier_put(x)
-#define cec_notifier_get_conn(x, y)			NULL
-
 #define typecheck(x, y)		1
-
-#define MBI_PMIC_BUS_ACCESS_BEGIN	1
-#define MBI_PMIC_BUS_ACCESS_END		2
-
-#define iosf_mbi_assert_punit_acquired()
-#define iosf_mbi_punit_acquire()
-#define iosf_mbi_punit_release()
-#define iosf_mbi_register_pmic_bus_access_notifier(x)			0
-#define iosf_mbi_unregister_pmic_bus_access_notifier_unlocked(x)	0
-
-#define UUID_STRING_LEN 36
-
-#define page_address(x)	VM_PAGE_TO_PHYS(x)
-
-typedef int (*cpu_stop_fn_t)(void *arg);
-
-static inline int
-stop_machine(cpu_stop_fn_t fn, void *arg, void *cpus)
-{
-	int r;
-	intr_disable();
-	r = (*fn)(arg);	
-	intr_enable();
-	return r;
-}
 
 #define put_pid(x)
 
@@ -520,10 +335,6 @@ static_cpu_has(uint16_t f)
 #endif
 
 #define kthread_stop(a)			STUB()
-
-#define prefetchw(x)	__builtin_prefetch(x,1)
-
-#define array_index_nospec(a, b)	(a)
 
 static inline int
 wake_up_process(struct proc *p)

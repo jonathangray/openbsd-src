@@ -7,6 +7,13 @@
 #include <sys/systm.h>
 #include <sys/stdarg.h>
 
+#define KERN_INFO	""
+#define KERN_WARNING	""
+#define KERN_NOTICE	""
+#define KERN_DEBUG	""
+#define KERN_CRIT	""
+#define KERN_ERR	""
+
 #ifndef pr_fmt
 #define pr_fmt(fmt) fmt
 #endif
