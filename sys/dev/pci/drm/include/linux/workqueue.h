@@ -31,9 +31,9 @@
 
 struct workqueue_struct;
 
-#define system_wq (struct workqueue_struct *)systq
-#define system_unbound_wq (struct workqueue_struct *)systq
-#define system_long_wq (struct workqueue_struct *)systq
+extern struct workqueue_struct *system_wq;
+extern struct workqueue_struct *system_unbound_wq;
+extern struct workqueue_struct *system_long_wq;
 
 #define WQ_HIGHPRI	1
 #define WQ_FREEZABLE	2
@@ -75,7 +75,7 @@ typedef void (*work_func_t)(struct work_struct *);
 static inline void
 INIT_WORK(struct work_struct *work, work_func_t func)
 {
-	work->tq = systq;
+	work->tq = (struct taskq *)system_wq;
 	task_set(&work->task, (void (*)(void *))func, work);
 }
 
@@ -110,7 +110,7 @@ typedef void (*irq_work_func_t)(struct irq_work *);
 static inline void
 init_irq_work(struct irq_work *work, irq_work_func_t func)
 {
-	work->tq = systq;
+	work->tq = (struct taskq *)system_wq;
 	task_set(&work->task, (void (*)(void *))func, work);
 }
 
@@ -159,7 +159,7 @@ schedule_work(struct work_struct *work)
 static inline bool
 schedule_delayed_work(struct delayed_work *dwork, int jiffies)
 {
-	dwork->tq = systq;
+	dwork->tq = (struct taskq *)system_wq;
 	return timeout_add(&dwork->to, jiffies);
 }
 

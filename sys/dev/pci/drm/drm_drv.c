@@ -191,6 +191,8 @@ drm_attach(struct device *parent, struct device *self, void *aux)
 	int bus, slot, func;
 	int ret;
 
+	drm_linux_init();
+
 	dev->dev = self;
 
 	dev->dev_private = parent;

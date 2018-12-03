@@ -91,7 +91,7 @@ flush_delayed_work(struct delayed_work *dwork)
 		tsleep(&barrier, PWAIT, "fldwto", 1);
 
 	task_set(&task, flush_barrier, &barrier);
-	task_add(dwork->tq ? dwork->tq : systq, &task);
+	task_add(dwork->tq ? dwork->tq : (struct taskq *)system_wq, &task);
 	while (!barrier) {
 		sleep_setup(&sls, &barrier, PWAIT, "fldwbar");
 		sleep_finish(&sls, !barrier);
@@ -1064,4 +1064,30 @@ autoremove_wake_function(struct wait_queue_entry *wqe, unsigned int mode,
 	default_wake_function(wqe, mode, sync, key);
 	list_del_init(&wqe->entry);
 	return 0;
+}
+
+struct workqueue_struct *system_wq;
+struct workqueue_struct *system_unbound_wq;
+struct workqueue_struct *system_long_wq;
+
+void
+drm_linux_init(void)
+{
+	if (system_wq == NULL) {
+		/*
+		 * We need at least 2 threads to prevent
+		 * intel_hpd_init_work() from blocking
+		 * i915_clflush_work() in inteldrm(4).
+		 */
+		system_wq = (struct workqueue_struct *)
+		    taskq_create("drmwq", 2, IPL_HIGH, 0);
+	}
+	if (system_unbound_wq == NULL) {
+		system_unbound_wq = (struct workqueue_struct *)
+		    taskq_create("drmubwq", 1, IPL_HIGH, 0);
+	}
+	if (system_unbound_wq == NULL) {
+		system_long_wq = (struct workqueue_struct *)
+		    taskq_create("drmlwq", 1, IPL_HIGH, 0);
+	}
 }

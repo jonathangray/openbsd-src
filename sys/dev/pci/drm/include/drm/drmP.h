@@ -252,6 +252,8 @@ struct drm_attach_args {
 
 extern int	drm_debug_flag;
 
+void	drm_linux_init(void);
+
 /* Device setup support (drm_drv.c) */
 int	drm_pciprobe(struct pci_attach_args *, const struct drm_pcidev * );
 struct device	*drm_attach_pci(struct drm_driver *, 
