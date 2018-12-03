@@ -1,4 +1,4 @@
-/*	$OpenBSD: parse.y,v 1.230 2018/11/08 13:24:22 gilles Exp $	*/
+/*	$OpenBSD: parse.y,v 1.232 2018/11/30 15:33:40 gilles Exp $	*/
 
 /*
  * Copyright (c) 2008 Gilles Chehade <gilles@poolp.org>
@@ -173,7 +173,7 @@ typedef struct {
 
 %token	ACTION ALIAS ANY ARROW AUTH AUTH_OPTIONAL
 %token	BACKUP BOUNCE
-%token	CA CERT CHROOT CIPHERS COMPRESSION CONNECT
+%token	CA CERT CHROOT CIPHERS COMMIT COMPRESSION CONNECT
 %token	CHECK_RDNS CHECK_REGEX CHECK_TABLE
 %token	DATA DHE DISCONNECT DOMAIN
 %token	EHLO ENABLE ENCRYPTION ERROR EXPAND_ONLY 
@@ -190,7 +190,7 @@ typedef struct {
 %token	PKI PORT PROC
 %token	QUEUE QUIT
 %token	RCPT_TO RECIPIENT RECEIVEDAUTH RELAY REJECT REPORT REWRITE RSET
-%token	SCHEDULER SENDER SENDERS SMTP SMTP_IN SMTPS SOCKET SRC SUB_ADDR_DELIM
+%token	SCHEDULER SENDER SENDERS SMTP SMTP_IN SMTP_OUT SMTPS SOCKET SRC SUB_ADDR_DELIM
 %token	TABLE TAG TAGGED TLS TLS_REQUIRE TTL
 %token	USER USERBASE
 %token	VERIFY VIRTUAL
@@ -491,11 +491,24 @@ REPORT SMTP_IN ON STRING {
 		YYERROR;
 	}
 	if (dict_get(conf->sc_smtp_reporters_dict, $4)) {
-		yyerror("processor already registered for smtp reporting: %s", $4);
+		yyerror("processor already registered for smtp-in reporting: %s", $4);
 		free($4);
 		YYERROR;
 	}
 	dict_set(conf->sc_smtp_reporters_dict, $4, (void *)~0);
+}
+| REPORT SMTP_OUT ON STRING {
+	if (! dict_get(conf->sc_processors_dict, $4)) {
+		yyerror("no processor exist with that name: %s", $4);
+		free($4);
+		YYERROR;
+	}
+	if (dict_get(conf->sc_mta_reporters_dict, $4)) {
+		yyerror("processor already registered for smtp-out reporting: %s", $4);
+		free($4);
+		YYERROR;
+	}
+	dict_set(conf->sc_mta_reporters_dict, $4, (void *)~0);
 }
 ;
 
@@ -1266,6 +1279,15 @@ NOOP {
 } filter_action_proc
 ;
 
+filter_phase_commit:
+COMMIT {
+	filter_rule->phase = FILTER_COMMIT;
+} filter_action_builtin
+| COMMIT {
+	filter_rule->phase = FILTER_COMMIT;
+} filter_action_proc
+;
+
 
 filter_phase:
 filter_phase_connect
@@ -1277,6 +1299,7 @@ filter_phase_connect
 | filter_phase_quit
 | filter_phase_noop
 | filter_phase_rset
+| filter_phase_commit
 ;
 
 filter:
@@ -1844,6 +1867,7 @@ lookup(char *s)
 		{ "check-table",	CHECK_TABLE },
 		{ "chroot",		CHROOT },
 		{ "ciphers",		CIPHERS },
+		{ "commit",		COMMIT },
 		{ "compression",	COMPRESSION },
 		{ "connect",		CONNECT },
 		{ "data",		DATA },
@@ -1904,6 +1928,7 @@ lookup(char *s)
 		{ "senders",   		SENDERS },
 		{ "smtp",		SMTP },
 		{ "smtp-in",		SMTP_IN },
+		{ "smtp-out",		SMTP_OUT },
 		{ "smtps",		SMTPS },
 		{ "socket",		SOCKET },
 		{ "src",		SRC },

@@ -1,4 +1,4 @@
-/*	$OpenBSD: smtp_report.c,v 1.4 2018/11/08 13:21:00 gilles Exp $	*/
+/*	$OpenBSD: smtp_report.c,v 1.5 2018/11/30 15:33:40 gilles Exp $	*/
 
 /*
  * Copyright (c) 2018 Gilles Chehade <gilles@poolp.org>
@@ -109,11 +109,12 @@ smtp_report_tx_commit(uint64_t qid, uint32_t msgid, size_t msgsz)
 }
 
 void
-smtp_report_tx_rollback(uint64_t qid)
+smtp_report_tx_rollback(uint64_t qid, uint32_t msgid)
 {
 	m_create(p_lka, IMSG_SMTP_REPORT_TX_ROLLBACK, 0, 0, -1);
 	m_add_time(p_lka, time(NULL));
 	m_add_id(p_lka, qid);
+	m_add_u32(p_lka, msgid);
 	m_close(p_lka);
 }
 
