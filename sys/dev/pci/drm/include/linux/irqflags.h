@@ -3,7 +3,6 @@
 #ifndef _LINUX_IRQFLAGS_H
 #define _LINUX_IRQFLAGS_H
 
-#include <sys/systm.h>	/* for cold */
 #include <machine/intr.h>
 
 #define local_irq_save(x)	(x) = splhigh()
@@ -15,7 +14,8 @@
 static inline int
 irqs_disabled(void)
 {
-	return (cold);
+	/* XXX not quite true */
+	return (1);
 }
 
 #endif
