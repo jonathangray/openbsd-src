@@ -1074,19 +1074,14 @@ void
 drm_linux_init(void)
 {
 	if (system_wq == NULL) {
-		/*
-		 * We need at least 2 threads to prevent
-		 * intel_hpd_init_work() from blocking
-		 * i915_clflush_work() in inteldrm(4).
-		 */
 		system_wq = (struct workqueue_struct *)
-		    taskq_create("drmwq", 2, IPL_HIGH, 0);
+		    taskq_create("drmwq", 1, IPL_HIGH, 0);
 	}
 	if (system_unbound_wq == NULL) {
 		system_unbound_wq = (struct workqueue_struct *)
 		    taskq_create("drmubwq", 1, IPL_HIGH, 0);
 	}
-	if (system_unbound_wq == NULL) {
+	if (system_long_wq == NULL) {
 		system_long_wq = (struct workqueue_struct *)
 		    taskq_create("drmlwq", 1, IPL_HIGH, 0);
 	}
