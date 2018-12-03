@@ -12571,24 +12571,13 @@ static void intel_atomic_commit_fence_wait(struct intel_atomic_state *intel_stat
 		prepare_to_wait(&intel_state->commit_ready.wait,
 				&wait_fence, TASK_UNINTERRUPTIBLE);
 
-		if (i915_sw_fence_done(&intel_state->commit_ready))
+		if (i915_sw_fence_done(&intel_state->commit_ready)
+		    || test_bit(I915_RESET_MODESET, &dev_priv->gpu_error.flags))
 			break;
 
 		schedule();
 	}
 	finish_wait(&intel_state->commit_ready.wait, &wait_fence);
-
-	init_wait_entry(&wait_reset, 0);
-	for (;;) {
-		prepare_to_wait(&dev_priv->gpu_error.wait_queue,
-				&wait_reset, TASK_UNINTERRUPTIBLE);
-
-		if (test_bit(I915_RESET_MODESET, &dev_priv->gpu_error.flags))
-			break;
-
-		schedule();
-	}
-	finish_wait(&dev_priv->gpu_error.wait_queue, &wait_reset);
 #endif
 }
 
