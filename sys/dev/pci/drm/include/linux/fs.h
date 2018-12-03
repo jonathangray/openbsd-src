@@ -8,6 +8,7 @@
 #include <linux/capability.h>
 #include <linux/linkage.h>
 #include <linux/uuid.h>
+#include <linux/pid.h>
 
 struct address_space;
 

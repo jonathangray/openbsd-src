@@ -74,4 +74,62 @@ access_ok(int type, const void *addr, unsigned long size)
 	return true;
 }
 
+#if defined(__i386__) || defined(__amd64__)
+
+static inline void
+pagefault_disable(void)
+{
+	KASSERT(curcpu()->ci_inatomic == 0);
+	curcpu()->ci_inatomic = 1;
+}
+
+static inline void
+pagefault_enable(void)
+{
+	KASSERT(curcpu()->ci_inatomic == 1);
+	curcpu()->ci_inatomic = 0;
+}
+
+static inline int
+pagefault_disabled(void)
+{
+	return curcpu()->ci_inatomic;
+}
+
+static inline unsigned long
+__copy_to_user_inatomic(void *to, const void *from, unsigned len)
+{
+	struct cpu_info *ci = curcpu();
+	int inatomic = ci->ci_inatomic;
+	int error;
+
+	ci->ci_inatomic = 1;
+	error = copyout(from, to, len);
+	ci->ci_inatomic = inatomic;
+
+	return (error ? len : 0);
+}
+
+static inline unsigned long
+__copy_from_user_inatomic(void *to, const void *from, unsigned len)
+{
+	struct cpu_info *ci = curcpu();
+	int inatomic = ci->ci_inatomic;
+	int error;
+
+	ci->ci_inatomic = 1;
+	error = copyin(from, to, len);
+	ci->ci_inatomic = inatomic;
+
+	return (error ? len : 0);
+}
+
+static inline unsigned long
+__copy_from_user_inatomic_nocache(void *to, const void *from, unsigned len)
+{
+	return __copy_from_user_inatomic(to, from, len);
+}
+
+#endif /* defined(__i386__) || defined(__amd64__) */
+
 #endif

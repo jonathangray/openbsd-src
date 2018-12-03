@@ -7,4 +7,6 @@
 
 #define DMA_BIT_MASK(n)	(((n) == 64) ? ~0ULL : (1ULL<<(n)) -1)
 
+#define dma_set_coherent_mask(x, y)	0
+
 #endif

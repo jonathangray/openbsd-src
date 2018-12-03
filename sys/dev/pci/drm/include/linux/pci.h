@@ -244,4 +244,30 @@ enum pci_bus_speed pcie_get_speed_cap(struct pci_dev *);
 #define pci_is_thunderbolt_attached(x) false
 #define pci_set_drvdata(x, y)
 
+#if defined(__amd64__) || defined(__i386__)
+
+#define PCI_DMA_BIDIRECTIONAL	0
+
+static inline dma_addr_t
+pci_map_page(struct pci_dev *pdev, struct vm_page *page, unsigned long offset, size_t size, int direction)
+{
+	return VM_PAGE_TO_PHYS(page);
+}
+
+static inline void
+pci_unmap_page(struct pci_dev *pdev, dma_addr_t dma_address, size_t size, int direction)
+{
+}
+
+static inline int
+pci_dma_mapping_error(struct pci_dev *pdev, dma_addr_t dma_addr)
+{
+	return 0;
+}
+
+#define pci_set_dma_mask(x, y)			0
+#define pci_set_consistent_dma_mask(x, y)	0
+
+#endif /* defined(__amd64__) || defined(__i386__) */
+
 #endif

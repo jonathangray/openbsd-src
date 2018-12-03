@@ -4,6 +4,7 @@
 #define _ASM_PGTABLE_H
 
 #include <machine/pmap.h>
+#include <machine/pte.h>
 #include <linux/types.h>
 
 #define pgprot_val(v)	(v)
@@ -29,5 +30,13 @@ pgprot_noncached(pgprot_t prot)
 	return prot | PMAP_NOCACHE;
 #endif
 }
+
+#if defined(__i386__) || defined(__amd64__)
+#define _PAGE_PRESENT	PG_V
+#define _PAGE_RW	PG_RW
+#define _PAGE_PAT	PG_PAT
+#define _PAGE_PWT	PG_WT
+#define _PAGE_PCD	PG_N
+#endif
 
 #endif

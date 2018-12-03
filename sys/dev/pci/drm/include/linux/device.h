@@ -22,6 +22,8 @@ struct device_driver {
 #define dev_set_drvdata(x, y)
 #define dev_name(dev)		""
 
+#define dev_pm_set_driver_flags(x, y)
+
 #define devm_kzalloc(x, y, z)	kzalloc(y, z)
 
 #define dev_warn(dev, fmt, arg...)				\

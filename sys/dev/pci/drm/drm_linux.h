@@ -25,11 +25,10 @@
 #include <sys/systm.h>
 #include <sys/proc.h>
 
-#include <uvm/uvm_extern.h>
-
 #include <dev/pci/pcivar.h>
 
 #include <linux/types.h>
+#include <linux/kconfig.h>
 
 /* The Linux code doesn't meet our usual standards! */
 #ifdef __clang__
@@ -46,17 +45,6 @@
 #endif
 
 #define STUB() do { printf("%s: stub\n", __func__); } while(0)
-
-#define CONFIG_DRM_FBDEV_OVERALLOC	0
-#define CONFIG_DRM_I915_DEBUG		0
-#define CONFIG_DRM_I915_DEBUG_GEM	0
-#define CONFIG_PM			0
-
-#if BYTE_ORDER == BIG_ENDIAN
-#define __BIG_ENDIAN
-#else
-#define __LITTLE_ENDIAN
-#endif
 
 #define le16_to_cpu(x) letoh16(x)
 #define le32_to_cpu(x) letoh32(x)
@@ -76,98 +64,12 @@
 
 #define KHZ2PICOS(a)	(1000000000UL/(a))
 
-#define order_base_2(x) drm_order(x)
-
-#define u64_to_user_ptr(x)	((void *)(uintptr_t)(x))
-
 #ifndef PCI_MEM_START
 #define PCI_MEM_START	0
 #endif
 
 #ifndef PCI_MEM_END
 #define PCI_MEM_END	0xffffffff
-#endif
-
-enum dmi_field {
-        DMI_NONE,
-        DMI_BIOS_VENDOR,
-        DMI_BIOS_VERSION,
-        DMI_BIOS_DATE,
-        DMI_SYS_VENDOR,
-        DMI_PRODUCT_NAME,
-        DMI_PRODUCT_VERSION,
-        DMI_PRODUCT_SERIAL,
-        DMI_PRODUCT_UUID,
-        DMI_BOARD_VENDOR,
-        DMI_BOARD_NAME,
-        DMI_BOARD_VERSION,
-        DMI_BOARD_SERIAL,
-        DMI_BOARD_ASSET_TAG,
-        DMI_CHASSIS_VENDOR,
-        DMI_CHASSIS_TYPE,
-        DMI_CHASSIS_VERSION,
-        DMI_CHASSIS_SERIAL,
-        DMI_CHASSIS_ASSET_TAG,
-        DMI_STRING_MAX,
-};
-
-struct dmi_strmatch {
-	unsigned char slot;
-	char substr[79];
-};
-
-struct dmi_system_id {
-        int (*callback)(const struct dmi_system_id *);
-        const char *ident;
-        struct dmi_strmatch matches[4];
-};
-#define	DMI_MATCH(a, b) {(a), (b)}
-#define	DMI_EXACT_MATCH(a, b) {(a), (b)}
-int dmi_check_system(const struct dmi_system_id *);
-bool dmi_match(int, const char *);
-
-#define dev_pm_set_driver_flags(x, y)
-
-static inline int
-vga_client_register(struct pci_dev *a, void *b, void *c, void *d)
-{
-	return -ENODEV;
-}
-
-#if defined(__amd64__) || defined(__i386__)
-
-#define AGP_USER_MEMORY			0
-#define AGP_USER_CACHED_MEMORY		BUS_DMA_COHERENT
-
-#define PCI_DMA_BIDIRECTIONAL	0
-
-static inline dma_addr_t
-pci_map_page(struct pci_dev *pdev, struct vm_page *page, unsigned long offset, size_t size, int direction)
-{
-	return VM_PAGE_TO_PHYS(page);
-}
-
-static inline void
-pci_unmap_page(struct pci_dev *pdev, dma_addr_t dma_address, size_t size, int direction)
-{
-}
-
-static inline int
-pci_dma_mapping_error(struct pci_dev *pdev, dma_addr_t dma_addr)
-{
-	return 0;
-}
-
-#define pci_set_dma_mask(x, y)			0
-#define pci_set_consistent_dma_mask(x, y)	0
-
-#define dma_set_coherent_mask(x, y)	0
-
-#define VGA_RSRC_LEGACY_IO	0x01
-
-void vga_get_uninterruptible(struct pci_dev *, int);
-void vga_put(struct pci_dev *, int);
-
 #endif
 
 #define roundup2(x, y) (((x)+((y)-1))&(~((y)-1))) /* if y is powers of two */
@@ -191,10 +93,6 @@ gcd(unsigned long a, unsigned long b)
 	return (b);
 }
 
-#define cpu_relax_lowlatency() CPU_BUSY_CYCLE()
-#define cpu_has_pat	1
-#define cpu_has_clflush	1
-
 #ifdef __macppc__
 static inline int
 of_machine_is_compatible(const char *model)
@@ -202,70 +100,6 @@ of_machine_is_compatible(const char *model)
 	extern char *hw_prod;
 	return (strcmp(model, hw_prod) == 0);
 }
-#endif
-
-#if defined(__i386__) || defined(__amd64__)
-
-#define _PAGE_PRESENT	PG_V
-#define _PAGE_RW	PG_RW
-#define _PAGE_PAT	PG_PAT
-#define _PAGE_PWT	PG_WT
-#define _PAGE_PCD	PG_N
-
-static inline void
-pagefault_disable(void)
-{
-	KASSERT(curcpu()->ci_inatomic == 0);
-	curcpu()->ci_inatomic = 1;
-}
-
-static inline void
-pagefault_enable(void)
-{
-	KASSERT(curcpu()->ci_inatomic == 1);
-	curcpu()->ci_inatomic = 0;
-}
-
-static inline int
-pagefault_disabled(void)
-{
-	return curcpu()->ci_inatomic;
-}
-
-static inline unsigned long
-__copy_to_user_inatomic(void *to, const void *from, unsigned len)
-{
-	struct cpu_info *ci = curcpu();
-	int inatomic = ci->ci_inatomic;
-	int error;
-
-	ci->ci_inatomic = 1;
-	error = copyout(from, to, len);
-	ci->ci_inatomic = inatomic;
-
-	return (error ? len : 0);
-}
-
-static inline unsigned long
-__copy_from_user_inatomic(void *to, const void *from, unsigned len)
-{
-	struct cpu_info *ci = curcpu();
-	int inatomic = ci->ci_inatomic;
-	int error;
-
-	ci->ci_inatomic = 1;
-	error = copyin(from, to, len);
-	ci->ci_inatomic = inatomic;
-
-	return (error ? len : 0);
-}
-
-static inline unsigned long
-__copy_from_user_inatomic_nocache(void *to, const void *from, unsigned len)
-{
-	return __copy_from_user_inatomic(to, from, len);
-}
-
 #endif
 
 /*
@@ -296,8 +130,6 @@ acpi_status acpi_get_table(const char *, int, struct acpi_table_header **);
 #define POISON_INUSE	0xdb
 
 #define typecheck(x, y)		1
-
-#define put_pid(x)
 
 static inline int
 get_unused_fd_flags(unsigned int flags)

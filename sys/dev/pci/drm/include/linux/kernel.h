@@ -16,6 +16,7 @@
 #include <linux/bitops.h>
 #include <linux/log2.h>
 #include <linux/linkage.h>
+#include <linux/printk.h>
 
 #define swap(a, b) \
 	do { __typeof(a) __tmp = (a); (a) = (b); (b) = __tmp; } while(0)
@@ -124,5 +125,7 @@ _in_dbg_master(void)
 #define add_taint(x, y)
 #define TAINT_MACHINE_CHECK	0
 #define LOCKDEP_STILL_OK	0
+
+#define u64_to_user_ptr(x)	((void *)(uintptr_t)(x))
 
 #endif
