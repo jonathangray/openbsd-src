@@ -2825,9 +2825,6 @@ unlock:
 
 static bool i915_sg_trim(struct sg_table *orig_st)
 {
-	STUB();
-	return false;
-#ifdef notyet
 	struct sg_table new_st;
 	struct scatterlist *sg, *new_sg;
 	unsigned int i;
@@ -2850,7 +2847,6 @@ static bool i915_sg_trim(struct sg_table *orig_st)
 
 	*orig_st = new_st;
 	return true;
-#endif
 }
 
 static int i915_gem_object_get_pages_gtt(struct drm_i915_gem_object *obj)

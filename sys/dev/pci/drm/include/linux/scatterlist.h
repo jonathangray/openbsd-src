@@ -44,6 +44,12 @@ struct sg_page_iter {
 #define sg_is_last(sg)		((sg)->end)
 #define sg_chain_ptr(sg)	NULL
 
+static inline struct scatterlist *
+sg_next(struct scatterlist *sgl)
+{
+	return sg_is_last(sgl) ? NULL : ++sgl;
+}
+
 int sg_alloc_table(struct sg_table *, unsigned int, gfp_t);
 void sg_free_table(struct sg_table *);
 
@@ -106,6 +112,9 @@ sg_set_page(struct scatterlist *sgl, struct vm_page *page,
 
 #define sg_dma_address(sg)	((sg)->dma_address)
 #define sg_dma_len(sg)		((sg)->length)
+
+#define for_each_sg(sgl, sg, nents, i) \
+  for (i = 0, sg = (sgl); i < (nents); i++, sg = sg_next(sg))
 
 #define for_each_sg_page(sgl, iter, nents, pgoffset) \
   __sg_page_iter_start((iter), (sgl), (nents), (pgoffset)); \
