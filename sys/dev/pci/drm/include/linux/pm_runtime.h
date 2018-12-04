@@ -5,6 +5,7 @@
 
 #include <sys/types.h>
 #include <sys/device.h>
+#include <linux/pm.h>
 
 #define pm_runtime_mark_last_busy(x)
 #define pm_runtime_use_autosuspend(x)

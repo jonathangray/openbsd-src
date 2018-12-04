@@ -11,6 +11,7 @@
 #include <linux/slab.h>
 #include <linux/ioport.h>
 #include <linux/lockdep.h>
+#include <linux/pm.h>
 
 struct device_node;
 
