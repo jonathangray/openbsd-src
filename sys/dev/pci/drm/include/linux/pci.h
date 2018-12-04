@@ -18,8 +18,13 @@
 #ifndef _LINUX_PCI_H
 #define _LINUX_PCI_H
 
+#include <sys/types.h>
 #include <dev/pci/pcireg.h>
 #include <dev/pci/pcivar.h>
+#include <sys/srp.h>
+#include <machine/cpu.h>
+#include <uvm/uvm_extern.h>
+
 #include <linux/io.h>
 #include <linux/ioport.h>
 #include <linux/kobject.h>
