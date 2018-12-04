@@ -2966,14 +2966,10 @@ rebuild_st:
 		/* Check that the i965g/gm workaround works. */
 		WARN_ON((gfp & __GFP_DMA32) && (last_pfn >= 0x00100000UL));
 	}
-	if (sg) { /* loop terminated early; short sg table */
-		sg_page_sizes |= sg->length;
-		sg_mark_end(sg);
-	}
 #else
 	sg = st->sgl;
 	st->nents = 0;
-	sg_page_sizes = PAGE_SIZE;
+	sg_page_sizes = 0;
 
 	TAILQ_INIT(&plist);
 	if (uvm_objwire(obj->base.uao, 0, obj->base.size, &plist)) {
@@ -2983,13 +2979,19 @@ rebuild_st:
 
 	i = 0;
 	TAILQ_FOREACH(page, &plist, pageq) {
+		if (i) {
+			sg_page_sizes |= sg->length;
+			sg = sg_next(sg);
+		}
 		st->nents++;
-		sg_dma_address(sg) = VM_PAGE_TO_PHYS(page);
-		sg_dma_len(sg) = PAGE_SIZE;
-		sg++;
+		sg_set_page(sg, page, PAGE_SIZE, 0);
 		i++;
 	}
 #endif
+	if (sg) { /* loop terminated early; short sg table */
+		sg_page_sizes |= sg->length;
+		sg_mark_end(sg);
+	}
 
 	/* Trim unused sg entries to avoid wasting memory. */
 	i915_sg_trim(st);
