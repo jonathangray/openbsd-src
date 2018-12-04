@@ -1074,8 +1074,13 @@ void
 drm_linux_init(void)
 {
 	if (system_wq == NULL) {
+		/*
+		 * We need at least two threads to prevent
+		 * intel_hpd_init_work() from blocking other work
+		 * items in inteldrm(4).
+		 */
 		system_wq = (struct workqueue_struct *)
-		    taskq_create("drmwq", 1, IPL_HIGH, 0);
+		    taskq_create("drmwq", 2, IPL_HIGH, 0);
 	}
 	if (system_unbound_wq == NULL) {
 		system_unbound_wq = (struct workqueue_struct *)
