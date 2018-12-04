@@ -1,6 +1,6 @@
 /*	$OpenBSD$	*/
 /*
- * Copyright (c) 2015 Mark Kettenis
+ * Copyright (c) 2015, 2018 Mark Kettenis
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -46,12 +46,13 @@ _wait_for_completion_timeout(struct completion *x, u_long timo LOCK_FL_VARS)
 
 	_mtx_enter(&x->wait.lock LOCK_FL_ARGS);
 	while (x->done == 0) {
-		ret = msleep(x, &x->wait.lock, 0, "wfcit", 0);
+		ret = msleep(x, &x->wait.lock, 0, "wfct", timo);
 		if (ret) {
 			_mtx_leave(&x->wait.lock LOCK_FL_ARGS);
 			return (ret == EWOULDBLOCK) ? 0 : -ret;
 		}
 	}
+	x->done--;
 	_mtx_leave(&x->wait.lock LOCK_FL_ARGS);
 
 	return 1;
@@ -68,12 +69,13 @@ _wait_for_completion_interruptible(struct completion *x LOCK_FL_VARS)
 
 	_mtx_enter(&x->wait.lock LOCK_FL_ARGS);
 	while (x->done == 0) {
-		ret = msleep(x, &x->wait.lock, PCATCH, "wfcit", 0);
+		ret = msleep(x, &x->wait.lock, PCATCH, "wfci", 0);
 		if (ret) {
 			_mtx_leave(&x->wait.lock LOCK_FL_ARGS);
 			return (ret == EWOULDBLOCK) ? 0 : -ret;
 		}
 	}
+	x->done--;
 	_mtx_leave(&x->wait.lock LOCK_FL_ARGS);
 
 	return 1;
@@ -97,6 +99,7 @@ _wait_for_completion_interruptible_timeout(struct completion *x, u_long timo
 			return (ret == EWOULDBLOCK) ? 0 : -ret;
 		}
 	}
+	x->done--;
 	_mtx_leave(&x->wait.lock LOCK_FL_ARGS);
 
 	return 1;
@@ -108,7 +111,7 @@ static inline void
 _complete_all(struct completion *x LOCK_FL_VARS)
 {
 	_mtx_enter(&x->wait.lock LOCK_FL_ARGS);
-	x->done = 1;
+	x->done = UINT_MAX;
 	_mtx_leave(&x->wait.lock LOCK_FL_ARGS);
 	wakeup(x);
 }
@@ -117,9 +120,11 @@ _complete_all(struct completion *x LOCK_FL_VARS)
 static inline bool
 _try_wait_for_completion(struct completion *x LOCK_FL_VARS)
 {
-	if (!x->done)
-		return false;
 	_mtx_enter(&x->wait.lock LOCK_FL_ARGS);
+	if (x->done == 0) {
+		_mtx_leave(&x->wait.lock LOCK_FL_ARGS);
+		return false;
+	}
 	x->done--;
 	_mtx_leave(&x->wait.lock LOCK_FL_ARGS);
 	return true;
