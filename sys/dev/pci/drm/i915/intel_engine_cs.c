@@ -1291,8 +1291,6 @@ static void hexdump(struct drm_printer *m, const void *buf, size_t len)
 static void intel_engine_print_registers(const struct intel_engine_cs *engine,
 					 struct drm_printer *m)
 {
-	STUB();
-#ifdef notyet
 	struct drm_i915_private *dev_priv = engine->i915;
 	const struct intel_engine_execlists * const execlists =
 		&engine->execlists;
@@ -1366,6 +1364,7 @@ static void intel_engine_print_registers(const struct intel_engine_cs *engine,
 		ptr = I915_READ(RING_CONTEXT_STATUS_PTR(engine));
 		read = GEN8_CSB_READ_PTR(ptr);
 		write = GEN8_CSB_WRITE_PTR(ptr);
+#ifdef notyet
 		drm_printf(m, "\tExeclist CSB read %d [%d cached], write %d [%d from hws], tasklet queued? %s (%s)\n",
 			   read, execlists->csb_head,
 			   write,
@@ -1373,6 +1372,7 @@ static void intel_engine_print_registers(const struct intel_engine_cs *engine,
 			   yesno(test_bit(TASKLET_STATE_SCHED,
 					  &engine->execlists.tasklet.state)),
 			   enableddisabled(!atomic_read(&engine->execlists.tasklet.count)));
+#endif
 		if (read >= GEN8_CSB_ENTRIES)
 			read = 0;
 		if (write >= GEN8_CSB_ENTRIES)
@@ -1417,7 +1417,6 @@ static void intel_engine_print_registers(const struct intel_engine_cs *engine,
 		drm_printf(m, "\tPP_DIR_DCLV: 0x%08x\n",
 			   I915_READ(RING_PP_DIR_DCLV(engine)));
 	}
-#endif
 }
 
 static void print_request_ring(struct drm_printer *m, struct i915_request *rq)
@@ -1457,8 +1456,6 @@ void intel_engine_dump(struct intel_engine_cs *engine,
 		       struct drm_printer *m,
 		       const char *header, ...)
 {
-	STUB();
-#ifdef notyet
 	const int MAX_REQUESTS_TO_SHOW = 8;
 	struct intel_breadcrumbs * const b = &engine->breadcrumbs;
 	const struct intel_engine_execlists * const execlists = &engine->execlists;
@@ -1578,8 +1575,13 @@ void intel_engine_dump(struct intel_engine_cs *engine,
 	for (rb = rb_first(&b->waiters); rb; rb = rb_next(rb)) {
 		struct intel_wait *w = rb_entry(rb, typeof(*w), node);
 
+#ifdef __linux__
 		drm_printf(m, "\t%s [%d] waiting for %x\n",
 			   w->tsk->comm, w->tsk->pid, w->seqno);
+#else
+		drm_printf(m, "\t%s [%d] waiting for %x\n",
+			   w->tsk->p_p->ps_comm, w->tsk->p_p->ps_pid, w->seqno);
+#endif
 	}
 	spin_unlock(&b->rb_lock);
 	local_irq_restore(flags);
@@ -1593,7 +1595,6 @@ void intel_engine_dump(struct intel_engine_cs *engine,
 	hexdump(m, engine->status_page.page_addr, PAGE_SIZE);
 
 	drm_printf(m, "Idle? %s\n", yesno(intel_engine_is_idle(engine)));
-#endif
 }
 
 static u8 user_class_map[] = {
