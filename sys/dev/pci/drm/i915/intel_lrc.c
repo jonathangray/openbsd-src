@@ -2287,17 +2287,17 @@ static int gen8_init_rcs_context(struct i915_request *rq)
  */
 void intel_logical_ring_cleanup(struct intel_engine_cs *engine)
 {
-	STUB();
-#ifdef notyet
 	struct drm_i915_private *dev_priv;
 
 	/*
 	 * Tasklet cannot be active at this point due intel_mark_active/idle
 	 * so this is just for documentation.
 	 */
+#ifdef notyet
 	if (WARN_ON(test_bit(TASKLET_STATE_SCHED,
 			     &engine->execlists.tasklet.state)))
 		tasklet_kill(&engine->execlists.tasklet);
+#endif
 
 	dev_priv = engine->i915;
 
@@ -2315,7 +2315,6 @@ void intel_logical_ring_cleanup(struct intel_engine_cs *engine)
 	engine->i915 = NULL;
 	dev_priv->engine[engine->id] = NULL;
 	kfree(engine);
-#endif
 }
 
 void intel_execlists_set_default_submission(struct intel_engine_cs *engine)
@@ -2418,9 +2417,6 @@ static bool csb_force_mmio(struct drm_i915_private *i915)
 
 static int logical_ring_init(struct intel_engine_cs *engine)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
 	struct drm_i915_private *i915 = engine->i915;
 	struct intel_engine_execlists * const execlists = &engine->execlists;
 	int ret;
@@ -2473,7 +2469,6 @@ static int logical_ring_init(struct intel_engine_cs *engine)
 error:
 	intel_logical_ring_cleanup(engine);
 	return ret;
-#endif
 }
 
 int logical_render_ring_init(struct intel_engine_cs *engine)
