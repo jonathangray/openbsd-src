@@ -3468,7 +3468,7 @@ inteldrm_attach(struct device *parent, struct device *self, void *aux)
 	dev_priv->dmat = pa->pa_dmat;
 	dev_priv->bst = pa->pa_memt;
 	dev_priv->memex = pa->pa_memex;
-	dev_priv->regs = &dev_priv->bar;
+	dev_priv->vga_regs = &dev_priv->bar;
 
 	if (PCI_CLASS(pa->pa_class) == PCI_CLASS_DISPLAY &&
 	    PCI_SUBCLASS(pa->pa_class) == PCI_SUBCLASS_DISPLAY_VGA &&
@@ -3542,10 +3542,17 @@ inteldrm_attach(struct device *parent, struct device *self, void *aux)
 		mmio_size = 2*1024*1024;
 
 	mmio_type = pci_mapreg_type(pa->pa_pc, pa->pa_tag, mmio_bar);
-	if (pci_mapreg_map(pa, mmio_bar, mmio_type, 0, &dev_priv->regs->bst,
-	    &dev_priv->regs->bsh, &dev_priv->regs->base,
-	    &dev_priv->regs->size, mmio_size)) {
+	if (pci_mapreg_map(pa, mmio_bar, mmio_type, BUS_SPACE_MAP_LINEAR,
+	    &dev_priv->vga_regs->bst, &dev_priv->vga_regs->bsh,
+	    &dev_priv->vga_regs->base, &dev_priv->vga_regs->size, mmio_size)) {
 		printf("%s: can't map registers\n",
+		    dev_priv->sc_dev.dv_xname);
+		return;
+	}
+	dev_priv->regs = bus_space_vaddr(dev_priv->vga_regs->bst,
+	     dev_priv->vga_regs->bsh);
+	if (dev_priv->regs == NULL) {
+		printf("%s: bus_space_vaddr registers failed\n",
 		    dev_priv->sc_dev.dv_xname);
 		return;
 	}

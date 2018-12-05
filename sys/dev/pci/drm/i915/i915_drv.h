@@ -122,28 +122,6 @@ extern void intel_gtt_insert_sg_entries(struct sg_table *, unsigned int,
 extern void intel_gtt_clear_range(unsigned int, unsigned int);
 extern void intel_gmch_remove(void);
 
-#ifdef __i386__
-
-static inline u_int64_t
-bus_space_read_8(bus_space_tag_t t, bus_space_handle_t h, bus_size_t o)
-{
-	u_int64_t lo, hi;
-
-	lo = bus_space_read_4(t, h, o);
-	hi = bus_space_read_4(t, h, o + 4);
-	return (lo | (hi << 32));
-}
-
-static inline void
-bus_space_write_8(bus_space_tag_t t, bus_space_handle_t h, bus_size_t o,
-    u_int64_t v)
-{
-	bus_space_write_4(t, h, o, v);
-	bus_space_write_4(t, h, o + 4, v >> 32);
-}
-
-#endif
-
 /*
  * The Bridge device's PCI config space has information about the
  * fb aperture size and the amount of pre-reserved memory.
@@ -1738,6 +1716,7 @@ struct inteldrm_softc {
 	 */
 	resource_size_t stolen_usable_size;	/* Total size minus reserved ranges */
 
+	void __iomem *regs;
 	pci_chipset_tag_t pc;
 	pcitag_t tag;
 	struct extent *memex;
@@ -1745,7 +1724,7 @@ struct inteldrm_softc {
 	void *irqh;
 
 	struct vga_pci_bar bar;
-	struct vga_pci_bar *regs;
+	struct vga_pci_bar *vga_regs;
 
 	struct drm_pcidev *id;
 
@@ -3778,7 +3757,6 @@ static inline u64 intel_rc6_residency_us(struct drm_i915_private *dev_priv,
 #define POSTING_READ(reg)	(void)I915_READ_NOTRACE(reg)
 #define POSTING_READ16(reg)	(void)I915_READ16_NOTRACE(reg)
 
-#ifdef __linux__
 #define __raw_read(x, s) \
 static inline uint##x##_t __raw_i915_read##x(const struct drm_i915_private *dev_priv, \
 					     i915_reg_t reg) \
@@ -3793,7 +3771,7 @@ static inline void __raw_i915_write##x(const struct drm_i915_private *dev_priv, 
 	write##s(val, dev_priv->regs + i915_mmio_reg_offset(reg)); \
 }
 __raw_read(8, b)
-ed_raw_read(16, w)
+__raw_read(16, w)
 __raw_read(32, l)
 __raw_read(64, q)
 
@@ -3801,28 +3779,6 @@ __raw_write(8, b)
 __raw_write(16, w)
 __raw_write(32, l)
 __raw_write(64, q)
-#else
-#define __raw_i915_read8(dev_priv__, reg__) \
-    bus_space_read_1((dev_priv__)->regs->bst, (dev_priv__)->regs->bsh, (reg__.reg))
-#define __raw_i915_write8(dev_priv__, reg__, val__) \
-    bus_space_write_1((dev_priv__)->regs->bst, (dev_priv__)->regs->bsh, (reg__.reg), (val__))
-
-#define __raw_i915_read16(dev_priv__, reg__) \
-    bus_space_read_2((dev_priv__)->regs->bst, (dev_priv__)->regs->bsh, (reg__.reg))
-#define __raw_i915_write16(dev_priv__, reg__, val__) \
-    bus_space_write_2((dev_priv__)->regs->bst, (dev_priv__)->regs->bsh, (reg__.reg), (val__))
-
-#define __raw_i915_read32(dev_priv__, reg__) \
-    bus_space_read_4((dev_priv__)->regs->bst, (dev_priv__)->regs->bsh, (reg__.reg))
-#define __raw_i915_write32(dev_priv__, reg__, val__) \
-    bus_space_write_4((dev_priv__)->regs->bst, (dev_priv__)->regs->bsh, (reg__.reg), (val__))
-
-#define __raw_i915_read64(dev_priv__, reg__) \
-    bus_space_read_8((dev_priv__)->regs->bst, (dev_priv__)->regs->bsh, (reg__.reg))
-#define __raw_i915_write64(dev_priv__, reg__, val__) \
-    bus_space_write_8((dev_priv__)->regs->bst, (dev_priv__)->regs->bsh, (reg__.reg), (val__))
-
-#endif
 
 #undef __raw_read
 #undef __raw_write
@@ -3853,15 +3809,9 @@ __raw_write(64, q)
  * therefore generally be serialised, by either the dev_priv->uncore.lock or
  * a more localised lock guarding all access to that bank of registers.
  */
-#ifdef __linux__
 #define I915_READ_FW(reg__) __raw_i915_read32(dev_priv, (reg__))
 #define I915_WRITE_FW(reg__, val__) __raw_i915_write32(dev_priv, (reg__), (val__))
 #define I915_WRITE64_FW(reg__, val__) __raw_i915_write64(dev_priv, (reg__), (val__))
-#else
-#define I915_READ_FW(reg__) bus_space_read_4(dev_priv->regs->bst, dev_priv->regs->bsh, (reg__.reg))
-#define I915_WRITE_FW(reg__, val__) bus_space_write_4(dev_priv->regs->bst, dev_priv->regs->bsh, (reg__.reg), (val__))
-#define I915_WRITE64_FW(reg__, val__) bus_space_write_8(dev_priv->regs->bst, dev_priv->regs->bsh, (reg__.reg), (val__))
-#endif
 #define POSTING_READ_FW(reg__) (void)I915_READ_FW(reg__)
 
 /* "Broadcast RGB" property */

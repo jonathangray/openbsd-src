@@ -273,7 +273,7 @@ agp_i810_attach(struct device *parent, struct device *self, void *aux)
 		return;
 	}
 
-	isc->map = psc->regs;
+	isc->map = psc->vga_regs;
 
 	if (isc->chiptype == CHIP_I915 || isc->chiptype == CHIP_G33 ||
 	    isc->chiptype == CHIP_PINEVIEW) {
