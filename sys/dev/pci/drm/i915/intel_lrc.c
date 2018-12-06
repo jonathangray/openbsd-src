@@ -262,9 +262,6 @@ intel_lr_context_descriptor_update(struct i915_gem_context *ctx,
 static struct i915_priolist *
 lookup_priolist(struct intel_engine_cs *engine, int prio)
 {
-	STUB();
-	return NULL;
-#ifdef notyet
 	struct intel_engine_execlists * const execlists = &engine->execlists;
 	struct i915_priolist *p;
 	struct rb_node **parent, *rb;
@@ -276,7 +273,11 @@ lookup_priolist(struct intel_engine_cs *engine, int prio)
 find_priolist:
 	/* most positive priority is scheduled first, equal priorities fifo */
 	rb = NULL;
+#ifdef __linux__
 	parent = &execlists->queue.rb_root.rb_node;
+#else
+	parent = &execlists->queue.rb_node;
+#endif
 	while (*parent) {
 		rb = *parent;
 		p = to_priolist(rb);
@@ -321,7 +322,6 @@ find_priolist:
 	rb_insert_color_cached(&p->node, &execlists->queue, first);
 
 	return p;
-#endif
 }
 
 static void unwind_wa_tail(struct i915_request *rq)
