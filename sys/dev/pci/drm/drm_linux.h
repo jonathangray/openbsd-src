@@ -67,29 +67,7 @@ of_machine_is_compatible(const char *model)
 }
 #endif
 
-/*
- * ACPI types and interfaces.
- */
-
-typedef size_t acpi_size;
-typedef int acpi_status;
-
-struct acpi_table_header;
-
-#define ACPI_SUCCESS(x) ((x) == 0)
-
-#define AE_NOT_FOUND	0x0005
-
-acpi_status acpi_get_table(const char *, int, struct acpi_table_header **);
-
 #define POISON_INUSE	0xdb
-
-static inline int
-get_unused_fd_flags(unsigned int flags)
-{
-	STUB();
-	return -1;
-}
 
 #if defined(__amd64__) || defined(__i386__)
 
@@ -118,7 +96,5 @@ static_cpu_has(uint16_t f)
 #define boot_cpu_has(x) static_cpu_has(x)
 
 #endif
-
-#define kthread_stop(a)			STUB()
 
 #endif

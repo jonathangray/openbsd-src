@@ -25,6 +25,7 @@
 #include <sys/unistd.h>
 #include <linux/dma-buf.h>
 #include <linux/mod_devicetable.h>
+#include <linux/acpi.h>
 
 struct mutex sch_mtx = MUTEX_INITIALIZER(IPL_SCHED);
 void *sch_ident;
