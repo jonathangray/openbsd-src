@@ -62,6 +62,12 @@
 #include "drm_crtc_internal.h"
 #include <drm/drm_vblank.h>
 
+struct drm_softc {
+	struct device		sc_dev;
+	struct drm_device 	*sc_drm;
+	int			sc_allocated;
+};
+
 #ifdef DRMDEBUG
 int drm_debug_flag = 1;
 #endif
@@ -90,13 +96,15 @@ SPLAY_PROTOTYPE(drm_file_tree, drm_file, link, drm_file_cmp);
  * This function does all the pci-specific calculations for the 
  * drm_attach_args.
  */
-struct device *
+struct drm_device *
 drm_attach_pci(struct drm_driver *driver, struct pci_attach_args *pa,
-    int is_agp, int console, struct device *dev)
+    int is_agp, int console, struct device *dev, struct drm_device *drm)
 {
 	struct drm_attach_args arg;
+	struct drm_softc *sc;
 	pcireg_t subsys;
 
+	arg.drm = drm;
 	arg.driver = driver;
 	arg.dmat = pa->pa_dmat;
 	arg.bst = pa->pa_memt;
@@ -126,7 +134,11 @@ drm_attach_pci(struct drm_driver *driver, struct pci_attach_args *pa,
 	snprintf(arg.busid, arg.busid_len, "pci:%04x:%02x:%02x.%1x",
 	    pa->pa_domain, pa->pa_bus, pa->pa_device, pa->pa_function);
 
-	return (config_found_sm(dev, &arg, drmprint, drmsubmatch));
+	sc = (struct drm_softc *)config_found_sm(dev, &arg, drmprint, drmsubmatch);
+	if (sc == NULL)
+		return NULL;
+	
+	return sc->sc_drm;
 }
 
 int
@@ -186,15 +198,23 @@ drm_probe(struct device *parent, void *match, void *aux)
 void
 drm_attach(struct device *parent, struct device *self, void *aux)
 {
-	struct drm_device *dev = (struct drm_device *)self;
+	struct drm_softc *sc = (struct drm_softc *)self;
 	struct drm_attach_args *da = aux;
+	struct drm_device *dev = da->drm;
 	int bus, slot, func;
 	int ret;
 
 	drm_linux_init();
 
-	dev->dev = self;
+	if (dev == NULL) {
+		dev = malloc(sizeof(struct drm_device), M_DRM,
+		    M_WAITOK | M_ZERO);
+		sc->sc_allocated = 1;
+	}
 
+	sc->sc_drm = dev;
+
+	dev->dev = self;
 	dev->dev_private = parent;
 	dev->driver = da->driver;
 
@@ -229,11 +249,6 @@ drm_attach(struct device *parent, struct device *self, void *aux)
 	dev->bridgetag = da->bridgetag;
 	dev->pdev->tag = da->tag;
 	dev->pdev->pci = (struct pci_softc *)parent->dv_parent;
-
-	if (strcmp(parent->dv_cfdata->cf_driver->cd_name, "inteldrm") == 0) {
-		printf("\n");
-		return;
-	}
 
 	rw_init(&dev->struct_mutex, "drmdevlk");
 	mtx_init(&dev->event_lock, IPL_TTY);
@@ -280,7 +295,8 @@ error:
 int
 drm_detach(struct device *self, int flags)
 {
-	struct drm_device *dev = (struct drm_device *)self;
+	struct drm_softc *sc = (struct drm_softc *)self;
+	struct drm_device *dev = sc->sc_drm;
 
 	drm_lastclose(dev);
 
@@ -301,8 +317,10 @@ drm_detach(struct device *self, int flags)
 	}
 
 	free(dev->agp, M_DRM, 0);
-	dev->agp = NULL;
 	free(dev->pdev->bus->self, M_DRM, sizeof(struct pci_dev));
+
+	if (sc->sc_allocated)
+		free(dev, M_DRM, sizeof(struct drm_device));
 
 	return 0;
 }
@@ -331,7 +349,8 @@ drm_wakeup(struct drm_device *dev)
 int
 drm_activate(struct device *self, int act)
 {
-	struct drm_device *dev = (struct drm_device *)self;
+	struct drm_softc *sc = (struct drm_softc *)self;
+	struct drm_device *dev = sc->sc_drm;
 
 	switch (act) {
 	case DVACT_QUIESCE:
@@ -346,7 +365,7 @@ drm_activate(struct device *self, int act)
 }
 
 struct cfattach drm_ca = {
-	sizeof(struct drm_device), drm_probe, drm_attach,
+	sizeof(struct drm_softc), drm_probe, drm_attach,
 	drm_detach, drm_activate
 };
 
@@ -390,9 +409,12 @@ struct drm_device *
 drm_get_device_from_kdev(dev_t kdev)
 {
 	int unit = minor(kdev) & ((1 << CLONE_SHIFT) - 1);
+	struct drm_softc *sc;
 
-	if (unit < drm_cd.cd_ndevs)
-		return drm_cd.cd_devs[unit];
+	if (unit < drm_cd.cd_ndevs) {
+		sc = (struct drm_softc *)drm_cd.cd_devs[unit];
+		return sc->sc_drm;
+	}
 
 	return NULL;
 }

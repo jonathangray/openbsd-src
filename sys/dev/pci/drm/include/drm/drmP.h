@@ -227,6 +227,7 @@ struct drm_agp_head {
 #define DRM_SCANOUTPOS_ACCURATE     (1 << 2)
 
 struct drm_attach_args {
+	struct drm_device		*drm;
 	struct drm_driver		*driver;
 	char				*busid;
 	bus_dma_tag_t			 dmat;
@@ -256,8 +257,8 @@ void	drm_linux_init(void);
 
 /* Device setup support (drm_drv.c) */
 int	drm_pciprobe(struct pci_attach_args *, const struct drm_pcidev * );
-struct device	*drm_attach_pci(struct drm_driver *, 
-		     struct pci_attach_args *, int, int, struct device *);
+struct drm_device *drm_attach_pci(struct drm_driver *, 
+		     struct pci_attach_args *, int, int, struct device *, struct drm_device *);
 dev_type_ioctl(drmioctl);
 dev_type_read(drmread);
 dev_type_poll(drmpoll);

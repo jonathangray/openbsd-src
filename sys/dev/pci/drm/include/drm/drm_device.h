@@ -46,7 +46,6 @@ struct pci_dev;
  * DRM device functions structure
  */
 struct drm_device {
-	struct device	 device; /* softc is an extension of struct device */
 	struct device	*dev;
 
 	struct drm_driver *driver;

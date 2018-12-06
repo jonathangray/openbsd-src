@@ -3488,35 +3488,8 @@ inteldrm_attach(struct device *parent, struct device *self, void *aux)
 
 	printf("\n");
 
-	dev_priv->drmdev = (struct drm_device *)
-	    drm_attach_pci(&driver, pa, 0, dev_priv->console, self);
-	memcpy(&dev_priv->drm, dev_priv->drmdev, sizeof(struct drm_device));
-	dev = &dev_priv->drm;
-
-#if 1
-	/* XXX duplicates drm_attach() due to above */
-	rw_init(&dev->struct_mutex, "drmdevlk");
-	mtx_init(&dev->event_lock, IPL_TTY);
-	mtx_init(&dev->quiesce_mtx, IPL_NONE);
-	
-	SPLAY_INIT(&dev->files);
-	INIT_LIST_HEAD(&dev->vblank_event_list);
-
-	if (dev->driver->gem_size > 0) {
-		KASSERT(dev->driver->gem_size >= sizeof(struct drm_gem_object));
-		/* XXX unique name */
-		pool_init(&dev->objpl, dev->driver->gem_size, 0, IPL_NONE, 0,
-		    "drmobjpl", NULL);
-	}
-
-	if (dev->driver->driver_features & DRIVER_GEM) {
-		ret = drm_gem_init(dev);
-		if (ret) {
-			DRM_ERROR("Cannot initialize graphics execution manager (GEM)\n");
-			return;
-		}
-	}	
-#endif
+	dev = drm_attach_pci(&driver, pa, 0, dev_priv->console,
+	    self, &dev_priv->drm);
 
 	id = drm_find_description(PCI_VENDOR(pa->pa_id),
 	    PCI_PRODUCT(pa->pa_id), pciidlist);
@@ -3754,7 +3727,7 @@ inteldrm_firmware_backlight(struct inteldrm_softc *dev_priv,
 	memset(&props, 0, sizeof(props));
 	props.type = BACKLIGHT_FIRMWARE;
 	props.brightness = dp->curval;
-	bd = backlight_device_register(dev->device.dv_xname, NULL, NULL,
+	bd = backlight_device_register(dev->dev->dv_xname, NULL, NULL,
 	    &inteldrm_backlight_ops, &props);
 
 	list_for_each_entry(intel_connector,

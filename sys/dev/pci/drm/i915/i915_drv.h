@@ -1679,7 +1679,6 @@ struct inteldrm_softc {
 	bus_space_handle_t opregion_rvda_ioh;
 	bus_size_t opregion_rvda_size;
 
-	struct drm_device *drmdev;
 	struct drm_device drm;
 
 	struct pool objects;
