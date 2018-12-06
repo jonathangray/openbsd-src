@@ -630,7 +630,7 @@ drmclose(dev_t kdev, int flags, int fmt, struct proc *p)
 		dev->driver->preclose(dev, file_priv);
 
 	DRM_DEBUG("pid = %d, device = 0x%lx, open_count = %d\n",
-	    DRM_CURRENTPID, (long)&dev->device, dev->open_count);
+	    DRM_CURRENTPID, (long)&dev->dev, dev->open_count);
 
 	drm_events_release(file_priv, dev);
 
