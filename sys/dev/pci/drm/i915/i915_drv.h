@@ -3903,9 +3903,6 @@ wait_remaining_ms_from_jiffies(unsigned long timestamp_jiffies, int to_wait_ms)
 static inline bool
 __i915_request_irq_complete(const struct i915_request *rq)
 {
-	STUB();
-	return false;
-#ifdef notyet
 	struct intel_engine_cs *engine = rq->engine;
 	u32 seqno;
 
@@ -3970,7 +3967,11 @@ __i915_request_irq_complete(const struct i915_request *rq)
 		 * irq_posted == false but we are still running).
 		 */
 		spin_lock_irq(&b->irq_lock);
+#ifdef __linux__
 		if (b->irq_wait && b->irq_wait->tsk != current)
+#else
+		if (b->irq_wait && b->irq_wait->tsk != curproc)
+#endif
 			/* Note that if the bottom-half is changed as we
 			 * are sending the wake-up, the new bottom-half will
 			 * be woken by whomever made the change. We only have
@@ -3985,7 +3986,6 @@ __i915_request_irq_complete(const struct i915_request *rq)
 	}
 
 	return false;
-#endif
 }
 
 void i915_memcpy_init_early(struct drm_i915_private *dev_priv);
