@@ -77,6 +77,8 @@ RB_PROTOTYPE(linux_root, rb_node, __entry, panic_cmp);
 
 #define	rb_insert_color(node, root)					\
 	linux_root_RB_INSERT_COLOR((struct linux_root *)(root), (node))
+#define	rb_insert_color_cached(node, root, leftmost)			\
+	linux_root_RB_INSERT_COLOR((struct linux_root *)(root), (node))
 #define	rb_erase(node, root)						\
 	linux_root_RB_REMOVE((struct linux_root *)(root), (node))
 #define	rb_erase_cached(node, root)						\
