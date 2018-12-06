@@ -645,8 +645,6 @@ drmclose(dev_t kdev, int flags, int fmt, struct proc *p)
 	if (drm_core_check_feature(dev, DRIVER_GEM))
 		drm_gem_release(dev, file_priv);
 
-	mutex_lock(&dev->struct_mutex);
-
 	dev->buf_pgid = 0;
 
 	if (dev->driver->postclose)
@@ -654,6 +652,8 @@ drmclose(dev_t kdev, int flags, int fmt, struct proc *p)
 
 	if (drm_core_check_feature(dev, DRIVER_PRIME))
 		drm_prime_destroy_file_private(&file_priv->prime);
+
+	mutex_lock(&dev->struct_mutex);
 
 	SPLAY_REMOVE(drm_file_tree, &dev->files, file_priv);
 	free(file_priv, M_DRM, 0);
