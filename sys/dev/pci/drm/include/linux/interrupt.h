@@ -7,6 +7,7 @@
 #include <machine/intr.h>
 #include <linux/hardirq.h>
 #include <linux/irqflags.h>
+#include <linux/atomic.h>
 
 #ifndef STUB
 #include <sys/types.h>
@@ -25,6 +26,7 @@
 struct tasklet_struct {
 	void (*func)(unsigned long);
 	unsigned long data;
+	atomic_t count;
 };
 
 static inline void
@@ -49,7 +51,9 @@ static inline void
 tasklet_init(struct tasklet_struct *ts, void (*func)(unsigned long),
     unsigned long data)
 {
-	STUB();
+	ts->func = func;
+	ts->data = data;
+	atomic_set(&ts->count, 0);
 }
 
 static inline int
@@ -61,6 +65,12 @@ tasklet_trylock(struct tasklet_struct *ts)
 
 static inline void
 tasklet_unlock(struct tasklet_struct *ts)
+{
+	STUB();
+}
+
+static inline void
+tasklet_unlock_wait(struct tasklet_struct *ts)
 {
 	STUB();
 }
