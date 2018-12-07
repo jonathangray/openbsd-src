@@ -11,7 +11,8 @@
 
 #include "i915_sw_fence.h"
 #include "i915_selftest.h"
-#include "i915_drv.h"
+
+#pragma clang diagnostic ignored "-Wunused-function"
 
 #define I915_SW_FENCE_FLAG_ALLOC BIT(3) /* after WQ_FLAG_* for safety */
 

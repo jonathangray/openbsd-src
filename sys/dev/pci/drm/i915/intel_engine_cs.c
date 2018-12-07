@@ -334,10 +334,8 @@ int intel_engines_init_mmio(struct drm_i915_private *dev_priv)
 	int err;
 
 	WARN_ON(ring_mask == 0);
-#ifdef notyet
 	WARN_ON(ring_mask &
 		GENMASK(sizeof(mask) * BITS_PER_BYTE - 1, I915_NUM_ENGINES));
-#endif
 
 	for (i = 0; i < ARRAY_SIZE(intel_engines); i++) {
 		if (!HAS_ENGINE(dev_priv, i))
@@ -484,9 +482,7 @@ static void intel_engine_init_execlist(struct intel_engine_cs *engine)
 void intel_engine_setup_common(struct intel_engine_cs *engine)
 {
 	i915_timeline_init(engine->i915, &engine->timeline, engine->name);
-#ifdef notyet
 	lockdep_set_subclass(&engine->timeline.lock, TIMELINE_ENGINE);
-#endif
 
 	intel_engine_init_execlist(engine);
 	intel_engine_init_hangcheck(engine);

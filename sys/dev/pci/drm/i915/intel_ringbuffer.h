@@ -297,7 +297,7 @@ struct intel_engine_execlists {
 	/**
 	 * @queue: queue of requests, in priority lists
 	 */
-	struct rb_root queue;
+	struct rb_root_cached queue;
 
 	/**
 	 * @csb_read: control register for Context Switch buffer

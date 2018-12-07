@@ -27,8 +27,8 @@
 #include <linux/sched.h>
 #include <linux/seq_file.h>
 #include <linux/i2c.h>
-#include <drm/drmP.h>
 #include <drm/drm_dp_mst_helper.h>
+#include <drm/drmP.h>
 
 #include <drm/drm_fixed.h>
 #include <drm/drm_atomic.h>

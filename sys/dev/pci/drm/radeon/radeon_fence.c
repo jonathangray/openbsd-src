@@ -1066,6 +1066,7 @@ radeon_fence_wait_cb(struct dma_fence *fence, struct dma_fence_cb *cb)
 {
 	struct radeon_wait_cb *wait =
 		container_of(cb, struct radeon_wait_cb, base);
+
 	wake_up_process(wait->task);
 }
 

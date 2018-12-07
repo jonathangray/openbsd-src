@@ -26,7 +26,6 @@
 #define __I915_GEM_OBJECT_H__
 
 #include <linux/reservation.h>
-#include <linux/radix-tree.h>
 
 #include <drm/drm_vma_manager.h>
 #include <drm/drm_gem.h>

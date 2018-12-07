@@ -24,8 +24,8 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <drm/drmP.h>
 #include <drm/drm_vblank.h>
+#include <drm/drmP.h>
 #include <linux/export.h>
 
 #include "drm_trace.h"

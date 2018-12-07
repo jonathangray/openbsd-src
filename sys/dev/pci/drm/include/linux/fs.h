@@ -9,6 +9,7 @@
 #include <linux/linkage.h>
 #include <linux/uuid.h>
 #include <linux/pid.h>
+#include <linux/radix-tree.h>
 
 struct address_space;
 

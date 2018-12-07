@@ -3,11 +3,13 @@
 #ifndef _LINUX_SEQLOCK_H
 #define _LINUX_SEQLOCK_H
 
+#include <sys/types.h>
 #include <sys/mutex.h>
 #include <sys/atomic.h>
 #include <linux/lockdep.h>
 #include <linux/processor.h>
 #include <linux/preempt.h>
+#include <linux/compiler.h>
 
 typedef struct {
 	unsigned int sequence;

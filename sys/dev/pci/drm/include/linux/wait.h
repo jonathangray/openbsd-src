@@ -22,8 +22,10 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/mutex.h>
+
 #include <linux/list.h>
 #include <linux/errno.h>
+#include <linux/spinlock.h>
 
 struct wait_queue_entry;
 

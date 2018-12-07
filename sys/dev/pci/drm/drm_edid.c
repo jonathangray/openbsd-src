@@ -1670,6 +1670,7 @@ out:
 	kfree(edid);
 	return NULL;
 }
+EXPORT_SYMBOL_GPL(drm_do_get_edid);
 
 /**
  * drm_probe_ddc() - probe DDC presence

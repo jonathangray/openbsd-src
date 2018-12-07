@@ -94,8 +94,6 @@ struct inteldrm_softc;
 
 #include "intel_gvt.h"
 
-struct sg_table;
-
 #include <dev/ic/mc6845reg.h>
 #include <dev/ic/pcdisplayvar.h>
 #include <dev/ic/vgareg.h>

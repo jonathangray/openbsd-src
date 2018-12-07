@@ -128,7 +128,7 @@ rb_replace_node(struct rb_node *victim, struct rb_node *new,
 
 #undef RB_ROOT
 #define RB_ROOT		(struct rb_root) { NULL }
-#define RB_ROOT_CACHED	(struct rb_root) { NULL }
+#define RB_ROOT_CACHED	(struct rb_root_cached) { NULL }
 
 struct interval_tree_node {
 	struct rb_node rb;

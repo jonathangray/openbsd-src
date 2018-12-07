@@ -6,6 +6,7 @@
 #include <sys/stdint.h>
 #include <sys/rwlock.h>
 #include <linux/list.h>
+#include <linux/spinlock_types.h>
 
 #define DEFINE_MUTEX(x)		struct rwlock x
 
