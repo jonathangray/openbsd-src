@@ -2199,9 +2199,6 @@ i915_gem_do_execbuffer(struct drm_device *dev,
 		       struct drm_i915_gem_exec_object2 *exec,
 		       struct drm_syncobj **fences)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
 	struct i915_execbuffer eb;
 	struct dma_fence *in_fence = NULL;
 	struct sync_file *out_fence = NULL;
@@ -2453,7 +2450,6 @@ err_out_fence:
 err_in_fence:
 	dma_fence_put(in_fence);
 	return err;
-#endif
 }
 
 static size_t eb_element_size(void)
