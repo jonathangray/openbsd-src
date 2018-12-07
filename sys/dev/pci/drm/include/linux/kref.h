@@ -18,6 +18,7 @@
 #ifndef _LINUX_KREF_H
 #define _LINUX_KREF_H
 
+#include <sys/types.h>
 #include <sys/rwlock.h>
 #include <sys/atomic.h>
 #include <linux/atomic.h>
