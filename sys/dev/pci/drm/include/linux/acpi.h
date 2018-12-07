@@ -4,6 +4,12 @@
 #define _LINUX_ACPI_H
 
 #include <sys/types.h>
+#include <sys/param.h>
+
+#ifdef __HAVE_ACPI
+#include <dev/acpi/acpireg.h>
+#include <dev/acpi/acpivar.h>
+#endif
 
 typedef size_t acpi_size;
 typedef int acpi_status;
