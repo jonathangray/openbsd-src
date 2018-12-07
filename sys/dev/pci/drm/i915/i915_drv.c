@@ -1217,10 +1217,8 @@ static int i915_driver_init_hw(struct drm_i915_private *dev_priv)
 		}
 	}
 
-#ifdef notyet
 	pm_qos_add_request(&dev_priv->pm_qos, PM_QOS_CPU_DMA_LATENCY,
 			   PM_QOS_DEFAULT_VALUE);
-#endif
 
 	intel_uncore_sanitize(dev_priv);
 
@@ -1261,9 +1259,7 @@ static int i915_driver_init_hw(struct drm_i915_private *dev_priv)
 err_msi:
 	if (pdev->msi_enabled)
 		pci_disable_msi(pdev);
-#ifdef notyet
 	pm_qos_remove_request(&dev_priv->pm_qos);
-#endif
 err_ggtt:
 	i915_ggtt_cleanup_hw(dev_priv);
 err_perf:

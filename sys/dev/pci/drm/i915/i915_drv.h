@@ -1802,9 +1802,7 @@ struct inteldrm_softc {
 	bool display_irqs_enabled;
 
 	/* To control wakeup latency, e.g. for irq-driven dp aux transfers. */
-#ifdef notyet
 	struct pm_qos_request pm_qos;
-#endif
 
 	/* Sideband mailbox protection */
 	struct rwlock sb_lock;
