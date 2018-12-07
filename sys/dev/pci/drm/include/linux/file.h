@@ -7,6 +7,10 @@
 #include <sys/types.h> 
 #include <sys/systm.h>
 
+#define fput(a)
+#define fd_install(a, b)
+#define put_unused_fd(a)
+
 static inline int
 get_unused_fd_flags(unsigned int flags)
 {
