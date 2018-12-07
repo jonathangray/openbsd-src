@@ -78,7 +78,7 @@ _wait_for_completion_interruptible(struct completion *x LOCK_FL_VARS)
 	x->done--;
 	_mtx_leave(&x->wait.lock LOCK_FL_ARGS);
 
-	return 1;
+	return 0;
 }
 #define wait_for_completion_interruptible(x)	\
 	_wait_for_completion_interruptible(x LOCK_FILE_LINE)
