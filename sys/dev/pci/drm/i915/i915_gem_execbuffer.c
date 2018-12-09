@@ -41,6 +41,8 @@
 #include "intel_drv.h"
 #include "intel_frontbuffer.h"
 
+#define clflushopt(x) clflush((uintptr_t)(x))
+
 enum {
 	FORCE_CPU_RELOC = 1,
 	FORCE_GTT_RELOC,
@@ -268,6 +270,10 @@ struct i915_execbuffer {
 		struct i915_request *rq;
 		u32 *rq_cmd;
 		unsigned int rq_size;
+
+		struct agp_map *map;
+		bus_space_tag_t iot;
+		bus_space_handle_t ioh;
 	} reloc_cache;
 
 	u64 invalid_flags; /** Set of execobj.flags that are invalid */
@@ -911,6 +917,9 @@ static void reloc_cache_init(struct reloc_cache *cache,
 	cache->node.allocated = false;
 	cache->rq = NULL;
 	cache->rq_size = 0;
+
+	cache->map = i915->agph;
+	cache->iot = i915->bst;
 }
 
 static inline void *unmask_page(unsigned long p)
@@ -945,8 +954,6 @@ static void reloc_gpu_flush(struct reloc_cache *cache)
 
 static void reloc_cache_reset(struct reloc_cache *cache)
 {
-	STUB();
-#ifdef notyet
 	void *vaddr;
 
 	if (cache->rq)
@@ -964,7 +971,11 @@ static void reloc_cache_reset(struct reloc_cache *cache)
 		i915_gem_obj_finish_shmem_access((struct drm_i915_gem_object *)cache->node.mm);
 	} else {
 		wmb();
+#ifdef __linux__
 		io_mapping_unmap_atomic((void __iomem *)vaddr);
+#else
+		agp_unmap_atomic(cache->map, cache->ioh);
+#endif
 		if (cache->node.allocated) {
 			struct i915_ggtt *ggtt = cache_to_ggtt(cache);
 
@@ -979,7 +990,6 @@ static void reloc_cache_reset(struct reloc_cache *cache)
 
 	cache->vaddr = 0;
 	cache->page = -1;
-#endif
 }
 
 static void *reloc_kmap(struct drm_i915_gem_object *obj,
@@ -1020,15 +1030,16 @@ static void *reloc_iomap(struct drm_i915_gem_object *obj,
 			 struct reloc_cache *cache,
 			 unsigned long page)
 {
-	STUB();
-	return NULL;
-#ifdef notyet
 	struct i915_ggtt *ggtt = cache_to_ggtt(cache);
 	unsigned long offset;
 	void *vaddr;
 
 	if (cache->vaddr) {
+#ifdef __linux__
 		io_mapping_unmap_atomic((void __force __iomem *) unmask_page(cache->vaddr));
+#else
+		agp_unmap_atomic(cache->map, cache->ioh);
+#endif
 	} else {
 		struct i915_vma *vma;
 		int err;
@@ -1075,13 +1086,17 @@ static void *reloc_iomap(struct drm_i915_gem_object *obj,
 		offset += page << PAGE_SHIFT;
 	}
 
+#ifdef __linux__
 	vaddr = (void __force *)io_mapping_map_atomic_wc(&ggtt->iomap,
 							 offset);
+#else
+	agp_map_atomic(cache->map, offset, &cache->ioh);
+	vaddr = bus_space_vaddr(cache->iot, cache->ioh);
+#endif
 	cache->page = page;
 	cache->vaddr = (unsigned long)vaddr;
 
 	return vaddr;
-#endif
 }
 
 static void *reloc_vaddr(struct drm_i915_gem_object *obj,
@@ -1105,8 +1120,6 @@ static void *reloc_vaddr(struct drm_i915_gem_object *obj,
 
 static void clflush_write32(u32 *addr, u32 value, unsigned int flushes)
 {
-	STUB();
-#ifdef notyet
 	if (unlikely(flushes & (CLFLUSH_BEFORE | CLFLUSH_AFTER))) {
 		if (flushes & CLFLUSH_BEFORE) {
 			clflushopt(addr);
@@ -1126,7 +1139,6 @@ static void clflush_write32(u32 *addr, u32 value, unsigned int flushes)
 			clflushopt(addr);
 	} else
 		*addr = value;
-#endif
 }
 
 static int __reloc_gpu_alloc(struct i915_execbuffer *eb,
