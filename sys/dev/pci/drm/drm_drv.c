@@ -413,7 +413,8 @@ drm_get_device_from_kdev(dev_t kdev)
 
 	if (unit < drm_cd.cd_ndevs) {
 		sc = (struct drm_softc *)drm_cd.cd_devs[unit];
-		return sc->sc_drm;
+		if (sc)
+			return sc->sc_drm;
 	}
 
 	return NULL;
