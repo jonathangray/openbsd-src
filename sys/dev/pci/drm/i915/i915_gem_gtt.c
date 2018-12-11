@@ -2395,7 +2395,7 @@ static void gen6_check_and_clear_faults(struct drm_i915_private *dev_priv)
 					 "\tAddress space: %s\n"
 					 "\tSource ID: %d\n"
 					 "\tType: %d\n",
-					 fault & PAGE_MASK,
+					 fault & ~PAGE_MASK,
 					 fault & RING_FAULT_GTTSEL_MASK ? "GGTT" : "PPGTT",
 					 RING_FAULT_SRCID(fault),
 					 RING_FAULT_FAULT_TYPE(fault));
