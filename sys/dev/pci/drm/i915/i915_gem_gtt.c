@@ -3878,9 +3878,6 @@ rotate_pages(const dma_addr_t *in, unsigned int offset,
 	     unsigned int stride,
 	     struct sg_table *st, struct scatterlist *sg)
 {
-	STUB();
-	return NULL;
-#ifdef notyet
 	unsigned int column, row;
 	unsigned int src_idx;
 
@@ -3901,7 +3898,6 @@ rotate_pages(const dma_addr_t *in, unsigned int offset,
 	}
 
 	return sg;
-#endif
 }
 
 static noinline struct sg_table *
