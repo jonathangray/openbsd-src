@@ -1729,11 +1729,13 @@ i915_gem_pwrite_ioctl(struct drm_device *dev, void *data,
 
 	trace_i915_gem_object_pwrite(obj, args->offset, args->size);
 
+#ifdef notyet
 	ret = -ENODEV;
 	if (obj->ops->pwrite)
 		ret = obj->ops->pwrite(obj, args);
 	if (ret != -ENODEV)
 		goto err;
+#endif
 
 	ret = i915_gem_object_wait(obj,
 				   I915_WAIT_INTERRUPTIBLE |
