@@ -2314,7 +2314,7 @@ static ssize_t amdgpu_ttm_gtt_read(struct file *f, char __user *buf,
 
 	while (size) {
 		loff_t p = *pos / PAGE_SIZE;
-		unsigned off = *pos & ~PAGE_MASK;
+		unsigned off = *pos & PAGE_MASK;
 		size_t cur_size = min_t(size_t, size, PAGE_SIZE - off);
 		struct page *page;
 		void *ptr;
@@ -2371,8 +2371,8 @@ static ssize_t amdgpu_iomem_read(struct file *f, char __user *buf,
 	dom = iommu_get_domain_for_dev(adev->dev);
 
 	while (size) {
-		phys_addr_t addr = *pos & PAGE_MASK;
-		loff_t off = *pos & ~PAGE_MASK;
+		phys_addr_t addr = *pos & ~PAGE_MASK;
+		loff_t off = *pos & PAGE_MASK;
 		size_t bytes = PAGE_SIZE - off;
 		unsigned long pfn;
 		struct page *p;
@@ -2426,8 +2426,8 @@ static ssize_t amdgpu_iomem_write(struct file *f, const char __user *buf,
 	dom = iommu_get_domain_for_dev(adev->dev);
 
 	while (size) {
-		phys_addr_t addr = *pos & PAGE_MASK;
-		loff_t off = *pos & ~PAGE_MASK;
+		phys_addr_t addr = *pos & ~PAGE_MASK;
+		loff_t off = *pos & PAGE_MASK;
 		size_t bytes = PAGE_SIZE - off;
 		unsigned long pfn;
 		struct page *p;
