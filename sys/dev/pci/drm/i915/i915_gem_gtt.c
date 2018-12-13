@@ -2736,13 +2736,10 @@ static void i915_ggtt_insert_page(struct i915_address_space *vm,
 				  enum i915_cache_level cache_level,
 				  u32 unused)
 {
-	STUB();
-#ifdef notyet
 	unsigned int flags = (cache_level == I915_CACHE_NONE) ?
 		AGP_USER_MEMORY : AGP_USER_CACHED_MEMORY;
 
 	intel_gtt_insert_page(addr, offset >> PAGE_SHIFT, flags);
-#endif
 }
 
 static void i915_ggtt_insert_entries(struct i915_address_space *vm,
