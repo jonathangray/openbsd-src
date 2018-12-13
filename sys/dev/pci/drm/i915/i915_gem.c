@@ -3265,9 +3265,10 @@ static int
 i915_gem_object_pwrite_gtt(struct drm_i915_gem_object *obj,
 			   const struct drm_i915_gem_pwrite *arg)
 {
-#ifdef __linux__
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct address_space *mapping = obj->base.filp->f_mapping;
-#endif
 	char __user *user_data = u64_to_user_ptr(arg->data_ptr);
 	u64 remain, offset;
 	unsigned int pg;
@@ -3307,35 +3308,21 @@ i915_gem_object_pwrite_gtt(struct drm_i915_gem_object *obj,
 		if (len > remain)
 			len = remain;
 
-#ifdef __linux__
 		err = pagecache_write_begin(obj->base.filp, mapping,
 					    offset, len, 0,
 					    &page, &data);
 		if (err < 0)
 			return err;
-#else
-		struct pglist plist;
-		TAILQ_INIT(&plist);
-		if (uvm_objwire(obj->base.uao, offset,
-		    roundup2(offset + len, PAGE_SIZE), &plist))
-			return ENOMEM;
-		page = TAILQ_FIRST(&plist);
-#endif
 
 		vaddr = kmap(page);
 		unwritten = copy_from_user(vaddr + pg, user_data, len);
 		kunmap(page);
 
-#ifdef __linux__
 		err = pagecache_write_end(obj->base.filp, mapping,
 					  offset, len, len - unwritten,
 					  page, data);
 		if (err < 0)
 			return err;
-#else
-		uvm_objunwire(obj->base.uao, offset,
-		    roundup2(offset + len, PAGE_SIZE));
-#endif
 
 		if (unwritten)
 			return -EFAULT;
@@ -3347,6 +3334,7 @@ i915_gem_object_pwrite_gtt(struct drm_i915_gem_object *obj,
 	} while (remain);
 
 	return 0;
+#endif
 }
 
 static void i915_gem_client_mark_guilty(struct drm_i915_file_private *file_priv,
