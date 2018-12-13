@@ -238,6 +238,17 @@ intel_gtt_insert_sg_entries(struct sg_table *pages, unsigned int pg_start,
 }
 
 void
+intel_gtt_insert_page(dma_addr_t addr, unsigned int pg,
+    unsigned int flags)
+{
+	struct inteldrm_softc *dev_priv = (void *)inteldrm_cd.cd_devs[0];
+	struct agp_softc *sc = dev_priv->drm.agp->agpdev;
+	bus_addr_t apaddr = sc->sc_apaddr + (pg * PAGE_SIZE);
+	sc->sc_methods->bind_page(sc->sc_chipc, apaddr, addr, flags);
+	intel_gtt_chipset_flush();
+}
+
+void
 intel_gtt_clear_range(unsigned int first_entry, unsigned int num_entries)
 {
 	struct inteldrm_softc *dev_priv = (void *)inteldrm_cd.cd_devs[0];
