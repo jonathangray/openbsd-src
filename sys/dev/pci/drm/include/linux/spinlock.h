@@ -39,6 +39,7 @@ _spin_unlock_irqrestore(struct mutex *mtxp, __unused unsigned long flags
 #define spin_lock_irq(mtxp)		mtx_enter(mtxp)
 #define spin_unlock_irq(mtxp)		mtx_leave(mtxp)
 #define assert_spin_locked(mtxp)	MUTEX_ASSERT_LOCKED(mtxp)
+#define spin_trylock_irq(mtxp)		mtx_enter_try(mtxp)
 
 #define down_read(rwl)			rw_enter_read(rwl)
 #define down_read_trylock(rwl)		(rw_enter(rwl, RW_READ | RW_NOSLEEP) == 0)
