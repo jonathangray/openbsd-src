@@ -78,7 +78,6 @@ static int ggtt_flush(struct drm_i915_private *i915)
 	return 0;
 }
 
-#ifdef notyet
 static bool
 mark_free(struct drm_mm_scan *scan,
 	  struct i915_vma *vma,
@@ -94,7 +93,6 @@ mark_free(struct drm_mm_scan *scan,
 	list_add(&vma->evict_link, unwind);
 	return drm_mm_scan_add_block(scan, &vma->node);
 }
-#endif
 
 /**
  * i915_gem_evict_something - Evict vmas to make room for binding a new one
@@ -126,9 +124,6 @@ i915_gem_evict_something(struct i915_address_space *vm,
 			 u64 start, u64 end,
 			 unsigned flags)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
 	struct drm_i915_private *dev_priv = vm->i915;
 	struct drm_mm_scan scan;
 	struct list_head eviction_list;
@@ -262,7 +257,6 @@ found:
 	}
 
 	return ret;
-#endif
 }
 
 /**
