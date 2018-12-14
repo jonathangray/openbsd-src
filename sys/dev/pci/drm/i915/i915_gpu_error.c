@@ -1160,8 +1160,6 @@ static void gen6_record_semaphore_state(struct intel_engine_cs *engine,
 static void error_record_engine_waiters(struct intel_engine_cs *engine,
 					struct drm_i915_error_engine *ee)
 {
-	STUB();
-#ifdef notyet
 	struct intel_breadcrumbs *b = &engine->breadcrumbs;
 	struct drm_i915_error_waiter *waiter;
 	struct rb_node *rb;
@@ -1201,8 +1199,14 @@ static void error_record_engine_waiters(struct intel_engine_cs *engine,
 	for (rb = rb_first(&b->waiters); rb; rb = rb_next(rb)) {
 		struct intel_wait *w = rb_entry(rb, typeof(*w), node);
 
+#ifdef __linux__
 		strcpy(waiter->comm, w->tsk->comm);
 		waiter->pid = w->tsk->pid;
+#else
+		strlcpy(waiter->comm, w->tsk->p_p->ps_comm,
+		    sizeof(waiter->comm));
+		waiter->pid = w->tsk->p_p->ps_pid;
+#endif
 		waiter->seqno = w->seqno;
 		waiter++;
 
@@ -1210,7 +1214,6 @@ static void error_record_engine_waiters(struct intel_engine_cs *engine,
 			break;
 	}
 	spin_unlock_irq(&b->rb_lock);
-#endif
 }
 
 static void error_record_engine_registers(struct i915_gpu_state *error,
