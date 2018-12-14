@@ -44,6 +44,12 @@
 #include <linux/seq_file.h>
 #endif
 
+#ifdef CONFIG_DRM_DEBUG_MM
+#define DRM_MM_BUG_ON(expr) BUG_ON(expr)
+#else
+#define DRM_MM_BUG_ON(expr) BUILD_BUG_ON_INVALID(expr)
+#endif
+
 enum drm_mm_search_flags {
 	DRM_MM_SEARCH_DEFAULT =		0,
 	DRM_MM_SEARCH_BEST =		1 << 0,
@@ -168,19 +174,38 @@ struct drm_mm {
 	/* head_node.node_list is the list of all memory nodes, ordered
 	 * according to the (increasing) start address of the memory node. */
 	struct drm_mm_node head_node;
-	unsigned int scan_check_range : 1;
-	unsigned scan_alignment;
-	unsigned long scan_color;
-	u64 scan_size;
-	u64 scan_hit_start;
-	u64 scan_hit_end;
-	unsigned scanned_blocks;
-	u64 scan_start;
-	u64 scan_end;
-	struct drm_mm_node *prev_scanned_node;
 
 	void (*color_adjust)(const struct drm_mm_node *node, unsigned long color,
 			     u64 *start, u64 *end);
+
+	unsigned long scan_active;
+};
+
+/**
+ * struct drm_mm_scan - DRM allocator eviction roaster data
+ *
+ * This structure tracks data needed for the eviction roaster set up using
+ * drm_mm_scan_init(), and used with drm_mm_scan_add_block() and
+ * drm_mm_scan_remove_block(). The structure is entirely opaque and should only
+ * be accessed through the provided functions and macros. It is meant to be
+ * allocated temporarily by the driver on the stack.
+ */
+struct drm_mm_scan {
+	/* private: */
+	struct drm_mm *mm;
+
+	u64 size;
+	u64 alignment;
+	u64 remainder_mask;
+
+	u64 range_start;
+	u64 range_end;
+
+	u64 hit_start;
+	u64 hit_end;
+
+	unsigned long color;
+	enum drm_mm_insert_mode mode;
 };
 
 /**
@@ -411,18 +436,48 @@ void drm_mm_init(struct drm_mm *mm,
 void drm_mm_takedown(struct drm_mm *mm);
 bool drm_mm_clean(struct drm_mm *mm);
 
-void drm_mm_init_scan(struct drm_mm *mm,
-		      u64 size,
-		      unsigned alignment,
-		      unsigned long color);
-void drm_mm_init_scan_with_range(struct drm_mm *mm,
-				 u64 size,
-				 unsigned alignment,
-				 unsigned long color,
-				 u64 start,
-				 u64 end);
-bool drm_mm_scan_add_block(struct drm_mm_node *node);
-bool drm_mm_scan_remove_block(struct drm_mm_node *node);
+void drm_mm_scan_init_with_range(struct drm_mm_scan *scan,
+				 struct drm_mm *mm,
+				 u64 size, u64 alignment, unsigned long color,
+				 u64 start, u64 end,
+				 enum drm_mm_insert_mode mode);
+
+/**
+ * drm_mm_scan_init - initialize lru scanning
+ * @scan: scan state
+ * @mm: drm_mm to scan
+ * @size: size of the allocation
+ * @alignment: alignment of the allocation
+ * @color: opaque tag value to use for the allocation
+ * @mode: fine-tune the allocation search and placement
+ *
+ * This is a simplified version of drm_mm_scan_init_with_range() with no range
+ * restrictions applied.
+ *
+ * This simply sets up the scanning routines with the parameters for the desired
+ * hole.
+ *
+ * Warning:
+ * As long as the scan list is non-empty, no other operations than
+ * adding/removing nodes to/from the scan list are allowed.
+ */
+static inline void drm_mm_scan_init(struct drm_mm_scan *scan,
+				    struct drm_mm *mm,
+				    u64 size,
+				    u64 alignment,
+				    unsigned long color,
+				    enum drm_mm_insert_mode mode)
+{
+	drm_mm_scan_init_with_range(scan, mm,
+				    size, alignment, color,
+				    0, U64_MAX, mode);
+}
+
+bool drm_mm_scan_add_block(struct drm_mm_scan *scan,
+			   struct drm_mm_node *node);
+bool drm_mm_scan_remove_block(struct drm_mm_scan *scan,
+			      struct drm_mm_node *node);
+struct drm_mm_node *drm_mm_scan_color_evict(struct drm_mm_scan *scan);
 
 void drm_mm_debug_table(struct drm_mm *mm, const char *prefix);
 #ifdef CONFIG_DEBUG_FS
