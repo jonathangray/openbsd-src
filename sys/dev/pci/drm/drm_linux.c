@@ -41,63 +41,67 @@ flush_barrier(void *arg)
 }
 
 void
-flush_workqueue(struct workqueue_struct *wq)
+flush_block(void *arg)
+{
+	struct sleep_state sls;
+	int *barrier = arg;
+
+	while (!(*barrier)) {
+		sleep_setup(&sls, barrier, PWAIT, "flwqblk");
+		sleep_finish(&sls, !(*barrier));
+	}
+}
+
+void
+flush_taskq(struct taskq *tq)
 {
 	struct sleep_state sls;
 	struct task task;
+	struct task block;
 	int barrier = 0;
 
-	if (cold)
-		return;
+	if (tq == (struct taskq *)system_wq) {
+		task_set(&block, flush_block, &barrier);
+		task_add(tq, &block);
+	}
 
 	task_set(&task, flush_barrier, &barrier);
-	task_add((struct taskq *)wq, &task);
+	task_add(tq, &task);
 	while (!barrier) {
 		sleep_setup(&sls, &barrier, PWAIT, "flwqbar");
 		sleep_finish(&sls, !barrier);
 	}
 }
 
+void
+flush_workqueue(struct workqueue_struct *wq)
+{
+	if (cold)
+		return;
+
+	flush_taskq((struct taskq *)wq);
+}
+
 bool
 flush_work(struct work_struct *work)
 {
-	struct sleep_state sls;
-	struct task task;
-	int barrier = 0;
-
 	if (cold)
 		return false;
 
-	task_set(&task, flush_barrier, &barrier);
-	task_add(work->tq, &task);
-	while (!barrier) {
-		sleep_setup(&sls, &barrier, PWAIT, "flwkbar");
-		sleep_finish(&sls, !barrier);
-	}
-
+	flush_taskq(work->tq);
 	return false;
 }
 
 bool
 flush_delayed_work(struct delayed_work *dwork)
 {
-	struct sleep_state sls;
-	struct task task;
-	int barrier = 0;
-
 	if (cold)
 		return false;
 
 	while (timeout_pending(&dwork->to))
-		tsleep(&barrier, PWAIT, "fldwto", 1);
+		tsleep(dwork, PWAIT, "fldwto", 1);
 
-	task_set(&task, flush_barrier, &barrier);
-	task_add(dwork->tq ? dwork->tq : (struct taskq *)system_wq, &task);
-	while (!barrier) {
-		sleep_setup(&sls, &barrier, PWAIT, "fldwbar");
-		sleep_finish(&sls, !barrier);
-	}
-
+	flush_taskq(dwork->tq ? dwork->tq : (struct taskq *)system_wq);
 	return true;
 }
 
