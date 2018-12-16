@@ -38,7 +38,6 @@
 #include <sys/systm.h>
 #include <sys/param.h>
 #include <sys/mutex.h>
-#include <sys/srp.h>
 #include <machine/intr.h>
 #include <linux/compiler.h>
 #include <linux/mutex.h>

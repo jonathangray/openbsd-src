@@ -4,7 +4,6 @@
 #define _LINUX_PROCESSOR_H
 
 #include <sys/systm.h>
-#include <sys/srp.h>
 #include <machine/cpu.h>
 #include <linux/jiffies.h>
 

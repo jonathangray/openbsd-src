@@ -3,7 +3,6 @@
 #ifndef _LINUX_INTERRUPT_H
 #define _LINUX_INTERRUPT_H
 
-#include <sys/srp.h>
 #include <machine/intr.h>
 #include <linux/hardirq.h>
 #include <linux/irqflags.h>

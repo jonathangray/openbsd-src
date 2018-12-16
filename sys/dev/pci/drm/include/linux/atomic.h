@@ -35,7 +35,6 @@
 
 #include <sys/types.h>
 #include <sys/mutex.h>
-#include <sys/srp.h>
 #include <machine/intr.h>
 #include <machine/atomic.h>
 #include <linux/types.h>

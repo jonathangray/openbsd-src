@@ -3,7 +3,6 @@
 #ifndef _LINUX_STOP_MACHINE_H
 #define _LINUX_STOP_MACHINE_H
 
-#include <sys/srp.h>
 #include <machine/intr.h>
 
 typedef int (*cpu_stop_fn_t)(void *arg);

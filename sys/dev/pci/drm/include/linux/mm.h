@@ -8,7 +8,6 @@
 #include <sys/malloc.h>
 #include <sys/stdint.h>
 #include <sys/atomic.h>
-#include <sys/srp.h>
 #include <machine/cpu.h>
 #include <uvm/uvm_extern.h>
 #include <linux/fs.h>

@@ -21,7 +21,6 @@
 #include <sys/types.h>
 #include <dev/pci/pcireg.h>
 #include <dev/pci/pcivar.h>
-#include <sys/srp.h>
 #include <machine/cpu.h>
 #include <uvm/uvm_extern.h>
 

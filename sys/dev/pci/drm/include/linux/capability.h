@@ -6,7 +6,6 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/ucred.h>
-#include <sys/srp.h>
 #include <machine/cpu.h>
 
 #define CAP_SYS_ADMIN	0x1
