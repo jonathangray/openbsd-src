@@ -94,6 +94,8 @@ cancel_work_sync(struct work_struct *work)
 	task_del(work->tq, &work->task);
 }
 
+#define work_pending(work)	task_pending(&(work)->task)
+
 struct delayed_work {
 	struct work_struct work;
 	struct timeout to;
@@ -195,12 +197,7 @@ cancel_delayed_work_sync(struct delayed_work *dwork)
 	return task_del(dwork->tq, &dwork->work.task);
 }
 
-static inline bool
-delayed_work_pending(struct delayed_work *dwork)
-{
-	printf("%s: stub\n", __func__);
-	return false;
-}
+#define delayed_work_pending(dwork)	work_pending(&(dwork)->work)
 
 void flush_workqueue(struct workqueue_struct *);
 bool flush_work(struct work_struct *);
