@@ -3902,13 +3902,8 @@ static void __sleep_rcu(struct rcu_head *rcu)
 static inline bool
 new_requests_since_last_retire(const struct drm_i915_private *i915)
 {
-	STUB();
-#ifdef notyet
 	return (READ_ONCE(i915->gt.active_requests) ||
 		work_pending(&i915->gt.idle_work.work));
-#else
-	return READ_ONCE(i915->gt.active_requests);
-#endif
 }
 
 static void assert_kernel_context_is_current(struct drm_i915_private *i915)
