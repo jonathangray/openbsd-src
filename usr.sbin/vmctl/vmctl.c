@@ -1,4 +1,4 @@
-/*	$OpenBSD: vmctl.c,v 1.63 2018/11/26 10:39:30 reyk Exp $	*/
+/*	$OpenBSD: vmctl.c,v 1.65 2018/12/06 09:23:15 claudio Exp $	*/
 
 /*
  * Copyright (c) 2014 Mike Larkin <mlarkin@openbsd.org>
@@ -73,7 +73,7 @@ unsigned int info_flags;
 int
 vm_start(uint32_t start_id, const char *name, int memsize, int nnics,
     char **nics, int ndisks, char **disks, int *disktypes, char *kernel,
-    char *iso, char *instance)
+    char *iso, char *instance, unsigned int bootdevice)
 {
 	struct vmop_create_params *vmc;
 	struct vm_create_params *vcp;
@@ -184,6 +184,7 @@ vm_start(uint32_t start_id, const char *name, int memsize, int nnics,
 		if (strlcpy(vmc->vmc_instance, instance,
 		    sizeof(vmc->vmc_instance)) >= sizeof(vmc->vmc_instance))
 			errx(1, "instance vm name too long");
+	vmc->vmc_bootdevice = bootdevice;
 
 	imsg_compose(ibuf, IMSG_VMDOP_START_VM_REQUEST, 0, 0, -1,
 	    vmc, sizeof(struct vmop_create_params));
@@ -496,6 +497,10 @@ terminate_vm_complete(struct imsg *imsg, int *ret, unsigned int flags)
 				fprintf(stderr, "vm not found\n");
 				*ret = EIO;
 				break;
+			case EINTR:
+				fprintf(stderr, "interrupted call\n");
+				*ret = EIO;
+				break;
 			default:
 				errno = res;
 				fprintf(stderr, "failed: %s\n",
@@ -557,6 +562,33 @@ terminate_all(struct vmop_info_result *list, size_t ct, unsigned int flags)
 
 		vmmaction(&res);
 	}
+}
+
+/*
+ * waitfor_vm
+ *
+ * Wait until vmd stopped the indicated VM
+ *
+ * Parameters:
+ *  terminate_id: ID of the vm to be terminated
+ *  name: optional name of the VM to be terminated
+ */
+void
+waitfor_vm(uint32_t terminate_id, const char *name)
+{
+	struct vmop_id vid;
+
+	memset(&vid, 0, sizeof(vid));
+	vid.vid_id = terminate_id;
+	if (name != NULL) {
+		(void)strlcpy(vid.vid_name, name, sizeof(vid.vid_name));
+		fprintf(stderr, "waiting for vm %s: ", name);
+	} else {
+		fprintf(stderr, "waiting for vm: ");
+	}
+
+	imsg_compose(ibuf, IMSG_VMDOP_WAIT_VM_REQUEST,
+	    0, 0, -1, &vid, sizeof(vid));
 }
 
 /*

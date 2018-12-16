@@ -1,4 +1,4 @@
-/*	$OpenBSD: vmd.h,v 1.86 2018/11/26 05:44:46 ori Exp $	*/
+/*	$OpenBSD: vmd.h,v 1.89 2018/12/10 21:30:33 claudio Exp $	*/
 
 /*
  * Copyright (c) 2015 Mike Larkin <mlarkin@openbsd.org>
@@ -98,6 +98,7 @@ enum imsg_type {
 	IMSG_VMDOP_RECEIVE_VM_REQUEST,
 	IMSG_VMDOP_RECEIVE_VM_RESPONSE,
 	IMSG_VMDOP_RECEIVE_VM_END,
+	IMSG_VMDOP_WAIT_VM_REQUEST,
 	IMSG_VMDOP_TERMINATE_VM_REQUEST,
 	IMSG_VMDOP_TERMINATE_VM_RESPONSE,
 	IMSG_VMDOP_TERMINATE_VM_EVENT,
@@ -172,6 +173,11 @@ struct vmop_create_params {
 	unsigned int		 vmc_checkaccess;
 
 	/* userland-only part of the create params */
+	unsigned int		 vmc_bootdevice;
+#define VMBOOTDEV_AUTO		0
+#define VMBOOTDEV_DISK		1
+#define VMBOOTDEV_CDROM		2
+#define VMBOOTDEV_NET		3
 	unsigned int		 vmc_ifflags[VMM_MAX_NICS_PER_VM];
 #define VMIFF_UP		0x01
 #define VMIFF_LOCKED		0x02
@@ -208,7 +214,7 @@ struct vm_dump_header {
 #define VM_DUMP_SIGNATURE	 VMM_HV_SIGNATURE
 	uint8_t			 vmh_pad[3];
 	uint8_t			 vmh_version;
-#define VM_DUMP_VERSION		 4
+#define VM_DUMP_VERSION		 5
 	struct			 vm_dump_header_cpuid
 	    vmh_cpuids[VM_DUMP_HEADER_CPUID_COUNT];
 } __packed;

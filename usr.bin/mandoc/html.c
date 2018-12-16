@@ -1,4 +1,4 @@
-/*	$OpenBSD: html.c,v 1.114 2018/11/26 01:38:17 schwarze Exp $ */
+/*	$OpenBSD: html.c,v 1.117 2018/12/15 23:33:20 schwarze Exp $ */
 /*
  * Copyright (c) 2008-2011, 2014 Kristaps Dzonsons <kristaps@bsd.lv>
  * Copyright (c) 2011-2015, 2017, 2018 Ingo Schwarze <schwarze@openbsd.org>
@@ -115,7 +115,6 @@ static	void	 print_ctag(struct html *, struct tag *);
 static	int	 print_escape(struct html *, char);
 static	int	 print_encode(struct html *, const char *, const char *, int);
 static	void	 print_href(struct html *, const char *, const char *, int);
-static	void	 print_metaf(struct html *, enum mandoc_esc);
 
 
 void *
@@ -208,7 +207,7 @@ print_gen_head(struct html *h)
 	print_tagq(h, t);
 }
 
-static void
+void
 print_metaf(struct html *h, enum mandoc_esc deco)
 {
 	enum htmlfont	 font;
@@ -234,7 +233,7 @@ print_metaf(struct html *h, enum mandoc_esc deco)
 		font = HTMLFONT_NONE;
 		break;
 	default:
-		abort();
+		return;
 	}
 
 	if (h->metaf) {
@@ -355,7 +354,6 @@ static int
 print_encode(struct html *h, const char *p, const char *pend, int norecurse)
 {
 	char		 numbuf[16];
-	struct tag	*t;
 	const char	*seq;
 	size_t		 sz;
 	int		 c, len, breakline, nospace;
@@ -381,9 +379,7 @@ print_encode(struct html *h, const char *p, const char *pend, int norecurse)
 
 		if (breakline &&
 		    (p >= pend || *p == ' ' || *p == ASCII_NBRSP)) {
-			t = print_otag(h, TAG_DIV, "");
-			print_text(h, "\\~");
-			print_tagq(h, t);
+			print_otag(h, TAG_BR, "");
 			breakline = 0;
 			while (p < pend && (*p == ' ' || *p == ASCII_NBRSP))
 				p++;
@@ -403,9 +399,6 @@ print_encode(struct html *h, const char *p, const char *pend, int norecurse)
 			continue;
 
 		esc = mandoc_escape(&p, &seq, &len);
-		if (ESCAPE_ERROR == esc)
-			break;
-
 		switch (esc) {
 		case ESCAPE_FONT:
 		case ESCAPE_FONTPREV:
@@ -422,6 +415,8 @@ print_encode(struct html *h, const char *p, const char *pend, int norecurse)
 			continue;
 		case ESCAPE_SKIPCHAR:
 			h->flags |= HTML_SKIPCHAR;
+			continue;
+		case ESCAPE_ERROR:
 			continue;
 		default:
 			break;
@@ -446,6 +441,9 @@ print_encode(struct html *h, const char *p, const char *pend, int norecurse)
 			c = mchars_spec2cp(seq, len);
 			if (c <= 0)
 				continue;
+			break;
+		case ESCAPE_UNDEF:
+			c = *seq;
 			break;
 		case ESCAPE_DEVICE:
 			print_word(h, "html");

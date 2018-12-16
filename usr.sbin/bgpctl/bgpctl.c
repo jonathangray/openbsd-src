@@ -1,4 +1,4 @@
-/*	$OpenBSD: bgpctl.c,v 1.224 2018/11/28 08:33:59 claudio Exp $ */
+/*	$OpenBSD: bgpctl.c,v 1.226 2018/12/11 09:03:36 claudio Exp $ */
 
 /*
  * Copyright (c) 2003 Henning Brauer <henning@openbsd.org>
@@ -97,10 +97,12 @@ void		 mrt_to_bgpd_addr(union mrt_addr *, struct bgpd_addr *);
 const char	*msg_type(u_int8_t);
 void		 network_bulk(struct parse_result *);
 const char	*print_auth_method(enum auth_method);
+int		 match_aspath(void *, u_int16_t, struct filter_as *);
 
 struct imsgbuf	*ibuf;
 struct mrt_parser show_mrt = { show_mrt_dump, show_mrt_state, show_mrt_msg };
 struct mrt_parser net_mrt = { network_mrt_dump, NULL, NULL };
+int tableid;
 
 __dead void
 usage(void)
@@ -116,7 +118,7 @@ int
 main(int argc, char *argv[])
 {
 	struct sockaddr_un	 sun;
-	int			 fd, n, done, ch, nodescr = 0, verbose = 0, r;
+	int			 fd, n, done, ch, nodescr = 0, verbose = 0;
 	struct imsg		 imsg;
 	struct network_config	 net;
 	struct parse_result	*res;
@@ -128,8 +130,8 @@ main(int argc, char *argv[])
 	if (pledge("stdio rpath wpath cpath unix inet dns", NULL) == -1)
 		err(1, "pledge");
 
-	r = getrtable();
-	if (asprintf(&sockname, "%s.%d", SOCKET_NAME, r) == -1)
+	tableid = getrtable();
+	if (asprintf(&sockname, "%s.%d", SOCKET_NAME, tableid) == -1)
 		err(1, "asprintf");
 
 	while ((ch = getopt(argc, argv, "ns:")) != -1) {
@@ -345,6 +347,7 @@ main(int argc, char *argv[])
 		bzero(&net, sizeof(net));
 		net.prefix = res->addr;
 		net.prefixlen = res->prefixlen;
+		net.rtableid = tableid;
 		/* attribute sets are not supported */
 		if (res->action == NETWORK_ADD) {
 			imsg_compose(ibuf, IMSG_NETWORK_ADD, 0, 0, -1,
@@ -1981,6 +1984,7 @@ network_bulk(struct parse_result *res)
 				errx(1, "bad prefix: %s", b);
 			net.prefix = h;
 			net.prefixlen = len;
+			net.rtableid = tableid;
 
 			if (res->action == NETWORK_BULK_ADD) {
 				imsg_compose(ibuf, IMSG_NETWORK_ADD,
@@ -2053,8 +2057,7 @@ show_mrt_dump(struct mrt_rib *mr, struct mrt_peer *mp, void *arg)
 		}
 		/* filter by AS */
 		if (req->as.type != AS_UNDEF &&
-		   !aspath_match(mre->aspath, mre->aspath_len,
-		   &req->as, 0))
+		   !match_aspath(mre->aspath, mre->aspath_len, &req->as))
 			continue;
 
 		if (req->flags & F_CTL_DETAIL) {
@@ -2119,8 +2122,7 @@ network_mrt_dump(struct mrt_rib *mr, struct mrt_peer *mp, void *arg)
 		}
 		/* filter by AS */
 		if (req->as.type != AS_UNDEF &&
-		   !aspath_match(mre->aspath, mre->aspath_len,
-		   &req->as, 0))
+		   !match_aspath(mre->aspath, mre->aspath_len, &req->as))
 			continue;
 
 		bzero(&net, sizeof(net));
@@ -2658,7 +2660,67 @@ msg_type(u_int8_t type)
 }
 
 int
-as_set_match(const struct as_set *a, u_int32_t asnum)
+match_aspath(void *data, u_int16_t len, struct filter_as *f)
 {
+	u_int8_t	*seg;
+	int		 final;
+	u_int16_t	 seg_size;
+	u_int8_t	 i, seg_len;
+	u_int32_t	 as = 0;
+
+	if (f->type == AS_EMPTY) {
+		if (len == 0)
+			return (1);
+		else
+			return (0);
+	}
+
+	seg = data;
+
+	/* just check the leftmost AS */
+	if (f->type == AS_PEER && len >= 6) {
+		as = aspath_extract(seg, 0);
+		if (f->as_min == as)
+			return (1);
+		else
+			return (0);
+	}
+
+	for (; len >= 6; len -= seg_size, seg += seg_size) {
+		seg_len = seg[1];
+		seg_size = 2 + sizeof(u_int32_t) * seg_len;
+
+		final = (len == seg_size);
+
+		if (f->type == AS_SOURCE) {
+			/*
+			 * Just extract the rightmost AS
+			 * but if that segment is an AS_SET then the rightmost
+			 * AS of a previous AS_SEQUENCE segment should be used.
+			 * Because of that just look at AS_SEQUENCE segments.
+			 */
+			if (seg[0] == AS_SEQUENCE)
+				as = aspath_extract(seg, seg_len - 1);
+			/* not yet in the final segment */
+			if (!final)
+				continue;
+			if (f->as_min == as)
+				return (1);
+			else
+				return (0);
+		}
+		/* AS_TRANSIT or AS_ALL */
+		for (i = 0; i < seg_len; i++) {
+			/*
+			 * the source (rightmost) AS is excluded from
+			 * AS_TRANSIT matches.
+			 */
+			if (final && i == seg_len - 1 && f->type == AS_TRANSIT)
+				return (0);
+			as = aspath_extract(seg, i);
+			if (f->as_min == as)
+				return (1);
+		}
+	}
 	return (0);
 }
