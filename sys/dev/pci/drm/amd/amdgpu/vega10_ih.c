@@ -391,7 +391,7 @@ static int vega10_ih_sw_init(void *handle)
 		return -ENOMEM;
 	INIT_CHASH_TABLE(adev->irq.ih.faults->hash,
 			 AMDGPU_PAGEFAULT_HASH_BITS, 8, 0);
-	mtx_init(&adev->irq.ih.faults->lock);
+	mtx_init(&adev->irq.ih.faults->lock, IPL_TTY);
 	adev->irq.ih.faults->count = 0;
 
 	r = amdgpu_irq_init(adev);

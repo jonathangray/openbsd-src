@@ -447,7 +447,7 @@ static int vce_v4_0_sw_init(void *handle)
 		adev->firmware.ucode[AMDGPU_UCODE_ID_VCE].ucode_id = AMDGPU_UCODE_ID_VCE;
 		adev->firmware.ucode[AMDGPU_UCODE_ID_VCE].fw = adev->vce.fw;
 		adev->firmware.fw_size +=
-			ALIGN(le32_to_cpu(hdr->ucode_size_bytes), PAGE_SIZE);
+			roundup2(le32_to_cpu(hdr->ucode_size_bytes), PAGE_SIZE);
 		DRM_INFO("PSP loading VCE firmware\n");
 	} else {
 		r = amdgpu_vce_resume(adev);
@@ -457,7 +457,7 @@ static int vce_v4_0_sw_init(void *handle)
 
 	for (i = 0; i < adev->vce.num_rings; i++) {
 		ring = &adev->vce.ring[i];
-		sprintf(ring->name, "vce%d", i);
+		snprintf(ring->name, sizeof(ring->name), "vce%d", i);
 		if (amdgpu_sriov_vf(adev)) {
 			/* DOORBELL only works under SRIOV */
 			ring->use_doorbell = true;

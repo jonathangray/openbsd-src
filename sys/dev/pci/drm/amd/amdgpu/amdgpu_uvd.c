@@ -522,7 +522,7 @@ static int amdgpu_uvd_cs_msg_decode(struct amdgpu_device *adev, uint32_t *msg,
 	unsigned level = msg[57];
 
 	unsigned width_in_mb = width / 16;
-	unsigned height_in_mb = ALIGN(height / 16, 2);
+	unsigned height_in_mb = roundup2(height / 16, 2);
 	unsigned fs_in_mb = width_in_mb * height_in_mb;
 
 	unsigned image_size, tmp, min_dpb_size, num_dpb_buffer;
@@ -530,7 +530,7 @@ static int amdgpu_uvd_cs_msg_decode(struct amdgpu_device *adev, uint32_t *msg,
 
 	image_size = width * height;
 	image_size += image_size / 2;
-	image_size = ALIGN(image_size, 1024);
+	image_size = roundup2(image_size, 1024);
 
 	switch (stream_type) {
 	case 0: /* H264 */
@@ -590,7 +590,7 @@ static int amdgpu_uvd_cs_msg_decode(struct amdgpu_device *adev, uint32_t *msg,
 
 		/* BP */
 		tmp = max(width_in_mb, height_in_mb);
-		min_dpb_size += ALIGN(tmp * 7 * 16, 64);
+		min_dpb_size += roundup2(tmp * 7 * 16, 64);
 		break;
 
 	case 3: /* MPEG2 */
@@ -608,7 +608,7 @@ static int amdgpu_uvd_cs_msg_decode(struct amdgpu_device *adev, uint32_t *msg,
 		min_dpb_size += width_in_mb * height_in_mb * 64;
 
 		/* IT surface buffer */
-		min_dpb_size += ALIGN(width_in_mb * height_in_mb * 32, 64);
+		min_dpb_size += roundup2(width_in_mb * height_in_mb * 32, 64);
 		break;
 
 	case 7: /* H264 Perf */
@@ -664,8 +664,8 @@ static int amdgpu_uvd_cs_msg_decode(struct amdgpu_device *adev, uint32_t *msg,
 		break;
 
 	case 16: /* H265 */
-		image_size = (ALIGN(width, 16) * ALIGN(height, 16) * 3) / 2;
-		image_size = ALIGN(image_size, 256);
+		image_size = (roundup2(width, 16) * roundup2(height, 16) * 3) / 2;
+		image_size = roundup2(image_size, 256);
 
 		num_dpb_buffer = (le32_to_cpu(msg[59]) & 0xff) + 2;
 		min_dpb_size = image_size * num_dpb_buffer;

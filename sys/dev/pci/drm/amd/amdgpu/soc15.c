@@ -247,7 +247,7 @@ static bool soc15_read_bios_from_rom(struct amdgpu_device *adev,
 		return false;
 
 	dw_ptr = (u32 *)bios;
-	length_dw = ALIGN(length_bytes, 4) / 4;
+	length_dw = roundup2(length_bytes, 4) / 4;
 
 	/* set rom index to 0 */
 	WREG32(SOC15_REG_OFFSET(SMUIO, 0, mmROM_INDEX), 0);

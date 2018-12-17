@@ -440,7 +440,7 @@ static int uvd_v7_0_sw_init(void *handle)
 		adev->firmware.ucode[AMDGPU_UCODE_ID_UVD].ucode_id = AMDGPU_UCODE_ID_UVD;
 		adev->firmware.ucode[AMDGPU_UCODE_ID_UVD].fw = adev->uvd.fw;
 		adev->firmware.fw_size +=
-			ALIGN(le32_to_cpu(hdr->ucode_size_bytes), PAGE_SIZE);
+			roundup2(le32_to_cpu(hdr->ucode_size_bytes), PAGE_SIZE);
 		DRM_INFO("PSP loading UVD firmware\n");
 	}
 
@@ -453,7 +453,7 @@ static int uvd_v7_0_sw_init(void *handle)
 			continue;
 		if (!amdgpu_sriov_vf(adev)) {
 			ring = &adev->uvd.inst[j].ring;
-			sprintf(ring->name, "uvd<%d>", j);
+			snprintf(ring->name, sizeof(ring->name), "uvd<%d>", j);
 			r = amdgpu_ring_init(adev, ring, 512, &adev->uvd.inst[j].irq, 0);
 			if (r)
 				return r;
@@ -461,7 +461,7 @@ static int uvd_v7_0_sw_init(void *handle)
 
 		for (i = 0; i < adev->uvd.num_enc_rings; ++i) {
 			ring = &adev->uvd.inst[j].ring_enc[i];
-			sprintf(ring->name, "uvd_enc%d<%d>", i, j);
+			snprintf(ring->name, sizeof(ring->name), "uvd_enc%d<%d>", i, j);
 			if (amdgpu_sriov_vf(adev)) {
 				ring->use_doorbell = true;
 

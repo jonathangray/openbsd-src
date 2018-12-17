@@ -553,7 +553,7 @@ static int amdgpu_debugfs_ring_init(struct amdgpu_device *adev,
 	struct dentry *ent, *root = minor->debugfs_root;
 	char name[32];
 
-	sprintf(name, "amdgpu_ring_%s", ring->name);
+	snprintf(name, sizeof(name), "amdgpu_ring_%s", ring->name);
 
 	ent = debugfs_create_file(name,
 				  S_IFREG | S_IRUGO, root,

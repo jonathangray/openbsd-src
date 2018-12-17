@@ -850,7 +850,7 @@ static int gmc_v9_0_sw_init(void *handle)
 	gfxhub_v1_0_init(adev);
 	mmhub_v1_0_init(adev);
 
-	mtx_init(&adev->gmc.invalidate_lock);
+	mtx_init(&adev->gmc.invalidate_lock, IPL_TTY);
 
 	adev->gmc.vram_type = amdgpu_atomfirmware_get_vram_type(adev);
 	switch (adev->asic_type) {

@@ -62,7 +62,7 @@ int kfd_interrupt_init(struct kfd_dev *kfd)
 	}
 
 	kfd->ih_wq = alloc_workqueue("KFD IH", WQ_HIGHPRI, 1);
-	mtx_init(&kfd->interrupt_lock);
+	mtx_init(&kfd->interrupt_lock, IPL_TTY);
 
 	INIT_WORK(&kfd->interrupt_work, interrupt_wq);
 

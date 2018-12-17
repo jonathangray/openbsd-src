@@ -252,7 +252,7 @@ static int sdma_v4_0_init_microcode(struct amdgpu_device *adev)
 			info->fw = adev->sdma.instance[i].fw;
 			header = (const struct common_firmware_header *)info->fw->data;
 			adev->firmware.fw_size +=
-				ALIGN(le32_to_cpu(header->ucode_size_bytes), PAGE_SIZE);
+				roundup2(le32_to_cpu(header->ucode_size_bytes), PAGE_SIZE);
 		}
 	}
 out:
@@ -1260,7 +1260,7 @@ static int sdma_v4_0_sw_init(void *handle)
 			(AMDGPU_DOORBELL64_sDMA_ENGINE0 << 1) //get DWORD offset
 			: (AMDGPU_DOORBELL64_sDMA_ENGINE1 << 1); // get DWORD offset
 
-		sprintf(ring->name, "sdma%d", i);
+		snprintf(ring->name, sizeof(ring->name), "sdma%d", i);
 		r = amdgpu_ring_init(adev, ring, 1024,
 				     &adev->sdma.trap_irq,
 				     (i == 0) ?

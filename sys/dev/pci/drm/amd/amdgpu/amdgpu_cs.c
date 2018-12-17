@@ -523,6 +523,9 @@ static int amdgpu_cs_validate(void *param, struct amdgpu_bo *bo)
 static int amdgpu_cs_list_validate(struct amdgpu_cs_parser *p,
 			    struct list_head *validated)
 {
+	STUB();
+	return -ENOSYS;
+#if 0
 	struct ttm_operation_ctx ctx = { true, false };
 	struct amdgpu_bo_list_entry *lobj;
 	int r;
@@ -562,11 +565,15 @@ static int amdgpu_cs_list_validate(struct amdgpu_cs_parser *p,
 		}
 	}
 	return 0;
+#endif
 }
 
 static int amdgpu_cs_parser_bos(struct amdgpu_cs_parser *p,
 				union drm_amdgpu_cs *cs)
 {
+	STUB();
+	return -ENOSYS;
+#if 0
 	struct amdgpu_fpriv *fpriv = p->filp->driver_priv;
 	struct amdgpu_vm *vm = &fpriv->vm;
 	struct amdgpu_bo_list_entry *e;
@@ -754,6 +761,7 @@ error_free_pages:
 	}
 
 	return r;
+#endif
 }
 
 static int amdgpu_cs_sync_rings(struct amdgpu_cs_parser *p)
@@ -1531,6 +1539,9 @@ static int amdgpu_cs_wait_any_fence(struct amdgpu_device *adev,
 				    union drm_amdgpu_wait_fences *wait,
 				    struct drm_amdgpu_fence *fences)
 {
+	STUB();
+	return -ENOSYS;
+#if 0
 	unsigned long timeout = amdgpu_gem_timeout(wait->in.timeout_ns);
 	uint32_t fence_count = wait->in.fence_count;
 	uint32_t first = ~0;
@@ -1581,6 +1592,7 @@ err_free_fence_array:
 	kfree(array);
 
 	return r;
+#endif
 }
 
 /**

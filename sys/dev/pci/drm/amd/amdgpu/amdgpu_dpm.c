@@ -907,6 +907,7 @@ void amdgpu_add_thermal_controller(struct amdgpu_device *adev)
 			adev->pm.int_thermal_type = THERMAL_TYPE_EXTERNAL;
 			i2c_bus = amdgpu_atombios_lookup_i2c_gpio(adev, controller->ucI2cLine);
 			adev->pm.i2c_bus = amdgpu_i2c_lookup(adev, &i2c_bus);
+#ifdef notyet
 			if (adev->pm.i2c_bus) {
 				struct i2c_board_info info = { };
 				const char *name = pp_lib_thermal_controller_names[controller->ucType];
@@ -914,6 +915,7 @@ void amdgpu_add_thermal_controller(struct amdgpu_device *adev)
 				strlcpy(info.type, name, sizeof(info.type));
 				i2c_new_device(&adev->pm.i2c_bus->adapter, &info);
 			}
+#endif
 		} else {
 			DRM_INFO("Unknown thermal controller type %d at 0x%02x %s fan control\n",
 				 controller->ucType,

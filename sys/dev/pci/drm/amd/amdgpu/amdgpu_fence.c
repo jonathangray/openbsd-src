@@ -381,7 +381,7 @@ int amdgpu_fence_driver_start_ring(struct amdgpu_ring *ring,
 		ring->fence_drv.gpu_addr = adev->wb.gpu_addr + (ring->fence_offs * 4);
 	} else {
 		/* put fence directly behind firmware */
-		index = ALIGN(adev->uvd.fw->size, 8);
+		index = roundup2(adev->uvd.fw->size, 8);
 		ring->fence_drv.cpu_addr = adev->uvd.inst[ring->me].cpu_addr + index;
 		ring->fence_drv.gpu_addr = adev->uvd.inst[ring->me].gpu_addr + index;
 	}
@@ -427,7 +427,7 @@ int amdgpu_fence_driver_init_ring(struct amdgpu_ring *ring,
 	timer_setup(&ring->fence_drv.fallback_timer, amdgpu_fence_fallback, 0);
 
 	ring->fence_drv.num_fences_mask = num_hw_submission * 2 - 1;
-	mtx_init(&ring->fence_drv.lock);
+	mtx_init(&ring->fence_drv.lock, IPL_TTY);
 	ring->fence_drv.fences = kcalloc(num_hw_submission * 2, sizeof(void *),
 					 GFP_KERNEL);
 	if (!ring->fence_drv.fences)

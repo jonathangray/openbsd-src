@@ -50,7 +50,7 @@ static int amdgpu_vram_mgr_init(struct ttm_mem_type_manager *man,
 		return -ENOMEM;
 
 	drm_mm_init(&mgr->mm, 0, p_size);
-	mtx_init(&mgr->lock);
+	mtx_init(&mgr->lock, IPL_TTY);
 	man->priv = mgr;
 	return 0;
 }

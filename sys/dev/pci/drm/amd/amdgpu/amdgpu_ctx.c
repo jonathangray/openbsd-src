@@ -23,7 +23,9 @@
  */
 
 #include <drm/drmP.h>
+#ifdef notyet
 #include <drm/drm_auth.h>
+#endif
 #include "amdgpu.h"
 #include "amdgpu_sched.h"
 
@@ -34,8 +36,10 @@ static int amdgpu_ctx_priority_permit(struct drm_file *filp,
 	if (priority <= DRM_SCHED_PRIORITY_NORMAL)
 		return 0;
 
+#ifdef notyet
 	if (capable(CAP_SYS_NICE))
 		return 0;
+#endif
 
 	if (drm_is_current_master(filp))
 		return 0;
@@ -61,13 +65,13 @@ static int amdgpu_ctx_init(struct amdgpu_device *adev,
 	memset(ctx, 0, sizeof(*ctx));
 	ctx->adev = adev;
 	kref_init(&ctx->refcount);
-	mtx_init(&ctx->ring_lock);
+	mtx_init(&ctx->ring_lock, IPL_TTY);
 	ctx->fences = kcalloc(amdgpu_sched_jobs * AMDGPU_MAX_RINGS,
 			      sizeof(struct dma_fence*), GFP_KERNEL);
 	if (!ctx->fences)
 		return -ENOMEM;
 
-	rw_init(&ctx->lock);
+	rw_init(&ctx->lock, "amctxlk");
 
 	for (i = 0; i < AMDGPU_MAX_RINGS; ++i) {
 		ctx->rings[i].sequence = 1;
@@ -185,6 +189,9 @@ static void amdgpu_ctx_do_release(struct kref *ref)
 
 static int amdgpu_ctx_free(struct amdgpu_fpriv *fpriv, uint32_t id)
 {
+	STUB();
+	return -ENOSYS;
+#if 0
 	struct amdgpu_ctx_mgr *mgr = &fpriv->ctx_mgr;
 	struct amdgpu_ctx *ctx;
 
@@ -194,6 +201,7 @@ static int amdgpu_ctx_free(struct amdgpu_fpriv *fpriv, uint32_t id)
 		kref_put(&ctx->refcount, amdgpu_ctx_do_release);
 	mutex_unlock(&mgr->lock);
 	return ctx ? 0 : -EINVAL;
+#endif
 }
 
 static int amdgpu_ctx_query(struct amdgpu_device *adev,
@@ -438,7 +446,7 @@ int amdgpu_ctx_wait_prev_fence(struct amdgpu_ctx *ctx, unsigned ring_id)
 
 void amdgpu_ctx_mgr_init(struct amdgpu_ctx_mgr *mgr)
 {
-	rw_init(&mgr->lock);
+	rw_init(&mgr->lock, "mgrlk");
 	idr_init(&mgr->ctx_handles);
 }
 

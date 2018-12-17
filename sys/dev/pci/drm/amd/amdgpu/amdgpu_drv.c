@@ -531,7 +531,7 @@ MODULE_PARM_DESC(smu_memory_pool_size,
 		"0x1 = 256Mbyte, 0x2 = 512Mbyte, 0x4 = 1 Gbyte, 0x8 = 2GByte");
 module_param_named(smu_memory_pool_size, amdgpu_smu_memory_pool_size, uint, 0444);
 
-static const struct pci_device_id pciidlist[] = {
+static const struct drm_pcidev pciidlist[] = {
 #ifdef  CONFIG_DRM_AMDGPU_SI
 	{0x1002, 0x6780, PCI_ANY_ID, PCI_ANY_ID, 0, 0, CHIP_TAHITI},
 	{0x1002, 0x6784, PCI_ANY_ID, PCI_ANY_ID, 0, 0, CHIP_TAHITI},
@@ -786,6 +786,7 @@ MODULE_DEVICE_TABLE(pci, pciidlist);
 
 static struct drm_driver kms_driver;
 
+#ifdef notyet
 static int amdgpu_kick_out_firmware_fb(struct pci_dev *pdev)
 {
 	struct apertures_struct *ap;
@@ -806,8 +807,10 @@ static int amdgpu_kick_out_firmware_fb(struct pci_dev *pdev)
 
 	return 0;
 }
+#endif
 
 
+#ifdef notyet
 static int amdgpu_pci_probe(struct pci_dev *pdev,
 			    const struct pci_device_id *ent)
 {
@@ -1033,10 +1036,14 @@ static int amdgpu_pmops_runtime_idle(struct device *dev)
 	/* we don't want the main rpm_idle to call suspend - we want to autosuspend */
 	return 1;
 }
+#endif /* notyet */
 
 long amdgpu_drm_ioctl(struct file *filp,
 		      unsigned int cmd, unsigned long arg)
 {
+	STUB();
+	return -ENOSYS;
+#if 0
 	struct drm_file *file_priv = filp->private_data;
 	struct drm_device *dev;
 	long ret;
@@ -1050,8 +1057,10 @@ long amdgpu_drm_ioctl(struct file *filp,
 	pm_runtime_mark_last_busy(dev->dev);
 	pm_runtime_put_autosuspend(dev->dev);
 	return ret;
+#endif
 }
 
+#ifdef __linux__
 static const struct dev_pm_ops amdgpu_pm_ops = {
 	.suspend = amdgpu_pmops_suspend,
 	.resume = amdgpu_pmops_resume,
@@ -1073,6 +1082,7 @@ static int amdgpu_flush(struct file *f, fl_owner_t id)
 
 	return 0;
 }
+#endif /* __linux__ */
 
 
 static const struct file_operations amdgpu_driver_kms_fops = {
