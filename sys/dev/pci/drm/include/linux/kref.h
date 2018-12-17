@@ -58,11 +58,14 @@ kref_get_unless_zero(struct kref *ref)
 	}
 }
 
-static inline void
+static inline int
 kref_put(struct kref *ref, void (*release)(struct kref *ref))
 {
-	if (atomic_dec_int_nv(&ref->refcount) == 0)
+	if (atomic_dec_int_nv(&ref->refcount) == 0) {
 		release(ref);
+		return 1;
+	}
+	return 0;
 }
 
 static inline void
