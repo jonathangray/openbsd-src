@@ -19,6 +19,15 @@ struct device_driver {
 	struct device *dev;
 };
 
+struct device_attribute {
+};
+
+#define DEVICE_ATTR(_name, _mode, _show, _store) \
+	struct device_attribute dev_attr_##_name
+
+#define device_create_file(a, b)	0
+#define device_remove_file(a, b)
+
 #define dev_get_drvdata(x)	NULL
 #define dev_set_drvdata(x, y)
 #define dev_name(dev)		""
