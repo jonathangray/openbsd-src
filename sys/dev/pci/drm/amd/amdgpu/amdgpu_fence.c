@@ -427,7 +427,7 @@ int amdgpu_fence_driver_init_ring(struct amdgpu_ring *ring,
 	timer_setup(&ring->fence_drv.fallback_timer, amdgpu_fence_fallback, 0);
 
 	ring->fence_drv.num_fences_mask = num_hw_submission * 2 - 1;
-	spin_lock_init(&ring->fence_drv.lock);
+	mtx_init(&ring->fence_drv.lock);
 	ring->fence_drv.fences = kcalloc(num_hw_submission * 2, sizeof(void *),
 					 GFP_KERNEL);
 	if (!ring->fence_drv.fences)

@@ -61,7 +61,7 @@ static int amdgpu_ctx_init(struct amdgpu_device *adev,
 	memset(ctx, 0, sizeof(*ctx));
 	ctx->adev = adev;
 	kref_init(&ctx->refcount);
-	spin_lock_init(&ctx->ring_lock);
+	mtx_init(&ctx->ring_lock);
 	ctx->fences = kcalloc(amdgpu_sched_jobs * AMDGPU_MAX_RINGS,
 			      sizeof(struct dma_fence*), GFP_KERNEL);
 	if (!ctx->fences)

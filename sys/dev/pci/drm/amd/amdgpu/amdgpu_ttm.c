@@ -1323,7 +1323,7 @@ int amdgpu_ttm_tt_set_userptr(struct ttm_tt *ttm, uint64_t addr,
 	gtt->usertask = current->group_leader;
 	get_task_struct(gtt->usertask);
 
-	spin_lock_init(&gtt->guptasklock);
+	mtx_init(&gtt->guptasklock);
 	INIT_LIST_HEAD(&gtt->guptasks);
 	atomic_set(&gtt->mmu_invalidations, 0);
 	gtt->last_set_pages = 0;

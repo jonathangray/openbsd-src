@@ -2606,7 +2606,7 @@ int amdgpu_vm_init(struct amdgpu_device *adev, struct amdgpu_vm *vm,
 		vm->reserved_vmid[i] = NULL;
 	INIT_LIST_HEAD(&vm->evicted);
 	INIT_LIST_HEAD(&vm->relocated);
-	spin_lock_init(&vm->moved_lock);
+	mtx_init(&vm->moved_lock);
 	INIT_LIST_HEAD(&vm->moved);
 	INIT_LIST_HEAD(&vm->idle);
 	INIT_LIST_HEAD(&vm->freed);
@@ -2927,7 +2927,7 @@ void amdgpu_vm_manager_init(struct amdgpu_device *adev)
 		adev->vm_manager.seqno[i] = 0;
 
 	atomic_set(&adev->vm_manager.vm_pte_next_ring, 0);
-	spin_lock_init(&adev->vm_manager.prt_lock);
+	mtx_init(&adev->vm_manager.prt_lock);
 	atomic_set(&adev->vm_manager.num_prt_users, 0);
 
 	/* If not overridden by the user, by default, only in large BAR systems
@@ -2947,7 +2947,7 @@ void amdgpu_vm_manager_init(struct amdgpu_device *adev)
 #endif
 
 	idr_init(&adev->vm_manager.pasid_idr);
-	spin_lock_init(&adev->vm_manager.pasid_lock);
+	mtx_init(&adev->vm_manager.pasid_lock);
 }
 
 /**

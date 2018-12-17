@@ -2375,21 +2375,21 @@ int amdgpu_device_init(struct amdgpu_device *adev,
 
 	amdgpu_device_check_arguments(adev);
 
-	spin_lock_init(&adev->mmio_idx_lock);
-	spin_lock_init(&adev->smc_idx_lock);
-	spin_lock_init(&adev->pcie_idx_lock);
-	spin_lock_init(&adev->uvd_ctx_idx_lock);
-	spin_lock_init(&adev->didt_idx_lock);
-	spin_lock_init(&adev->gc_cac_idx_lock);
-	spin_lock_init(&adev->se_cac_idx_lock);
-	spin_lock_init(&adev->audio_endpt_idx_lock);
-	spin_lock_init(&adev->mm_stats.lock);
+	mtx_init(&adev->mmio_idx_lock);
+	mtx_init(&adev->smc_idx_lock);
+	mtx_init(&adev->pcie_idx_lock);
+	mtx_init(&adev->uvd_ctx_idx_lock);
+	mtx_init(&adev->didt_idx_lock);
+	mtx_init(&adev->gc_cac_idx_lock);
+	mtx_init(&adev->se_cac_idx_lock);
+	mtx_init(&adev->audio_endpt_idx_lock);
+	mtx_init(&adev->mm_stats.lock);
 
 	INIT_LIST_HEAD(&adev->shadow_list);
 	rw_init(&adev->shadow_list_lock);
 
 	INIT_LIST_HEAD(&adev->ring_lru_list);
-	spin_lock_init(&adev->ring_lru_list_lock);
+	mtx_init(&adev->ring_lru_list_lock);
 
 	INIT_DELAYED_WORK(&adev->late_init_work,
 			  amdgpu_device_ip_late_init_func_handler);
