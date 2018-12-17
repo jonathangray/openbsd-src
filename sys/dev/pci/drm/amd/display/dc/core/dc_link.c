@@ -224,7 +224,7 @@ hpd_gpio_failure:
 }
 
 static enum ddc_transaction_type get_ddc_transaction_type(
-		enum signal_type sink_signal)
+		enum amd_signal_type sink_signal)
 {
 	enum ddc_transaction_type transaction_type = DDC_TRANSACTION_TYPE_NONE;
 
@@ -256,7 +256,7 @@ static enum ddc_transaction_type get_ddc_transaction_type(
 	return transaction_type;
 }
 
-static enum signal_type get_basic_signal_type(
+static enum amd_signal_type get_basic_signal_type(
 	struct graphics_object_id encoder,
 	struct graphics_object_id downstream)
 {
@@ -370,11 +370,11 @@ bool dc_link_is_dp_sink_present(struct dc_link *link)
  * @brief
  * Detect output sink type
  */
-static enum signal_type link_detect_sink(
+static enum amd_signal_type link_detect_sink(
 	struct dc_link *link,
 	enum dc_detect_reason reason)
 {
-	enum signal_type result = get_basic_signal_type(
+	enum amd_signal_type result = get_basic_signal_type(
 		link->link_enc->id, link->link_id);
 
 	/* Internal digital encoder will detect only dongles
@@ -425,11 +425,11 @@ static enum signal_type link_detect_sink(
 	return result;
 }
 
-static enum signal_type decide_signal_from_strap_and_dongle_type(
+static enum amd_signal_type decide_signal_from_strap_and_dongle_type(
 		enum display_dongle_type dongle_type,
 		struct audio_support *audio_support)
 {
-	enum signal_type signal = SIGNAL_TYPE_NONE;
+	enum amd_signal_type signal = SIGNAL_TYPE_NONE;
 
 	switch (dongle_type) {
 	case DISPLAY_DONGLE_DP_HDMI_DONGLE:
@@ -455,7 +455,7 @@ static enum signal_type decide_signal_from_strap_and_dongle_type(
 	return signal;
 }
 
-static enum signal_type dp_passive_dongle_detection(
+static enum amd_signal_type dp_passive_dongle_detection(
 		struct ddc_service *ddc,
 		struct display_sink_capability *sink_cap,
 		struct audio_support *audio_support)
@@ -1898,7 +1898,7 @@ static enum dc_status enable_link(
 	return status;
 }
 
-static void disable_link(struct dc_link *link, enum signal_type signal)
+static void disable_link(struct dc_link *link, enum amd_signal_type signal)
 {
 	/*
 	 * TODO: implement call for dp_set_hw_test_pattern

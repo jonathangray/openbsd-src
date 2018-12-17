@@ -175,7 +175,7 @@ static uint8_t clock_source_id_to_atom_phy_clk_src_id(
 	return atom_phy_clk_src_id >> 2;
 }
 
-static uint8_t signal_type_to_atom_dig_mode(enum signal_type s)
+static uint8_t signal_type_to_atom_dig_mode(enum amd_signal_type s)
 {
 	uint8_t atom_dig_mode = ATOM_TRANSMITTER_DIGMODE_V5_DP;
 

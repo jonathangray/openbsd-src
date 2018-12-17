@@ -3430,7 +3430,7 @@ fail:
 }
 
 
-static int to_drm_connector_type(enum signal_type st)
+static int to_drm_connector_type(enum amd_signal_type st)
 {
 	switch (st) {
 	case SIGNAL_TYPE_HDMI_TYPE_A:

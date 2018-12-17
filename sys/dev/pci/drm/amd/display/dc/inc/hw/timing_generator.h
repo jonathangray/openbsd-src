@@ -75,7 +75,7 @@ struct _dlg_otg_param {
 	int vupdate_offset;
 	int vupdate_width;
 	int vready_offset;
-	enum signal_type signal;
+	enum amd_signal_type signal;
 };
 
 struct vupdate_keepout_params {

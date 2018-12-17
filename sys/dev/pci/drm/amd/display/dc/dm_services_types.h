@@ -112,7 +112,7 @@ struct dm_pp_clock_levels_with_voltage {
 };
 
 struct dm_pp_single_disp_config {
-	enum signal_type signal;
+	enum amd_signal_type signal;
 	uint8_t transmitter;
 	uint8_t ddi_channel_mapping;
 	uint8_t pipe_idx;

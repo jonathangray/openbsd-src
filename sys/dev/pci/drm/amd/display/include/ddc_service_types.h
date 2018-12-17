@@ -96,7 +96,7 @@ struct display_sink_capability {
 	bool is_edp_sink_cap_valid;
 
 	enum ddc_transaction_type transaction_type;
-	enum signal_type signal;
+	enum amd_signal_type signal;
 };
 
 struct av_sync_data {

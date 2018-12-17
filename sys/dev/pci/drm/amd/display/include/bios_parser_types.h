@@ -104,7 +104,7 @@ struct bp_encoder_control {
 	enum bp_encoder_control_action action;
 	enum engine_id engine_id;
 	enum transmitter transmitter;
-	enum signal_type signal;
+	enum amd_signal_type signal;
 	enum dc_lane_count lanes_number;
 	enum dc_color_depth color_depth;
 	bool enable_dp_audio;
@@ -116,7 +116,7 @@ struct bp_external_encoder_control {
 	enum engine_id engine_id;
 	enum dc_link_rate link_rate;
 	enum dc_lane_count lanes_number;
-	enum signal_type signal;
+	enum amd_signal_type signal;
 	enum dc_color_depth color_depth;
 	bool coherent;
 	struct graphics_object_id encoder_id;
@@ -128,9 +128,9 @@ struct bp_crtc_source_select {
 	enum engine_id engine_id;
 	enum controller_id controller_id;
 	/* from GPU Tx aka asic_signal */
-	enum signal_type signal;
+	enum amd_signal_type signal;
 	/* sink_signal may differ from asicSignal if Translator encoder */
-	enum signal_type sink_signal;
+	enum amd_signal_type sink_signal;
 	enum display_output_bit_depth display_output_bit_depth;
 	bool enable_dp_audio;
 };
@@ -141,7 +141,7 @@ struct bp_transmitter_control {
 	enum transmitter transmitter; /* PhyId */
 	enum dc_lane_count lanes_number;
 	enum clock_source_id pll_id; /* needed for DCE 4.0 */
-	enum signal_type signal;
+	enum amd_signal_type signal;
 	enum dc_color_depth color_depth; /* not used for DCE6.0 */
 	enum hpd_source_id hpd_sel; /* ucHPDSel, used for DCe6.0 */
 	struct graphics_object_id connector_obj_id;
@@ -185,7 +185,7 @@ struct bp_hw_crtc_timing_parameters {
 
 struct bp_adjust_pixel_clock_parameters {
 	/* Input: Signal Type - to be converted to Encoder mode */
-	enum signal_type signal_type;
+	enum amd_signal_type signal_type;
 	/* Input: Encoder object id */
 	struct graphics_object_id encoder_object_id;
 	/* Input: Pixel Clock (requested Pixel clock based on Video timing
@@ -208,7 +208,7 @@ struct bp_pixel_clock_parameters {
 	enum controller_id controller_id; /* (Which CRTC uses this PLL) */
 	enum clock_source_id pll_id; /* Clock Source Id */
 	/* signal_type -> Encoder Mode - needed by VBIOS Exec table */
-	enum signal_type signal_type;
+	enum amd_signal_type signal_type;
 	/* Adjusted Pixel Clock (after VBIOS exec table)
 	 * that becomes Target Pixel Clock (KHz) */
 	uint32_t target_pixel_clock;

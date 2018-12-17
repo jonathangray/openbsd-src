@@ -1109,7 +1109,7 @@ void dce110_timing_generator_set_test_pattern(
 bool dce110_timing_generator_validate_timing(
 	struct timing_generator *tg,
 	const struct dc_crtc_timing *timing,
-	enum signal_type signal)
+	enum amd_signal_type signal)
 {
 	uint32_t h_blank;
 	uint32_t h_back_porch, hsync_offset, h_sync_start;

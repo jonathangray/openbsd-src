@@ -54,7 +54,7 @@
 
 static const struct spread_spectrum_data *get_ss_data_entry(
 		struct dce110_clk_src *clk_src,
-		enum signal_type signal,
+		enum amd_signal_type signal,
 		uint32_t pix_clk_khz)
 {
 
@@ -773,7 +773,7 @@ static bool calculate_ss(
 
 static bool enable_spread_spectrum(
 		struct dce110_clk_src *clk_src,
-		enum signal_type signal, struct pll_settings *pll_settings)
+		enum amd_signal_type signal, struct pll_settings *pll_settings)
 {
 	struct bp_spread_spectrum_parameters bp_params = {0};
 	struct delta_sigma_data d_s_data;
@@ -819,7 +819,7 @@ static bool enable_spread_spectrum(
 
 static void dce110_program_pixel_clk_resync(
 		struct dce110_clk_src *clk_src,
-		enum signal_type signal_type,
+		enum amd_signal_type signal_type,
 		enum dc_color_depth colordepth)
 {
 	REG_UPDATE(RESYNC_CNTL,
@@ -857,7 +857,7 @@ static void dce110_program_pixel_clk_resync(
 
 static void dce112_program_pixel_clk_resync(
 		struct dce110_clk_src *clk_src,
-		enum signal_type signal_type,
+		enum amd_signal_type signal_type,
 		enum dc_color_depth colordepth,
 		bool enable_ycbcr420)
 {

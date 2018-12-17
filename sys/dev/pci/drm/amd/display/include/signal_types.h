@@ -31,7 +31,7 @@
 /* Maximum pixel clock, in KHz. For TMDS signal is 165.00 MHz */
 #define TMDS_MAX_PIXEL_CLOCK 165000
 
-enum signal_type {
+enum amd_signal_type {
 	SIGNAL_TYPE_NONE		= 0L,		/* no signal */
 	SIGNAL_TYPE_DVI_SINGLE_LINK	= (1 << 0),
 	SIGNAL_TYPE_DVI_DUAL_LINK	= (1 << 1),
@@ -45,30 +45,30 @@ enum signal_type {
 };
 
 /* help functions for signal types manipulation */
-static inline bool dc_is_hdmi_signal(enum signal_type signal)
+static inline bool dc_is_hdmi_signal(enum amd_signal_type signal)
 {
 	return (signal == SIGNAL_TYPE_HDMI_TYPE_A);
 }
 
-static inline bool dc_is_dp_sst_signal(enum signal_type signal)
+static inline bool dc_is_dp_sst_signal(enum amd_signal_type signal)
 {
 	return (signal == SIGNAL_TYPE_DISPLAY_PORT ||
 		signal == SIGNAL_TYPE_EDP);
 }
 
-static inline bool dc_is_dp_signal(enum signal_type signal)
+static inline bool dc_is_dp_signal(enum amd_signal_type signal)
 {
 	return (signal == SIGNAL_TYPE_DISPLAY_PORT ||
 		signal == SIGNAL_TYPE_EDP ||
 		signal == SIGNAL_TYPE_DISPLAY_PORT_MST);
 }
 
-static inline bool dc_is_embedded_signal(enum signal_type signal)
+static inline bool dc_is_embedded_signal(enum amd_signal_type signal)
 {
 	return (signal == SIGNAL_TYPE_EDP || signal == SIGNAL_TYPE_LVDS);
 }
 
-static inline bool dc_is_dvi_signal(enum signal_type signal)
+static inline bool dc_is_dvi_signal(enum amd_signal_type signal)
 {
 	switch (signal) {
 	case SIGNAL_TYPE_DVI_SINGLE_LINK:
@@ -80,17 +80,17 @@ static inline bool dc_is_dvi_signal(enum signal_type signal)
 	}
 }
 
-static inline bool dc_is_dvi_single_link_signal(enum signal_type signal)
+static inline bool dc_is_dvi_single_link_signal(enum amd_signal_type signal)
 {
 	return (signal == SIGNAL_TYPE_DVI_SINGLE_LINK);
 }
 
-static inline bool dc_is_dual_link_signal(enum signal_type signal)
+static inline bool dc_is_dual_link_signal(enum amd_signal_type signal)
 {
 	return (signal == SIGNAL_TYPE_DVI_DUAL_LINK);
 }
 
-static inline bool dc_is_audio_capable_signal(enum signal_type signal)
+static inline bool dc_is_audio_capable_signal(enum amd_signal_type signal)
 {
 	return (signal == SIGNAL_TYPE_DISPLAY_PORT ||
 		signal == SIGNAL_TYPE_DISPLAY_PORT_MST ||

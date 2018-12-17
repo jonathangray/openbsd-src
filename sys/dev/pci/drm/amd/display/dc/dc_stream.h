@@ -93,7 +93,7 @@ struct dc_stream_state {
 	struct clamping_and_pixel_encoding_params clamping;
 
 	int phy_pix_clk;
-	enum signal_type signal;
+	enum amd_signal_type signal;
 	bool dpms_off;
 
 	struct dc_stream_status status;

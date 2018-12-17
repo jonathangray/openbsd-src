@@ -53,7 +53,7 @@ void dp_receiver_power_ctrl(struct dc_link *link, bool on)
 
 void dp_enable_link_phy(
 	struct dc_link *link,
-	enum signal_type signal,
+	enum amd_signal_type signal,
 	enum clock_source_id clock_source,
 	const struct dc_link_settings *link_settings)
 {
@@ -144,7 +144,7 @@ bool edp_receiver_ready_T7(struct dc_link *link)
 	return result;
 }
 
-void dp_disable_link_phy(struct dc_link *link, enum signal_type signal)
+void dp_disable_link_phy(struct dc_link *link, enum amd_signal_type signal)
 {
 	if (!link->wa_flags.dp_keep_receiver_powered)
 		dp_receiver_power_ctrl(link, false);
@@ -160,7 +160,7 @@ void dp_disable_link_phy(struct dc_link *link, enum signal_type signal)
 			sizeof(link->cur_link_settings));
 }
 
-void dp_disable_link_phy_mst(struct dc_link *link, enum signal_type signal)
+void dp_disable_link_phy_mst(struct dc_link *link, enum amd_signal_type signal)
 {
 	/* MST disable link only when no stream use the link */
 	if (link->mst_stream_alloc_table.stream_count > 0)

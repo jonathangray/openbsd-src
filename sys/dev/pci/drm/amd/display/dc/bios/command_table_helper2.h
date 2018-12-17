@@ -39,7 +39,7 @@ bool dal_cmd_table_helper_controller_id_to_atom2(
 	uint8_t *atom_id);
 
 uint32_t dal_cmd_table_helper_encoder_mode_bp_to_atom2(
-	enum signal_type s,
+	enum amd_signal_type s,
 	bool enable_dp_audio);
 
 bool dal_cmd_table_helper_clock_source_id_to_ref_clk_src2(

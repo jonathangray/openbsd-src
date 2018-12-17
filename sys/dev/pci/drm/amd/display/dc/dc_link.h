@@ -69,7 +69,7 @@ struct dc_link {
 	struct dc_sink *local_sink;
 	unsigned int link_index;
 	enum dc_connection_type type;
-	enum signal_type connector_signal;
+	enum amd_signal_type connector_signal;
 	enum dc_irq_source irq_source_hpd;
 	enum dc_irq_source irq_source_hpd_rx;/* aka DP Short Pulse  */
 	bool is_hpd_filter_disabled;

@@ -1450,7 +1450,7 @@ static void power_down_encoders(struct dc *dc)
 {
 	int i;
 	enum connector_id connector_id;
-	enum signal_type signal = SIGNAL_TYPE_NONE;
+	enum amd_signal_type signal = SIGNAL_TYPE_NONE;
 
 	/* do not know BIOS back-front mapping, simply blank all. It will not
 	 * hurt for non-DP

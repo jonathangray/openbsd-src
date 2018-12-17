@@ -238,8 +238,8 @@ void dcn10_link_encoder_construct(
 
 bool dcn10_link_encoder_validate_dvi_output(
 	const struct dcn10_link_encoder *enc10,
-	enum signal_type connector_signal,
-	enum signal_type signal,
+	enum amd_signal_type connector_signal,
+	enum amd_signal_type signal,
 	const struct dc_crtc_timing *crtc_timing);
 
 bool dcn10_link_encoder_validate_rgb_output(
@@ -269,7 +269,7 @@ void dcn10_link_encoder_destroy(struct link_encoder **enc);
 /* TODO can this be combined with enable_output? */
 void dcn10_link_encoder_setup(
 	struct link_encoder *enc,
-	enum signal_type signal);
+	enum amd_signal_type signal);
 
 void configure_encoder(
 	struct dcn10_link_encoder *enc10,
@@ -281,7 +281,7 @@ void dcn10_link_encoder_enable_tmds_output(
 	struct link_encoder *enc,
 	enum clock_source_id clock_source,
 	enum dc_color_depth color_depth,
-	enum signal_type signal,
+	enum amd_signal_type signal,
 	uint32_t pixel_clock);
 
 /* enables DP PHY output */
@@ -299,7 +299,7 @@ void dcn10_link_encoder_enable_dp_mst_output(
 /* disable PHY output */
 void dcn10_link_encoder_disable_output(
 	struct link_encoder *enc,
-	enum signal_type signal);
+	enum amd_signal_type signal);
 
 /* set DP lane settings */
 void dcn10_link_encoder_dp_set_lane_settings(

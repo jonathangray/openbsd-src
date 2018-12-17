@@ -101,7 +101,7 @@ static bool dce120_timing_generator_is_in_vertical_blank(
 bool dce120_timing_generator_validate_timing(
 	struct timing_generator *tg,
 	const struct dc_crtc_timing *timing,
-	enum signal_type signal)
+	enum amd_signal_type signal)
 {
 	uint32_t interlace_factor = timing->flags.INTERLACE ? 2 : 1;
 	uint32_t v_blank =

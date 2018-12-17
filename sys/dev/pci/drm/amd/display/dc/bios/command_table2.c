@@ -496,7 +496,7 @@ static enum bp_result select_crtc_source_v3(
 	struct select_crtc_source_parameters_v2_3 params;
 	uint8_t atom_controller_id;
 	uint32_t atom_engine_id;
-	enum signal_type s = bp_params->signal;
+	enum amd_signal_type s = bp_params->signal;
 
 	memset(&params, 0, sizeof(params));
 

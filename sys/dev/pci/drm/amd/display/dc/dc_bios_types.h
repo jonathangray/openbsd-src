@@ -127,7 +127,7 @@ struct dc_vbios_funcs {
 
 	bool (*is_active_display)(
 		struct dc_bios *bios,
-		enum signal_type signal,
+		enum amd_signal_type signal,
 		const struct connector_device_tag_info *device_tag);
 	enum controller_id (*get_embedded_display_controller_id)(
 		struct dc_bios *bios);
@@ -184,11 +184,11 @@ struct dc_vbios_funcs {
 		struct dc_bios *bios,
 		struct bp_pixel_clock_parameters *bp_params);
 
-	enum signal_type (*dac_load_detect)(
+	enum amd_signal_type (*dac_load_detect)(
 		struct dc_bios *bios,
 		struct graphics_object_id encoder,
 		struct graphics_object_id connector,
-		enum signal_type display_signal);
+		enum amd_signal_type display_signal);
 
 	enum bp_result (*enable_disp_power_gating)(
 		struct dc_bios *bios,
