@@ -305,7 +305,7 @@ static int smu10_disable_gfx_off(struct pp_hwmgr *hwmgr)
 
 		/* confirm gfx is back to "on" state */
 		while (!smu10_is_gfx_on(hwmgr))
-			msleep(1);
+			drm_msleep(1);
 	}
 
 	return 0;

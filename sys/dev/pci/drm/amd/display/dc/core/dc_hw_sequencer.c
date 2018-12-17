@@ -256,7 +256,7 @@ bool hwss_wait_for_blank_complete(
 		if (tg->funcs->is_blanked(tg))
 			break;
 
-		msleep(1);
+		drm_msleep(1);
 	}
 
 	if (counter == 100) {

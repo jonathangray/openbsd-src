@@ -828,7 +828,7 @@ void hwss_edp_wait_for_hpd_ready(
 			break;
 		}
 
-		msleep(HPD_CHECK_INTERVAL);
+		drm_msleep(HPD_CHECK_INTERVAL);
 
 		time_elapsed += HPD_CHECK_INTERVAL;
 	} while (time_elapsed < timeout);
@@ -882,7 +882,7 @@ void hwss_edp_power_control(
 				wait_time_ms = edp_poweroff_time_ms - duration_in_ms;
 
 			if (wait_time_ms) {
-				msleep(wait_time_ms);
+				drm_msleep(wait_time_ms);
 				dm_output_to_console("%s: wait %lld ms to power on eDP.\n",
 						__func__, wait_time_ms);
 			}

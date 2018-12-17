@@ -659,7 +659,7 @@ static void atom_op_delay(atom_exec_context *ctx, int *ptr, int arg)
 	else if (!drm_can_sleep())
 		mdelay(count);
 	else
-		msleep(count);
+		drm_msleep(count);
 }
 
 static void atom_op_div(atom_exec_context *ctx, int *ptr, int arg)

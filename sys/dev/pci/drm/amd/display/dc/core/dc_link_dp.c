@@ -659,7 +659,7 @@ static bool perform_post_lt_adj_req_sequence(
 				break;
 			}
 
-			msleep(1);
+			drm_msleep(1);
 		}
 
 		if (!req_drv_setting_changed) {
@@ -1055,7 +1055,7 @@ bool perform_link_training_with_retries(
 				skip_video_pattern) == LINK_TRAINING_SUCCESS)
 			return true;
 
-		msleep(delay_between_attempts);
+		drm_msleep(delay_between_attempts);
 		delay_between_attempts += LINK_TRAINING_RETRY_DELAY;
 	}
 

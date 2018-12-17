@@ -291,7 +291,7 @@ static bool read_command(
 
 		if (ctx.operation_succeeded && !ctx.transaction_complete)
 			if (ctx.request.type == AUX_TRANSACTION_TYPE_I2C)
-				msleep(engine->delay);
+				drm_msleep(engine->delay);
 	} while (ctx.operation_succeeded && !ctx.transaction_complete);
 
 	if (request->payload.address_space ==
@@ -507,7 +507,7 @@ static bool write_command(
 
 		if (ctx.operation_succeeded && !ctx.transaction_complete)
 			if (ctx.request.type == AUX_TRANSACTION_TYPE_I2C)
-				msleep(engine->delay);
+				drm_msleep(engine->delay);
 	} while (ctx.operation_succeeded && !ctx.transaction_complete);
 
 	if (request->payload.address_space ==

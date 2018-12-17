@@ -1350,7 +1350,7 @@ static enum dc_status enable_link_dp(
 	if (stream->sink->edid_caps.panel_patch.dppowerup_delay > 0) {
 		int delay_dp_power_up_in_ms = stream->sink->edid_caps.panel_patch.dppowerup_delay;
 
-		msleep(delay_dp_power_up_in_ms);
+		drm_msleep(delay_dp_power_up_in_ms);
 	}
 
 	panel_mode = dp_get_panel_mode(link);
@@ -1880,7 +1880,7 @@ static enum dc_status enable_link(
 		break;
 	case SIGNAL_TYPE_DISPLAY_PORT_MST:
 		status = enable_link_dp_mst(state, pipe_ctx);
-		msleep(200);
+		drm_msleep(200);
 		break;
 	case SIGNAL_TYPE_DVI_SINGLE_LINK:
 	case SIGNAL_TYPE_DVI_DUAL_LINK:

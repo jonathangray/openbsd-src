@@ -128,7 +128,7 @@ psp_cmd_submit_buf(struct psp_context *psp,
 			     fence_mc_addr, index);
 
 	while (*((unsigned int *)psp->fence_buf) != index) {
-		msleep(1);
+		drm_msleep(1);
 	}
 
 	if (ucode) {

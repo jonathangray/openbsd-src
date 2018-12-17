@@ -863,7 +863,7 @@ retry_init:
 	if (ret == -EAGAIN && ++retry <= 3) {
 		DRM_INFO("retry init %d\n", retry);
 		/* Don't request EX mode too frequently which is attacking */
-		msleep(5000);
+		drm_msleep(5000);
 		goto retry_init;
 	} else if (ret)
 		goto err_pci;
