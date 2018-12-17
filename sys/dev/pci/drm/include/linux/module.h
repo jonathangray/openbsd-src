@@ -15,5 +15,6 @@ struct module;
 #define MODULE_DEVICE_TABLE(x, y)
 #define module_init(x)
 #define module_exit(x)
+#define symbol_put(x)
 
 #endif
