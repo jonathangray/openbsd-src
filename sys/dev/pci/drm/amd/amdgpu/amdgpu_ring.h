@@ -212,7 +212,7 @@ struct amdgpu_ring {
 	bool			has_compute_vm_bug;
 
 	atomic_t		num_jobs[DRM_SCHED_PRIORITY_MAX];
-	struct mutex		priority_mutex;
+	struct rwlock		priority_mutex;
 	/* protected by priority_mutex */
 	int			priority;
 

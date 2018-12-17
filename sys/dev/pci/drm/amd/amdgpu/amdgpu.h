@@ -604,7 +604,7 @@ extern const struct drm_sched_backend_ops amdgpu_sched_ops;
  */
 struct amdgpu_queue_mapper {
 	int 		hw_ip;
-	struct mutex	lock;
+	struct rwlock	lock;
 	/* protected by lock */
 	struct amdgpu_ring *queue_map[AMDGPU_MAX_RINGS];
 };
@@ -645,13 +645,13 @@ struct amdgpu_ctx {
 	bool			preamble_presented;
 	enum drm_sched_priority init_priority;
 	enum drm_sched_priority override_priority;
-	struct mutex            lock;
+	struct rwlock            lock;
 	atomic_t	guilty;
 };
 
 struct amdgpu_ctx_mgr {
 	struct amdgpu_device	*adev;
-	struct mutex		lock;
+	struct rwlock		lock;
 	/* protected by lock */
 	struct idr		ctx_handles;
 };
@@ -685,7 +685,7 @@ struct amdgpu_fpriv {
 	struct amdgpu_vm	vm;
 	struct amdgpu_bo_va	*prt_va;
 	struct amdgpu_bo_va	*csa_va;
-	struct mutex		bo_list_lock;
+	struct rwlock		bo_list_lock;
 	struct idr		bo_list_handles;
 	struct amdgpu_ctx_mgr	ctx_mgr;
 };
@@ -894,7 +894,7 @@ struct sq_work {
 };
 
 struct amdgpu_gfx {
-	struct mutex			gpu_clock_mutex;
+	struct rwlock			gpu_clock_mutex;
 	struct amdgpu_gfx_config	config;
 	struct amdgpu_rlc		rlc;
 	struct amdgpu_mec		mec;
@@ -951,7 +951,7 @@ struct amdgpu_gfx {
 	struct amdgpu_ngg		ngg;
 
 	/* pipe reservation */
-	struct mutex			pipe_reserve_mutex;
+	struct rwlock			pipe_reserve_mutex;
 	DECLARE_BITMAP			(pipe_reserve_bitmap, AMDGPU_MAX_COMPUTE_QUEUES);
 };
 
@@ -1080,7 +1080,7 @@ struct amdgpu_firmware {
 	/* firmwares are loaded by psp instead of smu from vega10 */
 	const struct amdgpu_psp_funcs *funcs;
 	struct amdgpu_bo *rbuf;
-	struct mutex mutex;
+	struct rwlock mutex;
 
 	/* gpu info firmware data pointer */
 	const struct firmware *gpu_info_fw;
@@ -1366,9 +1366,9 @@ struct amdgpu_device {
 #endif
 	struct amdgpu_atif		*atif;
 	struct amdgpu_atcs		atcs;
-	struct mutex			srbm_mutex;
+	struct rwlock			srbm_mutex;
 	/* GRBM index mutex. Protects concurrent access to GRBM index */
-	struct mutex                    grbm_idx_mutex;
+	struct rwlock                    grbm_idx_mutex;
 	struct dev_pm_domain		vga_pm_domain;
 	bool				have_disp_power_ref;
 
@@ -1509,7 +1509,7 @@ struct amdgpu_device {
 
 	struct amdgpu_ip_block          ip_blocks[AMDGPU_MAX_IP_NUM];
 	int				num_ip_blocks;
-	struct mutex	mn_lock;
+	struct rwlock	mn_lock;
 	DECLARE_HASHTABLE(mn_hash, 7);
 
 	/* tracking pinned memory */
@@ -1535,7 +1535,7 @@ struct amdgpu_device {
 
 	/* link all shadow bo */
 	struct list_head                shadow_list;
-	struct mutex                    shadow_list_lock;
+	struct rwlock                    shadow_list_lock;
 	/* keep an lru list of rings by HW IP */
 	struct list_head		ring_lru_list;
 	spinlock_t			ring_lru_list_lock;
@@ -1547,7 +1547,7 @@ struct amdgpu_device {
 	/* record last mm index being written through WREG32*/
 	unsigned long last_mm_index;
 	bool                            in_gpu_reset;
-	struct mutex  lock_reset;
+	struct rwlock  lock_reset;
 };
 
 static inline struct amdgpu_device *amdgpu_ttm_adev(struct ttm_bo_device *bdev)

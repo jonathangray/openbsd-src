@@ -244,7 +244,7 @@ struct kfd_dev {
 	struct kfd_vmid_info vm_info;
 
 	const struct kfd2kgd_calls *kfd2kgd;
-	struct mutex doorbell_mutex;
+	struct rwlock doorbell_mutex;
 	DECLARE_BITMAP(doorbell_available_index,
 			KFD_MAX_NUM_OF_QUEUES_PER_PROCESS);
 
@@ -252,7 +252,7 @@ struct kfd_dev {
 	uint64_t gtt_start_gpu_addr;
 	void *gtt_start_cpu_ptr;
 	void *gtt_sa_bitmap;
-	struct mutex gtt_sa_lock;
+	struct rwlock gtt_sa_lock;
 	unsigned int gtt_sa_chunk_size;
 	unsigned int gtt_sa_num_of_chunks;
 
@@ -640,7 +640,7 @@ struct kfd_process {
 	struct kref ref;
 	struct work_struct release_work;
 
-	struct mutex mutex;
+	struct rwlock mutex;
 
 	/*
 	 * In any process, the thread that started main() is the lead
@@ -672,7 +672,7 @@ struct kfd_process {
 	bool is_32bit_user_mode;
 
 	/* Event-related data */
-	struct mutex event_mutex;
+	struct rwlock event_mutex;
 	/* Event ID allocator and lookup */
 	struct idr event_idr;
 	/* Event page */
@@ -893,7 +893,7 @@ int amdkfd_fence_wait_timeout(unsigned int *fence_addr,
 struct packet_manager {
 	struct device_queue_manager *dqm;
 	struct kernel_queue *priv_queue;
-	struct mutex lock;
+	struct rwlock lock;
 	bool allocated;
 	struct kfd_mem_obj *ib_buffer_obj;
 	unsigned int ib_size_bytes;

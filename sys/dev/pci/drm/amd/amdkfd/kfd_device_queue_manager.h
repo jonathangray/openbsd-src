@@ -172,7 +172,7 @@ struct device_queue_manager {
 	struct mqd_manager	*mqd_mgrs[KFD_MQD_TYPE_MAX];
 	struct packet_manager	packets;
 	struct kfd_dev		*dev;
-	struct mutex		lock_hidden; /* use dqm_lock/unlock(dqm) */
+	struct rwlock		lock_hidden; /* use dqm_lock/unlock(dqm) */
 	struct list_head	queues;
 	unsigned int		saved_flags;
 	unsigned int		processes_count;
