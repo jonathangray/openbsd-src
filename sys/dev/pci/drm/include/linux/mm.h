@@ -30,7 +30,7 @@
 #define is_vmalloc_addr(ptr)	true
 
 static inline void *
-kvmalloc(size_t size, gpf_t flags)
+kvmalloc(size_t size, gfp_t flags)
 {
 	return malloc(size, M_DRM, flags);
 }
