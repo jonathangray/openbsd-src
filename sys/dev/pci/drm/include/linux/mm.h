@@ -30,6 +30,12 @@
 #define is_vmalloc_addr(ptr)	true
 
 static inline void *
+kvmalloc(size_t size, gpf_t flags)
+{
+	return malloc(size, M_DRM, flags);
+}
+
+static inline void *
 kvmalloc_array(size_t n, size_t size, int flags)
 {
 	if (n == 0 || SIZE_MAX / n < size)
