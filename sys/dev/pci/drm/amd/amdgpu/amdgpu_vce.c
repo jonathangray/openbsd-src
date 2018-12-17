@@ -192,7 +192,7 @@ int amdgpu_vce_sw_init(struct amdgpu_device *adev, unsigned long size)
 	}
 
 	INIT_DELAYED_WORK(&adev->vce.idle_work, amdgpu_vce_idle_work_handler);
-	mutex_init(&adev->vce.idle_mutex);
+	rw_init(&adev->vce.idle_mutex);
 
 	return 0;
 }

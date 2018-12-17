@@ -3622,7 +3622,7 @@ void amdgpu_dm_connector_init_helper(struct amdgpu_display_manager *dm,
 	aconnector->base.stereo_allowed = false;
 	aconnector->base.dpms = DRM_MODE_DPMS_OFF;
 	aconnector->hpd.hpd = AMDGPU_HPD_NONE; /* not used */
-	mutex_init(&aconnector->hpd_lock);
+	rw_init(&aconnector->hpd_lock);
 
 	/* configure support HPD hot plug connector_>polled default value is 0
 	 * which means HPD hot plug not supported

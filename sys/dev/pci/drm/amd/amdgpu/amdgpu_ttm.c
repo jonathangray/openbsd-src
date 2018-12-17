@@ -132,7 +132,7 @@ static int amdgpu_ttm_global_init(struct amdgpu_device *adev)
 		goto error_bo;
 	}
 
-	mutex_init(&adev->mman.gtt_window_lock);
+	rw_init(&adev->mman.gtt_window_lock);
 
 	adev->mman.mem_global_referenced = true;
 
