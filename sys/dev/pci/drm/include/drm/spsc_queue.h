@@ -47,9 +47,12 @@ struct spsc_queue {
 
 static inline void spsc_queue_init(struct spsc_queue *queue)
 {
+	printf("%s: stub\n", __func__);
+#if 0
 	queue->head = NULL;
 	atomic_long_set(&queue->tail, (long)&queue->head);
 	atomic_set(&queue->job_count, 0);
+#endif
 }
 
 static inline struct spsc_node *spsc_queue_peek(struct spsc_queue *queue)
@@ -64,6 +67,9 @@ static inline int spsc_queue_count(struct spsc_queue *queue)
 
 static inline bool spsc_queue_push(struct spsc_queue *queue, struct spsc_node *node)
 {
+	printf("%s: stub\n", __func__);
+	return false;
+#if 0
 	struct spsc_node **tail;
 
 	node->next = NULL;
@@ -83,11 +89,15 @@ static inline bool spsc_queue_push(struct spsc_queue *queue, struct spsc_node *n
 	preempt_enable();
 
 	return tail == &queue->head;
+#endif
 }
 
 
 static inline struct spsc_node *spsc_queue_pop(struct spsc_queue *queue)
 {
+	printf("%s: stub\n", __func__);
+	return NULL;
+#if 0
 	struct spsc_node *next, *node;
 
 	/* Verify reading from memory and not the cache */
@@ -115,6 +125,7 @@ static inline struct spsc_node *spsc_queue_pop(struct spsc_queue *queue)
 
 	atomic_dec(&queue->job_count);
 	return node;
+#endif
 }
 
 

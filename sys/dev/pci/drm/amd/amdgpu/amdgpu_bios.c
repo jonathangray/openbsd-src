@@ -88,6 +88,9 @@ static bool check_atom_bios(uint8_t *bios, size_t size)
  */
 static bool igp_read_bios_from_vram(struct amdgpu_device *adev)
 {
+	STUB();
+	return false;
+#if 0
 	uint8_t __iomem *bios;
 	resource_size_t vram_base;
 	resource_size_t size = 256 * 1024; /* ??? */
@@ -118,10 +121,14 @@ static bool igp_read_bios_from_vram(struct amdgpu_device *adev)
 	}
 
 	return true;
+#endif
 }
 
 bool amdgpu_read_bios(struct amdgpu_device *adev)
 {
+	STUB();
+	return false;
+#if 0
 	uint8_t __iomem *bios;
 	size_t size;
 
@@ -147,6 +154,7 @@ bool amdgpu_read_bios(struct amdgpu_device *adev)
 	}
 
 	return true;
+#endif
 }
 
 static bool amdgpu_read_bios_from_rom(struct amdgpu_device *adev)
@@ -170,7 +178,7 @@ static bool amdgpu_read_bios_from_rom(struct amdgpu_device *adev)
 
 	/* valid vbios, go on */
 	len = AMD_VBIOS_LENGTH(header);
-	len = ALIGN(len, 4);
+	len = roundup2(len, 4);
 	adev->bios = kmalloc(len, GFP_KERNEL);
 	if (!adev->bios) {
 		DRM_ERROR("no memory to allocate for BIOS\n");
@@ -191,6 +199,9 @@ static bool amdgpu_read_bios_from_rom(struct amdgpu_device *adev)
 
 static bool amdgpu_read_platform_bios(struct amdgpu_device *adev)
 {
+	STUB();
+	return false;
+#if 0
 	uint8_t __iomem *bios;
 	size_t size;
 
@@ -215,6 +226,7 @@ static bool amdgpu_read_platform_bios(struct amdgpu_device *adev)
 	adev->bios_size = size;
 
 	return true;
+#endif
 }
 
 #ifdef CONFIG_ACPI

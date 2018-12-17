@@ -59,6 +59,9 @@ int amdgpu_bo_list_create(struct amdgpu_device *adev, struct drm_file *filp,
 			  struct drm_amdgpu_bo_list_entry *info,
 			  unsigned num_entries, struct amdgpu_bo_list **result)
 {
+	STUB();
+	return -ENOSYS;
+#if 0
 	unsigned last_entry = 0, first_userptr = num_entries;
 	struct amdgpu_bo_list_entry *array;
 	struct amdgpu_bo_list *list;
@@ -141,11 +144,13 @@ error_free:
 		amdgpu_bo_unref(&array[i].robj);
 	kvfree(list);
 	return r;
-
+#endif
 }
 
 static void amdgpu_bo_list_destroy(struct amdgpu_fpriv *fpriv, int id)
 {
+	STUB();
+#if 0
 	struct amdgpu_bo_list *list;
 
 	mutex_lock(&fpriv->bo_list_lock);
@@ -153,6 +158,7 @@ static void amdgpu_bo_list_destroy(struct amdgpu_fpriv *fpriv, int id)
 	mutex_unlock(&fpriv->bo_list_lock);
 	if (list)
 		kref_put(&list->refcount, amdgpu_bo_list_free);
+#endif
 }
 
 int amdgpu_bo_list_get(struct amdgpu_fpriv *fpriv, int id,

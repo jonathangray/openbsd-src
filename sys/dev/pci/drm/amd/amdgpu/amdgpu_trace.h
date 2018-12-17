@@ -468,4 +468,6 @@ TRACE_EVENT(amdgpu_bo_move,
 /* This part must be outside protection */
 #undef TRACE_INCLUDE_PATH
 #define TRACE_INCLUDE_PATH ../../drivers/gpu/drm/amd/amdgpu
+#ifdef __linux__
 #include <trace/define_trace.h>
+#endif

@@ -146,6 +146,8 @@ static void amdgpu_doorbell_get_kfd_info(struct amdgpu_device *adev,
 
 void amdgpu_amdkfd_device_init(struct amdgpu_device *adev)
 {
+	STUB();
+#if 0
 	int i;
 	int last_valid_bit;
 	if (adev->kfd) {
@@ -210,6 +212,7 @@ void amdgpu_amdkfd_device_init(struct amdgpu_device *adev)
 
 		kgd2kfd->device_init(adev->kfd, &gpu_resources);
 	}
+#endif
 }
 
 void amdgpu_amdkfd_device_fini(struct amdgpu_device *adev)
@@ -356,6 +359,8 @@ void free_gtt_mem(struct kgd_dev *kgd, void *mem_obj)
 void get_local_mem_info(struct kgd_dev *kgd,
 			struct kfd_local_mem_info *mem_info)
 {
+	STUB();
+#if 0
 	struct amdgpu_device *adev = (struct amdgpu_device *)kgd;
 	uint64_t address_mask = adev->dev->dma_mask ? ~*adev->dev->dma_mask :
 					     ~((1ULL << 32) - 1);
@@ -383,6 +388,7 @@ void get_local_mem_info(struct kgd_dev *kgd,
 		mem_info->mem_clk_max = amdgpu_dpm_get_mclk(adev, false) / 100;
 	else
 		mem_info->mem_clk_max = 100;
+#endif
 }
 
 uint64_t get_gpu_clock_counter(struct kgd_dev *kgd)

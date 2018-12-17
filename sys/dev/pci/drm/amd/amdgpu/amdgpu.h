@@ -386,7 +386,9 @@ struct drm_gem_object *amdgpu_gem_prime_import(struct drm_device *dev,
 struct reservation_object *amdgpu_gem_prime_res_obj(struct drm_gem_object *);
 void *amdgpu_gem_prime_vmap(struct drm_gem_object *obj);
 void amdgpu_gem_prime_vunmap(struct drm_gem_object *obj, void *vaddr);
+#ifdef notyet
 int amdgpu_gem_prime_mmap(struct drm_gem_object *obj, struct vm_area_struct *vma);
+#endif
 
 /* sub-allocation manager, it has to be protected by another lock.
  * By conception this is an helper for other part of the driver

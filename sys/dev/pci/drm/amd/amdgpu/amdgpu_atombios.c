@@ -146,7 +146,7 @@ void amdgpu_atombios_i2c_init(struct amdgpu_device *adev)
 			i2c = amdgpu_atombios_get_bus_rec_for_i2c_gpio(gpio);
 
 			if (i2c.valid) {
-				sprintf(stmp, "0x%x", i2c.i2c_id);
+				snprintf(stmp, sizeof(stmp), "0x%x", i2c.i2c_id);
 				adev->i2c_bus[i] = amdgpu_i2c_create(adev->ddev, &i2c, stmp);
 			}
 			gpio = (ATOM_GPIO_I2C_ASSIGMENT *)
@@ -2033,7 +2033,7 @@ int amdgpu_atombios_init(struct amdgpu_device *adev)
 		return -ENOMEM;
 	}
 
-	rw_init(&adev->mode_info.atom_context->mutex);
+	rw_init(&adev->mode_info.atom_context->mutex, "atomcm");
 	if (adev->is_atom_fw) {
 		amdgpu_atomfirmware_scratch_regs_init(adev);
 		amdgpu_atomfirmware_allocate_fb_scratch(adev);

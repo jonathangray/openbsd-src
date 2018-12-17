@@ -315,6 +315,7 @@ struct kfd2kgd_calls {
 
 	int (*init_interrupts)(struct kgd_dev *kgd, uint32_t pipe_id);
 
+#ifdef notyet
 	int (*hqd_load)(struct kgd_dev *kgd, void *mqd, uint32_t pipe_id,
 			uint32_t queue_id, uint32_t __user *wptr,
 			uint32_t wptr_shift, uint32_t wptr_mask,
@@ -322,6 +323,7 @@ struct kfd2kgd_calls {
 
 	int (*hqd_sdma_load)(struct kgd_dev *kgd, void *mqd,
 			     uint32_t __user *wptr, struct mm_struct *mm);
+#endif
 
 	int (*hqd_dump)(struct kgd_dev *kgd,
 			uint32_t pipe_id, uint32_t queue_id,
@@ -451,10 +453,12 @@ struct kgd2kfd_calls {
 	void (*interrupt)(struct kfd_dev *kfd, const void *ih_ring_entry);
 	void (*suspend)(struct kfd_dev *kfd);
 	int (*resume)(struct kfd_dev *kfd);
+#ifdef notyet
 	int (*quiesce_mm)(struct mm_struct *mm);
 	int (*resume_mm)(struct mm_struct *mm);
 	int (*schedule_evict_and_restore_process)(struct mm_struct *mm,
 			struct dma_fence *fence);
+#endif
 	int  (*pre_reset)(struct kfd_dev *kfd);
 	int  (*post_reset)(struct kfd_dev *kfd);
 };

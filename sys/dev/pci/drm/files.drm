@@ -303,7 +303,7 @@ file	dev/pci/drm/radeon/vce_v2_0.c			radeondrm
 
 device	amdgpu: drmbase, ttm, wsemuldisplaydev, rasops8, rasops32, i2cbus, i2c_bitbang
 attach	amdgpu at pci
-file	dev/pci/drm/amd/amdgpu/amdgpu_acpi.c		amdgpu
+#file	dev/pci/drm/amd/amdgpu/amdgpu_acpi.c		amdgpu
 file	dev/pci/drm/amd/amdgpu/amdgpu_afmt.c		amdgpu
 file	dev/pci/drm/amd/amdgpu/amdgpu_amdkfd.c		amdgpu
 file	dev/pci/drm/amd/amdgpu/amdgpu_atombios.c	amdgpu
