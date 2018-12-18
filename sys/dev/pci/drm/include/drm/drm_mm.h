@@ -40,9 +40,10 @@
 #include <linux/kernel.h>
 #include <linux/list.h>
 #include <linux/spinlock.h>
-#ifdef CONFIG_DEBUG_FS
-#include <linux/seq_file.h>
+#ifdef CONFIG_DRM_DEBUG_MM
+#include <linux/stackdepot.h>
 #endif
+#include <drm/drm_print.h>
 
 #ifdef CONFIG_DRM_DEBUG_MM
 #define DRM_MM_BUG_ON(expr) BUG_ON(expr)
@@ -478,8 +479,7 @@ bool drm_mm_scan_remove_block(struct drm_mm_scan *scan,
 struct drm_mm_node *drm_mm_scan_color_evict(struct drm_mm_scan *scan);
 
 void drm_mm_debug_table(const struct drm_mm *mm, const char *prefix);
-#ifdef CONFIG_DEBUG_FS
-int drm_mm_dump_table(struct seq_file *m, const struct drm_mm *mm);
-#endif
+
+void drm_mm_print(const struct drm_mm *mm, struct drm_printer *p);
 
 #endif
