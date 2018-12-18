@@ -47,7 +47,7 @@
 #include "link_hwss.h"
 #include "clock_source.h"
 #include "abm.h"
-#include "audio.h"
+#include <hw/audio.h>
 #include "reg_helper.h"
 
 /* include DCE11 register header files */

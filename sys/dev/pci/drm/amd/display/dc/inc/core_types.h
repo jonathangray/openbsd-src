@@ -46,7 +46,7 @@ void enable_surface_flip_reporting(struct dc_plane_state *plane_state,
 #include "link_encoder.h"
 #include "stream_encoder.h"
 #include "clock_source.h"
-#include "audio.h"
+#include <hw/audio.h>
 #include "dm_pp_smu.h"
 
 
