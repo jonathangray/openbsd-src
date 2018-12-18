@@ -170,16 +170,18 @@ kcov.o: $S/dev/kcov.c
 	${NORMAL_C} -fno-sanitize-coverage=trace-pc
 .endif
 
+HARDFLOAT_CFLAGS= -mhard-float -msse -msse2
+
 dcn_calcs.o: $S/dev/pci/drm/amd/display/dc/calcs/dcn_calcs.c
-	${NORMAL_C} -msse
+	${NORMAL_C} ${HARDFLOAT_FLAGS}
 dcn_calc_auto.o: $S/dev/pci/drm/amd/display/dc/calcs/dcn_calc_auto.c
-	${NORMAL_C} -msse
+	${NORMAL_C} ${HARDFLOAT_FLAGS}
 dcn_calc_math.o: $S/dev/pci/drm/amd/display/dc/calcs/dcn_calc_math.c
-	${NORMAL_C} -msse
+	${NORMAL_C} ${HARDFLOAT_FLAGS}
 dml1_display_rq_dlg_calc.o: $S/dev/pci/drm/amd/display/dc/dml/dml1_display_rq_dlg_calc.c
-	${NORMAL_C} -msse -msse2
+	${NORMAL_C} ${HARDFLOAT_FLAGS}
 dml_common_defs.o: $S/dev/pci/drm/amd/display/dc/dml/dml_common_defs.c
-	${NORMAL_C} -msse -msse2
+	${NORMAL_C} ${HARDFLOAT_FLAGS}
 
 clean:
 	rm -f *bsd *bsd.gdb *.[dio] [a-z]*.s assym.* \
