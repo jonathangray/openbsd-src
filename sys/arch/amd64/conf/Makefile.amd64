@@ -176,6 +176,10 @@ dcn_calc_auto.o: $S/dev/pci/drm/amd/display/dc/calcs/dcn_calc_auto.c
 	${NORMAL_C} -msse
 dcn_calc_math.o: $S/dev/pci/drm/amd/display/dc/calcs/dcn_calc_math.c
 	${NORMAL_C} -msse
+dml1_display_rq_dlg_calc.o: $S/dev/pci/drm/amd/display/dc/dml/dml1_display_rq_dlg_calc.c
+	${NORMAL_C} -msse -msse2
+dml_common_defs.o: $S/dev/pci/drm/amd/display/dc/dml/dml_common_defs.c
+	${NORMAL_C} -msse -msse2
 
 clean:
 	rm -f *bsd *bsd.gdb *.[dio] [a-z]*.s assym.* \
