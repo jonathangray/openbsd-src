@@ -803,7 +803,7 @@ struct amdgpu_ttm_tt {
  * This provides a wrapper around the get_user_pages() call to provide
  * device accessible pages that back user memory.
  */
-int amdgpu_ttm_tt_get_user_pages(struct ttm_tt *ttm, struct page **pages)
+int amdgpu_ttm_tt_get_user_pages(struct ttm_tt *ttm, struct vm_page **pages)
 {
 	struct amdgpu_ttm_tt *gtt = (void *)ttm;
 	struct mm_struct *mm = gtt->usertask->mm;
@@ -838,7 +838,7 @@ int amdgpu_ttm_tt_get_user_pages(struct ttm_tt *ttm, struct page **pages)
 	do {
 		unsigned num_pages = ttm->num_pages - pinned;
 		uint64_t userptr = gtt->userptr + pinned * PAGE_SIZE;
-		struct page **p = pages + pinned;
+		struct vm_page **p = pages + pinned;
 		struct amdgpu_ttm_gup_task_list guptask;
 
 		guptask.task = current;
@@ -880,7 +880,7 @@ release_pages:
  * that backs user memory and will ultimately be mapped into the device
  * address space.
  */
-void amdgpu_ttm_tt_set_user_pages(struct ttm_tt *ttm, struct page **pages)
+void amdgpu_ttm_tt_set_user_pages(struct ttm_tt *ttm, struct vm_page **pages)
 {
 	struct amdgpu_ttm_tt *gtt = (void *)ttm;
 	unsigned i;
@@ -905,7 +905,7 @@ void amdgpu_ttm_tt_mark_user_pages(struct ttm_tt *ttm)
 	unsigned i;
 
 	for (i = 0; i < ttm->num_pages; ++i) {
-		struct page *page = ttm->pages[i];
+		struct vm_page *page = ttm->pages[i];
 
 		if (!page)
 			continue;
@@ -2316,7 +2316,7 @@ static ssize_t amdgpu_ttm_gtt_read(struct file *f, char __user *buf,
 		loff_t p = *pos / PAGE_SIZE;
 		unsigned off = *pos & PAGE_MASK;
 		size_t cur_size = min_t(size_t, size, PAGE_SIZE - off);
-		struct page *page;
+		struct vm_page *page;
 		void *ptr;
 
 		if (p >= adev->gart.num_cpu_pages)
@@ -2375,7 +2375,7 @@ static ssize_t amdgpu_iomem_read(struct file *f, char __user *buf,
 		loff_t off = *pos & PAGE_MASK;
 		size_t bytes = PAGE_SIZE - off;
 		unsigned long pfn;
-		struct page *p;
+		struct vm_page *p;
 		void *ptr;
 
 		bytes = bytes < size ? bytes : size;
@@ -2430,7 +2430,7 @@ static ssize_t amdgpu_iomem_write(struct file *f, const char __user *buf,
 		loff_t off = *pos & PAGE_MASK;
 		size_t bytes = PAGE_SIZE - off;
 		unsigned long pfn;
-		struct page *p;
+		struct vm_page *p;
 		void *ptr;
 
 		bytes = bytes < size ? bytes : size;

@@ -47,7 +47,7 @@ struct amdgpu_gart {
 	unsigned			num_cpu_pages;
 	unsigned			table_size;
 #ifdef CONFIG_DRM_AMDGPU_GART_DEBUGFS
-	struct page			**pages;
+	struct vm_page			**pages;
 #endif
 	bool				ready;
 
@@ -67,7 +67,7 @@ int amdgpu_gart_map(struct amdgpu_device *adev, uint64_t offset,
 		    int pages, dma_addr_t *dma_addr, uint64_t flags,
 		    void *dst);
 int amdgpu_gart_bind(struct amdgpu_device *adev, uint64_t offset,
-		     int pages, struct page **pagelist,
+		     int pages, struct vm_page **pagelist,
 		     dma_addr_t *dma_addr, uint64_t flags);
 
 #endif

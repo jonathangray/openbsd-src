@@ -68,7 +68,7 @@
  */
 static int amdgpu_gart_dummy_page_init(struct amdgpu_device *adev)
 {
-	struct page *dummy_page = adev->mman.bdev.glob->dummy_read_page;
+	struct vm_page *dummy_page = adev->mman.bdev.glob->dummy_read_page;
 
 	if (adev->dummy_page_addr)
 		return 0;
@@ -302,7 +302,7 @@ int amdgpu_gart_map(struct amdgpu_device *adev, uint64_t offset,
  * Returns 0 for success, -EINVAL for failure.
  */
 int amdgpu_gart_bind(struct amdgpu_device *adev, uint64_t offset,
-		     int pages, struct page **pagelist, dma_addr_t *dma_addr,
+		     int pages, struct vm_page **pagelist, dma_addr_t *dma_addr,
 		     uint64_t flags)
 {
 #ifdef CONFIG_DRM_AMDGPU_GART_DEBUGFS
