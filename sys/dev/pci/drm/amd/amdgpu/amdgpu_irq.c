@@ -360,6 +360,8 @@ int amdgpu_irq_add_id(struct amdgpu_device *adev,
 void amdgpu_irq_dispatch(struct amdgpu_device *adev,
 			 struct amdgpu_iv_entry *entry)
 {
+	STUB();
+#if 0
 	unsigned client_id = entry->client_id;
 	unsigned src_id = entry->src_id;
 	struct amdgpu_irq_src *src;
@@ -396,6 +398,7 @@ void amdgpu_irq_dispatch(struct amdgpu_device *adev,
 		if (r)
 			DRM_ERROR("error processing interrupt (%d)\n", r);
 	}
+#endif
 }
 
 /**
@@ -543,6 +546,7 @@ bool amdgpu_irq_enabled(struct amdgpu_device *adev, struct amdgpu_irq_src *src,
 	return !!atomic_read(&src->enabled_types[type]);
 }
 
+#ifdef __linux__
 /* XXX: Generic IRQ handling */
 static void amdgpu_irq_mask(struct irq_data *irqd)
 {
@@ -560,7 +564,9 @@ static struct irq_chip amdgpu_irq_chip = {
 	.irq_mask = amdgpu_irq_mask,
 	.irq_unmask = amdgpu_irq_unmask,
 };
+#endif
 
+#ifdef __linux__
 /**
  * amdgpu_irqdomain_map - create mapping between virtual and hardware IRQ numbers
  *
@@ -589,6 +595,7 @@ static int amdgpu_irqdomain_map(struct irq_domain *d,
 static const struct irq_domain_ops amdgpu_hw_irqdomain_ops = {
 	.map = amdgpu_irqdomain_map,
 };
+#endif
 
 /**
  * amdgpu_irq_add_domain - create a linear IRQ domain
@@ -603,6 +610,9 @@ static const struct irq_domain_ops amdgpu_hw_irqdomain_ops = {
  */
 int amdgpu_irq_add_domain(struct amdgpu_device *adev)
 {
+	STUB();
+	return -ENOSYS;
+#if 0
 	adev->irq.domain = irq_domain_add_linear(NULL, AMDGPU_MAX_IRQ_SRC_ID,
 						 &amdgpu_hw_irqdomain_ops, adev);
 	if (!adev->irq.domain) {
@@ -611,6 +621,7 @@ int amdgpu_irq_add_domain(struct amdgpu_device *adev)
 	}
 
 	return 0;
+#endif
 }
 
 /**
@@ -623,10 +634,13 @@ int amdgpu_irq_add_domain(struct amdgpu_device *adev)
  */
 void amdgpu_irq_remove_domain(struct amdgpu_device *adev)
 {
+	STUB();
+#if 0
 	if (adev->irq.domain) {
 		irq_domain_remove(adev->irq.domain);
 		adev->irq.domain = NULL;
 	}
+#endif
 }
 
 /**
@@ -644,7 +658,11 @@ void amdgpu_irq_remove_domain(struct amdgpu_device *adev)
  */
 unsigned amdgpu_irq_create_mapping(struct amdgpu_device *adev, unsigned src_id)
 {
+	STUB();
+	return 0;
+#if 0
 	adev->irq.virq[src_id] = irq_create_mapping(adev->irq.domain, src_id);
 
 	return adev->irq.virq[src_id];
+#endif
 }

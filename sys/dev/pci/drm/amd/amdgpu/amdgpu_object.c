@@ -1049,6 +1049,9 @@ static const char *amdgpu_vram_names[] = {
  */
 int amdgpu_bo_init(struct amdgpu_device *adev)
 {
+	paddr_t start, end;
+
+#ifdef __linux__
 	/* reserve PAT memory space to WC for VRAM */
 	arch_io_reserve_memtype_wc(adev->gmc.aper_base,
 				   adev->gmc.aper_size);
@@ -1056,6 +1059,13 @@ int amdgpu_bo_init(struct amdgpu_device *adev)
 	/* Add an MTRR for the VRAM */
 	adev->gmc.vram_mtrr = arch_phys_wc_add(adev->gmc.aper_base,
 					      adev->gmc.aper_size);
+#else
+	drm_mtrr_add(adev->gmc.aper_base, adev->gmc.aper_size, DRM_MTRR_WC);
+
+	start = atop(bus_space_mmap(adev->memt, adev->gmc.aper_base, 0, 0, 0));
+	end = start + atop(adev->gmc.aper_size);
+	uvm_page_physload(start, end, start, end, PHYSLOAD_DEVICE);
+#endif
 	DRM_INFO("Detected VRAM RAM=%lluM, BAR=%lluM\n",
 		 adev->gmc.mc_vram_size >> 20,
 		 (unsigned long long)adev->gmc.aper_size >> 20);
@@ -1090,10 +1100,15 @@ int amdgpu_bo_late_init(struct amdgpu_device *adev)
 void amdgpu_bo_fini(struct amdgpu_device *adev)
 {
 	amdgpu_ttm_fini(adev);
+#ifdef __linux__
 	arch_phys_wc_del(adev->gmc.vram_mtrr);
 	arch_io_free_memtype_wc(adev->gmc.aper_base, adev->gmc.aper_size);
+#else
+	drm_mtrr_del(0, adev->gmc.aper_base, adev->gmc.aper_size, DRM_MTRR_WC);
+#endif
 }
 
+#ifdef notyet
 /**
  * amdgpu_bo_fbdev_mmap - mmap fbdev memory
  * @bo: &amdgpu_bo buffer object
@@ -1109,6 +1124,7 @@ int amdgpu_bo_fbdev_mmap(struct amdgpu_bo *bo,
 {
 	return ttm_fbdev_mmap(vma, &bo->tbo);
 }
+#endif
 
 /**
  * amdgpu_bo_set_tiling_flags - set tiling flags
@@ -1243,6 +1259,8 @@ void amdgpu_bo_move_notify(struct ttm_buffer_object *bo,
 			   bool evict,
 			   struct ttm_mem_reg *new_mem)
 {
+	STUB();
+#if 0
 	struct amdgpu_device *adev = amdgpu_ttm_adev(bo->bdev);
 	struct amdgpu_bo *abo;
 	struct ttm_mem_reg *old_mem = &bo->mem;
@@ -1265,6 +1283,7 @@ void amdgpu_bo_move_notify(struct ttm_buffer_object *bo,
 
 	/* move_notify is called before move happens */
 	trace_amdgpu_bo_move(abo, new_mem->mem_type, old_mem->mem_type);
+#endif
 }
 
 /**
@@ -1280,6 +1299,9 @@ void amdgpu_bo_move_notify(struct ttm_buffer_object *bo,
  */
 int amdgpu_bo_fault_reserve_notify(struct ttm_buffer_object *bo)
 {
+	STUB();
+	return -ENOSYS;
+#if 0
 	struct amdgpu_device *adev = amdgpu_ttm_adev(bo->bdev);
 	struct ttm_operation_ctx ctx = { false, false };
 	struct amdgpu_bo *abo;
@@ -1326,6 +1348,7 @@ int amdgpu_bo_fault_reserve_notify(struct ttm_buffer_object *bo)
 		return -EINVAL;
 
 	return 0;
+#endif
 }
 
 /**

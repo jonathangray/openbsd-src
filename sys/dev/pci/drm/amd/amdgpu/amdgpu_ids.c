@@ -38,7 +38,9 @@
  * space. Therefore PASIDs are allocated using a global IDA. VMs are
  * looked up from the PASID per amdgpu_device.
  */
+#ifdef notyet
 static DEFINE_IDA(amdgpu_pasid_ida);
+#endif
 
 /* Helper to free pasid from a fence callback */
 struct amdgpu_pasid_cb {
@@ -59,6 +61,9 @@ struct amdgpu_pasid_cb {
  */
 int amdgpu_pasid_alloc(unsigned int bits)
 {
+	STUB();
+	return -ENOSYS;
+#if 0
 	int pasid = -EINVAL;
 
 	for (bits = min(bits, 31U); bits > 0; bits--) {
@@ -73,6 +78,7 @@ int amdgpu_pasid_alloc(unsigned int bits)
 		trace_amdgpu_pasid_allocated(pasid);
 
 	return pasid;
+#endif
 }
 
 /**
@@ -81,8 +87,11 @@ int amdgpu_pasid_alloc(unsigned int bits)
  */
 void amdgpu_pasid_free(unsigned int pasid)
 {
+	STUB();
+#if 0
 	trace_amdgpu_pasid_freed(pasid);
 	ida_simple_remove(&amdgpu_pasid_ida, pasid);
+#endif
 }
 
 static void amdgpu_pasid_free_cb(struct dma_fence *fence,
@@ -107,6 +116,8 @@ static void amdgpu_pasid_free_cb(struct dma_fence *fence,
 void amdgpu_pasid_free_delayed(struct reservation_object *resv,
 			       unsigned int pasid)
 {
+	STUB();
+#if 0
 	struct dma_fence *fence, **fences;
 	struct amdgpu_pasid_cb *cb;
 	unsigned count;
@@ -159,6 +170,7 @@ fallback:
 	reservation_object_wait_timeout_rcu(resv, true, false,
 					    MAX_SCHEDULE_TIMEOUT);
 	amdgpu_pasid_free(pasid);
+#endif
 }
 
 /*
@@ -198,6 +210,9 @@ static int amdgpu_vmid_grab_idle(struct amdgpu_vm *vm,
 				 struct amdgpu_sync *sync,
 				 struct amdgpu_vmid **idle)
 {
+	STUB();
+	return -ENOSYS;
+#if 0
 	struct amdgpu_device *adev = ring->adev;
 	unsigned vmhub = ring->funcs->vmhub;
 	struct amdgpu_vmid_mgr *id_mgr = &adev->vm_manager.id_mgr[vmhub];
@@ -249,6 +264,7 @@ static int amdgpu_vmid_grab_idle(struct amdgpu_vm *vm,
 	kfree(fences);
 
 	return 0;
+#endif
 }
 
 /**

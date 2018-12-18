@@ -70,6 +70,7 @@ amdgpufb_release(struct fb_info *info, int user)
 	return 0;
 }
 
+#ifdef notyet
 static struct fb_ops amdgpufb_ops = {
 	.owner = THIS_MODULE,
 	DRM_FB_HELPER_DEFAULT_OPS,
@@ -79,7 +80,7 @@ static struct fb_ops amdgpufb_ops = {
 	.fb_copyarea = drm_fb_helper_cfb_copyarea,
 	.fb_imageblit = drm_fb_helper_cfb_imageblit,
 };
-
+#endif
 
 int amdgpu_align_pitch(struct amdgpu_device *adev, int width, int cpp, bool tiled)
 {
@@ -247,13 +248,16 @@ static int amdgpufb_create(struct drm_fb_helper *helper,
 	/* setup helper */
 	rfbdev->helper.fb = fb;
 
+#ifdef __linux__
 	strcpy(info->fix.id, "amdgpudrmfb");
 
 	drm_fb_helper_fill_fix(info, fb->pitches[0], fb->format->depth);
 
 	info->fbops = &amdgpufb_ops;
+#endif
 
 	tmp = amdgpu_bo_gpu_offset(abo) - adev->gmc.vram_start;
+#ifdef __linux__
 	info->fix.smem_start = adev->gmc.aper_base + tmp;
 	info->fix.smem_len = amdgpu_bo_size(abo);
 	info->screen_base = amdgpu_bo_kptr(abo);
@@ -264,15 +268,18 @@ static int amdgpufb_create(struct drm_fb_helper *helper,
 	/* setup aperture base/size for vesafb takeover */
 	info->apertures->ranges[0].base = adev->ddev->mode_config.fb_base;
 	info->apertures->ranges[0].size = adev->gmc.aper_size;
+#endif
 
 	/* Use default scratch pixmap (info->pixmap.flags = FB_PIXMAP_SYSTEM) */
 
+#ifdef __linux__
 	if (info->screen_base == NULL) {
 		ret = -ENOSPC;
 		goto out;
 	}
 
 	DRM_INFO("fb mappable at 0x%lX\n",  info->fix.smem_start);
+#endif
 	DRM_INFO("vram apper at 0x%lX\n",  (unsigned long)adev->gmc.aper_base);
 	DRM_INFO("size %lu\n", (unsigned long)amdgpu_bo_size(abo));
 	DRM_INFO("fb depth is %d\n", fb->format->depth);

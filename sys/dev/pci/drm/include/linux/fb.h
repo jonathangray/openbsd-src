@@ -20,6 +20,7 @@ struct fb_info {
 	char *screen_buffer;
 	void *par;
 	int fbcon_rotate_hint;
+	bool skip_vt_switch;
 };
 
 #define FB_BLANK_UNBLANK	0

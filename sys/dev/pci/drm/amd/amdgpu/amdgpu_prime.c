@@ -40,6 +40,8 @@
 
 static const struct dma_buf_ops amdgpu_dmabuf_ops;
 
+#ifdef notyet
+
 /**
  * amdgpu_gem_prime_get_sg_table - &drm_driver.gem_prime_get_sg_table
  * implementation
@@ -345,6 +347,8 @@ static const struct dma_buf_ops amdgpu_dmabuf_ops = {
 	.vunmap = drm_gem_dmabuf_vunmap,
 };
 
+#endif /* notyet */
+
 /**
  * amdgpu_gem_prime_export - &drm_driver.gem_prime_export implementation
  * @dev: DRM device
@@ -361,6 +365,9 @@ struct dma_buf *amdgpu_gem_prime_export(struct drm_device *dev,
 					struct drm_gem_object *gobj,
 					int flags)
 {
+	STUB();
+	return ERR_PTR(-ENOSYS);
+#if 0
 	struct amdgpu_bo *bo = gem_to_amdgpu_bo(gobj);
 	struct dma_buf *buf;
 
@@ -375,6 +382,7 @@ struct dma_buf *amdgpu_gem_prime_export(struct drm_device *dev,
 	}
 
 	return buf;
+#endif
 }
 
 /**

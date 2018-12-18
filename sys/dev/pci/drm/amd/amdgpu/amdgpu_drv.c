@@ -1082,8 +1082,6 @@ static int amdgpu_flush(struct file *f, fl_owner_t id)
 
 	return 0;
 }
-#endif /* __linux__ */
-
 
 static const struct file_operations amdgpu_driver_kms_fops = {
 	.owner = THIS_MODULE,
@@ -1098,6 +1096,7 @@ static const struct file_operations amdgpu_driver_kms_fops = {
 	.compat_ioctl = amdgpu_kms_compat_ioctl,
 #endif
 };
+#endif /* __linux__ */
 
 static bool
 amdgpu_get_crtc_scanout_position(struct drm_device *dev, unsigned int pipe,
@@ -1114,11 +1113,15 @@ static struct drm_driver kms_driver = {
 	    DRIVER_USE_AGP |
 	    DRIVER_HAVE_IRQ | DRIVER_IRQ_SHARED | DRIVER_GEM |
 	    DRIVER_PRIME | DRIVER_RENDER | DRIVER_MODESET | DRIVER_SYNCOBJ,
+#ifdef notyet
 	.load = amdgpu_driver_load_kms,
+#endif
 	.open = amdgpu_driver_open_kms,
 	.postclose = amdgpu_driver_postclose_kms,
 	.lastclose = amdgpu_driver_lastclose_kms,
+#ifdef notyet
 	.unload = amdgpu_driver_unload_kms,
+#endif
 	.get_vblank_counter = amdgpu_get_vblank_counter_kms,
 	.enable_vblank = amdgpu_enable_vblank_kms,
 	.disable_vblank = amdgpu_disable_vblank_kms,
@@ -1131,18 +1134,22 @@ static struct drm_driver kms_driver = {
 	.gem_close_object = amdgpu_gem_object_close,
 	.dumb_create = amdgpu_mode_dumb_create,
 	.dumb_map_offset = amdgpu_mode_dumb_mmap,
+#ifdef __linux__
 	.fops = &amdgpu_driver_kms_fops,
+#endif
 
 	.prime_handle_to_fd = drm_gem_prime_handle_to_fd,
 	.prime_fd_to_handle = drm_gem_prime_fd_to_handle,
 	.gem_prime_export = amdgpu_gem_prime_export,
 	.gem_prime_import = amdgpu_gem_prime_import,
+#ifdef notyet
 	.gem_prime_res_obj = amdgpu_gem_prime_res_obj,
 	.gem_prime_get_sg_table = amdgpu_gem_prime_get_sg_table,
 	.gem_prime_import_sg_table = amdgpu_gem_prime_import_sg_table,
 	.gem_prime_vmap = amdgpu_gem_prime_vmap,
 	.gem_prime_vunmap = amdgpu_gem_prime_vunmap,
 	.gem_prime_mmap = amdgpu_gem_prime_mmap,
+#endif
 
 	.name = DRIVER_NAME,
 	.desc = DRIVER_DESC,
@@ -1153,6 +1160,7 @@ static struct drm_driver kms_driver = {
 };
 
 static struct drm_driver *driver;
+#ifdef __linux__
 static struct pci_driver *pdriver;
 
 static struct pci_driver amdgpu_kms_pci_driver = {
@@ -1163,11 +1171,13 @@ static struct pci_driver amdgpu_kms_pci_driver = {
 	.shutdown = amdgpu_pci_shutdown,
 	.driver.pm = &amdgpu_pm_ops,
 };
-
-
+#endif /* __linux__ */
 
 static int __init amdgpu_init(void)
 {
+	STUB();
+	return -ENOSYS;
+#if 0
 	int r;
 
 	if (vgacon_text_force()) {
@@ -1196,15 +1206,19 @@ error_fence:
 
 error_sync:
 	return r;
+#endif
 }
 
 static void __exit amdgpu_exit(void)
 {
+	STUB();
+#if 0
 	amdgpu_amdkfd_fini();
 	pci_unregister_driver(pdriver);
 	amdgpu_unregister_atpx_handler();
 	amdgpu_sync_fini();
 	amdgpu_fence_slab_fini();
+#endif
 }
 
 module_init(amdgpu_init);

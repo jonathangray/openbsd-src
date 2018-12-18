@@ -1346,6 +1346,14 @@ struct amdgpu_device {
 	struct amdgpu_acp		acp;
 #endif
 
+	pci_chipset_tag_t		pc;
+	pcitag_t			pa_tag;
+	pci_intr_handle_t		intrh;
+	bus_space_tag_t			iot;
+	bus_space_tag_t			memt;
+	bus_dma_tag_t			dmat;
+	void				*irqh;
+
 	/* ASIC */
 	enum amd_asic_type		asic_type;
 	uint32_t			family;
