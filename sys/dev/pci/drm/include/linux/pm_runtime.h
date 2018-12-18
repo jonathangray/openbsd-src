@@ -14,6 +14,7 @@
 #define pm_runtime_set_active(x)
 #define pm_runtime_allow(x)
 #define pm_runtime_put_noidle(x)
+#define pm_runtime_forbid(x)
 
 static inline int
 pm_runtime_get_sync(struct device *dev)
