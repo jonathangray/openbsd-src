@@ -170,6 +170,13 @@ kcov.o: $S/dev/kcov.c
 	${NORMAL_C} -fno-sanitize-coverage=trace-pc
 .endif
 
+dcn_calcs.o: $S/dev/pci/drm/amd/display/dc/calcs/dcn_calcs.c
+	${NORMAL_C} -msse
+dcn_calc_auto.o: $S/dev/pci/drm/amd/display/dc/calcs/dcn_calc_auto.c
+	${NORMAL_C} -msse
+dcn_calc_math.o: $S/dev/pci/drm/amd/display/dc/calcs/dcn_calc_math.c
+	${NORMAL_C} -msse
+
 clean:
 	rm -f *bsd *bsd.gdb *.[dio] [a-z]*.s assym.* \
 	    gap.link gapdummy.c ld.script lorder makegap.sh param.c
