@@ -39,7 +39,7 @@ struct amdgpu_sync_entry {
 	bool	explicit;
 };
 
-static struct kmem_cache *amdgpu_sync_slab;
+static struct pool amdgpu_sync_slab;
 
 /**
  * amdgpu_sync_create - zero init sync object
@@ -169,7 +169,11 @@ int amdgpu_sync_fence(struct amdgpu_device *adev, struct amdgpu_sync *sync,
 	if (amdgpu_sync_add_later(sync, f, explicit))
 		return 0;
 
+#ifdef __linux__
 	e = kmem_cache_alloc(amdgpu_sync_slab, GFP_KERNEL);
+#else
+	e = pool_get(&amdgpu_sync_slab, PR_WAITOK);
+#endif
 	if (!e)
 		return -ENOMEM;
 
@@ -270,7 +274,11 @@ struct dma_fence *amdgpu_sync_peek_fence(struct amdgpu_sync *sync,
 		if (dma_fence_is_signaled(f)) {
 			hash_del(&e->node);
 			dma_fence_put(f);
+#ifdef __linux__
 			kmem_cache_free(amdgpu_sync_slab, e);
+#else
+			pool_put(&amdgpu_sync_slab, e);
+#endif
 			continue;
 		}
 		if (ring && s_fence) {
@@ -312,7 +320,11 @@ struct dma_fence *amdgpu_sync_get_fence(struct amdgpu_sync *sync, bool *explicit
 			*explicit = e->explicit;
 
 		hash_del(&e->node);
+#ifdef __linux__
 		kmem_cache_free(amdgpu_sync_slab, e);
+#else
+		pool_put(&amdgpu_sync_slab, e);
+#endif
 
 		if (!dma_fence_is_signaled(f))
 			return f;
@@ -347,7 +359,11 @@ int amdgpu_sync_clone(struct amdgpu_sync *source, struct amdgpu_sync *clone)
 		} else {
 			hash_del(&e->node);
 			dma_fence_put(f);
+#ifdef __linux__
 			kmem_cache_free(amdgpu_sync_slab, e);
+#else
+			pool_put(&amdgpu_sync_slab, e);
+#endif
 		}
 	}
 
@@ -370,7 +386,11 @@ int amdgpu_sync_wait(struct amdgpu_sync *sync, bool intr)
 
 		hash_del(&e->node);
 		dma_fence_put(e->fence);
+#ifdef __linux__
 		kmem_cache_free(amdgpu_sync_slab, e);
+#else
+		pool_put(&amdgpu_sync_slab, e);
+#endif
 	}
 
 	return 0;
@@ -392,7 +412,11 @@ void amdgpu_sync_free(struct amdgpu_sync *sync)
 	hash_for_each_safe(sync->fences, i, tmp, e, node) {
 		hash_del(&e->node);
 		dma_fence_put(e->fence);
+#ifdef __linux__
 		kmem_cache_free(amdgpu_sync_slab, e);
+#else
+		pool_put(&amdgpu_sync_slab, e);
+#endif
 	}
 
 	dma_fence_put(sync->last_vm_update);
@@ -405,11 +429,16 @@ void amdgpu_sync_free(struct amdgpu_sync *sync)
  */
 int amdgpu_sync_init(void)
 {
+#ifdef __linux__
 	amdgpu_sync_slab = kmem_cache_create(
 		"amdgpu_sync", sizeof(struct amdgpu_sync_entry), 0,
 		SLAB_HWCACHE_ALIGN, NULL);
 	if (!amdgpu_sync_slab)
 		return -ENOMEM;
+#else
+	pool_init(&amdgpu_sync_slab, sizeof(struct amdgpu_sync_entry),
+	    0, IPL_NONE, 0, "amdgpu_sync", NULL);
+#endif
 
 	return 0;
 }
@@ -421,5 +450,9 @@ int amdgpu_sync_init(void)
  */
 void amdgpu_sync_fini(void)
 {
+#ifdef __linux__
 	kmem_cache_destroy(amdgpu_sync_slab);
+#else
+	pool_destroy(&amdgpu_sync_slab);
+#endif
 }

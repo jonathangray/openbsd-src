@@ -54,22 +54,31 @@ struct amdgpu_fence {
 	struct amdgpu_ring		*ring;
 };
 
-static struct kmem_cache *amdgpu_fence_slab;
+static struct pool amdgpu_fence_slab;
 
 int amdgpu_fence_slab_init(void)
 {
+#ifdef __linux__
 	amdgpu_fence_slab = kmem_cache_create(
 		"amdgpu_fence", sizeof(struct amdgpu_fence), 0,
 		SLAB_HWCACHE_ALIGN, NULL);
 	if (!amdgpu_fence_slab)
 		return -ENOMEM;
+#else
+	pool_init(&amdgpu_fence_slab, sizeof(struct amdgpu_fence),
+	    0, IPL_NONE, 0, "amdgpu_fence", NULL);
+#endif
 	return 0;
 }
 
 void amdgpu_fence_slab_fini(void)
 {
 	rcu_barrier();
+#ifdef __linux__
 	kmem_cache_destroy(amdgpu_fence_slab);
+#else
+	pool_destroy(&amdgpu_fence_slab);
+#endif
 }
 /*
  * Cast helper
@@ -139,7 +148,11 @@ int amdgpu_fence_emit(struct amdgpu_ring *ring, struct dma_fence **f,
 	struct dma_fence *old, **ptr;
 	uint32_t seq;
 
+#ifdef __linux__
 	fence = kmem_cache_alloc(amdgpu_fence_slab, GFP_KERNEL);
+#else
+	fence = pool_get(&amdgpu_fence_slab, PR_WAITOK);
+#endif
 	if (fence == NULL)
 		return -ENOMEM;
 
@@ -626,7 +639,11 @@ static void amdgpu_fence_free(struct rcu_head *rcu)
 {
 	struct dma_fence *f = container_of(rcu, struct dma_fence, rcu);
 	struct amdgpu_fence *fence = to_amdgpu_fence(f);
+#ifdef __linux__
 	kmem_cache_free(amdgpu_fence_slab, fence);
+#else
+	pool_put(&amdgpu_fence_slab, fence);
+#endif
 }
 
 /**
