@@ -31,6 +31,13 @@ div64_u64_rem(uint64_t x, uint64_t y, uint64_t *rem)
 	return (x / y);
 }
 
+static inline uint64_t
+div_u64_rem(uint64_t x, uint32_t y, uint32_t *rem)
+{
+	*rem = x % y;
+	return (x / y);
+}
+
 static inline int64_t
 div64_s64(int64_t x, int64_t y)
 {
