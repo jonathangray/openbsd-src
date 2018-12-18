@@ -14,7 +14,7 @@ udelay(unsigned long usecs)
 static inline void
 ndelay(unsigned long nsecs)
 {
-	DELAY(max(nsecs / 1000, 1));
+	DELAY(MAX(nsecs / 1000, 1));
 }
 
 static inline void

@@ -1508,6 +1508,9 @@ static int smu8_force_clock_level(struct pp_hwmgr *hwmgr,
 static int smu8_print_clock_levels(struct pp_hwmgr *hwmgr,
 		enum pp_clock_type type, char *buf)
 {
+	STUB();
+	return -ENOSYS;
+#if 0
 	struct smu8_hwmgr *data = hwmgr->backend;
 	struct phm_clock_voltage_dependency_table *sclk_table =
 			hwmgr->dyn_state.vddc_dependency_on_sclk;
@@ -1542,6 +1545,7 @@ static int smu8_print_clock_levels(struct pp_hwmgr *hwmgr,
 		break;
 	}
 	return size;
+#endif
 }
 
 static int smu8_get_performance_level(struct pp_hwmgr *hwmgr, const struct pp_hw_power_state *state,

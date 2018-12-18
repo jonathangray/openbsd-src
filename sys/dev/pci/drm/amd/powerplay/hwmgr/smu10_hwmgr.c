@@ -849,6 +849,9 @@ static int smu10_force_clock_level(struct pp_hwmgr *hwmgr,
 static int smu10_print_clock_levels(struct pp_hwmgr *hwmgr,
 		enum pp_clock_type type, char *buf)
 {
+	STUB();
+	return -ENOSYS;
+#if 0
 	struct smu10_hwmgr *data = (struct smu10_hwmgr *)(hwmgr->backend);
 	struct smu10_voltage_dependency_table *mclk_table =
 			data->clock_vol_info.vdd_dep_on_fclk;
@@ -893,6 +896,7 @@ static int smu10_print_clock_levels(struct pp_hwmgr *hwmgr,
 	}
 
 	return size;
+#endif
 }
 
 static int smu10_get_performance_level(struct pp_hwmgr *hwmgr, const struct pp_hw_power_state *state,

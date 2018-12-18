@@ -1851,6 +1851,9 @@ static int vega12_force_clock_level(struct pp_hwmgr *hwmgr,
 static int vega12_print_clock_levels(struct pp_hwmgr *hwmgr,
 		enum pp_clock_type type, char *buf)
 {
+	STUB();
+	return -ENOSYS;
+#if 0
 	int i, now, size = 0;
 	struct pp_clock_levels_with_latency clocks;
 
@@ -1894,6 +1897,7 @@ static int vega12_print_clock_levels(struct pp_hwmgr *hwmgr,
 		break;
 	}
 	return size;
+#endif
 }
 
 static int vega12_apply_clocks_adjust_rules(struct pp_hwmgr *hwmgr)

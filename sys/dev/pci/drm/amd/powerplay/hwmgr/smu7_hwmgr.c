@@ -4392,6 +4392,9 @@ static int smu7_force_clock_level(struct pp_hwmgr *hwmgr,
 static int smu7_print_clock_levels(struct pp_hwmgr *hwmgr,
 		enum pp_clock_type type, char *buf)
 {
+	STUB();
+	return -ENOSYS;
+#if 0
 	struct smu7_hwmgr *data = (struct smu7_hwmgr *)(hwmgr->backend);
 	struct smu7_single_dpm_table *sclk_table = &(data->dpm_table.sclk_table);
 	struct smu7_single_dpm_table *mclk_table = &(data->dpm_table.mclk_table);
@@ -4487,6 +4490,7 @@ static int smu7_print_clock_levels(struct pp_hwmgr *hwmgr,
 		break;
 	}
 	return size;
+#endif
 }
 
 static void smu7_set_fan_control_mode(struct pp_hwmgr *hwmgr, uint32_t mode)
@@ -4864,6 +4868,9 @@ static int smu7_odn_edit_dpm_table(struct pp_hwmgr *hwmgr,
 
 static int smu7_get_power_profile_mode(struct pp_hwmgr *hwmgr, char *buf)
 {
+	STUB();
+	return -ENOSYS;
+#if 0
 	struct smu7_hwmgr *data = (struct smu7_hwmgr *)(hwmgr->backend);
 	uint32_t i, size = 0;
 	uint32_t len;
@@ -4925,6 +4932,7 @@ static int smu7_get_power_profile_mode(struct pp_hwmgr *hwmgr, char *buf)
 	}
 
 	return size;
+#endif
 }
 
 static void smu7_patch_compute_profile_mode(struct pp_hwmgr *hwmgr,

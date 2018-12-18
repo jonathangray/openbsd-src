@@ -4229,6 +4229,9 @@ static int vega10_set_watermarks_for_clocks_ranges(struct pp_hwmgr *hwmgr,
 static int vega10_print_clock_levels(struct pp_hwmgr *hwmgr,
 		enum pp_clock_type type, char *buf)
 {
+	STUB();
+	return -ENOSYS;
+#if 0
 	struct vega10_hwmgr *data = hwmgr->backend;
 	struct vega10_single_dpm_table *sclk_table = &(data->dpm_table.gfx_table);
 	struct vega10_single_dpm_table *mclk_table = &(data->dpm_table.mem_table);
@@ -4311,6 +4314,7 @@ static int vega10_print_clock_levels(struct pp_hwmgr *hwmgr,
 		break;
 	}
 	return size;
+#endif
 }
 
 static int vega10_display_configuration_changed_task(struct pp_hwmgr *hwmgr)
@@ -4625,6 +4629,9 @@ static int vega10_get_thermal_temperature_range(struct pp_hwmgr *hwmgr,
 
 static int vega10_get_power_profile_mode(struct pp_hwmgr *hwmgr, char *buf)
 {
+	STUB();
+	return -ENOSYS;
+#if 0
 	struct vega10_hwmgr *data = hwmgr->backend;
 	uint32_t i, size = 0;
 	static const uint8_t profile_mode_setting[5][4] = {{70, 60, 1, 3,},
@@ -4662,6 +4669,7 @@ static int vega10_get_power_profile_mode(struct pp_hwmgr *hwmgr, char *buf)
 			data->custom_profile_mode[0], data->custom_profile_mode[1],
 			data->custom_profile_mode[2], data->custom_profile_mode[3]);
 	return size;
+#endif
 }
 
 static int vega10_set_power_profile_mode(struct pp_hwmgr *hwmgr, long *input, uint32_t size)
