@@ -19,6 +19,7 @@
 #define _LINUX_SCATTERLIST_H
 
 #include <sys/types.h>
+#include <sys/param.h>
 #include <uvm/uvm_extern.h>
 
 struct scatterlist {
