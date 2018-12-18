@@ -35,6 +35,9 @@
 #include "atombios_dp.h"
 #include "atombios_i2c.h"
 
+#include <dev/i2c/i2cvar.h>
+#include <dev/i2c/i2c_bitbang.h>
+
 /* bit banging i2c */
 static int amdgpu_i2c_pre_xfer(struct i2c_adapter *i2c_adap)
 {
@@ -152,6 +155,98 @@ static void amdgpu_i2c_set_data(void *i2c_priv, int data)
 	WREG32(rec->en_data_reg, val);
 }
 
+void	amdgpu_bb_set_bits(void *, uint32_t);
+void	amdgpu_bb_set_dir(void *, uint32_t);
+uint32_t amdgpu_bb_read_bits(void *);
+
+int	amdgpu_acquire_bus(void *, int);
+void	amdgpu_release_bus(void *, int);
+int	amdgpu_send_start(void *, int);
+int	amdgpu_send_stop(void *, int);
+int	amdgpu_initiate_xfer(void *, i2c_addr_t, int);
+int	amdgpu_read_byte(void *, u_int8_t *, int);
+int	amdgpu_write_byte(void *, u_int8_t, int);
+
+#define AMDGPU_BB_SDA		(1 << I2C_BIT_SDA)
+#define AMDGPU_BB_SCL		(1 << I2C_BIT_SCL)
+
+struct i2c_bitbang_ops amdgpu_bbops = {
+	amdgpu_bb_set_bits,
+	amdgpu_bb_set_dir,
+	amdgpu_bb_read_bits,
+	{ AMDGPU_BB_SDA, AMDGPU_BB_SCL, 0, 0 }
+};
+
+void
+amdgpu_bb_set_bits(void *cookie, uint32_t bits)
+{
+	amdgpu_i2c_set_clock(cookie, bits & AMDGPU_BB_SCL);
+	amdgpu_i2c_set_data(cookie, bits & AMDGPU_BB_SDA);
+}
+
+void
+amdgpu_bb_set_dir(void *cookie, uint32_t bits)
+{
+}
+
+uint32_t
+amdgpu_bb_read_bits(void *cookie)
+{
+	uint32_t bits = 0;
+
+	if (amdgpu_i2c_get_clock(cookie))
+		bits |= AMDGPU_BB_SCL;
+	if (amdgpu_i2c_get_data(cookie))
+		bits |= AMDGPU_BB_SDA;
+
+	return bits;
+}
+
+int
+amdgpu_acquire_bus(void *cookie, int flags)
+{
+	struct amdgpu_i2c_chan *i2c = cookie;
+	amdgpu_i2c_pre_xfer(&i2c->adapter);
+	return (0);
+}
+
+void
+amdgpu_release_bus(void *cookie, int flags)
+{
+	struct amdgpu_i2c_chan *i2c = cookie;
+	amdgpu_i2c_post_xfer(&i2c->adapter);
+}
+
+int
+amdgpu_send_start(void *cookie, int flags)
+{
+	return (i2c_bitbang_send_start(cookie, flags, &amdgpu_bbops));
+}
+
+int
+amdgpu_send_stop(void *cookie, int flags)
+{
+	return (i2c_bitbang_send_stop(cookie, flags, &amdgpu_bbops));
+}
+
+int
+amdgpu_initiate_xfer(void *cookie, i2c_addr_t addr, int flags)
+{
+	return (i2c_bitbang_initiate_xfer(cookie, addr, flags, &amdgpu_bbops));
+}
+
+int
+amdgpu_read_byte(void *cookie, u_int8_t *bytep, int flags)
+{
+	return (i2c_bitbang_read_byte(cookie, bytep, flags, &amdgpu_bbops));
+}
+
+int
+amdgpu_write_byte(void *cookie, u_int8_t byte, int flags)
+{
+	return (i2c_bitbang_write_byte(cookie, byte, flags, &amdgpu_bbops));
+}
+
 static const struct i2c_algorithm amdgpu_atombios_i2c_algo = {
 	.master_xfer = amdgpu_atombios_i2c_xfer,
 	.functionality = amdgpu_atombios_i2c_func,
@@ -173,9 +268,11 @@ struct amdgpu_i2c_chan *amdgpu_i2c_create(struct drm_device *dev,
 		return NULL;
 
 	i2c->rec = *rec;
+#ifdef __linux__
 	i2c->adapter.owner = THIS_MODULE;
 	i2c->adapter.class = I2C_CLASS_DDC;
 	i2c->adapter.dev.parent = &dev->pdev->dev;
+#endif
 	i2c->dev = dev;
 	i2c_set_adapdata(&i2c->adapter, i2c);
 	rw_init(&i2c->mutex, "agiic");
@@ -193,6 +290,7 @@ struct amdgpu_i2c_chan *amdgpu_i2c_create(struct drm_device *dev,
 		snprintf(i2c->adapter.name, sizeof(i2c->adapter.name),
 			 "AMDGPU i2c bit bus %s", name);
 		i2c->adapter.algo_data = &i2c->bit;
+#ifdef notyet
 		i2c->bit.pre_xfer = amdgpu_i2c_pre_xfer;
 		i2c->bit.post_xfer = amdgpu_i2c_post_xfer;
 		i2c->bit.setsda = amdgpu_i2c_set_data;
@@ -202,6 +300,16 @@ struct amdgpu_i2c_chan *amdgpu_i2c_create(struct drm_device *dev,
 		i2c->bit.udelay = 10;
 		i2c->bit.timeout = usecs_to_jiffies(2200);	/* from VESA */
 		i2c->bit.data = i2c;
+#else
+		i2c->bit.ic.ic_cookie = i2c;
+		i2c->bit.ic.ic_acquire_bus = amdgpu_acquire_bus;
+		i2c->bit.ic.ic_release_bus = amdgpu_release_bus;
+		i2c->bit.ic.ic_send_start = amdgpu_send_start;
+		i2c->bit.ic.ic_send_stop = amdgpu_send_stop;
+		i2c->bit.ic.ic_initiate_xfer = amdgpu_initiate_xfer;
+		i2c->bit.ic.ic_read_byte = amdgpu_read_byte;
+		i2c->bit.ic.ic_write_byte = amdgpu_write_byte;
+#endif
 		ret = i2c_bit_add_bus(&i2c->adapter);
 		if (ret) {
 			DRM_ERROR("Failed to register bit i2c %s\n", name);

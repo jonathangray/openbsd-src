@@ -91,6 +91,8 @@ retry:
 
 void amdgpu_gem_force_release(struct amdgpu_device *adev)
 {
+	STUB();
+#if 0
 	struct drm_device *ddev = adev->ddev;
 	struct drm_file *file;
 
@@ -111,6 +113,7 @@ void amdgpu_gem_force_release(struct amdgpu_device *adev)
 	}
 
 	mutex_unlock(&ddev->filelist_mutex);
+#endif
 }
 
 /*
@@ -120,6 +123,9 @@ void amdgpu_gem_force_release(struct amdgpu_device *adev)
 int amdgpu_gem_object_open(struct drm_gem_object *obj,
 			   struct drm_file *file_priv)
 {
+	STUB();
+	return -ENOSYS;
+#if 0
 	struct amdgpu_bo *abo = gem_to_amdgpu_bo(obj);
 	struct amdgpu_device *adev = amdgpu_ttm_adev(abo->tbo.bdev);
 	struct amdgpu_fpriv *fpriv = file_priv->driver_priv;
@@ -148,6 +154,7 @@ int amdgpu_gem_object_open(struct drm_gem_object *obj,
 	}
 	amdgpu_bo_unreserve(abo);
 	return 0;
+#endif
 }
 
 void amdgpu_gem_object_close(struct drm_gem_object *obj,
@@ -291,6 +298,9 @@ int amdgpu_gem_create_ioctl(struct drm_device *dev, void *data,
 int amdgpu_gem_userptr_ioctl(struct drm_device *dev, void *data,
 			     struct drm_file *filp)
 {
+	STUB();
+	return -ENOSYS;
+#if 0
 	struct ttm_operation_ctx ctx = { true, false };
 	struct amdgpu_device *adev = dev->dev_private;
 	struct drm_amdgpu_gem_userptr *args = data;
@@ -367,6 +377,7 @@ release_object:
 	drm_gem_object_put_unlocked(gobj);
 
 	return r;
+#endif
 }
 
 int amdgpu_mode_dumb_mmap(struct drm_file *filp,

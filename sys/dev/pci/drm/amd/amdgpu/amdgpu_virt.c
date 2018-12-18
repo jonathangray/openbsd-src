@@ -139,6 +139,9 @@ void amdgpu_virt_init_setting(struct amdgpu_device *adev)
 
 uint32_t amdgpu_virt_kiq_rreg(struct amdgpu_device *adev, uint32_t reg)
 {
+	STUB();
+	return ~0;
+#if 0
 	signed long r, cnt = 0;
 	unsigned long flags;
 	uint32_t seq;
@@ -183,10 +186,13 @@ uint32_t amdgpu_virt_kiq_rreg(struct amdgpu_device *adev, uint32_t reg)
 failed_kiq_read:
 	pr_err("failed to read reg:%x\n", reg);
 	return ~0;
+#endif
 }
 
 void amdgpu_virt_kiq_wreg(struct amdgpu_device *adev, uint32_t reg, uint32_t v)
 {
+	STUB();
+#if 0
 	signed long r, cnt = 0;
 	unsigned long flags;
 	uint32_t seq;
@@ -231,6 +237,7 @@ void amdgpu_virt_kiq_wreg(struct amdgpu_device *adev, uint32_t reg, uint32_t v)
 
 failed_kiq_write:
 	pr_err("failed to write reg:%x\n", reg);
+#endif
 }
 
 /**
@@ -385,6 +392,8 @@ int amdgpu_virt_fw_reserve_get_checksum(void *obj,
 
 void amdgpu_virt_init_data_exchange(struct amdgpu_device *adev)
 {
+	STUB();
+#if 0
 	uint32_t pf2vf_size = 0;
 	uint32_t checksum = 0;
 	uint32_t checkval;
@@ -434,6 +443,7 @@ void amdgpu_virt_init_data_exchange(struct amdgpu_device *adev)
 			}
 		}
 	}
+#endif
 }
 
 

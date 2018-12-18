@@ -274,6 +274,9 @@ int amdgpu_sa_bo_new(struct amdgpu_sa_manager *sa_manager,
 		     struct amdgpu_sa_bo **sa_bo,
 		     unsigned size, unsigned align)
 {
+	STUB();
+	return -ENOSYS;
+#if 0
 	struct dma_fence *fences[AMDGPU_SA_NUM_FENCE_LISTS];
 	unsigned tries[AMDGPU_SA_NUM_FENCE_LISTS];
 	unsigned count;
@@ -341,6 +344,7 @@ int amdgpu_sa_bo_new(struct amdgpu_sa_manager *sa_manager,
 	kfree(*sa_bo);
 	*sa_bo = NULL;
 	return r;
+#endif
 }
 
 void amdgpu_sa_bo_free(struct amdgpu_device *adev, struct amdgpu_sa_bo **sa_bo,

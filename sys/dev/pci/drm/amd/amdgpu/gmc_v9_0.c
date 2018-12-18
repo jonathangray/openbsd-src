@@ -246,6 +246,9 @@ static int gmc_v9_0_process_interrupt(struct amdgpu_device *adev,
 				struct amdgpu_irq_src *source,
 				struct amdgpu_iv_entry *entry)
 {
+	STUB();
+	return -ENOSYS;
+#if 0
 	struct amdgpu_vmhub *hub = &adev->vmhub[entry->vmid_src];
 	uint32_t status = 0;
 	u64 addr;
@@ -278,6 +281,7 @@ static int gmc_v9_0_process_interrupt(struct amdgpu_device *adev,
 	}
 
 	return 0;
+#endif
 }
 
 static const struct amdgpu_irq_src_funcs gmc_v9_0_irq_funcs = {
@@ -715,6 +719,9 @@ static void gmc_v9_0_vram_gtt_location(struct amdgpu_device *adev,
  */
 static int gmc_v9_0_mc_init(struct amdgpu_device *adev)
 {
+	STUB();
+	return -ENOSYS;
+#if 0
 	int chansize, numchan;
 	int r;
 
@@ -775,6 +782,7 @@ static int gmc_v9_0_mc_init(struct amdgpu_device *adev)
 	gmc_v9_0_vram_gtt_location(adev, &adev->gmc);
 
 	return 0;
+#endif
 }
 
 static int gmc_v9_0_gart_init(struct amdgpu_device *adev)
@@ -843,6 +851,9 @@ static unsigned gmc_v9_0_get_vbios_fb_size(struct amdgpu_device *adev)
 
 static int gmc_v9_0_sw_init(void *handle)
 {
+	STUB();
+	return -ENOSYS;
+#if 0
 	int r;
 	int dma_bits;
 	struct amdgpu_device *adev = (struct amdgpu_device *)handle;
@@ -940,6 +951,7 @@ static int gmc_v9_0_sw_init(void *handle)
 	amdgpu_vm_manager_init(adev);
 
 	return 0;
+#endif
 }
 
 static int gmc_v9_0_sw_fini(void *handle)

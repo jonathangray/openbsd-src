@@ -77,6 +77,8 @@ void amdgpu_gfx_scratch_free(struct amdgpu_device *adev, uint32_t reg)
  */
 void amdgpu_gfx_parse_disable_cu(unsigned *mask, unsigned max_se, unsigned max_sh)
 {
+	STUB();
+#if 0
 	unsigned se, sh, cu;
 	const char *p;
 
@@ -107,6 +109,7 @@ void amdgpu_gfx_parse_disable_cu(unsigned *mask, unsigned max_se, unsigned max_s
 			break;
 		p = next + 1;
 	}
+#endif
 }
 
 static bool amdgpu_gfx_is_multipipe_capable(struct amdgpu_device *adev)

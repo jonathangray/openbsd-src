@@ -6977,6 +6977,8 @@ static int gfx_v8_0_cp_ecc_error_irq(struct amdgpu_device *adev,
 
 static void gfx_v8_0_parse_sq_irq(struct amdgpu_device *adev, unsigned ih_data)
 {
+	STUB();
+#if 0
 	u32 enc, se_id, sh_id, cu_id;
 	char type[20];
 	int sq_edc_source = -1;
@@ -7043,6 +7045,7 @@ static void gfx_v8_0_parse_sq_irq(struct amdgpu_device *adev, unsigned ih_data)
 		default:
 			DRM_ERROR("SQ invalid encoding type\n.");
 	}
+#endif
 }
 
 static void gfx_v8_0_sq_irq_work_func(struct work_struct *work)

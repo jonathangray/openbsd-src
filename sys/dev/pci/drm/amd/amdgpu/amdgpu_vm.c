@@ -56,6 +56,8 @@
  * SI supports 16.
  */
 
+#ifdef notyet
+
 #define START(node) ((node)->start)
 #define LAST(node) ((node)->last)
 
@@ -64,6 +66,8 @@ INTERVAL_TREE_DEFINE(struct amdgpu_bo_va_mapping, rb, uint64_t, __subtree_last,
 
 #undef START
 #undef LAST
+
+#endif
 
 /**
  * struct amdgpu_pte_update_params - Local structure

@@ -65,6 +65,9 @@ static int amdgpu_ih_ring_alloc(struct amdgpu_device *adev)
 int amdgpu_ih_ring_init(struct amdgpu_device *adev, unsigned ring_size,
 			bool use_bus_addr)
 {
+	STUB();
+	return -ENOSYS;
+#if 0
 	u32 rb_bufsz;
 	int r;
 
@@ -107,6 +110,7 @@ int amdgpu_ih_ring_init(struct amdgpu_device *adev, unsigned ring_size,
 
 		return amdgpu_ih_ring_alloc(adev);
 	}
+#endif
 }
 
 /**
@@ -119,6 +123,8 @@ int amdgpu_ih_ring_init(struct amdgpu_device *adev, unsigned ring_size,
  */
 void amdgpu_ih_ring_fini(struct amdgpu_device *adev)
 {
+	STUB();
+#if 0
 	if (adev->irq.ih.use_bus_addr) {
 		if (adev->irq.ih.ring) {
 			/* add 8 bytes for the rptr/wptr shadows and
@@ -136,6 +142,7 @@ void amdgpu_ih_ring_fini(struct amdgpu_device *adev)
 		amdgpu_device_wb_free(adev, adev->irq.ih.wptr_offs);
 		amdgpu_device_wb_free(adev, adev->irq.ih.rptr_offs);
 	}
+#endif
 }
 
 /**

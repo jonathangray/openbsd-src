@@ -228,6 +228,9 @@ static u32 vega10_ih_get_wptr(struct amdgpu_device *adev)
  */
 static bool vega10_ih_prescreen_iv(struct amdgpu_device *adev)
 {
+	STUB();
+	return false;
+#if 0
 	u32 ring_index = adev->irq.ih.rptr >> 2;
 	u32 dw0, dw3, dw4, dw5;
 	u16 pasid;
@@ -300,6 +303,7 @@ static bool vega10_ih_prescreen_iv(struct amdgpu_device *adev)
 ignore_iv:
 	adev->irq.ih.rptr += 32;
 	return false;
+#endif
 }
 
 /**

@@ -317,6 +317,9 @@ static void gmc_v7_0_mc_program(struct amdgpu_device *adev)
  */
 static int gmc_v7_0_mc_init(struct amdgpu_device *adev)
 {
+	STUB();
+	return -ENOSYS;
+#if 0
 	int r;
 
 	adev->gmc.vram_width = amdgpu_atombios_get_vram_width(adev);
@@ -412,6 +415,7 @@ static int gmc_v7_0_mc_init(struct amdgpu_device *adev)
 	gmc_v7_0_vram_gtt_location(adev, &adev->gmc);
 
 	return 0;
+#endif
 }
 
 /*
@@ -974,6 +978,9 @@ static unsigned gmc_v7_0_get_vbios_fb_size(struct amdgpu_device *adev)
 
 static int gmc_v7_0_sw_init(void *handle)
 {
+	STUB();
+	return -ENOSYS;
+#if 0
 	int r;
 	int dma_bits;
 	struct amdgpu_device *adev = (struct amdgpu_device *)handle;
@@ -1073,6 +1080,7 @@ static int gmc_v7_0_sw_init(void *handle)
 	atomic_set(&adev->gmc.vm_fault_info_updated, 0);
 
 	return 0;
+#endif
 }
 
 static int gmc_v7_0_sw_fini(void *handle)
@@ -1272,6 +1280,9 @@ static int gmc_v7_0_process_interrupt(struct amdgpu_device *adev,
 				      struct amdgpu_irq_src *source,
 				      struct amdgpu_iv_entry *entry)
 {
+	STUB();
+	return -ENOSYS;
+#if 0
 	u32 addr, status, mc_client, vmid;
 
 	addr = RREG32(mmVM_CONTEXT1_PROTECTION_FAULT_ADDR);
@@ -1321,6 +1332,7 @@ static int gmc_v7_0_process_interrupt(struct amdgpu_device *adev,
 	}
 
 	return 0;
+#endif
 }
 
 static int gmc_v7_0_set_clockgating_state(void *handle,

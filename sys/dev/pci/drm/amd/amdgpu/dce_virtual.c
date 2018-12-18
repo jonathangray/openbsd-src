@@ -700,6 +700,9 @@ static int dce_virtual_pageflip(struct amdgpu_device *adev,
 
 static enum hrtimer_restart dce_virtual_vblank_timer_handle(struct hrtimer *vblank_timer)
 {
+	STUB();
+	return 0;
+#if 0
 	struct amdgpu_crtc *amdgpu_crtc = container_of(vblank_timer,
 						       struct amdgpu_crtc, vblank_timer);
 	struct drm_device *ddev = amdgpu_crtc->base.dev;
@@ -711,12 +714,15 @@ static enum hrtimer_restart dce_virtual_vblank_timer_handle(struct hrtimer *vbla
 		      HRTIMER_MODE_REL);
 
 	return HRTIMER_NORESTART;
+#endif
 }
 
 static void dce_virtual_set_crtc_vblank_interrupt_state(struct amdgpu_device *adev,
 							int crtc,
 							enum amdgpu_interrupt_state state)
 {
+	STUB();
+#if 0
 	if (crtc >= adev->mode_info.num_crtc || !adev->mode_info.crtcs[crtc]) {
 		DRM_DEBUG("invalid crtc %d\n", crtc);
 		return;
@@ -739,6 +745,7 @@ static void dce_virtual_set_crtc_vblank_interrupt_state(struct amdgpu_device *ad
 
 	adev->mode_info.crtcs[crtc]->vsync_timer_enabled = state;
 	DRM_DEBUG("[FM]set crtc %d vblank interrupt state %d\n", crtc, state);
+#endif
 }
 
 
