@@ -17,6 +17,7 @@
 #define CONFIG_DRM_I915_GVT			0
 #define CONFIG_DRM_I915_SW_FENCE_CHECK_DAG	0
 #define CONFIG_PM				0
+#define CONFIG_DRM_AMD_DC			1
 
 #if BYTE_ORDER == BIG_ENDIAN
 #define __BIG_ENDIAN
