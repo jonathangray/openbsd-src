@@ -1462,8 +1462,12 @@ amdgpu_dm_register_backlight_device(struct amdgpu_display_manager *dm)
 	props.brightness = AMDGPU_MAX_BL_LEVEL;
 	props.type = BACKLIGHT_RAW;
 
+#ifdef notyet
 	snprintf(bl_name, sizeof(bl_name), "amdgpu_bl%d",
 			dm->adev->ddev->primary->index);
+#else
+	snprintf(bl_name, sizeof(bl_name), "amdgpu_bl%d", 0);
+#endif
 
 	dm->backlight_dev = backlight_device_register(bl_name,
 			dm->adev->ddev->dev,
@@ -2035,7 +2039,7 @@ static int fill_plane_attributes_from_fb(struct amdgpu_device *adev,
 		plane_state->color_space = COLOR_SPACE_SRGB;
 
 	} else {
-		awidth = ALIGN(fb->width, 64);
+		awidth = roundup2(fb->width, 64);
 		plane_state->address.type = PLN_ADDR_TYPE_VIDEO_PROGRESSIVE;
 		plane_state->plane_size.video.luma_size.x = 0;
 		plane_state->plane_size.video.luma_size.y = 0;
@@ -3236,7 +3240,7 @@ static int dm_plane_helper_prepare_fb(struct drm_plane *plane,
 			plane_state->address.grph.addr.low_part = lower_32_bits(afb->address);
 			plane_state->address.grph.addr.high_part = upper_32_bits(afb->address);
 		} else {
-			awidth = ALIGN(new_state->fb->width, 64);
+			awidth = roundup2(new_state->fb->width, 64);
 			plane_state->address.type = PLN_ADDR_TYPE_VIDEO_PROGRESSIVE;
 			plane_state->address.video_progressive.luma_addr.low_part
 							= lower_32_bits(afb->address);

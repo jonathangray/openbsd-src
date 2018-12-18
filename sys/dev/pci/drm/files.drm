@@ -488,7 +488,7 @@ file	dev/pci/drm/amd/display/dc/virtual/virtual_link_encoder.c	amddal
 file	dev/pci/drm/amd/display/dc/virtual/virtual_stream_encoder.c	amddal
 file	dev/pci/drm/amd/display/modules/color/color_gamma.c		amddal
 file	dev/pci/drm/amd/display/modules/freesync/freesync.c		amddal
-file	dev/pci/drm/amd/display/modules/stats/stats.c			amddal
+#file	dev/pci/drm/amd/display/modules/stats/stats.c			amddal
 
 device	amdgpu: drmbase, ttm, wsemuldisplaydev, rasops8, rasops32, i2cbus, i2c_bitbang, drm_sched, chash, powerplay, amddal
 attach	amdgpu at pci

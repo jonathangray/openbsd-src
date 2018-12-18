@@ -47,6 +47,12 @@ kvmalloc_array(size_t n, size_t size, int flags)
 }
 
 static inline void *
+kvcalloc(size_t n, size_t size, int flags)
+{
+	return kvmalloc_array(n, size, flags | M_ZERO);
+}
+
+static inline void *
 kvzalloc(size_t size, int flags)
 {
 	return malloc(size, M_DRM, flags | M_ZERO);
