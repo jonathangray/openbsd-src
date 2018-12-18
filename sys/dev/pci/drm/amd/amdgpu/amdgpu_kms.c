@@ -894,7 +894,7 @@ int amdgpu_driver_open_kms(struct drm_device *dev, struct drm_file *file_priv)
 			goto error_vm;
 	}
 
-	rw_init(&fpriv->bo_list_lock);
+	rw_init(&fpriv->bo_list_lock, "agbo");
 	idr_init(&fpriv->bo_list_handles);
 
 	amdgpu_ctx_mgr_init(&fpriv->ctx_mgr);

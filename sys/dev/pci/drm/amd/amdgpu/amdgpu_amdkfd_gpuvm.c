@@ -933,7 +933,7 @@ static int init_kfd_vm(struct amdgpu_vm *vm, void **process_info,
 		if (!info)
 			return -ENOMEM;
 
-		rw_init(&info->lock);
+		rw_init(&info->lock, "aginfo");
 		INIT_LIST_HEAD(&info->vm_list_head);
 		INIT_LIST_HEAD(&info->kfd_bo_list);
 		INIT_LIST_HEAD(&info->userptr_valid_list);
@@ -1167,7 +1167,7 @@ int amdgpu_amdkfd_gpuvm_alloc_memory_of_gpu(
 	if (!*mem)
 		return -ENOMEM;
 	INIT_LIST_HEAD(&(*mem)->bo_va_list);
-	rw_init(&(*mem)->lock);
+	rw_init(&(*mem)->lock, "gpuvm");
 	(*mem)->aql_queue = !!(flags & ALLOC_MEM_FLAGS_AQL_QUEUE_MEM);
 
 	/* Workaround for AQL queue wraparound bug. Map the same

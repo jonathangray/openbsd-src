@@ -239,7 +239,7 @@ int pm_init(struct packet_manager *pm, struct device_queue_manager *dqm)
 	}
 
 	pm->dqm = dqm;
-	rw_init(&pm->lock);
+	rw_init(&pm->lock, "kfdpm");
 	pm->priv_queue = kernel_queue_init(dqm->dev, KFD_QUEUE_TYPE_HIQ);
 	if (!pm->priv_queue) {
 		mutex_destroy(&pm->lock);

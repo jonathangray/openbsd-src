@@ -410,7 +410,7 @@ struct amdgpu_mn *amdgpu_mn_get(struct amdgpu_device *adev,
 	amn->type = type;
 	amn->mn.ops = &amdgpu_mn_ops[type];
 	amn->objects = RB_ROOT_CACHED;
-	rw_init(&amn->read_lock);
+	rw_init(&amn->read_lock, "amnrd");
 	atomic_set(&amn->recursion, 0);
 
 	r = __mmu_notifier_register(&amn->mn, mm);

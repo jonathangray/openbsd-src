@@ -319,7 +319,7 @@ int amdgpu_ring_init(struct amdgpu_device *adev, struct amdgpu_ring *ring,
 
 	ring->max_dw = max_dw;
 	ring->priority = DRM_SCHED_PRIORITY_NORMAL;
-	rw_init(&ring->priority_mutex);
+	rw_init(&ring->priority_mutex, "ringpri");
 	INIT_LIST_HEAD(&ring->lru_list);
 	amdgpu_ring_lru_touch(adev, ring);
 

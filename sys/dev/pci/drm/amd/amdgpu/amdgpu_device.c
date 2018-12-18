@@ -2388,16 +2388,16 @@ int amdgpu_device_init(struct amdgpu_device *adev,
 	/* mutex initialization are all done here so we
 	 * can recall function without having locking issues */
 	atomic_set(&adev->irq.ih.lock, 0);
-	rw_init(&adev->firmware.mutex);
-	rw_init(&adev->pm.mutex);
-	rw_init(&adev->gfx.gpu_clock_mutex);
-	rw_init(&adev->srbm_mutex);
-	rw_init(&adev->gfx.pipe_reserve_mutex);
-	rw_init(&adev->grbm_idx_mutex);
-	rw_init(&adev->mn_lock);
-	rw_init(&adev->virt.vf_errors.lock);
+	rw_init(&adev->firmware.mutex, "agfw");
+	rw_init(&adev->pm.mutex, "agpm");
+	rw_init(&adev->gfx.gpu_clock_mutex, "gfxclk");
+	rw_init(&adev->srbm_mutex, "srbm");
+	rw_init(&adev->gfx.pipe_reserve_mutex, "pipers");
+	rw_init(&adev->grbm_idx_mutex, "grbmidx");
+	rw_init(&adev->mn_lock, "agpumn");
+	rw_init(&adev->virt.vf_errors.lock, "vferr");
 	hash_init(adev->mn_hash);
-	rw_init(&adev->lock_reset);
+	rw_init(&adev->lock_reset, "aglkrst");
 
 	amdgpu_device_check_arguments(adev);
 
@@ -2412,7 +2412,7 @@ int amdgpu_device_init(struct amdgpu_device *adev,
 	mtx_init(&adev->mm_stats.lock, IPL_TTY);
 
 	INIT_LIST_HEAD(&adev->shadow_list);
-	rw_init(&adev->shadow_list_lock);
+	rw_init(&adev->shadow_list_lock, "sdwlst");
 
 	INIT_LIST_HEAD(&adev->ring_lru_list);
 	mtx_init(&adev->ring_lru_list_lock, IPL_TTY);

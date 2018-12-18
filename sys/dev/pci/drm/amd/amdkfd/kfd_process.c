@@ -529,7 +529,7 @@ static struct kfd_process *create_process(const struct task_struct *thread,
 
 	kref_init(&process->ref);
 
-	rw_init(&process->mutex);
+	rw_init(&process->mutex, "kfdproc");
 
 	process->mm = thread->mm;
 

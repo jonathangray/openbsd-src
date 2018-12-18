@@ -229,7 +229,7 @@ static int create_other_event(struct kfd_process *p, struct kfd_event *ev)
 
 void kfd_event_init_process(struct kfd_process *p)
 {
-	rw_init(&p->event_mutex);
+	rw_init(&p->event_mutex, "kfdev");
 	idr_init(&p->event_idr);
 	p->signal_page = NULL;
 	p->signal_event_count = 0;
