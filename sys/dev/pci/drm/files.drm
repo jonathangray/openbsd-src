@@ -355,11 +355,11 @@ file	dev/pci/drm/amd/amdgpu/amdgpu_vf_error.c	amdgpu
 file	dev/pci/drm/amd/amdgpu/amdgpu_virt.c		amdgpu
 file	dev/pci/drm/amd/amdgpu/amdgpu_vm.c		amdgpu
 file	dev/pci/drm/amd/amdgpu/amdgpu_vram_mgr.c	amdgpu
-file	dev/pci/drm/amd/amdgpu/atom.c			amdgpu
-file	dev/pci/drm/amd/amdgpu/atombios_crtc.c		amdgpu
-file	dev/pci/drm/amd/amdgpu/atombios_dp.c		amdgpu
-file	dev/pci/drm/amd/amdgpu/atombios_encoders.c	amdgpu
-file	dev/pci/drm/amd/amdgpu/atombios_i2c.c		amdgpu
+file	dev/pci/drm/amd/amdgpu/amdgpu_atom.c		amdgpu
+file	dev/pci/drm/amd/amdgpu/amdgpu_atombios_crtc.c	amdgpu
+file	dev/pci/drm/amd/amdgpu/amdgpu_atombios_dp.c	amdgpu
+file	dev/pci/drm/amd/amdgpu/amdgpu_atombios_encoders.c	amdgpu
+file	dev/pci/drm/amd/amdgpu/amdgpu_atombios_i2c.c	amdgpu
 file	dev/pci/drm/amd/amdgpu/cz_ih.c			amdgpu
 file	dev/pci/drm/amd/amdgpu/dce_v10_0.c		amdgpu
 file	dev/pci/drm/amd/amdgpu/dce_v11_0.c		amdgpu
