@@ -74,6 +74,10 @@ file	dev/pci/drm/ttm/ttm_page_alloc.c	ttm
 file	dev/pci/drm/ttm/ttm_page_alloc_dma.c	ttm
 file	dev/pci/drm/ttm/ttm_tt.c		ttm
 
+define	drm_sched
+file	dev/pci/drm/scheduler/gpu_scheduler.c	drm_sched
+file	dev/pci/drm/scheduler/sched_fence.c	drm_sched
+
 device	inteldrm: agpint, drmbase, wsemuldisplaydev, rasops32, rasops_rotation, i2cbus, i2c_bitbang
 attach	inteldrm at pci
 file	dev/pci/drm/i915/dvo_ch7017.c			inteldrm
@@ -301,7 +305,7 @@ file	dev/pci/drm/radeon/uvd_v4_2.c			radeondrm
 file	dev/pci/drm/radeon/vce_v1_0.c			radeondrm
 file	dev/pci/drm/radeon/vce_v2_0.c			radeondrm
 
-device	amdgpu: drmbase, ttm, wsemuldisplaydev, rasops8, rasops32, i2cbus, i2c_bitbang
+device	amdgpu: drmbase, ttm, wsemuldisplaydev, rasops8, rasops32, i2cbus, i2c_bitbang, drm_sched
 attach	amdgpu at pci
 #file	dev/pci/drm/amd/amdgpu/amdgpu_acpi.c		amdgpu
 file	dev/pci/drm/amd/amdgpu/amdgpu_afmt.c		amdgpu
