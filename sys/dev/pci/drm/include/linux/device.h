@@ -55,13 +55,13 @@ struct device_attribute {
 #ifdef DRMDEBUG
 #define dev_info(dev, fmt, arg...)				\
 	printf("drm: " fmt, ## arg)
-#define dev_debug(dev, fmt, arg...)				\
+#define dev_dbg(dev, fmt, arg...)				\
 	printf("drm:pid%d:%s *DEBUG* " fmt, curproc->p_p->ps_pid,	\
 	    __func__ , ## arg)
 #else
 #define dev_info(dev, fmt, arg...) 				\
 	    do { } while(0)
-#define dev_debug(dev, fmt, arg...) 				\
+#define dev_dbg(dev, fmt, arg...) 				\
 	    do { } while(0)
 #endif
 
