@@ -10,6 +10,7 @@
 #include <linux/list.h>
 #include <linux/bug.h>
 #include <linux/sched.h>
+#include <linux/rcupdate.h>
 
 #define DMA_FENCE_TRACE(fence, fmt, args...) do {} while(0)
 
@@ -22,6 +23,7 @@ struct dma_fence {
 	struct mutex *lock;
 	struct list_head cb_list;
 	int error;
+	struct rcu_head rcu;
 };
 
 enum dma_fence_flag_bits {
