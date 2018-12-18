@@ -358,7 +358,7 @@ file	dev/pci/drm/amd/display/amdgpu_dm/amdgpu_dm_services.c		amddal
 file	dev/pci/drm/amd/display/dc/basics/conversion.c			amddal
 file	dev/pci/drm/amd/display/dc/basics/fixpt31_32.c			amddal
 file	dev/pci/drm/amd/display/dc/basics/log_helpers.c			amddal
-file	dev/pci/drm/amd/display/dc/basics/vector.c			amddal
+file	dev/pci/drm/amd/display/dc/basics/amdgpu_vector.c		amddal
 file	dev/pci/drm/amd/display/dc/bios/bios_parser.c			amddal
 file	dev/pci/drm/amd/display/dc/bios/bios_parser2.c			amddal
 file	dev/pci/drm/amd/display/dc/bios/bios_parser_common.c		amddal
@@ -378,7 +378,7 @@ file	dev/pci/drm/amd/display/dc/calcs/dce_calcs.c			amddal
 file	dev/pci/drm/amd/display/dc/calcs/dcn_calc_auto.c		amddal
 file	dev/pci/drm/amd/display/dc/calcs/dcn_calc_math.c		amddal
 file	dev/pci/drm/amd/display/dc/calcs/dcn_calcs.c			amddal
-file	dev/pci/drm/amd/display/dc/core/dc.c				amddal
+file	dev/pci/drm/amd/display/dc/core/amdgpu_dc.c			amddal
 file	dev/pci/drm/amd/display/dc/core/dc_debug.c			amddal
 file	dev/pci/drm/amd/display/dc/core/dc_hw_sequencer.c		amddal
 file	dev/pci/drm/amd/display/dc/core/dc_link.c			amddal
