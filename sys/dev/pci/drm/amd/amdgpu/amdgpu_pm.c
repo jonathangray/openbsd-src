@@ -157,8 +157,10 @@ static ssize_t amdgpu_set_dpm_state(struct device *dev,
 		mutex_unlock(&adev->pm.mutex);
 
 		/* Can't set dpm state when the card is off */
+#ifdef notyet
 		if (!(adev->flags & AMD_IS_PX) ||
 		    (ddev->switch_power_state == DRM_SWITCH_POWER_ON))
+#endif
 			amdgpu_pm_compute_clocks(adev);
 	}
 fail:
@@ -233,9 +235,11 @@ static ssize_t amdgpu_get_dpm_forced_performance_level(struct device *dev,
 	struct amdgpu_device *adev = ddev->dev_private;
 	enum amd_dpm_forced_level level = 0xff;
 
+#ifdef notyet
 	if  ((adev->flags & AMD_IS_PX) &&
 	     (ddev->switch_power_state != DRM_SWITCH_POWER_ON))
 		return snprintf(buf, PAGE_SIZE, "off\n");
+#endif
 
 	if (adev->powerplay.pp_funcs->get_performance_level)
 		level = amdgpu_dpm_get_performance_level(adev);
@@ -265,10 +269,12 @@ static ssize_t amdgpu_set_dpm_forced_performance_level(struct device *dev,
 	enum amd_dpm_forced_level current_level = 0xff;
 	int ret = 0;
 
+#ifdef notyet
 	/* Can't force performance level when the card is off */
 	if  ((adev->flags & AMD_IS_PX) &&
 	     (ddev->switch_power_state != DRM_SWITCH_POWER_ON))
 		return -EINVAL;
+#endif
 
 	if (adev->powerplay.pp_funcs->get_performance_level)
 		current_level = amdgpu_dpm_get_performance_level(adev);
@@ -386,6 +392,9 @@ static ssize_t amdgpu_set_pp_force_state(struct device *dev,
 		const char *buf,
 		size_t count)
 {
+	STUB();
+	return -ENOSYS;
+#if 0
 	struct drm_device *ddev = dev_get_drvdata(dev);
 	struct amdgpu_device *adev = ddev->dev_private;
 	enum amd_pm_state_type state = 0;
@@ -417,6 +426,7 @@ static ssize_t amdgpu_set_pp_force_state(struct device *dev,
 	}
 fail:
 	return count;
+#endif
 }
 
 /**
@@ -497,6 +507,9 @@ static ssize_t amdgpu_set_pp_od_clk_voltage(struct device *dev,
 		const char *buf,
 		size_t count)
 {
+	STUB();
+	return -ENOSYS;
+#if 0
 	struct drm_device *ddev = dev_get_drvdata(dev);
 	struct amdgpu_device *adev = ddev->dev_private;
 	int ret;
@@ -556,6 +569,7 @@ static ssize_t amdgpu_set_pp_od_clk_voltage(struct device *dev,
 	}
 
 	return count;
+#endif
 }
 
 static ssize_t amdgpu_get_pp_od_clk_voltage(struct device *dev,
@@ -615,6 +629,9 @@ static ssize_t amdgpu_get_pp_dpm_sclk(struct device *dev,
 
 static ssize_t amdgpu_read_mask(const char *buf, size_t count, uint32_t *mask)
 {
+	STUB();
+	return -ENOSYS;
+#if 0
 	int ret;
 	long level;
 	char *sub_str = NULL;
@@ -641,6 +658,7 @@ static ssize_t amdgpu_read_mask(const char *buf, size_t count, uint32_t *mask)
 	}
 
 	return 0;
+#endif
 }
 
 static ssize_t amdgpu_set_pp_dpm_sclk(struct device *dev,
@@ -748,6 +766,9 @@ static ssize_t amdgpu_set_pp_sclk_od(struct device *dev,
 		const char *buf,
 		size_t count)
 {
+	STUB();
+	return -ENOSYS;
+#if 0
 	struct drm_device *ddev = dev_get_drvdata(dev);
 	struct amdgpu_device *adev = ddev->dev_private;
 	int ret;
@@ -771,6 +792,7 @@ static ssize_t amdgpu_set_pp_sclk_od(struct device *dev,
 
 fail:
 	return count;
+#endif
 }
 
 static ssize_t amdgpu_get_pp_mclk_od(struct device *dev,
@@ -792,6 +814,9 @@ static ssize_t amdgpu_set_pp_mclk_od(struct device *dev,
 		const char *buf,
 		size_t count)
 {
+	STUB();
+	return -ENOSYS;
+#if 0
 	struct drm_device *ddev = dev_get_drvdata(dev);
 	struct amdgpu_device *adev = ddev->dev_private;
 	int ret;
@@ -815,6 +840,7 @@ static ssize_t amdgpu_set_pp_mclk_od(struct device *dev,
 
 fail:
 	return count;
+#endif
 }
 
 /**
@@ -856,6 +882,9 @@ static ssize_t amdgpu_set_pp_power_profile_mode(struct device *dev,
 		const char *buf,
 		size_t count)
 {
+	STUB();
+	return -ENOSYS;
+#if 0
 	int ret = 0xff;
 	struct drm_device *ddev = dev_get_drvdata(dev);
 	struct amdgpu_device *adev = ddev->dev_private;
@@ -901,6 +930,7 @@ static ssize_t amdgpu_set_pp_power_profile_mode(struct device *dev,
 		return count;
 fail:
 	return -EINVAL;
+#endif
 }
 
 /**
@@ -977,10 +1007,12 @@ static ssize_t amdgpu_hwmon_show_temp(struct device *dev,
 	struct drm_device *ddev = adev->ddev;
 	int r, temp, size = sizeof(temp);
 
+#ifdef notyet
 	/* Can't get temperature when the card is off */
 	if  ((adev->flags & AMD_IS_PX) &&
 	     (ddev->switch_power_state != DRM_SWITCH_POWER_ON))
 		return -EINVAL;
+#endif
 
 	/* sanity check PP is enabled */
 	if (!(adev->powerplay.pp_funcs &&
@@ -1000,6 +1032,9 @@ static ssize_t amdgpu_hwmon_show_temp_thresh(struct device *dev,
 					     struct device_attribute *attr,
 					     char *buf)
 {
+	STUB();
+	return -ENOSYS;
+#if 0
 	struct amdgpu_device *adev = dev_get_drvdata(dev);
 	int hyst = to_sensor_dev_attr(attr)->index;
 	int temp;
@@ -1010,12 +1045,16 @@ static ssize_t amdgpu_hwmon_show_temp_thresh(struct device *dev,
 		temp = adev->pm.dpm.thermal.max_temp;
 
 	return snprintf(buf, PAGE_SIZE, "%d\n", temp);
+#endif
 }
 
 static ssize_t amdgpu_hwmon_get_pwm1_enable(struct device *dev,
 					    struct device_attribute *attr,
 					    char *buf)
 {
+	STUB();
+	return -ENOSYS;
+#if 0
 	struct amdgpu_device *adev = dev_get_drvdata(dev);
 	u32 pwm_mode = 0;
 
@@ -1025,6 +1064,7 @@ static ssize_t amdgpu_hwmon_get_pwm1_enable(struct device *dev,
 	pwm_mode = amdgpu_dpm_get_fan_control_mode(adev);
 
 	return sprintf(buf, "%i\n", pwm_mode);
+#endif
 }
 
 static ssize_t amdgpu_hwmon_set_pwm1_enable(struct device *dev,
@@ -1032,6 +1072,9 @@ static ssize_t amdgpu_hwmon_set_pwm1_enable(struct device *dev,
 					    const char *buf,
 					    size_t count)
 {
+	STUB();
+	return -ENOSYS;
+#if 0
 	struct amdgpu_device *adev = dev_get_drvdata(dev);
 	int err;
 	int value;
@@ -1051,34 +1094,48 @@ static ssize_t amdgpu_hwmon_set_pwm1_enable(struct device *dev,
 	amdgpu_dpm_set_fan_control_mode(adev, value);
 
 	return count;
+#endif
 }
 
 static ssize_t amdgpu_hwmon_get_pwm1_min(struct device *dev,
 					 struct device_attribute *attr,
 					 char *buf)
 {
+	STUB();
+	return -ENOSYS;
+#if 0
 	return sprintf(buf, "%i\n", 0);
+#endif
 }
 
 static ssize_t amdgpu_hwmon_get_pwm1_max(struct device *dev,
 					 struct device_attribute *attr,
 					 char *buf)
 {
+	STUB();
+	return -ENOSYS;
+#if 0
 	return sprintf(buf, "%i\n", 255);
+#endif
 }
 
 static ssize_t amdgpu_hwmon_set_pwm1(struct device *dev,
 				     struct device_attribute *attr,
 				     const char *buf, size_t count)
 {
+	STUB();
+	return -ENOSYS;
+#if 0
 	struct amdgpu_device *adev = dev_get_drvdata(dev);
 	int err;
 	u32 value;
 
+#ifdef notyet
 	/* Can't adjust fan when the card is off */
 	if  ((adev->flags & AMD_IS_PX) &&
 	     (adev->ddev->switch_power_state != DRM_SWITCH_POWER_ON))
 		return -EINVAL;
+#endif
 
 	err = kstrtou32(buf, 10, &value);
 	if (err)
@@ -1093,12 +1150,16 @@ static ssize_t amdgpu_hwmon_set_pwm1(struct device *dev,
 	}
 
 	return count;
+#endif
 }
 
 static ssize_t amdgpu_hwmon_get_pwm1(struct device *dev,
 				     struct device_attribute *attr,
 				     char *buf)
 {
+	STUB();
+	return -ENOSYS;
+#if 0
 	struct amdgpu_device *adev = dev_get_drvdata(dev);
 	int err;
 	u32 speed = 0;
@@ -1117,7 +1178,10 @@ static ssize_t amdgpu_hwmon_get_pwm1(struct device *dev,
 	speed = (speed * 255) / 100;
 
 	return sprintf(buf, "%i\n", speed);
+#endif
 }
+
+#ifdef notyet
 
 static ssize_t amdgpu_hwmon_get_fan1_input(struct device *dev,
 					   struct device_attribute *attr,
@@ -1473,6 +1537,7 @@ static const struct attribute_group *hwmon_groups[] = {
 	&hwmon_attrgroup,
 	NULL
 };
+#endif /* notyet */
 
 void amdgpu_dpm_thermal_work_handler(struct work_struct *work)
 {
@@ -1781,6 +1846,9 @@ void amdgpu_pm_print_power_states(struct amdgpu_device *adev)
 
 int amdgpu_pm_sysfs_init(struct amdgpu_device *adev)
 {
+	STUB();
+	return -ENOSYS;
+#if 0
 	int ret;
 
 	if (adev->pm.sysfs_initialized)
@@ -1887,10 +1955,13 @@ int amdgpu_pm_sysfs_init(struct amdgpu_device *adev)
 	adev->pm.sysfs_initialized = true;
 
 	return 0;
+#endif
 }
 
 void amdgpu_pm_sysfs_fini(struct amdgpu_device *adev)
 {
+	STUB();
+#if 0
 	if (adev->pm.dpm_enabled == 0)
 		return;
 
@@ -1914,6 +1985,7 @@ void amdgpu_pm_sysfs_fini(struct amdgpu_device *adev)
 	device_remove_file(adev->dev,
 			&dev_attr_pp_od_clk_voltage);
 	device_remove_file(adev->dev, &dev_attr_gpu_busy_percent);
+#endif
 }
 
 void amdgpu_pm_compute_clocks(struct amdgpu_device *adev)

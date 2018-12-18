@@ -27,6 +27,9 @@
 
 #define PAGE_ALIGN(addr)	(((addr) + PAGE_MASK) & ~PAGE_MASK)
 
+#define PFN_UP(x)		(((x) + PAGE_SIZE-1) >> PAGE_SHIFT)
+#define PFN_DOWN(x)		((x) >> PAGE_SHIFT)
+
 #define is_vmalloc_addr(ptr)	true
 
 static inline void *

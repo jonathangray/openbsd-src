@@ -84,8 +84,8 @@ static int init_mqd(struct mqd_manager *mm, void **mqd,
 		if (!*mqd_mem_obj)
 			return -ENOMEM;
 		retval = kfd->kfd2kgd->init_gtt_mem_allocation(kfd->kgd,
-			ALIGN(q->ctl_stack_size, PAGE_SIZE) +
-				ALIGN(sizeof(struct v9_mqd), PAGE_SIZE),
+			roundup2(q->ctl_stack_size, PAGE_SIZE) +
+				roundup2(sizeof(struct v9_mqd), PAGE_SIZE),
 			&((*mqd_mem_obj)->gtt_mem),
 			&((*mqd_mem_obj)->gpu_addr),
 			(void *)&((*mqd_mem_obj)->cpu_ptr), true);

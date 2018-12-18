@@ -2026,6 +2026,8 @@ static void amdgpu_vm_bo_insert_map(struct amdgpu_device *adev,
 				    struct amdgpu_bo_va *bo_va,
 				    struct amdgpu_bo_va_mapping *mapping)
 {
+	STUB();
+#if 0
 	struct amdgpu_vm *vm = bo_va->base.vm;
 	struct amdgpu_bo *bo = bo_va->base.bo;
 
@@ -2043,6 +2045,7 @@ static void amdgpu_vm_bo_insert_map(struct amdgpu_device *adev,
 		spin_unlock(&vm->moved_lock);
 	}
 	trace_amdgpu_vm_bo_map(bo_va, mapping);
+#endif
 }
 
 /**
@@ -2067,6 +2070,9 @@ int amdgpu_vm_bo_map(struct amdgpu_device *adev,
 		     uint64_t saddr, uint64_t offset,
 		     uint64_t size, uint64_t flags)
 {
+	STUB();
+	return -ENOSYS;
+#if 0
 	struct amdgpu_bo_va_mapping *mapping, *tmp;
 	struct amdgpu_bo *bo = bo_va->base.bo;
 	struct amdgpu_vm *vm = bo_va->base.vm;
@@ -2107,6 +2113,7 @@ int amdgpu_vm_bo_map(struct amdgpu_device *adev,
 	amdgpu_vm_bo_insert_map(adev, bo_va, mapping);
 
 	return 0;
+#endif
 }
 
 /**
@@ -2190,6 +2197,9 @@ int amdgpu_vm_bo_unmap(struct amdgpu_device *adev,
 		       struct amdgpu_bo_va *bo_va,
 		       uint64_t saddr)
 {
+	STUB();
+	return -ENOSYS;
+#if 0
 	struct amdgpu_bo_va_mapping *mapping;
 	struct amdgpu_vm *vm = bo_va->base.vm;
 	bool valid = true;
@@ -2225,6 +2235,7 @@ int amdgpu_vm_bo_unmap(struct amdgpu_device *adev,
 				       bo_va->last_pt_update);
 
 	return 0;
+#endif
 }
 
 /**
@@ -2244,8 +2255,11 @@ int amdgpu_vm_bo_clear_mappings(struct amdgpu_device *adev,
 				struct amdgpu_vm *vm,
 				uint64_t saddr, uint64_t size)
 {
+	STUB();
+	return -ENOSYS;
+#if 0
 	struct amdgpu_bo_va_mapping *before, *after, *tmp, *next;
-	LIST_HEAD(removed);
+	DRM_LIST_HEAD(removed);
 	uint64_t eaddr;
 
 	eaddr = saddr + size - 1;
@@ -2329,6 +2343,7 @@ int amdgpu_vm_bo_clear_mappings(struct amdgpu_device *adev,
 	}
 
 	return 0;
+#endif
 }
 
 /**
@@ -2346,7 +2361,11 @@ int amdgpu_vm_bo_clear_mappings(struct amdgpu_device *adev,
 struct amdgpu_bo_va_mapping *amdgpu_vm_bo_lookup_mapping(struct amdgpu_vm *vm,
 							 uint64_t addr)
 {
+	STUB();
+	return NULL;
+#if 0
 	return amdgpu_vm_it_iter_first(&vm->va, addr, addr);
+#endif
 }
 
 /**
@@ -2359,6 +2378,8 @@ struct amdgpu_bo_va_mapping *amdgpu_vm_bo_lookup_mapping(struct amdgpu_vm *vm,
  */
 void amdgpu_vm_bo_trace_cs(struct amdgpu_vm *vm, struct ww_acquire_ctx *ticket)
 {
+	STUB();
+#if 0
 	struct amdgpu_bo_va_mapping *mapping;
 
 	if (!trace_amdgpu_vm_bo_cs_enabled())
@@ -2376,6 +2397,7 @@ void amdgpu_vm_bo_trace_cs(struct amdgpu_vm *vm, struct ww_acquire_ctx *ticket)
 
 		trace_amdgpu_vm_bo_cs(mapping);
 	}
+#endif
 }
 
 /**
@@ -2391,6 +2413,8 @@ void amdgpu_vm_bo_trace_cs(struct amdgpu_vm *vm, struct ww_acquire_ctx *ticket)
 void amdgpu_vm_bo_rmv(struct amdgpu_device *adev,
 		      struct amdgpu_bo_va *bo_va)
 {
+	STUB();
+#if 0
 	struct amdgpu_bo_va_mapping *mapping, *next;
 	struct amdgpu_vm *vm = bo_va->base.vm;
 
@@ -2416,6 +2440,7 @@ void amdgpu_vm_bo_rmv(struct amdgpu_device *adev,
 
 	dma_fence_put(bo_va->last_pt_update);
 	kfree(bo_va);
+#endif
 }
 
 /**
@@ -2511,7 +2536,9 @@ void amdgpu_vm_adjust_size(struct amdgpu_device *adev, uint32_t min_vm_size,
 			vm_size = max_size;
 		}
 	} else {
+#ifdef __linux__
 		struct sysinfo si;
+#endif
 		unsigned int phys_ram_gb;
 
 		/* Optimal VM size depends on the amount of physical
@@ -2529,9 +2556,14 @@ void amdgpu_vm_adjust_size(struct amdgpu_device *adev, uint32_t min_vm_size,
 		 * Round up to power of two to maximize the available
 		 * VM size with the given page table size.
 		 */
+#ifdef __linux__
 		si_meminfo(&si);
 		phys_ram_gb = ((uint64_t)si.totalram * si.mem_unit +
 			       (1 << 30) - 1) >> 30;
+#else
+		phys_ram_gb = ((uint64_t)ptoa(physmem) +
+			       (1 << 30) - 1) >> 30;
+#endif
 		vm_size = roundup_pow_of_two(
 			min(max(phys_ram_gb * 3, min_vm_size), max_size));
 	}
@@ -2594,6 +2626,9 @@ void amdgpu_vm_adjust_size(struct amdgpu_device *adev, uint32_t min_vm_size,
 int amdgpu_vm_init(struct amdgpu_device *adev, struct amdgpu_vm *vm,
 		   int vm_context, unsigned int pasid)
 {
+	STUB();
+	return -ENOSYS;
+#if 0
 	struct amdgpu_bo_param bp;
 	struct amdgpu_bo *root;
 	const unsigned align = min(AMDGPU_VM_PTB_ALIGN_SIZE,
@@ -2704,6 +2739,7 @@ error_free_sched_entity:
 	drm_sched_entity_destroy(&vm->entity);
 
 	return r;
+#endif
 }
 
 /**
@@ -2728,6 +2764,9 @@ error_free_sched_entity:
  */
 int amdgpu_vm_make_compute(struct amdgpu_device *adev, struct amdgpu_vm *vm)
 {
+	STUB();
+	return -ENOSYS;
+#if 0
 	bool pte_support_ats = (adev->asic_type == CHIP_RAVEN);
 	int r;
 
@@ -2777,6 +2816,7 @@ int amdgpu_vm_make_compute(struct amdgpu_device *adev, struct amdgpu_vm *vm)
 error:
 	amdgpu_bo_unreserve(vm->root.base.bo);
 	return r;
+#endif
 }
 
 /**
@@ -2820,6 +2860,8 @@ static void amdgpu_vm_free_levels(struct amdgpu_device *adev,
  */
 void amdgpu_vm_fini(struct amdgpu_device *adev, struct amdgpu_vm *vm)
 {
+	STUB();
+#if 0
 	struct amdgpu_bo_va_mapping *mapping, *tmp;
 	bool prt_fini_needed = !!adev->gmc.gmc_funcs->set_prt;
 	struct amdgpu_bo *root;
@@ -2874,6 +2916,7 @@ void amdgpu_vm_fini(struct amdgpu_device *adev, struct amdgpu_vm *vm)
 	dma_fence_put(vm->last_update);
 	for (i = 0; i < AMDGPU_MAX_VMHUBS; i++)
 		amdgpu_vmid_free_reserved(adev, vm, i);
+#endif
 }
 
 /**
@@ -2963,10 +3006,13 @@ void amdgpu_vm_manager_init(struct amdgpu_device *adev)
  */
 void amdgpu_vm_manager_fini(struct amdgpu_device *adev)
 {
+	STUB();
+#if 0
 	WARN_ON(!idr_is_empty(&adev->vm_manager.pasid_idr));
 	idr_destroy(&adev->vm_manager.pasid_idr);
 
 	amdgpu_vmid_mgr_fini(adev);
+#endif
 }
 
 /**
@@ -3031,8 +3077,14 @@ void amdgpu_vm_get_task_info(struct amdgpu_device *adev, unsigned int pasid,
  */
 void amdgpu_vm_set_task_info(struct amdgpu_vm *vm)
 {
+	STUB();
+#if 0
 	if (!vm->task_info.pid) {
+#ifdef __linux__
 		vm->task_info.pid = current->pid;
+#else
+		vm->task_info.pid = curproc->p_p->ps_pid;
+#endif
 		get_task_comm(vm->task_info.task_name, current);
 
 		if (current->group_leader->mm == current->mm) {
@@ -3040,4 +3092,5 @@ void amdgpu_vm_set_task_info(struct amdgpu_vm *vm)
 			get_task_comm(vm->task_info.process_name, current->group_leader);
 		}
 	}
+#endif
 }

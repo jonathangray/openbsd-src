@@ -6,7 +6,8 @@
 #define TP_PROTO(x...) x
 
 #define DEFINE_EVENT(template, name, proto, args) \
-static inline void trace_##name(proto) {}
+static inline void trace_##name(proto) {} \
+static inline bool trace_##name##_enabled(void) { return false; }
 
 #define DEFINE_EVENT_PRINT(template, name, proto, args, print) \
 static inline void trace_##name(proto) {}
