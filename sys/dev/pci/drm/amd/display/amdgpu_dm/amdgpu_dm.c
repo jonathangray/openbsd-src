@@ -3721,9 +3721,11 @@ create_i2c(struct ddc_service *ddc_service,
 	i2c = kzalloc(sizeof(struct amdgpu_i2c_adapter), GFP_KERNEL);
 	if (!i2c)
 		return NULL;
+#ifdef __linux__
 	i2c->base.owner = THIS_MODULE;
 	i2c->base.class = I2C_CLASS_DDC;
 	i2c->base.dev.parent = &adev->pdev->dev;
+#endif
 	i2c->base.algo = &amdgpu_dm_i2c_algo;
 	snprintf(i2c->base.name, sizeof(i2c->base.name), "AMDGPU DM i2c hw bus %d", link_index);
 	i2c_set_adapdata(&i2c->base, i2c);
