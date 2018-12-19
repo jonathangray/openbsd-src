@@ -984,6 +984,8 @@ int drm_prime_sg_to_page_addr_arrays(struct sg_table *sgt, struct page **pages,
 }
 EXPORT_SYMBOL(drm_prime_sg_to_page_addr_arrays);
 
+#endif
+
 /**
  * drm_prime_gem_destroy - helper to clean up a PRIME-imported GEM object
  * @obj: GEM object which was created from a dma-buf
@@ -994,6 +996,7 @@ EXPORT_SYMBOL(drm_prime_sg_to_page_addr_arrays);
  */
 void drm_prime_gem_destroy(struct drm_gem_object *obj, struct sg_table *sg)
 {
+#ifdef notyet
 	struct dma_buf_attachment *attach;
 	struct dma_buf *dma_buf;
 	attach = obj->import_attach;
@@ -1003,10 +1006,9 @@ void drm_prime_gem_destroy(struct drm_gem_object *obj, struct sg_table *sg)
 	dma_buf_detach(attach->dmabuf, attach);
 	/* remove the reference */
 	dma_buf_put(dma_buf);
+#endif
 }
 EXPORT_SYMBOL(drm_prime_gem_destroy);
-
-#endif
 
 void drm_prime_init_file_private(struct drm_prime_file_private *prime_fpriv)
 {
