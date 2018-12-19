@@ -818,55 +818,6 @@ amdgpu_probe(struct device *parent, void *match, void *aux)
 	return 0;
 }
 
-void
-amdgpu_attach(struct device *parent, struct device *self, void *aux)
-{
-}
-
-int     
-amdgpu_detach(struct device *self, int flags)
-{
-	return 0;
-}
-
-int     
-amdgpu_activate(struct device *self, int act)
-{
-	struct amdgpu_device *adev = (struct amdgpu_device *)self;
-	int rv = 0;
-
-	if (adev->ddev == NULL)
-		return (0);
-
-	switch (act) {
-	case DVACT_QUIESCE:
-		rv = config_activate_children(self, act);
-		amdgpu_device_suspend(adev->ddev, true, true);
-		break;
-	case DVACT_SUSPEND:
-		break;
-	case DVACT_RESUME:
-		break;
-	case DVACT_WAKEUP:
-		amdgpu_device_resume(adev->ddev, true, true);
-		rv = config_activate_children(self, act);
-		break;
-	}
-
-	return (rv);
-}
-
-int
-amdgpu_forcedetach(struct amdgpu_device *adev)
-{
-	return 0;
-}
-
-void
-amdgpu_attachhook(struct device *self)
-{
-}
-
 #ifdef notyet
 static int amdgpu_kick_out_firmware_fb(struct pci_dev *pdev)
 {
