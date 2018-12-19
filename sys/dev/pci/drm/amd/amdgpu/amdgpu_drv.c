@@ -786,6 +786,87 @@ MODULE_DEVICE_TABLE(pci, pciidlist);
 
 static struct drm_driver kms_driver;
 
+int     amdgpu_probe(struct device *, void *, void *);
+void    amdgpu_attach(struct device *, struct device *, void *);
+int     amdgpu_detach(struct device *, int);
+int     amdgpu_activate(struct device *, int);
+void    amdgpu_attachhook(struct device *);
+int     amdgpu_forcedetach(struct amdgpu_device *);
+
+/*
+ * set if the mountroot hook has a fatal error
+ * such as not being able to find the firmware
+ */
+int amdgpu_fatal_error;
+
+struct cfattach amdgpu_ca = {
+        sizeof (struct amdgpu_device), amdgpu_probe, amdgpu_attach,
+        amdgpu_detach, amdgpu_activate
+};
+
+struct cfdriver amdgpu_cd = {
+        NULL, "amdgpu", DV_DULL
+};
+
+int
+amdgpu_probe(struct device *parent, void *match, void *aux)
+{
+	if (amdgpu_fatal_error)
+		return 0;
+	if (drm_pciprobe(aux, pciidlist))
+		return 20;
+	return 0;
+}
+
+void
+amdgpu_attach(struct device *parent, struct device *self, void *aux)
+{
+}
+
+int     
+amdgpu_detach(struct device *self, int flags)
+{
+	return 0;
+}
+
+int     
+amdgpu_activate(struct device *self, int act)
+{
+	struct amdgpu_device *adev = (struct amdgpu_device *)self;
+	int rv = 0;
+
+	if (adev->ddev == NULL)
+		return (0);
+
+	switch (act) {
+	case DVACT_QUIESCE:
+		rv = config_activate_children(self, act);
+		amdgpu_device_suspend(adev->ddev, true, true);
+		break;
+	case DVACT_SUSPEND:
+		break;
+	case DVACT_RESUME:
+		break;
+	case DVACT_WAKEUP:
+		amdgpu_device_resume(adev->ddev, true, true);
+		rv = config_activate_children(self, act);
+		break;
+	}
+
+	return (rv);
+}
+
+int
+amdgpu_forcedetach(struct amdgpu_device *adev)
+{
+	return 0;
+}
+
+void
+amdgpu_attachhook(struct device *self)
+{
+}
+
 #ifdef notyet
 static int amdgpu_kick_out_firmware_fb(struct pci_dev *pdev)
 {

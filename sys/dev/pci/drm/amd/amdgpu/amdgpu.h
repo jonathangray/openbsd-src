@@ -1338,6 +1338,7 @@ struct amd_powerplay {
 
 #define AMDGPU_RESET_MAGIC_NUM 64
 struct amdgpu_device {
+	struct device			self;
 	struct device			*dev;
 	struct drm_device		*ddev;
 	struct pci_dev			*pdev;
