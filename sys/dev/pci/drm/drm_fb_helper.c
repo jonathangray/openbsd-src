@@ -944,7 +944,6 @@ err_release:
 }
 EXPORT_SYMBOL(drm_fb_helper_alloc_fbi);
 
-#ifdef __linux__
 /**
  * drm_fb_helper_unregister_fbi - unregister fb_info framebuffer device
  * @fb_helper: driver-allocated fbdev helper, can be NULL
@@ -955,11 +954,12 @@ EXPORT_SYMBOL(drm_fb_helper_alloc_fbi);
  */
 void drm_fb_helper_unregister_fbi(struct drm_fb_helper *fb_helper)
 {
+#ifdef __linux__
 	if (fb_helper && fb_helper->fbdev)
 		unregister_framebuffer(fb_helper->fbdev);
+#endif
 }
 EXPORT_SYMBOL(drm_fb_helper_unregister_fbi);
-#endif
 
 /**
  * drm_fb_helper_fini - finialize a &struct drm_fb_helper
