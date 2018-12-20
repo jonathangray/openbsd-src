@@ -1297,9 +1297,6 @@ void amdgpu_bo_move_notify(struct ttm_buffer_object *bo,
  */
 int amdgpu_bo_fault_reserve_notify(struct ttm_buffer_object *bo)
 {
-	STUB();
-	return -ENOSYS;
-#if 0
 	struct amdgpu_device *adev = amdgpu_ttm_adev(bo->bdev);
 	struct ttm_operation_ctx ctx = { false, false };
 	struct amdgpu_bo *abo;
@@ -1346,7 +1343,6 @@ int amdgpu_bo_fault_reserve_notify(struct ttm_buffer_object *bo)
 		return -EINVAL;
 
 	return 0;
-#endif
 }
 
 /**
