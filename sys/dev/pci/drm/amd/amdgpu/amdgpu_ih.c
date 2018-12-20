@@ -65,11 +65,10 @@ static int amdgpu_ih_ring_alloc(struct amdgpu_device *adev)
 int amdgpu_ih_ring_init(struct amdgpu_device *adev, unsigned ring_size,
 			bool use_bus_addr)
 {
-	STUB();
-	return -ENOSYS;
-#if 0
 	u32 rb_bufsz;
 	int r;
+	struct drm_dmamem *dmah;
+	int flags = 0;
 
 	/* Align ring size */
 	rb_bufsz = order_base_2(ring_size / 4);
@@ -84,11 +83,23 @@ int amdgpu_ih_ring_init(struct amdgpu_device *adev, unsigned ring_size,
 			/* add 8 bytes for the rptr/wptr shadows and
 			 * add them to the end of the ring allocation.
 			 */
+#ifdef __linux__
 			adev->irq.ih.ring = pci_alloc_consistent(adev->pdev,
 								 adev->irq.ih.ring_size + 8,
 								 &adev->irq.ih.rb_dma_addr);
 			if (adev->irq.ih.ring == NULL)
 				return -ENOMEM;
+#else
+			dmah = drm_dmamem_alloc(adev->dmat,
+			    adev->irq.ih.ring_size + 8,
+			    PAGE_SIZE, 1,
+			    adev->irq.ih.ring_size + 8, flags, 0);
+			if (dmah == NULL)
+				return -ENOMEM;
+			adev->irq.ih.dmah = dmah;
+			adev->irq.ih.rb_dma_addr = dmah->map->dm_segs[0].ds_addr;
+			adev->irq.ih.ring = (volatile uint32_t *)dmah->kva;
+#endif
 			memset((void *)adev->irq.ih.ring, 0, adev->irq.ih.ring_size + 8);
 			adev->irq.ih.wptr_offs = (adev->irq.ih.ring_size / 4) + 0;
 			adev->irq.ih.rptr_offs = (adev->irq.ih.ring_size / 4) + 1;
@@ -110,7 +121,6 @@ int amdgpu_ih_ring_init(struct amdgpu_device *adev, unsigned ring_size,
 
 		return amdgpu_ih_ring_alloc(adev);
 	}
-#endif
 }
 
 /**
@@ -123,16 +133,18 @@ int amdgpu_ih_ring_init(struct amdgpu_device *adev, unsigned ring_size,
  */
 void amdgpu_ih_ring_fini(struct amdgpu_device *adev)
 {
-	STUB();
-#if 0
 	if (adev->irq.ih.use_bus_addr) {
 		if (adev->irq.ih.ring) {
 			/* add 8 bytes for the rptr/wptr shadows and
 			 * add them to the end of the ring allocation.
 			 */
+#ifdef __linux__
 			pci_free_consistent(adev->pdev, adev->irq.ih.ring_size + 8,
 					    (void *)adev->irq.ih.ring,
 					    adev->irq.ih.rb_dma_addr);
+#else
+			drm_dmamem_free(adev->dmat, adev->irq.ih.dmah);
+#endif
 			adev->irq.ih.ring = NULL;
 		}
 	} else {
@@ -142,7 +154,6 @@ void amdgpu_ih_ring_fini(struct amdgpu_device *adev)
 		amdgpu_device_wb_free(adev, adev->irq.ih.wptr_offs);
 		amdgpu_device_wb_free(adev, adev->irq.ih.rptr_offs);
 	}
-#endif
 }
 
 /**

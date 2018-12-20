@@ -45,6 +45,7 @@ struct amdgpu_retryfault_hashtable {
 struct amdgpu_ih_ring {
 	struct amdgpu_bo	*ring_obj;
 	volatile uint32_t	*ring;
+	struct drm_dmamem	*dmah;
 	unsigned		rptr;
 	unsigned		ring_size;
 	uint64_t		gpu_addr;
