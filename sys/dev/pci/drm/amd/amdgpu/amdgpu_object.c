@@ -1260,8 +1260,6 @@ void amdgpu_bo_move_notify(struct ttm_buffer_object *bo,
 			   bool evict,
 			   struct ttm_mem_reg *new_mem)
 {
-	STUB();
-#if 0
 	struct amdgpu_device *adev = amdgpu_ttm_adev(bo->bdev);
 	struct amdgpu_bo *abo;
 	struct ttm_mem_reg *old_mem = &bo->mem;
@@ -1284,7 +1282,6 @@ void amdgpu_bo_move_notify(struct ttm_buffer_object *bo,
 
 	/* move_notify is called before move happens */
 	trace_amdgpu_bo_move(abo, new_mem->mem_type, old_mem->mem_type);
-#endif
 }
 
 /**
