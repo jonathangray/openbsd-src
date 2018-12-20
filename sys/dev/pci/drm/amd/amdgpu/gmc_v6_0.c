@@ -867,6 +867,7 @@ static int gmc_v6_0_sw_init(void *handle)
 	adev->gmc.mc_mask = 0xffffffffffULL;
 
 	adev->need_dma32 = false;
+#ifdef notyet
 	dma_bits = adev->need_dma32 ? 32 : 40;
 	r = pci_set_dma_mask(adev->pdev, DMA_BIT_MASK(dma_bits));
 	if (r) {
@@ -880,6 +881,7 @@ static int gmc_v6_0_sw_init(void *handle)
 		dev_warn(adev->dev, "amdgpu: No coherent DMA available.\n");
 	}
 	adev->need_swiotlb = drm_get_max_iomem() > ((u64)1 << dma_bits);
+#endif
 
 	r = gmc_v6_0_init_microcode(adev);
 	if (r) {

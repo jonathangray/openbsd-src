@@ -1076,9 +1076,6 @@ static unsigned gmc_v8_0_get_vbios_fb_size(struct amdgpu_device *adev)
 
 static int gmc_v8_0_sw_init(void *handle)
 {
-	STUB();
-	return -ENOSYS;
-#if 0
 	int r;
 	int dma_bits;
 	struct amdgpu_device *adev = (struct amdgpu_device *)handle;
@@ -1123,6 +1120,7 @@ static int gmc_v8_0_sw_init(void *handle)
 	 * PCI - dma32 for legacy pci gart, 40 bits on newer asics
 	 */
 	adev->need_dma32 = false;
+#ifdef notyet
 	dma_bits = adev->need_dma32 ? 32 : 40;
 	r = pci_set_dma_mask(adev->pdev, DMA_BIT_MASK(dma_bits));
 	if (r) {
@@ -1136,6 +1134,7 @@ static int gmc_v8_0_sw_init(void *handle)
 		pr_warn("amdgpu: No coherent DMA available\n");
 	}
 	adev->need_swiotlb = drm_get_max_iomem() > ((u64)1 << dma_bits);
+#endif
 
 	r = gmc_v8_0_init_microcode(adev);
 	if (r) {
@@ -1184,7 +1183,6 @@ static int gmc_v8_0_sw_init(void *handle)
 	atomic_set(&adev->gmc.vm_fault_info_updated, 0);
 
 	return 0;
-#endif
 }
 
 static int gmc_v8_0_sw_fini(void *handle)
