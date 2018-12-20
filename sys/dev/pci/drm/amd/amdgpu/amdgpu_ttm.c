@@ -784,6 +784,7 @@ struct amdgpu_ttm_gup_task_list {
 
 struct amdgpu_ttm_tt {
 	struct ttm_dma_tt	ttm;
+	struct amdgpu_device	*adev;
 	u64			offset;
 	uint64_t		userptr;
 	struct task_struct	*usertask;
@@ -792,6 +793,9 @@ struct amdgpu_ttm_tt {
 	struct list_head        guptasks;
 	atomic_t		mmu_invalidations;
 	uint32_t		last_set_pages;
+
+	bus_dmamap_t		map;
+	bus_dma_segment_t	*segs;
 };
 
 /**
@@ -1197,6 +1201,9 @@ static void amdgpu_ttm_backend_destroy(struct ttm_tt *ttm)
 		put_task_struct(gtt->usertask);
 #endif
 
+	bus_dmamap_destroy(gtt->adev->dmat, gtt->map);
+	free(gtt->segs, M_DRM, 0);
+
 	ttm_dma_tt_fini(&gtt->ttm);
 	kfree(gtt);
 }
@@ -1219,6 +1226,7 @@ static struct ttm_tt *amdgpu_ttm_tt_create(struct ttm_buffer_object *bo,
 {
 	struct amdgpu_device *adev;
 	struct amdgpu_ttm_tt *gtt;
+	unsigned long size = bo->num_pages << PAGE_SHIFT;
 
 	adev = amdgpu_ttm_adev(bo->bdev);
 
@@ -1227,12 +1235,25 @@ static struct ttm_tt *amdgpu_ttm_tt_create(struct ttm_buffer_object *bo,
 		return NULL;
 	}
 	gtt->ttm.ttm.func = &amdgpu_backend_func;
+	gtt->adev = adev;
 
 	/* allocate space for the uninitialized page entries */
 	if (ttm_sg_tt_init(&gtt->ttm, bo, page_flags)) {
 		kfree(gtt);
 		return NULL;
 	}
+
+	gtt->segs = mallocarray(gtt->ttm.ttm.num_pages,
+	    sizeof(bus_dma_segment_t), M_DRM, M_WAITOK | M_ZERO);
+
+	if (bus_dmamap_create(adev->dmat, size, gtt->ttm.ttm.num_pages, size,
+	    0, BUS_DMA_WAITOK, &gtt->map)) {
+		free(gtt->segs, M_DRM, 0);
+		ttm_dma_tt_fini(&gtt->ttm);
+		free(gtt, M_DRM, 0);
+		return NULL;
+	}
+
 	return &gtt->ttm.ttm;
 }
 
@@ -1773,6 +1794,9 @@ int amdgpu_ttm_init(struct amdgpu_device *adev)
 		DRM_ERROR("failed initializing buffer object driver(%d).\n", r);
 		return r;
 	}
+	adev->mman.bdev.iot = adev->iot;
+	adev->mman.bdev.memt = adev->memt;
+	adev->mman.bdev.dmat = adev->dmat;
 	adev->mman.initialized = true;
 
 	/* We opt to avoid OOM on system pages allocations */
