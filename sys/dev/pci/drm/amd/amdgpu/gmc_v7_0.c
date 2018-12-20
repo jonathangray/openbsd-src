@@ -317,9 +317,6 @@ static void gmc_v7_0_mc_program(struct amdgpu_device *adev)
  */
 static int gmc_v7_0_mc_init(struct amdgpu_device *adev)
 {
-	STUB();
-	return -ENOSYS;
-#if 0
 	int r;
 
 	adev->gmc.vram_width = amdgpu_atombios_get_vram_width(adev);
@@ -376,8 +373,8 @@ static int gmc_v7_0_mc_init(struct amdgpu_device *adev)
 		if (r)
 			return r;
 	}
-	adev->gmc.aper_base = pci_resource_start(adev->pdev, 0);
-	adev->gmc.aper_size = pci_resource_len(adev->pdev, 0);
+	adev->gmc.aper_base = adev->fb_aper_offset;
+	adev->gmc.aper_size = adev->fb_aper_size;
 
 #ifdef CONFIG_X86_64
 	if (adev->flags & AMD_IS_APU) {
@@ -415,7 +412,6 @@ static int gmc_v7_0_mc_init(struct amdgpu_device *adev)
 	gmc_v7_0_vram_gtt_location(adev, &adev->gmc);
 
 	return 0;
-#endif
 }
 
 /*
