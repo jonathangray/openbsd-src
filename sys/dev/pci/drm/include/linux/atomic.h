@@ -111,6 +111,7 @@ atomic64_xchg(volatile int64_t *v, int64_t n)
 
 #define atomic64_add(n, p)	__sync_fetch_and_add_8(p, n)
 #define atomic64_sub(n, p)	__sync_fetch_and_sub_8(p, n)
+#define atomic64_inc(p)		__sync_fetch_and_add_8(p, 1)
 
 #else
 
@@ -160,6 +161,8 @@ atomic64_add(int i, atomic64_t *v)
 	v->val += i;
 	mtx_leave(&v->lock);
 }
+
+#define atomic64_inc(p)		atomic64_add(p, 1)
 
 static inline void
 atomic64_sub(int i, atomic64_t *v)
