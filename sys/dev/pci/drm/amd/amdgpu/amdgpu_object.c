@@ -107,7 +107,7 @@ static void amdgpu_bo_destroy(struct ttm_buffer_object *tbo)
 		mutex_unlock(&adev->shadow_list_lock);
 	}
 	kfree(bo->metadata);
-	kfree(bo);
+	pool_put(&bo->adev->ddev->objpl, bo);
 }
 
 /**
@@ -446,10 +446,11 @@ static int amdgpu_bo_do_create(struct amdgpu_device *adev,
 	acc_size = ttm_bo_dma_acc_size(&adev->mman.bdev, size,
 				       sizeof(struct amdgpu_bo));
 
-	bo = kzalloc(sizeof(struct amdgpu_bo), GFP_KERNEL);
+	bo = pool_get(&adev->ddev->objpl, PR_WAITOK | PR_ZERO);
 	if (bo == NULL)
 		return -ENOMEM;
 	drm_gem_private_object_init(adev->ddev, &bo->gem_base, size);
+	bo->adev = adev;
 	INIT_LIST_HEAD(&bo->shadow_list);
 	INIT_LIST_HEAD(&bo->va);
 	bo->preferred_domains = bp->preferred_domain ? bp->preferred_domain :

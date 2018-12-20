@@ -1134,6 +1134,7 @@ struct drm_driver amdgpu_kms_driver = {
 	.gem_free_object_unlocked = amdgpu_gem_object_free,
 	.gem_open_object = amdgpu_gem_object_open,
 	.gem_close_object = amdgpu_gem_object_close,
+	.gem_size = sizeof(struct amdgpu_bo),
 	.dumb_create = amdgpu_mode_dumb_create,
 	.dumb_map_offset = amdgpu_mode_dumb_mmap,
 #ifdef __linux__

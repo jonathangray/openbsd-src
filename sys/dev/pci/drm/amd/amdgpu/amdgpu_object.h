@@ -92,6 +92,7 @@ struct amdgpu_bo {
 	/* list of all virtual address to which this bo is associated to */
 	struct list_head		va;
 	/* Constant after initialization */
+	struct amdgpu_device		*adev;
 	struct drm_gem_object		gem_base;
 	struct amdgpu_bo		*parent;
 	struct amdgpu_bo		*shadow;
