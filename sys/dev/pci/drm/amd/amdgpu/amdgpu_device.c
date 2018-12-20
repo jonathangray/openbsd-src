@@ -2345,15 +2345,14 @@ int amdgpu_device_init(struct amdgpu_device *adev,
 		       struct pci_dev *pdev,
 		       uint32_t flags)
 {
-	STUB();
-	return -ENOSYS;
-#if 0
 	int r, i;
 	bool runtime = false;
 	u32 max_MBps;
 
 	adev->shutdown = false;
+#ifdef __linux__
 	adev->dev = &pdev->dev;
+#endif
 	adev->ddev = ddev;
 	adev->pdev = pdev;
 	adev->flags = flags;
@@ -2428,6 +2427,7 @@ int amdgpu_device_init(struct amdgpu_device *adev,
 
 	adev->pm.ac_power = power_supply_is_system_supplied() > 0 ? true : false;
 
+#ifdef __linux__
 	/* Registers mapping */
 	/* TODO: block userspace mapping of io register */
 	if (adev->asic_type >= CHIP_BONAIRE) {
@@ -2442,6 +2442,7 @@ int amdgpu_device_init(struct amdgpu_device *adev,
 	if (adev->rmmio == NULL) {
 		return -ENOMEM;
 	}
+#endif
 	DRM_INFO("register mmio base: 0x%08X\n", (uint32_t)adev->rmmio_base);
 	DRM_INFO("register mmio size: %u\n", (unsigned)adev->rmmio_size);
 
@@ -2449,6 +2450,7 @@ int amdgpu_device_init(struct amdgpu_device *adev,
 	amdgpu_device_doorbell_init(adev);
 
 	/* io port mapping */
+#ifdef __linux__
 	for (i = 0; i < DEVICE_COUNT_RESOURCE; i++) {
 		if (pci_resource_flags(adev->pdev, i) & IORESOURCE_IO) {
 			adev->rio_mem_size = pci_resource_len(adev->pdev, i);
@@ -2458,6 +2460,7 @@ int amdgpu_device_init(struct amdgpu_device *adev,
 	}
 	if (adev->rio_mem == NULL)
 		DRM_INFO("PCI I/O BAR is not found.\n");
+#endif
 
 	amdgpu_device_get_pcie_info(adev);
 
@@ -2469,15 +2472,19 @@ int amdgpu_device_init(struct amdgpu_device *adev,
 	/* if we have > 1 VGA cards, then disable the amdgpu VGA resources */
 	/* this will fail for cards that aren't VGA class devices, just
 	 * ignore it */
+#ifdef notyet
 	vga_client_register(adev->pdev, adev, NULL, amdgpu_device_vga_set_decode);
+#endif
 
 	if (amdgpu_device_is_px(ddev))
 		runtime = true;
+#ifdef notyet
 	if (!pci_is_thunderbolt_attached(adev->pdev))
 		vga_switcheroo_register_client(adev->pdev,
 					       &amdgpu_switcheroo_ops, runtime);
 	if (runtime)
 		vga_switcheroo_init_domain_pm_ops(adev->dev, &adev->vga_pm_domain);
+#endif
 
 	if (amdgpu_emu_mode == 1) {
 		/* post the asic on emulation mode */
@@ -2643,7 +2650,6 @@ failed:
 		vga_switcheroo_fini_domain_pm_ops(adev->dev);
 
 	return r;
-#endif
 }
 
 /**
