@@ -531,7 +531,7 @@ MODULE_PARM_DESC(smu_memory_pool_size,
 		"0x1 = 256Mbyte, 0x2 = 512Mbyte, 0x4 = 1 Gbyte, 0x8 = 2GByte");
 module_param_named(smu_memory_pool_size, amdgpu_smu_memory_pool_size, uint, 0444);
 
-static const struct drm_pcidev pciidlist[] = {
+const struct drm_pcidev amdgpu_pciidlist[] = {
 #ifdef  CONFIG_DRM_AMDGPU_SI
 	{0x1002, 0x6780, PCI_ANY_ID, PCI_ANY_ID, 0, 0, CHIP_TAHITI},
 	{0x1002, 0x6784, PCI_ANY_ID, PCI_ANY_ID, 0, 0, CHIP_TAHITI},
@@ -784,39 +784,7 @@ static const struct drm_pcidev pciidlist[] = {
 
 MODULE_DEVICE_TABLE(pci, pciidlist);
 
-static struct drm_driver kms_driver;
-
-int     amdgpu_probe(struct device *, void *, void *);
-void    amdgpu_attach(struct device *, struct device *, void *);
-int     amdgpu_detach(struct device *, int);
-int     amdgpu_activate(struct device *, int);
-void    amdgpu_attachhook(struct device *);
-int     amdgpu_forcedetach(struct amdgpu_device *);
-
-/*
- * set if the mountroot hook has a fatal error
- * such as not being able to find the firmware
- */
-int amdgpu_fatal_error;
-
-struct cfattach amdgpu_ca = {
-        sizeof (struct amdgpu_device), amdgpu_probe, amdgpu_attach,
-        amdgpu_detach, amdgpu_activate
-};
-
-struct cfdriver amdgpu_cd = {
-        NULL, "amdgpu", DV_DULL
-};
-
-int
-amdgpu_probe(struct device *parent, void *match, void *aux)
-{
-	if (amdgpu_fatal_error)
-		return 0;
-	if (drm_pciprobe(aux, pciidlist))
-		return 20;
-	return 0;
-}
+struct drm_driver amdgpu_kms_driver;
 
 #ifdef notyet
 static int amdgpu_kick_out_firmware_fb(struct pci_dev *pdev)
@@ -1140,7 +1108,7 @@ amdgpu_get_crtc_scanout_position(struct drm_device *dev, unsigned int pipe,
 						  stime, etime, mode);
 }
 
-static struct drm_driver kms_driver = {
+struct drm_driver amdgpu_kms_driver = {
 	.driver_features =
 	    DRIVER_USE_AGP |
 	    DRIVER_HAVE_IRQ | DRIVER_IRQ_SHARED | DRIVER_GEM |
@@ -1159,7 +1127,9 @@ static struct drm_driver kms_driver = {
 	.disable_vblank = amdgpu_disable_vblank_kms,
 	.get_vblank_timestamp = drm_calc_vbltimestamp_from_scanoutpos,
 	.get_scanout_position = amdgpu_get_crtc_scanout_position,
+#ifdef notyet
 	.irq_handler = amdgpu_irq_handler,
+#endif
 	.ioctls = amdgpu_ioctls_kms,
 	.gem_free_object_unlocked = amdgpu_gem_object_free,
 	.gem_open_object = amdgpu_gem_object_open,

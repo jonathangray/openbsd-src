@@ -79,7 +79,7 @@ struct amdgpu_irq {
 };
 
 void amdgpu_irq_disable_all(struct amdgpu_device *adev);
-irqreturn_t amdgpu_irq_handler(int irq, void *arg);
+irqreturn_t amdgpu_irq_handler(void *arg);
 
 int amdgpu_irq_init(struct amdgpu_device *adev);
 void amdgpu_irq_fini(struct amdgpu_device *adev);

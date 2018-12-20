@@ -47,6 +47,10 @@
 #include <drm/amdgpu_drm.h>
 #include <drm/gpu_scheduler.h>
 
+#include <dev/wscons/wsconsio.h>
+#include <dev/wscons/wsdisplayvar.h>
+#include <dev/rasops/rasops.h>
+
 #include <kgd_kfd_interface.h>
 #include "dm_pp_interface.h"
 #include "kgd_pp_interface.h"
@@ -487,6 +491,8 @@ struct amdgpu_doorbell {
 	resource_size_t		base;
 	resource_size_t		size;
 	u32 __iomem		*ptr;
+	bus_space_tag_t		bst;
+	bus_space_handle_t	bsh;
 	u32			num_doorbells;	/* Number of doorbells actually reserved for amdgpu. */
 };
 
@@ -1355,6 +1361,19 @@ struct amdgpu_device {
 	bus_dma_tag_t			dmat;
 	void				*irqh;
 
+	void				(*switchcb)(void *, int, int);
+	void				*switchcbarg;
+	void				*switchcookie;
+	struct task			switchtask;
+	struct rasops_info		ro;
+	int				console;
+
+	struct task			burner_task;
+	int				burner_fblank;
+
+	unsigned long			fb_aper_offset;
+	unsigned long			fb_aper_size;
+
 	/* ASIC */
 	enum amd_asic_type		asic_type;
 	uint32_t			family;
@@ -1395,6 +1414,8 @@ struct amdgpu_device {
 	resource_size_t			rmmio_base;
 	resource_size_t			rmmio_size;
 	void __iomem			*rmmio;
+	bus_space_tag_t			rmmio_bst;
+	bus_space_handle_t		rmmio_bsh;
 	/* protects concurrent MM_INDEX/DATA based register access */
 	spinlock_t mmio_idx_lock;
 	/* protects concurrent SMC based register access */
@@ -1427,7 +1448,9 @@ struct amdgpu_device {
 	spinlock_t audio_endpt_idx_lock;
 	amdgpu_block_rreg_t		audio_endpt_rreg;
 	amdgpu_block_wreg_t		audio_endpt_wreg;
-	void __iomem                    *rio_mem;
+	void __iomem			*rio_mem;
+	bus_space_tag_t			rio_mem_bst;
+	bus_space_handle_t		rio_mem_bsh;
 	resource_size_t			rio_mem_size;
 	struct amdgpu_doorbell		doorbell;
 

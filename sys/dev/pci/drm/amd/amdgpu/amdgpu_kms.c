@@ -38,6 +38,49 @@
 #include <linux/pm_runtime.h>
 #include "amdgpu_amdkfd.h"
 
+#include "vga.h"
+
+#if NVGA > 0
+extern int vga_console_attached;
+#endif
+
+#ifdef __amd64__
+#include "efifb.h"
+#include <machine/biosvar.h>
+#endif
+
+#if NEFIFB > 0
+#include <machine/efifbvar.h>
+#endif
+
+int     amdgpu_probe(struct device *, void *, void *);
+void    amdgpu_attach(struct device *, struct device *, void *);
+int     amdgpu_detach(struct device *, int);
+int     amdgpu_activate(struct device *, int);
+void    amdgpu_attachhook(struct device *);
+int     amdgpu_forcedetach(struct amdgpu_device *);
+
+bool	amdgpu_msi_ok(struct amdgpu_device *);
+
+extern const struct drm_pcidev amdgpu_pciidlist[];
+extern struct drm_driver amdgpu_kms_driver;
+extern int amdgpu_exp_hw_support;
+
+/*
+ * set if the mountroot hook has a fatal error
+ * such as not being able to find the firmware
+ */
+int amdgpu_fatal_error;
+
+struct cfattach amdgpu_ca = {
+        sizeof (struct amdgpu_device), amdgpu_probe, amdgpu_attach,
+        amdgpu_detach, amdgpu_activate
+};
+
+struct cfdriver amdgpu_cd = {
+        NULL, "amdgpu", DV_DULL
+};
+
 #ifdef __linux__
 /**
  * amdgpu_driver_unload_kms - Main unload function for KMS.
@@ -73,15 +116,7 @@ done_free:
 	kfree(adev);
 	dev->dev_private = NULL;
 }
-#endif /* __linux__ */
 
-int
-amdgpu_detach(struct device *self, int flags)
-{
-	return 0;
-}
-
-#ifdef __linux__
 /**
  * amdgpu_driver_load_kms - Main load function for KMS.
  *
@@ -187,50 +222,6 @@ out:
 	return r;
 }
 #endif /* __linux__ */
-
-void
-amdgpu_attach(struct device *parent, struct device *self, void *aux)
-{
-	struct amdgpu_device	*adev = (struct amdgpu_device *)self;
-}
-
-int
-amdgpu_forcedetach(struct amdgpu_device *adev)
-{
-	return 0;
-}
-
-void
-amdgpu_attachhook(struct device *self)
-{
-}
-
-int     
-amdgpu_activate(struct device *self, int act)
-{
-	struct amdgpu_device *adev = (struct amdgpu_device *)self;
-	int rv = 0;
-
-	if (adev->ddev == NULL)
-		return (0);
-
-	switch (act) {
-	case DVACT_QUIESCE:
-		rv = config_activate_children(self, act);
-		amdgpu_device_suspend(adev->ddev, true, true);
-		break;
-	case DVACT_SUSPEND:
-		break;
-	case DVACT_RESUME:
-		break;
-	case DVACT_WAKEUP:
-		amdgpu_device_resume(adev->ddev, true, true);
-		rv = config_activate_children(self, act);
-		break;
-	}
-
-	return (rv);
-}
 
 static int amdgpu_firmware_info(struct drm_amdgpu_info_firmware *fw_info,
 				struct drm_amdgpu_query_fw *query_fw,
@@ -1335,4 +1326,580 @@ int amdgpu_debugfs_firmware_init(struct amdgpu_device *adev)
 #else
 	return 0;
 #endif
+}
+
+int
+amdgpu_probe(struct device *parent, void *match, void *aux)
+{
+	if (amdgpu_fatal_error)
+		return 0;
+	if (drm_pciprobe(aux, amdgpu_pciidlist))
+		return 20;
+	return 0;
+}
+
+void
+amdgpu_attach(struct device *parent, struct device *self, void *aux)
+{
+	struct amdgpu_device	*adev = (struct amdgpu_device *)self;
+	struct drm_device	*dev;
+	struct pci_attach_args	*pa = aux;
+	const struct drm_pcidev	*id_entry;
+	pcireg_t		 type;
+	int			 i;
+	uint8_t			 rmmio_bar;
+	paddr_t			 fb_aper;
+	pcireg_t		 addr, mask;
+	int			 s;
+
+	id_entry = drm_find_description(PCI_VENDOR(pa->pa_id),
+	    PCI_PRODUCT(pa->pa_id), amdgpu_pciidlist);
+	adev->flags = id_entry->driver_data;
+	adev->family = adev->flags & AMD_ASIC_MASK;
+	adev->pc = pa->pa_pc;
+	adev->pa_tag = pa->pa_tag;
+	adev->iot = pa->pa_iot;
+	adev->memt = pa->pa_memt;
+	adev->dmat = pa->pa_dmat;
+
+	if (PCI_CLASS(pa->pa_class) == PCI_CLASS_DISPLAY &&
+	    PCI_SUBCLASS(pa->pa_class) == PCI_SUBCLASS_DISPLAY_VGA &&
+	    (pci_conf_read(pa->pa_pc, pa->pa_tag, PCI_COMMAND_STATUS_REG)
+	    & (PCI_COMMAND_IO_ENABLE | PCI_COMMAND_MEM_ENABLE))
+	    == (PCI_COMMAND_IO_ENABLE | PCI_COMMAND_MEM_ENABLE)) {
+		adev->console = 1;
+#if NVGA > 0
+		vga_console_attached = 1;
+#endif
+	}
+#if NEFIFB > 0
+	if (efifb_is_console(pa)) {
+		adev->console = 1;
+		efifb_cndetach();
+	}
+#endif
+
+#define AMDGPU_PCI_MEM		0x10
+
+	type = pci_mapreg_type(pa->pa_pc, pa->pa_tag, AMDGPU_PCI_MEM);
+	if (PCI_MAPREG_TYPE(type) != PCI_MAPREG_TYPE_MEM ||
+	    pci_mapreg_info(pa->pa_pc, pa->pa_tag, AMDGPU_PCI_MEM,
+	    type, &adev->fb_aper_offset, &adev->fb_aper_size, NULL)) {
+		printf(": can't get frambuffer info\n");
+		return;
+	}
+
+	if (adev->fb_aper_offset == 0) {
+		bus_size_t start, end;
+		bus_addr_t base;
+
+		start = max(PCI_MEM_START, pa->pa_memex->ex_start);
+		end = min(PCI_MEM_END, pa->pa_memex->ex_end);
+		if (pa->pa_memex == NULL ||
+		    extent_alloc_subregion(pa->pa_memex, start, end,
+		    adev->fb_aper_size, adev->fb_aper_size, 0, 0, 0, &base)) {
+			printf(": can't reserve framebuffer space\n");
+			return;
+		}
+		pci_conf_write(pa->pa_pc, pa->pa_tag, AMDGPU_PCI_MEM, base);
+		if (PCI_MAPREG_MEM_TYPE(type) == PCI_MAPREG_MEM_TYPE_64BIT)
+			pci_conf_write(pa->pa_pc, pa->pa_tag,
+			    AMDGPU_PCI_MEM + 4, (uint64_t)base >> 32);
+		adev->fb_aper_offset = base;
+	}
+
+	for (i = PCI_MAPREG_START; i < PCI_MAPREG_END ; i+= 4) {
+		type = pci_mapreg_type(pa->pa_pc, pa->pa_tag, i);
+		if (PCI_MAPREG_TYPE(type) != PCI_MAPREG_TYPE_IO)
+			continue;
+		if (pci_mapreg_map(pa, i, type, BUS_SPACE_MAP_LINEAR,
+		    &adev->rio_mem_bst, &adev->rio_mem_bsh, NULL,
+		    &adev->rio_mem_size, 0)) {
+			printf(": can't map rio space\n");
+			return;
+		}
+		adev->rio_mem = bus_space_vaddr(adev->rio_mem_bst,
+		    adev->rio_mem_bsh);
+		if (adev->rio_mem == NULL) {
+			printf(": bus_space_vaddr doorbell failed\n");
+			return;
+		}
+
+		if (type & PCI_MAPREG_MEM_TYPE_64BIT)
+			i += 4;
+	}
+
+	if (adev->family >= CHIP_BONAIRE) {
+		type = pci_mapreg_type(pa->pa_pc, pa->pa_tag, 0x18);
+		if (PCI_MAPREG_TYPE(type) != PCI_MAPREG_TYPE_MEM ||
+		    pci_mapreg_map(pa, 0x18, type, BUS_SPACE_MAP_LINEAR,
+		    &adev->doorbell.bst, &adev->doorbell.bsh,
+		    &adev->doorbell.base, &adev->doorbell.size, 0)) {
+			printf(": can't map doorbell space\n");
+			return;
+		}
+		adev->doorbell.ptr = bus_space_vaddr(adev->doorbell.bst,
+		    adev->doorbell.bsh);
+		if (adev->doorbell.ptr == NULL) {
+			printf(": bus_space_vaddr doorbell failed\n");
+			return;
+		}
+	}
+
+	if (adev->family >= CHIP_BONAIRE)
+		rmmio_bar = 0x24;
+	else
+		rmmio_bar = 0x18;
+
+	type = pci_mapreg_type(pa->pa_pc, pa->pa_tag, rmmio_bar);
+	if (PCI_MAPREG_TYPE(type) != PCI_MAPREG_TYPE_MEM ||
+	    pci_mapreg_map(pa, rmmio_bar, type, BUS_SPACE_MAP_LINEAR,
+	    &adev->rmmio_bst, &adev->rmmio_bsh, &adev->rmmio_base,
+	    &adev->rmmio_size, 0)) {
+		printf(": can't map rmmio space\n");
+		return;
+	}
+	adev->rmmio = bus_space_vaddr(adev->rmmio_bst, adev->rmmio_bsh);
+	if (adev->rmmio == NULL) {
+		printf(": bus_space_vaddr rmmio failed\n");
+		return;
+	}
+
+	/*
+	 * Make sure we have a base address for the ROM such that we
+	 * can map it later.
+	 */
+	s = splhigh();
+	addr = pci_conf_read(pa->pa_pc, pa->pa_tag, PCI_ROM_REG);
+	pci_conf_write(pa->pa_pc, pa->pa_tag, PCI_ROM_REG, ~PCI_ROM_ENABLE);
+	mask = pci_conf_read(pa->pa_pc, pa->pa_tag, PCI_ROM_REG);
+	pci_conf_write(pa->pa_pc, pa->pa_tag, PCI_ROM_REG, addr);
+	splx(s);
+
+	if (addr == 0 && PCI_ROM_SIZE(mask) != 0 && pa->pa_memex) {
+		bus_size_t size, start, end;
+		bus_addr_t base;
+
+		size = PCI_ROM_SIZE(mask);
+		start = max(PCI_MEM_START, pa->pa_memex->ex_start);
+		end = min(PCI_MEM_END, pa->pa_memex->ex_end);
+		if (extent_alloc_subregion(pa->pa_memex, start, end, size,
+		    size, 0, 0, 0, &base) == 0)
+			pci_conf_write(pa->pa_pc, pa->pa_tag, PCI_ROM_REG, base);
+	}
+
+	printf("\n");
+
+	/* from amdgpu_init() */
+{
+	if (amdgpu_sync_init()) {
+		printf(": amdgpu_sync_init failed\n");
+		return;
+	}
+
+	if (amdgpu_fence_slab_init()) {
+		amdgpu_sync_fini();
+		printf(": amdgpu_fence_slab_init failed\n");
+		return;
+	}
+
+	amdgpu_kms_driver.num_ioctls = amdgpu_max_kms_ioctl;
+	amdgpu_register_atpx_handler();
+}
+
+	/* from amdgpu_pci_probe() */
+{
+	int ret;
+	bool supports_atomic = false;
+
+	if (!amdgpu_virtual_display &&
+	     amdgpu_device_asic_has_dc_support(adev->family))
+		supports_atomic = true;
+
+	if ((adev->flags & AMD_EXP_HW_SUPPORT) && !amdgpu_exp_hw_support) {
+		DRM_INFO("This hardware requires experimental hardware support.\n");
+	}
+
+	/*
+	 * Initialize amdkfd before starting radeon.
+	 */
+	amdgpu_amdkfd_init();
+
+	/* warn the user if they mix atomic and non-atomic capable GPUs */
+	if ((amdgpu_kms_driver.driver_features & DRIVER_ATOMIC) && !supports_atomic)
+		DRM_ERROR("Mixing atomic and non-atomic capable GPUs!\n");
+	/* support atomic early so the atomic debugfs stuff gets created */
+	if (supports_atomic)
+		amdgpu_kms_driver.driver_features |= DRIVER_ATOMIC;
+}
+
+	dev = drm_attach_pci(&amdgpu_kms_driver, pa, 0, adev->console,
+	    self, NULL);
+	adev->ddev = dev;
+	adev->pdev = dev->pdev;
+
+	if (!amdgpu_msi_ok(adev))
+		pa->pa_flags &= ~PCI_FLAGS_MSI_ENABLED;
+
+	adev->irq.msi_enabled = false;
+	if (pci_intr_map_msi(pa, &adev->intrh) == 0)
+		adev->irq.msi_enabled = true;
+	else if (pci_intr_map(pa, &adev->intrh) != 0) {
+		printf(": couldn't map interrupt\n");
+		return;
+	}
+	printf("%s: %s\n", adev->self.dv_xname,
+	    pci_intr_string(pa->pa_pc, adev->intrh));
+
+	adev->irqh = pci_intr_establish(pa->pa_pc, adev->intrh, IPL_TTY,
+	    amdgpu_irq_handler, adev->ddev, adev->self.dv_xname);
+	if (adev->irqh == NULL) {
+		printf("%s: couldn't establish interrupt\n",
+		    adev->self.dv_xname);
+		return;
+	}
+	adev->pdev->irq = -1;
+
+	fb_aper = bus_space_mmap(adev->memt, adev->fb_aper_offset, 0, 0, 0);
+	if (fb_aper != -1)
+		rasops_claim_framebuffer(fb_aper, adev->fb_aper_size, self);
+
+
+	adev->shutdown = true;
+	config_mountroot(self, amdgpu_attachhook);
+}
+
+extern void mainbus_efifb_reattach(void);
+
+int
+amdgpu_forcedetach(struct amdgpu_device *adev)
+{
+	struct pci_softc	*sc = (struct pci_softc *)adev->self.dv_parent;
+	pcitag_t		 tag = adev->pa_tag;
+
+#if NVGA > 0
+	if (adev->console)
+		vga_console_attached = 0;
+#endif
+
+	/* reprobe pci device for non efi systems */
+#if NEFIFB > 0
+	if (bios_efiinfo == NULL && !efifb_cb_found()) {
+#endif
+		config_detach(&adev->self, 0);
+		return pci_probe_device(sc, tag, NULL, NULL);
+#if NEFIFB > 0
+	} else if (adev->console) {
+		mainbus_efifb_reattach();
+	}
+#endif
+
+	return 0;
+}
+
+void amdgpu_burner(void *, u_int, u_int);
+int amdgpu_wsioctl(void *, u_long, caddr_t, int, struct proc *);
+paddr_t amdgpu_wsmmap(void *, off_t, int);
+int amdgpu_alloc_screen(void *, const struct wsscreen_descr *,
+    void **, int *, int *, long *);
+void amdgpu_free_screen(void *, void *);
+int amdgpu_show_screen(void *, void *, int,
+    void (*)(void *, int, int), void *);
+void amdgpu_doswitch(void *);
+void amdgpu_enter_ddb(void *, void *);
+
+struct wsscreen_descr amdgpu_stdscreen = {
+	"std",
+	0, 0,
+	0,
+	0, 0,
+	WSSCREEN_UNDERLINE | WSSCREEN_HILIT |
+	WSSCREEN_REVERSE | WSSCREEN_WSCOLORS
+};
+
+const struct wsscreen_descr *amdgpu_scrlist[] = {
+	&amdgpu_stdscreen,
+};
+
+struct wsscreen_list amdgpu_screenlist = {
+	nitems(amdgpu_scrlist), amdgpu_scrlist
+};
+
+struct wsdisplay_accessops amdgpu_accessops = {
+	.ioctl = amdgpu_wsioctl,
+	.mmap = amdgpu_wsmmap,
+	.alloc_screen = amdgpu_alloc_screen,
+	.free_screen = amdgpu_free_screen,
+	.show_screen = amdgpu_show_screen,
+	.enter_ddb = amdgpu_enter_ddb,
+	.getchar = rasops_getchar,
+	.load_font = rasops_load_font,
+	.list_font = rasops_list_font,
+	.scrollback = rasops_scrollback,
+	.burn_screen = amdgpu_burner
+};
+
+int
+amdgpu_wsioctl(void *v, u_long cmd, caddr_t data, int flag, struct proc *p)
+{
+	struct rasops_info *ri = v;
+	struct wsdisplay_fbinfo *wdf;
+
+	switch (cmd) {
+	case WSDISPLAYIO_GTYPE:
+		*(int *)data = WSDISPLAY_TYPE_RADEONDRM;
+		return 0;
+	case WSDISPLAYIO_GINFO:
+		wdf = (struct wsdisplay_fbinfo *)data;
+		wdf->width = ri->ri_width;
+		wdf->height = ri->ri_height;
+		wdf->depth = ri->ri_depth;
+		wdf->cmsize = 0;
+		return 0;
+	default:
+		return -1;
+	}
+}
+
+paddr_t
+amdgpu_wsmmap(void *v, off_t off, int prot)
+{
+	return (-1);
+}
+
+int
+amdgpu_alloc_screen(void *v, const struct wsscreen_descr *type,
+    void **cookiep, int *curxp, int *curyp, long *attrp)
+{
+	return rasops_alloc_screen(v, cookiep, curxp, curyp, attrp);
+}
+
+void
+amdgpu_free_screen(void *v, void *cookie)
+{
+	return rasops_free_screen(v, cookie);
+}
+
+int
+amdgpu_show_screen(void *v, void *cookie, int waitok,
+    void (*cb)(void *, int, int), void *cbarg)
+{
+	struct rasops_info *ri = v;
+	struct amdgpu_device *adev = ri->ri_hw;
+
+	if (cookie == ri->ri_active)
+		return (0);
+
+	adev->switchcb = cb;
+	adev->switchcbarg = cbarg;
+	adev->switchcookie = cookie;
+	if (cb) {
+		task_add(systq, &adev->switchtask);
+		return (EAGAIN);
+	}
+
+	amdgpu_doswitch(v);
+
+	return (0);
+}
+
+void
+amdgpu_doswitch(void *v)
+{
+	struct rasops_info *ri = v;
+	struct amdgpu_device *adev = ri->ri_hw;
+	struct amdgpu_crtc *amdgpu_crtc;
+	int i, crtc;
+
+	rasops_show_screen(ri, adev->switchcookie, 0, NULL, NULL);
+	drm_fb_helper_restore_fbdev_mode_unlocked((void *)adev->mode_info.rfbdev);
+
+	if (adev->switchcb)
+		(adev->switchcb)(adev->switchcbarg, 0, 0);
+}
+
+void
+amdgpu_enter_ddb(void *v, void *cookie)
+{
+	struct rasops_info *ri = v;
+	struct amdgpu_device *adev = ri->ri_hw;
+	struct drm_fb_helper *fb_helper = (void *)adev->mode_info.rfbdev;
+
+	if (cookie == ri->ri_active)
+		return;
+
+	rasops_show_screen(ri, cookie, 0, NULL, NULL);
+	drm_fb_helper_debug_enter(fb_helper->fbdev);
+}
+
+
+void
+amdgpu_attachhook(struct device *self)
+{
+	struct amdgpu_device	*adev = (struct amdgpu_device *)self;
+	struct drm_device	*dev = adev->ddev;
+	int r, acpi_status;
+
+	if ((amdgpu_runtime_pm != 0) &&
+	    amdgpu_has_atpx() &&
+	    (amdgpu_is_atpx_hybrid() ||
+	     amdgpu_has_atpx_dgpu_power_cntl()) &&
+	    ((adev->flags & AMD_IS_APU) == 0) &&
+	    !pci_is_thunderbolt_attached(dev->pdev))
+		adev->flags |= AMD_IS_PX;
+
+	/* amdgpu_device_init should report only fatal error
+	 * like memory allocation failure or iomapping failure,
+	 * or memory manager initialization failure, it must
+	 * properly initialize the GPU MC controller and permit
+	 * VRAM allocation
+	 */
+	r = amdgpu_device_init(adev, dev, dev->pdev, adev->flags);
+	if (r) {
+		dev_err(&dev->pdev->dev, "Fatal error during GPU init\n");
+		goto out;
+	}
+
+	/* Call ACPI methods: require modeset init
+	 * but failure is not fatal
+	 */
+	if (!r) {
+		acpi_status = amdgpu_acpi_init(adev);
+		if (acpi_status)
+		dev_dbg(&dev->pdev->dev,
+				"Error during ACPI methods call\n");
+	}
+
+	if (amdgpu_device_is_px(dev)) {
+		pm_runtime_use_autosuspend(dev->dev);
+		pm_runtime_set_autosuspend_delay(dev->dev, 5000);
+		pm_runtime_set_active(dev->dev);
+		pm_runtime_allow(dev->dev);
+		pm_runtime_mark_last_busy(dev->dev);
+		pm_runtime_put_autosuspend(dev->dev);
+	}
+
+{
+	struct drm_fb_helper *fb_helper = (void *)adev->mode_info.rfbdev;
+	struct wsemuldisplaydev_attach_args aa;
+	struct rasops_info *ri = &adev->ro;
+
+	task_set(&adev->switchtask, amdgpu_doswitch, ri);
+
+	if (ri->ri_bits == NULL)
+		return;
+
+	drm_fb_helper_restore_fbdev_mode_unlocked(fb_helper);
+
+	ri->ri_flg = RI_CENTER | RI_VCONS | RI_WRONLY;
+	rasops_init(ri, 160, 160);
+
+	ri->ri_hw = adev;
+
+	amdgpu_stdscreen.capabilities = ri->ri_caps;
+	amdgpu_stdscreen.nrows = ri->ri_rows;
+	amdgpu_stdscreen.ncols = ri->ri_cols;
+	amdgpu_stdscreen.textops = &ri->ri_ops;
+	amdgpu_stdscreen.fontwidth = ri->ri_font->fontwidth;
+	amdgpu_stdscreen.fontheight = ri->ri_font->fontheight;
+
+	aa.console = adev->console;
+	aa.scrdata = &amdgpu_screenlist;
+	aa.accessops = &amdgpu_accessops;
+	aa.accesscookie = ri;
+	aa.defaultscreens = 0;
+
+	if (adev->console) {
+		long defattr;
+
+		ri->ri_ops.alloc_attr(ri->ri_active, 0, 0, 0, &defattr);
+		wsdisplay_cnattach(&amdgpu_stdscreen, ri->ri_active,
+		    ri->ri_ccol, ri->ri_crow, defattr);
+	}
+
+	/*
+	 * Now that we've taken over the console, disable decoding of
+	 * VGA legacy addresses, and opt out of arbitration.
+	 */
+	amdgpu_asic_set_vga_state(adev, false);
+	pci_disable_legacy_vga(&adev->self);
+
+	printf("%s: %dx%d, %dbpp\n", adev->self.dv_xname,
+	    ri->ri_width, ri->ri_height, ri->ri_depth);
+
+	config_found_sm(&adev->self, &aa, wsemuldisplaydevprint,
+	    wsemuldisplaydevsubmatch);
+}
+
+out:
+	if (r) {
+		/* balance pm_runtime_get_sync in amdgpu_driver_unload_kms */
+		if (amdgpu_device_is_px(dev))
+			pm_runtime_put_noidle(dev->dev);
+	}
+}
+
+/* from amdgpu_exit amdgpu_driver_unload_kms */
+int
+amdgpu_detach(struct device *self, int flags)
+{
+	struct amdgpu_device *adev = (struct amdgpu_device *)self;
+	struct drm_device *dev = adev->ddev;
+
+	if (adev == NULL)
+		return 0;
+
+	amdgpu_amdkfd_fini();
+
+	pci_intr_disestablish(adev->pc, adev->irqh);
+
+	if (amdgpu_sriov_vf(adev))
+		amdgpu_virt_request_full_gpu(adev, false);
+
+	if (amdgpu_device_is_px(dev)) {
+		pm_runtime_get_sync(dev->dev);
+		pm_runtime_forbid(dev->dev);
+	}
+
+	amdgpu_acpi_fini(adev);
+
+	amdgpu_device_fini(adev);
+
+	amdgpu_unregister_atpx_handler();
+	amdgpu_sync_fini();
+	amdgpu_fence_slab_fini();
+	
+	if (adev->ddev != NULL) {
+		config_detach((struct device *)adev->ddev, flags);
+		adev->ddev = NULL;
+	}
+
+	return 0;
+}
+
+int     
+amdgpu_activate(struct device *self, int act)
+{
+	struct amdgpu_device *adev = (struct amdgpu_device *)self;
+	int rv = 0;
+
+	if (adev->ddev == NULL)
+		return (0);
+
+	switch (act) {
+	case DVACT_QUIESCE:
+		rv = config_activate_children(self, act);
+		amdgpu_device_suspend(adev->ddev, true, true);
+		break;
+	case DVACT_SUSPEND:
+		break;
+	case DVACT_RESUME:
+		break;
+	case DVACT_WAKEUP:
+		amdgpu_device_resume(adev->ddev, true, true);
+		rv = config_activate_children(self, act);
+		break;
+	}
+
+	return (rv);
 }

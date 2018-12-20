@@ -157,11 +157,14 @@ void amdgpu_irq_disable_all(struct amdgpu_device *adev)
  * Returns:
  * result of handling the IRQ, as defined by &irqreturn_t
  */
-irqreturn_t amdgpu_irq_handler(int irq, void *arg)
+irqreturn_t amdgpu_irq_handler(void *arg)
 {
 	struct drm_device *dev = (struct drm_device *) arg;
 	struct amdgpu_device *adev = dev->dev_private;
 	irqreturn_t ret;
+
+	if (!adev->irq.installed)
+		return 0;
 
 	ret = amdgpu_ih_process(adev);
 	if (ret == IRQ_HANDLED)
@@ -180,7 +183,7 @@ irqreturn_t amdgpu_irq_handler(int irq, void *arg)
  * Returns:
  * *true* if MSIs are allowed to be enabled or *false* otherwise
  */
-static bool amdgpu_msi_ok(struct amdgpu_device *adev)
+bool amdgpu_msi_ok(struct amdgpu_device *adev)
 {
 	if (amdgpu_msi == 1)
 		return true;
@@ -207,6 +210,7 @@ int amdgpu_irq_init(struct amdgpu_device *adev)
 
 	mtx_init(&adev->irq.lock, IPL_TTY);
 
+#ifdef notyet
 	/* Enable MSI if not disabled by module parameter */
 	adev->irq.msi_enabled = false;
 
@@ -217,6 +221,7 @@ int amdgpu_irq_init(struct amdgpu_device *adev)
 			dev_dbg(adev->dev, "amdgpu: using MSI.\n");
 		}
 	}
+#endif
 
 	if (!amdgpu_device_has_dc_support(adev)) {
 		if (!adev->enable_virtual_display)
