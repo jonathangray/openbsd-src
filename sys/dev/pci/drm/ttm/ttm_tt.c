@@ -307,6 +307,21 @@ int ttm_sg_tt_init(struct ttm_dma_tt *ttm_dma, struct ttm_buffer_object *bo,
 		pr_err("Failed allocating page table\n");
 		return -ENOMEM;
 	}
+
+	ttm_dma->segs =  mallocarray(ttm->num_pages,
+	    sizeof(bus_dma_segment_t), M_DRM, M_WAITOK | M_ZERO);
+
+	ttm_dma->dmat = bo->bdev->dmat;
+
+	if (bus_dmamap_create(ttm_dma->dmat, ttm->num_pages << PAGE_SHIFT,
+	    ttm->num_pages, ttm->num_pages << PAGE_SHIFT, 0, BUS_DMA_WAITOK,
+	    &ttm_dma->map)) {
+		free(ttm_dma->segs, M_DRM, 0);
+		ttm_tt_destroy(ttm);
+		pr_err("Failed allocating page table\n");
+		return -ENOMEM;
+	}
+
 	return 0;
 }
 EXPORT_SYMBOL(ttm_sg_tt_init);
