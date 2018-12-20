@@ -236,10 +236,12 @@ void amdgpu_mm_wreg(struct amdgpu_device *adev, uint32_t reg, uint32_t v,
 u32 amdgpu_io_rreg(struct amdgpu_device *adev, u32 reg)
 {
 	if ((reg * 4) < adev->rio_mem_size)
-		return ioread32(adev->rio_mem + (reg * 4));
+		return bus_space_read_4(adev->rio_mem_bst, adev->rio_mem_bsh, reg);
 	else {
-		iowrite32((reg * 4), adev->rio_mem + (mmMM_INDEX * 4));
-		return ioread32(adev->rio_mem + (mmMM_DATA * 4));
+		bus_space_write_4(adev->rio_mem_bst, adev->rio_mem_bsh,
+		    mmMM_INDEX * 4, reg * 4);
+		return bus_space_read_4(adev->rio_mem_bst, adev->rio_mem_bsh,
+		    mmMM_INDEX * 4);
 	}
 }
 
@@ -259,10 +261,14 @@ void amdgpu_io_wreg(struct amdgpu_device *adev, u32 reg, u32 v)
 	}
 
 	if ((reg * 4) < adev->rio_mem_size)
-		iowrite32(v, adev->rio_mem + (reg * 4));
+		bus_space_write_4(adev->rio_mem_bst, adev->rio_mem_bsh,
+		    reg * 4, v);
 	else {
-		iowrite32((reg * 4), adev->rio_mem + (mmMM_INDEX * 4));
-		iowrite32(v, adev->rio_mem + (mmMM_DATA * 4));
+		bus_space_write_4(adev->rio_mem_bst, adev->rio_mem_bsh,
+		    mmMM_INDEX * 4, reg * 4);
+		bus_space_write_4(adev->rio_mem_bst, adev->rio_mem_bsh,
+		    mmMM_DATA * 4, v);
+		
 	}
 
 	if (adev->asic_type >= CHIP_VEGA10 && reg == 1 && adev->last_mm_index == 0x5702C) {

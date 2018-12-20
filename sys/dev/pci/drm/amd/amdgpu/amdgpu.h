@@ -1448,7 +1448,9 @@ struct amdgpu_device {
 	spinlock_t audio_endpt_idx_lock;
 	amdgpu_block_rreg_t		audio_endpt_rreg;
 	amdgpu_block_wreg_t		audio_endpt_wreg;
+#ifdef notyet
 	void __iomem			*rio_mem;
+#endif
 	bus_space_tag_t			rio_mem_bst;
 	bus_space_handle_t		rio_mem_bsh;
 	resource_size_t			rio_mem_size;
