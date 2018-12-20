@@ -560,9 +560,12 @@ static int amdgpu_device_doorbell_init(struct amdgpu_device *adev)
  */
 static void amdgpu_device_doorbell_fini(struct amdgpu_device *adev)
 {
-	STUB();
-#if 0
+#ifdef __linux__
 	iounmap(adev->doorbell.ptr);
+#else
+	if (adev->doorbell.size > 0)
+		bus_space_unmap(adev->doorbell.bst, adev->doorbell.bsh,
+		    adev->doorbell.size);
 #endif
 	adev->doorbell.ptr = NULL;
 }
