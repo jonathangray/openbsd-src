@@ -31,6 +31,16 @@
 
 #include <linux/slab.h>
 #include <linux/acpi.h>
+
+#if defined(__amd64__) || defined(__i386__)
+#include <dev/isa/isareg.h>
+#include <dev/isa/isavar.h>
+#endif
+
+#ifdef __HAVE_ACPI
+#include "acpi.h"
+#endif
+
 /*
  * BIOS.
  */
@@ -281,11 +291,9 @@ static bool amdgpu_read_bios_from_rom(struct amdgpu_device *adev)
 	return true;
 }
 
+#ifdef __linux__
 static bool amdgpu_read_platform_bios(struct amdgpu_device *adev)
 {
-	STUB();
-	return false;
-#if 0
 	uint8_t __iomem *bios;
 	size_t size;
 
@@ -310,8 +318,36 @@ static bool amdgpu_read_platform_bios(struct amdgpu_device *adev)
 	adev->bios_size = size;
 
 	return true;
-#endif
 }
+#else
+static bool amdgpu_read_platform_bios(struct amdgpu_device *adev)
+{
+#if defined(__amd64__) || defined(__i386__)
+	uint8_t __iomem *bios;
+	size_t size;
+
+	adev->bios = NULL;
+
+	bios = (u8 *)ISA_HOLE_VADDR(0xc0000);
+
+	adev->bios = kzalloc(size, GFP_KERNEL);
+	if (adev->bios == NULL)
+		return false;
+
+	memcpy_fromio(adev->bios, bios, size);
+
+	if (!check_atom_bios(adev->bios, size)) {
+		kfree(adev->bios);
+		return false;
+	}
+
+	adev->bios_size = size;
+
+	return true;
+#endif
+	return false;
+}
+#endif
 
 #ifdef CONFIG_ACPI
 /* ATRM is used to get the BIOS on the discrete cards in
@@ -440,6 +476,10 @@ static bool amdgpu_read_disabled_bios(struct amdgpu_device *adev)
 	else
 		return amdgpu_asic_read_disabled_bios(adev);
 }
+
+#if NACPI > 0
+#define CONFIG_ACPI
+#endif
 
 #ifdef CONFIG_ACPI
 static bool amdgpu_acpi_vfct_bios(struct amdgpu_device *adev)
