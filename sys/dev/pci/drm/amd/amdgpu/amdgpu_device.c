@@ -1330,10 +1330,9 @@ int amdgpu_device_ip_block_add(struct amdgpu_device *adev,
  */
 static void amdgpu_device_enable_virtual_display(struct amdgpu_device *adev)
 {
-	STUB();
-#if 0
 	adev->enable_virtual_display = false;
 
+#ifdef notyet
 	if (amdgpu_virtual_display) {
 		struct drm_device *ddev = adev->ddev;
 		const char *pci_address_name = pci_name(ddev->pdev);
