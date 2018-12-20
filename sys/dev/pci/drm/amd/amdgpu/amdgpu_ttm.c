@@ -1520,8 +1520,6 @@ static bool amdgpu_ttm_bo_eviction_valuable(struct ttm_buffer_object *bo,
 					    const struct ttm_place *place)
 {
 	STUB();
-	return false;
-#if 0
 	unsigned long num_pages = bo->mem.num_pages;
 	struct drm_mm_node *node = bo->mem.mm_node;
 	struct reservation_object_list *flist;
@@ -1537,8 +1535,10 @@ static bool amdgpu_ttm_bo_eviction_valuable(struct ttm_buffer_object *bo,
 		for (i = 0; i < flist->shared_count; ++i) {
 			f = rcu_dereference_protected(flist->shared[i],
 				reservation_object_held(bo->resv));
+#ifdef notyet
 			if (amdkfd_fence_check_mm(f, current->mm))
 				return false;
+#endif
 		}
 	}
 
@@ -1563,7 +1563,6 @@ static bool amdgpu_ttm_bo_eviction_valuable(struct ttm_buffer_object *bo,
 	}
 
 	return ttm_bo_eviction_valuable(bo, place);
-#endif
 }
 
 /**
