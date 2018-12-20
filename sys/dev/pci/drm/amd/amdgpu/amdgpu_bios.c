@@ -86,11 +86,9 @@ static bool check_atom_bios(uint8_t *bios, size_t size)
  * copy of the igp rom at the start of vram if a discrete card is
  * present.
  */
+#ifdef __linux__
 static bool igp_read_bios_from_vram(struct amdgpu_device *adev)
 {
-	STUB();
-	return false;
-#if 0
 	uint8_t __iomem *bios;
 	resource_size_t vram_base;
 	resource_size_t size = 256 * 1024; /* ??? */
@@ -121,8 +119,47 @@ static bool igp_read_bios_from_vram(struct amdgpu_device *adev)
 	}
 
 	return true;
-#endif
 }
+#else
+static bool igp_read_bios_from_vram(struct amdgpu_device *adev)
+{
+	uint8_t __iomem *bios;
+	resource_size_t size = 256 * 1024; /* ??? */
+	bus_space_handle_t bsh;
+	bus_space_tag_t bst = adev->memt;
+
+	if (!(adev->flags & AMD_IS_APU))
+		if (amdgpu_device_need_post(adev))
+			return false;
+
+	adev->bios = NULL;
+
+	if (bus_space_map(bst, adev->fb_aper_offset, size, BUS_SPACE_MAP_LINEAR, &bsh) != 0)
+		return false;
+
+	bios = bus_space_vaddr(adev->memt, bsh);
+	if (bios == NULL) {
+		bus_space_unmap(bst, bsh, size);
+		return false;
+	}
+
+	adev->bios = kmalloc(size, GFP_KERNEL);
+	if (!adev->bios) {
+		bus_space_unmap(bst, bsh, size);
+		return false;
+	}
+	adev->bios_size = size;
+	memcpy_fromio(adev->bios, bios, size);
+	bus_space_unmap(bst, bsh, size);
+
+	if (!check_atom_bios(adev->bios, size)) {
+		kfree(adev->bios);
+		return false;
+	}
+
+	return true;
+}
+#endif
 
 #ifdef __linux__
 bool amdgpu_read_bios(struct amdgpu_device *adev)
