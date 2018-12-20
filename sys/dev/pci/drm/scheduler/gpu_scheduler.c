@@ -940,9 +940,6 @@ int drm_sched_init(struct drm_gpu_scheduler *sched,
 		   long timeout,
 		   const char *name)
 {
-	STUB();
-	return -ENOSYS;
-#if 0
 	int i;
 	sched->ops = ops;
 	sched->hw_submission_limit = hw_submission;
@@ -959,15 +956,17 @@ int drm_sched_init(struct drm_gpu_scheduler *sched,
 	atomic_set(&sched->hw_rq_count, 0);
 	atomic64_set(&sched->job_id_count, 0);
 
+STUB();
 	/* Each scheduler will run on a seperate kernel thread */
+#ifdef notyet
 	sched->thread = kthread_run(drm_sched_main, sched, sched->name);
 	if (IS_ERR(sched->thread)) {
 		DRM_ERROR("Failed to create scheduler for %s.\n", name);
 		return PTR_ERR(sched->thread);
 	}
+#endif
 
 	return 0;
-#endif
 }
 EXPORT_SYMBOL(drm_sched_init);
 
