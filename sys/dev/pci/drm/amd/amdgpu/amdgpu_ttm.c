@@ -1938,15 +1938,15 @@ void amdgpu_ttm_late_init(struct amdgpu_device *adev)
  */
 void amdgpu_ttm_fini(struct amdgpu_device *adev)
 {
-	STUB();
-#if 0
 	if (!adev->mman.initialized)
 		return;
 
 	amdgpu_ttm_debugfs_fini(adev);
 	amdgpu_ttm_fw_reserve_vram_fini(adev);
+#ifdef notyet
 	if (adev->mman.aper_base_kaddr)
 		iounmap(adev->mman.aper_base_kaddr);
+#endif
 	adev->mman.aper_base_kaddr = NULL;
 
 	ttm_bo_clean_mm(&adev->mman.bdev, TTM_PL_VRAM);
@@ -1961,7 +1961,6 @@ void amdgpu_ttm_fini(struct amdgpu_device *adev)
 	amdgpu_ttm_global_fini(adev);
 	adev->mman.initialized = false;
 	DRM_INFO("amdgpu: ttm finalized\n");
-#endif
 }
 
 /**
