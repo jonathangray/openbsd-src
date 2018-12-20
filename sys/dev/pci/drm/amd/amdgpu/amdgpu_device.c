@@ -741,7 +741,7 @@ void amdgpu_device_gart_location(struct amdgpu_device *adev,
 int amdgpu_device_resize_fb_bar(struct amdgpu_device *adev)
 {
 	STUB();
-	return -ENOSYS;
+	return 0;
 #if 0
 	u64 space_needed = roundup_pow_of_two(adev->gmc.real_vram_size);
 	u32 rbar_size = order_base_2(((space_needed >> 20) | 1)) - 1;
