@@ -6135,7 +6135,7 @@ int i915_gem_init_early(struct drm_i915_private *dev_priv)
 	pool_init(&dev_priv->luts, sizeof(struct i915_lut_handle),
 	    0, IPL_NONE, 0, "drmlut", NULL);
 	pool_init(&dev_priv->requests, sizeof(struct i915_request),
-	    0, IPL_NONE, 0, "drmreq", NULL);
+	    0, IPL_TTY, 0, "drmreq", NULL);
 	pool_init(&dev_priv->priorities, sizeof(struct i915_priolist),
 	    0, IPL_NONE, 0, "drmpri", NULL);
 #endif
