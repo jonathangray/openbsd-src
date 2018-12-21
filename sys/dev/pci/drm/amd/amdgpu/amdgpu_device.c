@@ -3443,8 +3443,6 @@ int amdgpu_device_gpu_recover(struct amdgpu_device *adev,
  */
 static void amdgpu_device_get_pcie_info(struct amdgpu_device *adev)
 {
-	STUB();
-#if 0
 	struct pci_dev *pdev;
 	enum pci_bus_speed speed_cap;
 	enum pcie_link_width link_width;
@@ -3566,6 +3564,5 @@ static void amdgpu_device_get_pcie_info(struct amdgpu_device *adev)
 			}
 		}
 	}
-#endif
 }
 
