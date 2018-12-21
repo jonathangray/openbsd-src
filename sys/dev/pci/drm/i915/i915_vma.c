@@ -371,14 +371,13 @@ void __iomem *i915_vma_pin_iomap(struct i915_vma *vma)
 					vma->node.size);
 #else
 		struct drm_i915_private *dev_priv = vma->vm->i915;
-		bus_space_handle_t bsh;
 		err = agp_map_subregion(dev_priv->agph, vma->node.start,
-				  vma->node.size, &bsh);
+				  vma->node.size, &vma->bsh);
 		if (err) {
 			err = -err;
 			goto err;
 		}
-		ptr = bus_space_vaddr(dev_priv->bst, bsh);
+		ptr = bus_space_vaddr(dev_priv->bst, vma->bsh);
 #endif
 		if (ptr == NULL) {
 			err = -ENOMEM;
@@ -866,16 +865,18 @@ void i915_vma_parked(struct drm_i915_private *i915)
 
 static void __i915_vma_iounmap(struct i915_vma *vma)
 {
-	STUB();
-#ifdef notyet
 	GEM_BUG_ON(i915_vma_is_pinned(vma));
 
 	if (vma->iomap == NULL)
 		return;
 
+#ifdef __linux__
 	io_mapping_unmap(vma->iomap);
-	vma->iomap = NULL;
+#else
+	struct drm_i915_private *dev_priv = vma->vm->i915;
+	agp_unmap_subregion(dev_priv->agph, vma->bsh, vma->node.size);
 #endif
+	vma->iomap = NULL;
 }
 
 void i915_vma_revoke_mmap(struct i915_vma *vma)

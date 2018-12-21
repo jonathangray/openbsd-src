@@ -55,6 +55,7 @@ struct i915_vma {
 	struct reservation_object *resv; /** Alias of obj->resv */
 	struct sg_table *pages;
 	void __iomem *iomap;
+	bus_space_handle_t bsh;
 	void *private; /* owned by creator */
 	u64 size;
 	u64 display_alignment;
