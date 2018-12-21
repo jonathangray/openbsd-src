@@ -790,7 +790,7 @@ i915_request_alloc(struct intel_engine_cs *engine, struct i915_gem_context *ctx)
 	rq->timeline = ce->ring->timeline;
 	GEM_BUG_ON(rq->timeline == &engine->timeline);
 
-	mtx_init(&rq->lock, IPL_NONE);
+	mtx_init(&rq->lock, IPL_TTY);
 	dma_fence_init(&rq->fence,
 		       &i915_fence_ops,
 		       &rq->lock,
