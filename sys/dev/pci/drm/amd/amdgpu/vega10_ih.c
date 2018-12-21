@@ -228,14 +228,12 @@ static u32 vega10_ih_get_wptr(struct amdgpu_device *adev)
  */
 static bool vega10_ih_prescreen_iv(struct amdgpu_device *adev)
 {
-	STUB();
-	return false;
-#if 0
 	u32 ring_index = adev->irq.ih.rptr >> 2;
 	u32 dw0, dw3, dw4, dw5;
 	u16 pasid;
 	u64 addr, key;
 	struct amdgpu_vm *vm;
+	struct amdgpu_vm_fault *vmf;
 	int r;
 
 	dw0 = le32_to_cpu(adev->irq.ih.ring[ring_index + 0]);
@@ -288,6 +286,7 @@ static bool vega10_ih_prescreen_iv(struct amdgpu_device *adev)
 		return true;
 	}
 	/* No locking required with single writer and single reader */
+#ifdef __linux__
 	r = kfifo_put(&vm->faults, key);
 	if (!r) {
 		/* FIFO is full. Ignore it until there is space */
@@ -295,6 +294,16 @@ static bool vega10_ih_prescreen_iv(struct amdgpu_device *adev)
 		amdgpu_ih_clear_fault(adev, key);
 		goto ignore_iv;
 	}
+#else
+	vmf = malloc(sizeof(*vmf), M_DRM, M_NOWAIT);
+	if (vmf == NULL) {
+		spin_unlock(&adev->vm_manager.pasid_lock);
+		amdgpu_ih_clear_fault(adev, key);
+		goto ignore_iv;
+	}
+	vmf->val = key;
+	SIMPLEQ_INSERT_TAIL(&vm->faults, vmf, vm_fault_entry);
+#endif
 	spin_unlock(&adev->vm_manager.pasid_lock);
 
 	/* It's the first fault for this address, process it normally */
@@ -303,7 +312,6 @@ static bool vega10_ih_prescreen_iv(struct amdgpu_device *adev)
 ignore_iv:
 	adev->irq.ih.rptr += 32;
 	return false;
-#endif
 }
 
 /**

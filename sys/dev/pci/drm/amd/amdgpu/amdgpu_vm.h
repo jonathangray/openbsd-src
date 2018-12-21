@@ -172,6 +172,12 @@ struct amdgpu_task_info {
 	pid_t	tgid;
 };
 
+struct amdgpu_vm_fault {
+	SIMPLEQ_ENTRY(amdgpu_vm_fault)	vm_fault_entry;
+	uint64_t			val;
+};
+SIMPLEQ_HEAD(amdgpu_vm_faults, amdgpu_vm_fault);
+
 struct amdgpu_vm {
 	/* tree of virtual addresses mapped */
 	struct rb_root_cached	va;
@@ -209,9 +215,11 @@ struct amdgpu_vm {
 	/* Flag to indicate ATS support from PTE for GFX9 */
 	bool			pte_support_ats;
 
-#ifdef notyet
+#ifdef __linux__
 	/* Up to 128 pending retry page faults */
 	DECLARE_KFIFO(faults, u64, 128);
+#else
+	struct amdgpu_vm_faults	faults;
 #endif
 
 	/* Limit non-retry fault storms */

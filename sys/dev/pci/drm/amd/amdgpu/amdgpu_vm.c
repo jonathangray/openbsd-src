@@ -2626,9 +2626,6 @@ void amdgpu_vm_adjust_size(struct amdgpu_device *adev, uint32_t min_vm_size,
 int amdgpu_vm_init(struct amdgpu_device *adev, struct amdgpu_vm *vm,
 		   int vm_context, unsigned int pasid)
 {
-	STUB();
-	return -ENOSYS;
-#if 0
 	struct amdgpu_bo_param bp;
 	struct amdgpu_bo *root;
 	const unsigned align = min(AMDGPU_VM_PTB_ALIGN_SIZE,
@@ -2722,7 +2719,11 @@ int amdgpu_vm_init(struct amdgpu_device *adev, struct amdgpu_vm *vm,
 		vm->pasid = pasid;
 	}
 
+#ifdef __linux__
 	INIT_KFIFO(vm->faults);
+#else
+	SIMPLEQ_INIT(&vm->faults);
+#endif
 	vm->fault_credit = 16;
 
 	return 0;
@@ -2739,7 +2740,6 @@ error_free_sched_entity:
 	drm_sched_entity_destroy(&vm->entity);
 
 	return r;
-#endif
 }
 
 /**
@@ -2860,19 +2860,28 @@ static void amdgpu_vm_free_levels(struct amdgpu_device *adev,
  */
 void amdgpu_vm_fini(struct amdgpu_device *adev, struct amdgpu_vm *vm)
 {
-	STUB();
-#if 0
 	struct amdgpu_bo_va_mapping *mapping, *tmp;
 	bool prt_fini_needed = !!adev->gmc.gmc_funcs->set_prt;
 	struct amdgpu_bo *root;
 	u64 fault;
 	int i, r;
+	struct amdgpu_vm_fault *vmf;
 
 	amdgpu_amdkfd_gpuvm_destroy_cb(adev, vm);
 
 	/* Clear pending page faults from IH when the VM is destroyed */
+#ifdef __linux__
 	while (kfifo_get(&vm->faults, &fault))
 		amdgpu_ih_clear_fault(adev, fault);
+#else
+	while (!SIMPLEQ_EMPTY(&vm->faults)) {
+		vmf = SIMPLEQ_FIRST(&vm->faults);
+		fault = vmf->val;
+		SIMPLEQ_REMOVE_HEAD(&vm->faults, vm_fault_entry);
+		free(vmf, M_DRM, sizeof(*vmf));
+		amdgpu_ih_clear_fault(adev, fault);
+	}
+#endif
 
 	if (vm->pasid) {
 		unsigned long flags;
@@ -2884,6 +2893,7 @@ void amdgpu_vm_fini(struct amdgpu_device *adev, struct amdgpu_vm *vm)
 
 	drm_sched_entity_destroy(&vm->entity);
 
+#ifdef __linux__
 	if (!RB_EMPTY_ROOT(&vm->va.rb_root)) {
 		dev_err(adev->dev, "still active bo inside vm\n");
 	}
@@ -2893,6 +2903,19 @@ void amdgpu_vm_fini(struct amdgpu_device *adev, struct amdgpu_vm *vm)
 		amdgpu_vm_it_remove(mapping, &vm->va);
 		kfree(mapping);
 	}
+#else
+	if (!RB_EMPTY_ROOT(&vm->va)) {
+		dev_err(adev->dev, "still active bo inside vm\n");
+	}
+	rbtree_postorder_for_each_entry_safe(mapping, tmp,
+					     &vm->va, rb) {
+		list_del(&mapping->list);
+#ifdef notyet
+		amdgpu_vm_it_remove(mapping, &vm->va);
+#endif
+		kfree(mapping);
+	}
+#endif
 	list_for_each_entry_safe(mapping, tmp, &vm->freed, list) {
 		if (mapping->flags & AMDGPU_PTE_PRT && prt_fini_needed) {
 			amdgpu_vm_prt_fini(adev, vm);
@@ -2916,7 +2939,6 @@ void amdgpu_vm_fini(struct amdgpu_device *adev, struct amdgpu_vm *vm)
 	dma_fence_put(vm->last_update);
 	for (i = 0; i < AMDGPU_MAX_VMHUBS; i++)
 		amdgpu_vmid_free_reserved(adev, vm, i);
-#endif
 }
 
 /**
