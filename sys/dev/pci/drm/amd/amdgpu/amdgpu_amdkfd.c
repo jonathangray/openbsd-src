@@ -146,8 +146,6 @@ static void amdgpu_doorbell_get_kfd_info(struct amdgpu_device *adev,
 
 void amdgpu_amdkfd_device_init(struct amdgpu_device *adev)
 {
-	STUB();
-#if 0
 	int i;
 	int last_valid_bit;
 	if (adev->kfd) {
@@ -158,7 +156,9 @@ void amdgpu_amdkfd_device_init(struct amdgpu_device *adev)
 			.gpuvm_size = min(adev->vm_manager.max_pfn
 					  << AMDGPU_GPU_PAGE_SHIFT,
 					  AMDGPU_VA_HOLE_START),
+#ifdef notyet
 			.drm_render_minor = adev->ddev->render->index
+#endif
 		};
 
 		/* this is going to have a few of the MSBs set that we need to
@@ -212,7 +212,6 @@ void amdgpu_amdkfd_device_init(struct amdgpu_device *adev)
 
 		kgd2kfd->device_init(adev->kfd, &gpu_resources);
 	}
-#endif
 }
 
 void amdgpu_amdkfd_device_fini(struct amdgpu_device *adev)
