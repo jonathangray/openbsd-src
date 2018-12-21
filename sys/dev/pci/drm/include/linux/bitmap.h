@@ -62,6 +62,17 @@ bitmap_or(void *d, void *s1, void *s2, u_int n)
 		dst[b >> 5] = src1[b >> 5] | src2[b >> 5];
 }
 
+static inline void
+bitmap_complement(void *d, void *s, u_int n)
+{
+	u_int *dst = d;
+	u_int *src = s;
+	u_int b;
+
+	for (b = 0; b < n; b += 32)
+		dst[b >> 5] = ~src[b >> 5];
+}
+
 static inline int
 bitmap_weight(void *p, u_int n)
 {
