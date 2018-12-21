@@ -236,10 +236,23 @@ enum pci_bus_speed {
 	PCIE_SPEED_2_5GT,
 	PCIE_SPEED_5_0GT,
 	PCIE_SPEED_8_0GT,
+	PCIE_SPEED_16_0GT,
 	PCI_SPEED_UNKNOWN
 };
 
+enum pcie_link_width {
+	PCIE_LNK_X1	= 1,
+	PCIE_LNK_X2	= 2,
+	PCIE_LNK_X4	= 4,
+	PCIE_LNK_X8	= 8,
+	PCIE_LNK_X12	= 12,
+	PCIE_LNK_X16	= 16,
+	PCIE_LNK_X32	= 32,
+	PCIE_LNK_WIDTH_UNKNOWN	= 0xff
+};
+
 enum pci_bus_speed pcie_get_speed_cap(struct pci_dev *);
+enum pcie_link_width pcie_get_width_cap(struct pci_dev *);
 
 #define pci_save_state(x)
 #define pci_enable_device(x)		0

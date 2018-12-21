@@ -1033,16 +1033,18 @@ pcie_get_speed_cap(struct pci_dev *pdev)
 	lnkcap2 &= 0xfe;
 
 	if (lnkcap2) { /* PCIE GEN 3.0 */
-		if (lnkcap2 & 2)
+		if (lnkcap2 & 0x02)
 			cap = PCIE_SPEED_2_5GT;
-		if (lnkcap2 & 4)
+		if (lnkcap2 & 0x04)
 			cap = PCIE_SPEED_5_0GT;
-		if (lnkcap2 & 8)
+		if (lnkcap2 & 0x08)
 			cap = PCIE_SPEED_8_0GT;
+		if (lnkcap2 & 0x10)
+			cap = PCIE_SPEED_16_0GT;
 	} else {
-		if (lnkcap & 1)
+		if (lnkcap & 0x01)
 			cap = PCIE_SPEED_2_5GT;
-		if (lnkcap & 2)
+		if (lnkcap & 0x02)
 			cap = PCIE_SPEED_5_0GT;
 	}
 
@@ -1050,6 +1052,34 @@ pcie_get_speed_cap(struct pci_dev *pdev)
 	    bus, device, function, PCI_VENDOR(id), PCI_PRODUCT(id), lnkcap,
 	    lnkcap2);
 	return cap;
+}
+
+enum pcie_link_width
+pcie_get_width_cap(struct pci_dev *pdev)
+{
+	pci_chipset_tag_t	pc = pdev->pc;
+	pcitag_t		tag = pdev->tag;
+	int			pos ;
+	pcireg_t		lnkcap = 0;
+	pcireg_t		id;
+	enum pcie_link_width	width;
+	int			bus, device, function;
+
+	if (!pci_get_capability(pc, tag, PCI_CAP_PCIEXPRESS,
+	    &pos, NULL)) 
+		return PCIE_LNK_WIDTH_UNKNOWN;
+
+	id = pci_conf_read(pc, tag, PCI_ID_REG);
+	pci_decompose_tag(pc, tag, &bus, &device, &function);
+
+	lnkcap = pci_conf_read(pc, tag, pos + PCI_PCIE_LCAP);
+
+	DRM_INFO("probing pcie width for device %d:%d:%d 0x%04x:0x%04x = %x\n",
+	    bus, device, function, PCI_VENDOR(id), PCI_PRODUCT(id), lnkcap);
+
+	if (lnkcap)
+		return (lnkcap & 0x3f0) >> 4;
+	return PCIE_LNK_WIDTH_UNKNOWN;
 }
 
 int
