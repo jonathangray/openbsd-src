@@ -77,8 +77,6 @@ void amdgpu_gfx_scratch_free(struct amdgpu_device *adev, uint32_t reg)
  */
 void amdgpu_gfx_parse_disable_cu(unsigned *mask, unsigned max_se, unsigned max_sh)
 {
-	STUB();
-#if 0
 	unsigned se, sh, cu;
 	const char *p;
 
@@ -87,6 +85,7 @@ void amdgpu_gfx_parse_disable_cu(unsigned *mask, unsigned max_se, unsigned max_s
 	if (!amdgpu_disable_cu || !*amdgpu_disable_cu)
 		return;
 
+#ifdef notyet
 	p = amdgpu_disable_cu;
 	for (;;) {
 		char *next;
