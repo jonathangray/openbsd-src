@@ -90,6 +90,20 @@
  * some basic allocator dumpers for debugging.
  */
 
+struct drm_mm_node *
+__drm_mm_interval_first(const struct drm_mm *mm, u64 start, u64 last)
+{
+	struct drm_mm_node *node;
+
+	drm_mm_for_each_node(node, mm) {
+		if (node->start + node->size > start &&
+		    node->start < last)
+			return node;
+	}
+
+	return &mm->head_node;
+}
+
 static struct drm_mm_node *drm_mm_search_free_generic(const struct drm_mm *mm,
 						u64 size,
 						unsigned alignment,

@@ -274,9 +274,6 @@ int i915_gem_evict_for_node(struct i915_address_space *vm,
 			    struct drm_mm_node *target,
 			    unsigned int flags)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
 	DRM_LIST_HEAD(eviction_list);
 	struct drm_mm_node *node;
 	u64 start = target->start;
@@ -376,7 +373,6 @@ int i915_gem_evict_for_node(struct i915_address_space *vm,
 	}
 
 	return ret;
-#endif
 }
 
 /**

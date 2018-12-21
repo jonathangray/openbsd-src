@@ -1,6 +1,7 @@
 /**************************************************************************
  *
  * Copyright 2006-2008 Tungsten Graphics, Inc., Cedar Park, TX. USA.
+ * Copyright 2016 Intel Corporation
  * All Rights Reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
@@ -434,6 +435,31 @@ void drm_mm_replace_node(struct drm_mm_node *old, struct drm_mm_node *new);
 void drm_mm_init(struct drm_mm *mm, u64 start, u64 size);
 void drm_mm_takedown(struct drm_mm *mm);
 bool drm_mm_clean(const struct drm_mm *mm);
+
+struct drm_mm_node *
+__drm_mm_interval_first(const struct drm_mm *mm, u64 start, u64 last);
+
+/**
+ * drm_mm_for_each_node_in_range - iterator to walk over a range of
+ * allocated nodes
+ * @node__: drm_mm_node structure to assign to in each iteration step
+ * @mm__: drm_mm allocator to walk
+ * @start__: starting offset, the first node will overlap this
+ * @end__: ending offset, the last node will start before this (but may overlap)
+ *
+ * This iterator walks over all nodes in the range allocator that lie
+ * between @start and @end. It is implemented similarly to list_for_each(),
+ * but using the internal interval tree to accelerate the search for the
+ * starting node, and so not safe against removal of elements. It assumes
+ * that @end is within (or is the upper limit of) the drm_mm allocator.
+ * If [@start, @end] are beyond the range of the drm_mm, the iterator may walk
+ * over the special _unallocated_ &drm_mm.head_node, and may even continue
+ * indefinitely.
+ */
+#define drm_mm_for_each_node_in_range(node__, mm__, start__, end__)	\
+	for (node__ = __drm_mm_interval_first((mm__), (start__), (end__)-1); \
+	     node__->start < (end__);					\
+	     node__ = list_next_entry(node__, node_list))
 
 void drm_mm_scan_init_with_range(struct drm_mm_scan *scan,
 				 struct drm_mm *mm,
