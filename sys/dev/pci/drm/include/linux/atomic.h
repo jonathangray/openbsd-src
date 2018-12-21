@@ -97,7 +97,6 @@ atomic_dec_if_positive(volatile int *v)
 
 #ifdef __LP64__
 typedef int64_t atomic64_t;
-typedef atomic64_t atomic_long_t;
 
 #define atomic64_set(p, v)	(*(p) = (v))
 #define atomic64_read(p)	(*(p))
@@ -119,8 +118,6 @@ typedef struct {
 	volatile int64_t val;
 	struct mutex lock;
 } atomic64_t;
-
-typedef atomic_t atomic_long_t;
 
 static inline void
 atomic64_set(atomic64_t *v, int64_t i)
@@ -171,6 +168,18 @@ atomic64_sub(int i, atomic64_t *v)
 	v->val -= i;
 	mtx_leave(&v->lock);
 }
+#endif
+
+#ifdef __LP64__
+typedef int64_t atomic_long_t;
+#define atomic_long_set(p, v)		atomic64_set(p, v)
+#define atomic_long_xchg(v, n)		atomic64_xchg(v, n)
+#define atomic_long_cmpxchg(p, o, n)	atomic_cmpxchg(p, o, n)
+#else
+typedef int32_t atomic_long_t;
+#define atomic_long_set(p, v)		atomic_set(p, v)
+#define atomic_long_xchg(v, n)		atomic_xchg(v, n)
+#define atomic_long_cmpxchg(p, o, n)	atomic_cmpxchg(p, o, n)
 #endif
 
 static inline int
