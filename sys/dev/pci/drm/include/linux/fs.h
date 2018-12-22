@@ -10,6 +10,7 @@
 #include <linux/uuid.h>
 #include <linux/pid.h>
 #include <linux/radix-tree.h>
+#include <linux/wait_bit.h>
 
 struct address_space;
 

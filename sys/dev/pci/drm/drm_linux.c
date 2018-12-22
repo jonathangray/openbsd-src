@@ -1101,6 +1101,56 @@ autoremove_wake_function(struct wait_queue_entry *wqe, unsigned int mode,
 	return 0;
 }
 
+struct mutex wait_bit_mtx = MUTEX_INITIALIZER(IPL_TTY);
+
+int
+wait_on_bit(unsigned long *word, int bit, unsigned mode)
+{
+	int err;
+
+	if (!test_bit(bit, word))
+		return 0;
+
+	mtx_enter(&wait_bit_mtx);
+	while (test_bit(bit, word)) {
+		err = msleep(word, &wait_bit_mtx, PWAIT | mode, "wtb", 0);
+		if (err) {
+			mtx_leave(&wait_bit_mtx);
+			return 1;
+		}
+	}
+	mtx_leave(&wait_bit_mtx);
+	return 0;
+}
+
+int
+wait_on_bit_timeout(unsigned long *word, int bit, unsigned mode, int timo)
+{
+	int err;
+
+	if (!test_bit(bit, word))
+		return 0;
+
+	mtx_enter(&wait_bit_mtx);
+	while (test_bit(bit, word)) {
+		err = msleep(word, &wait_bit_mtx, PWAIT | mode, "wtb", timo);
+		if (err) {
+			mtx_leave(&wait_bit_mtx);
+			return 1;
+		}
+	}
+	mtx_leave(&wait_bit_mtx);
+	return 0;
+}
+
+void
+wake_up_bit(void *word, int bit)
+{
+	mtx_enter(&wait_bit_mtx);
+	wakeup(word);
+	mtx_leave(&wait_bit_mtx);
+}
+
 struct workqueue_struct *system_wq;
 struct workqueue_struct *system_unbound_wq;
 struct workqueue_struct *system_long_wq;
