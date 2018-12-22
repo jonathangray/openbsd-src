@@ -41,14 +41,15 @@ pagevec_count(struct pagevec *pvec)
 static inline void
 __pagevec_release(struct pagevec *pvec)
 {
-	printf("%s: stub\n", __func__);
+	/* XXX release pages? */
+	pagevec_reinit(pvec);
 }
 
 static inline unsigned int
 pagevec_add(struct pagevec *pvec, struct vm_page *page)
 {
-	printf("%s: stub\n", __func__);
-	return -ENOSYS;
+	pvec->pages[pvec->nr++] = page;
+	return PAGEVEC_SIZE - pvec->nr;
 }
 
 #endif
