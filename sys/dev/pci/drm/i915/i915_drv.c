@@ -3314,13 +3314,13 @@ inteldrm_enter_ddb(void *v, void *cookie)
 {
 	struct inteldrm_softc *dev_priv = v;
 	struct rasops_info *ri = &dev_priv->ro;
-	struct drm_fb_helper *helper = &dev_priv->fbdev->helper;
+	struct drm_device *dev = &dev_priv->drm;
 
 	if (cookie == ri->ri_active)
 		return;
 
 	rasops_show_screen(ri, cookie, 0, NULL, NULL);
-	drm_fb_helper_debug_enter(helper->fbdev);
+	intel_fbdev_restore_mode(dev);
 }
 
 int
