@@ -2170,11 +2170,7 @@ finish:
 
 wakeup:
 	clear_bit(I915_RESET_HANDOFF, &error->flags);
-#ifdef notyet
 	wake_up_bit(&error->flags, I915_RESET_HANDOFF);
-#else
-	STUB();
-#endif
 	return;
 
 taint:
