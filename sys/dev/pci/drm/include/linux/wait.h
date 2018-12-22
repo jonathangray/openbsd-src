@@ -192,9 +192,7 @@ _wake_up(wait_queue_head_t *wqh LOCK_FL_VARS)
 		if (wqe->func != NULL)
 			wqe->func(wqe, 0, wqe->flags, NULL);
 	}
-	mtx_enter(&sch_mtx);
 	wakeup(wqh);
-	mtx_leave(&sch_mtx);
 	_mtx_leave(&wqh->lock LOCK_FL_ARGS);
 }
 
@@ -211,9 +209,7 @@ wake_up_all_locked(wait_queue_head_t *wqh)
 		if (wqe->func != NULL)
 			wqe->func(wqe, 0, wqe->flags, NULL);
 	}
-	mtx_enter(&sch_mtx);
 	wakeup(wqh);
-	mtx_leave(&sch_mtx);
 }
 
 #define wake_up_interruptible(wq)	_wake_up(wq LOCK_FILE_LINE)

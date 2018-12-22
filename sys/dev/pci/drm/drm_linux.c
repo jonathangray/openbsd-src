@@ -1086,9 +1086,7 @@ int
 default_wake_function(struct wait_queue_entry *wqe, unsigned int mode,
     int sync, void *key)
 {
-	mtx_enter(&sch_mtx);
 	wakeup(wqe);
-	mtx_leave(&sch_mtx);
 	return 0;
 }
 
