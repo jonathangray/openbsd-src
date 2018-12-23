@@ -2486,12 +2486,15 @@ static void __i915_gem_object_release_mmap(struct drm_i915_gem_object *obj)
 #else
 	if (drm_vma_node_has_offset(&obj->base.vma_node)) {
 		struct drm_i915_private *dev_priv = obj->base.dev->dev_private;
+		unsigned long size;
+		struct i915_vma *vma;
 		struct vm_page *pg;
-		uint64_t offset = drm_vma_node_offset_addr(&obj->base.vma_node);
-		uint64_t size = drm_vma_node_size(&obj->base.vma_node) << PAGE_SHIFT;
 
-		for (pg = &dev_priv->pgs[atop(offset)];
-		     pg != &dev_priv->pgs[atop(offset + size)];
+		size = drm_vma_node_size(&obj->base.vma_node) << PAGE_SHIFT;
+		vma = i915_vma_instance(obj, &dev_priv->ggtt.vm, NULL);
+		KASSERT(!IS_ERR(vma));
+		for (pg = &dev_priv->pgs[atop(vma->node.start)];
+		     pg != &dev_priv->pgs[atop(vma->node.start + size)];
 		     pg++)
 			pmap_page_protect(pg, PROT_NONE);
 	}
