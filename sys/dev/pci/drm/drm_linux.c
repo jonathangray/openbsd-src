@@ -26,6 +26,7 @@
 #include <linux/dma-buf.h>
 #include <linux/mod_devicetable.h>
 #include <linux/acpi.h>
+#include <linux/pagevec.h>
 
 struct mutex sch_mtx = MUTEX_INITIALIZER(IPL_SCHED);
 void *sch_ident;
@@ -260,6 +261,19 @@ __free_pages(struct vm_page *page, unsigned int order)
 	for (i = 0; i < (1 << order); i++)
 		TAILQ_INSERT_TAIL(&mlist, &page[i], pageq);
 	uvm_pglistfree(&mlist);
+}
+
+void
+__pagevec_release(struct pagevec *pvec)
+{
+	struct pglist mlist;
+	int i;
+
+	TAILQ_INIT(&mlist);
+	for (i = 0; i < pvec->nr; i++)
+		TAILQ_INSERT_TAIL(&mlist, pvec->pages[i], pageq);
+	uvm_pglistfree(&mlist);
+	pagevec_reinit(pvec);
 }
 
 void *

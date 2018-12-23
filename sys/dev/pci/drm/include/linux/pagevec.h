@@ -14,6 +14,8 @@ struct pagevec {
 	struct vm_page *pages[PAGEVEC_SIZE];
 };
 
+void __pagevec_release(struct pagevec *);
+
 static inline unsigned int
 pagevec_space(struct pagevec *pvec)
 {
@@ -36,13 +38,6 @@ static inline unsigned int
 pagevec_count(struct pagevec *pvec)
 {
 	return pvec->nr;
-}
-
-static inline void
-__pagevec_release(struct pagevec *pvec)
-{
-	/* XXX release pages? */
-	pagevec_reinit(pvec);
 }
 
 static inline unsigned int
