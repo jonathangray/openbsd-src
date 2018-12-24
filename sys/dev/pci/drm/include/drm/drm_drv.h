@@ -248,13 +248,11 @@ struct drm_driver {
 static inline void
 drm_dev_get(struct drm_device *dev)
 {
-	printf("%s: STUB\n", __func__);
 }
 
 static inline void
 drm_dev_put(struct drm_device *dev)
 {
-	printf("%s: STUB\n", __func__);
 }
 
 /**
