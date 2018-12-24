@@ -3842,8 +3842,7 @@ i915_gem_retire_work_handler(struct work_struct *work)
 
 static void shrink_caches(struct drm_i915_private *i915)
 {
-	STUB();
-#ifdef notyet
+#ifdef __linux__
 	/*
 	 * kmem_cache_shrink() discards empty slabs and reorders partially
 	 * filled slabs to prioritise allocating from the mostly full slabs,
