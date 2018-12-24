@@ -324,7 +324,7 @@ static bool amdgpu_read_platform_bios(struct amdgpu_device *adev)
 {
 #if defined(__amd64__) || defined(__i386__)
 	uint8_t __iomem *bios;
-	size_t size;
+	bus_size_t size = 256 * 1024; /* ??? */
 
 	adev->bios = NULL;
 
