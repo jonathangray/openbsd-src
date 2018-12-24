@@ -33,6 +33,7 @@ struct tasklet_struct {
 	struct task task;
 };
 
+#define TASKLET_STATE_SCHED	1
 #define TASKLET_STATE_RUN	0
 
 extern struct taskq *taskletq;
@@ -72,6 +73,7 @@ tasklet_unlock_wait(struct tasklet_struct *ts)
 static inline void
 tasklet_kill(struct tasklet_struct *ts)
 {
+	clear_bit(TASKLET_STATE_SCHED, &ts->state);
 	task_del(taskletq, &ts->task);
 	tasklet_unlock_wait(ts);
 }
@@ -79,12 +81,14 @@ tasklet_kill(struct tasklet_struct *ts)
 static inline void
 tasklet_schedule(struct tasklet_struct *ts)
 {
+	set_bit(TASKLET_STATE_SCHED, &ts->state);
 	task_add(taskletq, &ts->task);
 }
 
 static inline void
 tasklet_hi_schedule(struct tasklet_struct *ts)
 {
+	set_bit(TASKLET_STATE_SCHED, &ts->state);
 	task_add(taskletq, &ts->task);
 }
 

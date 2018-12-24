@@ -33,6 +33,7 @@ tasklet_run(void *arg)
 {
 	struct tasklet_struct *ts = arg;
 
+	clear_bit(TASKLET_STATE_SCHED, &ts->state);
 	if (tasklet_trylock(ts)) {
 		if (!atomic_read(&ts->count))
 			ts->func(ts->data);
