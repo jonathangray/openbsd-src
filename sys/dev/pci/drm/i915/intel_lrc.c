@@ -1989,12 +1989,14 @@ static void execlists_reset(struct intel_engine_cs *engine,
 
 static void execlists_reset_finish(struct intel_engine_cs *engine)
 {
-	STUB();
-#ifdef notyet
 	struct intel_engine_execlists * const execlists = &engine->execlists;
 
 	/* After a GPU reset, we may have requests to replay */
+#ifdef __linux__
 	if (!RB_EMPTY_ROOT(&execlists->queue.rb_root))
+#else
+	if (!RB_EMPTY_ROOT(&execlists->queue))
+#endif
 		tasklet_schedule(&execlists->tasklet);
 
 	/*
@@ -2009,7 +2011,6 @@ static void execlists_reset_finish(struct intel_engine_cs *engine)
 	__tasklet_enable_sync_once(&execlists->tasklet);
 
 	GEM_TRACE("%s\n", engine->name);
-#endif
 }
 
 static int intel_logical_ring_emit_pdps(struct i915_request *rq)
