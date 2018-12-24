@@ -28,6 +28,18 @@
 #include <linux/acpi.h>
 #include <linux/pagevec.h>
 
+void
+tasklet_run(void *arg)
+{
+	struct tasklet_struct *ts = arg;
+
+	if (tasklet_trylock(ts)) {
+		if (!atomic_read(&ts->count))
+			ts->func(ts->data);
+		tasklet_unlock(ts);
+	}
+}
+
 struct mutex sch_mtx = MUTEX_INITIALIZER(IPL_SCHED);
 void *sch_ident;
 int sch_priority;
@@ -1166,6 +1178,7 @@ wake_up_bit(void *word, int bit)
 struct workqueue_struct *system_wq;
 struct workqueue_struct *system_unbound_wq;
 struct workqueue_struct *system_long_wq;
+struct taskq *taskletq;
 
 void
 drm_linux_init(void)
@@ -1187,4 +1200,7 @@ drm_linux_init(void)
 		system_long_wq = (struct workqueue_struct *)
 		    taskq_create("drmlwq", 1, IPL_HIGH, 0);
 	}
+
+	if (taskletq == NULL)
+		taskletq = taskq_create("drmtskl", 1, IPL_HIGH, 0);
 }
