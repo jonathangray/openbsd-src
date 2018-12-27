@@ -750,6 +750,7 @@ int amdgpu_device_resize_fb_bar(struct amdgpu_device *adev)
 	unsigned i;
 	u16 cmd;
 	int r;
+	pcireg_t type;
 
 	/* Bypass for VF */
 	if (amdgpu_sriov_vf(adev))
@@ -779,7 +780,7 @@ int amdgpu_device_resize_fb_bar(struct amdgpu_device *adev)
 
 	/* Free the VRAM and doorbell BAR, we most likely need to move both. */
 	amdgpu_device_doorbell_fini(adev);
-#ifdef notyet
+#ifdef __linux__
 	if (adev->asic_type >= CHIP_BONAIRE)
 		pci_release_resource(adev->pdev, 2);
 
@@ -792,10 +793,19 @@ int amdgpu_device_resize_fb_bar(struct amdgpu_device *adev)
 	else if (r && r != -ENOTSUPP)
 		DRM_ERROR("Problem resizing BAR0 (%d).", r);
 
-#ifdef notyet
+#ifdef __linux__
 	pci_assign_unassigned_bus_resources(adev->pdev->bus);
-#endif
+#else
+#define AMDGPU_PCI_MEM		0x10
 
+	type = pci_mapreg_type(adev->pc, adev->pa_tag, AMDGPU_PCI_MEM);
+	if (PCI_MAPREG_TYPE(type) != PCI_MAPREG_TYPE_MEM ||
+	    pci_mapreg_info(adev->pc, adev->pa_tag, AMDGPU_PCI_MEM,
+	    type, NULL, &adev->fb_aper_size, NULL)) {
+		printf(": can't get frambuffer info\n");
+		return -ENODEV;
+	}
+#endif
 	/* When the doorbell or fb BAR isn't available we have no chance of
 	 * using the device.
 	 */
