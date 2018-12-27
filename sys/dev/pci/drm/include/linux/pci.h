@@ -87,6 +87,9 @@ struct pci_dev {
 #define PCI_EXP_LNKCTL_HAWD	0x0200
 #define PCI_EXP_LNKCTL2		0x30
 
+#define PCI_COMMAND		PCI_COMMAND_STATUS_REG
+#define PCI_COMMAND_MEMORY	PCI_COMMAND_MEM_ENABLE
+
 static inline int
 pci_read_config_dword(struct pci_dev *pdev, int reg, u32 *val)
 {
@@ -253,6 +256,7 @@ enum pcie_link_width {
 
 enum pci_bus_speed pcie_get_speed_cap(struct pci_dev *);
 enum pcie_link_width pcie_get_width_cap(struct pci_dev *);
+int pci_resize_resource(struct pci_dev *, int, int);
 
 #define pci_save_state(x)
 #define pci_enable_device(x)		0

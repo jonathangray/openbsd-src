@@ -1205,3 +1205,56 @@ drm_linux_init(void)
 	if (taskletq == NULL)
 		taskletq = taskq_create("drmtskl", 1, IPL_HIGH, 0);
 }
+
+#define PCIE_ECAP_RESIZE_BAR	0x15
+#define RBCAP0			0x04
+#define RBCTRL0			0x08
+#define RBCTRL_BARINDEX_MASK	0x07
+#define RBCTRL_BARSIZE_MASK	0x1f00
+#define RBCTRL_BARSIZE_SHIFT	8
+
+/* size in MB is 1 << nsize */
+int
+pci_resize_resource(struct pci_dev *pdev, int bar, int nsize)
+{
+	pcireg_t	reg;
+	uint32_t	offset, capid;
+
+	KASSERT(bar == 0);
+
+	offset = PCI_PCIE_ECAP;
+
+	/* search PCI Express Extended Capabilities */
+	do {
+		reg = pci_conf_read(pdev->pc, pdev->tag, offset);
+		capid = PCI_PCIE_ECAP_ID(reg);
+		if (capid == PCIE_ECAP_RESIZE_BAR)
+			break;
+		offset = PCI_PCIE_ECAP_NEXT(reg);
+	} while (capid != 0);
+
+	if (capid == 0) {
+		printf("%s: could not find resize bar cap!\n", __func__);
+		return -ENOTSUP;
+	}
+
+	reg = pci_conf_read(pdev->pc, pdev->tag, offset + RBCAP0);
+
+	if ((reg & (1 << (nsize + 4))) == 0) {
+		printf("%s size not supported\n", __func__);
+		return -ENOTSUP;
+	}
+
+	reg = pci_conf_read(pdev->pc, pdev->tag, offset + RBCTRL0);
+	if ((reg & RBCTRL_BARINDEX_MASK) != 0) {
+		printf("%s BAR index not 0\n", __func__);
+		return -EINVAL;
+	}
+
+	reg &= ~RBCTRL_BARSIZE_MASK;
+	reg |= (nsize << RBCTRL_BARSIZE_SHIFT) & RBCTRL_BARSIZE_MASK;
+
+	pci_conf_write(pdev->pc, pdev->tag, offset + RBCTRL0, reg);
+
+	return 0;
+}
