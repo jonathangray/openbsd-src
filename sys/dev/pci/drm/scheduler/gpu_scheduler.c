@@ -526,14 +526,16 @@ drm_sched_entity_pop_job(struct drm_sched_entity *entity)
 void drm_sched_entity_push_job(struct drm_sched_job *sched_job,
 			       struct drm_sched_entity *entity)
 {
-	STUB();
-#if 0
 	struct drm_gpu_scheduler *sched = sched_job->sched;
 	bool first = false;
 
 	trace_drm_sched_job(sched_job, entity);
 
+#ifdef __linux__
 	WRITE_ONCE(entity->last_user, current->group_leader);
+#else
+	WRITE_ONCE(entity->last_user, curproc->p_p->ps_mainproc);
+#endif
 	first = spsc_queue_push(&entity->job_queue, &sched_job->queue_node);
 
 	/* first job wakes up scheduler */
@@ -549,7 +551,6 @@ void drm_sched_entity_push_job(struct drm_sched_job *sched_job,
 		spin_unlock(&entity->rq_lock);
 		drm_sched_wakeup(sched);
 	}
-#endif
 }
 EXPORT_SYMBOL(drm_sched_entity_push_job);
 

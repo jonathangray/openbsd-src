@@ -86,7 +86,11 @@ struct drm_sched_entity {
 	struct dma_fence_cb		cb;
 	atomic_t			*guilty;
 	struct dma_fence                *last_scheduled;
+#ifdef __linux__
 	struct task_struct		*last_user;
+#else
+	struct proc			*last_user;
+#endif
 };
 
 /**
