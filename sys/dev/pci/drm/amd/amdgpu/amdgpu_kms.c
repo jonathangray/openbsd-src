@@ -1390,11 +1390,15 @@ amdgpu_attach(struct device *parent, struct device *self, void *aux)
 	}
 
 	if (adev->fb_aper_offset == 0) {
-		bus_size_t start, end;
+		bus_size_t start, end, pci_mem_end;
 		bus_addr_t base;
 
 		start = max(PCI_MEM_START, pa->pa_memex->ex_start);
-		end = min(PCI_MEM_END, pa->pa_memex->ex_end);
+		if (PCI_MAPREG_MEM_TYPE(type) == PCI_MAPREG_MEM_TYPE_64BIT)
+			pci_mem_end = PCI_MEM64_END;
+		else
+			pci_mem_end = PCI_MEM_END;
+		end = min(pci_mem_end, pa->pa_memex->ex_end);
 		if (pa->pa_memex == NULL ||
 		    extent_alloc_subregion(pa->pa_memex, start, end,
 		    adev->fb_aper_size, adev->fb_aper_size, 0, 0, 0, &base)) {
