@@ -743,9 +743,6 @@ void amdgpu_device_gart_location(struct amdgpu_device *adev,
  */
 int amdgpu_device_resize_fb_bar(struct amdgpu_device *adev)
 {
-	STUB();
-	return 0;
-#if 0
 	u64 space_needed = roundup_pow_of_two(adev->gmc.real_vram_size);
 	u32 rbar_size = order_base_2(((space_needed >> 20) | 1)) - 1;
 	struct pci_bus *root;
@@ -757,6 +754,7 @@ int amdgpu_device_resize_fb_bar(struct amdgpu_device *adev)
 	/* Bypass for VF */
 	if (amdgpu_sriov_vf(adev))
 		return 0;
+#ifdef notyet
 
 	/* Check if the root BUS has 64bit memory resources */
 	root = adev->pdev->bus;
@@ -772,6 +770,7 @@ int amdgpu_device_resize_fb_bar(struct amdgpu_device *adev)
 	/* Trying to resize is pointless without a root hub window above 4GB */
 	if (!res)
 		return 0;
+#endif
 
 	/* Disable memory decoding while we change the BAR addresses and size */
 	pci_read_config_word(adev->pdev, PCI_COMMAND, &cmd);
@@ -780,10 +779,12 @@ int amdgpu_device_resize_fb_bar(struct amdgpu_device *adev)
 
 	/* Free the VRAM and doorbell BAR, we most likely need to move both. */
 	amdgpu_device_doorbell_fini(adev);
+#ifdef notyet
 	if (adev->asic_type >= CHIP_BONAIRE)
 		pci_release_resource(adev->pdev, 2);
 
 	pci_release_resource(adev->pdev, 0);
+#endif
 
 	r = pci_resize_resource(adev->pdev, 0, rbar_size);
 	if (r == -ENOSPC)
@@ -791,19 +792,24 @@ int amdgpu_device_resize_fb_bar(struct amdgpu_device *adev)
 	else if (r && r != -ENOTSUPP)
 		DRM_ERROR("Problem resizing BAR0 (%d).", r);
 
+#ifdef notyet
 	pci_assign_unassigned_bus_resources(adev->pdev->bus);
+#endif
 
 	/* When the doorbell or fb BAR isn't available we have no chance of
 	 * using the device.
 	 */
 	r = amdgpu_device_doorbell_init(adev);
+#ifdef notyet
 	if (r || (pci_resource_flags(adev->pdev, 0) & IORESOURCE_UNSET))
+#else
+	if (r)
+#endif
 		return -ENODEV;
 
 	pci_write_config_word(adev->pdev, PCI_COMMAND, cmd);
 
 	return 0;
-#endif
 }
 
 /*
