@@ -43,7 +43,7 @@ llist_add(struct llist_node *new, struct llist_head *head)
 	struct llist_node *first;
 
 	do {
-		first = head->first;
+		new->next = first = head->first;
 	} while (atomic_cas_ptr(&head->first, first, new) != first);
 
 	return (first == NULL);
@@ -64,7 +64,7 @@ llist_empty(struct llist_head *head)
 #define llist_for_each_entry_safe(pos, n, node, member) 		\
 	for (pos = llist_entry((node), __typeof(*pos), member); 	\
 	    pos != NULL &&						\
-	    (n = llist_entry(pos->member.next, __typeof(*pos), member)); \
+	    (n = llist_entry(pos->member.next, __typeof(*pos), member), pos); \
 	    pos = n)
 
 #endif
