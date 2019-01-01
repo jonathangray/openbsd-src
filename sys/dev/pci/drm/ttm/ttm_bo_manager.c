@@ -144,7 +144,7 @@ static void ttm_bo_man_debug(struct ttm_mem_type_manager *man,
 	struct ttm_range_manager *rman = (struct ttm_range_manager *) man->priv;
 
 	spin_lock(&rman->lock);
-	drm_mm_debug_table(&rman->mm, printer->prefix);
+	drm_mm_print(&rman->mm, printer);
 	spin_unlock(&rman->lock);
 }
 
