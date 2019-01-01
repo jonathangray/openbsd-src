@@ -1004,6 +1004,8 @@ drm_gem_object_release(struct drm_gem_object *obj)
 
 	atomic_dec(&dev->obj_count);
 	atomic_sub(obj->size, &dev->obj_memory);
+
+	drm_gem_free_mmap_offset(obj);
 }
 
 #endif
