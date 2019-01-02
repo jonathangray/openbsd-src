@@ -1,6 +1,7 @@
 /**************************************************************************
  *
  * Copyright 2006 Tungsten Graphics, Inc., Bismarck, ND., USA.
+ * Copyright 2016 Intel Corporation
  * All Rights Reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
@@ -31,9 +32,9 @@
  * class implementation for more advanced memory managers.
  *
  * Note that the algorithm used is quite simple and there might be substantial
- * performance gains if a smarter free list is implemented. Currently it is just an
- * unordered stack of free regions. This could easily be improved if an RB-tree
- * is used instead. At least if we expect heavy fragmentation.
+ * performance gains if a smarter free list is implemented. Currently it is
+ * just an unordered stack of free regions. This could easily be improved if
+ * an RB-tree is used instead. At least if we expect heavy fragmentation.
  *
  * Aligned allocations can also see improvement.
  *
@@ -46,6 +47,7 @@
 #include <linux/slab.h>
 #include <linux/seq_file.h>
 #include <linux/export.h>
+#include <linux/interval_tree_generic.h>
 
 /**
  * DOC: Overview
@@ -57,8 +59,8 @@
  *
  * The main data struct is &drm_mm, allocations are tracked in &drm_mm_node.
  * Drivers are free to embed either of them into their own suitable
- * datastructures. drm_mm itself will not do any allocations of its own, so if
- * drivers choose not to embed nodes they need to still allocate them
+ * datastructures. drm_mm itself will not do any memory allocations of its own,
+ * so if drivers choose not to embed nodes they need to still allocate them
  * themselves.
  *
  * The range allocator also supports reservation of preallocated blocks. This is
@@ -66,7 +68,7 @@
  * where an object needs to be created which exactly matches the firmware's
  * scanout target. As long as the range is still free it can be inserted anytime
  * after the allocator is initialized, which helps with avoiding looped
- * depencies in the driver load sequence.
+ * dependencies in the driver load sequence.
  *
  * drm_mm maintains a stack of most recently freed holes, which of all
  * simplistic datastructures seems to be a fairly decent approach to clustering
@@ -76,51 +78,176 @@
  * steep cliff not a real concern. Removing a node again is O(1).
  *
  * drm_mm supports a few features: Alignment and range restrictions can be
- * supplied. Further more every &drm_mm_node has a color value (which is just an
- * opaqua unsigned long) which in conjunction with a driver callback can be used
+ * supplied. Furthermore every &drm_mm_node has a color value (which is just an
+ * opaque unsigned long) which in conjunction with a driver callback can be used
  * to implement sophisticated placement restrictions. The i915 DRM driver uses
  * this to implement guard pages between incompatible caching domains in the
  * graphics TT.
  *
- * Two behaviors are supported for searching and allocating: bottom-up and top-down.
- * The default is bottom-up. Top-down allocation can be used if the memory area
- * has different restrictions, or just to reduce fragmentation.
+ * Two behaviors are supported for searching and allocating: bottom-up and
+ * top-down. The default is bottom-up. Top-down allocation can be used if the
+ * memory area has different restrictions, or just to reduce fragmentation.
  *
  * Finally iteration helpers to walk all nodes and all holes are provided as are
  * some basic allocator dumpers for debugging.
+ *
+ * Note that this range allocator is not thread-safe, drivers need to protect
+ * modifications with their on locking. The idea behind this is that for a full
+ * memory manager additional data needs to be protected anyway, hence internal
+ * locking would be fully redundant.
  */
 
-struct drm_mm_node *
-__drm_mm_interval_first(const struct drm_mm *mm, u64 start, u64 last)
-{
-	struct drm_mm_node *node;
-
-	drm_mm_for_each_node(node, mm) {
-		if (node->start + node->size > start &&
-		    node->start < last)
-			return node;
-	}
-
-	return &mm->head_node;
-}
-
-static struct drm_mm_node *drm_mm_search_free_generic(const struct drm_mm *mm,
-						u64 size,
-						unsigned alignment,
-						unsigned long color,
-						enum drm_mm_search_flags flags);
 static struct drm_mm_node *drm_mm_search_free_in_range_generic(const struct drm_mm *mm,
 						u64 size,
-						unsigned alignment,
+						u64 alignment,
 						unsigned long color,
 						u64 start,
 						u64 end,
 						enum drm_mm_search_flags flags);
 
+#ifdef CONFIG_DRM_DEBUG_MM
+#include <linux/stackdepot.h>
+
+#define STACKDEPTH 32
+#define BUFSZ 4096
+
+static noinline void save_stack(struct drm_mm_node *node)
+{
+	unsigned long entries[STACKDEPTH];
+	struct stack_trace trace = {
+		.entries = entries,
+		.max_entries = STACKDEPTH,
+		.skip = 1
+	};
+
+	save_stack_trace(&trace);
+	if (trace.nr_entries != 0 &&
+	    trace.entries[trace.nr_entries-1] == ULONG_MAX)
+		trace.nr_entries--;
+
+	/* May be called under spinlock, so avoid sleeping */
+	node->stack = depot_save_stack(&trace, GFP_NOWAIT);
+}
+
+static void show_leaks(struct drm_mm *mm)
+{
+	struct drm_mm_node *node;
+	unsigned long entries[STACKDEPTH];
+	char *buf;
+
+	buf = kmalloc(BUFSZ, GFP_KERNEL);
+	if (!buf)
+		return;
+
+	list_for_each_entry(node, drm_mm_nodes(mm), node_list) {
+		struct stack_trace trace = {
+			.entries = entries,
+			.max_entries = STACKDEPTH
+		};
+
+		if (!node->stack) {
+			DRM_ERROR("node [%08llx + %08llx]: unknown owner\n",
+				  node->start, node->size);
+			continue;
+		}
+
+		depot_fetch_stack(node->stack, &trace);
+		snprint_stack_trace(buf, BUFSZ, &trace, 0);
+		DRM_ERROR("node [%08llx + %08llx]: inserted at\n%s",
+			  node->start, node->size, buf);
+	}
+
+	kfree(buf);
+}
+
+#undef STACKDEPTH
+#undef BUFSZ
+#else
+static void save_stack(struct drm_mm_node *node) { }
+static void show_leaks(struct drm_mm *mm) { }
+#endif
+
+#define START(node) ((node)->start)
+#define LAST(node)  ((node)->start + (node)->size - 1)
+
+#ifdef __linux__
+INTERVAL_TREE_DEFINE(struct drm_mm_node, rb,
+		     u64, __subtree_last,
+		     START, LAST, static inline, drm_mm_interval_tree)
+#else
+struct drm_mm_node *	
+drm_mm_interval_tree_iter_first(struct rb_root *rb, u64 start, u64 last)
+{
+	struct drm_mm *mm = container_of(rb, typeof(*mm), interval_tree);
+	struct drm_mm_node *node;
+
+	drm_mm_for_each_node(node, mm) {
+		if (LAST(node) >= start && START(node) <= last)
+			return node;
+	}
+	return NULL;
+}
+#endif
+
+struct drm_mm_node *
+__drm_mm_interval_first(const struct drm_mm *mm, u64 start, u64 last)
+{
+	return drm_mm_interval_tree_iter_first((struct rb_root *)&mm->interval_tree,
+					       start, last);
+}
+EXPORT_SYMBOL(__drm_mm_interval_first);
+
+#ifdef __linux__
+static void drm_mm_interval_tree_add_node(struct drm_mm_node *hole_node,
+					  struct drm_mm_node *node)
+{
+	struct drm_mm *mm = hole_node->mm;
+	struct rb_node **link, *rb;
+	struct drm_mm_node *parent;
+
+	node->__subtree_last = LAST(node);
+
+	if (hole_node->allocated) {
+		rb = &hole_node->rb;
+		while (rb) {
+			parent = rb_entry(rb, struct drm_mm_node, rb);
+			if (parent->__subtree_last >= node->__subtree_last)
+				break;
+
+			parent->__subtree_last = node->__subtree_last;
+			rb = rb_parent(rb);
+		}
+
+		rb = &hole_node->rb;
+		link = &hole_node->rb.rb_right;
+	} else {
+		rb = NULL;
+		link = &mm->interval_tree.rb_node;
+	}
+
+	while (*link) {
+		rb = *link;
+		parent = rb_entry(rb, struct drm_mm_node, rb);
+		if (parent->__subtree_last < node->__subtree_last)
+			parent->__subtree_last = node->__subtree_last;
+		if (node->start < parent->start)
+			link = &parent->rb.rb_left;
+		else
+			link = &parent->rb.rb_right;
+	}
+
+	rb_link_node(&node->rb, rb, link);
+	rb_insert_augmented(&node->rb,
+			    &mm->interval_tree,
+			    &drm_mm_interval_tree_augment);
+}
+#endif
+
 static void drm_mm_insert_helper(struct drm_mm_node *hole_node,
 				 struct drm_mm_node *node,
-				 u64 size, unsigned alignment,
+				 u64 size, u64 alignment,
 				 unsigned long color,
+				 u64 range_start, u64 range_end,
 				 enum drm_mm_allocator_flags flags)
 {
 	struct drm_mm *mm = hole_node->mm;
@@ -129,19 +256,21 @@ static void drm_mm_insert_helper(struct drm_mm_node *hole_node,
 	u64 adj_start = hole_start;
 	u64 adj_end = hole_end;
 
-	BUG_ON(node->allocated);
+	DRM_MM_BUG_ON(!drm_mm_hole_follows(hole_node) || node->allocated);
 
 	if (mm->color_adjust)
 		mm->color_adjust(hole_node, color, &adj_start, &adj_end);
+
+	adj_start = max(adj_start, range_start);
+	adj_end = min(adj_end, range_end);
 
 	if (flags & DRM_MM_CREATE_TOP)
 		adj_start = adj_end - size;
 
 	if (alignment) {
-		u64 tmp = adj_start;
-		unsigned rem;
+		u64 rem;
 
-		rem = do_div(tmp, alignment);
+		div64_u64_rem(adj_start, alignment, &rem);
 		if (rem) {
 			if (flags & DRM_MM_CREATE_TOP)
 				adj_start -= rem;
@@ -149,9 +278,6 @@ static void drm_mm_insert_helper(struct drm_mm_node *hole_node,
 				adj_start += alignment - rem;
 		}
 	}
-
-	BUG_ON(adj_start < hole_start);
-	BUG_ON(adj_end > hole_end);
 
 	if (adj_start == hole_start) {
 		hole_node->hole_follows = 0;
@@ -164,16 +290,24 @@ static void drm_mm_insert_helper(struct drm_mm_node *hole_node,
 	node->color = color;
 	node->allocated = 1;
 
-	INIT_LIST_HEAD(&node->hole_stack);
 	list_add(&node->node_list, &hole_node->node_list);
 
-	BUG_ON(node->start + node->size > adj_end);
+#ifdef __linux__
+	drm_mm_interval_tree_add_node(hole_node, node);
+#endif
+
+	DRM_MM_BUG_ON(node->start < range_start);
+	DRM_MM_BUG_ON(node->start < adj_start);
+	DRM_MM_BUG_ON(node->start + node->size > adj_end);
+	DRM_MM_BUG_ON(node->start + node->size > range_end);
 
 	node->hole_follows = 0;
 	if (__drm_mm_hole_node_start(node) < hole_end) {
 		list_add(&node->hole_stack, &mm->hole_stack);
 		node->hole_follows = 1;
 	}
+
+	save_stack(node);
 }
 
 /**
@@ -181,152 +315,74 @@ static void drm_mm_insert_helper(struct drm_mm_node *hole_node,
  * @mm: drm_mm allocator to insert @node into
  * @node: drm_mm_node to insert
  *
- * This functions inserts an already set-up drm_mm_node into the allocator,
- * meaning that start, size and color must be set by the caller. This is useful
- * to initialize the allocator with preallocated objects which must be set-up
- * before the range allocator can be set-up, e.g. when taking over a firmware
- * framebuffer.
+ * This functions inserts an already set-up &drm_mm_node into the allocator,
+ * meaning that start, size and color must be set by the caller. All other
+ * fields must be cleared to 0. This is useful to initialize the allocator with
+ * preallocated objects which must be set-up before the range allocator can be
+ * set-up, e.g. when taking over a firmware framebuffer.
  *
  * Returns:
  * 0 on success, -ENOSPC if there's no hole where @node is.
  */
 int drm_mm_reserve_node(struct drm_mm *mm, struct drm_mm_node *node)
 {
+	u64 end = node->start + node->size;
 	struct drm_mm_node *hole;
-	u64 end;
-	u64 hole_start;
-	u64 hole_end;
-
-	BUG_ON(node == NULL);
+	u64 hole_start, hole_end;
+	u64 adj_start, adj_end;
 
 	end = node->start + node->size;
-
-	/* Find the relevant hole to add our node to */
-	drm_mm_for_each_hole(hole, mm, hole_start, hole_end) {
-		if (hole_start > node->start || hole_end < end)
-			continue;
-
-		node->mm = mm;
-		node->allocated = 1;
-
-		INIT_LIST_HEAD(&node->hole_stack);
-		list_add(&node->node_list, &hole->node_list);
-
-		if (node->start == hole_start) {
-			hole->hole_follows = 0;
-			list_del_init(&hole->hole_stack);
-		}
-
-		node->hole_follows = 0;
-		if (end != hole_end) {
-			list_add(&node->hole_stack, &mm->hole_stack);
-			node->hole_follows = 1;
-		}
-
-		return 0;
-	}
-
-	return -ENOSPC;
-}
-EXPORT_SYMBOL(drm_mm_reserve_node);
-
-/**
- * drm_mm_insert_node_generic - search for space and insert @node
- * @mm: drm_mm to allocate from
- * @node: preallocate node to insert
- * @size: size of the allocation
- * @alignment: alignment of the allocation
- * @color: opaque tag value to use for this node
- * @sflags: flags to fine-tune the allocation search
- * @aflags: flags to fine-tune the allocation behavior
- *
- * The preallocated node must be cleared to 0.
- *
- * Returns:
- * 0 on success, -ENOSPC if there's no suitable hole.
- */
-int drm_mm_insert_node_generic(struct drm_mm *mm, struct drm_mm_node *node,
-			       u64 size, unsigned alignment,
-			       unsigned long color,
-			       enum drm_mm_search_flags sflags,
-			       enum drm_mm_allocator_flags aflags)
-{
-	struct drm_mm_node *hole_node;
-
-	hole_node = drm_mm_search_free_generic(mm, size, alignment,
-					       color, sflags);
-	if (!hole_node)
+	if (unlikely(end <= node->start))
 		return -ENOSPC;
 
-	drm_mm_insert_helper(hole_node, node, size, alignment, color, aflags);
-	return 0;
-}
-EXPORT_SYMBOL(drm_mm_insert_node_generic);
+	/* Find the relevant hole to add our node to */
+	hole = drm_mm_interval_tree_iter_first(&mm->interval_tree,
+					       node->start, ~(u64)0);
+	if (hole) {
+		if (hole->start < end)
+			return -ENOSPC;
+	} else {
+		hole = list_entry(drm_mm_nodes(mm), typeof(*hole), node_list);
+	}
 
-static void drm_mm_insert_helper_range(struct drm_mm_node *hole_node,
-				       struct drm_mm_node *node,
-				       u64 size, unsigned alignment,
-				       unsigned long color,
-				       u64 start, u64 end,
-				       enum drm_mm_allocator_flags flags)
-{
-	struct drm_mm *mm = hole_node->mm;
-	u64 hole_start = drm_mm_hole_node_start(hole_node);
-	u64 hole_end = drm_mm_hole_node_end(hole_node);
-	u64 adj_start = hole_start;
-	u64 adj_end = hole_end;
+	hole = list_last_entry(&hole->node_list, typeof(*hole), node_list);
+	if (!drm_mm_hole_follows(hole))
+		return -ENOSPC;
 
-	BUG_ON(!hole_node->hole_follows || node->allocated);
-
-	if (adj_start < start)
-		adj_start = start;
-	if (adj_end > end)
-		adj_end = end;
+	adj_start = hole_start = __drm_mm_hole_node_start(hole);
+	adj_end = hole_end = __drm_mm_hole_node_end(hole);
 
 	if (mm->color_adjust)
-		mm->color_adjust(hole_node, color, &adj_start, &adj_end);
+		mm->color_adjust(hole, node->color, &adj_start, &adj_end);
 
-	if (flags & DRM_MM_CREATE_TOP)
-		adj_start = adj_end - size;
+	if (adj_start > node->start || adj_end < end)
+		return -ENOSPC;
 
-	if (alignment) {
-		u64 tmp = adj_start;
-		unsigned rem;
-
-		rem = do_div(tmp, alignment);
-		if (rem) {
-			if (flags & DRM_MM_CREATE_TOP)
-				adj_start -= rem;
-			else
-				adj_start += alignment - rem;
-		}
-	}
-
-	if (adj_start == hole_start) {
-		hole_node->hole_follows = 0;
-		list_del(&hole_node->hole_stack);
-	}
-
-	node->start = adj_start;
-	node->size = size;
 	node->mm = mm;
-	node->color = color;
 	node->allocated = 1;
 
-	INIT_LIST_HEAD(&node->hole_stack);
-	list_add(&node->node_list, &hole_node->node_list);
+	list_add(&node->node_list, &hole->node_list);
 
-	BUG_ON(node->start < start);
-	BUG_ON(node->start < adj_start);
-	BUG_ON(node->start + node->size > adj_end);
-	BUG_ON(node->start + node->size > end);
+#ifdef __linux__
+	drm_mm_interval_tree_add_node(hole, node);
+#endif
+
+	if (node->start == hole_start) {
+		hole->hole_follows = 0;
+		list_del(&hole->hole_stack);
+	}
 
 	node->hole_follows = 0;
-	if (__drm_mm_hole_node_start(node) < hole_end) {
+	if (end != hole_end) {
 		list_add(&node->hole_stack, &mm->hole_stack);
 		node->hole_follows = 1;
 	}
+
+	save_stack(node);
+
+	return 0;
 }
+EXPORT_SYMBOL(drm_mm_reserve_node);
 
 /**
  * drm_mm_insert_node_in_range_generic - ranged search for space and insert @node
@@ -340,13 +396,13 @@ static void drm_mm_insert_helper_range(struct drm_mm_node *hole_node,
  * @sflags: flags to fine-tune the allocation search
  * @aflags: flags to fine-tune the allocation behavior
  *
- * The preallocated node must be cleared to 0.
+ * The preallocated @node must be cleared to 0.
  *
  * Returns:
  * 0 on success, -ENOSPC if there's no suitable hole.
  */
 int drm_mm_insert_node_in_range_generic(struct drm_mm *mm, struct drm_mm_node *node,
-					u64 size, unsigned alignment,
+					u64 size, u64 alignment,
 					unsigned long color,
 					u64 start, u64 end,
 					enum drm_mm_search_flags sflags,
@@ -354,15 +410,18 @@ int drm_mm_insert_node_in_range_generic(struct drm_mm *mm, struct drm_mm_node *n
 {
 	struct drm_mm_node *hole_node;
 
+	if (WARN_ON(size == 0))
+		return -EINVAL;
+
 	hole_node = drm_mm_search_free_in_range_generic(mm,
 							size, alignment, color,
 							start, end, sflags);
 	if (!hole_node)
 		return -ENOSPC;
 
-	drm_mm_insert_helper_range(hole_node, node,
-				   size, alignment, color,
-				   start, end, aflags);
+	drm_mm_insert_helper(hole_node, node,
+			     size, alignment, color,
+			     start, end, aflags);
 	return 0;
 }
 EXPORT_SYMBOL(drm_mm_insert_node_in_range_generic);
@@ -373,52 +432,51 @@ EXPORT_SYMBOL(drm_mm_insert_node_in_range_generic);
  *
  * This just removes a node from its drm_mm allocator. The node does not need to
  * be cleared again before it can be re-inserted into this or any other drm_mm
- * allocator. It is a bug to call this function on a un-allocated node.
+ * allocator. It is a bug to call this function on a unallocated node.
  */
 void drm_mm_remove_node(struct drm_mm_node *node)
 {
 	struct drm_mm *mm = node->mm;
 	struct drm_mm_node *prev_node;
 
-	if (WARN_ON(!node->allocated))
-		return;
-
-	BUG_ON(node->scanned_block || node->scanned_prev_free
-				   || node->scanned_next_free);
+	DRM_MM_BUG_ON(!node->allocated);
+	DRM_MM_BUG_ON(node->scanned_block);
 
 	prev_node =
 	    list_entry(node->node_list.prev, struct drm_mm_node, node_list);
 
-	if (node->hole_follows) {
-		BUG_ON(__drm_mm_hole_node_start(node) ==
-		       __drm_mm_hole_node_end(node));
+	if (drm_mm_hole_follows(node)) {
+		DRM_MM_BUG_ON(__drm_mm_hole_node_start(node) ==
+			      __drm_mm_hole_node_end(node));
 		list_del(&node->hole_stack);
-	} else
-		BUG_ON(__drm_mm_hole_node_start(node) !=
-		       __drm_mm_hole_node_end(node));
+	} else {
+		DRM_MM_BUG_ON(__drm_mm_hole_node_start(node) !=
+			      __drm_mm_hole_node_end(node));
+	}
 
-
-	if (!prev_node->hole_follows) {
+	if (!drm_mm_hole_follows(prev_node)) {
 		prev_node->hole_follows = 1;
 		list_add(&prev_node->hole_stack, &mm->hole_stack);
 	} else
 		list_move(&prev_node->hole_stack, &mm->hole_stack);
 
+#ifdef __linux__
+	drm_mm_interval_tree_remove(node, &mm->interval_tree);
+#endif
 	list_del(&node->node_list);
 	node->allocated = 0;
 }
 EXPORT_SYMBOL(drm_mm_remove_node);
 
-static int check_free_hole(u64 start, u64 end, u64 size, unsigned alignment)
+static int check_free_hole(u64 start, u64 end, u64 size, u64 alignment)
 {
 	if (end - start < size)
 		return 0;
 
 	if (alignment) {
-		u64 tmp = start;
-		unsigned rem;
+		u64 rem;
 
-		rem = do_div(tmp, alignment);
+		div64_u64_rem(start, alignment, &rem);
 		if (rem)
 			start += alignment - rem;
 	}
@@ -426,51 +484,9 @@ static int check_free_hole(u64 start, u64 end, u64 size, unsigned alignment)
 	return end >= start + size;
 }
 
-static struct drm_mm_node *drm_mm_search_free_generic(const struct drm_mm *mm,
-						      u64 size,
-						      unsigned alignment,
-						      unsigned long color,
-						      enum drm_mm_search_flags flags)
-{
-	struct drm_mm_node *entry;
-	struct drm_mm_node *best;
-	u64 adj_start;
-	u64 adj_end;
-	u64 best_size;
-
-	BUG_ON(mm->scan_active);
-
-	best = NULL;
-	best_size = ~0UL;
-
-	__drm_mm_for_each_hole(entry, mm, adj_start, adj_end,
-			       flags & DRM_MM_SEARCH_BELOW) {
-		u64 hole_size = adj_end - adj_start;
-
-		if (mm->color_adjust) {
-			mm->color_adjust(entry, color, &adj_start, &adj_end);
-			if (adj_end <= adj_start)
-				continue;
-		}
-
-		if (!check_free_hole(adj_start, adj_end, size, alignment))
-			continue;
-
-		if (!(flags & DRM_MM_SEARCH_BEST))
-			return entry;
-
-		if (hole_size < best_size) {
-			best = entry;
-			best_size = hole_size;
-		}
-	}
-
-	return best;
-}
-
 static struct drm_mm_node *drm_mm_search_free_in_range_generic(const struct drm_mm *mm,
 							u64 size,
-							unsigned alignment,
+							u64 alignment,
 							unsigned long color,
 							u64 start,
 							u64 end,
@@ -482,7 +498,7 @@ static struct drm_mm_node *drm_mm_search_free_in_range_generic(const struct drm_
 	u64 adj_end;
 	u64 best_size;
 
-	BUG_ON(mm->scan_active);
+	DRM_MM_BUG_ON(mm->scan_active);
 
 	best = NULL;
 	best_size = ~0UL;
@@ -491,16 +507,14 @@ static struct drm_mm_node *drm_mm_search_free_in_range_generic(const struct drm_
 			       flags & DRM_MM_SEARCH_BELOW) {
 		u64 hole_size = adj_end - adj_start;
 
-		if (adj_start < start)
-			adj_start = start;
-		if (adj_end > end)
-			adj_end = end;
-
 		if (mm->color_adjust) {
 			mm->color_adjust(entry, color, &adj_start, &adj_end);
 			if (adj_end <= adj_start)
 				continue;
 		}
+
+		adj_start = max(adj_start, start);
+		adj_end = min(adj_end, end);
 
 		if (!check_free_hole(adj_start, adj_end, size, alignment))
 			continue;
@@ -528,13 +542,19 @@ static struct drm_mm_node *drm_mm_search_free_in_range_generic(const struct drm_
  */
 void drm_mm_replace_node(struct drm_mm_node *old, struct drm_mm_node *new)
 {
+	DRM_MM_BUG_ON(!old->allocated);
+
 	list_replace(&old->node_list, &new->node_list);
 	list_replace(&old->hole_stack, &new->hole_stack);
+#ifdef __linux__
+	rb_replace_node(&old->rb, &new->rb, &old->mm->interval_tree);
+#endif
 	new->hole_follows = old->hole_follows;
 	new->mm = old->mm;
 	new->start = old->start;
 	new->size = old->size;
 	new->color = old->color;
+	new->__subtree_last = old->__subtree_last;
 
 	old->allocated = 0;
 	new->allocated = 1;
@@ -582,7 +602,7 @@ EXPORT_SYMBOL(drm_mm_replace_node);
  * @color: opaque tag value to use for the allocation
  * @start: start of the allowed range for the allocation
  * @end: end of the allowed range for the allocation
- * @mode: fine-tune the allocation search and placement
+ * @flags: flags to specify how the allocation will be performed afterwards
  *
  * This simply sets up the scanning routines with the parameters for the desired
  * hole.
@@ -598,7 +618,7 @@ void drm_mm_scan_init_with_range(struct drm_mm_scan *scan,
 				 unsigned long color,
 				 u64 start,
 				 u64 end,
-				 enum drm_mm_insert_mode mode)
+				 unsigned int flags)
 {
 	DRM_MM_BUG_ON(start >= end);
 	DRM_MM_BUG_ON(!size || size > end - start);
@@ -613,7 +633,7 @@ void drm_mm_scan_init_with_range(struct drm_mm_scan *scan,
 	scan->alignment = alignment;
 	scan->remainder_mask = is_power_of_2(alignment) ? alignment - 1 : 0;
 	scan->size = size;
-	scan->mode = mode;
+	scan->flags = flags;
 
 	DRM_MM_BUG_ON(end <= start);
 	scan->range_start = start;
@@ -672,7 +692,7 @@ bool drm_mm_scan_add_block(struct drm_mm_scan *scan,
 	if (adj_end <= adj_start || adj_end - adj_start < scan->size)
 		return false;
 
-	if (scan->mode == DRM_MM_INSERT_HIGH)
+	if (scan->flags == DRM_MM_CREATE_TOP)
 		adj_start = adj_end - scan->size;
 
 	if (scan->alignment) {
@@ -684,7 +704,7 @@ bool drm_mm_scan_add_block(struct drm_mm_scan *scan,
 			div64_u64_rem(adj_start, scan->alignment, &rem);
 		if (rem) {
 			adj_start -= rem;
-			if (scan->mode != DRM_MM_INSERT_HIGH)
+			if (scan->flags != DRM_MM_CREATE_TOP)
 				adj_start += scan->alignment;
 			if (adj_start < max(col_start, scan->range_start) ||
 			    min(col_end, scan->range_end) - adj_start < scan->size)
@@ -796,22 +816,6 @@ struct drm_mm_node *drm_mm_scan_color_evict(struct drm_mm_scan *scan)
 EXPORT_SYMBOL(drm_mm_scan_color_evict);
 
 /**
- * drm_mm_clean - checks whether an allocator is clean
- * @mm: drm_mm allocator to check
- *
- * Returns:
- * True if the allocator is completely free, false if there's still a node
- * allocated in it.
- */
-bool drm_mm_clean(const struct drm_mm * mm)
-{
-	struct list_head *head = &mm->head_node.node_list;
-
-	return (head->next->next == head);
-}
-EXPORT_SYMBOL(drm_mm_clean);
-
-/**
  * drm_mm_init - initialize a drm-mm allocator
  * @mm: the drm_mm structure to initialize
  * @start: start of the range managed by @mm
@@ -821,20 +825,21 @@ EXPORT_SYMBOL(drm_mm_clean);
  */
 void drm_mm_init(struct drm_mm *mm, u64 start, u64 size)
 {
+	DRM_MM_BUG_ON(start + size <= start);
+
 	INIT_LIST_HEAD(&mm->hole_stack);
 	mm->scan_active = 0;
 
 	/* Clever trick to avoid a special case in the free hole tracking. */
 	INIT_LIST_HEAD(&mm->head_node.node_list);
-	INIT_LIST_HEAD(&mm->head_node.hole_stack);
+	mm->head_node.allocated = 0;
 	mm->head_node.hole_follows = 1;
-	mm->head_node.scanned_block = 0;
-	mm->head_node.scanned_prev_free = 0;
-	mm->head_node.scanned_next_free = 0;
 	mm->head_node.mm = mm;
 	mm->head_node.start = start + size;
 	mm->head_node.size = start - mm->head_node.start;
 	list_add_tail(&mm->head_node.hole_stack, &mm->hole_stack);
+
+	mm->interval_tree = RB_ROOT;
 
 	mm->color_adjust = NULL;
 }
@@ -847,15 +852,15 @@ EXPORT_SYMBOL(drm_mm_init);
  * Note that it is a bug to call this function on an allocator which is not
  * clean.
  */
-void drm_mm_takedown(struct drm_mm * mm)
+void drm_mm_takedown(struct drm_mm *mm)
 {
-	WARN(!list_empty(&mm->head_node.node_list),
-	     "Memory manager not clean during takedown.\n");
+	if (WARN(!drm_mm_clean(mm),
+		 "Memory manager not clean during takedown.\n"))
+		show_leaks(mm);
 }
 EXPORT_SYMBOL(drm_mm_takedown);
 
-static u64 drm_mm_debug_hole(const struct drm_mm_node *entry,
-			     const char *prefix)
+static u64 drm_mm_dump_hole(struct drm_printer *p, const struct drm_mm_node *entry)
 {
 	u64 hole_start, hole_end, hole_size;
 
@@ -863,54 +868,14 @@ static u64 drm_mm_debug_hole(const struct drm_mm_node *entry,
 		hole_start = drm_mm_hole_node_start(entry);
 		hole_end = drm_mm_hole_node_end(entry);
 		hole_size = hole_end - hole_start;
-		pr_debug("%s %#llx-%#llx: %llu: free\n", prefix, hole_start,
-			 hole_end, hole_size);
+		drm_printf(p, "%#018llx-%#018llx: %llu: free\n", hole_start,
+			   hole_end, hole_size);
 		return hole_size;
 	}
 
 	return 0;
 }
 
-/**
- * drm_mm_debug_table - dump allocator state to dmesg
- * @mm: drm_mm allocator to dump
- * @prefix: prefix to use for dumping to dmesg
- */
-void drm_mm_debug_table(const struct drm_mm *mm, const char *prefix)
-{
-	struct drm_mm_node *entry;
-	u64 total_used = 0, total_free = 0, total = 0;
-
-	total_free += drm_mm_debug_hole(&mm->head_node, prefix);
-
-	drm_mm_for_each_node(entry, mm) {
-		pr_debug("%s %#llx-%#llx: %llu: used\n", prefix, entry->start,
-			 entry->start + entry->size, entry->size);
-		total_used += entry->size;
-		total_free += drm_mm_debug_hole(entry, prefix);
-	}
-	total = total_free + total_used;
-
-	pr_debug("%s total: %llu, used %llu free %llu\n", prefix, total,
-		 total_used, total_free);
-}
-EXPORT_SYMBOL(drm_mm_debug_table);
-
-static u64 drm_mm_dump_hole(struct drm_printer *p, const struct drm_mm_node *entry)
-{
-	u64 start, end, size;
-
-	if (entry->hole_follows) {
-		start = drm_mm_hole_node_start(entry);
-		end = drm_mm_hole_node_end(entry);
-		size = end - start;
-		drm_printf(p, "%#018llx-%#018llx: %llu: free\n",
-			   start, start + size, size);
-		return size;
-	}
-
-	return 0;
-}
 /**
  * drm_mm_print - print allocator state
  * @mm: drm_mm allocator to print
