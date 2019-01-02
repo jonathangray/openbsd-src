@@ -274,7 +274,11 @@ struct drm_gpu_scheduler {
 	wait_queue_head_t		job_scheduled;
 	atomic_t			hw_rq_count;
 	atomic64_t			job_id_count;
+#ifdef __linux__
 	struct task_struct		*thread;
+#else
+	struct proc			*thread;
+#endif
 	struct list_head		ring_mirror_list;
 	spinlock_t			job_list_lock;
 	int				hang_limit;

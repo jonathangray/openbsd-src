@@ -57,6 +57,8 @@
 #define CREATE_TRACE_POINTS
 #include "gpu_scheduler_trace.h"
 
+#include <sys/kthread.h>
+
 #define to_drm_sched_job(sched_job)		\
 		container_of((sched_job), struct drm_sched_job, queue_node)
 
@@ -865,27 +867,41 @@ static bool drm_sched_blocked(struct drm_gpu_scheduler *sched)
  *
  * Returns 0.
  */
+#ifdef __linux__
 static int drm_sched_main(void *param)
+#else
+static void drm_sched_main(void *param)
+#endif
 {
-	STUB();
-	return -ENOSYS;
-#if 0
+#ifdef __linux__
 	struct sched_param sparam = {.sched_priority = 1};
+#endif
 	struct drm_gpu_scheduler *sched = (struct drm_gpu_scheduler *)param;
 	int r;
 
+#ifdef __linux__
 	sched_setscheduler(current, SCHED_FIFO, &sparam);
 
 	while (!kthread_should_stop()) {
+#else
+	while (1) {
+#endif
+
 		struct drm_sched_entity *entity = NULL;
 		struct drm_sched_fence *s_fence;
 		struct drm_sched_job *sched_job;
 		struct dma_fence *fence;
 
+#ifdef __linux__
 		wait_event_interruptible(sched->wake_up_worker,
 					 (!drm_sched_blocked(sched) &&
 					  (entity = drm_sched_select_entity(sched))) ||
 					 kthread_should_stop());
+#else
+		wait_event_interruptible(sched->wake_up_worker,
+					 (!drm_sched_blocked(sched) &&
+					  (entity = drm_sched_select_entity(sched))));
+#endif
 
 		if (!entity)
 			continue;
@@ -918,6 +934,7 @@ static int drm_sched_main(void *param)
 
 		wake_up(&sched->job_scheduled);
 	}
+#ifdef __linux__
 	return 0;
 #endif
 }
@@ -947,6 +964,7 @@ int drm_sched_init(struct drm_gpu_scheduler *sched,
 	sched->name = name;
 	sched->timeout = timeout;
 	sched->hang_limit = hang_limit;
+	int r;
 	for (i = DRM_SCHED_PRIORITY_MIN; i < DRM_SCHED_PRIORITY_MAX; i++)
 		drm_sched_rq_init(sched, &sched->sched_rq[i]);
 
@@ -957,13 +975,18 @@ int drm_sched_init(struct drm_gpu_scheduler *sched,
 	atomic_set(&sched->hw_rq_count, 0);
 	atomic64_set(&sched->job_id_count, 0);
 
-STUB();
 	/* Each scheduler will run on a seperate kernel thread */
 #ifdef notyet
 	sched->thread = kthread_run(drm_sched_main, sched, sched->name);
 	if (IS_ERR(sched->thread)) {
 		DRM_ERROR("Failed to create scheduler for %s.\n", name);
 		return PTR_ERR(sched->thread);
+	}
+#else
+	r = kthread_create(drm_sched_main, sched, &sched->thread, sched->name);
+	if (r != 0) {
+		DRM_ERROR("Failed to create scheduler for %s.\n", name);
+		return -r;
 	}
 #endif
 
