@@ -296,7 +296,8 @@ void amdgpu_io_wreg(struct amdgpu_device *adev, u32 reg, u32 v)
 u32 amdgpu_mm_rdoorbell(struct amdgpu_device *adev, u32 index)
 {
 	if (index < adev->doorbell.num_doorbells) {
-		return readl(adev->doorbell.ptr + index);
+		return bus_space_read_4(adev->doorbell.bst, adev->doorbell.bsh,
+		    index);
 	} else {
 		DRM_ERROR("reading beyond doorbell aperture: 0x%08x!\n", index);
 		return 0;
@@ -316,7 +317,8 @@ u32 amdgpu_mm_rdoorbell(struct amdgpu_device *adev, u32 index)
 void amdgpu_mm_wdoorbell(struct amdgpu_device *adev, u32 index, u32 v)
 {
 	if (index < adev->doorbell.num_doorbells) {
-		writel(v, adev->doorbell.ptr + index);
+		bus_space_write_4(adev->doorbell.bst, adev->doorbell.bsh,
+		    index, v);
 	} else {
 		DRM_ERROR("writing beyond doorbell aperture: 0x%08x!\n", index);
 	}
@@ -334,7 +336,8 @@ void amdgpu_mm_wdoorbell(struct amdgpu_device *adev, u32 index, u32 v)
 u64 amdgpu_mm_rdoorbell64(struct amdgpu_device *adev, u32 index)
 {
 	if (index < adev->doorbell.num_doorbells) {
-		return atomic64_read((atomic64_t *)(adev->doorbell.ptr + index));
+		return bus_space_read_8(adev->doorbell.bst, adev->doorbell.bsh,
+		    index);
 	} else {
 		DRM_ERROR("reading beyond doorbell aperture: 0x%08x!\n", index);
 		return 0;
@@ -354,7 +357,8 @@ u64 amdgpu_mm_rdoorbell64(struct amdgpu_device *adev, u32 index)
 void amdgpu_mm_wdoorbell64(struct amdgpu_device *adev, u32 index, u64 v)
 {
 	if (index < adev->doorbell.num_doorbells) {
-		atomic64_set((atomic64_t *)(adev->doorbell.ptr + index), v);
+		bus_space_write_8(adev->doorbell.bst, adev->doorbell.bsh,
+		    index, v);
 	} else {
 		DRM_ERROR("writing beyond doorbell aperture: 0x%08x!\n", index);
 	}
@@ -530,7 +534,9 @@ static int amdgpu_device_doorbell_init(struct amdgpu_device *adev)
 		adev->doorbell.base = 0;
 		adev->doorbell.size = 0;
 		adev->doorbell.num_doorbells = 0;
+#ifdef __linux__
 		adev->doorbell.ptr = NULL;
+#endif
 		return 0;
 	}
 
@@ -570,12 +576,12 @@ static void amdgpu_device_doorbell_fini(struct amdgpu_device *adev)
 {
 #ifdef __linux__
 	iounmap(adev->doorbell.ptr);
+	adev->doorbell.ptr = NULL;
 #else
 	if (adev->doorbell.size > 0)
 		bus_space_unmap(adev->doorbell.bst, adev->doorbell.bsh,
 		    adev->doorbell.size);
 #endif
-	adev->doorbell.ptr = NULL;
 }
 
 

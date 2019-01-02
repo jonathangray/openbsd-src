@@ -1433,16 +1433,10 @@ amdgpu_attach(struct device *parent, struct device *self, void *aux)
 	if (adev->family >= CHIP_BONAIRE) {
 		type = pci_mapreg_type(pa->pa_pc, pa->pa_tag, 0x18);
 		if (PCI_MAPREG_TYPE(type) != PCI_MAPREG_TYPE_MEM ||
-		    pci_mapreg_map(pa, 0x18, type, BUS_SPACE_MAP_LINEAR,
+		    pci_mapreg_map(pa, 0x18, type, 0,
 		    &adev->doorbell.bst, &adev->doorbell.bsh,
 		    &adev->doorbell.base, &adev->doorbell.size, 0)) {
 			printf(": can't map doorbell space\n");
-			return;
-		}
-		adev->doorbell.ptr = bus_space_vaddr(adev->doorbell.bst,
-		    adev->doorbell.bsh);
-		if (adev->doorbell.ptr == NULL) {
-			printf(": bus_space_vaddr doorbell failed\n");
 			return;
 		}
 	}
