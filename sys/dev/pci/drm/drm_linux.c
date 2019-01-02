@@ -46,54 +46,12 @@ void *sch_ident;
 int sch_priority;
 
 void
-flush_barrier(void *arg)
-{
-	int *barrier = arg;
-
-	*barrier = 1;
-	wakeup(barrier);
-}
-
-void
-flush_block(void *arg)
-{
-	struct sleep_state sls;
-	int *barrier = arg;
-
-	while (!(*barrier)) {
-		sleep_setup(&sls, barrier, PWAIT, "flwqblk");
-		sleep_finish(&sls, !(*barrier));
-	}
-}
-
-void
-flush_taskq(struct taskq *tq)
-{
-	struct sleep_state sls;
-	struct task task;
-	struct task block;
-	int barrier = 0;
-
-	if (tq == (struct taskq *)system_wq) {
-		task_set(&block, flush_block, &barrier);
-		task_add(tq, &block);
-	}
-
-	task_set(&task, flush_barrier, &barrier);
-	task_add(tq, &task);
-	while (!barrier) {
-		sleep_setup(&sls, &barrier, PWAIT, "flwqbar");
-		sleep_finish(&sls, !barrier);
-	}
-}
-
-void
 flush_workqueue(struct workqueue_struct *wq)
 {
 	if (cold)
 		return;
 
-	flush_taskq((struct taskq *)wq);
+	taskq_barrier((struct taskq *)wq);
 }
 
 bool
@@ -102,7 +60,7 @@ flush_work(struct work_struct *work)
 	if (cold)
 		return false;
 
-	flush_taskq(work->tq);
+	taskq_barrier(work->tq);
 	return false;
 }
 
@@ -115,7 +73,7 @@ flush_delayed_work(struct delayed_work *dwork)
 	while (timeout_pending(&dwork->to))
 		tsleep(dwork, PWAIT, "fldwto", 1);
 
-	flush_taskq(dwork->tq ? dwork->tq : (struct taskq *)system_wq);
+	taskq_barrier(dwork->tq ? dwork->tq : (struct taskq *)system_wq);
 	return true;
 }
 
@@ -1185,13 +1143,8 @@ void
 drm_linux_init(void)
 {
 	if (system_wq == NULL) {
-		/*
-		 * We need at least two threads to prevent
-		 * intel_hpd_init_work() from blocking other work
-		 * items in inteldrm(4).
-		 */
 		system_wq = (struct workqueue_struct *)
-		    taskq_create("drmwq", 2, IPL_HIGH, 0);
+		    taskq_create("drmwq", 1, IPL_HIGH, 0);
 	}
 	if (system_unbound_wq == NULL) {
 		system_unbound_wq = (struct workqueue_struct *)
