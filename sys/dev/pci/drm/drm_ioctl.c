@@ -42,6 +42,7 @@
 
 #include <linux/pci.h>
 #include <linux/export.h>
+#include <linux/nospec.h>
 
 int	drm_setunique(struct drm_device *, void *, struct drm_file *);
 
