@@ -1454,15 +1454,10 @@ amdgpu_attach(struct device *parent, struct device *self, void *aux)
 
 	type = pci_mapreg_type(pa->pa_pc, pa->pa_tag, rmmio_bar);
 	if (PCI_MAPREG_TYPE(type) != PCI_MAPREG_TYPE_MEM ||
-	    pci_mapreg_map(pa, rmmio_bar, type, BUS_SPACE_MAP_LINEAR,
+	    pci_mapreg_map(pa, rmmio_bar, type, 0,
 	    &adev->rmmio_bst, &adev->rmmio_bsh, &adev->rmmio_base,
 	    &adev->rmmio_size, 0)) {
 		printf(": can't map rmmio space\n");
-		return;
-	}
-	adev->rmmio = bus_space_vaddr(adev->rmmio_bst, adev->rmmio_bsh);
-	if (adev->rmmio == NULL) {
-		printf(": bus_space_vaddr rmmio failed\n");
 		return;
 	}
 

@@ -132,13 +132,16 @@ uint32_t amdgpu_mm_rreg(struct amdgpu_device *adev, uint32_t reg,
 		return amdgpu_virt_kiq_rreg(adev, reg);
 
 	if ((reg * 4) < adev->rmmio_size && !(acc_flags & AMDGPU_REGS_IDX))
-		ret = readl(((void __iomem *)adev->rmmio) + (reg * 4));
+		ret = bus_space_read_4(adev->rmmio_bst, adev->rmmio_bsh,
+		    reg * 4);
 	else {
 		unsigned long flags;
 
 		spin_lock_irqsave(&adev->mmio_idx_lock, flags);
-		writel((reg * 4), ((void __iomem *)adev->rmmio) + (mmMM_INDEX * 4));
-		ret = readl(((void __iomem *)adev->rmmio) + (mmMM_DATA * 4));
+		bus_space_write_4(adev->rmmio_bst, adev->rmmio_bsh,
+		    mmMM_INDEX * 4, reg * 4);
+		ret = bus_space_read_4(adev->rmmio_bst, adev->rmmio_bsh,
+		    mmMM_DATA * 4);
 		spin_unlock_irqrestore(&adev->mmio_idx_lock, flags);
 	}
 	trace_amdgpu_mm_rreg(adev->pdev->device, reg, ret);
@@ -161,7 +164,8 @@ uint32_t amdgpu_mm_rreg(struct amdgpu_device *adev, uint32_t reg,
  */
 uint8_t amdgpu_mm_rreg8(struct amdgpu_device *adev, uint32_t offset) {
 	if (offset < adev->rmmio_size)
-		return (readb(adev->rmmio + offset));
+		return bus_space_read_1(adev->rmmio_bst, adev->rmmio_bsh, 
+		    offset);
 	BUG();
 }
 
@@ -182,7 +186,8 @@ uint8_t amdgpu_mm_rreg8(struct amdgpu_device *adev, uint32_t offset) {
  */
 void amdgpu_mm_wreg8(struct amdgpu_device *adev, uint32_t offset, uint8_t value) {
 	if (offset < adev->rmmio_size)
-		writeb(value, adev->rmmio + offset);
+		bus_space_write_1(adev->rmmio_bst, adev->rmmio_bsh,
+		    offset, value);
 	else
 		BUG();
 }
@@ -210,13 +215,16 @@ void amdgpu_mm_wreg(struct amdgpu_device *adev, uint32_t reg, uint32_t v,
 		return amdgpu_virt_kiq_wreg(adev, reg, v);
 
 	if ((reg * 4) < adev->rmmio_size && !(acc_flags & AMDGPU_REGS_IDX))
-		writel(v, ((void __iomem *)adev->rmmio) + (reg * 4));
+		bus_space_write_4(adev->rmmio_bst, adev->rmmio_bsh,
+		    reg * 4, v);
 	else {
 		unsigned long flags;
 
 		spin_lock_irqsave(&adev->mmio_idx_lock, flags);
-		writel((reg * 4), ((void __iomem *)adev->rmmio) + (mmMM_INDEX * 4));
-		writel(v, ((void __iomem *)adev->rmmio) + (mmMM_DATA * 4));
+		bus_space_write_4(adev->rmmio_bst, adev->rmmio_bsh,
+		    mmMM_INDEX * 4, reg * 4);
+		bus_space_write_4(adev->rmmio_bst, adev->rmmio_bsh,
+		    mmMM_DATA * 4, v);
 		spin_unlock_irqrestore(&adev->mmio_idx_lock, flags);
 	}
 
