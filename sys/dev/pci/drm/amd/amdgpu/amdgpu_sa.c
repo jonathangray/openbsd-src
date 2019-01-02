@@ -274,9 +274,6 @@ int amdgpu_sa_bo_new(struct amdgpu_sa_manager *sa_manager,
 		     struct amdgpu_sa_bo **sa_bo,
 		     unsigned size, unsigned align)
 {
-	STUB();
-	return -ENOSYS;
-#if 0
 	struct dma_fence *fences[AMDGPU_SA_NUM_FENCE_LISTS];
 	unsigned tries[AMDGPU_SA_NUM_FENCE_LISTS];
 	unsigned count;
@@ -322,9 +319,14 @@ int amdgpu_sa_bo_new(struct amdgpu_sa_manager *sa_manager,
 
 		if (count) {
 			spin_unlock(&sa_manager->wq.lock);
+#ifdef notyet
 			t = dma_fence_wait_any_timeout(fences, count, false,
 						       MAX_SCHEDULE_TIMEOUT,
 						       NULL);
+#else
+			STUB();
+			t = -EINVAL;
+#endif
 			for (i = 0; i < count; ++i)
 				dma_fence_put(fences[i]);
 
@@ -344,7 +346,6 @@ int amdgpu_sa_bo_new(struct amdgpu_sa_manager *sa_manager,
 	kfree(*sa_bo);
 	*sa_bo = NULL;
 	return r;
-#endif
 }
 
 void amdgpu_sa_bo_free(struct amdgpu_device *adev, struct amdgpu_sa_bo **sa_bo,
