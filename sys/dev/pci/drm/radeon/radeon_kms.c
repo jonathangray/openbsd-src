@@ -829,6 +829,11 @@ radeondrm_attachhook(struct device *self)
 
 	config_found_sm(&rdev->self, &aa, wsemuldisplaydevprint,
 	    wsemuldisplaydevsubmatch);
+
+	/*
+	 * in linux via radeon_pci_probe -> drm_get_pci_dev -> drm_dev_register
+	 */
+	drm_dev_register(rdev->ddev, rdev->flags);
 }
 }
 
