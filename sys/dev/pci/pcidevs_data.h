@@ -2,7 +2,7 @@
  * THIS FILE AUTOMATICALLY GENERATED.  DO NOT EDIT.
  *
  * generated from:
- *	OpenBSD: pcidevs,v 1.1870 2018/11/30 19:18:31 mlarkin Exp 
+ *	OpenBSD: pcidevs,v 1.1873 2018/12/18 04:25:16 tedu Exp 
  */
 
 /*	$NetBSD: pcidevs,v 1.30 1997/06/24 06:20:24 thorpej Exp $	*/
@@ -16440,7 +16440,11 @@ static const struct pci_known_product pci_known_products[] = {
 	    "Iris Plus Graphics 650",
 	},
 	{
-	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_APOLLOLAKE_IGD,
+	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_APOLLOLAKE_IGD_1,
+	    "HD Graphics 505",
+	},
+	{
+	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_APOLLOLAKE_IGD_2,
 	    "HD Graphics 500",
 	},
 	{
@@ -16474,6 +16478,18 @@ static const struct pci_known_product pci_known_products[] = {
 	{
 	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_APOLLOLAKE_SPI_3,
 	    "Apollo Lake SPI",
+	},
+	{
+	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_APOLLOLAKE_SDMMC,
+	    "Apollo Lake SD/MMC",
+	},
+	{
+	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_APOLLOLAKE_EMMC,
+	    "Apollo Lake eMMC",
+	},
+	{
+	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_APOLLOLAKE_SDIO,
+	    "Apollo Lake SDIO",
 	},
 	{
 	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_APOLLOLAKE_SMB,
@@ -18064,6 +18080,10 @@ static const struct pci_known_product pci_known_products[] = {
 	    "200 Series HD Audio",
 	},
 	{
+	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_WL_9560_1,
+	    "Dual Band Wireless AC 9560",
+	},
+	{
 	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_PINEVIEW_DMI,
 	    "Pineview DMI",
 	},
@@ -18254,6 +18274,10 @@ static const struct pci_known_product pci_known_products[] = {
 	{
 	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_CM236_LPC,
 	    "CM236 LPC",
+	},
+	{
+	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_HM175_LPC,
+	    "HM175 LPC",
 	},
 	{
 	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_CM238_LPC,
@@ -23098,6 +23122,10 @@ static const struct pci_known_product pci_known_products[] = {
 	{
 	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_QUADROM1200,
 	    "Quadro M1200",
+	},
+	{
+	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_GEFORCEGTX1050M,
+	    "Geforce GTX 1050M",
 	},
 	{
 	    PCI_VENDOR_OAKTECH, PCI_PRODUCT_OAKTECH_OTI1007,

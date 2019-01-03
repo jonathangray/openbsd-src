@@ -1,4 +1,4 @@
-/*	$OpenBSD: main.c,v 1.216 2018/12/14 05:17:45 schwarze Exp $ */
+/*	$OpenBSD: main.c,v 1.219 2019/01/01 08:18:06 schwarze Exp $ */
 /*
  * Copyright (c) 2008-2012 Kristaps Dzonsons <kristaps@bsd.lv>
  * Copyright (c) 2010-2012, 2014-2018 Ingo Schwarze <schwarze@openbsd.org>
@@ -117,7 +117,7 @@ main(int argc, char *argv[])
 	struct manpage	*res, *resp;
 	const char	*progname, *sec, *thisarg;
 	char		*conf_file, *defpaths, *auxpaths;
-	char		*oarg;
+	char		*oarg, *tagarg;
 	unsigned char	*uc;
 	size_t		 i, sz;
 	int		 prio, best_prio;
@@ -284,6 +284,9 @@ main(int argc, char *argv[])
 		}
 	}
 
+	if (curp.outtype != OUTT_TREE || !curp.outopts->noval)
+		options |= MPARSE_VALIDATE;
+
 	if (outmode == OUTMODE_FLN ||
 	    outmode == OUTMODE_LST ||
 	    !isatty(STDOUT_FILENO))
@@ -335,6 +338,17 @@ main(int argc, char *argv[])
 			search.arch = getenv("MACHINE");
 		if (search.arch == NULL)
 			search.arch = MACHINE;
+	}
+
+	/*
+	 * Use the first argument for -O tag in addition to
+	 * using it as a search term for man(1) or apropos(1).
+	 */
+
+	if (conf.output.tag != NULL && *conf.output.tag == '\0') {
+		tagarg = argc > 0 && search.argmode == ARG_EXPR ?
+		    strchr(*argv, '=') : NULL;
+		conf.output.tag = tagarg == NULL ? *argv : tagarg + 1;
 	}
 
 	/* man(1), whatis(1), apropos(1) */
@@ -447,8 +461,10 @@ main(int argc, char *argv[])
 	curp.mp = mparse_alloc(options, curp.os_e, curp.os_s);
 
 	if (argc < 1) {
-		if (use_pager)
+		if (use_pager) {
 			tag_files = tag_init();
+			tag_files->tagname = conf.output.tag;
+		}
 		thisarg = "<stdin>";
 		mandoc_msg_setinfilename(thisarg);
 		parse(&curp, STDIN_FILENO, thisarg);
@@ -480,24 +496,21 @@ main(int argc, char *argv[])
 		} else
 			thisarg = *argv;
 
-		mandoc_msg_setinfilename(thisarg);
 		fd = mparse_open(curp.mp, thisarg);
 		if (fd != -1) {
 			if (use_pager) {
 				use_pager = 0;
 				tag_files = tag_init();
-				if (conf.output.tag != NULL &&
-				    tag_files->tagname == NULL)
-					tag_files->tagname =
-					    *conf.output.tag != '\0' ?
-					    conf.output.tag : *argv;
+				tag_files->tagname = conf.output.tag;
 			}
 
+			mandoc_msg_setinfilename(thisarg);
 			if (resp == NULL || resp->form == FORM_SRC)
 				parse(&curp, fd, thisarg);
 			else
 				passthrough(resp->file, fd,
 				    conf.output.synopsisonly);
+			mandoc_msg_setinfilename(NULL);
 
 			if (ferror(stdout)) {
 				if (tag_files != NULL) {
@@ -515,8 +528,9 @@ main(int argc, char *argv[])
 					outdata_alloc(&curp);
 				terminal_sepline(curp.outdata);
 			}
-		}
-		mandoc_msg_setinfilename(NULL);
+		} else
+			mandoc_msg(MANDOCERR_FILE, 0, 0,
+			    "%s", strerror(errno));
 
 		if (curp.wstop && mandoc_msg_getrc() != MANDOCLEVEL_OK)
 			break;
@@ -769,7 +783,7 @@ fs_search(const struct mansearch *cfg, const struct manpaths *paths,
 static void
 parse(struct curparse *curp, int fd, const char *file)
 {
-	struct roff_man	 *man;
+	struct roff_meta *meta;
 
 	/* Begin by parsing the file itself. */
 
@@ -791,49 +805,43 @@ parse(struct curparse *curp, int fd, const char *file)
 	if (curp->outdata == NULL)
 		outdata_alloc(curp);
 
-	mparse_result(curp->mp, &man, NULL);
+	mandoc_xr_reset();
+	meta = mparse_result(curp->mp);
 
 	/* Execute the out device, if it exists. */
 
-	if (man == NULL)
-		return;
-	mandoc_xr_reset();
-	if (man->macroset == MACROSET_MDOC) {
-		if (curp->outtype != OUTT_TREE || !curp->outopts->noval)
-			mdoc_validate(man);
+	if (meta->macroset == MACROSET_MDOC) {
 		switch (curp->outtype) {
 		case OUTT_HTML:
-			html_mdoc(curp->outdata, man);
+			html_mdoc(curp->outdata, meta);
 			break;
 		case OUTT_TREE:
-			tree_mdoc(curp->outdata, man);
+			tree_mdoc(curp->outdata, meta);
 			break;
 		case OUTT_MAN:
-			man_mdoc(curp->outdata, man);
+			man_mdoc(curp->outdata, meta);
 			break;
 		case OUTT_PDF:
 		case OUTT_ASCII:
 		case OUTT_UTF8:
 		case OUTT_LOCALE:
 		case OUTT_PS:
-			terminal_mdoc(curp->outdata, man);
+			terminal_mdoc(curp->outdata, meta);
 			break;
 		case OUTT_MARKDOWN:
-			markdown_mdoc(curp->outdata, man);
+			markdown_mdoc(curp->outdata, meta);
 			break;
 		default:
 			break;
 		}
 	}
-	if (man->macroset == MACROSET_MAN) {
-		if (curp->outtype != OUTT_TREE || !curp->outopts->noval)
-			man_validate(man);
+	if (meta->macroset == MACROSET_MAN) {
 		switch (curp->outtype) {
 		case OUTT_HTML:
-			html_man(curp->outdata, man);
+			html_man(curp->outdata, meta);
 			break;
 		case OUTT_TREE:
-			tree_man(curp->outdata, man);
+			tree_man(curp->outdata, meta);
 			break;
 		case OUTT_MAN:
 			mparse_copy(curp->mp);
@@ -843,7 +851,7 @@ parse(struct curparse *curp, int fd, const char *file)
 		case OUTT_UTF8:
 		case OUTT_LOCALE:
 		case OUTT_PS:
-			terminal_man(curp->outdata, man);
+			terminal_man(curp->outdata, meta);
 			break;
 		default:
 			break;

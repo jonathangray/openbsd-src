@@ -1,4 +1,4 @@
-/*	$OpenBSD: ospfd.c,v 1.101 2018/10/29 22:13:33 remi Exp $ */
+/*	$OpenBSD: ospfd.c,v 1.103 2019/01/02 18:47:59 remi Exp $ */
 
 /*
  * Copyright (c) 2005 Claudio Jeker <claudio@openbsd.org>
@@ -286,7 +286,8 @@ main(int argc, char *argv[])
 		fatal("unveil");
 
 	if (kr_init(!(ospfd_conf->flags & OSPFD_FLAG_NO_FIB_UPDATE),
-	    ospfd_conf->rdomain, ospfd_conf->redist_label_or_prefix) == -1)
+	    ospfd_conf->rdomain, ospfd_conf->redist_label_or_prefix,
+	    ospfd_conf->fib_priority) == -1)
 		fatalx("kr_init failed");
 
 	/* remove unneeded stuff from config */
@@ -707,6 +708,15 @@ merge_config(struct ospfd_conf *conf, struct ospfd_conf *xconf)
 			SIMPLEQ_REMOVE_HEAD(&xconf->redist_list, entry);
 			SIMPLEQ_INSERT_TAIL(&conf->redist_list, r, entry);
 		}
+
+		/* adjust FIB priority if changed */
+		if (conf->fib_priority != xconf->fib_priority) {
+			kr_fib_decouple();
+			kr_fib_update_prio(xconf->fib_priority);
+			conf->fib_priority = xconf->fib_priority;
+			kr_fib_couple();
+		}
+
 		goto done;
 	}
 
@@ -817,7 +827,7 @@ merge_interfaces(struct area *a, struct area *xa)
 
 	/* problems:
 	 * - new interfaces (easy)
-	 * - deleted interfaces (needs to be done via fsm?)
+	 * - deleted interfaces
 	 * - changing passive (painful?)
 	 */
 	for (i = LIST_FIRST(&a->iface_list); i != NULL; i = ni) {
@@ -832,6 +842,7 @@ merge_interfaces(struct area *a, struct area *xa)
 				rde_nbr_iface_del(i);
 			LIST_REMOVE(i, entry);
 			if_del(i);
+			dirty = 1; /* force rtr LSA update */
 		}
 	}
 
