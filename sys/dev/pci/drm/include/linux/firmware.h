@@ -24,12 +24,15 @@ request_firmware(const struct firmware **fw, const char *name,
 	int r;
 	struct firmware *f = malloc(sizeof(struct firmware), M_DRM,
 	    M_WAITOK | M_ZERO);
-	*fw = f;
 	r = loadfirmware(name, __DECONST(u_char **, &f->data), &f->size);
-	if (r != 0)
+	if (r != 0) {
+		free(f, M_DRM, sizeof(struct firmware));
+		*fw = NULL;
 		return -r;
-	else
+	} else  {
+		*fw = f;
 		return 0;
+	}
 }
 
 #define request_firmware_nowait(a, b, c, d, e, f, g) -EINVAL
