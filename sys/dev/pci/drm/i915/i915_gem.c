@@ -2999,6 +2999,8 @@ rebuild_st:
 #ifdef __linux__
 			for_each_sgt_page(page, sgt_iter, st)
 				put_page(page);
+#else
+			uvm_objunwire(obj->base.uao, 0, obj->base.size);
 #endif
 			sg_free_table(st);
 
@@ -3027,6 +3029,8 @@ err_pages:
 #ifdef __linux__
 	for_each_sgt_page(page, sgt_iter, st)
 		put_page(page);
+#else
+	uvm_objunwire(obj->base.uao, 0, obj->base.size);
 #endif
 	sg_free_table(st);
 	kfree(st);
