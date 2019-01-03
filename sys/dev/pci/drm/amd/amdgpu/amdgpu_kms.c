@@ -1819,6 +1819,11 @@ amdgpu_attachhook(struct device *self)
 
 	config_found_sm(&adev->self, &aa, wsemuldisplaydevprint,
 	    wsemuldisplaydevsubmatch);
+
+	/*
+	 * in linux via amdgpu_pci_probe -> drm_dev_register
+	 */
+	drm_dev_register(dev, adev->flags);
 }
 
 out:
