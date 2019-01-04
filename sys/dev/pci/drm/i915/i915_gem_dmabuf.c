@@ -143,7 +143,7 @@ static void i915_gem_dmabuf_kunmap(struct dma_buf *dma_buf, unsigned long page_n
 {
 	struct drm_i915_gem_object *obj = dma_buf_to_obj(dma_buf);
 
-	kunmap(virt_to_page(addr));
+	kunmap(kmap_to_page(addr));
 	i915_gem_object_unpin_pages(obj);
 }
 

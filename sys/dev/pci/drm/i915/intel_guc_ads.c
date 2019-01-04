@@ -141,7 +141,7 @@ int intel_guc_ads_create(struct intel_guc *guc)
 	blob->ads.reg_state_buffer = base + ptr_offset(blob, reg_state_buffer);
 	blob->ads.reg_state_addr = base + ptr_offset(blob, reg_state);
 
-	kunmap(page);
+	kunmap(blob);
 
 	return 0;
 }

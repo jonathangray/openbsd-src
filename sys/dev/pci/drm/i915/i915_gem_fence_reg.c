@@ -732,7 +732,7 @@ i915_gem_swizzle_page(struct vm_page *page)
 		memcpy(&vaddr[i + 64], temp, 64);
 	}
 
-	kunmap(page);
+	kunmap(vaddr);
 }
 
 /**

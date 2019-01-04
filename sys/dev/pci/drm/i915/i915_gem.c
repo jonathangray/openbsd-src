@@ -1104,7 +1104,7 @@ shmem_pread_slow(struct vm_page *page, int offset, int length,
 		ret = __copy_to_user_swizzled(user_data, vaddr, offset, length);
 	else
 		ret = __copy_to_user(user_data, vaddr + offset, length);
-	kunmap(page);
+	kunmap(vaddr);
 
 	return ret ? - EFAULT : 0;
 }
@@ -1582,7 +1582,7 @@ shmem_pwrite_slow(struct vm_page *page, int offset, int length,
 	if (needs_clflush_after)
 		shmem_clflush_swizzled_range(vaddr + offset, length,
 					     page_do_bit17_swizzling);
-	kunmap(page);
+	kunmap(vaddr);
 
 	return ret ? -EFAULT : 0;
 }
@@ -3323,9 +3323,9 @@ i915_gem_object_pwrite_gtt(struct drm_i915_gem_object *obj,
 		page = TAILQ_FIRST(&plist);
 #endif
 
-		vaddr = kmap_atomic(page);
+		vaddr = kmap(page);
 		unwritten = copy_from_user(vaddr + pg, user_data, len);
-		kunmap_atomic(page);
+		kunmap(vaddr);
 
 #ifdef __linux__
 		err = pagecache_write_end(obj->base.filp, mapping,
@@ -6371,7 +6371,7 @@ i915_gem_object_create_from_data(struct drm_i915_private *dev_priv,
 
 		vaddr = kmap(page);
 		memcpy(vaddr, data, len);
-		kunmap(page);
+		kunmap(vaddr);
 
 		err = pagecache_write_end(file, file->f_mapping,
 					  offset, len, len,
