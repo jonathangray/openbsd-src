@@ -3323,9 +3323,9 @@ i915_gem_object_pwrite_gtt(struct drm_i915_gem_object *obj,
 		page = TAILQ_FIRST(&plist);
 #endif
 
-		vaddr = kmap(page);
+		vaddr = kmap_atomic(page);
 		unwritten = copy_from_user(vaddr + pg, user_data, len);
-		kunmap(page);
+		kunmap_atomic(page);
 
 #ifdef __linux__
 		err = pagecache_write_end(obj->base.filp, mapping,
