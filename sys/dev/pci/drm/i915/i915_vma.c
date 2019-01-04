@@ -881,9 +881,7 @@ static void __i915_vma_iounmap(struct i915_vma *vma)
 
 void i915_vma_revoke_mmap(struct i915_vma *vma)
 {
-#ifdef notyet
 	struct drm_vma_offset_node *node = &vma->obj->base.vma_node;
-#endif
 	u64 vma_offset;
 
 	lockdep_assert_held(&vma->vm->i915->drm.struct_mutex);
@@ -895,10 +893,20 @@ void i915_vma_revoke_mmap(struct i915_vma *vma)
 	GEM_BUG_ON(!vma->obj->userfault_count);
 
 	vma_offset = vma->ggtt_view.partial.offset << PAGE_SHIFT;
+#ifdef __linux__
 	unmap_mapping_range(vma->vm->i915->drm.anon_inode->i_mapping,
 			    drm_vma_node_offset_addr(node) + vma_offset,
 			    vma->size,
 			    1);
+#else
+	struct drm_i915_private *dev_priv = vma->obj->base.dev->dev_private;
+	struct vm_page *pg;
+
+	for (pg = &dev_priv->pgs[atop(vma->node.start + vma_offset)];
+	     pg != &dev_priv->pgs[atop(vma->node.start + vma->size)];
+	     pg++)
+		pmap_page_protect(pg, PROT_NONE);
+#endif
 
 	i915_vma_unset_userfault(vma);
 	if (!--vma->obj->userfault_count)
