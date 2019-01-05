@@ -34,7 +34,7 @@ static inline void
 init_completion(struct completion *x)
 {
 	x->done = 0;
-	mtx_init(&x->wait.lock, IPL_NONE);
+	mtx_init(&x->wait.lock, IPL_TTY);
 }
 
 static inline u_long
