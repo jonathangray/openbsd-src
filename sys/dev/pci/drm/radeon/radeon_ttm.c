@@ -1204,7 +1204,7 @@ static ssize_t radeon_ttm_gtt_read(struct file *f, char __user *buf,
 			ptr += off;
 
 			r = copy_to_user(buf, ptr, cur_size);
-			kunmap(rdev->gart.pages[p]);
+			kunmap(ptr);
 		} else
 			r = clear_user(buf, cur_size);
 
