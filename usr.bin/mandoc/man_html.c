@@ -1,7 +1,7 @@
-/*	$OpenBSD: man_html.c,v 1.115 2018/12/31 07:07:43 schwarze Exp $ */
+/*	$OpenBSD: man_html.c,v 1.117 2019/01/05 09:46:26 schwarze Exp $ */
 /*
  * Copyright (c) 2008-2012, 2014 Kristaps Dzonsons <kristaps@bsd.lv>
- * Copyright (c) 2013,2014,2015,2017,2018 Ingo Schwarze <schwarze@openbsd.org>
+ * Copyright (c) 2013-2015, 2017-2019 Ingo Schwarze <schwarze@openbsd.org>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -31,8 +31,6 @@
 #include "html.h"
 #include "main.h"
 
-/* FIXME: have PD set the default vspace width. */
-
 #define	MAN_ARGS	  const struct roff_meta *man, \
 			  const struct roff_node *n, \
 			  struct html *h
@@ -48,7 +46,6 @@ static	void		  print_man_head(const struct roff_meta *,
 				struct html *);
 static	void		  print_man_nodelist(MAN_ARGS);
 static	void		  print_man_node(MAN_ARGS);
-static	int		  fillmode(struct html *, int);
 static	int		  man_B_pre(MAN_ARGS);
 static	int		  man_HP_pre(MAN_ARGS);
 static	int		  man_IP_pre(MAN_ARGS);
@@ -122,14 +119,12 @@ static	const struct man_html_act man_html_acts[MAN_MAX - MAN_TH] = {
 static void
 print_bvspace(struct html *h, const struct roff_node *n)
 {
+	if (n->body != NULL && n->body->child != NULL &&
+	    n->body->child->type == ROFFT_TBL)
+		return;
 
-	if (n->body && n->body->child)
-		if (n->body->child->type == ROFFT_TBL)
-			return;
-
-	if (n->parent->type == ROFFT_ROOT || n->parent->tok != MAN_RS)
-		if (NULL == n->prev)
-			return;
+	if (n->prev == NULL && n->parent->tok != MAN_RS)
+		return;
 
 	print_paragraph(h);
 }
@@ -178,7 +173,6 @@ print_man_head(const struct roff_meta *man, struct html *h)
 static void
 print_man_nodelist(MAN_ARGS)
 {
-
 	while (n != NULL) {
 		print_man_node(man, n, h);
 		n = n->next;
@@ -188,95 +182,28 @@ print_man_nodelist(MAN_ARGS)
 static void
 print_man_node(MAN_ARGS)
 {
-	static int	 want_fillmode = ROFF_fi;
-	static int	 save_fillmode;
-
 	struct tag	*t;
 	int		 child;
 
-	/*
-	 * Handle fill mode switch requests up front,
-	 * they would just cause trouble in the subsequent code.
-	 */
-
-	switch (n->tok) {
-	case ROFF_nf:
-	case MAN_EX:
-		want_fillmode = ROFF_nf;
-		return;
-	case ROFF_fi:
-	case MAN_EE:
-		want_fillmode = ROFF_fi;
-		if (fillmode(h, 0) == ROFF_fi)
-			print_otag(h, TAG_BR, "");
-		return;
-	default:
-		break;
-	}
-
-	/* Set up fill mode for the upcoming node. */
-
-	switch (n->type) {
-	case ROFFT_BLOCK:
-		save_fillmode = 0;
-		/* Some block macros suspend or cancel .nf. */
-		switch (n->tok) {
-		case MAN_TP:  /* Tagged paragraphs		*/
-		case MAN_IP:  /* temporarily disable .nf	*/
-		case MAN_HP:  /* for the head.			*/
-			save_fillmode = want_fillmode;
-			/* FALLTHROUGH */
-		case MAN_SH:  /* Section headers		*/
-		case MAN_SS:  /* permanently cancel .nf.	*/
-			want_fillmode = ROFF_fi;
-			/* FALLTHROUGH */
-		case MAN_PP:  /* These have no head.		*/
-		case MAN_RS:  /* They will simply		*/
-		case MAN_UR:  /* reopen .nf in the body.        */
-		case MAN_MT:
-			fillmode(h, ROFF_fi);
-			break;
-		default:
-			break;
-		}
-		break;
-	case ROFFT_TBL:
-		fillmode(h, ROFF_fi);
-		break;
-	case ROFFT_ELEM:
-		/*
-		 * Some in-line macros produce tags and/or text
-		 * in the handler, so they require fill mode to be
-		 * configured up front just like for text nodes.
-		 * For the others, keep the traditional approach
-		 * of doing the same, for now.
-		 */
-		fillmode(h, want_fillmode);
-		break;
-	case ROFFT_TEXT:
-		if (fillmode(h, want_fillmode) == ROFF_fi &&
-		    want_fillmode == ROFF_fi &&
-		    n->flags & NODE_LINE && *n->string == ' ' &&
-		    (h->flags & HTML_NONEWLINE) == 0)
-			print_otag(h, TAG_BR, "");
-		if (want_fillmode == ROFF_nf || *n->string != '\0')
-			break;
-		print_paragraph(h);
-		return;
-	case ROFFT_COMMENT:
-		return;
-	default:
-		break;
-	}
-
-	/* Produce output for this node. */
+	html_fillmode(h, n->flags & NODE_NOFILL ? ROFF_nf : ROFF_fi);
 
 	child = 1;
 	switch (n->type) {
 	case ROFFT_TEXT:
+		if (*n->string == '\0') {
+			print_endline(h);
+			return;
+		}
 		t = h->tag;
+		if (*n->string == ' ' && n->flags & NODE_LINE &&
+		    (h->flags & HTML_NONEWLINE) == 0)
+			print_endline(h);
+		else if (n->flags & NODE_DELIMC)
+			h->flags |= HTML_NOSPACE;
 		print_text(h, n->string);
 		break;
+	case ROFFT_COMMENT:
+		return;
 	case ROFFT_EQN:
 		t = h->tag;
 		print_eqn(h, n->eqn);
@@ -304,66 +231,35 @@ print_man_node(MAN_ARGS)
 		 * the "meta" table state.  This will be reopened on the
 		 * next table element.
 		 */
-		if (h->tblt)
+		if (h->tblt != NULL)
 			print_tblclose(h);
 
 		t = h->tag;
 		if (n->tok < ROFF_MAX) {
 			roff_html_pre(h, n);
-			child = 0;
-			break;
+			print_stagq(h, t);
+			return;
 		}
 
 		assert(n->tok >= MAN_TH && n->tok < MAN_MAX);
 		if (man_html_acts[n->tok - MAN_TH].pre != NULL)
 			child = (*man_html_acts[n->tok - MAN_TH].pre)(man,
 			    n, h);
-
-		/* Some block macros resume .nf in the body. */
-		if (save_fillmode && n->type == ROFFT_BODY)
-			want_fillmode = save_fillmode;
-
 		break;
 	}
 
-	if (child && n->child)
+	if (child && n->child != NULL)
 		print_man_nodelist(man, n->child, h);
 
 	/* This will automatically close out any font scope. */
 	print_stagq(h, t);
 
-	if (fillmode(h, 0) == ROFF_nf &&
-	    n->next != NULL && n->next->flags & NODE_LINE) {
+	if (n->flags & NODE_NOFILL &&
+	    (n->next == NULL || n->next->flags & NODE_LINE)) {
 		/* In .nf = <pre>, print even empty lines. */
 		h->col++;
 		print_endline(h);
 	}
-}
-
-/*
- * ROFF_nf switches to no-fill mode, ROFF_fi to fill mode.
- * Other arguments do not switch.
- * The old mode is returned.
- */
-static int
-fillmode(struct html *h, int want)
-{
-	struct tag	*pre;
-	int		 had;
-
-	for (pre = h->tag; pre != NULL; pre = pre->next)
-		if (pre->tag == TAG_PRE)
-			break;
-
-	had = pre == NULL ? ROFF_fi : ROFF_nf;
-
-	if (want && want != had) {
-		if (want == ROFF_nf)
-			print_otag(h, TAG_PRE, "");
-		else
-			print_tagq(h, pre);
-	}
-	return had;
 }
 
 static void
@@ -384,7 +280,7 @@ man_root_pre(const struct roff_meta *man, struct html *h)
 	print_stagq(h, tt);
 
 	print_otag(h, TAG_TD, "c", "head-vol");
-	if (NULL != man->vol)
+	if (man->vol != NULL)
 		print_text(h, man->vol);
 	print_stagq(h, tt);
 
@@ -407,7 +303,7 @@ man_root_post(const struct roff_meta *man, struct html *h)
 	print_stagq(h, tt);
 
 	print_otag(h, TAG_TD, "c", "foot-os");
-	if (man->os)
+	if (man->os != NULL)
 		print_text(h, man->os);
 	print_tagq(h, t);
 }
@@ -430,11 +326,11 @@ static int
 man_alt_pre(MAN_ARGS)
 {
 	const struct roff_node	*nn;
+	struct tag	*t;
 	int		 i;
 	enum htmltag	 fp;
-	struct tag	*t;
 
-	for (i = 0, nn = n->child; nn; nn = nn->next, i++) {
+	for (i = 0, nn = n->child; nn != NULL; nn = nn->next, i++) {
 		switch (n->tok) {
 		case MAN_BI:
 			fp = i % 2 ? TAG_I : TAG_B;
@@ -476,7 +372,7 @@ static int
 man_SM_pre(MAN_ARGS)
 {
 	print_otag(h, TAG_SMALL, "");
-	if (MAN_SB == n->tok)
+	if (n->tok == MAN_SB)
 		print_otag(h, TAG_B, "");
 	return 1;
 }
@@ -498,7 +394,6 @@ man_SS_pre(MAN_ARGS)
 static int
 man_PP_pre(MAN_ARGS)
 {
-
 	if (n->type == ROFFT_HEAD)
 		return 0;
 	else if (n->type == ROFFT_BLOCK)
@@ -540,7 +435,6 @@ man_IP_pre(MAN_ARGS)
 	default:
 		abort();
 	}
-
 	return 0;
 }
 
@@ -566,14 +460,14 @@ man_OP_pre(MAN_ARGS)
 	h->flags |= HTML_NOSPACE;
 	tt = print_otag(h, TAG_SPAN, "c", "Op");
 
-	if (NULL != (n = n->child)) {
+	if ((n = n->child) != NULL) {
 		print_otag(h, TAG_B, "");
 		print_text(h, n->string);
 	}
 
 	print_stagq(h, tt);
 
-	if (NULL != n && NULL != n->next) {
+	if (n != NULL && n->next != NULL) {
 		print_otag(h, TAG_I, "");
 		print_text(h, n->next->string);
 	}
@@ -608,7 +502,6 @@ man_in_pre(MAN_ARGS)
 static int
 man_ign_pre(MAN_ARGS)
 {
-
 	return 0;
 }
 
@@ -647,6 +540,7 @@ static int
 man_UR_pre(MAN_ARGS)
 {
 	char *cp;
+
 	n = n->child;
 	assert(n->type == ROFFT_HEAD);
 	if (n->child != NULL) {
@@ -664,7 +558,6 @@ man_UR_pre(MAN_ARGS)
 		n = n->next;
 
 	print_man_nodelist(man, n->child, h);
-
 	return 0;
 }
 
