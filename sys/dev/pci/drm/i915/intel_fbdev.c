@@ -802,8 +802,7 @@ void intel_fbdev_fini(struct drm_i915_private *dev_priv)
 
 void intel_fbdev_set_suspend(struct drm_device *dev, int state, bool synchronous)
 {
-	STUB();
-#ifdef notyet
+#ifdef __linux__
 	struct drm_i915_private *dev_priv = to_i915(dev);
 	struct intel_fbdev *ifbdev = dev_priv->fbdev;
 	struct fb_info *info;
