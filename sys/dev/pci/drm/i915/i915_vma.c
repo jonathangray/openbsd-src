@@ -902,7 +902,7 @@ void i915_vma_revoke_mmap(struct i915_vma *vma)
 	struct drm_i915_private *dev_priv = vma->obj->base.dev->dev_private;
 	struct vm_page *pg;
 
-	for (pg = &dev_priv->pgs[atop(vma->node.start + vma_offset)];
+	for (pg = &dev_priv->pgs[atop(vma->node.start)];
 	     pg != &dev_priv->pgs[atop(vma->node.start + vma->size)];
 	     pg++)
 		pmap_page_protect(pg, PROT_NONE);

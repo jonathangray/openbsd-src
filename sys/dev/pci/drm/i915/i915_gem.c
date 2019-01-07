@@ -2351,6 +2351,15 @@ i915_gem_fault(struct drm_gem_object *gem_obj, struct uvm_faultinfo *ufi,
 				       PIN_NONBLOCK |
 				       PIN_NONFAULT);
 	if (IS_ERR(vma)) {
+		/*
+		 * Userspace is now writing through an untracked VMA, abandon
+		 * all hope that the hardware is able to track future writes.
+		 */
+		obj->frontbuffer_ggtt_origin = ORIGIN_CPU;
+
+		vma = i915_gem_object_ggtt_pin(obj, NULL, 0, 0, PIN_MAPPABLE);
+	}
+	if (IS_ERR(vma)) {
 		ret = PTR_ERR(vma);
 		goto err_unlock;
 	}
@@ -2476,17 +2485,15 @@ static void __i915_gem_object_release_mmap(struct drm_i915_gem_object *obj)
 #else
 	if (drm_vma_node_has_offset(&obj->base.vma_node)) {
 		struct drm_i915_private *dev_priv = obj->base.dev->dev_private;
-		unsigned long size;
 		struct i915_vma *vma;
 		struct vm_page *pg;
 
-		size = drm_vma_node_size(&obj->base.vma_node) << PAGE_SHIFT;
-		vma = i915_vma_instance(obj, &dev_priv->ggtt.vm, NULL);
-		KASSERT(!IS_ERR(vma));
-		for (pg = &dev_priv->pgs[atop(vma->node.start)];
-		     pg != &dev_priv->pgs[atop(vma->node.start + size)];
-		     pg++)
-			pmap_page_protect(pg, PROT_NONE);
+		for_each_ggtt_vma(vma, obj) {
+			for (pg = &dev_priv->pgs[atop(vma->node.start)];
+			     pg != &dev_priv->pgs[atop(vma->node.start + vma->size)];
+			     pg++)
+				pmap_page_protect(pg, PROT_NONE);
+		}
 	}
 #endif
 
