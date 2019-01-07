@@ -3651,6 +3651,7 @@ inteldrm_activate(struct device *self, int act)
 	switch (act) {
 	case DVACT_QUIESCE:
 		rv = config_suspend(dev->dev, act);
+		i915_drm_prepare(dev);
 		i915_drm_suspend(dev);
 		i915_drm_suspend_late(dev, false);
 		break;
