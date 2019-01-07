@@ -1047,7 +1047,6 @@ pcie_get_width_cap(struct pci_dev *pdev)
 	int			pos ;
 	pcireg_t		lnkcap = 0;
 	pcireg_t		id;
-	enum pcie_link_width	width;
 	int			bus, device, function;
 
 	if (!pci_get_capability(pc, tag, PCI_CAP_PCIEXPRESS,

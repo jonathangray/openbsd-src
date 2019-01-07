@@ -238,7 +238,7 @@ __set_bit(u_int b, volatile void *p)
 }
 
 static inline int
-test_bit(u_int b, volatile void *p)
+test_bit(u_int b, const volatile void *p)
 {
 	return !!(((volatile u_int *)p)[b >> 5] & (1 << (b & 0x1f)));
 }

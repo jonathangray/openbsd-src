@@ -26,6 +26,8 @@ void	 kunmap(void *addr);
 
 #define kmap_to_page(ptr)	(ptr)
 
+#if defined(__i386__) || defined(__amd64__)
+
 static inline void *
 kmap_atomic(struct vm_page *pg)
 {
@@ -50,5 +52,7 @@ kunmap_atomic(void *addr)
 	pmap_tmpunmap_pa();
 #endif
 }
+
+#endif /* defined(__i386__) || defined(__amd64__) */
 
 #endif

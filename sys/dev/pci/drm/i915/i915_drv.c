@@ -1794,9 +1794,7 @@ static int i915_drm_suspend(struct drm_device *dev)
 static int i915_drm_suspend_late(struct drm_device *dev, bool hibernation)
 {
 	struct drm_i915_private *dev_priv = to_i915(dev);
-#ifdef notyet
 	struct pci_dev *pdev = dev_priv->drm.pdev;
-#endif
 	int ret;
 
 	disable_rpm_wakeref_asserts(dev_priv);
@@ -1959,9 +1957,7 @@ static int i915_drm_resume(struct drm_device *dev)
 static int i915_drm_resume_early(struct drm_device *dev)
 {
 	struct drm_i915_private *dev_priv = to_i915(dev);
-#ifdef __linux__
 	struct pci_dev *pdev = dev_priv->drm.pdev;
-#endif
 	int ret;
 
 	/*

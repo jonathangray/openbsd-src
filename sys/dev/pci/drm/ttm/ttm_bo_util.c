@@ -297,9 +297,11 @@ static int ttm_copy_io_page(void *dst, void *src, unsigned long page)
  */
 void *ttm_kmap_atomic_prot(struct vm_page *page, pgprot_t prot)
 {
+#if defined(__amd64__) || defined(__i386__)
 	if (pgprot_val(prot) == pgprot_val(PAGE_KERNEL))
 		return kmap_atomic(page);
 	else
+#endif
 		return __ttm_kmap_atomic_prot(page, prot);
 }
 EXPORT_SYMBOL(ttm_kmap_atomic_prot);
@@ -313,9 +315,11 @@ EXPORT_SYMBOL(ttm_kmap_atomic_prot);
  */
 void ttm_kunmap_atomic_prot(void *addr, pgprot_t prot)
 {
+#if defined(__amd64__) || defined(__i386__)
 	if (pgprot_val(prot) == pgprot_val(PAGE_KERNEL))
 		kunmap_atomic(addr);
 	else
+#endif
 		__ttm_kunmap_atomic(addr);
 }
 EXPORT_SYMBOL(ttm_kunmap_atomic_prot);

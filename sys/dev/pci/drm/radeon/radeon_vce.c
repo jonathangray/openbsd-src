@@ -166,7 +166,7 @@ int radeon_vce_init(struct radeon_device *rdev)
 	rdev->vce.fb_version = (10 * (c[0] - '0')) + (c[1] - '0');
 #endif
 
-	DRM_INFO("Found VCE firmware/feedback version %hhd.%hhd.%hhd / %d!\n",
+	DRM_INFO("Found VCE firmware/feedback version %d.%d.%d / %d!\n",
 		 start, mid, end, rdev->vce.fb_version);
 
 	rdev->vce.fw_version = (start << 24) | (mid << 16) | (end << 8);

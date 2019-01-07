@@ -106,9 +106,9 @@ DEFINE_MUTEX(drm_global_mutex);
  * :ref:`IOCTL support in the userland interfaces chapter<drm_driver_ioctl>`.
  */
 
+#ifdef __linux__
 static int drm_open_helper(struct file *filp, struct drm_minor *minor);
 
-#ifdef __linux__
 /**
  * drm_file_alloc - allocate file context
  * @minor: minor to allocate on

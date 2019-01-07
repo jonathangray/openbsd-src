@@ -337,6 +337,7 @@ int drm_plane_create_zpos_immutable_property(struct drm_plane *plane,
 }
 EXPORT_SYMBOL(drm_plane_create_zpos_immutable_property);
 
+#ifdef notyet
 static int drm_atomic_state_zpos_cmp(const void *a, const void *b)
 {
 	const struct drm_plane_state *sa = *(struct drm_plane_state **)a;
@@ -347,6 +348,7 @@ static int drm_atomic_state_zpos_cmp(const void *a, const void *b)
 	else
 		return sa->plane->base.id - sb->plane->base.id;
 }
+#endif
 
 static int drm_atomic_helper_crtc_normalize_zpos(struct drm_crtc *crtc,
 					  struct drm_crtc_state *crtc_state)

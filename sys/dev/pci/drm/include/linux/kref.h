@@ -36,7 +36,7 @@ kref_init(struct kref *ref)
 }
 
 static inline unsigned int
-kref_read(struct kref *ref)
+kref_read(const struct kref *ref)
 {
 	return atomic_read(&ref->refcount);
 }

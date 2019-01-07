@@ -319,18 +319,20 @@ radeondrm_setcolor(void *v, u_int index, u_int8_t r, u_int8_t g, u_int8_t b)
 {
 	struct sunfb *sf = v;
 	struct radeon_device *rdev = sf->sf_ro.ri_hw;
-	struct drm_fb_helper *fb_helper = (void *)rdev->mode_info.rfbdev;
 	u_int16_t red, green, blue;
-	struct drm_crtc *crtc;
-	int i;
+	struct radeon_crtc *radeon_crtc;
+	int i, crtc;
 
-	for (i = 0; i < fb_helper->crtc_count; i++) {
-		crtc = fb_helper->crtc_info[i].mode_set.crtc;
+	for (crtc = 0; i < rdev->num_crtc; crtc++) {
+		radeon_crtc = rdev->mode_info.crtcs[crtc];
 
 		red = (r << 8) | r;
 		green = (g << 8) | g;
 		blue = (b << 8) | b;
-		fb_helper->funcs->gamma_set(crtc, red, green, blue, index);
+
+		radeon_crtc->lut_r[index] = red >> 6;
+		radeon_crtc->lut_g[index] = green >> 6;
+		radeon_crtc->lut_b[index] = blue >> 6;
 	}
 }
 #endif
@@ -1308,6 +1310,7 @@ static int radeon_info_ioctl(struct drm_device *dev, void *data, struct drm_file
 void radeon_driver_lastclose_kms(struct drm_device *dev)
 {
 #ifdef __sparc64__
+	struct radeon_device *rdev = dev->dev_private;
 	fbwscons_setcolormap(&rdev->sf, radeondrm_setcolor);
 #endif
 	drm_fb_helper_lastclose(dev);

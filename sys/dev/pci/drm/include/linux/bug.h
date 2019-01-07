@@ -37,7 +37,7 @@ do {									\
 #define BUILD_BUG_ON(x) CTASSERT(!(x))
 #define BUILD_BUG_ON_NOT_POWER_OF_2(x)	0
 #define BUILD_BUG_ON_MSG(x, y)		do { } while (0)
-#define BUILD_BUG_ON_INVALID(x)		0
+#define BUILD_BUG_ON_INVALID(x)		((void)0)
 #define BUILD_BUG_ON_ZERO(x)		0
 
 #define WARN(condition, fmt...) ({ 					\

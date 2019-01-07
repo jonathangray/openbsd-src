@@ -261,9 +261,14 @@ int pci_resize_resource(struct pci_dev *, int, int);
 #define pci_save_state(x)
 #define pci_enable_device(x)		0
 #define pci_disable_device(x)
-#define pci_set_power_state(d, s)	0
 #define pci_is_thunderbolt_attached(x) false
 #define pci_set_drvdata(x, y)
+
+static inline int
+pci_set_power_state(struct pci_dev *dev, int state)
+{
+	return 0;
+}
 
 #if defined(__amd64__) || defined(__i386__)
 
