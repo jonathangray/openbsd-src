@@ -197,7 +197,13 @@ cancel_delayed_work_sync(struct delayed_work *dwork)
 	return task_del(dwork->tq, &dwork->work.task);
 }
 
-#define delayed_work_pending(dwork)	work_pending(&(dwork)->work)
+static inline bool
+delayed_work_pending(struct delayed_work *dwork)
+{
+	if (timeout_pending(&dwork->to))
+		return true;
+	return task_pending(&dwork->work.task);
+}
 
 void flush_workqueue(struct workqueue_struct *);
 bool flush_work(struct work_struct *);
