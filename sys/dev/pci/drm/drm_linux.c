@@ -67,14 +67,18 @@ flush_work(struct work_struct *work)
 bool
 flush_delayed_work(struct delayed_work *dwork)
 {
+	bool ret = false;
+
 	if (cold)
 		return false;
 
-	while (timeout_pending(&dwork->to))
+	while (timeout_pending(&dwork->to)) {
 		tsleep(dwork, PWAIT, "fldwto", 1);
+		ret = true;
+	}
 
 	taskq_barrier(dwork->tq ? dwork->tq : (struct taskq *)system_wq);
-	return true;
+	return ret;
 }
 
 struct timespec
