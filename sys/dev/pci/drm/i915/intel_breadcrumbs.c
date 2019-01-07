@@ -644,8 +644,7 @@ void intel_engine_remove_wait(struct intel_engine_cs *engine,
 
 static void signaler_set_rtpriority(void)
 {
-	STUB();
-#ifdef notyet
+#ifdef __linux__
 	 struct sched_param param = { .sched_priority = 1 };
 
 	 sched_setscheduler_nocheck(current, SCHED_FIFO, &param);
