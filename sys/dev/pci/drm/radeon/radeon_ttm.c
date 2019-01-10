@@ -45,6 +45,14 @@
 #include "radeon_reg.h"
 #include "radeon.h"
 
+#ifdef __amd64__
+#include "efifb.h"
+#endif
+
+#if NEFIFB > 0
+#include <machine/efifbvar.h>
+#endif
+
 #define DRM_FILE_PAGE_OFFSET (0x100000000ULL >> PAGE_SHIFT)
 
 static int radeon_ttm_debugfs_init(struct radeon_device *rdev);
@@ -876,6 +884,13 @@ static struct ttm_bo_driver radeon_bo_driver = {
 int radeon_ttm_init(struct radeon_device *rdev)
 {
 	int r;
+	unsigned long stolen_size = 0;
+
+#if NEFIFB > 0
+	stolen_size = efifb_stolen();
+#endif
+	if (stolen_size == 0)
+		stolen_size = 256 * 1024;
 
 	r = radeon_ttm_global_init(rdev);
 	if (r) {
@@ -919,7 +934,7 @@ int radeon_ttm_init(struct radeon_device *rdev)
 			     RADEON_GEM_DOMAIN_VRAM, 0, NULL,
 			     NULL, &rdev->stolen_vga_memory);
 #else
-	r = radeon_bo_create(rdev, 256 * 1024, PAGE_SIZE, true,
+	r = radeon_bo_create(rdev, stolen_size, PAGE_SIZE, true,
 			     RADEON_GEM_DOMAIN_VRAM, 0, NULL,
 			     NULL, &rdev->stolen_vga_memory);
 #endif
