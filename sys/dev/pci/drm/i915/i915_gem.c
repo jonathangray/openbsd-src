@@ -6156,7 +6156,7 @@ int i915_gem_init_early(struct drm_i915_private *dev_priv)
 	pool_init(&dev_priv->dependencies, sizeof(struct i915_dependency),
 	    0, IPL_TTY, 0, "drmdep", NULL);
 	pool_init(&dev_priv->priorities, sizeof(struct i915_priolist),
-	    0, IPL_NONE, 0, "drmpri", NULL);
+	    0, IPL_TTY, 0, "drmpri", NULL);
 #endif
 
 	INIT_LIST_HEAD(&dev_priv->gt.timelines);
