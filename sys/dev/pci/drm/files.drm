@@ -490,6 +490,17 @@ file	dev/pci/drm/amd/display/modules/color/color_gamma.c		amddal
 file	dev/pci/drm/amd/display/modules/freesync/freesync.c		amddal
 #file	dev/pci/drm/amd/display/modules/stats/stats.c			amddal
 
+# CONFIG_DRM_AMDGPU_SI
+define	amdgpu_si
+file	dev/pci/drm/amd/amdgpu/dce_v6_0.c		amdgpu_si
+file	dev/pci/drm/amd/amdgpu/gfx_v6_0.c		amdgpu_si
+file	dev/pci/drm/amd/amdgpu/gmc_v6_0.c		amdgpu_si
+file	dev/pci/drm/amd/amdgpu/amdgpu_si.c		amdgpu_si
+file	dev/pci/drm/amd/amdgpu/amdgpu_si_dma.c		amdgpu_si
+file	dev/pci/drm/amd/amdgpu/amdgpu_si_dpm.c		amdgpu_si
+file	dev/pci/drm/amd/amdgpu/si_ih.c			amdgpu_si
+file	dev/pci/drm/amd/amdgpu/amdgpu_si_smc.c		amdgpu_si
+
 # CONFIG_DRM_AMDGPU_CIK
 define	amdgpu_cik
 file	dev/pci/drm/amd/amdgpu/amdgpu_ci_dpm.c		amdgpu_cik
