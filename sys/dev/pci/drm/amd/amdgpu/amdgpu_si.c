@@ -1951,6 +1951,7 @@ static void si_program_aspm(struct amdgpu_device *adev)
 	}
 }
 
+#ifdef __linux__
 static void si_fix_pci_max_read_req_size(struct amdgpu_device *adev)
 {
 	int readrq;
@@ -1961,6 +1962,26 @@ static void si_fix_pci_max_read_req_size(struct amdgpu_device *adev)
 	if ((v == 0) || (v == 6) || (v == 7))
 		pcie_set_readrq(adev->pdev, 512);
 }
+#else
+static void si_fix_pci_max_read_req_size(struct amdgpu_device *adev)
+{
+	pcireg_t ctl, v;
+	int off;
+
+	if (pci_get_capability(adev->pc, adev->pa_tag, PCI_CAP_PCIEXPRESS,
+			       &off, &ctl) == 0)
+		return;
+
+	ctl = pci_conf_read(adev->pc, adev->pa_tag, off + PCI_PCIE_DCSR);
+
+	v = (ctl & PCI_PCIE_DCSR_MPS) >> 12;
+	if ((v == 0) || (v == 6) || (v == 7)) {
+		ctl &= ~PCI_PCIE_DCSR_MPS;
+		ctl |= (2 << 12);
+		pci_conf_write(adev->pc, adev->pa_tag, off + PCI_PCIE_DCSR, ctl);
+	}
+}
+#endif
 
 static int si_common_hw_init(void *handle)
 {

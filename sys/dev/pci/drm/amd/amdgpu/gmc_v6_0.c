@@ -1108,6 +1108,9 @@ static int gmc_v6_0_process_interrupt(struct amdgpu_device *adev,
 				      struct amdgpu_irq_src *source,
 				      struct amdgpu_iv_entry *entry)
 {
+	STUB();
+	return -ENOSYS;
+#if 0
 	u32 addr, status;
 
 	addr = RREG32(mmVM_CONTEXT1_PROTECTION_FAULT_ADDR);
@@ -1131,6 +1134,7 @@ static int gmc_v6_0_process_interrupt(struct amdgpu_device *adev,
 	}
 
 	return 0;
+#endif
 }
 
 static int gmc_v6_0_set_clockgating_state(void *handle,
