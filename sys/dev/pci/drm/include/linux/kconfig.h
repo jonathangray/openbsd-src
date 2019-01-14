@@ -19,6 +19,7 @@
 #define CONFIG_PM				0
 #define CONFIG_DRM_AMD_DC			1
 #define CONFIG_DRM_AMD_DC_DCN1_0		1
+#define CONFIG_DRM_AMDGPU_CIK			1
 
 #if BYTE_ORDER == BIG_ENDIAN
 #define __BIG_ENDIAN

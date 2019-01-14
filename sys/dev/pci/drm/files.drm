@@ -490,7 +490,21 @@ file	dev/pci/drm/amd/display/modules/color/color_gamma.c		amddal
 file	dev/pci/drm/amd/display/modules/freesync/freesync.c		amddal
 #file	dev/pci/drm/amd/display/modules/stats/stats.c			amddal
 
-device	amdgpu: drmbase, ttm, wsemuldisplaydev, rasops8, rasops32, i2cbus, i2c_bitbang, drm_sched, chash, powerplay, amddal
+# CONFIG_DRM_AMDGPU_CIK
+define	amdgpu_cik
+file	dev/pci/drm/amd/amdgpu/amdgpu_ci_dpm.c		amdgpu_cik
+file	dev/pci/drm/amd/amdgpu/amdgpu_ci_smc.c		amdgpu_cik
+file	dev/pci/drm/amd/amdgpu/amdgpu_cik.c		amdgpu_cik
+file	dev/pci/drm/amd/amdgpu/cik_ih.c			amdgpu_cik
+file	dev/pci/drm/amd/amdgpu/amdgpu_cik_sdma.c	amdgpu_cik
+file	dev/pci/drm/amd/amdgpu/dce_v8_0.c		amdgpu_cik
+file	dev/pci/drm/amd/amdgpu/gfx_v7_0.c		amdgpu_cik
+file	dev/pci/drm/amd/amdgpu/amdgpu_kv_dpm.c		amdgpu_cik
+file	dev/pci/drm/amd/amdgpu/amdgpu_kv_smc.c		amdgpu_cik
+file	dev/pci/drm/amd/amdgpu/amdgpu_uvd_v4_2.c	amdgpu_cik
+file	dev/pci/drm/amd/amdgpu/amdgpu_vce_v2_0.c	amdgpu_cik
+
+device	amdgpu: drmbase, ttm, wsemuldisplaydev, rasops8, rasops32, i2cbus, i2c_bitbang, drm_sched, chash, powerplay, amddal, amdgpu_cik
 attach	amdgpu at pci
 #file	dev/pci/drm/amd/amdgpu/amdgpu_acpi.c		amdgpu
 file	dev/pci/drm/amd/amdgpu/amdgpu_afmt.c		amdgpu
