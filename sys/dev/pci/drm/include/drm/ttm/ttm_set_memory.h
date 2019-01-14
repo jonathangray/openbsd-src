@@ -82,7 +82,7 @@ static inline int ttm_set_pages_uc(struct vm_page *page, int numpages)
 
 #else /* for CONFIG_X86 */
 
-#if IS_ENABLED(CONFIG_AGP)
+#if IS_ENABLED(CONFIG_AGP) && defined(__linux__)
 
 #include <asm/agp.h>
 

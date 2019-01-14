@@ -121,16 +121,12 @@
 #include <drm/drm_irq.h>
 #include <drm/drm_device.h>
 
-#include "agp.h"
-
 struct fb_cmap;
 struct fb_fillrect;
 struct fb_copyarea;
 struct fb_image;
 
 #define drm_debug	0
-
-#define __OS_HAS_AGP		(NAGP > 0)
 
 				/* Internal types and structures */
 #define DRM_IF_VERSION(maj, min) (maj << 16 | min)

@@ -35,7 +35,7 @@
 
 #include <drm/drmP.h>
 
-#if __OS_HAS_AGP
+#if IS_ENABLED(CONFIG_AGP)
 
 int
 drm_agp_info(struct drm_device * dev, struct drm_agp_info *info)
@@ -138,4 +138,4 @@ drm_agp_init(void)
 	return (head);
 }
 
-#endif /* __OS_HAS_AGP */
+#endif /* IS_ENABLED(CONFIG_AGP) */

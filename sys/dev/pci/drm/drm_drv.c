@@ -258,7 +258,7 @@ drm_attach(struct device *parent, struct device *self, void *aux)
 	INIT_LIST_HEAD(&dev->vblank_event_list);
 
 	if (drm_core_check_feature(dev, DRIVER_USE_AGP)) {
-#if __OS_HAS_AGP
+#if IS_ENABLED(CONFIG_AGP)
 		if (da->is_agp)
 			dev->agp = drm_agp_init();
 #endif
@@ -450,7 +450,7 @@ drm_lastclose(struct drm_device *dev)
 	if (!drm_core_check_feature(dev, DRIVER_MODESET) && dev->irq_enabled)
 		drm_irq_uninstall(dev);
 
-#if __OS_HAS_AGP
+#if IS_ENABLED(CONFIG_AGP)
 	if (!drm_core_check_feature(dev, DRIVER_MODESET))
 		drm_agp_takedown(dev);
 #endif

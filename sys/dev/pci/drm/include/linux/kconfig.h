@@ -3,6 +3,8 @@
 #ifndef _LINUX_KCONFIG_H
 #define _LINUX_KCONFIG_H
 
+#include "agp.h"
+
 #include <sys/endian.h>
 
 #define IS_ENABLED(x) x - 0
@@ -25,6 +27,10 @@
 #define __BIG_ENDIAN
 #else
 #define __LITTLE_ENDIAN
+#endif
+
+#if NAGP > 0
+#define CONFIG_AGP				1
 #endif
 
 #endif
