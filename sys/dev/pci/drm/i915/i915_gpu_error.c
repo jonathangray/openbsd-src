@@ -338,9 +338,6 @@ static int compress_page(struct compress *c,
 			 void *src,
 			 struct drm_i915_error_object *dst)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
 	unsigned long page;
 	void *ptr;
 
@@ -354,7 +351,6 @@ static int compress_page(struct compress *c,
 	dst->pages[dst->page_count++] = ptr;
 
 	return 0;
-#endif
 }
 
 static int compress_flush(struct compress *c,
@@ -1014,11 +1010,8 @@ i915_error_object_create(struct drm_i915_private *i915,
 	}
 
 	if (ret || compress_flush(&compress, dst)) {
-		STUB();
-#ifdef notyet
 		while (dst->page_count--)
 			free_page((unsigned long)dst->pages[dst->page_count]);
-#endif
 		kfree(dst);
 		dst = NULL;
 	}
@@ -1826,7 +1819,9 @@ static int capture(void *data)
 				  error->i915->gt.last_init_time);
 	error->capture = jiffies;
 
+#ifdef notyet
 	capture_params(error);
+#endif
 	capture_gen_state(error);
 	capture_uc_state(error);
 	capture_reg_state(error);
