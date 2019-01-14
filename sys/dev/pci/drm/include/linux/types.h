@@ -5,6 +5,11 @@
 
 #include <sys/types.h>
 #include <sys/stdint.h>
+/*
+ * sparc64 bus.h needs _null.h (indirect via param.h)
+ * sparc64 busop.h needs machine/ctlreg.h (indirect via param.h)
+ */
+#include <sys/param.h>
 #include <machine/bus.h>
 
 typedef int8_t   __s8;
