@@ -18,6 +18,7 @@
 #ifndef _LINUX_UACCESS_H
 #define _LINUX_UACCESS_H
 
+#include <sys/types.h>
 #include <sys/systm.h>
 #include <linux/sched.h>
 
