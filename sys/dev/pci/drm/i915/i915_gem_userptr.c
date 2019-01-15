@@ -842,9 +842,19 @@ i915_gem_userptr_ioctl(struct drm_device *dev,
 	return 0;
 }
 
+#else
+
+int
+i915_gem_userptr_ioctl(struct drm_device *dev, void *data, struct drm_file *file)
+{
+	return -ENODEV;
+}
+
+#endif
+
 int i915_gem_init_userptr(struct drm_i915_private *dev_priv)
 {
-	rw_init(&dev_priv->mm_lock);
+	rw_init(&dev_priv->mm_lock, "userptr");
 	hash_init(dev_priv->mm_structs);
 
 	dev_priv->mm.userptr_wq =
@@ -861,23 +871,3 @@ void i915_gem_cleanup_userptr(struct drm_i915_private *dev_priv)
 {
 	destroy_workqueue(dev_priv->mm.userptr_wq);
 }
-
-#else
-
-int
-i915_gem_userptr_ioctl(struct drm_device *dev, void *data, struct drm_file *file)
-{
-	return -ENODEV;
-}
-
-int
-i915_gem_init_userptr(struct drm_i915_private *dev_priv)
-{
-	return 0;
-}
-
-void i915_gem_cleanup_userptr(struct drm_i915_private *dev_priv)
-{
-}
-
-#endif

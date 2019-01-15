@@ -37,6 +37,7 @@ extern struct workqueue_struct *system_long_wq;
 
 #define WQ_HIGHPRI	1
 #define WQ_FREEZABLE	2
+#define WQ_UNBOUND	4
 
 static inline struct workqueue_struct *
 alloc_workqueue(const char *name, int flags, int max_active)
