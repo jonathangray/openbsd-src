@@ -883,11 +883,8 @@ static void i915_error_object_free(struct drm_i915_error_object *obj)
 	if (obj == NULL)
 		return;
 
-	STUB();
-#ifdef notyet
 	for (page = 0; page < obj->page_count; page++)
 		free_page((unsigned long)obj->pages[page]);
-#endif
 
 	kfree(obj);
 }
