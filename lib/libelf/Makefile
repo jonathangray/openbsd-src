@@ -40,6 +40,9 @@ CPPFLAGS+= -I${.CURDIR}
 .m4.c:
 	m4 -DSRCDIR=${.CURDIR} $< > $@
 
+PC_FILES=libelf.pc
+CLEANFILES+=${PC_FILES}
+
 includes:
 	@cd ${.CURDIR}; for i in $(HDRS); do \
 	    j="cmp -s $$i ${DESTDIR}/usr/include/$$i || \
@@ -48,5 +51,13 @@ includes:
 	    echo $$j; \
 	    eval "$$j"; \
 	done
+
+all: ${PC_FILES}
+${PC_FILES}:
+	/bin/sh ${.CURDIR}/generate_pkgconfig.sh -c ${.CURDIR} -o ${.OBJDIR}
+
+beforeinstall:
+	${INSTALL} ${INSTALL_COPY} -o root -g ${SHAREGRP} \
+	    -m ${SHAREMODE} ${.OBJDIR}/${PC_FILES} ${DESTDIR}/usr/lib/pkgconfig/
 
 .include <bsd.lib.mk>
