@@ -22,9 +22,7 @@ SRCS=	elf.c elf_begin.c elf_cntl.c elf_end.c elf_errmsg.c elf_errno.c \
 	libelf_extended.c libelf_memory.c libelf_open.c libelf_phdr.c \
 	libelf_shdr.c libelf_xlate.c ${GENSRC}
 
-NOMAN=	y
-
-XMAN=	elf.3 elf_begin.3 elf_cntl.3 elf_end.3 elf_errmsg.3 elf_fill.3 \
+MAN=	elf.3 elf_begin.3 elf_cntl.3 elf_end.3 elf_errmsg.3 elf_fill.3 \
 	elf_flagdata.3 elf_getarhdr.3 elf_getarsym.3 elf_getbase.3 \
 	elf_getdata.3 elf_getident.3 elf_getscn.3 elf_getphdrnum.3 \
 	elf_getphnum.3 elf_getshdrnum.3 elf_getshnum.3 elf_getshdrstrndx.3 \
