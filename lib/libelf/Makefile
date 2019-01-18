@@ -19,7 +19,7 @@ SRCS=	elf.c elf_begin.c elf_cntl.c elf_end.c elf_errmsg.c elf_errno.c \
 	libelf_align.c libelf_allocate.c libelf_ar.c libelf_ar_util.c \
 	libelf_checksum.c libelf_data.c libelf_ehdr.c libelf_elfmachine.c \
 	libelf_extended.c libelf_memory.c libelf_open.c libelf_phdr.c \
-	libelf_shdr.c libelf_xlate.c ${GENSRCS}
+	libelf_shdr.c libelf_xlate.c ${GENSRC}
 
 NOMAN=	y
 
