@@ -7,6 +7,7 @@ VERSION_SCRIPT= ${.CURDIR}/Symbols.map
 HDRS=	libelf.h gelf.h elfdefinitions.h
 
 GENSRC=	libelf_fsize.c libelf_msize.c libelf_convert.c
+CLEANFILES += ${GENSRC}
 
 SRCS=	elf.c elf_begin.c elf_cntl.c elf_end.c elf_errmsg.c elf_errno.c \
 	elf_data.c elf_fill.c elf_flag.c elf_getarhdr.c elf_getarsym.c \
