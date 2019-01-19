@@ -50,7 +50,7 @@ if [ ! -w "${objdir}" ]; then
 	exit 1
 fi
 
-lib_version=0.0.0
+lib_version=0.8.12
 
 pc_file="${objdir}/libelf.pc"
 cat > ${pc_file} << __EOF__
