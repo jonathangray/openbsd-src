@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  */
 
+#include <stdint.h>
 #include <libelf.h>
 
 #include "_libelf.h"
