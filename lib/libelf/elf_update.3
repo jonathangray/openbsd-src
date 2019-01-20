@@ -160,7 +160,7 @@ executables, this field should be set to
 To be set to the desired machine architecture, one of the
 .Dv EM_*
 values in the header file
-.In elfdefinitions.h .
+.In exec_elf.h .
 .It Va e_phoff
 If the application is managing the object's layout, it must
 set this field to the file offset of the ELF program header table.
@@ -174,7 +174,7 @@ section names.
 To be set to the type of the ELF object, one of the
 .Dv ET_*
 values in the header file
-.In elfdefinitions.h .
+.In exec_elf.h .
 .It Va e_version
 To be set to the desired version of the ELF object.
 .El

@@ -4,7 +4,7 @@ LIB=	elf
 
 VERSION_SCRIPT= ${.CURDIR}/Symbols.map
 
-HDRS=	libelf.h gelf.h elfdefinitions.h
+HDRS=	libelf.h gelf.h
 
 GENSRC=	libelf_fsize.c libelf_msize.c libelf_convert.c
 CLEANFILES += ${GENSRC}

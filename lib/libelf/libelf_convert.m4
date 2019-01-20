@@ -27,6 +27,7 @@
 #include <assert.h>
 #include <libelf.h>
 #include <string.h>
+#include <stdint.h>
 
 #include "_libelf.h"
 
@@ -954,9 +955,9 @@ _libelf_cvt_NOTE_tom(unsigned char *dst, size_t dsz, unsigned char *src,
 
 		/* Copy out the translated note header. */
 		en = (Elf_Note *) (uintptr_t) dst;
-		en->n_namesz = namesz;
-		en->n_descsz = descsz;
-		en->n_type = type;
+		en->namesz = namesz;
+		en->descsz = descsz;
+		en->type = type;
 
 		dsz -= sizeof(Elf_Note);
 		dst += sizeof(Elf_Note);
@@ -1001,9 +1002,9 @@ _libelf_cvt_NOTE_tof(unsigned char *dst, size_t dsz, unsigned char *src,
 	while (count > sizeof(Elf_Note)) {
 
 		en = (Elf_Note *) (uintptr_t) src;
-		namesz = en->n_namesz;
-		descsz = en->n_descsz;
-		type = en->n_type;
+		namesz = en->namesz;
+		descsz = en->descsz;
+		type = en->type;
 
 		sz = namesz;
 		ROUNDUP2(sz, 4U);
