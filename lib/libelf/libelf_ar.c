@@ -29,6 +29,7 @@
 #include <libelf.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdint.h>
 
 #include "_libelf.h"
 #include "_libelf_ar.h"
