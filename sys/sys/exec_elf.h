@@ -608,6 +608,51 @@ typedef struct {
 #define NT_FPREGSET		2	/* Floating point registers. */
 #define NT_PRPSINFO		3	/* Process state info. */
 
+/* Capability */
+typedef struct {
+	Elf32_Word	c_tag;
+	union {
+		Elf32_Word	c_val;
+		Elf32_Addr	c_ptr;
+	} c_un;
+} Elf32_Cap;
+
+typedef struct {
+	Elf64_Xword	c_tag;
+	union {
+		Elf64_Xword	c_val;
+		Elf64_Addr	c_ptr;
+	} c_un;
+} Elf64_Cap;
+
+/* Move */
+typedef struct {
+	Elf32_Lword	m_value;
+	Elf32_Word	m_info;
+	Elf32_Word	m_poffset;
+	Elf32_Half	m_repeat;
+	Elf32_Half	m_stride;
+} Elf32_Move;
+
+typedef struct {
+	Elf64_Lword	m_value;
+	Elf64_Xword	m_info;
+	Elf64_Xword	m_poffset;
+	Elf64_Half	m_repeat;
+	Elf64_Half	m_stride;
+} Elf64_Move;
+
+/* Syminfo Table */
+typedef struct {
+	Elf32_Half	si_boundto;
+	Elf32_Half	si_flags;
+} Elf32_Syminfo;
+
+typedef struct {
+	Elf64_Half	si_boundto;
+	Elf64_Half	si_flags;
+} Elf64_Syminfo;
+
 /*
  * OpenBSD-specific core file information.
  *
