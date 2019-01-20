@@ -26,6 +26,7 @@
 
 #include <assert.h>
 #include <libelf.h>
+#include <stdint.h>
 
 #include "_libelf.h"
 
