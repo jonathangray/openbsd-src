@@ -42,7 +42,7 @@ LDIRS=	crypto ddb dev isofs miscfs msdosfs net netinet netinet6 \
 PRDIRS=	../lib/libcrypto ../lib/librpcsvc
 
 # Directories with an includes target
-RDIRS=	../lib/libcurses ../lib/libedit \
+RDIRS=	../lib/libcurses ../lib/libedit ../lib/libelf \
 	../lib/libevent ../lib/libexpat ../lib/libform \
 	../lib/libfuse ../lib/libkeynote ../lib/libmenu \
 	../lib/libossaudio ../lib/libpanel ../lib/libpcap \
