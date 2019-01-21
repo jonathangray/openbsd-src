@@ -26,7 +26,7 @@ BACKEND_INFO?=
 BACKEND_UTILS?=
 
 .for arch in ${LLVM_ARCHS}
-.if "${arch}" == ${LLVM_ARCH} || make(obj)
+.if "${arch}" == ${LLVM_ARCH} || "${arch}" == "AMDGPU" || make(obj)
 BACKEND_ASMPARSER+=	LLVM${arch}AsmParser
 BACKEND_ASMPRINTER+=	LLVM${arch}AsmPrinter
 BACKEND_CODEGEN+=	LLVM${arch}CodeGen
