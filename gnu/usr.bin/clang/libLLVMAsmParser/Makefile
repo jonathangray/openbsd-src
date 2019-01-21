@@ -1,7 +1,7 @@
 # $OpenBSD: Makefile,v 1.2 2017/07/09 15:28:34 espie Exp $
 
 LIB=	LLVMAsmParser
-NOPIC=
+LIBREBUILD=
 NOPROFILE=
 
 CPPFLAGS+=	-I${LLVM_SRCS}/include/llvm/Analysis

@@ -1,7 +1,7 @@
 # $OpenBSD: Makefile,v 1.5 2017/10/04 20:57:09 patrick Exp $
 
 LIB=	LLVMObject
-NOPIC=
+LIBREBUILD=
 NOPROFILE=
 
 CPPFLAGS+=	-I${LLVM_SRCS}/include/llvm/Object

@@ -1,7 +1,7 @@
 # $OpenBSD: Makefile,v 1.1 2019/01/29 00:18:23 jsg Exp $
 
 LIB=	LLVMAMDGPUUtils
-NOPIC=
+LIBREBUILD=
 NOPROFILE=
 
 CPPFLAGS+=	-I${.OBJDIR}/../include/llvm/AMDGPU \

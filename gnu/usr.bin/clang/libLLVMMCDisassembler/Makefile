@@ -1,7 +1,7 @@
 # $OpenBSD: Makefile,v 1.3 2018/10/04 11:43:29 patrick Exp $
 
 LIB=	LLVMMCDisassembler
-NOPIC=
+LIBREBUILD=
 NOPROFILE=
 
 .include <bsd.own.mk>
