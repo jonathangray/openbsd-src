@@ -1,7 +1,7 @@
 # $OpenBSD: Makefile,v 1.3 2017/07/09 15:28:35 espie Exp $
 
 LIB=	LLVMTarget
-NOPIC=
+LIBREBUILD=
 NOPROFILE=
 
 CPPFLAGS+=	-I${LLVM_SRCS}/include/llvm/Target

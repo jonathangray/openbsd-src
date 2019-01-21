@@ -1,7 +1,7 @@
 # $OpenBSD: Makefile,v 1.2 2017/07/09 15:28:34 espie Exp $
 
 LIB=	LLVMBitWriter
-NOPIC=
+LIBREBUILD=
 NOPROFILE=
 
 .include <bsd.own.mk>

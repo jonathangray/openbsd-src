@@ -1,7 +1,7 @@
 # $OpenBSD: Makefile,v 1.3 2019/01/27 16:59:41 patrick Exp $
 
 LIB=	LLVMInstCombine
-NOPIC=
+LIBREBUILD=
 NOPROFILE=
 
 CPPFLAGS+=	-I${LLVM_SRCS}/include/llvm/Transforms

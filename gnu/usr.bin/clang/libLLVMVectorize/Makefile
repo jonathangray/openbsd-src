@@ -1,7 +1,7 @@
 # $OpenBSD: Makefile,v 1.6 2019/01/27 16:59:42 patrick Exp $
 
 LIB=	LLVMVectorize
-NOPIC=
+LIBREBUILD=
 NOPROFILE=
 
 CPPFLAGS+=	-I${LLVM_SRCS}/include/llvm/Transforms

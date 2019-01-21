@@ -1,7 +1,7 @@
 # $OpenBSD: Makefile,v 1.3 2017/10/04 20:57:09 patrick Exp $
 
 LIB=	LLVMDebugInfoMSF
-NOPIC=
+LIBREBUILD=
 NOPROFILE=
 
 CPPFLAGS+=	-I${LLVM_SRCS}/include/llvm/DebugInfo/MSF

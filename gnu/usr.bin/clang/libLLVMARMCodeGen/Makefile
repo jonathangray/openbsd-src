@@ -1,7 +1,7 @@
 # $OpenBSD: Makefile,v 1.6 2019/01/27 16:59:41 patrick Exp $
 
 LIB=	LLVMARMCodeGen
-NOPIC=
+LIBREBUILD=
 NOPROFILE=
 
 CPPFLAGS+=	-I${.OBJDIR}/../include/llvm/ARM -I${LLVM_SRCS}/lib/Target/ARM
