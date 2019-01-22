@@ -53,7 +53,7 @@ SUBDIR+=libLLVMCoroutines
 SUBDIR+=libLLVMDemangle
 
 .for arch in ${LLVM_ARCHS}
-.if "${arch}" == ${LLVM_ARCH} || make(obj)
+.if "${arch}" == ${LLVM_ARCH} || "${arch}" == "AMDGPU" || make(obj)
 SUBDIR+=include/llvm/${arch}
 .endif
 .endfor
