@@ -1,4 +1,4 @@
-/*	$OpenBSD: kern_time.c,v 1.105 2018/12/31 18:54:00 cheloha Exp $	*/
+/*	$OpenBSD: kern_time.c,v 1.108 2019/01/18 20:55:19 cheloha Exp $	*/
 /*	$NetBSD: kern_time.c,v 1.20 1996/02/18 11:57:06 fvdl Exp $	*/
 
 /*
@@ -68,12 +68,6 @@ settime(const struct timespec *ts)
 	struct timespec now;
 
 	/*
-	 * Adjtime in progress is meaningless or harmful after
-	 * setting the clock. Cancel adjtime and then set new time.
-	 */
-	adjtimedelta = 0;
-
-	/*
 	 * Don't allow the time to be set forward so far it will wrap
 	 * and become negative, thus allowing an attacker to bypass
 	 * the next check below.  The cutoff is 1 year before rollover
@@ -102,6 +96,11 @@ settime(const struct timespec *ts)
 		return (EPERM);
 	}
 
+	/*
+	 * Adjtime in progress is meaningless or harmful after
+	 * setting the clock. Cancel adjtime and then set new time.
+	 */
+	adjtimedelta = 0;
 	tc_setrealtimeclock(ts);
 	resettodr();
 
@@ -168,11 +167,8 @@ sys_clock_gettime(struct proc *p, void *v, register_t *retval)
 
 	error = copyout(&ats, SCARG(uap, tp), sizeof(ats));
 #ifdef KTRACE
-	if (error == 0 && KTRPOINT(p, KTR_STRUCT)) {
-		KERNEL_LOCK();
+	if (error == 0 && KTRPOINT(p, KTR_STRUCT))
 		ktrabstimespec(p, &ats);
-		KERNEL_UNLOCK();
-	}
 #endif
 	return (error);
 }
@@ -197,6 +193,8 @@ sys_clock_settime(struct proc *p, void *v, register_t *retval)
 	clock_id = SCARG(uap, clock_id);
 	switch (clock_id) {
 	case CLOCK_REALTIME:
+		if (ats.tv_nsec < 0 || ats.tv_nsec >= 1000000000)
+			return (EINVAL);
 		if ((error = settime(&ats)) != 0)
 			return (error);
 		break;
@@ -246,11 +244,8 @@ sys_clock_getres(struct proc *p, void *v, register_t *retval)
 	if (SCARG(uap, tp)) {
 		error = copyout(&ts, SCARG(uap, tp), sizeof (ts));
 #ifdef KTRACE
-		if (error == 0 && KTRPOINT(p, KTR_STRUCT)) {
-			KERNEL_LOCK();
+		if (error == 0 && KTRPOINT(p, KTR_STRUCT))
 			ktrreltimespec(p, &ts);
-			KERNEL_UNLOCK();
-		}
 #endif
 	}
 
@@ -274,11 +269,8 @@ sys_nanosleep(struct proc *p, void *v, register_t *retval)
 	if (error)
 		return (error);
 #ifdef KTRACE
-        if (KTRPOINT(p, KTR_STRUCT)) {
-		KERNEL_LOCK();
+	if (KTRPOINT(p, KTR_STRUCT))
 		ktrreltimespec(p, &request);
-		KERNEL_UNLOCK();
-	}
 #endif
 
 	if (request.tv_sec < 0 || request.tv_nsec < 0 ||
@@ -311,11 +303,8 @@ sys_nanosleep(struct proc *p, void *v, register_t *retval)
 		if (copyout_error)
 			error = copyout_error;
 #ifdef KTRACE
-		if (copyout_error == 0 && KTRPOINT(p, KTR_STRUCT)) {
-			KERNEL_LOCK();
+		if (copyout_error == 0 && KTRPOINT(p, KTR_STRUCT))
 			ktrreltimespec(p, &remainder);
-			KERNEL_UNLOCK();
-		}
 #endif
 	}
 
@@ -343,11 +332,8 @@ sys_gettimeofday(struct proc *p, void *v, register_t *retval)
 		if ((error = copyout(&atv, tp, sizeof (atv))))
 			return (error);
 #ifdef KTRACE
-		if (KTRPOINT(p, KTR_STRUCT)) {
-			KERNEL_LOCK();
+		if (KTRPOINT(p, KTR_STRUCT))
 			ktrabstimeval(p, &atv);
-			KERNEL_UNLOCK();
-		}
 #endif
 	}
 	if (tzp)
@@ -381,6 +367,8 @@ sys_settimeofday(struct proc *p, void *v, register_t *retval)
 	if (tv) {
 		struct timespec ts;
 
+		if (atv.tv_usec < 0 || atv.tv_usec >= 1000000)
+			return (EINVAL);
 		TIMEVAL_TO_TIMESPEC(&atv, &ts);
 		if ((error = settime(&ts)) != 0)
 			return (error);
@@ -453,6 +441,9 @@ sys_adjtime(struct proc *p, void *v, register_t *retval)
 
 		if ((error = copyin(delta, &atv, sizeof(struct timeval))))
 			return (error);
+
+		if (atv.tv_usec < 0 || atv.tv_usec >= 1000000)
+			return (EINVAL);
 
 		/* XXX Check for overflow? */
 		adjtimedelta = (int64_t)atv.tv_sec * 1000000 + atv.tv_usec;

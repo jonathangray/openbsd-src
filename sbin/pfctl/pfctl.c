@@ -1,4 +1,4 @@
-/*	$OpenBSD: pfctl.c,v 1.362 2019/01/02 23:08:00 kn Exp $ */
+/*	$OpenBSD: pfctl.c,v 1.366 2019/01/19 11:48:54 kn Exp $ */
 
 /*
  * Copyright (c) 2001 Daniel Hartmeier
@@ -67,7 +67,7 @@ void	 pfctl_clear_rules(int, int, char *);
 void	 pfctl_clear_src_nodes(int, int);
 void	 pfctl_clear_states(int, const char *, int);
 void	 pfctl_addrprefix(char *, struct pf_addr *);
-void	 pfctl_kill_src_nodes(int, const char *, int);
+void	 pfctl_kill_src_nodes(int, int);
 void	 pfctl_net_kill_states(int, const char *, int, int);
 void	 pfctl_label_kill_states(int, const char *, int, int);
 void	 pfctl_id_kill_states(int, int);
@@ -405,7 +405,7 @@ pfctl_addrprefix(char *addr, struct pf_addr *mask)
 }
 
 void
-pfctl_kill_src_nodes(int dev, const char *iface, int opts)
+pfctl_kill_src_nodes(int dev, int opts)
 {
 	struct pfioc_src_node_kill psnk;
 	struct addrinfo *res[2], *resp[2];
@@ -1485,7 +1485,6 @@ pfctl_load_ruleset(struct pfctl *pf, char *path, struct pf_ruleset *rs,
 			}
 		} else if (pf->opts & PF_OPT_VERBOSE)
 			printf("\n");
-
 	}
 
 	if (pf->optimize)
@@ -1850,7 +1849,6 @@ int
 pfctl_set_limit(struct pfctl *pf, const char *opt, unsigned int limit)
 {
 	int i;
-
 
 	for (i = 0; pf_limits[i].name; i++) {
 		if (strcasecmp(opt, pf_limits[i].name) == 0) {
@@ -2217,7 +2215,7 @@ pfctl_show_anchors(int dev, int opts, char *anchorname)
 			err(1, "DIOCGETRULESET");
 		if (!strcmp(pr.name, PF_RESERVED_ANCHOR))
 			continue;
-		sub[0] = 0;
+		sub[0] = '\0';
 		if (pr.path[0]) {
 			strlcat(sub, pr.path, sizeof(sub));
 			strlcat(sub, "/", sizeof(sub));
@@ -2235,6 +2233,7 @@ const char *
 pfctl_lookup_option(char *cmd, const char **list)
 {
 	const char *item = NULL;
+
 	if (cmd != NULL && *cmd)
 		for (; *list; list++)
 			if (!strncmp(cmd, *list, strlen(cmd))) {
@@ -2580,15 +2579,15 @@ main(int argc, char *argv[])
 			opts |= PF_OPT_SHOWALL;
 			pfctl_load_fingerprints(dev, opts);
 
-			pfctl_show_rules(dev, path, opts, 0, anchorname,
-			    0, 0, -1);
+			pfctl_show_rules(dev, path, opts, PFCTL_SHOW_RULES,
+			    anchorname, 0, 0, -1);
 			pfctl_show_queues(dev, ifaceopt, opts,
 			    opts & PF_OPT_VERBOSE2);
 			pfctl_show_states(dev, ifaceopt, opts, -1);
 			pfctl_show_src_nodes(dev, opts);
 			pfctl_show_status(dev, opts);
-			pfctl_show_rules(dev, path, opts, 1, anchorname,
-			    0, 0, -1);
+			pfctl_show_rules(dev, path, opts, PFCTL_SHOW_LABELS,
+			    anchorname, 0, 0, -1);
 			pfctl_show_timeouts(dev, opts);
 			pfctl_show_limits(dev, opts);
 			pfctl_show_tables(anchorname, opts);
@@ -2626,13 +2625,13 @@ main(int argc, char *argv[])
 			pfctl_clear_stats(dev, ifaceopt, opts);
 			break;
 		case 'a':
-			pfctl_clear_tables(anchorname, opts);
-			pfctl_clear_rules(dev, opts, anchorname);
-			if (ifaceopt && *ifaceopt) {
+			if (ifaceopt) {
 				warnx("don't specify an interface with -Fall");
 				usage();
 				/* NOTREACHED */
 			}
+			pfctl_clear_tables(anchorname, opts);
+			pfctl_clear_rules(dev, opts, anchorname);
 			if (!*anchorname) {
 				pfctl_clear_states(dev, ifaceopt, opts);
 				pfctl_clear_src_nodes(dev, opts);
@@ -2661,7 +2660,7 @@ main(int argc, char *argv[])
 	}
 
 	if (src_node_killers)
-		pfctl_kill_src_nodes(dev, ifaceopt, opts);
+		pfctl_kill_src_nodes(dev, opts);
 
 	if (tblcmdopt != NULL) {
 		error = pfctl_table(argc, argv, tableopt,
@@ -2693,8 +2692,6 @@ main(int argc, char *argv[])
 		if (pfctl_rules(dev, rulesopt, opts, optimize,
 		    anchorname, NULL))
 			error = 1;
-		else if (!(opts & PF_OPT_NOACTION))
-			warn_namespace_collision(NULL);
 	}
 
 	if (opts & PF_OPT_ENABLE)

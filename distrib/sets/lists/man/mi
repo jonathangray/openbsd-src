@@ -1074,6 +1074,7 @@
 ./usr/share/man/man3p/warnings::register.3p
 ./usr/share/man/man3p/writemain.3p
 ./usr/share/man/man4/aac.4
+./usr/share/man/man4/abcrtc.4
 ./usr/share/man/man4/ac97.4
 ./usr/share/man/man4/acphy.4
 ./usr/share/man/man4/acpi.4
@@ -1427,6 +1428,7 @@
 ./usr/share/man/man4/imxgpio.4
 ./usr/share/man/man4/imxiic.4
 ./usr/share/man/man4/imxrtc.4
+./usr/share/man/man4/imxsrc.4
 ./usr/share/man/man4/imxuart.4
 ./usr/share/man/man4/inet.4
 ./usr/share/man/man4/inet6.4
@@ -1451,6 +1453,7 @@
 ./usr/share/man/man4/iwn.4
 ./usr/share/man/man4/ix.4
 ./usr/share/man/man4/ixgb.4
+./usr/share/man/man4/ixl.4
 ./usr/share/man/man4/jmb.4
 ./usr/share/man/man4/jme.4
 ./usr/share/man/man4/jmphy.4
@@ -1598,6 +1601,7 @@
 ./usr/share/man/man4/octeon/octcit.4
 ./usr/share/man/man4/octeon/octciu.4
 ./usr/share/man/man4/octeon/octcrypto.4
+./usr/share/man/man4/octeon/octgpio.4
 ./usr/share/man/man4/octeon/octmmc.4
 ./usr/share/man/man4/octeon/octrng.4
 ./usr/share/man/man4/octeon/octrtc.4

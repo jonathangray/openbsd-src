@@ -1,4 +1,4 @@
-/* $OpenBSD: ssh-pkcs11-helper.c,v 1.14 2018/01/08 15:18:46 markus Exp $ */
+/* $OpenBSD: ssh-pkcs11-helper.c,v 1.16 2019/01/21 12:53:35 djm Exp $ */
 /*
  * Copyright (c) 2010 Markus Friedl.  All rights reserved.
  *
@@ -103,7 +103,7 @@ static void
 process_add(void)
 {
 	char *name, *pin;
-	struct sshkey **keys;
+	struct sshkey **keys = NULL;
 	int r, i, nkeys;
 	u_char *blob;
 	size_t blen;
@@ -132,11 +132,13 @@ process_add(void)
 			free(blob);
 			add_key(keys[i], name);
 		}
-		free(keys);
 	} else {
 		if ((r = sshbuf_put_u8(msg, SSH_AGENT_FAILURE)) != 0)
 			fatal("%s: buffer error: %s", __func__, ssh_err(r));
+		if ((r = sshbuf_put_u32(msg, -nkeys)) != 0)
+			fatal("%s: buffer error: %s", __func__, ssh_err(r));
 	}
+	free(keys);
 	free(pin);
 	free(name);
 	send_msg(msg);
@@ -185,15 +187,33 @@ process_sign(void)
 	else {
 		if ((found = lookup_key(key)) != NULL) {
 #ifdef WITH_OPENSSL
+			u_int xslen;
 			int ret;
 
-			slen = RSA_size(key->rsa);
-			signature = xmalloc(slen);
-			if ((ret = RSA_private_encrypt(dlen, data, signature,
-			    found->rsa, RSA_PKCS1_PADDING)) != -1) {
-				slen = ret;
-				ok = 0;
-			}
+			if (key->type == KEY_RSA) {
+				slen = RSA_size(key->rsa);
+				signature = xmalloc(slen);
+				ret = RSA_private_encrypt(dlen, data, signature,
+				    found->rsa, RSA_PKCS1_PADDING);
+				if (ret != -1) {
+					slen = ret;
+					ok = 0;
+				}
+			} else if (key->type == KEY_ECDSA) {
+				xslen = ECDSA_size(key->ecdsa);
+				signature = xmalloc(xslen);
+				/* "The parameter type is ignored." */
+				ret = ECDSA_sign(-1, data, dlen, signature,
+				    &xslen, found->ecdsa);
+				if (ret != 0)
+					ok = 0;
+				else
+					error("%s: ECDSA_sign"
+					    " returns %d", __func__, ret);
+				slen = xslen;
+			} else
+				error("%s: don't know how to sign with key "
+				    "type %d", __func__, (int)key->type);
 #endif /* WITH_OPENSSL */
 		}
 		sshkey_free(key);
@@ -280,11 +300,12 @@ cleanup_exit(int i)
 	_exit(i);
 }
 
+
 int
 main(int argc, char **argv)
 {
 	fd_set *rset, *wset;
-	int r, in, out, max, log_stderr = 0;
+	int r, ch, in, out, max, log_stderr = 0;
 	ssize_t len, olen, set_size;
 	SyslogFacility log_facility = SYSLOG_FACILITY_AUTH;
 	LogLevel log_level = SYSLOG_LEVEL_ERROR;
@@ -293,10 +314,27 @@ main(int argc, char **argv)
 
 	ssh_malloc_init();	/* must be called before any mallocs */
 	TAILQ_INIT(&pkcs11_keylist);
-	pkcs11_init(0);
 
 	log_init(__progname, log_level, log_facility, log_stderr);
 
+	while ((ch = getopt(argc, argv, "v")) != -1) {
+		switch (ch) {
+		case 'v':
+			log_stderr = 1;
+			if (log_level == SYSLOG_LEVEL_ERROR)
+				log_level = SYSLOG_LEVEL_DEBUG1;
+			else if (log_level < SYSLOG_LEVEL_DEBUG3)
+				log_level++;
+			break;
+		default:
+			fprintf(stderr, "usage: %s [-v]\n", __progname);
+			exit(1);
+		}
+	}
+
+	log_init(__progname, log_level, log_facility, log_stderr);
+
+	pkcs11_init(0);
 	in = STDIN_FILENO;
 	out = STDOUT_FILENO;
 
