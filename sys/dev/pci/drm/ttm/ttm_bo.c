@@ -1160,6 +1160,7 @@ int ttm_bo_init_reserved(struct ttm_bo_device *bdev,
 	}
 	bo->destroy = destroy ? destroy : ttm_bo_default_destroy;
 
+	uvm_objinit(&bo->uobj, NULL, 0);
 	kref_init(&bo->kref);
 	kref_init(&bo->list_kref);
 	atomic_set(&bo->cpu_writers, 0);
