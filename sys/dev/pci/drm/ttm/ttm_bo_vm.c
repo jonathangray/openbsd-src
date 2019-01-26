@@ -696,7 +696,7 @@ ttm_bo_mmap(voff_t off, vsize_t size, struct ttm_bo_device *bdev)
 	bo->uobj.uo_refs++;
 	return &bo->uobj;
 out_unref:
-	ttm_bo_unref(&bo);
+	ttm_bo_put(bo);
 	return NULL;
 }
 #endif
