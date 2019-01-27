@@ -582,7 +582,7 @@ ttm_bo_vm_reference(struct uvm_object *uobj)
 	struct ttm_buffer_object *bo =
 	    (struct ttm_buffer_object *)uobj;
 
-	(void)ttm_bo_reference(bo);
+	ttm_bo_get(bo);
 	uobj->uo_refs++;
 }
 
