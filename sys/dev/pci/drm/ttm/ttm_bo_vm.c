@@ -44,7 +44,10 @@
 
 #define TTM_BO_VM_NUM_PREFAULT 16
 
-static vm_fault_t ttm_bo_vm_fault_idle(struct ttm_buffer_object *bo)
+#ifdef __linux__
+
+static vm_fault_t ttm_bo_vm_fault_idle(struct ttm_buffer_object *bo,
+				struct vm_fault *vmf)
 {
 	vm_fault_t ret = 0;
 	int err = 0;
@@ -62,7 +65,6 @@ static vm_fault_t ttm_bo_vm_fault_idle(struct ttm_buffer_object *bo)
 	 * If possible, avoid waiting for GPU with mmap_sem
 	 * held.
 	 */
-#ifdef notyet
 	if (vmf->flags & FAULT_FLAG_ALLOW_RETRY) {
 		ret = VM_FAULT_RETRY;
 		if (vmf->flags & FAULT_FLAG_RETRY_NOWAIT)
@@ -75,15 +77,14 @@ static vm_fault_t ttm_bo_vm_fault_idle(struct ttm_buffer_object *bo)
 		ttm_bo_put(bo);
 		goto out_unlock;
 	}
-#endif
 
 	/*
 	 * Ordinary wait.
 	 */
 	err = dma_fence_wait(bo->moving, true);
 	if (unlikely(err != 0)) {
-		ret = (ret != -ERESTARTSYS) ? VM_PAGER_ERROR :
-			VM_PAGER_REFAULT;
+		ret = (err != -ERESTARTSYS) ? VM_FAULT_SIGBUS :
+			VM_FAULT_NOPAGE;
 		goto out_unlock;
 	}
 
@@ -95,7 +96,6 @@ out_unlock:
 	return ret;
 }
 
-#ifdef __linux__
 static unsigned long ttm_bo_io_mem_pfn(struct ttm_buffer_object *bo,
 				       unsigned long page_offset)
 {
@@ -296,7 +296,45 @@ out_unlock:
 	ttm_bo_unreserve(bo);
 	return ret;
 }
+
 #else
+
+static vm_fault_t ttm_bo_vm_fault_idle(struct ttm_buffer_object *bo,
+    struct uvm_faultinfo *ufi)
+{
+	vm_fault_t ret = 0;
+	int err = 0;
+
+	if (likely(!bo->moving))
+		goto out_unlock;
+
+	/*
+	 * Quick non-stalling check for idle.
+	 */
+	if (dma_fence_is_signaled(bo->moving))
+		goto out_clear;
+
+	/*
+	 * If possible, avoid waiting for GPU with mmap_sem
+	 * held.
+	 */
+	ret = VM_PAGER_REFAULT;
+
+	ttm_bo_get(bo);
+	uvmfault_unlockall(ufi, NULL, NULL, NULL);
+	(void) dma_fence_wait(bo->moving, true);
+	ttm_bo_unreserve(bo);
+	ttm_bo_put(bo);
+	goto out_unlock;
+
+out_clear:
+	dma_fence_put(bo->moving);
+	bo->moving = NULL;
+
+out_unlock:
+	return ret;
+}
+
 int
 ttm_bo_vm_fault(struct uvm_faultinfo *ufi, vaddr_t vaddr, vm_page_t *pps,
     int npages, int centeridx, vm_fault_t fault_type,
@@ -314,10 +352,10 @@ ttm_bo_vm_fault(struct uvm_faultinfo *ufi, vaddr_t vaddr, vm_page_t *pps,
 	vm_prot_t mapprot;
 	int pmap_flags;
 	boolean_t locked = TRUE;
-	int ret;
+	int err;
 	int i;
+	int ret = VM_PAGER_OK;
 	unsigned long address = (unsigned long)vaddr;
-	int retval = VM_PAGER_OK;
 	struct ttm_mem_type_manager *man =
 		&bdev->man[bo->mem.mem_type];
 
@@ -327,13 +365,18 @@ ttm_bo_vm_fault(struct uvm_faultinfo *ufi, vaddr_t vaddr, vm_page_t *pps,
 	 * for reserve, and if it fails, retry the fault after waiting
 	 * for the buffer to become unreserved.
 	 */
-	ret = ttm_bo_reserve(bo, true, true, NULL);
-	if (unlikely(ret != 0)) {
-		uvmfault_unlockall(ufi, NULL, uobj, NULL);
-		ret = ttm_bo_reserve(bo, true, false, 0);
-		locked = uvmfault_relock(ufi);
-		if (!locked)
-			return VM_PAGER_REFAULT;
+	err = ttm_bo_reserve(bo, true, true, NULL);
+	if (unlikely(err != 0)) {
+		if (err != -EBUSY) {
+			uvmfault_unlockall(ufi, NULL, NULL, NULL);
+			return VM_PAGER_OK;
+		}
+
+		ttm_bo_get(bo);
+		uvmfault_unlockall(ufi, NULL, NULL, NULL);
+		(void) ttm_bo_wait_unreserved(bo);
+		ttm_bo_put(bo);
+		return VM_PAGER_REFAULT;
 	}
 
 	/*
@@ -341,21 +384,21 @@ ttm_bo_vm_fault(struct uvm_faultinfo *ufi, vaddr_t vaddr, vm_page_t *pps,
 	 * (if at all) by redirecting mmap to the exporter.
 	 */
 	if (bo->ttm && (bo->ttm->page_flags & TTM_PAGE_FLAG_SG)) {
-		retval = VM_PAGER_ERROR;
+		ret = VM_PAGER_ERROR;
 		goto out_unlock;
 	}
 
 	if (bdev->driver->fault_reserve_notify) {
-		ret = bdev->driver->fault_reserve_notify(bo);
-		switch (ret) {
+		err = bdev->driver->fault_reserve_notify(bo);
+		switch (err) {
 		case 0:
 			break;
 		case -EBUSY:
 		case -ERESTARTSYS:
-			retval = VM_PAGER_REFAULT;
+			ret = VM_PAGER_OK;
 			goto out_unlock;
 		default:
-			retval = VM_PAGER_ERROR;
+			ret = VM_PAGER_ERROR;
 			goto out_unlock;
 		}
 	}
@@ -364,22 +407,24 @@ ttm_bo_vm_fault(struct uvm_faultinfo *ufi, vaddr_t vaddr, vm_page_t *pps,
 	 * Wait for buffer data in transit, due to a pipelined
 	 * move.
 	 */
-	ret = ttm_bo_vm_fault_idle(bo);
+	ret = ttm_bo_vm_fault_idle(bo, ufi);
 	if (unlikely(ret != 0)) {
-		retval = ret;
-		retval = (ret != -ERESTARTSYS) ?
-		    VM_PAGER_ERROR : VM_PAGER_REFAULT;
+		if (ret == VM_PAGER_REFAULT) {
+			/* The BO has already been unreserved. */
+			return ret;
+		}
+
 		goto out_unlock;
 	}
 
-	ret = ttm_mem_io_lock(man, true);
-	if (unlikely(ret != 0)) {
-		retval = VM_PAGER_REFAULT;
+	err = ttm_mem_io_lock(man, true);
+	if (unlikely(err != 0)) {
+		ret = VM_PAGER_OK;
 		goto out_unlock;
 	}
-	ret = ttm_mem_io_reserve_vm(bo);
-	if (unlikely(ret != 0)) {
-		retval = VM_PAGER_ERROR;
+	err = ttm_mem_io_reserve_vm(bo);
+	if (unlikely(err != 0)) {
+		ret = VM_PAGER_ERROR;
 		goto out_io_unlock;
 	}
 
@@ -389,7 +434,7 @@ ttm_bo_vm_fault(struct uvm_faultinfo *ufi, vaddr_t vaddr, vm_page_t *pps,
 	    drm_vma_node_start(&bo->vma_node) - (ufi->entry->offset >> PAGE_SHIFT);
 
 	if (unlikely(page_offset >= bo->num_pages)) {
-		retval = VM_PAGER_ERROR;
+		ret = VM_PAGER_ERROR;
 		goto out_io_unlock;
 	}
 
@@ -414,7 +459,7 @@ ttm_bo_vm_fault(struct uvm_faultinfo *ufi, vaddr_t vaddr, vm_page_t *pps,
 
 		/* Allocate all page at once, most common usage */
 		if (ttm_tt_populate(ttm, &ctx)) {
-			retval = VM_PAGER_ERROR;
+			ret = VM_PAGER_ERROR;
 			goto out_io_unlock;
 		}
 	}
@@ -432,7 +477,7 @@ ttm_bo_vm_fault(struct uvm_faultinfo *ufi, vaddr_t vaddr, vm_page_t *pps,
 		} else {
 			page = ttm->pages[page_offset];
 			if (unlikely(!page && i == 0)) {
-				retval = VM_PAGER_ERROR;
+				ret = VM_PAGER_ERROR;
 				goto out_io_unlock;
 			} else if (unlikely(!page)) {
 				break;
@@ -440,7 +485,7 @@ ttm_bo_vm_fault(struct uvm_faultinfo *ufi, vaddr_t vaddr, vm_page_t *pps,
 			paddr = VM_PAGE_TO_PHYS(page);
 		}
 
-		ret = pmap_enter(ufi->orig_map->pmap, vaddr,
+		err = pmap_enter(ufi->orig_map->pmap, vaddr,
 		    paddr | pmap_flags, mapprot, PMAP_CANFAIL | mapprot);
 
 		/*
@@ -448,11 +493,10 @@ ttm_bo_vm_fault(struct uvm_faultinfo *ufi, vaddr_t vaddr, vm_page_t *pps,
 		 * an already populated PTE, or prefaulting error.
 		 */
 
-		if (unlikely((ret == -EBUSY) || (ret != 0 && i > 0)))
+		if (unlikely((err != 0 && i > 0)))
 			break;
-		else if (unlikely(ret != 0)) {
-			uvmfault_unlockall(ufi, ufi->entry->aref.ar_amap,
-			    NULL, NULL);
+		else if (unlikely(err != 0)) {
+			uvmfault_unlockall(ufi, NULL, NULL, NULL);
 			uvm_wait("ttmflt");
 			return VM_PAGER_REFAULT;
 		}
@@ -463,13 +507,15 @@ ttm_bo_vm_fault(struct uvm_faultinfo *ufi, vaddr_t vaddr, vm_page_t *pps,
 			break;
 	}
 	pmap_update(ufi->orig_map->pmap);
+	ret = VM_PAGER_OK;
 out_io_unlock:
 	ttm_mem_io_unlock(man);
 out_unlock:
-	uvmfault_unlockall(ufi, ufi->entry->aref.ar_amap, NULL, NULL);
+	uvmfault_unlockall(ufi, NULL, NULL, NULL);
 	ttm_bo_unreserve(bo);
-	return retval;
+	return ret;
 }
+
 #endif
 
 #ifdef notyet
