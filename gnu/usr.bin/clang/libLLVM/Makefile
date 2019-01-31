@@ -93,12 +93,12 @@ SSRCS=	\
 
 SOBJS=
 .for s in ${SSRCS}
-.if exists(${.OBJDIR}/../lib${s}/lib${s}.so.0.0.a)
+.if exists(${.OBJDIR}/../lib${s}/lib${s}.so.a)
 DPADD=${s}.list
 LDADD+=`cat ${s}.list`
 
-${s}.list: ${.OBJDIR}/../lib${s}/lib${s}.so.0.0.a
-	ar t ${.OBJDIR}/../lib${s}/lib${s}.so.0.0.a | grep -v ^.ldadd | sed s,^,${.OBJDIR}/../lib${s}/, > ${.TARGET}
+${s}.list: ${.OBJDIR}/../lib${s}/lib${s}.so.a
+	ar t ${.OBJDIR}/../lib${s}/lib${s}.so.a | sed s,^,${.OBJDIR}/../lib${s}/, > ${.TARGET}
 .endif
 .endfor
 
