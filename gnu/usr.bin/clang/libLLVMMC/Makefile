@@ -1,7 +1,6 @@
 # $OpenBSD: Makefile,v 1.6 2019/01/27 16:59:41 patrick Exp $
 
 LIB=	LLVMMC
-NOPIC=
 NOPROFILE=
 
 CPPFLAGS+=	-I${LLVM_SRCS}/include/llvm/MC

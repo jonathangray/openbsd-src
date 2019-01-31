@@ -1,7 +1,6 @@
 # $OpenBSD: Makefile,v 1.1 2019/01/29 05:51:30 jsg Exp $
 
 LIB=	LLVMAMDGPUCodeGen
-NOPIC=
 NOPROFILE=
 
 CPPFLAGS+=	-I${.OBJDIR}/../include/llvm/AMDGPU \

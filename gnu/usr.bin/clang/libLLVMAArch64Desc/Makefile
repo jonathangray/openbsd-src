@@ -1,7 +1,6 @@
 # $OpenBSD: Makefile,v 1.3 2017/10/04 20:57:09 patrick Exp $
 
 LIB=	LLVMAArch64Desc
-NOPIC=
 NOPROFILE=
 
 CPPFLAGS+=	-I${.OBJDIR}/../include/llvm/AArch64 \

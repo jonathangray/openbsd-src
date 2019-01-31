@@ -1,7 +1,6 @@
 # $OpenBSD: Makefile,v 1.2 2019/02/26 23:39:51 jsg Exp $
 
 LIB=	LLVMDebugInfoPDB
-NOPIC=
 NOPROFILE=
 
 CPPFLAGS+=	-I${LLVM_SRCS}/include/llvm/DebugInfo/PDB

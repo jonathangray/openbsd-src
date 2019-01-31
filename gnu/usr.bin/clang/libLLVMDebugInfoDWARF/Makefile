@@ -1,7 +1,6 @@
 # $OpenBSD: Makefile,v 1.5 2019/01/27 16:59:41 patrick Exp $
 
 LIB=	LLVMDebugInfoDWARF
-NOPIC=
 NOPROFILE=
 
 CPPFLAGS+=	-I${LLVM_SRCS}/include/llvm/DebugInfo/DWARF

@@ -1,7 +1,6 @@
 # $OpenBSD: Makefile,v 1.5 2019/02/26 23:39:51 jsg Exp $
 
 LIB=	LLVMGlobalISel
-NOPIC=
 NOPROFILE=
 
 SRCS+=	CallLowering.cpp \

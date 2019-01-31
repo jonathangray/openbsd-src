@@ -1,7 +1,6 @@
 # $OpenBSD: Makefile,v 1.8 2019/02/26 23:39:51 jsg Exp $
 
 LIB=	LLVMAnalysis
-NOPIC=
 NOPROFILE=
 
 CPPFLAGS+=	-I${LLVM_SRCS}/include/llvm/Analysis

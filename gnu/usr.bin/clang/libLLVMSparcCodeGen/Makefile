@@ -1,7 +1,6 @@
 # $OpenBSD: Makefile,v 1.3 2017/07/09 15:28:35 espie Exp $
 
 LIB=	LLVMSparcCodeGen
-NOPIC=
 NOPROFILE=
 
 CPPFLAGS+=	-I${.OBJDIR}/../include/llvm/Sparc \
