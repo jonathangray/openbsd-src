@@ -17,3 +17,11 @@ install:
 	@# Nothing here so far ...
 
 .include <bsd.lib.mk>
+
+ARLIBNAME=lib${LIB}.so
+${ARLIBNAME}.a: ${SOBJS}
+	ar cqD ${ARLIBNAME}.a ${SOBJS}
+
+all: lib${LIB}.a lib${LIB}.so.a
+
+CLEANFILES += ${ARLIBNAME}.a
