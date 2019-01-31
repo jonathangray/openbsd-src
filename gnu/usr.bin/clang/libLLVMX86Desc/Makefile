@@ -6,7 +6,7 @@ NOPROFILE=
 
 CPPFLAGS+=	-I${.OBJDIR}/../include/llvm/X86 -I${LLVM_SRCS}/lib/Target/X86
 
-SRCS=	X86AsmBackend.cpp \
+SRCS+=	X86AsmBackend.cpp \
 	X86MCTargetDesc.cpp \
 	X86MCAsmInfo.cpp \
 	X86MCCodeEmitter.cpp \

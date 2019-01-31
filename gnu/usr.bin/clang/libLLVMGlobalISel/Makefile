@@ -4,7 +4,7 @@ LIB=	LLVMGlobalISel
 NOPIC=
 NOPROFILE=
 
-SRCS=	CallLowering.cpp \
+SRCS+=	CallLowering.cpp \
 	GlobalISel.cpp \
 	IRTranslator.cpp \
 	InstructionSelect.cpp \

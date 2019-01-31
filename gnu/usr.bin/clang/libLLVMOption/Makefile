@@ -6,7 +6,7 @@ NOPROFILE=
 
 CPPFLAGS+=	-I${LLVM_SRCS}/include/llvm/Option
 
-SRCS=	Arg.cpp \
+SRCS+=	Arg.cpp \
 	ArgList.cpp \
 	Option.cpp \
 	OptTable.cpp

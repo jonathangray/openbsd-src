@@ -7,7 +7,7 @@ NOPROFILE=
 CPPFLAGS+=	-I${.OBJDIR}/../include/llvm/AArch64 \
 		-I${LLVM_SRCS}/lib/Target/AArch64
 
-SRCS=	AArch64AsmBackend.cpp \
+SRCS+=	AArch64AsmBackend.cpp \
 	AArch64ELFObjectWriter.cpp \
 	AArch64ELFStreamer.cpp \
 	AArch64MachObjectWriter.cpp \

@@ -4,7 +4,7 @@ LIB=	LLVMBitWriter
 NOPIC=
 NOPROFILE=
 
-SRCS=	BitWriter.cpp \
+SRCS+=	BitWriter.cpp \
 	BitcodeWriter.cpp \
 	BitcodeWriterPass.cpp \
 	ValueEnumerator.cpp

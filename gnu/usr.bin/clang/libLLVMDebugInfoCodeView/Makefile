@@ -6,7 +6,7 @@ NOPROFILE=
 
 CPPFLAGS+=	-I${LLVM_SRCS}/include/llvm/DebugInfo/CodeView
 
-SRCS=	AppendingTypeTableBuilder.cpp \
+SRCS+=	AppendingTypeTableBuilder.cpp \
 	CodeViewError.cpp \
 	CodeViewRecordIO.cpp \
 	ContinuationRecordBuilder.cpp \

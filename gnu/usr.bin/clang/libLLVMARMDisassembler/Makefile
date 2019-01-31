@@ -6,7 +6,7 @@ NOPROFILE=
 
 CPPFLAGS+=	-I${.OBJDIR}/../include/llvm/ARM -I${LLVM_SRCS}/lib/Target/ARM
 
-SRCS=	ARMDisassembler.cpp
+SRCS+=	ARMDisassembler.cpp
 
 .PATH:	${.CURDIR}/../../../llvm/lib/Target/ARM/Disassembler
 

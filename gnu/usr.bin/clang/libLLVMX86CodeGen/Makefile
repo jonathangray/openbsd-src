@@ -6,7 +6,7 @@ NOPROFILE=
 
 CPPFLAGS+=	-I${.OBJDIR}/../include/llvm/X86 -I${LLVM_SRCS}/lib/Target/X86
 
-SRCS=	ShadowCallStack.cpp\
+SRCS+=	ShadowCallStack.cpp\
 	X86AsmPrinter.cpp \
 	X86AvoidStoreForwardingBlocks.cpp \
 	X86CallFrameOptimization.cpp \

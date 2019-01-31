@@ -6,7 +6,7 @@ NOPROFILE=
 
 CPPFLAGS+=	-I${.OBJDIR}/../include/llvm/ARM -I${LLVM_SRCS}/lib/Target/ARM
 
-SRCS=	A15SDOptimizer.cpp \
+SRCS+=	A15SDOptimizer.cpp \
 	ARMAsmPrinter.cpp \
 	ARMBaseInstrInfo.cpp \
 	ARMBaseRegisterInfo.cpp \

@@ -6,7 +6,7 @@ NOPROFILE=
 
 CPPFLAGS+=	-I${.OBJDIR}/../include/llvm/Mips -I${LLVM_SRCS}/lib/Target/Mips
 
-SRCS=	MipsTargetInfo.cpp
+SRCS+=	MipsTargetInfo.cpp
 
 .PATH:	${.CURDIR}/../../../llvm/lib/Target/Mips/TargetInfo
 

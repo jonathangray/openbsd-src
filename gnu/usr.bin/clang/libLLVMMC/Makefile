@@ -6,7 +6,7 @@ NOPROFILE=
 
 CPPFLAGS+=	-I${LLVM_SRCS}/include/llvm/MC
 
-SRCS=	ConstantPools.cpp \
+SRCS+=	ConstantPools.cpp \
 	ELFObjectWriter.cpp \
 	MCAsmBackend.cpp \
 	MCAsmInfo.cpp \

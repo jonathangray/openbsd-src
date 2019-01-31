@@ -6,7 +6,7 @@ NOPROFILE=
 
 CPPFLAGS+=	-I${LLVM_SRCS}/include/llvm/DebugInfo/MSF
 
-SRCS=	MappedBlockStream.cpp \
+SRCS+=	MappedBlockStream.cpp \
 	MSFBuilder.cpp \
 	MSFCommon.cpp \
 	MSFError.cpp

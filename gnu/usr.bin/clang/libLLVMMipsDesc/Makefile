@@ -6,7 +6,7 @@ NOPROFILE=
 
 CPPFLAGS+=	-I${.OBJDIR}/../include/llvm/Mips -I${LLVM_SRCS}/lib/Target/Mips
 
-SRCS=	MipsABIInfo.cpp \
+SRCS+=	MipsABIInfo.cpp \
 	MipsABIFlagsSection.cpp \
 	MipsAsmBackend.cpp \
 	MipsELFObjectWriter.cpp \

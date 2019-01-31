@@ -6,7 +6,7 @@ NOPROFILE=
 
 CPPFLAGS+=	-I${LLVM_SRCS}/include/llvm/Analysis
 
-SRCS=	LLLexer.cpp \
+SRCS+=	LLLexer.cpp \
 	LLParser.cpp \
 	Parser.cpp
 

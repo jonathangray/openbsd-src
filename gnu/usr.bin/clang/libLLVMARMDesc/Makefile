@@ -6,7 +6,7 @@ NOPROFILE=
 
 CPPFLAGS+=	-I${.OBJDIR}/../include/llvm/ARM -I${LLVM_SRCS}/lib/Target/ARM
 
-SRCS=	ARMAsmBackend.cpp \
+SRCS+=	ARMAsmBackend.cpp \
 	ARMELFObjectWriter.cpp \
 	ARMELFStreamer.cpp \
 	ARMMachObjectWriter.cpp \

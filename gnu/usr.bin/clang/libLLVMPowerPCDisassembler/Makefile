@@ -7,7 +7,7 @@ NOPROFILE=
 CPPFLAGS+=      -I${.OBJDIR}/../include/llvm/PowerPC \
 		-I${LLVM_SRCS}/lib/Target/PowerPC
 
-SRCS=	PPCDisassembler.cpp
+SRCS+=	PPCDisassembler.cpp
 
 .PATH:	${.CURDIR}/../../../llvm/lib/Target/PowerPC/Disassembler
 

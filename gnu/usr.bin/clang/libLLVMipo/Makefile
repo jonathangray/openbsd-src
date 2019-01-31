@@ -7,7 +7,7 @@ NOPROFILE=
 CPPFLAGS+=	-I${LLVM_SRCS}/include/llvm/Transforms
 CPPFLAGS+=	-I${LLVM_SRCS}/include/llvm/Transforms/IPO
 
-SRCS=	ArgumentPromotion.cpp \
+SRCS+=	ArgumentPromotion.cpp \
 	AlwaysInliner.cpp \
 	BarrierNoopPass.cpp \
 	BlockExtractor.cpp \

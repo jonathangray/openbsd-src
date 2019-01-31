@@ -4,7 +4,7 @@ LIB=	LLVMSelectionDAG
 NOPIC=
 NOPROFILE=
 
-SRCS=	DAGCombiner.cpp \
+SRCS+=	DAGCombiner.cpp \
 	FastISel.cpp \
 	FunctionLoweringInfo.cpp \
 	InstrEmitter.cpp \

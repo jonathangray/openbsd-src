@@ -7,7 +7,7 @@ NOPROFILE=
 CPPFLAGS+=	-I${.OBJDIR}/../include/llvm/Sparc \
 		-I${LLVM_SRCS}/lib/Target/Sparc
 
-SRCS=	SparcAsmParser.cpp
+SRCS+=	SparcAsmParser.cpp
 
 .PATH:	${.CURDIR}/../../../llvm/lib/Target/Sparc/AsmParser
 

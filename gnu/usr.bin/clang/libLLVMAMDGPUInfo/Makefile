@@ -7,7 +7,7 @@ NOPROFILE=
 CPPFLAGS+=	-I${.OBJDIR}/../include/llvm/AMDGPU \
 		-I${LLVM_SRCS}/lib/Target/AMDGPU
 
-SRCS=	AMDGPUTargetInfo.cpp
+SRCS+=	AMDGPUTargetInfo.cpp
 
 .PATH:	${.CURDIR}/../../../llvm/lib/Target/AMDGPU/TargetInfo
 

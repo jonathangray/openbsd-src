@@ -6,7 +6,7 @@ NOPROFILE=
 
 CPPFLAGS+=	-I${LLVM_SRCS}/include/llvm/Bitcode
 
-SRCS=	BitReader.cpp \
+SRCS+=	BitReader.cpp \
 	BitcodeReader.cpp \
 	BitstreamReader.cpp \
 	MetadataLoader.cpp \

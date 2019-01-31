@@ -6,7 +6,7 @@ NOPROFILE=
 
 CPPFLAGS+=	-I${.OBJDIR}/../include/llvm/Mips -I${LLVM_SRCS}/lib/Target/Mips
 
-SRCS=	MipsDisassembler.cpp
+SRCS+=	MipsDisassembler.cpp
 
 .PATH:	${.CURDIR}/../../../llvm/lib/Target/Mips/Disassembler
 

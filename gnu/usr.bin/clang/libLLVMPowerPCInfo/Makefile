@@ -7,7 +7,7 @@ NOPROFILE=
 CPPFLAGS+=      -I${.OBJDIR}/../include/llvm/PowerPC \
 		-I${LLVM_SRCS}/lib/Target/PowerPC
 
-SRCS=	PowerPCTargetInfo.cpp
+SRCS+=	PowerPCTargetInfo.cpp
 
 .PATH:	${.CURDIR}/../../../llvm/lib/Target/PowerPC/TargetInfo
 

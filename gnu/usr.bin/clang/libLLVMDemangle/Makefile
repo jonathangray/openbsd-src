@@ -6,7 +6,7 @@ NOPROFILE=
 
 CPPFLAGS+=	-I${LLVM_SRCS}/include/llvm/Demangle
 
-SRCS=	ItaniumDemangle.cpp
+SRCS+=	ItaniumDemangle.cpp
 
 .PATH:	${.CURDIR}/../../../llvm/lib/Demangle
 

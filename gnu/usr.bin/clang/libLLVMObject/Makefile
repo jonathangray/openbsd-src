@@ -6,7 +6,7 @@ NOPROFILE=
 
 CPPFLAGS+=	-I${LLVM_SRCS}/include/llvm/Object
 
-SRCS=	Archive.cpp \
+SRCS+=	Archive.cpp \
 	ArchiveWriter.cpp \
 	Binary.cpp \
 	COFFObjectFile.cpp \

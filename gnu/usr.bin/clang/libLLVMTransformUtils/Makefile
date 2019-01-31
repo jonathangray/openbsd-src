@@ -7,7 +7,7 @@ NOPROFILE=
 CPPFLAGS+=	-I${LLVM_SRCS}/include/llvm/Transforms
 CPPFLAGS+=	-I${LLVM_SRCS}/include/llvm/Transforms/Utils
 
-SRCS=	ASanStackFrameLayout.cpp \
+SRCS+=	ASanStackFrameLayout.cpp \
 	AddDiscriminators.cpp \
 	BasicBlockUtils.cpp \
 	BreakCriticalEdges.cpp \

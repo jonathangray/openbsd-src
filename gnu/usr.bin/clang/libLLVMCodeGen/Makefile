@@ -7,7 +7,7 @@ NOPROFILE=
 CPPFLAGS+=-I${LLVM_SRC}/include/llvm/CodeGen
 CPPFLAGS+=-I${LLVM_SRC}/include/llvm/CodeGen/PBQP
 
-SRCS=	AggressiveAntiDepBreaker.cpp \
+SRCS+=	AggressiveAntiDepBreaker.cpp \
 	AllocationOrder.cpp \
 	CodeGenAnalysis.cpp \
 	AtomicExpandPass.cpp \

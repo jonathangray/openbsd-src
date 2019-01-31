@@ -7,7 +7,7 @@ NOPROFILE=
 CPPFLAGS+=	-I${.OBJDIR}/../include/llvm/AMDGPU \
 		-I${LLVM_SRCS}/lib/Target/AMDGPU
 
-SRCS=	AMDGPUAsmBackend.cpp \
+SRCS+=	AMDGPUAsmBackend.cpp \
 	AMDGPUELFObjectWriter.cpp \
 	AMDGPUELFStreamer.cpp \
 	AMDGPUMCAsmInfo.cpp \

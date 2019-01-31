@@ -6,7 +6,7 @@ NOPROFILE=
 
 CPPFLAGS+=	-I${LLVM_SRCS}/include/llvm/MC/MCParser
 
-SRCS=	AsmLexer.cpp \
+SRCS+=	AsmLexer.cpp \
 	AsmParser.cpp \
 	COFFAsmParser.cpp \
 	DarwinAsmParser.cpp \

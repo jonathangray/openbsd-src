@@ -4,7 +4,7 @@ LIB=	LLVMAsmPrinter
 NOPIC=
 NOPROFILE=
 
-SRCS=	ARMException.cpp \
+SRCS+=	ARMException.cpp \
 	AccelTable.cpp \
 	AddressPool.cpp \
 	AsmPrinter.cpp \

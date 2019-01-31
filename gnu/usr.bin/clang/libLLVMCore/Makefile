@@ -6,7 +6,7 @@ NOPROFILE=
 
 CPPFLAGS+=	-I${LLVM_SRCS}/include/llvm/IR
 
-SRCS=	AsmWriter.cpp \
+SRCS+=	AsmWriter.cpp \
 	Attributes.cpp \
 	AutoUpgrade.cpp \
 	BasicBlock.cpp \

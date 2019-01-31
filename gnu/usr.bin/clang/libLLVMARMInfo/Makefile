@@ -6,7 +6,7 @@ NOPROFILE=
 
 CPPFLAGS+=	-I${.OBJDIR}/../include/llvm/ARM -I${LLVM_SRCS}/lib/Target/ARM
 
-SRCS=	ARMTargetInfo.cpp
+SRCS+=	ARMTargetInfo.cpp
 
 .PATH:	${.CURDIR}/../../../llvm/lib/Target/ARM/TargetInfo
 

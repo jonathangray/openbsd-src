@@ -4,7 +4,7 @@ LIB=	LLVMMIRParser
 NOPIC=
 NOPROFILE=
 
-SRCS=	MILexer.cpp \
+SRCS+=	MILexer.cpp \
 	MIParser.cpp \
 	MIRParser.cpp
 

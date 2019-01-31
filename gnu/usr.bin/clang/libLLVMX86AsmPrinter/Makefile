@@ -6,7 +6,7 @@ NOPROFILE=
 
 CPPFLAGS+=	-I${.OBJDIR}/../include/llvm/X86 -I${LLVM_SRCS}/lib/Target/X86
 
-SRCS=	X86ATTInstPrinter.cpp \
+SRCS+=	X86ATTInstPrinter.cpp \
 	X86InstPrinterCommon.cpp \
 	X86IntelInstPrinter.cpp \
 	X86InstComments.cpp

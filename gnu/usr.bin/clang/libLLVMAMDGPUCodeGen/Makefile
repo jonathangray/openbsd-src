@@ -7,7 +7,7 @@ NOPROFILE=
 CPPFLAGS+=	-I${.OBJDIR}/../include/llvm/AMDGPU \
 		-I${LLVM_SRCS}/lib/Target/AMDGPU
 
-SRCS=	AMDGPUAliasAnalysis.cpp \
+SRCS+=	AMDGPUAliasAnalysis.cpp \
 	AMDGPUAlwaysInlinePass.cpp \
 	AMDGPUAnnotateKernelFeatures.cpp \
 	AMDGPUAnnotateUniformValues.cpp \

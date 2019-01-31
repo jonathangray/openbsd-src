@@ -7,7 +7,7 @@ NOPROFILE=
 CPPFLAGS+=	-I${.OBJDIR}/../include/llvm/AMDGPU \
 		-I${LLVM_SRCS}/lib/Target/AMDGPU
 
-SRCS=	AMDGPUInstPrinter.cpp
+SRCS+=	AMDGPUInstPrinter.cpp
 
 .PATH:	${.CURDIR}/../../../llvm/lib/Target/AMDGPU/InstPrinter
 

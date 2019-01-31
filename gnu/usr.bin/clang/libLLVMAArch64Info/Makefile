@@ -7,7 +7,7 @@ NOPROFILE=
 CPPFLAGS+=	-I${.OBJDIR}/../include/llvm/AArch64 \
 		-I${LLVM_SRCS}/lib/Target/AArch64
 
-SRCS=	AArch64TargetInfo.cpp
+SRCS+=	AArch64TargetInfo.cpp
 
 .PATH:	${.CURDIR}/../../../llvm/lib/Target/AArch64/TargetInfo
 

@@ -7,7 +7,7 @@ NOPROFILE=
 CPPFLAGS+=	-I${.OBJDIR}/../include/llvm/Sparc \
 		-I${LLVM_SRCS}/lib/Target/Sparc
 
-SRCS=	SparcInstPrinter.cpp
+SRCS+=	SparcInstPrinter.cpp
 
 .PATH:	${.CURDIR}/../../../llvm/lib/Target/Sparc/InstPrinter
 

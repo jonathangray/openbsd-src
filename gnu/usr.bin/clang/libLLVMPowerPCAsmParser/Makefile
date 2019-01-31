@@ -7,7 +7,7 @@ NOPROFILE=
 CPPFLAGS+=      -I${.OBJDIR}/../include/llvm/PowerPC \
 		-I${LLVM_SRCS}/lib/Target/PowerPC
 
-SRCS=	PPCAsmParser.cpp
+SRCS+=	PPCAsmParser.cpp
 
 .PATH:	${.CURDIR}/../../../llvm/lib/Target/PowerPC/AsmParser
 

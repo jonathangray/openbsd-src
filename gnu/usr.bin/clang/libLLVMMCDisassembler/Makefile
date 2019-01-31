@@ -4,7 +4,7 @@ LIB=	LLVMMCDisassembler
 NOPIC=
 NOPROFILE=
 
-SRCS=	Disassembler.cpp \
+SRCS+=	Disassembler.cpp \
 	MCDisassembler.cpp \
 	MCExternalSymbolizer.cpp \
 	MCRelocationInfo.cpp \

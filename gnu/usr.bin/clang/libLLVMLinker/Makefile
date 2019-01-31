@@ -6,7 +6,7 @@ NOPROFILE=
 
 CPPFLAGS+=	-I${LLVM_SRCS}/include/llvm/Linker
 
-SRCS=	IRMover.cpp \
+SRCS+=	IRMover.cpp \
 	LinkModules.cpp
 
 .PATH:	${.CURDIR}/../../../llvm/lib/Linker

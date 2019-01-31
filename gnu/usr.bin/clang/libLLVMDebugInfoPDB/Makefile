@@ -6,7 +6,7 @@ NOPROFILE=
 
 CPPFLAGS+=	-I${LLVM_SRCS}/include/llvm/DebugInfo/PDB
 
-SRCS=	DbiModuleDescriptor.cpp \
+SRCS+=	DbiModuleDescriptor.cpp \
 	DbiModuleDescriptorBuilder.cpp \
 	DbiModuleList.cpp \
 	DbiStream.cpp \

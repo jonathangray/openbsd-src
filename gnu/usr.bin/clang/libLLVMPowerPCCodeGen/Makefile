@@ -7,7 +7,7 @@ NOPROFILE=
 CPPFLAGS+=	-I${.OBJDIR}/../include/llvm/PowerPC \
 		-I${LLVM_SRCS}/lib/Target/PowerPC
 
-SRCS=	PPCBoolRetToInt.cpp \
+SRCS+=	PPCBoolRetToInt.cpp \
 	PPCAsmPrinter.cpp \
 	PPCBranchCoalescing.cpp \
 	PPCBranchSelector.cpp \

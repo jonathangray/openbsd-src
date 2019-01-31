@@ -6,7 +6,7 @@ NOPROFILE=
 
 CPPFLAGS+=	-I${.OBJDIR}/../include/llvm/Mips -I${LLVM_SRCS}/lib/Target/Mips
 
-SRCS=	MicroMipsSizeReduction.cpp \
+SRCS+=	MicroMipsSizeReduction.cpp \
 	Mips16FrameLowering.cpp \
 	Mips16HardFloat.cpp \
 	Mips16HardFloatInfo.cpp \

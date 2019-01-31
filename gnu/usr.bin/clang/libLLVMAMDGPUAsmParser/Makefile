@@ -7,7 +7,7 @@ NOPROFILE=
 CPPFLAGS+=	-I${.OBJDIR}/../include/llvm/AMDGPU \
 		-I${LLVM_SRCS}/lib/Target/AMDGPU
 
-SRCS=	AMDGPUAsmParser.cpp
+SRCS+=	AMDGPUAsmParser.cpp
 
 .PATH:	${.CURDIR}/../../../llvm/lib/Target/AMDGPU/AsmParser
 

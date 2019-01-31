@@ -6,7 +6,7 @@ NOPROFILE=
 
 CPPFLAGS+=	-I${LLVM_SRCS}/include/llvm/DebugInfo/DWARF
 
-SRCS=	DWARFAbbreviationDeclaration.cpp \
+SRCS+=	DWARFAbbreviationDeclaration.cpp \
 	DWARFAcceleratorTable.cpp \
 	DWARFAddressRange.cpp \
 	DWARFCompileUnit.cpp \

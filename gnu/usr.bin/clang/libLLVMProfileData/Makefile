@@ -6,7 +6,7 @@ NOPROFILE=
 
 CPPFLAGS+=	-I${LLVM_SRCS}/include/llvm/ProfileData
 
-SRCS=	InstrProf.cpp \
+SRCS+=	InstrProf.cpp \
 	InstrProfReader.cpp \
 	InstrProfWriter.cpp \
 	ProfileSummaryBuilder.cpp \

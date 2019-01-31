@@ -7,7 +7,7 @@ NOPROFILE=
 CPPFLAGS+=      -I${.OBJDIR}/../include/llvm/PowerPC \
 		-I${LLVM_SRCS}/lib/Target/PowerPC
 
-SRCS=	PPCInstPrinter.cpp
+SRCS+=	PPCInstPrinter.cpp
 
 .PATH:	${.CURDIR}/../../../llvm/lib/Target/PowerPC/InstPrinter
 

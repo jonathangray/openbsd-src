@@ -6,7 +6,7 @@ NOPROFILE=
 
 CPPFLAGS+=	-I${LLVM_SRCS}/include/llvm/Transforms
 
-SRCS=	AddressSanitizer.cpp \
+SRCS+=	AddressSanitizer.cpp \
 	BoundsChecking.cpp \
 	CGProfile.cpp \
 	DataFlowSanitizer.cpp \

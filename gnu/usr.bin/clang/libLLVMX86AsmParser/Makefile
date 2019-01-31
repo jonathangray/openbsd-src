@@ -6,7 +6,7 @@ NOPROFILE=
 
 CPPFLAGS+=	-I${.OBJDIR}/../include/llvm/X86 -I${LLVM_SRCS}/lib/Target/X86
 
-SRCS=	X86AsmInstrumentation.cpp \
+SRCS+=	X86AsmInstrumentation.cpp \
 	X86AsmParser.cpp
 
 .PATH:	${.CURDIR}/../../../llvm/lib/Target/X86/AsmParser

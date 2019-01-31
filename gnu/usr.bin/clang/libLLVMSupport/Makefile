@@ -6,7 +6,7 @@ NOPROFILE=
 
 CPPFLAGS+=	-I${LLVM_SRCS}/include/llvm/Support
 
-SRCS=	AMDGPUMetadata.cpp \
+SRCS+=	AMDGPUMetadata.cpp \
 	APFloat.cpp \
 	APInt.cpp \
 	APSInt.cpp \

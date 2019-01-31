@@ -6,7 +6,7 @@ NOPROFILE=
 
 CPPFLAGS+=	-I${LLVM_SRCS}/include/llvm/BinaryFormat
 
-SRCS=	Dwarf.cpp \
+SRCS+=	Dwarf.cpp \
 	Magic.cpp \
 	Wasm.cpp
 

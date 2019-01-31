@@ -7,7 +7,7 @@ NOPROFILE=
 CPPFLAGS+=	-I${.OBJDIR}/../include/llvm/AMDGPU \
 		-I${LLVM_SRCS}/lib/Target/AMDGPU
 
-SRCS=	AMDGPUBaseInfo.cpp \
+SRCS+=	AMDGPUBaseInfo.cpp \
 	AMDKernelCodeTUtils.cpp \
 	AMDGPUAsmUtils.cpp \
 	AMDGPULaneDominator.cpp

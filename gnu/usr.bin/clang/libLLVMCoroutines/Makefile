@@ -7,7 +7,7 @@ NOPROFILE=
 CPPFLAGS+=	-I${LLVM_SRCS}/include/llvm/Transforms
 CPPFLAGS+=	-I${LLVM_SRCS}/include/llvm/Transforms/Coroutines
 
-SRCS=	Coroutines.cpp \
+SRCS+=	Coroutines.cpp \
 	CoroCleanup.cpp \
 	CoroEarly.cpp \
 	CoroElide.cpp \

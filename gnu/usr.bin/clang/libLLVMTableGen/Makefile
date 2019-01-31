@@ -6,7 +6,7 @@ NOPROFILE=
 
 CPPFLAGS+=	-I${LLVM_SRCS}/include/llvm/TableGen
 
-SRCS=	TableGenError.cpp \
+SRCS+=	TableGenError.cpp \
 	Main.cpp \
 	JSONBackend.cpp \
 	Record.cpp \

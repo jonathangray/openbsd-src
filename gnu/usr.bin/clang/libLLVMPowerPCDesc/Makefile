@@ -7,7 +7,7 @@ NOPROFILE=
 CPPFLAGS+=      -I${.OBJDIR}/../include/llvm/PowerPC \
 		-I${LLVM_SRCS}/lib/Target/PowerPC
 
-SRCS=	PPCAsmBackend.cpp \
+SRCS+=	PPCAsmBackend.cpp \
 	PPCMCTargetDesc.cpp \
 	PPCMCAsmInfo.cpp \
 	PPCMCCodeEmitter.cpp \

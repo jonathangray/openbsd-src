@@ -6,7 +6,7 @@ NOPROFILE=
 
 CPPFLAGS+=	-I${LLVM_SRCS}/include/llvm/Target
 
-SRCS=	Target.cpp \
+SRCS+=	Target.cpp \
 	TargetIntrinsicInfo.cpp \
 	TargetLoweringObjectFile.cpp \
 	TargetMachine.cpp \

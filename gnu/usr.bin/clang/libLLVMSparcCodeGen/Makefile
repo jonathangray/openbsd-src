@@ -7,7 +7,7 @@ NOPROFILE=
 CPPFLAGS+=	-I${.OBJDIR}/../include/llvm/Sparc \
 		-I${LLVM_SRCS}/lib/Target/Sparc
 
-SRCS=	DelaySlotFiller.cpp \
+SRCS+=	DelaySlotFiller.cpp \
 	LeonPasses.cpp \
 	SparcAsmPrinter.cpp \
 	SparcInstrInfo.cpp \

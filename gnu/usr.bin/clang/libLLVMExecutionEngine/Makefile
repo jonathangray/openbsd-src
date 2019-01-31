@@ -6,7 +6,7 @@ NOPROFILE=
 
 CPPFLAGS+=	-I${LLVM_SRCS}/include/llvm/ExecutionEngine
 
-SRCS=	Execution.cpp \
+SRCS+=	Execution.cpp \
 	ExecutionEngine.cpp \
 	ExecutionEngineCore.cpp \
 	ExecutionEngineBindings.cpp \

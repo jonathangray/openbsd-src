@@ -6,7 +6,7 @@ NOPROFILE=
 
 CPPFLAGS+=	-I${LLVM_SRCS}/include/llvm/Transforms
 
-SRCS=	ObjCARC.cpp \
+SRCS+=	ObjCARC.cpp \
 	ObjCARCOpts.cpp \
 	ObjCARCExpand.cpp \
 	ObjCARCAPElim.cpp \

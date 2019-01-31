@@ -6,7 +6,7 @@ NOPROFILE=
 
 CPPFLAGS+=	-I${LLVM_SRCS}/include/llvm/Transforms
 
-SRCS=	LoadStoreVectorizer.cpp \
+SRCS+=	LoadStoreVectorizer.cpp \
 	LoopVectorizationLegality.cpp \
 	LoopVectorize.cpp \
 	SLPVectorizer.cpp \

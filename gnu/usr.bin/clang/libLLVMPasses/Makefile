@@ -6,7 +6,7 @@ NOPROFILE=
 
 CPPFLAGS+=	-I${LLVM_SRCS}/include/llvm/Passes
 
-SRCS=	PassBuilder.cpp
+SRCS+=	PassBuilder.cpp
 
 .PATH:	${.CURDIR}/../../../llvm/lib/Passes
 

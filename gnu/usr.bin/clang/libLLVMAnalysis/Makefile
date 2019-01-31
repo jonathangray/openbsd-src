@@ -6,7 +6,7 @@ NOPROFILE=
 
 CPPFLAGS+=	-I${LLVM_SRCS}/include/llvm/Analysis
 
-SRCS=	AliasAnalysis.cpp \
+SRCS+=	AliasAnalysis.cpp \
 	AliasAnalysisEvaluator.cpp \
 	AliasAnalysisSummary.cpp \
 	AliasSetTracker.cpp \

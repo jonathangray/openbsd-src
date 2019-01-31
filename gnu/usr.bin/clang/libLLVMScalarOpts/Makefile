@@ -7,7 +7,7 @@ NOPROFILE=
 CPPFLAGS+=	-I${LLVM_SRCS}/include/llvm/Transforms
 CPPFLAGS+=	-I${LLVM_SRCS}/include/llvm/Transforms/Scalar
 
-SRCS=	ADCE.cpp \
+SRCS+=	ADCE.cpp \
 	AlignmentFromAssumptions.cpp \
 	BDCE.cpp \
 	CallSiteSplitting.cpp \

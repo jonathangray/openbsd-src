@@ -6,7 +6,7 @@ NOPROFILE=
 
 CPPFLAGS+=	-I${LLVM_SRCS}/include/llvm/LTO
 
-SRCS=	Caching.cpp \
+SRCS+=	Caching.cpp \
 	LTO.cpp \
 	LTOBackend.cpp \
 	LTOCodeGenerator.cpp \

@@ -7,7 +7,7 @@ NOPROFILE=
 CPPFLAGS+=	-I${.OBJDIR}/../include/llvm/Sparc \
 		-I${LLVM_SRCS}/lib/Target/Sparc
 
-SRCS=	SparcAsmBackend.cpp \
+SRCS+=	SparcAsmBackend.cpp \
 	SparcELFObjectWriter.cpp \
 	SparcMCAsmInfo.cpp \
 	SparcMCCodeEmitter.cpp \
