@@ -896,10 +896,10 @@ void MCObjectFileInfo::initWasmMCObjectFileInfo(const Triple &T) {
   // TODO: Define more sections.
 }
 
-void MCObjectFileInfo::InitMCObjectFileInfo(const Triple &TheTriple, bool PIC,
+void MCObjectFileInfo::InitMCObjectFileInfo(const Triple &TheTriple, bool isPIC,
                                             MCContext &ctx,
                                             bool LargeCodeModel) {
-  PositionIndependent = PIC;
+  PositionIndependent = isPIC;
   Ctx = &ctx;
 
   // Common.

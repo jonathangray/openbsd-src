@@ -303,7 +303,7 @@ bool LoopInvariantCodeMotion::runOnLoop(
       for (BasicBlock *ExitBlock : ExitBlocks)
         InsertPts.push_back(&*ExitBlock->getFirstInsertionPt());
 
-      PredIteratorCache PIC;
+      PredIteratorCache pic;
 
       bool Promoted = false;
 
@@ -325,7 +325,7 @@ bool LoopInvariantCodeMotion::runOnLoop(
           PointerMustAliases.insert(ASI.getValue());
 
         Promoted |= promoteLoopAccessesToScalars(PointerMustAliases, ExitBlocks,
-                                                 InsertPts, PIC, LI, DT, TLI, L,
+                                                 InsertPts, pic, LI, DT, TLI, L,
                                                  CurAST, &SafetyInfo, ORE);
       }
 
@@ -1133,11 +1133,11 @@ public:
   LoopPromoter(Value *SP, ArrayRef<const Instruction *> Insts, SSAUpdater &S,
                const SmallSetVector<Value *, 8> &PMA,
                SmallVectorImpl<BasicBlock *> &LEB,
-               SmallVectorImpl<Instruction *> &LIP, PredIteratorCache &PIC,
+               SmallVectorImpl<Instruction *> &LIP, PredIteratorCache &pic,
                AliasSetTracker &ast, LoopInfo &li, DebugLoc dl, int alignment,
                bool UnorderedAtomic, const AAMDNodes &AATags)
       : LoadAndStorePromoter(Insts, S), SomePtr(SP), PointerMustAliases(PMA),
-        LoopExitBlocks(LEB), LoopInsertPts(LIP), PredCache(PIC), AST(ast),
+        LoopExitBlocks(LEB), LoopInsertPts(LIP), PredCache(pic), AST(ast),
         LI(li), DL(std::move(dl)), Alignment(alignment),
         UnorderedAtomic(UnorderedAtomic), AATags(AATags) {}
 
@@ -1212,7 +1212,7 @@ bool isKnownNonEscaping(Value *Object, const TargetLibraryInfo *TLI) {
 bool llvm::promoteLoopAccessesToScalars(
     const SmallSetVector<Value *, 8> &PointerMustAliases,
     SmallVectorImpl<BasicBlock *> &ExitBlocks,
-    SmallVectorImpl<Instruction *> &InsertPts, PredIteratorCache &PIC,
+    SmallVectorImpl<Instruction *> &InsertPts, PredIteratorCache &pic,
     LoopInfo *LI, DominatorTree *DT, const TargetLibraryInfo *TLI,
     Loop *CurLoop, AliasSetTracker *CurAST, LoopSafetyInfo *SafetyInfo,
     OptimizationRemarkEmitter *ORE) {
@@ -1434,7 +1434,7 @@ bool llvm::promoteLoopAccessesToScalars(
   SmallVector<PHINode *, 16> NewPHIs;
   SSAUpdater SSA(&NewPHIs);
   LoopPromoter Promoter(SomePtr, LoopUses, SSA, PointerMustAliases, ExitBlocks,
-                        InsertPts, PIC, *CurAST, *LI, DL, Alignment,
+                        InsertPts, pic, *CurAST, *LI, DL, Alignment,
                         SawUnorderedAtomic, AATags);
 
   // Set up the preheader to have a definition of the value.  It is the live-out

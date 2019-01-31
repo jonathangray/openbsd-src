@@ -525,10 +525,10 @@ Value *PredicateInfo::materializeStack(unsigned int &Counter,
       Function *IF = getCopyDeclaration(F.getParent(), Op->getType());
       if (IF->user_begin() == IF->user_end())
         CreatedDeclarations.insert(IF);
-      CallInst *PIC =
+      CallInst *pic =
           B.CreateCall(IF, Op, Op->getName() + "." + Twine(Counter++));
-      PredicateMap.insert({PIC, ValInfo});
-      Result.Def = PIC;
+      PredicateMap.insert({pic, ValInfo});
+      Result.Def = pic;
     } else {
       auto *PAssume = dyn_cast<PredicateAssume>(ValInfo);
       assert(PAssume &&
@@ -537,9 +537,9 @@ Value *PredicateInfo::materializeStack(unsigned int &Counter,
       Function *IF = getCopyDeclaration(F.getParent(), Op->getType());
       if (IF->user_begin() == IF->user_end())
         CreatedDeclarations.insert(IF);
-      CallInst *PIC = B.CreateCall(IF, Op);
-      PredicateMap.insert({PIC, ValInfo});
-      Result.Def = PIC;
+      CallInst *pic = B.CreateCall(IF, Op);
+      PredicateMap.insert({pic, ValInfo});
+      Result.Def = pic;
     }
   }
   return RenameStack.back().Def;

@@ -209,7 +209,7 @@ protected:
   MCSection *GFIDsSection;
 
 public:
-  void InitMCObjectFileInfo(const Triple &TT, bool PIC, MCContext &ctx,
+  void InitMCObjectFileInfo(const Triple &TT, bool isPIC, MCContext &ctx,
                             bool LargeCodeModel = false);
 
   bool getSupportsWeakOmittedEHFrame() const {
