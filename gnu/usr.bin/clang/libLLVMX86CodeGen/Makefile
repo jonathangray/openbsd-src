@@ -1,7 +1,6 @@
 # $OpenBSD: Makefile,v 1.11 2019/01/27 16:59:42 patrick Exp $
 
 LIB=	LLVMX86CodeGen
-LIBREBUILD=
 NOPROFILE=
 
 CPPFLAGS+=	-I${.OBJDIR}/../include/llvm/X86 -I${LLVM_SRCS}/lib/Target/X86

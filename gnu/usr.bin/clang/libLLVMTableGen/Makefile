@@ -1,7 +1,6 @@
 # $OpenBSD: Makefile,v 1.3 2019/01/27 16:59:42 patrick Exp $
 
 LIB=	LLVMTableGen
-LIBREBUILD=
 NOPROFILE=
 
 CPPFLAGS+=	-I${LLVM_SRCS}/include/llvm/TableGen

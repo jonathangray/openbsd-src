@@ -1,7 +1,6 @@
 # $OpenBSD: Makefile,v 1.9 2019/01/27 16:59:41 patrick Exp $
 
 LIB=	LLVMCodeGen
-LIBREBUILD=
 NOPROFILE=
 
 CPPFLAGS+=-I${LLVM_SRC}/include/llvm/CodeGen

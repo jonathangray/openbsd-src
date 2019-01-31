@@ -1,7 +1,6 @@
 # $OpenBSD: Makefile,v 1.3 2017/07/09 15:28:34 espie Exp $
 
 LIB=	LLVMBitReader
-LIBREBUILD=
 NOPROFILE=
 
 CPPFLAGS+=	-I${LLVM_SRCS}/include/llvm/Bitcode

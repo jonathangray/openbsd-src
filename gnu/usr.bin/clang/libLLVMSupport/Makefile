@@ -2,7 +2,6 @@
 
 LIB=	LLVMSupport
 NOPROFILE=
-LIBREBUILD=
 
 CPPFLAGS+=	-I${LLVM_SRCS}/include/llvm/Support
 

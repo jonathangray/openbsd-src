@@ -1,7 +1,6 @@
 # $OpenBSD: Makefile,v 1.4 2017/10/04 20:57:09 patrick Exp $
 
 LIB=	LLVMLTO
-LIBREBUILD=
 NOPROFILE=
 
 CPPFLAGS+=	-I${LLVM_SRCS}/include/llvm/LTO

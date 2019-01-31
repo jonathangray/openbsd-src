@@ -1,7 +1,6 @@
 # $OpenBSD: Makefile,v 1.4 2019/01/27 16:59:41 patrick Exp $
 
 LIB=	LLVMGlobalISel
-LIBREBUILD=
 NOPROFILE=
 
 .include <bsd.own.mk>

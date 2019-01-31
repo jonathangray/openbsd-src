@@ -1,7 +1,6 @@
 # $OpenBSD: Makefile,v 1.7 2018/08/12 17:07:00 mortimer Exp $
 
 LIB=	LLVMAArch64CodeGen
-LIBREBUILD=
 NOPROFILE=
 
 CPPFLAGS+=	-I${.OBJDIR}/../include/llvm/AArch64 \

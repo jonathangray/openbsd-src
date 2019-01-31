@@ -1,7 +1,6 @@
 # $OpenBSD: Makefile,v 1.4 2019/01/27 16:59:41 patrick Exp $
 
 LIB=	LLVMMipsCodeGen
-LIBREBUILD=
 NOPROFILE=
 
 CPPFLAGS+=	-I${.OBJDIR}/../include/llvm/Mips -I${LLVM_SRCS}/lib/Target/Mips
