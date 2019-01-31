@@ -6,12 +6,9 @@ NOPROFILE=
 
 CPPFLAGS+=	-I${LLVM_SRCS}/include/llvm/Demangle
 
-.include <bsd.own.mk>
 SRCS=	ItaniumDemangle.cpp
 
 .PATH:	${.CURDIR}/../../../llvm/lib/Demangle
 
 install:
 	@# Nothing here so far ...
-
-.include <bsd.lib.mk>

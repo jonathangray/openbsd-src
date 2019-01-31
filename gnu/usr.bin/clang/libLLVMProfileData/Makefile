@@ -6,7 +6,6 @@ NOPROFILE=
 
 CPPFLAGS+=	-I${LLVM_SRCS}/include/llvm/ProfileData
 
-.include <bsd.own.mk>
 SRCS=	InstrProf.cpp \
 	InstrProfReader.cpp \
 	InstrProfWriter.cpp \
@@ -19,5 +18,3 @@ SRCS=	InstrProf.cpp \
 
 install:
 	@# Nothing here so far ...
-
-.include <bsd.lib.mk>

@@ -6,7 +6,6 @@ NOPROFILE=
 
 CPPFLAGS+=	-I${.OBJDIR}/../include/llvm/Mips -I${LLVM_SRCS}/lib/Target/Mips
 
-.include <bsd.own.mk>
 SRCS=	MicroMipsSizeReduction.cpp \
 	Mips16FrameLowering.cpp \
 	Mips16HardFloat.cpp \
@@ -50,5 +49,3 @@ SRCS=	MicroMipsSizeReduction.cpp \
 
 install:
 	@# Nothing here so far ...
-
-.include <bsd.lib.mk>

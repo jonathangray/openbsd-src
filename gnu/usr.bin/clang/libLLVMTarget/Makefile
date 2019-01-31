@@ -6,7 +6,6 @@ NOPROFILE=
 
 CPPFLAGS+=	-I${LLVM_SRCS}/include/llvm/Target
 
-.include <bsd.own.mk>
 SRCS=	Target.cpp \
 	TargetIntrinsicInfo.cpp \
 	TargetLoweringObjectFile.cpp \
@@ -17,5 +16,3 @@ SRCS=	Target.cpp \
 
 install:
 	@# Nothing here so far ...
-
-.include <bsd.lib.mk>

@@ -6,7 +6,6 @@ NOPROFILE=
 
 CPPFLAGS+=	-I${.OBJDIR}/../include/llvm/X86 -I${LLVM_SRCS}/lib/Target/X86
 
-.include <bsd.own.mk>
 SRCS=	X86AsmBackend.cpp \
 	X86MCTargetDesc.cpp \
 	X86MCAsmInfo.cpp \
@@ -21,5 +20,3 @@ SRCS=	X86AsmBackend.cpp \
 
 install:
 	@# Nothing here so far ...
-
-.include <bsd.lib.mk>

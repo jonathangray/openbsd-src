@@ -6,7 +6,6 @@ NOPROFILE=
 
 CPPFLAGS+=	-I${LLVM_SRCS}/include/llvm/LTO
 
-.include <bsd.own.mk>
 SRCS=	Caching.cpp \
 	LTO.cpp \
 	LTOBackend.cpp \
@@ -19,5 +18,3 @@ SRCS=	Caching.cpp \
 
 install:
 	@# Nothing here so far ...
-
-.include <bsd.lib.mk>

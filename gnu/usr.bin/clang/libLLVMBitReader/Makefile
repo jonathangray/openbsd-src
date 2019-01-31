@@ -6,7 +6,6 @@ NOPROFILE=
 
 CPPFLAGS+=	-I${LLVM_SRCS}/include/llvm/Bitcode
 
-.include <bsd.own.mk>
 SRCS=	BitReader.cpp \
 	BitcodeReader.cpp \
 	BitstreamReader.cpp \
@@ -17,5 +16,3 @@ SRCS=	BitReader.cpp \
 
 install:
 	@# Nothing here so far ...
-
-.include <bsd.lib.mk>

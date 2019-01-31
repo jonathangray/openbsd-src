@@ -7,7 +7,6 @@ NOPROFILE=
 CPPFLAGS+=	-I${.OBJDIR}/../include/llvm/AArch64 \
 		-I${LLVM_SRCS}/lib/Target/AArch64
 
-.include <bsd.own.mk>
 SRCS=	AArch64AsmBackend.cpp \
 	AArch64ELFObjectWriter.cpp \
 	AArch64ELFStreamer.cpp \
@@ -24,5 +23,3 @@ SRCS=	AArch64AsmBackend.cpp \
 
 install:
 	@# Nothing here so far ...
-
-.include <bsd.lib.mk>

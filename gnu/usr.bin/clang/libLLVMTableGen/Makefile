@@ -6,7 +6,6 @@ NOPROFILE=
 
 CPPFLAGS+=	-I${LLVM_SRCS}/include/llvm/TableGen
 
-.include <bsd.own.mk>
 SRCS=	TableGenError.cpp \
 	Main.cpp \
 	JSONBackend.cpp \
@@ -26,5 +25,3 @@ install:
 	@# Nothing here so far ...
 
 CLEANFILES+= TableGenError.cpp
-
-.include <bsd.lib.mk>

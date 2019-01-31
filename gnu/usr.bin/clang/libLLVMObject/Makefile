@@ -6,7 +6,6 @@ NOPROFILE=
 
 CPPFLAGS+=	-I${LLVM_SRCS}/include/llvm/Object
 
-.include <bsd.own.mk>
 SRCS=	Archive.cpp \
 	ArchiveWriter.cpp \
 	Binary.cpp \
@@ -37,5 +36,3 @@ install:
 	@# Nothing here so far ...
 
 CLEANFILES+= ObjectError.cpp
-
-.include <bsd.lib.mk>

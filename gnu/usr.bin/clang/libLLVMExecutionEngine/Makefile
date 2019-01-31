@@ -6,7 +6,6 @@ NOPROFILE=
 
 CPPFLAGS+=	-I${LLVM_SRCS}/include/llvm/ExecutionEngine
 
-.include <bsd.own.mk>
 SRCS=	Execution.cpp \
 	ExecutionEngine.cpp \
 	ExecutionEngineCore.cpp \
@@ -49,5 +48,3 @@ install:
 	@# Nothing here so far ...
 
 CLEANFILES+= ExecutionEngineCore.cpp
-
-.include <bsd.lib.mk>

@@ -6,7 +6,6 @@ NOPROFILE=
 
 CPPFLAGS+=	-I${LLVM_SRCS}/include/llvm/Option
 
-.include <bsd.own.mk>
 SRCS=	Arg.cpp \
 	ArgList.cpp \
 	Option.cpp \
@@ -16,5 +15,3 @@ SRCS=	Arg.cpp \
 
 install:
 	@# Nothing here so far ...
-
-.include <bsd.lib.mk>

@@ -6,7 +6,6 @@ NOPROFILE=
 
 CPPFLAGS+=	-I${LLVM_SRCS}/include/llvm/DebugInfo/CodeView
 
-.include <bsd.own.mk>
 SRCS=	AppendingTypeTableBuilder.cpp \
 	CodeViewError.cpp \
 	CodeViewRecordIO.cpp \
@@ -55,5 +54,3 @@ install:
 	@# Nothing here so far ...
 
 CLEANFILES+= DebugInfoCodeViewEnumTables.cpp
-
-.include <bsd.lib.mk>

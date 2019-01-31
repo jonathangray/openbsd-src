@@ -7,7 +7,6 @@ NOPROFILE=
 CPPFLAGS+=	-I${LLVM_SRCS}/include/llvm/Transforms
 CPPFLAGS+=	-I${LLVM_SRCS}/include/llvm/Transforms/Scalar
 
-.include <bsd.own.mk>
 SRCS=	ADCE.cpp \
 	AlignmentFromAssumptions.cpp \
 	BDCE.cpp \
@@ -87,5 +86,3 @@ install:
 	@# Nothing here so far ...
 
 CLEANFILES+= ScalarSCCP.cpp
-
-.include <bsd.lib.mk>

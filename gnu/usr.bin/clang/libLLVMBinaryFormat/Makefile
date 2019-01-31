@@ -6,7 +6,6 @@ NOPROFILE=
 
 CPPFLAGS+=	-I${LLVM_SRCS}/include/llvm/BinaryFormat
 
-.include <bsd.own.mk>
 SRCS=	Dwarf.cpp \
 	Magic.cpp \
 	Wasm.cpp
@@ -15,5 +14,3 @@ SRCS=	Dwarf.cpp \
 
 install:
 	@# Nothing here so far ...
-
-.include <bsd.lib.mk>

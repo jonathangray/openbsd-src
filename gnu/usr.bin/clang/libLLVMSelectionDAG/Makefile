@@ -4,7 +4,6 @@ LIB=	LLVMSelectionDAG
 NOPIC=
 NOPROFILE=
 
-.include <bsd.own.mk>
 SRCS=	DAGCombiner.cpp \
 	FastISel.cpp \
 	FunctionLoweringInfo.cpp \
@@ -35,5 +34,3 @@ SRCS=	DAGCombiner.cpp \
 
 install:
 	@# Nothing here so far ...
-
-.include <bsd.lib.mk>

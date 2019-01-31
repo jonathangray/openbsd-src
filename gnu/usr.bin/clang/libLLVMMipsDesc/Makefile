@@ -6,7 +6,6 @@ NOPROFILE=
 
 CPPFLAGS+=	-I${.OBJDIR}/../include/llvm/Mips -I${LLVM_SRCS}/lib/Target/Mips
 
-.include <bsd.own.mk>
 SRCS=	MipsABIInfo.cpp \
 	MipsABIFlagsSection.cpp \
 	MipsAsmBackend.cpp \
@@ -24,5 +23,3 @@ SRCS=	MipsABIInfo.cpp \
 
 install:
 	@# Nothing here so far ...
-
-.include <bsd.lib.mk>

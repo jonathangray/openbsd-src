@@ -6,7 +6,6 @@ NOPROFILE=
 
 CPPFLAGS+=	-I${LLVM_SRCS}/include/llvm/DebugInfo/MSF
 
-.include <bsd.own.mk>
 SRCS=	MappedBlockStream.cpp \
 	MSFBuilder.cpp \
 	MSFCommon.cpp \
@@ -16,5 +15,3 @@ SRCS=	MappedBlockStream.cpp \
 
 install:
 	@# Nothing here so far ...
-
-.include <bsd.lib.mk>

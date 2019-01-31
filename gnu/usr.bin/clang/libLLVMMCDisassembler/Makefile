@@ -4,7 +4,6 @@ LIB=	LLVMMCDisassembler
 NOPIC=
 NOPROFILE=
 
-.include <bsd.own.mk>
 SRCS=	Disassembler.cpp \
 	MCDisassembler.cpp \
 	MCExternalSymbolizer.cpp \
@@ -15,5 +14,3 @@ SRCS=	Disassembler.cpp \
 
 install:
 	@# Nothing here so far ...
-
-.include <bsd.lib.mk>

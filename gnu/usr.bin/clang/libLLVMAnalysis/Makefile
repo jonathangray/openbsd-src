@@ -6,7 +6,6 @@ NOPROFILE=
 
 CPPFLAGS+=	-I${LLVM_SRCS}/include/llvm/Analysis
 
-.include <bsd.own.mk>
 SRCS=	AliasAnalysis.cpp \
 	AliasAnalysisEvaluator.cpp \
 	AliasAnalysisSummary.cpp \
@@ -105,5 +104,3 @@ install:
 	@# Nothing here so far ...
 
 CLEANFILES+= AnalysisAnalysis.cpp
-
-.include <bsd.lib.mk>

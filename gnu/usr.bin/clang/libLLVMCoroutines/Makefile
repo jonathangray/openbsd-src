@@ -7,7 +7,6 @@ NOPROFILE=
 CPPFLAGS+=	-I${LLVM_SRCS}/include/llvm/Transforms
 CPPFLAGS+=	-I${LLVM_SRCS}/include/llvm/Transforms/Coroutines
 
-.include <bsd.own.mk>
 SRCS=	Coroutines.cpp \
 	CoroCleanup.cpp \
 	CoroEarly.cpp \
@@ -19,5 +18,3 @@ SRCS=	Coroutines.cpp \
 
 install:
 	@# Nothing here so far ...
-
-.include <bsd.lib.mk>

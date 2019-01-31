@@ -7,7 +7,6 @@ NOPROFILE=
 CPPFLAGS+=      -I${.OBJDIR}/../include/llvm/PowerPC \
 		-I${LLVM_SRCS}/lib/Target/PowerPC
 
-.include <bsd.own.mk>
 SRCS=	PPCAsmBackend.cpp \
 	PPCMCTargetDesc.cpp \
 	PPCMCAsmInfo.cpp \
@@ -21,5 +20,3 @@ SRCS=	PPCAsmBackend.cpp \
 
 install:
 	@# Nothing here so far ...
-
-.include <bsd.lib.mk>

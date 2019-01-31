@@ -4,7 +4,6 @@ LIB=	LLVMGlobalISel
 NOPIC=
 NOPROFILE=
 
-.include <bsd.own.mk>
 SRCS=	CallLowering.cpp \
 	GlobalISel.cpp \
 	IRTranslator.cpp \
@@ -31,5 +30,3 @@ install:
 	@# Nothing here so far ...
 
 CLEANFILES+= GlobalISelUtils.cpp
-
-.include <bsd.lib.mk>

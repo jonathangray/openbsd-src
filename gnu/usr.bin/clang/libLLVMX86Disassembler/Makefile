@@ -6,7 +6,6 @@ NOPROFILE=
 
 CPPFLAGS+=	-I${.OBJDIR}/../include/llvm/X86 -I${LLVM_SRCS}/lib/Target/X86
 
-.include <bsd.own.mk>
 SRCS=	X86Disassembler.cpp \
 	X86DisassemblerDecoder.cpp
 
@@ -14,5 +13,3 @@ SRCS=	X86Disassembler.cpp \
 
 install:
 	@# Nothing here so far ...
-
-.include <bsd.lib.mk>

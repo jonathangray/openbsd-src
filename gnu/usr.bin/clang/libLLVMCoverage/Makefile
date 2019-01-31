@@ -6,7 +6,6 @@ NOPROFILE=
 
 CPPFLAGS+=	-I${LLVM_SRCS}/include/llvm/ProfileData/Coverage
 
-.include <bsd.own.mk>
 SRCS=	CoverageMapping.cpp \
 	CoverageMappingReader.cpp \
 	CoverageMappingWriter.cpp
@@ -15,5 +14,3 @@ SRCS=	CoverageMapping.cpp \
 
 install:
 	@# Nothing here so far ...
-
-.include <bsd.lib.mk>

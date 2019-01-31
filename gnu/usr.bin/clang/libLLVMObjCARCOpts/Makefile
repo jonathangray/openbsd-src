@@ -6,7 +6,6 @@ NOPROFILE=
 
 CPPFLAGS+=	-I${LLVM_SRCS}/include/llvm/Transforms
 
-.include <bsd.own.mk>
 SRCS=	ObjCARC.cpp \
 	ObjCARCOpts.cpp \
 	ObjCARCExpand.cpp \
@@ -21,5 +20,3 @@ SRCS=	ObjCARC.cpp \
 
 install:
 	@# Nothing here so far ...
-
-.include <bsd.lib.mk>

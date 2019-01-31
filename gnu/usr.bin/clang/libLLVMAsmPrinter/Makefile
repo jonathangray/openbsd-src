@@ -4,7 +4,6 @@ LIB=	LLVMAsmPrinter
 NOPIC=
 NOPROFILE=
 
-.include <bsd.own.mk>
 SRCS=	ARMException.cpp \
 	AccelTable.cpp \
 	AddressPool.cpp \
@@ -34,5 +33,3 @@ SRCS=	ARMException.cpp \
 
 install:
 	@# Nothing here so far ...
-
-.include <bsd.lib.mk>

@@ -6,7 +6,6 @@ NOPROFILE=
 
 CPPFLAGS+=	-I${LLVM_SRCS}/include/llvm/IR
 
-.include <bsd.own.mk>
 SRCS=	AsmWriter.cpp \
 	Attributes.cpp \
 	AutoUpgrade.cpp \
@@ -76,5 +75,3 @@ install:
 	@# Nothing here so far ...
 
 CLEANFILES+= CoreCore.cpp
-
-.include <bsd.lib.mk>

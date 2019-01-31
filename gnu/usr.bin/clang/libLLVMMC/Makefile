@@ -6,7 +6,6 @@ NOPROFILE=
 
 CPPFLAGS+=	-I${LLVM_SRCS}/include/llvm/MC
 
-.include <bsd.own.mk>
 SRCS=	ConstantPools.cpp \
 	ELFObjectWriter.cpp \
 	MCAsmBackend.cpp \
@@ -65,5 +64,3 @@ SRCS=	ConstantPools.cpp \
 
 install:
 	@# Nothing here so far ...
-
-.include <bsd.lib.mk>

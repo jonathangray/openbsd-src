@@ -7,7 +7,6 @@ NOPROFILE=
 CPPFLAGS+=	-I${.OBJDIR}/../include/llvm/PowerPC \
 		-I${LLVM_SRCS}/lib/Target/PowerPC
 
-.include <bsd.own.mk>
 SRCS=	PPCBoolRetToInt.cpp \
 	PPCAsmPrinter.cpp \
 	PPCBranchCoalescing.cpp \
@@ -44,5 +43,3 @@ SRCS=	PPCBoolRetToInt.cpp \
 
 install:
 	@# Nothing here so far ...
-
-.include <bsd.lib.mk>

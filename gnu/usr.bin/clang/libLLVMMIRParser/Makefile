@@ -4,7 +4,6 @@ LIB=	LLVMMIRParser
 NOPIC=
 NOPROFILE=
 
-.include <bsd.own.mk>
 SRCS=	MILexer.cpp \
 	MIParser.cpp \
 	MIRParser.cpp
@@ -13,5 +12,3 @@ SRCS=	MILexer.cpp \
 
 install:
 	@# Nothing here so far ...
-
-.include <bsd.lib.mk>

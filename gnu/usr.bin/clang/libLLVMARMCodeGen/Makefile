@@ -6,7 +6,6 @@ NOPROFILE=
 
 CPPFLAGS+=	-I${.OBJDIR}/../include/llvm/ARM -I${LLVM_SRCS}/lib/Target/ARM
 
-.include <bsd.own.mk>
 SRCS=	A15SDOptimizer.cpp \
 	ARMAsmPrinter.cpp \
 	ARMBaseInstrInfo.cpp \
@@ -50,5 +49,3 @@ SRCS=	A15SDOptimizer.cpp \
 
 install:
 	@# Nothing here so far ...
-
-.include <bsd.lib.mk>

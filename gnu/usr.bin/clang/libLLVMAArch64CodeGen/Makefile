@@ -7,7 +7,6 @@ NOPROFILE=
 CPPFLAGS+=	-I${.OBJDIR}/../include/llvm/AArch64 \
 		-I${LLVM_SRCS}/lib/Target/AArch64
 
-.include <bsd.own.mk>
 SRCS=	AArch64A57FPLoadBalancing.cpp \
 	AArch64AdvSIMDScalarPass.cpp \
 	AArch64AsmPrinter.cpp \
@@ -49,5 +48,3 @@ SRCS=	AArch64A57FPLoadBalancing.cpp \
 
 install:
 	@# Nothing here so far ...
-
-.include <bsd.lib.mk>

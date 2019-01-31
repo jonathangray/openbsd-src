@@ -8,7 +8,6 @@ CPPFLAGS+=	-I${LLVM_SRCS}/include/llvm/Transforms
 CPPFLAGS+=	-I${LLVM_SRCS}/include/llvm/Transforms/InstCombine
 CPPFLAGS+=	-I${.OBJDIR}/../include/llvm/Transforms/InstCombine
 
-.include <bsd.own.mk>
 SRCS=	AggressiveInstCombine.cpp \
 	InstructionCombining.cpp \
 	InstCombineAddSub.cpp \
@@ -30,5 +29,3 @@ SRCS=	AggressiveInstCombine.cpp \
 
 install:
 	@# Nothing here so far ...
-
-.include <bsd.lib.mk>

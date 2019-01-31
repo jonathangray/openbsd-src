@@ -6,7 +6,6 @@ NOPROFILE=
 
 CPPFLAGS+=	-I${LLVM_SRCS}/include/llvm/Support
 
-.include <bsd.own.mk>
 SRCS=	AMDGPUMetadata.cpp \
 	APFloat.cpp \
 	APInt.cpp \
@@ -134,5 +133,3 @@ install:
 	@# Nothing here so far ...
 
 CLEANFILES+= SupportError.cpp SupportLowLevelType.cpp
-
-.include <bsd.lib.mk>

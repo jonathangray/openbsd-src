@@ -6,7 +6,6 @@ NOPROFILE=
 
 CPPFLAGS+=	-I${LLVM_SRCS}/include/llvm/DebugInfo/DWARF
 
-.include <bsd.own.mk>
 SRCS=	DWARFAbbreviationDeclaration.cpp \
 	DWARFAcceleratorTable.cpp \
 	DWARFAddressRange.cpp \
@@ -39,5 +38,3 @@ SRCS=	DWARFAbbreviationDeclaration.cpp \
 
 install:
 	@# Nothing here so far ...
-
-.include <bsd.lib.mk>

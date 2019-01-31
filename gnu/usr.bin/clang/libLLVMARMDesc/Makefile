@@ -6,7 +6,6 @@ NOPROFILE=
 
 CPPFLAGS+=	-I${.OBJDIR}/../include/llvm/ARM -I${LLVM_SRCS}/lib/Target/ARM
 
-.include <bsd.own.mk>
 SRCS=	ARMAsmBackend.cpp \
 	ARMELFObjectWriter.cpp \
 	ARMELFStreamer.cpp \
@@ -25,5 +24,3 @@ SRCS=	ARMAsmBackend.cpp \
 
 install:
 	@# Nothing here so far ...
-
-.include <bsd.lib.mk>

@@ -6,7 +6,6 @@ NOPROFILE=
 
 CPPFLAGS+=	-I${LLVM_SRCS}/include/llvm/DebugInfo/PDB
 
-.include <bsd.own.mk>
 SRCS=	DbiModuleDescriptor.cpp \
 	DbiModuleDescriptorBuilder.cpp \
 	DbiModuleList.cpp \
@@ -90,5 +89,3 @@ install:
 	@# Nothing here so far ...
 
 CLEANFILES+= DebugInfoPDBEnumTables.cpp
-
-.include <bsd.lib.mk>

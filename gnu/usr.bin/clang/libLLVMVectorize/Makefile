@@ -6,7 +6,6 @@ NOPROFILE=
 
 CPPFLAGS+=	-I${LLVM_SRCS}/include/llvm/Transforms
 
-.include <bsd.own.mk>
 SRCS=	LoadStoreVectorizer.cpp \
 	LoopVectorizationLegality.cpp \
 	LoopVectorize.cpp \
@@ -20,5 +19,3 @@ SRCS=	LoadStoreVectorizer.cpp \
 
 install:
 	@# Nothing here so far ...
-
-.include <bsd.lib.mk>

@@ -7,7 +7,6 @@ NOPROFILE=
 CPPFLAGS+=	-I${.OBJDIR}/../include/llvm/Sparc \
 		-I${LLVM_SRCS}/lib/Target/Sparc
 
-.include <bsd.own.mk>
 SRCS=	DelaySlotFiller.cpp \
 	LeonPasses.cpp \
 	SparcAsmPrinter.cpp \
@@ -26,5 +25,3 @@ SRCS=	DelaySlotFiller.cpp \
 
 install:
 	@# Nothing here so far ...
-
-.include <bsd.lib.mk>

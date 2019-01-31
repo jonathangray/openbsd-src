@@ -4,7 +4,6 @@ LIB=	LLVMBitWriter
 NOPIC=
 NOPROFILE=
 
-.include <bsd.own.mk>
 SRCS=	BitWriter.cpp \
 	BitcodeWriter.cpp \
 	BitcodeWriterPass.cpp \
@@ -14,5 +13,3 @@ SRCS=	BitWriter.cpp \
 
 install:
 	@# Nothing here so far ...
-
-.include <bsd.lib.mk>

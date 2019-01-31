@@ -7,7 +7,6 @@ NOPROFILE=
 CPPFLAGS+=	-I${LLVM_SRCS}/include/llvm/Transforms
 CPPFLAGS+=	-I${LLVM_SRCS}/include/llvm/Transforms/IPO
 
-.include <bsd.own.mk>
 SRCS=	ArgumentPromotion.cpp \
 	AlwaysInliner.cpp \
 	BarrierNoopPass.cpp \
@@ -53,5 +52,3 @@ install:
 	@# Nothing here so far ...
 
 CLEANFILES+= ipoSCCP.cpp
-
-.include <bsd.lib.mk>

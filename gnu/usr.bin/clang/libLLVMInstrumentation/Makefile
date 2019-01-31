@@ -6,7 +6,6 @@ NOPROFILE=
 
 CPPFLAGS+=	-I${LLVM_SRCS}/include/llvm/Transforms
 
-.include <bsd.own.mk>
 SRCS=	AddressSanitizer.cpp \
 	BoundsChecking.cpp \
 	CGProfile.cpp \
@@ -27,5 +26,3 @@ SRCS=	AddressSanitizer.cpp \
 
 install:
 	@# Nothing here so far ...
-
-.include <bsd.lib.mk>

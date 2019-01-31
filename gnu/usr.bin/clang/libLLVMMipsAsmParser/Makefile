@@ -7,12 +7,9 @@ NOPROFILE=
 CPPFLAGS+=	-I${.OBJDIR}/../include/llvm/Mips \
 		-I${LLVM_SRCS}/lib/Target/Mips
 
-.include <bsd.own.mk>
 SRCS=	MipsAsmParser.cpp
 
 .PATH:	${.CURDIR}/../../../llvm/lib/Target/Mips/AsmParser
 
 install:
 	@# Nothing here so far ...
-
-.include <bsd.lib.mk>

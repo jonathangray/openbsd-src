@@ -7,7 +7,6 @@ NOPROFILE=
 CPPFLAGS+=	-I${.OBJDIR}/../include/llvm/Sparc \
 		-I${LLVM_SRCS}/lib/Target/Sparc
 
-.include <bsd.own.mk>
 SRCS=	SparcAsmBackend.cpp \
 	SparcELFObjectWriter.cpp \
 	SparcMCAsmInfo.cpp \
@@ -20,5 +19,3 @@ SRCS=	SparcAsmBackend.cpp \
 
 install:
 	@# Nothing here so far ...
-
-.include <bsd.lib.mk>

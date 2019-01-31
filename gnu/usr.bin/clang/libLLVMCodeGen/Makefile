@@ -7,7 +7,6 @@ NOPROFILE=
 CPPFLAGS+=-I${LLVM_SRC}/include/llvm/CodeGen
 CPPFLAGS+=-I${LLVM_SRC}/include/llvm/CodeGen/PBQP
 
-.include <bsd.own.mk>
 SRCS=	AggressiveAntiDepBreaker.cpp \
 	AllocationOrder.cpp \
 	CodeGenAnalysis.cpp \
@@ -184,5 +183,3 @@ install:
 	@# Nothing here so far ...
 
 CLEANFILES+= CodeGenAnalysis.cpp CodeGenLowLevelType.cpp
-
-.include <bsd.lib.mk>

@@ -7,7 +7,6 @@ NOPROFILE=
 CPPFLAGS+=	-I${LLVM_SRCS}/include/llvm/Transforms
 CPPFLAGS+=	-I${LLVM_SRCS}/include/llvm/Transforms/Utils
 
-.include <bsd.own.mk>
 SRCS=	ASanStackFrameLayout.cpp \
 	AddDiscriminators.cpp \
 	BasicBlockUtils.cpp \
@@ -75,5 +74,3 @@ install:
 	@# Nothing here so far ...
 
 CLEANFILES+= TransformUtilsUtils.cpp
-
-.include <bsd.lib.mk>

@@ -6,7 +6,6 @@ NOPROFILE=
 
 CPPFLAGS+=	-I${LLVM_SRCS}/include/llvm/MC/MCParser
 
-.include <bsd.own.mk>
 SRCS=	AsmLexer.cpp \
 	AsmParser.cpp \
 	COFFAsmParser.cpp \
@@ -21,5 +20,3 @@ SRCS=	AsmLexer.cpp \
 
 install:
 	@# Nothing here so far ...
-
-.include <bsd.lib.mk>

@@ -7,7 +7,6 @@ NOPROFILE=
 CPPFLAGS+=	-I${.OBJDIR}/../include/llvm/AMDGPU \
 		-I${LLVM_SRCS}/lib/Target/AMDGPU
 
-.include <bsd.own.mk>
 SRCS=	AMDGPUAliasAnalysis.cpp \
 	AMDGPUAlwaysInlinePass.cpp \
 	AMDGPUAnnotateKernelFeatures.cpp \
@@ -98,5 +97,3 @@ SRCS=	AMDGPUAliasAnalysis.cpp \
 
 install:
 	@# Nothing here so far ...
-
-.include <bsd.lib.mk>

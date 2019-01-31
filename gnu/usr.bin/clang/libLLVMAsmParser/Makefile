@@ -6,7 +6,6 @@ NOPROFILE=
 
 CPPFLAGS+=	-I${LLVM_SRCS}/include/llvm/Analysis
 
-.include <bsd.own.mk>
 SRCS=	LLLexer.cpp \
 	LLParser.cpp \
 	Parser.cpp
@@ -15,5 +14,3 @@ SRCS=	LLLexer.cpp \
 
 install:
 	@# Nothing here so far ...
-
-.include <bsd.lib.mk>
