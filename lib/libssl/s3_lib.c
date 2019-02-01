@@ -1,4 +1,4 @@
-/* $OpenBSD: s3_lib.c,v 1.178 2019/01/21 01:20:11 jsing Exp $ */
+/* $OpenBSD: s3_lib.c,v 1.183 2019/01/24 15:50:47 beck Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -1569,6 +1569,7 @@ ssl3_free(SSL *s)
 	freezero(S3I(s)->hs_tls13.x25519_private, X25519_KEY_LENGTH);
 	freezero(S3I(s)->hs_tls13.x25519_public, X25519_KEY_LENGTH);
 	freezero(S3I(s)->hs_tls13.x25519_peer_public, X25519_KEY_LENGTH);
+	freezero(S3I(s)->hs_tls13.cookie, S3I(s)->hs_tls13.cookie_len);
 
 	sk_X509_NAME_pop_free(S3I(s)->tmp.ca_names, X509_NAME_free);
 
@@ -1602,9 +1603,18 @@ ssl3_clear(SSL *s)
 	S3I(s)->tmp.x25519 = NULL;
 
 	tls13_secrets_destroy(S3I(s)->hs_tls13.secrets);
+	S3I(s)->hs_tls13.secrets = NULL;
 	freezero(S3I(s)->hs_tls13.x25519_private, X25519_KEY_LENGTH);
+	S3I(s)->hs_tls13.x25519_private = NULL;
 	freezero(S3I(s)->hs_tls13.x25519_public, X25519_KEY_LENGTH);
+	S3I(s)->hs_tls13.x25519_public = NULL;
 	freezero(S3I(s)->hs_tls13.x25519_peer_public, X25519_KEY_LENGTH);
+	S3I(s)->hs_tls13.x25519_peer_public = NULL;
+	freezero(S3I(s)->hs_tls13.cookie, S3I(s)->hs_tls13.cookie_len);
+	S3I(s)->hs_tls13.cookie = NULL;
+	S3I(s)->hs_tls13.cookie_len = 0;
+
+	S3I(s)->hs.extensions_seen = 0;
 
 	rp = S3I(s)->rbuf.buf;
 	wp = S3I(s)->wbuf.buf;

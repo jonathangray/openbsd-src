@@ -218,6 +218,7 @@ lmtp_engine(FILE *conn, struct session *session)
 		if ((linelen = getline(&line, &linesize, conn)) == -1)
 			err(1, "getline");
 		line[strcspn(line, "\n")] = '\0';
+		line[strcspn(line, "\r")] = '\0';
 
 		if (linelen < 4 ||
 		    !isdigit(line[0]) ||
@@ -272,9 +273,10 @@ lmtp_engine(FILE *conn, struct session *session)
 		case PHASE_QUIT:
 			exit(0);
 		}
-		if (ferror(stdin))
-			err(1, "getline");
 	} while (1);
+
+	if (ferror(conn))
+		err(1, "getline");
 }
 
 static void
