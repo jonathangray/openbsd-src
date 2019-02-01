@@ -273,12 +273,3 @@ err:
 	DRM_ERROR("VGT balloon fail\n");
 	return ret;
 }
-
-int intel_vgt_balloon(struct drm_device *dev)
-{
-	return 0;
-}
-
-void intel_vgt_deballoon(void)
-{
-}
