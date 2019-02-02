@@ -9,6 +9,3 @@ CPPFLAGS+=	-I${.OBJDIR}/../include/llvm/AMDGPU \
 SRCS+=	AMDGPUInstPrinter.cpp
 
 .PATH:	${.CURDIR}/../../../llvm/lib/Target/AMDGPU/InstPrinter
-
-install:
-	@# Nothing here so far ...

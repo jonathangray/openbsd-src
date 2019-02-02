@@ -99,7 +99,4 @@ AnalysisAnalysis.cpp:
 
 .PATH:	${.CURDIR}/../../../llvm/lib/Analysis
 
-install:
-	@# Nothing here so far ...
-
 CLEANFILES+= AnalysisAnalysis.cpp

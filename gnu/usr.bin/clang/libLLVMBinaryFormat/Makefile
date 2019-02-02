@@ -10,6 +10,3 @@ SRCS+=	Dwarf.cpp \
 	Wasm.cpp
 
 .PATH:	${.CURDIR}/../../../llvm/lib/BinaryFormat
-
-install:
-	@# Nothing here so far ...

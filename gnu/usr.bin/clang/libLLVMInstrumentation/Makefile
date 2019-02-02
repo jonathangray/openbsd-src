@@ -22,6 +22,3 @@ SRCS+=	AddressSanitizer.cpp \
 	ThreadSanitizer.cpp
 
 .PATH:	${.CURDIR}/../../../llvm/lib/Transforms/Instrumentation
-
-install:
-	@# Nothing here so far ...

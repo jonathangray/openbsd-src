@@ -9,6 +9,3 @@ CPPFLAGS+=	-I${.OBJDIR}/../include/llvm/AArch64 \
 SRCS+=	AArch64BaseInfo.cpp
 
 .PATH:	${.CURDIR}/../../../llvm/lib/Target/AArch64/Utils
-
-install:
-	@# Nothing here so far ...

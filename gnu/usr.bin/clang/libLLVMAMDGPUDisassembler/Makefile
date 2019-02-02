@@ -9,6 +9,3 @@ CPPFLAGS+=	-I${.OBJDIR}/../include/llvm/AMDGPU \
 SRCS+=	AMDGPUDisassembler.cpp
 
 .PATH:	${.CURDIR}/../../../llvm/lib/Target/AMDGPU/Disassembler
-
-install:
-	@# Nothing here so far ...

@@ -14,6 +14,3 @@ SRCS+=	InstrProf.cpp \
 	SampleProfWriter.cpp
 
 .PATH:	${.CURDIR}/../../../llvm/lib/ProfileData
-
-install:
-	@# Nothing here so far ...

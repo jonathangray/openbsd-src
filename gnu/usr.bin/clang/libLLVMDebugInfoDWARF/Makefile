@@ -34,6 +34,3 @@ SRCS+=	DWARFAbbreviationDeclaration.cpp \
 	DWARFVerifier.cpp
 
 .PATH:	${.CURDIR}/../../../llvm/lib/DebugInfo/DWARF
-
-install:
-	@# Nothing here so far ...

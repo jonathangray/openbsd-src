@@ -14,6 +14,3 @@ SRCS+=	Coroutines.cpp \
 	CoroSplit.cpp
 
 .PATH:	${.CURDIR}/../../../llvm/lib/Transforms/Coroutines
-
-install:
-	@# Nothing here so far ...

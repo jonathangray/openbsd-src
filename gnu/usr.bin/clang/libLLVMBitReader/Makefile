@@ -12,6 +12,3 @@ SRCS+=	BitReader.cpp \
 	ValueList.cpp
 
 .PATH:	${.CURDIR}/../../../llvm/lib/Bitcode/Reader
-
-install:
-	@# Nothing here so far ...

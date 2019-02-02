@@ -15,6 +15,3 @@ SRCS+=	LoadStoreVectorizer.cpp \
 	Vectorize.cpp
 
 .PATH:	${.CURDIR}/../../../llvm/lib/Transforms/Vectorize
-
-install:
-	@# Nothing here so far ...

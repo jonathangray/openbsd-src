@@ -11,6 +11,3 @@ SRCS+=	X86ATTInstPrinter.cpp \
 	X86InstComments.cpp
 
 .PATH:	${.CURDIR}/../../../llvm/lib/Target/X86/InstPrinter
-
-install:
-	@# Nothing here so far ...

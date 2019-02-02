@@ -30,6 +30,3 @@ SRCS+=	DAGCombiner.cpp \
 	TargetLowering.cpp
 
 .PATH:	${.CURDIR}/../../../llvm/lib/CodeGen/SelectionDAG
-
-install:
-	@# Nothing here so far ...

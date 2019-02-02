@@ -15,6 +15,3 @@ SRCS+=	SparcAsmBackend.cpp \
 	SparcTargetStreamer.cpp
 
 .PATH:	${.CURDIR}/../../../llvm/lib/Target/Sparc/MCTargetDesc
-
-install:
-	@# Nothing here so far ...

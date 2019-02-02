@@ -8,6 +8,3 @@ CPPFLAGS+=	-I${LLVM_SRCS}/include/llvm/IRReader
 SRCS+=	IRReader.cpp
 
 .PATH:	${.CURDIR}/../../../llvm/lib/IRReader
-
-install:
-	@# Nothing here so far ...

@@ -11,6 +11,3 @@ SRCS+=	MappedBlockStream.cpp \
 	MSFError.cpp
 
 .PATH:	${.CURDIR}/../../../llvm/lib/DebugInfo/MSF
-
-install:
-	@# Nothing here so far ...

@@ -44,6 +44,3 @@ SRCS+=	AArch64A57FPLoadBalancing.cpp \
 	AArch64TargetTransformInfo.cpp
 
 .PATH:	${.CURDIR}/../../../llvm/lib/Target/AArch64
-
-install:
-	@# Nothing here so far ...

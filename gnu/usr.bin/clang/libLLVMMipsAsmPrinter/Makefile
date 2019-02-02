@@ -8,6 +8,3 @@ CPPFLAGS+=	-I${.OBJDIR}/../include/llvm/Mips -I${LLVM_SRCS}/lib/Target/Mips
 SRCS+=	MipsInstPrinter.cpp
 
 .PATH:	${.CURDIR}/../../../llvm/lib/Target/Mips/InstPrinter
-
-install:
-	@# Nothing here so far ...

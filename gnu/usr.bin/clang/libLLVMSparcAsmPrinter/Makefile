@@ -9,6 +9,3 @@ CPPFLAGS+=	-I${.OBJDIR}/../include/llvm/Sparc \
 SRCS+=	SparcInstPrinter.cpp
 
 .PATH:	${.CURDIR}/../../../llvm/lib/Target/Sparc/InstPrinter
-
-install:
-	@# Nothing here so far ...

@@ -9,6 +9,3 @@ CPPFLAGS+=      -I${.OBJDIR}/../include/llvm/PowerPC \
 SRCS+=	PPCAsmParser.cpp
 
 .PATH:	${.CURDIR}/../../../llvm/lib/Target/PowerPC/AsmParser
-
-install:
-	@# Nothing here so far ...

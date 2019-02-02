@@ -47,7 +47,4 @@ ipoSCCP.cpp:
 
 .PATH:	${.CURDIR}/../../../llvm/lib/Transforms/IPO
 
-install:
-	@# Nothing here so far ...
-
 CLEANFILES+= ipoSCCP.cpp

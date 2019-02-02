@@ -14,6 +14,3 @@ SRCS+=	Caching.cpp \
 	ThinLTOCodeGenerator.cpp
 
 .PATH:	${.CURDIR}/../../../llvm/lib/LTO
-
-install:
-	@# Nothing here so far ...

@@ -84,7 +84,4 @@ DebugInfoPDBEnumTables.cpp:
 .PATH:	${.CURDIR}/../../../llvm/lib/DebugInfo/PDB
 .PATH:	${.CURDIR}/../../../llvm/lib/DebugInfo/PDB/Native
 
-install:
-	@# Nothing here so far ...
-
 CLEANFILES+= DebugInfoPDBEnumTables.cpp

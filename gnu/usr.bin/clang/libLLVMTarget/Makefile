@@ -12,6 +12,3 @@ SRCS+=	Target.cpp \
 	TargetMachineC.cpp
 
 .PATH:	${.CURDIR}/../../../llvm/lib/Target
-
-install:
-	@# Nothing here so far ...

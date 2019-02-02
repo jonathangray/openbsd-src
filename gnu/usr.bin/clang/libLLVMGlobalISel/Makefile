@@ -25,7 +25,4 @@ GlobalISelUtils.cpp:
 
 .PATH:	${.CURDIR}/../../../llvm/lib/CodeGen/GlobalISel
 
-install:
-	@# Nothing here so far ...
-
 CLEANFILES+= GlobalISelUtils.cpp

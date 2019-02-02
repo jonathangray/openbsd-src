@@ -16,6 +16,3 @@ SRCS+=	AsmLexer.cpp \
 	MCTargetAsmParser.cpp
 
 .PATH:	${.CURDIR}/../../../llvm/lib/MC/MCParser
-
-install:
-	@# Nothing here so far ...

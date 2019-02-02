@@ -45,6 +45,3 @@ SRCS+=	A15SDOptimizer.cpp \
 	Thumb2SizeReduction.cpp
 
 .PATH:	${.CURDIR}/../../../llvm/lib/Target/ARM
-
-install:
-	@# Nothing here so far ...

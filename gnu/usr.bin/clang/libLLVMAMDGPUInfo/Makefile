@@ -9,6 +9,3 @@ CPPFLAGS+=	-I${.OBJDIR}/../include/llvm/AMDGPU \
 SRCS+=	AMDGPUTargetInfo.cpp
 
 .PATH:	${.CURDIR}/../../../llvm/lib/Target/AMDGPU/TargetInfo
-
-install:
-	@# Nothing here so far ...

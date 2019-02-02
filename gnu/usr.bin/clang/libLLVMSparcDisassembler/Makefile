@@ -9,6 +9,3 @@ CPPFLAGS+=	-I${.OBJDIR}/../include/llvm/Sparc \
 SRCS+=	SparcDisassembler.cpp
 
 .PATH:	${.CURDIR}/../../../llvm/lib/Target/Sparc/Disassembler
-
-install:
-	@# Nothing here so far ...

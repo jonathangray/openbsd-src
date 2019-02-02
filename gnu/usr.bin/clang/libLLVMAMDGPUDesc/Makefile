@@ -18,6 +18,3 @@ SRCS+=	AMDGPUAsmBackend.cpp \
 	SIMCCodeEmitter.cpp
 
 .PATH:	${.CURDIR}/../../../llvm/lib/Target/AMDGPU/MCTargetDesc
-
-install:
-	@# Nothing here so far ...

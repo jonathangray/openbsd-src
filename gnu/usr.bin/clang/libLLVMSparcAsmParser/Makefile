@@ -9,6 +9,3 @@ CPPFLAGS+=	-I${.OBJDIR}/../include/llvm/Sparc \
 SRCS+=	SparcAsmParser.cpp
 
 .PATH:	${.CURDIR}/../../../llvm/lib/Target/Sparc/AsmParser
-
-install:
-	@# Nothing here so far ...

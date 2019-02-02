@@ -45,6 +45,3 @@ SRCS+=	MicroMipsSizeReduction.cpp \
 	MipsTargetObjectFile.cpp
 
 .PATH:	${.CURDIR}/../../../llvm/lib/Target/Mips
-
-install:
-	@# Nothing here so far ...

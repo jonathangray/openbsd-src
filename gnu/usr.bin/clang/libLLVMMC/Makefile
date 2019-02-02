@@ -60,6 +60,3 @@ SRCS+=	ConstantPools.cpp \
 	WinCOFFObjectWriter.cpp
 
 .PATH:	${.CURDIR}/../../../llvm/lib/MC
-
-install:
-	@# Nothing here so far ...

@@ -9,6 +9,3 @@ CPPFLAGS+=	-I${.OBJDIR}/../include/llvm/AArch64 \
 SRCS+=	AArch64AsmParser.cpp
 
 .PATH:	${.CURDIR}/../../../llvm/lib/Target/AArch64/AsmParser
-
-install:
-	@# Nothing here so far ...

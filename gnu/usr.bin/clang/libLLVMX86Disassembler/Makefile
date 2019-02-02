@@ -9,6 +9,3 @@ SRCS+=	X86Disassembler.cpp \
 	X86DisassemblerDecoder.cpp
 
 .PATH:	${.CURDIR}/../../../llvm/lib/Target/X86/Disassembler
-
-install:
-	@# Nothing here so far ...

@@ -29,6 +29,3 @@ SRCS+=	ARMException.cpp \
 	WinException.cpp
 
 .PATH:	${.CURDIR}/../../../llvm/lib/CodeGen/AsmPrinter
-
-install:
-	@# Nothing here so far ...

@@ -9,6 +9,3 @@ SRCS+=	BitWriter.cpp \
 	ValueEnumerator.cpp
 
 .PATH:	${.CURDIR}/../../../llvm/lib/Bitcode/Writer
-
-install:
-	@# Nothing here so far ...

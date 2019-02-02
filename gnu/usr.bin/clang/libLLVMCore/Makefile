@@ -70,7 +70,4 @@ AttributesCompatFunc.inc: AttributesCompatFunc.td
 		-I${LLVM_SRCS}/include \
 		-o ${.TARGET} ${.ALLSRC}
 
-install:
-	@# Nothing here so far ...
-
 CLEANFILES+= CoreCore.cpp

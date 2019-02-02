@@ -10,6 +10,3 @@ SRCS+=	CoverageMapping.cpp \
 	CoverageMappingWriter.cpp
 
 .PATH:	${.CURDIR}/../../../llvm/lib/ProfileData/Coverage
-
-install:
-	@# Nothing here so far ...

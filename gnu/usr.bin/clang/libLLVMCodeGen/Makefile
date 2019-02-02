@@ -178,7 +178,4 @@ CodeGenLowLevelType.cpp:
 
 .PATH:	${.CURDIR}/../../../llvm/lib/CodeGen
 
-install:
-	@# Nothing here so far ...
-
 CLEANFILES+= CodeGenAnalysis.cpp CodeGenLowLevelType.cpp

@@ -53,6 +53,3 @@ SRCS+=	ShadowCallStack.cpp\
 	X86OptimizeLEAs.cpp
 
 .PATH:	${.CURDIR}/../../../llvm/lib/Target/X86
-
-install:
-	@# Nothing here so far ...

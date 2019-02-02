@@ -10,6 +10,3 @@ SRCS+=	Disassembler.cpp \
 	MCSymbolizer.cpp \
 
 .PATH:	${.CURDIR}/../../../llvm/lib/MC/MCDisassembler
-
-install:
-	@# Nothing here so far ...

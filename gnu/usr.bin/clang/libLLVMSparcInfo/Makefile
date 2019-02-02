@@ -9,6 +9,3 @@ CPPFLAGS+=	-I${.OBJDIR}/../include/llvm/Sparc \
 SRCS+=	SparcTargetInfo.cpp
 
 .PATH:	${.CURDIR}/../../../llvm/lib/Target/Sparc/TargetInfo
-
-install:
-	@# Nothing here so far ...

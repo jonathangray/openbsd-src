@@ -8,6 +8,3 @@ CPPFLAGS+=	-I${LLVM_SRCS}/include/llvm/Passes
 SRCS+=	PassBuilder.cpp
 
 .PATH:	${.CURDIR}/../../../llvm/lib/Passes
-
-install:
-	@# Nothing here so far ...

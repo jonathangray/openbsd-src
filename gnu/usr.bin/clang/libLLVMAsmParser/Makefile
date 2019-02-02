@@ -10,6 +10,3 @@ SRCS+=	LLLexer.cpp \
 	Parser.cpp
 
 .PATH:	${.CURDIR}/../../../llvm/lib/AsmParser
-
-install:
-	@# Nothing here so far ...

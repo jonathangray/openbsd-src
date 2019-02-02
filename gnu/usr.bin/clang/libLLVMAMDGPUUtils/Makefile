@@ -12,6 +12,3 @@ SRCS+=	AMDGPUBaseInfo.cpp \
 	AMDGPULaneDominator.cpp
 
 .PATH:	${.CURDIR}/../../../llvm/lib/Target/AMDGPU/Utils
-
-install:
-	@# Nothing here so far ...

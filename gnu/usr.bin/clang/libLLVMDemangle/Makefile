@@ -8,6 +8,3 @@ CPPFLAGS+=	-I${LLVM_SRCS}/include/llvm/Demangle
 SRCS+=	ItaniumDemangle.cpp
 
 .PATH:	${.CURDIR}/../../../llvm/lib/Demangle
-
-install:
-	@# Nothing here so far ...

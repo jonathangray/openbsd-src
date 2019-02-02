@@ -81,7 +81,4 @@ ScalarSCCP.cpp:
 
 .PATH:	${.CURDIR}/../../../llvm/lib/Transforms/Scalar
 
-install:
-	@# Nothing here so far ...
-
 CLEANFILES+= ScalarSCCP.cpp

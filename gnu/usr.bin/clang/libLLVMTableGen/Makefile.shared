@@ -22,7 +22,4 @@ TableGenError.cpp:
 
 .PATH:	${.CURDIR}/../../../llvm/lib/TableGen
 
-install:
-	@# Nothing here so far ...
-
 CLEANFILES+= TableGenError.cpp

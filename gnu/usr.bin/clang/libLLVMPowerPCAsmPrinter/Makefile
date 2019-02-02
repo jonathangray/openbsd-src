@@ -9,6 +9,3 @@ CPPFLAGS+=      -I${.OBJDIR}/../include/llvm/PowerPC \
 SRCS+=	PPCInstPrinter.cpp
 
 .PATH:	${.CURDIR}/../../../llvm/lib/Target/PowerPC/InstPrinter
-
-install:
-	@# Nothing here so far ...

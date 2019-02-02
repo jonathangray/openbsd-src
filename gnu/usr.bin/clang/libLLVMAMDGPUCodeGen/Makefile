@@ -93,6 +93,3 @@ SRCS+=	AMDGPUAliasAnalysis.cpp \
 	GCNILPSched.cpp
 
 .PATH:	${.CURDIR}/../../../llvm/lib/Target/AMDGPU
-
-install:
-	@# Nothing here so far ...

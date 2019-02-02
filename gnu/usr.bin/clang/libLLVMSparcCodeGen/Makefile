@@ -21,6 +21,3 @@ SRCS+=	DelaySlotFiller.cpp \
 	SparcTargetObjectFile.cpp
 
 .PATH:	${.CURDIR}/../../../llvm/lib/Target/Sparc
-
-install:
-	@# Nothing here so far ...

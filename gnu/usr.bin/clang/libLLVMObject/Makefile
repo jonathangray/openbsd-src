@@ -31,7 +31,4 @@ ObjectError.cpp:
 
 .PATH:	${.CURDIR}/../../../llvm/lib/Object
 
-install:
-	@# Nothing here so far ...
-
 CLEANFILES+= ObjectError.cpp

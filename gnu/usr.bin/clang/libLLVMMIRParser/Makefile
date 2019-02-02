@@ -8,6 +8,3 @@ SRCS+=	MILexer.cpp \
 	MIRParser.cpp
 
 .PATH:	${.CURDIR}/../../../llvm/lib/CodeGen/MIRParser
-
-install:
-	@# Nothing here so far ...

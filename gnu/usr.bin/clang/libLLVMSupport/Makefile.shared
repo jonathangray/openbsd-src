@@ -130,7 +130,4 @@ SupportLowLevelType.cpp:
 
 .PATH:	${.CURDIR}/../../../llvm/lib/Support
 
-install:
-	@# Nothing here so far ...
-
 CLEANFILES+= SupportError.cpp SupportLowLevelType.cpp

@@ -19,6 +19,3 @@ SRCS+=	MipsABIInfo.cpp \
 	MipsTargetStreamer.cpp
 
 .PATH:	${.CURDIR}/../../../llvm/lib/Target/Mips/MCTargetDesc
-
-install:
-	@# Nothing here so far ...

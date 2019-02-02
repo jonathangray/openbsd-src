@@ -10,6 +10,3 @@ SRCS+=	AArch64Disassembler.cpp \
 	AArch64ExternalSymbolizer.cpp
 
 .PATH:	${.CURDIR}/../../../llvm/lib/Target/AArch64/Disassembler
-
-install:
-	@# Nothing here so far ...

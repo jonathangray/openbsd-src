@@ -9,6 +9,3 @@ CPPFLAGS+=	-I${.OBJDIR}/../include/llvm/Mips \
 SRCS+=	MipsAsmParser.cpp
 
 .PATH:	${.CURDIR}/../../../llvm/lib/Target/Mips/AsmParser
-
-install:
-	@# Nothing here so far ...

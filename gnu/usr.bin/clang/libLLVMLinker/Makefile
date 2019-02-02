@@ -9,6 +9,3 @@ SRCS+=	IRMover.cpp \
 	LinkModules.cpp
 
 .PATH:	${.CURDIR}/../../../llvm/lib/Linker
-
-install:
-	@# Nothing here so far ...

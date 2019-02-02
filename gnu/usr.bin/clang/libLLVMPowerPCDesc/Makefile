@@ -16,6 +16,3 @@ SRCS+=	PPCAsmBackend.cpp \
 	PPCELFObjectWriter.cpp
 
 .PATH:	${.CURDIR}/../../../llvm/lib/Target/PowerPC/MCTargetDesc
-
-install:
-	@# Nothing here so far ...

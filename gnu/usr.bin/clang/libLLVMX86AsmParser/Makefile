@@ -9,6 +9,3 @@ SRCS+=	X86AsmInstrumentation.cpp \
 	X86AsmParser.cpp
 
 .PATH:	${.CURDIR}/../../../llvm/lib/Target/X86/AsmParser
-
-install:
-	@# Nothing here so far ...

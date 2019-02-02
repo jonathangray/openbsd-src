@@ -16,6 +16,3 @@ SRCS+=	ObjCARC.cpp \
 	PtrState.cpp
 
 .PATH:	${.CURDIR}/../../../llvm/lib/Transforms/ObjCARC
-
-install:
-	@# Nothing here so far ...

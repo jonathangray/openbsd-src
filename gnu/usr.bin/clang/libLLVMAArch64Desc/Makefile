@@ -19,6 +19,3 @@ SRCS+=	AArch64AsmBackend.cpp \
 	AArch64WinCOFFStreamer.cpp
 
 .PATH:	${.CURDIR}/../../../llvm/lib/Target/AArch64/MCTargetDesc
-
-install:
-	@# Nothing here so far ...

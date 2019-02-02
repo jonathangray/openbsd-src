@@ -11,6 +11,3 @@ SRCS+=	Arg.cpp \
 	OptTable.cpp
 
 .PATH:	${.CURDIR}/../../../llvm/lib/Option
-
-install:
-	@# Nothing here so far ...

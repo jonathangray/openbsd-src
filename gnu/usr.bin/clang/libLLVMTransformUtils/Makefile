@@ -69,7 +69,4 @@ TransformUtilsUtils.cpp:
 
 .PATH:	${.CURDIR}/../../../llvm/lib/Transforms/Utils
 
-install:
-	@# Nothing here so far ...
-
 CLEANFILES+= TransformUtilsUtils.cpp

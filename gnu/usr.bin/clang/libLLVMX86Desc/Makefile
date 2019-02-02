@@ -16,6 +16,3 @@ SRCS+=	X86AsmBackend.cpp \
 	X86WinCOFFTargetStreamer.cpp
 
 .PATH:	${.CURDIR}/../../../llvm/lib/Target/X86/MCTargetDesc
-
-install:
-	@# Nothing here so far ...

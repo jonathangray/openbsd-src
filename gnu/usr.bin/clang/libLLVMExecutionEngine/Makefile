@@ -43,7 +43,4 @@ ExecutionEngineCore.cpp:
 .PATH:	${.CURDIR}/../../../llvm/lib/ExecutionEngine/RuntimeDyld
 .PATH:	${.CURDIR}/../../../llvm/lib/ExecutionEngine/RuntimeDyld/Targets
 
-install:
-	@# Nothing here so far ...
-
 CLEANFILES+= ExecutionEngineCore.cpp

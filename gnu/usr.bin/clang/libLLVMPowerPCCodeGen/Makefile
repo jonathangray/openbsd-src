@@ -39,6 +39,3 @@ SRCS+=	PPCBoolRetToInt.cpp \
 	PPCVSXSwapRemoval.cpp
 
 .PATH:	${.CURDIR}/../../../llvm/lib/Target/PowerPC
-
-install:
-	@# Nothing here so far ...

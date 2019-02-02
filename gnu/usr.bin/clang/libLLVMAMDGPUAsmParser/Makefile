@@ -9,6 +9,3 @@ CPPFLAGS+=	-I${.OBJDIR}/../include/llvm/AMDGPU \
 SRCS+=	AMDGPUAsmParser.cpp
 
 .PATH:	${.CURDIR}/../../../llvm/lib/Target/AMDGPU/AsmParser
-
-install:
-	@# Nothing here so far ...

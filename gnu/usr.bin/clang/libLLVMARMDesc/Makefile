@@ -20,6 +20,3 @@ SRCS+=	ARMAsmBackend.cpp \
 	ARMWinCOFFStreamer.cpp
 
 .PATH:	${.CURDIR}/../../../llvm/lib/Target/ARM/MCTargetDesc
-
-install:
-	@# Nothing here so far ...

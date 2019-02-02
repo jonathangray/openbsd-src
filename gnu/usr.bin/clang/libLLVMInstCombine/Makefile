@@ -25,6 +25,3 @@ SRCS+=	AggressiveInstCombine.cpp \
 
 .PATH:	${.CURDIR}/../../../llvm/lib/Transforms/InstCombine
 .PATH:	${.CURDIR}/../../../llvm/lib/Transforms/AggressiveInstCombine
-
-install:
-	@# Nothing here so far ...

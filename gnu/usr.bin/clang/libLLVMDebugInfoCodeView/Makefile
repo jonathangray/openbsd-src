@@ -49,7 +49,4 @@ DebugInfoCodeViewEnumTables.cpp:
 
 .PATH:	${.CURDIR}/../../../llvm/lib/DebugInfo/CodeView
 
-install:
-	@# Nothing here so far ...
-
 CLEANFILES+= DebugInfoCodeViewEnumTables.cpp
