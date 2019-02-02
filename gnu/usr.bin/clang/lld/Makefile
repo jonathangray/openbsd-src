@@ -20,47 +20,8 @@ CPPFLAGS+=	-I${.CURDIR}/../../../llvm/tools/lld/include
 
 LLVM_LIBDEPS=	lldELF \
 		lldCommon \
-		lldCore \
-		LLVMLTO \
-		LLVMPasses \
-		LLVMOption \
-		LLVMObjCARCOpts \
-		LLVMipo \
-		LLVMVectorize \
-		LLVMLinker \
-		LLVMIRReader \
-		LLVMAsmParser \
-		${BACKEND_ASMPARSER} \
-		${BACKEND_CODEGEN} \
-		LLVMSelectionDAG \
-		LLVMAsmPrinter \
-		LLVMCodeGen \
-		LLVMTarget \
-		LLVMScalarOpts \
-		LLVMInstCombine \
-		LLVMInstrumentation \
-		LLVMProfileData \
-		LLVMCoverage \
-		LLVMDebugInfoCodeView \
-		LLVMDebugInfoDWARF \
-		LLVMDebugInfoMSF \
-		LLVMGlobalISel \
-		LLVMTransformUtils \
-		LLVMCoroutines \
-		LLVMDemangle \
-		LLVMBitWriter \
-		LLVMAnalysis \
-		${BACKEND_DESC} \
-		LLVMObject \
-		LLVMMCParser \
-		LLVMBitReader \
-		LLVMMCDisassembler \
-		${BACKEND_INFO} \
-		${BACKEND_ASMPRINTER} \
-		LLVMMC \
-		${BACKEND_UTILS} \
-		LLVMBinaryFormat \
-		LLVMCore \
-		LLVMSupport
+		lldCore
+
+LDADD+= -L ${.OBJDIR}/../libLLVM -lLLVM
 
 .include <bsd.prog.mk>
