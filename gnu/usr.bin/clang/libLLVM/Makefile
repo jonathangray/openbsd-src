@@ -1,3 +1,5 @@
+.include "../Makefile.arch"
+
 .include "../libLLVMAMDGPUAsmParser/Makefile"
 .include "../libLLVMAMDGPUAsmPrinter/Makefile"
 .include "../libLLVMAMDGPUCodeGen/Makefile"
@@ -43,13 +45,15 @@
 .include "../libLLVMTarget/Makefile"
 .include "../libLLVMTransformUtils/Makefile"
 .include "../libLLVMVectorize/Makefile"
-.include "../libLLVMX86AsmParser/Makefile"
-.include "../libLLVMX86AsmPrinter/Makefile"
-.include "../libLLVMX86CodeGen/Makefile"
-.include "../libLLVMX86Desc/Makefile"
-.include "../libLLVMX86Disassembler/Makefile"
-.include "../libLLVMX86Info/Makefile"
-.include "../libLLVMX86Utils/Makefile"
+.include "../libLLVM${LLVM_ARCH}AsmParser/Makefile"
+.include "../libLLVM${LLVM_ARCH}AsmPrinter/Makefile"
+.include "../libLLVM${LLVM_ARCH}CodeGen/Makefile"
+.include "../libLLVM${LLVM_ARCH}Desc/Makefile"
+.include "../libLLVM${LLVM_ARCH}Disassembler/Makefile"
+.include "../libLLVM${LLVM_ARCH}Info/Makefile"
+.if "${LLVM_ARCH}" == "X86" || "${LLVM_ARCH}" == "AArch64" || "${LLVM_ARCH}" == "ARM"
+.include "../libLLVM${LLVM_ARCH}Utils/Makefile"
+.endif
 .include "../libLLVMipo/Makefile"
 
 LIB=	LLVM
