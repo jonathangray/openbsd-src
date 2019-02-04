@@ -22,8 +22,6 @@
 
 extern struct cfdriver inteldrm_cd;
 
-struct resource intel_graphics_stolen_res = DEFINE_RES_MEM(0, 0);
-
 #ifdef __amd64__
 #define membar_producer_wc()	__asm __volatile("sfence":::"memory")
 #else

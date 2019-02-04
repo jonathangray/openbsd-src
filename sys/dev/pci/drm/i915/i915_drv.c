@@ -1539,6 +1539,9 @@ void i915_driver_unload(struct drm_device *dev)
 	intel_display_power_put(dev_priv, POWER_DOMAIN_INIT);
 }
 #else /* OpenBSD */
+
+void intel_init_stolen_res(struct inteldrm_softc *);
+
 int i915_driver_load(struct drm_i915_private *dev_priv, const struct drm_pcidev *ent)
 {
 	const struct intel_device_info *match_info =
@@ -1590,6 +1593,8 @@ int i915_driver_load(struct drm_i915_private *dev_priv, const struct drm_pcidev 
 	ret = i915_driver_init_mmio(dev_priv);
 	if (ret < 0)
 		goto out_runtime_pm_put;
+
+	intel_init_stolen_res(dev_priv);
 
 	ret = i915_driver_init_hw(dev_priv);
 	if (ret < 0)

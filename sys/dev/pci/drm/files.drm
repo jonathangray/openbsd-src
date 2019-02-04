@@ -186,6 +186,7 @@ file	dev/pci/drm/i915/intel_ringbuffer.c		inteldrm
 file	dev/pci/drm/i915/intel_runtime_pm.c		inteldrm
 file	dev/pci/drm/i915/intel_sdvo.c			inteldrm
 file	dev/pci/drm/i915/intel_sideband.c		inteldrm
+file	dev/pci/drm/i915/intel_stolen.c			inteldrm
 file	dev/pci/drm/i915/intel_sprite.c			inteldrm
 file	dev/pci/drm/i915/intel_tv.c			inteldrm
 file	dev/pci/drm/i915/intel_uc.c			inteldrm
