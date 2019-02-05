@@ -225,6 +225,7 @@
 ./etc/signify/openbsd-65-fw.pub
 ./etc/signify/openbsd-65-pkg.pub
 ./etc/signify/openbsd-65-syspatch.pub
+./etc/signify/openbsd-66-base.pub
 ./etc/skel
 ./etc/skel/.ssh
 ./etc/ssh
@@ -625,10 +626,11 @@
 ./usr/games
 ./usr/include
 ./usr/lib
-./usr/lib/libc.so.94.0
+./usr/lib/libc.so.95.0
 ./usr/lib/libcrypto.so.45.3
 ./usr/lib/libcurses.so.14.0
 ./usr/lib/libedit.so.5.2
+./usr/lib/libelf.so.2.0
 ./usr/lib/libevent.so.4.1
 ./usr/lib/libexpat.so.12.0
 ./usr/lib/libform.so.6.0
@@ -646,7 +648,7 @@
 ./usr/lib/libpanelw.so.6.0
 ./usr/lib/libpcap.so.8.4
 ./usr/lib/libperl.so.18.1
-./usr/lib/libpthread.so.26.0
+./usr/lib/libpthread.so.26.1
 ./usr/lib/libradius.so.1.0
 ./usr/lib/libreadline.so.4.0
 ./usr/lib/librpcsvc.so.2.0
@@ -665,6 +667,7 @@
 ./usr/lib/pkgconfig/expat.pc
 ./usr/lib/pkgconfig/fuse.pc
 ./usr/lib/pkgconfig/libcrypto.pc
+./usr/lib/pkgconfig/libelf.pc
 ./usr/lib/pkgconfig/libssl.pc
 ./usr/lib/pkgconfig/openssl.pc
 ./usr/lib/pkgconfig/zlib.pc
@@ -2715,7 +2718,7 @@
 ./usr/share/relink/kernel.tgz
 ./usr/share/relink/usr
 ./usr/share/relink/usr/lib
-./usr/share/relink/usr/lib/libc.so.94.0.a
+./usr/share/relink/usr/lib/libc.so.95.0.a
 ./usr/share/relink/usr/lib/libcrypto.so.45.3.a
 ./usr/share/relink/usr/libexec
 ./usr/share/relink/usr/libexec/ld.so.a
