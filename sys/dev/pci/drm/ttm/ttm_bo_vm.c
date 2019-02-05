@@ -303,7 +303,6 @@ static vm_fault_t ttm_bo_vm_fault_idle(struct ttm_buffer_object *bo,
     struct uvm_faultinfo *ufi)
 {
 	vm_fault_t ret = 0;
-	int err = 0;
 
 	if (likely(!bo->moving))
 		goto out_unlock;
@@ -351,7 +350,6 @@ ttm_bo_vm_fault(struct uvm_faultinfo *ufi, vaddr_t vaddr, vm_page_t *pps,
 	paddr_t paddr;
 	vm_prot_t mapprot;
 	int pmap_flags;
-	boolean_t locked = TRUE;
 	int err;
 	int i;
 	int ret = VM_PAGER_OK;
