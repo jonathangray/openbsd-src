@@ -16,7 +16,7 @@ ioctl.c: ${.CURDIR}/Makefile ${.CURDIR}/mkioctls
 	    ${SYS_DIR}/dev/wscons/wsconsio.h \
 	    ${SYS_DIR}/dev/vndioctl.h \
 	    ${SYS_DIR}/dev/vscsivar.h \
-	    ${SYS_DIR}/dev/pci/drm/i915_drm.h \
+	    ${SYS_DIR}/dev/pci/drm/include/uapi/drm/i915_drm.h \
 	    ${SYS_DIR}/dev/pv/pvvar.h \
 	    ${SYS_DIR}/dev/usb/udlio.h \
 	    ${SYS_DIR}/dev/usb/usb.h \
