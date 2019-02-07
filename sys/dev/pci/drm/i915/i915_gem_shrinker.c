@@ -513,7 +513,6 @@ out:
  */
 void i915_gem_shrinker_register(struct drm_i915_private *i915)
 {
-	STUB();
 #ifdef notyet
 	i915->mm.shrinker.scan_objects = i915_gem_shrinker_scan;
 	i915->mm.shrinker.count_objects = i915_gem_shrinker_count;
