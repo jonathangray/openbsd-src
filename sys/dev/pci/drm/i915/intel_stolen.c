@@ -185,8 +185,4 @@ intel_init_stolen_res(struct inteldrm_softc *dev_priv)
 
 	intel_graphics_stolen_res.start = stolen_base;
 	intel_graphics_stolen_res.end = stolen_base + stolen_size - 1;
-
-	printf("%s start 0x%lx end 0x%lx\n", __func__,
-	    intel_graphics_stolen_res.start,
-	    intel_graphics_stolen_res.end);
 }
