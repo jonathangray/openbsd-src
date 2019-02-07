@@ -981,7 +981,6 @@ static const struct component_ops i915_audio_component_bind_ops = {
  */
 void i915_audio_component_init(struct drm_i915_private *dev_priv)
 {
-	STUB();
 #ifdef notyet
 	int ret;
 
