@@ -3653,6 +3653,14 @@ inteldrm_activate(struct device *self, int act)
 	if (dev->dev == NULL)
 		return (0);
 
+	/*
+	 * On hibernate resume activate is called before inteldrm_attachhook().
+	 * Do not try to call i915_drm_suspend() when
+	 * i915_load_modeset_init()/i915_gem_init() have not been called.
+	 */
+	if (dev_priv->kernel_context == NULL)
+		return 0;
+
 	switch (act) {
 	case DVACT_QUIESCE:
 		rv = config_suspend(dev->dev, act);
