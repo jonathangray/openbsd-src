@@ -186,7 +186,6 @@ static int lpe_audio_irq_init(struct drm_i915_private *dev_priv)
 
 static bool lpe_audio_detect(struct drm_i915_private *dev_priv)
 {
-	STUB();
 	return false;
 #ifdef notyet
 	int lpe_present = false;
@@ -345,7 +344,6 @@ void intel_lpe_audio_notify(struct drm_i915_private *dev_priv,
 			    enum pipe pipe, enum port port,
 			    const void *eld, int ls_clock, bool dp_output)
 {
-	STUB();
 #ifdef notyet
 	unsigned long irqflags;
 	struct intel_hdmi_lpe_audio_pdata *pdata;
