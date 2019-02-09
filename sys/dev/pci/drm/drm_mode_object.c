@@ -496,10 +496,10 @@ retry:
 #ifdef __OpenBSD__
 	} else if (obj->type == DRM_MODE_OBJECT_CONNECTOR &&
 	    prop == (obj_to_connector(obj))->backlight_property) {
-		ret = 0;
 		struct drm_connector *connector = obj_to_connector(obj);
 		connector->backlight_device->props.brightness = prop_value;
 		backlight_schedule_update_status(connector->backlight_device);
+		ret = 0;
 #endif
 	} else {
 		ret = drm_atomic_set_property(state, obj, prop, prop_value);
