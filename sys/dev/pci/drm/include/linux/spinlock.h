@@ -46,6 +46,7 @@ _spin_unlock_irqrestore(struct mutex *mtxp, __unused unsigned long flags
 #define up_read(rwl)			rw_exit_read(rwl)
 #define down_write(rwl)			rw_enter_write(rwl)
 #define up_write(rwl)			rw_exit_write(rwl)
+#define downgrade_write(rwl)		rw_enter(rwl, RW_DOWNGRADE)
 #define read_lock(rwl)			rw_enter_read(rwl)
 #define read_unlock(rwl)		rw_exit_read(rwl)
 #define write_lock(rwl)			rw_enter_write(rwl)
