@@ -1902,9 +1902,7 @@ int radeon_gpu_reset(struct radeon_device *rdev)
 	rdev->in_reset = true;
 	rdev->needs_reset = false;
 
-#ifdef notyet
 	downgrade_write(&rdev->exclusive_lock);
-#endif
 
 	drm_helper_resume_force_mode(rdev->ddev);
 
