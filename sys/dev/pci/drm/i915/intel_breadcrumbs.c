@@ -728,7 +728,11 @@ static void intel_breadcrumbs_signaler(void *arg)
 
 		if (unlikely(do_schedule)) {
 			/* Before we sleep, check for a missed seqno */
-			if (/*current->state & TASK_NORMAL && */
+#ifdef __linux__
+			if (current->state & TASK_NORMAL &&
+#else
+			if ((curproc->p_stat == SSLEEP) &&
+#endif
 			    !list_empty(&b->signals) &&
 			    engine->irq_seqno_barrier &&
 			    test_and_clear_bit(ENGINE_IRQ_BREADCRUMB,

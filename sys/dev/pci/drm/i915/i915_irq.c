@@ -1222,7 +1222,7 @@ static void notify_ring(struct intel_engine_cs *engine)
 #ifdef __linux__
 	if (tsk && tsk->state & TASK_NORMAL)
 #else
-	if (tsk)
+	if (tsk && tsk->p_stat == SSLEEP)
 #endif
 		wake_up_process(tsk);
 
