@@ -39,6 +39,7 @@ struct wait_queue_entry {
 typedef struct wait_queue_entry wait_queue_entry_t;
 
 extern struct mutex sch_mtx;
+extern volatile struct proc *sch_proc;
 extern void *sch_ident;
 extern int sch_priority;
 
@@ -246,6 +247,7 @@ prepare_to_wait(wait_queue_head_t *wqh, wait_queue_entry_t *wqe, int state)
 	MUTEX_ASSERT_LOCKED(&sch_mtx);
 	if (list_empty(&wqe->entry))
 		__add_wait_queue(wqh, wqe);
+	sch_proc = curproc;
 	sch_ident = wqe;
 	sch_priority = state;
 }

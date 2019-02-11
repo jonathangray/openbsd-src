@@ -40,76 +40,13 @@
 #define drm_need_resched() \
     (curcpu()->ci_schedstate.spc_schedflags & SPCF_SHOULDYIELD)
 
-static inline void
-set_current_state(int state)
-{
-	if (sch_ident != curproc)
-		mtx_enter(&sch_mtx);
-	MUTEX_ASSERT_LOCKED(&sch_mtx);
-	sch_ident = curproc;
-	sch_priority = state;
-}
-
-static inline void
-__set_current_state(int state)
-{
-	KASSERT(state == TASK_RUNNING);
-	if (sch_ident == curproc) {
-		MUTEX_ASSERT_LOCKED(&sch_mtx);
-		sch_ident = NULL;
-		mtx_leave(&sch_mtx);
-	}
-}
-
-static inline long
-schedule_timeout(long timeout)
-{
-	int err;
-	long deadline;
-
-	if (cold) {
-		delay((timeout * 1000000) / hz);
-		return 0;
-	}
-
-	if (timeout == MAX_SCHEDULE_TIMEOUT) {
-		err = msleep(sch_ident, &sch_mtx, sch_priority, "schto", 0);
-		sch_ident = curproc;
-		return timeout;
-	}
-
-	deadline = ticks + timeout;
-	err = msleep(sch_ident, &sch_mtx, sch_priority, "schto", timeout);
-	timeout = deadline - ticks;
-	if (timeout < 0)
-		timeout = 0;
-	sch_ident = curproc;
-	return timeout;
-}
+void set_current_state(int);
+void __set_current_state(int);
+void schedule(void);
+long schedule_timeout(long);
 
 #define io_schedule_timeout(x)	schedule_timeout(x)
 
-static inline void
-schedule(void)
-{
-	KASSERT(!cold);
-	msleep(sch_ident, &sch_mtx, sch_priority, "schto", 0);
-	sch_ident = curproc;
-}
-
-static inline int
-wake_up_process(struct proc *p)
-{
-	int s, r = 0;
-
-	SCHED_LOCK(s);
-	if (p->p_stat == SSLEEP) {
-		setrunnable(p);
-		r = 1;
-	}
-	SCHED_UNLOCK(s);
-	
-	return r;
-}
+int wake_up_process(struct proc *p);
 
 #endif

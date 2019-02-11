@@ -42,8 +42,89 @@ tasklet_run(void *arg)
 }
 
 struct mutex sch_mtx = MUTEX_INITIALIZER(IPL_SCHED);
+volatile struct proc *sch_proc;
 void *sch_ident;
 int sch_priority;
+
+void
+set_current_state(int state)
+{
+	if (sch_ident != curproc)
+		mtx_enter(&sch_mtx);
+	MUTEX_ASSERT_LOCKED(&sch_mtx);
+	sch_ident = sch_proc = curproc;
+	sch_priority = state;
+}
+
+void
+__set_current_state(int state)
+{
+	KASSERT(state == TASK_RUNNING);
+	if (sch_ident == curproc) {
+		MUTEX_ASSERT_LOCKED(&sch_mtx);
+		sch_ident = NULL;
+		mtx_leave(&sch_mtx);
+	}
+}
+
+void
+schedule(void)
+{
+	schedule_timeout(MAX_SCHEDULE_TIMEOUT);
+}
+
+long
+schedule_timeout(long timeout)
+{
+	struct sleep_state sls;
+	long deadline;
+	int wait, spl;
+
+	MUTEX_ASSERT_LOCKED(&sch_mtx);
+	KASSERT(!cold);
+
+	sleep_setup(&sls, sch_ident, sch_priority, "schto");
+	if (timeout != MAX_SCHEDULE_TIMEOUT)
+		sleep_setup_timeout(&sls, timeout);
+	sleep_setup_signal(&sls, sch_priority);
+
+	wait = (sch_proc == curproc && timeout > 0);
+
+	spl = MUTEX_OLDIPL(&sch_mtx);
+	MUTEX_OLDIPL(&sch_mtx) = splsched();
+	mtx_leave(&sch_mtx);
+
+	if (timeout != MAX_SCHEDULE_TIMEOUT)
+		deadline = ticks + timeout;
+	sleep_finish_all(&sls, wait);
+	if (timeout != MAX_SCHEDULE_TIMEOUT)
+		timeout = deadline - ticks;
+
+	mtx_enter(&sch_mtx);
+	MUTEX_OLDIPL(&sch_mtx) = spl;
+	sch_ident = curproc;
+
+	return timeout > 0 ? timeout : 0;
+}
+
+int
+wake_up_process(struct proc *p)
+{
+	int s, r = 0;
+
+	SCHED_LOCK(s);
+	atomic_cas_ptr(&sch_proc, p, NULL);
+	if (p->p_wchan) {
+		if (p->p_stat == SSLEEP) {
+			setrunnable(p);
+			r = 1;
+		} else
+			unsleep(p);
+	}
+	SCHED_UNLOCK(s);
+
+	return r;
+}
 
 void
 flush_workqueue(struct workqueue_struct *wq)
