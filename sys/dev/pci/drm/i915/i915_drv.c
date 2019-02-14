@@ -3572,6 +3572,9 @@ inteldrm_attachhook(struct device *self)
 	if (i915_driver_load(dev_priv, id))
 		return;
 
+	if (ri->ri_bits == NULL)
+		return;
+
 	printf("%s: %dx%d, %dbpp\n", dev_priv->sc_dev.dv_xname,
 	    ri->ri_width, ri->ri_height, ri->ri_depth);
 
