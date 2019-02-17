@@ -1156,6 +1156,8 @@ default_wake_function(struct wait_queue_entry *wqe, unsigned int mode,
     int sync, void *key)
 {
 	wakeup(wqe);
+	if (wqe->proc)
+		wake_up_process(wqe->proc);
 	return 0;
 }
 

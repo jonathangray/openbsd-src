@@ -27,12 +27,11 @@
 #include <linux/errno.h>
 #include <linux/spinlock.h>
 
-struct wait_queue_entry;
-
 struct wait_queue_entry {
 	unsigned int flags;
 	void *private;
 	int (*func)(struct wait_queue_entry *, unsigned, int, void *);
+	struct proc *proc;
 	struct list_head entry;
 };
 
@@ -69,6 +68,7 @@ init_wait_entry(wait_queue_entry_t *wqe, int flags)
 	wqe->flags = flags;
 	wqe->private = NULL;
 	wqe->func = autoremove_wake_function;
+	wqe->proc = NULL;
 	INIT_LIST_HEAD(&wqe->entry);
 }
 
@@ -88,6 +88,7 @@ static inline void
 add_wait_queue(wait_queue_head_t *head, wait_queue_entry_t *new)
 {
 	mtx_enter(&head->lock);
+	new->proc = curproc;
 	__add_wait_queue(head, new);
 	mtx_leave(&head->lock);
 }
@@ -103,6 +104,7 @@ remove_wait_queue(wait_queue_head_t *head, wait_queue_entry_t *old)
 {
 	mtx_enter(&head->lock);
 	__remove_wait_queue(head, old);
+	old->proc = NULL;
 	mtx_leave(&head->lock);
 }
 
