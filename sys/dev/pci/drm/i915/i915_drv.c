@@ -3535,7 +3535,7 @@ inteldrm_attach(struct device *parent, struct device *self, void *aux)
 	}
 #endif
 
-	if (IS_I945G(dev_priv) || IS_I945GM(dev_priv))
+	if (info->gen < 5)
 		pa->pa_flags &= ~PCI_FLAGS_MSI_ENABLED;
 
 	if (pci_intr_map_msi(pa, &dev_priv->ih) != 0 &&
