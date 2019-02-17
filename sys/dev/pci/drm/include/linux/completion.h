@@ -28,8 +28,6 @@ struct completion {
 	wait_queue_head_t wait;
 };
 
-#define INIT_COMPLETION(x) ((x).done = 0)
-
 static inline void
 init_completion(struct completion *x)
 {
