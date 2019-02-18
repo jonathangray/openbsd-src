@@ -1,4 +1,4 @@
-/*	$OpenBSD: unwind.h,v 1.6 2019/02/03 12:02:30 florian Exp $	*/
+/*	$OpenBSD: unwind.h,v 1.10 2019/02/17 16:15:31 florian Exp $	*/
 
 /*
  * Copyright (c) 2018 Florian Obser <florian@openbsd.org>
@@ -27,20 +27,23 @@
 #define nitems(_a) (sizeof((_a)) / sizeof((_a)[0]))
 #endif
 
-#define CONF_FILE		"/etc/unwind.conf"
-#define	UNWIND_SOCKET		"/var/run/unwind.sock"
-#define UNWIND_USER		"_unwind"
+#define CONF_FILE	"/etc/unwind.conf"
+#define	UNWIND_SOCKET	"/var/run/unwind.sock"
+#define UNWIND_USER	"_unwind"
 
 #define OPT_VERBOSE	0x00000001
 #define OPT_VERBOSE2	0x00000002
 #define OPT_NOACTION	0x00000004
+
+#define	ROOT_DNSKEY_TTL	172800	/* TTL from authority */
+#define	KSK2017		".	172800	IN	DNSKEY	257 3 8 AwEAAaz/tAm8yTn4Mfeh5eyI96WSVexTBAvkMgJzkKTOiW1vkIbzxeF3+/4RgWOq7HrxRixHlFlExOLAJr5emLvN7SWXgnLh4+B5xQlNVz8Og8kvArMtNROxVQuCaSnIDdD5LKyWbRd2n9WGe2R8PzgCmr3EgVLrjyBxWezF0jLHwVN8efS3rCj/EWgvIWgb9tarpVUDK/b58Da+sqqls3eNbuv7pr+eoZG+SrDK6nWeL3c6H5Apxz7LjVc1uTIdsIXxuOLYA4/ilBmSVIzuDWfdRUfhHdY6+cn8HFRm+2hM8AnXGXws9555KrUB5qihylGa8subX2Nn6UwNR1AkUTV74bU="
 
 enum {
 	PROC_MAIN,
 	PROC_RESOLVER,
 	PROC_FRONTEND,
 	PROC_CAPTIVEPORTAL,
-} unwind_process;
+} uw_process;
 
 static const char * const log_procnames[] = {
 	"main",
@@ -94,18 +97,23 @@ enum imsg_type {
 	IMSG_CTL_RECHECK_CAPTIVEPORTAL,
 	IMSG_OPEN_HTTP_PORT,
 	IMSG_HTTPSOCK,
-	IMSG_CAPTIVEPORTAL_STATE
+	IMSG_CAPTIVEPORTAL_STATE,
+	IMSG_TAFD,
+	IMSG_NEW_TA,
+	IMSG_NEW_TAS_ABORT,
+	IMSG_NEW_TAS_DONE,
 };
 
-struct unwind_forwarder {
-	SIMPLEQ_ENTRY(unwind_forwarder)		 entry;
+struct uw_forwarder {
+	SIMPLEQ_ENTRY(uw_forwarder)		 entry;
 	char					 name[1024]; /* XXX */
 };
 
-struct unwind_conf {
-	SIMPLEQ_HEAD(unwind_forwarder_head, unwind_forwarder)	 unwind_forwarder_list;
-	struct unwind_forwarder_head	 unwind_dot_forwarder_list;
-	int				 unwind_options;
+SIMPLEQ_HEAD(uw_forwarder_head, uw_forwarder);
+struct uw_conf {
+	struct uw_forwarder_head	 uw_forwarder_list;
+	struct uw_forwarder_head	 uw_dot_forwarder_list;
+	int				 uw_options;
 	char				*captive_portal_host;
 	char				*captive_portal_path;
 	char				*captive_portal_expected_response;
@@ -133,17 +141,17 @@ void	main_imsg_compose_frontend_fd(int, pid_t, int);
 void	main_imsg_compose_resolver(int, pid_t, void *, uint16_t);
 void	main_imsg_compose_captiveportal(int, pid_t, void *, uint16_t);
 void	main_imsg_compose_captiveportal_fd(int, pid_t, int);
-void	merge_config(struct unwind_conf *, struct unwind_conf *);
+void	merge_config(struct uw_conf *, struct uw_conf *);
 void	imsg_event_add(struct imsgev *);
 int	imsg_compose_event(struct imsgev *, uint16_t, uint32_t, pid_t,
 	    int, void *, uint16_t);
 
-struct unwind_conf	*config_new_empty(void);
-void			 config_clear(struct unwind_conf *);
+struct uw_conf	*config_new_empty(void);
+void		 config_clear(struct uw_conf *);
 
 /* printconf.c */
-void	print_config(struct unwind_conf *);
+void	print_config(struct uw_conf *);
 
 /* parse.y */
-struct unwind_conf	*parse_config(char *);
-int			 cmdline_symset(char *);
+struct uw_conf	*parse_config(char *);
+int		 cmdline_symset(char *);

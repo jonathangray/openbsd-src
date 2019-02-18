@@ -1,4 +1,4 @@
-/* $OpenBSD: tls13_internal.h,v 1.16 2019/02/04 16:18:15 jsing Exp $ */
+/* $OpenBSD: tls13_internal.h,v 1.19 2019/02/14 17:55:32 jsing Exp $ */
 /*
  * Copyright (c) 2018 Bob Beck <beck@openbsd.org>
  * Copyright (c) 2018 Theo Buehler <tb@openbsd.org>
@@ -114,8 +114,10 @@ void tls13_record_layer_set_aead(struct tls13_record_layer *rl,
 void tls13_record_layer_set_hash(struct tls13_record_layer *rl,
     const EVP_MD *hash);
 void tls13_record_layer_handshake_completed(struct tls13_record_layer *rl);
-int tls13_record_layer_set_traffic_keys(struct tls13_record_layer *rl,
-    struct tls13_secret *read_key, struct tls13_secret *write_key);
+int tls13_record_layer_set_read_traffic_key(struct tls13_record_layer *rl,
+    struct tls13_secret *read_key);
+int tls13_record_layer_set_write_traffic_key(struct tls13_record_layer *rl,
+    struct tls13_secret *write_key);
 
 ssize_t tls13_read_handshake_data(struct tls13_record_layer *rl, uint8_t *buf, size_t n);
 ssize_t tls13_write_handshake_data(struct tls13_record_layer *rl, const uint8_t *buf,
@@ -147,8 +149,11 @@ struct tls13_handshake_stage {
 	uint8_t	message_number;
 };
 
+typedef struct ssl_handshake_tls13_st SSL_HANDSHAKE_TLS13;
+
 struct tls13_ctx {
 	SSL *ssl;
+	SSL_HANDSHAKE_TLS13 *hs;
 	uint8_t	mode;
 	struct tls13_handshake_stage handshake_stage;
 
@@ -168,6 +173,7 @@ const EVP_MD *tls13_cipher_hash(const SSL_CIPHER *cipher);
 /*
  * Legacy interfaces.
  */
+int tls13_legacy_connect(SSL *ssl);
 int tls13_legacy_return_code(SSL *ssl, ssize_t ret);
 ssize_t tls13_legacy_wire_read_cb(void *buf, size_t n, void *arg);
 ssize_t tls13_legacy_wire_write_cb(const void *buf, size_t n, void *arg);

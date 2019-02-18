@@ -1,4 +1,4 @@
-/*	$OpenBSD: unwind.c,v 1.10 2019/02/03 12:02:30 florian Exp $	*/
+/*	$OpenBSD: unwind.c,v 1.15 2019/02/17 14:49:15 florian Exp $	*/
 
 /*
  * Copyright (c) 2018 Florian Obser <florian@openbsd.org>
@@ -21,6 +21,7 @@
 #include <sys/types.h>
 #include <sys/queue.h>
 #include <sys/socket.h>
+#include <sys/stat.h>
 #include <sys/syslog.h>
 #include <sys/wait.h>
 
@@ -47,37 +48,42 @@
 #include "control.h"
 #include "captiveportal.h"
 
+#define	LEASE_DB_DIR		"/var/db/"
+#define	_PATH_LEASE_DB		"/var/db/dhclient.leases."
+
+#define	TRUST_ANCHOR_FILE	"/var/db/unwind.key"
+
 __dead void	usage(void);
 __dead void	main_shutdown(void);
 
-void	main_sig_handler(int, short, void *);
+void		main_sig_handler(int, short, void *);
 
 static pid_t	start_child(int, char *, int, int, int);
 
-void	main_dispatch_frontend(int, short, void *);
-void	main_dispatch_resolver(int, short, void *);
-void	main_dispatch_captiveportal(int, short, void *);
+void		main_dispatch_frontend(int, short, void *);
+void		main_dispatch_resolver(int, short, void *);
+void		main_dispatch_captiveportal(int, short, void *);
 
 static int	main_imsg_send_ipc_sockets(struct imsgbuf *, struct imsgbuf *,
 		    struct imsgbuf *);
-static int	main_imsg_send_config(struct unwind_conf *);
+static int	main_imsg_send_config(struct uw_conf *);
 
-int	main_reload(void);
-int	main_sendall(enum imsg_type, void *, uint16_t);
-void	open_dhcp_lease(int);
-void	open_ports(void);
+int		main_reload(void);
+int		main_sendall(enum imsg_type, void *, uint16_t);
+void		open_dhcp_lease(int);
+void		open_ports(void);
 
-struct unwind_conf	*main_conf;
-struct imsgev		*iev_frontend;
-struct imsgev		*iev_resolver;
-struct imsgev		*iev_captiveportal;
-char			*conffile;
+struct uw_conf	*main_conf;
+struct imsgev	*iev_frontend;
+struct imsgev	*iev_resolver;
+struct imsgev	*iev_captiveportal;
+char		*conffile;
 
-pid_t	 frontend_pid;
-pid_t	 resolver_pid;
-pid_t	 captiveportal_pid;
+pid_t		 frontend_pid;
+pid_t		 resolver_pid;
+pid_t		 captiveportal_pid;
 
-uint32_t cmd_opts;
+uint32_t	 cmd_opts;
 
 void
 main_sig_handler(int sig, short event, void *arg)
@@ -116,17 +122,13 @@ usage(void)
 int
 main(int argc, char *argv[])
 {
-	struct event		 ev_sigint, ev_sigterm, ev_sighup;
-	int			 ch;
-	int			 debug = 0, resolver_flag = 0;
-	int			 frontend_flag = 0, captiveportal_flag = 0;
-	char			*saved_argv0;
-	int			 pipe_main2frontend[2];
-	int			 pipe_main2resolver[2];
-	int			 pipe_main2captiveportal[2];
-	int			 frontend_routesock, rtfilter;
-	int			 control_fd;
-	char			*csock;
+	struct event	 ev_sigint, ev_sigterm, ev_sighup;
+	int		 ch, debug = 0, resolver_flag = 0, frontend_flag = 0;
+	int		 captiveportal_flag = 0, frontend_routesock, rtfilter;
+	int		 pipe_main2frontend[2], pipe_main2resolver[2];
+	int		 pipe_main2captiveportal[2];
+	int		 control_fd, ta_fd;
+	char		*csock, *saved_argv0;
 
 	conffile = CONF_FILE;
 	csock = UNWIND_SOCKET;
@@ -231,8 +233,8 @@ main(int argc, char *argv[])
 	    pipe_main2captiveportal[1], debug, cmd_opts & (OPT_VERBOSE |
 	    OPT_VERBOSE2));
 
-	unwind_process = PROC_MAIN;
-	log_procinit(log_procnames[unwind_process]);
+	uw_process = PROC_MAIN;
+	log_procinit(log_procnames[uw_process]);
 
 	event_init();
 
@@ -265,8 +267,8 @@ main(int argc, char *argv[])
 	event_add(&iev_frontend->ev, NULL);
 
 	iev_resolver->events = EV_READ;
-	event_set(&iev_resolver->ev, iev_resolver->ibuf.fd, iev_resolver->events,
-	    iev_resolver->handler, iev_resolver);
+	event_set(&iev_resolver->ev, iev_resolver->ibuf.fd,
+	    iev_resolver->events, iev_resolver->handler, iev_resolver);
 	event_add(&iev_resolver->ev, NULL);
 
 	iev_captiveportal->events = EV_READ;
@@ -292,14 +294,24 @@ main(int argc, char *argv[])
 	    &rtfilter, sizeof(rtfilter)) < 0)
 		fatal("setsockopt(ROUTE_MSGFILTER)");
 
+	if ((ta_fd = open(TRUST_ANCHOR_FILE, O_RDWR | O_CREAT, 0644)) == -1)
+		log_warn("%s", TRUST_ANCHOR_FILE);
+
+	/* receiver handles failed open correctly */
+	main_imsg_compose_frontend_fd(IMSG_TAFD, 0, ta_fd);
+
 	main_imsg_compose_frontend_fd(IMSG_CONTROLFD, 0, control_fd);
 	main_imsg_compose_frontend_fd(IMSG_ROUTESOCK, 0, frontend_routesock);
 	main_imsg_send_config(main_conf);
 
-	if (pledge("stdio inet rpath sendfd", NULL) == -1)
+	if (unveil(LEASE_DB_DIR, "r") == -1 && errno != ENOENT)
+		err(1, "unveil");
+
+	if (pledge("stdio inet dns rpath sendfd", NULL) == -1)
 		fatal("pledge");
 
 	main_imsg_compose_frontend(IMSG_STARTUP, 0, NULL, 0);
+	main_imsg_compose_resolver(IMSG_STARTUP, 0, NULL, 0);
 
 	event_dispatch();
 
@@ -392,12 +404,12 @@ start_child(int p, char *argv0, int fd, int debug, int verbose)
 void
 main_dispatch_frontend(int fd, short event, void *bula)
 {
-	struct imsgev		*iev = bula;
-	struct imsgbuf		*ibuf;
-	struct imsg		 imsg;
-	ssize_t			 n;
-	int			 shut = 0, verbose;
-	u_short			 rtm_index;
+	struct imsgev	*iev = bula;
+	struct imsgbuf	*ibuf;
+	struct imsg	 imsg;
+	ssize_t		 n;
+	int		 shut = 0, verbose;
+	u_short		 rtm_index;
 
 	ibuf = &iev->ibuf;
 
@@ -694,7 +706,7 @@ main_imsg_send_ipc_sockets(struct imsgbuf *frontend_buf,
 int
 main_reload(void)
 {
-	struct unwind_conf *xconf;
+	struct uw_conf	*xconf;
 
 	if ((xconf = parse_config(conffile)) == NULL)
 		return (-1);
@@ -708,9 +720,9 @@ main_reload(void)
 }
 
 int
-main_imsg_send_config(struct unwind_conf *xconf)
+main_imsg_send_config(struct uw_conf *xconf)
 {
-	struct unwind_forwarder	*unwind_forwarder;
+	struct uw_forwarder	*uw_forwarder;
 
 	/* Send fixed part of config to children. */
 	if (main_sendall(IMSG_RECONF_CONF, xconf, sizeof(*xconf)) == -1)
@@ -738,17 +750,17 @@ main_imsg_send_config(struct unwind_conf *xconf)
 	}
 
 	/* send static forwarders to children */
-	SIMPLEQ_FOREACH(unwind_forwarder, &xconf->unwind_forwarder_list, entry) {
-		if (main_sendall(IMSG_RECONF_FORWARDER, unwind_forwarder,
-		    sizeof(*unwind_forwarder)) == -1)
+	SIMPLEQ_FOREACH(uw_forwarder, &xconf->uw_forwarder_list, entry) {
+		if (main_sendall(IMSG_RECONF_FORWARDER, uw_forwarder,
+		    sizeof(*uw_forwarder)) == -1)
 			return (-1);
 	}
 
 	/* send static DoT forwarders to children */
-	SIMPLEQ_FOREACH(unwind_forwarder, &xconf->unwind_dot_forwarder_list,
+	SIMPLEQ_FOREACH(uw_forwarder, &xconf->uw_dot_forwarder_list,
 	    entry) {
-		if (main_sendall(IMSG_RECONF_DOT_FORWARDER, unwind_forwarder,
-		    sizeof(*unwind_forwarder)) == -1)
+		if (main_sendall(IMSG_RECONF_DOT_FORWARDER, uw_forwarder,
+		    sizeof(*uw_forwarder)) == -1)
 			return (-1);
 	}
 
@@ -773,23 +785,23 @@ main_sendall(enum imsg_type type, void *buf, uint16_t len)
 }
 
 void
-merge_config(struct unwind_conf *conf, struct unwind_conf *xconf)
+merge_config(struct uw_conf *conf, struct uw_conf *xconf)
 {
-	struct unwind_forwarder	*unwind_forwarder;
+	struct uw_forwarder	*uw_forwarder;
 
 	/* Remove & discard existing forwarders. */
-	while ((unwind_forwarder =
-	    SIMPLEQ_FIRST(&conf->unwind_forwarder_list)) != NULL) {
-		SIMPLEQ_REMOVE_HEAD(&conf->unwind_forwarder_list, entry);
-		free(unwind_forwarder);
+	while ((uw_forwarder = SIMPLEQ_FIRST(&conf->uw_forwarder_list)) !=
+	    NULL) {
+		SIMPLEQ_REMOVE_HEAD(&conf->uw_forwarder_list, entry);
+		free(uw_forwarder);
 	}
-	while ((unwind_forwarder =
-	    SIMPLEQ_FIRST(&conf->unwind_dot_forwarder_list)) != NULL) {
-		SIMPLEQ_REMOVE_HEAD(&conf->unwind_dot_forwarder_list, entry);
-		free(unwind_forwarder);
+	while ((uw_forwarder = SIMPLEQ_FIRST(&conf->uw_dot_forwarder_list)) !=
+	    NULL) {
+		SIMPLEQ_REMOVE_HEAD(&conf->uw_dot_forwarder_list, entry);
+		free(uw_forwarder);
 	}
 
-	conf->unwind_options = xconf->unwind_options;
+	conf->uw_options = xconf->uw_options;
 
 	free(conf->captive_portal_host);
 	conf->captive_portal_host = xconf->captive_portal_host;
@@ -807,36 +819,37 @@ merge_config(struct unwind_conf *conf, struct unwind_conf *xconf)
 	conf->captive_portal_auto = xconf->captive_portal_auto;
 
 	/* Add new forwarders. */
-	while ((unwind_forwarder =
-	    SIMPLEQ_FIRST(&xconf->unwind_forwarder_list)) != NULL) {
-		SIMPLEQ_REMOVE_HEAD(&xconf->unwind_forwarder_list, entry);
-		SIMPLEQ_INSERT_TAIL(&conf->unwind_forwarder_list,
-		    unwind_forwarder, entry);
+	while ((uw_forwarder = SIMPLEQ_FIRST(&xconf->uw_forwarder_list)) !=
+	    NULL) {
+		SIMPLEQ_REMOVE_HEAD(&xconf->uw_forwarder_list, entry);
+		SIMPLEQ_INSERT_TAIL(&conf->uw_forwarder_list,
+		    uw_forwarder, entry);
 	}
-	while ((unwind_forwarder =
-	    SIMPLEQ_FIRST(&xconf->unwind_dot_forwarder_list)) != NULL) {
-		SIMPLEQ_REMOVE_HEAD(&xconf->unwind_dot_forwarder_list, entry);
-		SIMPLEQ_INSERT_TAIL(&conf->unwind_dot_forwarder_list,
-		    unwind_forwarder, entry);
+	while ((uw_forwarder = SIMPLEQ_FIRST(&xconf->uw_dot_forwarder_list)) !=
+	    NULL) {
+		SIMPLEQ_REMOVE_HEAD(&xconf->uw_dot_forwarder_list, entry);
+		SIMPLEQ_INSERT_TAIL(&conf->uw_dot_forwarder_list,
+		    uw_forwarder, entry);
 	}
 
 	free(xconf);
 }
 
-struct unwind_conf *
+struct uw_conf *
 config_new_empty(void)
 {
-	struct unwind_conf	*xconf;
+	struct uw_conf	*xconf;
 
 	xconf = calloc(1, sizeof(*xconf));
 	if (xconf == NULL)
 		fatal(NULL);
 
-	SIMPLEQ_INIT(&xconf->unwind_forwarder_list);
-	SIMPLEQ_INIT(&xconf->unwind_dot_forwarder_list);
+	SIMPLEQ_INIT(&xconf->uw_forwarder_list);
+	SIMPLEQ_INIT(&xconf->uw_dot_forwarder_list);
 
 	if ((xconf->captive_portal_expected_response = strdup("")) == NULL)
 		fatal(NULL);
+
 	xconf->captive_portal_expected_status = 200;
 	xconf->captive_portal_auto = 1;
 
@@ -844,9 +857,9 @@ config_new_empty(void)
 }
 
 void
-config_clear(struct unwind_conf *conf)
+config_clear(struct uw_conf *conf)
 {
-	struct unwind_conf	*xconf;
+	struct uw_conf	*xconf;
 
 	/* Merge current config with an empty config. */
 	xconf = config_new_empty();
@@ -854,9 +867,6 @@ config_clear(struct unwind_conf *conf)
 
 	free(conf);
 }
-
-
-#define	_PATH_LEASE_DB	"/var/db/dhclient.leases."
 
 void
 open_dhcp_lease(int if_idx)
@@ -882,21 +892,19 @@ open_dhcp_lease(int if_idx)
 		return;
 	}
 
-
 	main_imsg_compose_frontend_fd(IMSG_LEASEFD, 0, fd);
 }
 
 void
 open_ports(void)
 {
-	struct addrinfo		 hints, *res0;
-	int			 udp4sock = -1, udp6sock = -1, error;
+	struct addrinfo	 hints, *res0;
+	int		 udp4sock = -1, udp6sock = -1, error;
 
 	memset(&hints, 0, sizeof(hints));
 	hints.ai_family = AF_INET;
 	hints.ai_socktype = SOCK_DGRAM;
 	hints.ai_flags = AI_PASSIVE;
-
 
 	error = getaddrinfo("127.0.0.1", "domain", &hints, &res0);
 	if (!error && res0) {
@@ -909,7 +917,8 @@ open_ports(void)
 			}
 		}
 	}
-	freeaddrinfo(res0);
+	if (res0)
+		freeaddrinfo(res0);
 
 	hints.ai_family = AF_INET6;
 	error = getaddrinfo("::1", "domain", &hints, &res0);
@@ -923,7 +932,8 @@ open_ports(void)
 			}
 		}
 	}
-	freeaddrinfo(res0);
+	if (res0)
+		freeaddrinfo(res0);
 
 	if (udp4sock == -1 && udp6sock == -1)
 		fatal("could not bind to 127.0.0.1 or ::1 on port 53");
