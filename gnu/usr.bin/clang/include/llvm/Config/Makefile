@@ -11,9 +11,6 @@ INCDIR=	/usr/include/llvm/Config
 
 all: ${DEFS}
 
-install:
-	@# Nothing here so far ...
-
 clean cleandir:
 	rm -f ${DEFS}
 
@@ -27,7 +24,7 @@ Targets.def:
 	printf "LLVM_TARGET(AMDGPU)\n" >$@
 	printf "LLVM_TARGET(${LLVM_ARCH})\n#undef LLVM_TARGET\n" >>$@
 
-includes: ${DEFS}
+install includes: ${DEFS}
 	${INSTALL} -d -m 755 ${DESTDIR}${INCDIR}
 	@cd ${.CURDIR}; for i in $(HDRS); do \
 	    j="cmp -s $$i ${DESTDIR}${INCDIR}/$$i || \
