@@ -58,4 +58,10 @@
 
 LIB=	LLVM
 
+includes:
+	cd ${LLVM_SRCS}/include; \
+	pax -rw -pa -L \
+	    `find llvm llvm-c -follow -type f -name '*.h' \
+	    -print` ${DESTDIR}/usr/include
+
 .include <bsd.lib.mk>
