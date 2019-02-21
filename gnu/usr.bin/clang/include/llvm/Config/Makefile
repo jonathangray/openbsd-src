@@ -6,6 +6,9 @@
 
 DEFS=	AsmParsers.def AsmPrinters.def Disassemblers.def Targets.def
 
+HDRS=	abi-breaking.h llvm-config.h
+INCDIR=	/usr/include/llvm/Config
+
 all: ${DEFS}
 
 install:
@@ -23,5 +26,22 @@ Disassemblers.def:
 Targets.def:
 	printf "LLVM_TARGET(AMDGPU)\n" >$@
 	printf "LLVM_TARGET(${LLVM_ARCH})\n#undef LLVM_TARGET\n" >>$@
+
+includes: ${DEFS}
+	${INSTALL} -d -m 755 ${DESTDIR}${INCDIR}
+	@cd ${.CURDIR}; for i in $(HDRS); do \
+	    j="cmp -s $$i ${DESTDIR}${INCDIR}/$$i || \
+		${INSTALL} ${INSTALL_COPY} -o ${BINOWN} -g ${BINGRP} \
+		-m 444 $$i ${DESTDIR}${INCDIR}"; \
+	    echo $$j; \
+	    eval "$$j"; \
+	done
+	@cd ${.OBJDIR}; for i in $(DEFS); do \
+	    j="cmp -s $$i ${DESTDIR}${INCDIR}/$$i || \
+		${INSTALL} ${INSTALL_COPY} -o ${BINOWN} -g ${BINGRP} \
+		-m 444 $$i ${DESTDIR}${INCDIR}"; \
+	    echo $$j; \
+	    eval "$$j"; \
+	done
 
 .include <bsd.obj.mk>
