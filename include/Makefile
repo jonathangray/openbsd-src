@@ -61,7 +61,8 @@ RDIRS+= ../gnu/usr.bin/cc/libobjc
 PRDIRS+= ../gnu/lib/libstdc++-v3 ../gnu/usr.bin/cc/include
 .endif
 .if ${BUILD_CLANG:L} == "yes"
-RDIRS+= ../lib/libcxxabi ../lib/libcxx
+RDIRS+= ../lib/libcxxabi ../lib/libcxx \
+	 ../gnu/usr.bin/clang/libLLVM
 .endif
 
 # prereq implies includes
