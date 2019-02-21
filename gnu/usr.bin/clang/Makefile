@@ -18,6 +18,9 @@ SUBDIR+=include/llvm/${arch}
 .endif
 .endfor
 
+SUBDIR+=libLLVM
+SUBDIR+=llvm-config
+
 SUBDIR+=clang-tblgen
 SUBDIR+=include/clang
 
