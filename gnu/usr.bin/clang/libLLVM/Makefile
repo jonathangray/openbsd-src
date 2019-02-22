@@ -61,7 +61,9 @@ LIB=	LLVM
 includes:
 	cd ${LLVM_SRCS}/include; \
 	pax -rw -pa -L \
-	    `find llvm llvm-c -follow -type f -name '*.h' \
+	    `find llvm llvm-c -follow -type f \
+	    '(' -name '*.def' -or -name '*.h' -or -name '*.td' \
+	    -or -name '*.inc' ')' \
 	    -print` ${DESTDIR}/usr/include
 
 .include <bsd.lib.mk>
