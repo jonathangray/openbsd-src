@@ -3,13 +3,14 @@
 .include <bsd.own.mk>
 
 .include "../../../Makefile.arch"
+.include "../../../Makefile.inc"
 
-DEFS=	AsmParsers.def AsmPrinters.def Disassemblers.def Targets.def
+DEFS=	AsmParsers.def AsmPrinters.def Disassemblers.def Targets.def llvm-config.h
 
-HDRS=	abi-breaking.h llvm-config.h
+HDRS=	abi-breaking.h
 INCDIR=	/usr/include/llvm/Config
 
-all: ${DEFS}
+all: ${DEFS} ${HDRS}
 
 clean cleandir:
 	rm -f ${DEFS}
@@ -23,6 +24,12 @@ Disassemblers.def:
 Targets.def:
 	printf "LLVM_TARGET(AMDGPU)\n" >$@
 	printf "LLVM_TARGET(${LLVM_ARCH})\n#undef LLVM_TARGET\n" >>$@
+
+llvm-config.h: llvm-config.h.in
+	cp ${.CURDIR}/llvm-config.h.in $@
+	echo "\n#define LLVM_DEFAULT_TARGET_TRIPLE \"${TRIPLE}\"" >> $@
+	echo "#define LLVM_HOST_TRIPLE \"${TRIPLE}\"" >> $@
+	echo "\n#endif" >> $@
 
 install includes: ${DEFS}
 	${INSTALL} -d -m 755 ${DESTDIR}${INCDIR}
