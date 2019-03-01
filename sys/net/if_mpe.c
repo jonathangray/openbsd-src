@@ -1,4 +1,4 @@
-/* $OpenBSD: if_mpe.c,v 1.84 2019/02/14 03:27:42 dlg Exp $ */
+/* $OpenBSD: if_mpe.c,v 1.86 2019/02/26 03:23:04 dlg Exp $ */
 
 /*
  * Copyright (c) 2008 Pierre-Yves Ritschard <pyr@spootnik.org>
@@ -58,6 +58,8 @@ struct mpe_softc {
 	unsigned int		sc_rdomain;
 	struct ifaddr		sc_ifa;
 	struct sockaddr_mpls	sc_smpls;
+
+	int			sc_dead;
 };
 
 #define MPE_HDRLEN	sizeof(struct shim_hdr)
@@ -110,6 +112,9 @@ mpe_clone_create(struct if_clone *ifc, int unit)
 	ifp->if_type = IFT_MPLS;
 	ifp->if_hdrlen = MPE_HDRLEN;
 	IFQ_SET_MAXLEN(&ifp->if_snd, IFQ_MAXLEN);
+
+	sc->sc_dead = 0;
+
 	if_attach(ifp);
 	if_alloc_sadl(ifp);
 #if NBPFILTER > 0
@@ -130,10 +135,17 @@ mpe_clone_destroy(struct ifnet *ifp)
 {
 	struct mpe_softc	*sc = ifp->if_softc;
 
+	NET_LOCK();
+	CLR(ifp->if_flags, IFF_RUNNING);
+	sc->sc_dead = 1;
+
 	if (sc->sc_smpls.smpls_label) {
 		rt_ifa_del(&sc->sc_ifa, RTF_MPLS|RTF_LOCAL,
 		    smplstosa(&sc->sc_smpls), sc->sc_rdomain);
 	}
+	NET_UNLOCK();
+
+	ifq_barrier(&ifp->if_snd);
 
 	if_detach(ifp);
 	free(sc, M_DEVBUF, sizeof *sc);
@@ -281,6 +293,9 @@ mpe_set_label(struct mpe_softc *sc, uint32_t label, unsigned int rdomain)
 {
 	int error;
 
+	if (sc->sc_dead)
+		return (ENXIO);
+
 	if (sc->sc_smpls.smpls_label) {
 		/* remove old MPLS route */
 		rt_ifa_del(&sc->sc_ifa, RTF_MPLS|RTF_LOCAL,
@@ -329,7 +344,8 @@ mpe_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data)
 		error = copyout(&shim, ifr->ifr_data, sizeof(shim));
 		break;
 	case SIOCSETLABEL:
-		if ((error = copyin(ifr->ifr_data, &shim, sizeof(shim))))
+		error = copyin(ifr->ifr_data, &shim, sizeof(shim));
+		if (error != 0)
 			break;
 		if (shim.shim_label > MPLS_LABEL_MAX ||
 		    shim.shim_label <= MPLS_LABEL_RESERVED_MAX) {
@@ -337,9 +353,10 @@ mpe_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data)
 			break;
 		}
 		shim.shim_label = MPLS_LABEL2SHIM(shim.shim_label);
-		if (sc->sc_smpls.smpls_label == shim.shim_label)
-			break;
-		error = mpe_set_label(sc, shim.shim_label, sc->sc_rdomain);
+		if (sc->sc_smpls.smpls_label != shim.shim_label) {
+			error = mpe_set_label(sc, shim.shim_label,
+			    sc->sc_rdomain);
+		}
 		break;
 	case SIOCSLIFPHYRTABLE:
 		if (ifr->ifr_rdomainid < 0 ||
@@ -349,11 +366,10 @@ mpe_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data)
 			error = EINVAL;
 			break;
 		}
-		if (sc->sc_rdomain == ifr->ifr_rdomainid)
-			break;
-
-		error = mpe_set_label(sc, sc->sc_smpls.smpls_label,
-		    ifr->ifr_rdomainid);
+		if (sc->sc_rdomain != ifr->ifr_rdomainid) {
+			error = mpe_set_label(sc, sc->sc_smpls.smpls_label,
+			    ifr->ifr_rdomainid);
+		}
 		break;
 	case SIOCGLIFPHYRTABLE:
 		ifr->ifr_rdomainid = sc->sc_rdomain;

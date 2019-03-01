@@ -1,4 +1,4 @@
-# $OpenBSD: Makefile,v 1.7 2019/01/27 16:59:42 patrick Exp $
+# $OpenBSD: Makefile,v 1.9 2019/02/26 23:39:51 jsg Exp $
 
 LIB=	LLVMTransformUtils
 NOPIC=
@@ -43,6 +43,7 @@ SRCS=	ASanStackFrameLayout.cpp \
 	LoopUtils.cpp \
 	LoopVersioning.cpp \
 	LowerInvoke.cpp \
+	LowerMemIntrinsics.cpp \
 	LowerSwitch.cpp \
 	Mem2Reg.cpp \
 	MetaRenamer.cpp \
@@ -51,21 +52,28 @@ SRCS=	ASanStackFrameLayout.cpp \
 	OrderedInstructions.cpp \
 	PredicateInfo.cpp \
 	PromoteMemoryToRegister.cpp \
+	StripGCRelocates.cpp \
 	SSAUpdater.cpp \
 	SanitizerStats.cpp \
 	SimplifyCFG.cpp \
 	SimplifyIndVar.cpp \
 	SimplifyLibCalls.cpp \
 	SplitModule.cpp \
+	StripNonLineTableDebugInfo.cpp \
 	SymbolRewriter.cpp \
 	UnifyFunctionExitNodes.cpp \
-	Utils.cpp \
+	TransformUtilsUtils.cpp \
 	VNCoercion.cpp \
 	ValueMapper.cpp
+
+TransformUtilsUtils.cpp:
+	ln -s ${LLVM_SRCS}/lib/Transforms/Utils/Utils.cpp $@
 
 .PATH:	${.CURDIR}/../../../llvm/lib/Transforms/Utils
 
 install:
 	@# Nothing here so far ...
+
+CLEANFILES+= TransformUtilsUtils.cpp
 
 .include <bsd.lib.mk>

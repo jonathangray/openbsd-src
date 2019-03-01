@@ -1,4 +1,4 @@
-/*	$OpenBSD: bgpctl.c,v 1.229 2019/02/11 15:47:55 claudio Exp $ */
+/*	$OpenBSD: bgpctl.c,v 1.234 2019/02/27 04:34:21 claudio Exp $ */
 
 /*
  * Copyright (c) 2003 Henning Brauer <henning@openbsd.org>
@@ -23,11 +23,11 @@
 #include <sys/stat.h>
 #include <sys/un.h>
 
+#include <endian.h>
 #include <err.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <math.h>
-#include <netdb.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -84,7 +84,6 @@ void		 show_attr(void *, u_int16_t, int);
 void		 show_community(u_char *, u_int16_t);
 void		 show_large_community(u_char *, u_int16_t);
 void		 show_ext_community(u_char *, u_int16_t);
-char		*fmt_mem(int64_t);
 int		 show_rib_memory_msg(struct imsg *);
 void		 send_filterset(struct imsgbuf *, struct filter_set_head *);
 const char	*get_errstr(u_int8_t, u_int8_t);
@@ -93,7 +92,6 @@ void		 show_mrt_dump(struct mrt_rib *, struct mrt_peer *, void *);
 void		 network_mrt_dump(struct mrt_rib *, struct mrt_peer *, void *);
 void		 show_mrt_state(struct mrt_bgp_state *, void *);
 void		 show_mrt_msg(struct mrt_bgp_msg *, void *);
-void		 mrt_to_bgpd_addr(union mrt_addr *, struct bgpd_addr *);
 const char	*msg_type(u_int8_t);
 void		 network_bulk(struct parse_result *);
 const char	*print_auth_method(enum auth_method);
@@ -658,7 +656,7 @@ show_neighbor_msg(struct imsg *imsg, enum neighbor_views nv)
 	struct peer		*p;
 	struct ctl_timer	*t;
 	struct in_addr		 ina;
-	char			 buf[NI_MAXHOST], pbuf[NI_MAXSERV], *s;
+	char			*s;
 	int			 hascapamp = 0;
 	u_int8_t		 i;
 
@@ -760,25 +758,11 @@ show_neighbor_msg(struct imsg *imsg, enum neighbor_views nv)
 			if (errstr)
 				printf("  Last error: %s\n\n", errstr);
 		} else {
-			if (getnameinfo((struct sockaddr *)&p->sa_local,
-			    (socklen_t)p->sa_local.ss_len,
-			    buf, sizeof(buf), pbuf, sizeof(pbuf),
-			    NI_NUMERICHOST | NI_NUMERICSERV)) {
-				strlcpy(buf, "(unknown)", sizeof(buf));
-				strlcpy(pbuf, "", sizeof(pbuf));
-			}
-			printf("  Local host:  %20s, Local port:  %5s\n", buf,
-			    pbuf);
+			printf("  Local host:  %20s, Local port:  %5u\n",
+			    log_addr(&p->local), p->local_port);
 
-			if (getnameinfo((struct sockaddr *)&p->sa_remote,
-			    (socklen_t)p->sa_remote.ss_len,
-			    buf, sizeof(buf), pbuf, sizeof(pbuf),
-			    NI_NUMERICHOST | NI_NUMERICSERV)) {
-				strlcpy(buf, "(unknown)", sizeof(buf));
-				strlcpy(pbuf, "", sizeof(pbuf));
-			}
-			printf("  Remote host: %20s, Remote port: %5s\n", buf,
-			    pbuf);
+			printf("  Remote host: %20s, Remote port: %5u\n",
+			    log_addr(&p->remote), p->remote_port);
 			printf("\n");
 		}
 		break;
@@ -1080,22 +1064,12 @@ show_nexthop_msg(struct imsg *imsg)
 			printf("unknown address family\n");
 			return (0);
 		}
-		if (p->kif.ifname[0]) {
-			char *s1;
-			if (p->kif.baudrate) {
-				if (asprintf(&s1, ", %s",
-				    get_baudrate(p->kif.baudrate,
-				    "bps")) == -1)
-					err(1, NULL);
-			} else if (asprintf(&s1, ", %s", get_linkstate(
-			    p->kif.if_type, p->kif.link_state)) == -1)
-					err(1, NULL);
-			if (asprintf(&s, "%s (%s%s)", p->kif.ifname,
-			    p->kif.flags & IFF_UP ? "UP" : "DOWN", s1) == -1)
-				err(1, NULL);
-			printf("%-15s", s);
-			free(s1);
-			free(s);
+		if (p->iface.ifname[0]) {
+			printf("%s (%s, %s)", p->iface.ifname,
+			    p->iface.is_up ? "UP" : "DOWN",
+			    p->iface.baudrate ?
+			    get_baudrate(p->iface.baudrate, "bps") :
+			    p->iface.linkstate);
 		}
 		printf("\n");
 		break;
@@ -1120,24 +1094,22 @@ show_interface_head(void)
 int
 show_interface_msg(struct imsg *imsg)
 {
-	struct kif	*k;
-	uint64_t	 ifms_type;
+	struct ctl_show_interface	*iface;
 
 	switch (imsg->hdr.type) {
 	case IMSG_CTL_SHOW_INTERFACE:
-		k = imsg->data;
-		printf("%-15s", k->ifname);
-		printf("%-9u", k->rdomain);
-		printf("%-9s", k->nh_reachable ? "ok" : "invalid");
-		printf("%-7s", k->flags & IFF_UP ? "UP" : "");
+		iface = imsg->data;
+		printf("%-15s", iface->ifname);
+		printf("%-9u", iface->rdomain);
+		printf("%-9s", iface->nh_reachable ? "ok" : "invalid");
+		printf("%-7s", iface->is_up ? "UP" : "");
 
-		if ((ifms_type = ift2ifm(k->if_type)) != 0)
-			printf("%s, ", get_media_descr(ifms_type));
+		if (iface->media[0])
+			printf("%s, ", iface->media);
+		printf("%s", iface->linkstate);
 
-		printf("%s", get_linkstate(k->if_type, k->link_state));
-
-		if (k->link_state != LINK_STATE_DOWN && k->baudrate > 0)
-			printf(", %s", get_baudrate(k->baudrate, "Bit/s"));
+		if (iface->baudrate > 0)
+			printf(", %s", get_baudrate(iface->baudrate, "Bit/s"));
 		printf("\n");
 		break;
 	case IMSG_CTL_END:
@@ -1761,12 +1733,12 @@ show_ext_community(u_char *data, u_int16_t len)
 		case EXT_COMMUNITY_TRANS_OPAQUE:
 		case EXT_COMMUNITY_TRANS_EVPN:
 			memcpy(&ext, data + i, sizeof(ext));
-			ext = betoh64(ext) & 0xffffffffffffLL;
-			printf("0x%llx", ext);
+			ext = be64toh(ext) & 0xffffffffffffLL;
+			printf("0x%llx", (unsigned long long)ext);
 			break;
 		case EXT_COMMUNITY_NON_TRANS_OPAQUE:
 			memcpy(&ext, data + i, sizeof(ext));
-			ext = betoh64(ext) & 0xffffffffffffLL;
+			ext = be64toh(ext) & 0xffffffffffffLL;
 			switch (ext) {
 			case EXT_COMMUNITY_OVS_VALID:
 				printf("valid ");
@@ -1778,26 +1750,26 @@ show_ext_community(u_char *data, u_int16_t len)
 				printf("invalid ");
 				break;
 			default:
-				printf("0x%llx ", ext);
+				printf("0x%llx ", (unsigned long long)ext);
 				break;
 			}
 			break;
 		default:
 			memcpy(&ext, data + i, sizeof(ext));
-			printf("0x%llx", betoh64(ext));
+			printf("0x%llx", (unsigned long long)be64toh(ext));
 		}
 		if (i + 8 < len)
 			printf(", ");
 	}
 }
 
-char *
-fmt_mem(int64_t num)
+static char *
+fmt_mem(long long num)
 {
 	static char	buf[16];
 
 	if (fmt_scaled(num, buf) == -1)
-		snprintf(buf, sizeof(buf), "%lldB", (long long)num);
+		snprintf(buf, sizeof(buf), "%lldB", num);
 
 	return (buf);
 }
@@ -1822,31 +1794,31 @@ show_rib_memory_msg(struct imsg *imsg)
 				continue;
 			pts += stats.pt_cnt[i] * pt_sizes[i];
 			printf("%10lld %s network entries using %s of memory\n",
-			    (long long)stats.pt_cnt[i], aid_vals[i].name,
+			    stats.pt_cnt[i], aid_vals[i].name,
 			    fmt_mem(stats.pt_cnt[i] * pt_sizes[i]));
 		}
 		printf("%10lld rib entries using %s of memory\n",
-		    (long long)stats.rib_cnt, fmt_mem(stats.rib_cnt *
+		    stats.rib_cnt, fmt_mem(stats.rib_cnt *
 		    sizeof(struct rib_entry)));
 		printf("%10lld prefix entries using %s of memory\n",
-		    (long long)stats.prefix_cnt, fmt_mem(stats.prefix_cnt *
+		    stats.prefix_cnt, fmt_mem(stats.prefix_cnt *
 		    sizeof(struct prefix)));
 		printf("%10lld BGP path attribute entries using %s of memory\n",
-		    (long long)stats.path_cnt, fmt_mem(stats.path_cnt *
+		    stats.path_cnt, fmt_mem(stats.path_cnt *
 		    sizeof(struct rde_aspath)));
 		printf("\t   and holding %lld references\n",
-		    (long long)stats.path_refs);
+		    stats.path_refs);
 		printf("%10lld BGP AS-PATH attribute entries using "
 		    "%s of memory\n\t   and holding %lld references\n",
-		    (long long)stats.aspath_cnt, fmt_mem(stats.aspath_size),
-		    (long long)stats.aspath_refs);
+		    stats.aspath_cnt, fmt_mem(stats.aspath_size),
+		    stats.aspath_refs);
 		printf("%10lld BGP attributes entries using %s of memory\n",
-		    (long long)stats.attr_cnt, fmt_mem(stats.attr_cnt *
+		    stats.attr_cnt, fmt_mem(stats.attr_cnt *
 		    sizeof(struct attr)));
 		printf("\t   and holding %lld references\n",
-		    (long long)stats.attr_refs);
+		    stats.attr_refs);
 		printf("%10lld BGP attributes using %s of memory\n",
-		    (long long)stats.attr_dcnt, fmt_mem(stats.attr_data));
+		    stats.attr_dcnt, fmt_mem(stats.attr_data));
 		printf("%10lld as-set elements in %lld tables using "
 		    "%s of memory\n", stats.aset_nmemb, stats.aset_cnt,
 		    fmt_mem(stats.aset_size));
@@ -2012,11 +1984,11 @@ show_mrt_dump(struct mrt_rib *mr, struct mrt_peer *mp, void *arg)
 	for (i = 0; i < mr->nentries; i++) {
 		mre = &mr->entries[i];
 		bzero(&ctl, sizeof(ctl));
-		mrt_to_bgpd_addr(&mr->prefix, &ctl.prefix);
+		ctl.prefix = mr->prefix;
 		ctl.prefixlen = mr->prefixlen;
 		ctl.lastchange = mre->originated;
-		mrt_to_bgpd_addr(&mre->nexthop, &ctl.true_nexthop);
-		mrt_to_bgpd_addr(&mre->nexthop, &ctl.exit_nexthop);
+		ctl.true_nexthop = mre->nexthop;
+		ctl.exit_nexthop = mre->nexthop;
 		ctl.origin = mre->origin;
 		ctl.local_pref = mre->local_pref;
 		ctl.med = mre->med;
@@ -2024,8 +1996,7 @@ show_mrt_dump(struct mrt_rib *mr, struct mrt_peer *mp, void *arg)
 		ctl.aspath_len = mre->aspath_len;
 
 		if (mre->peer_idx < mp->npeers) {
-			mrt_to_bgpd_addr(&mp->peers[mre->peer_idx].addr,
-			    &ctl.remote_addr);
+			ctl.remote_addr = mp->peers[mre->peer_idx].addr;
 			ctl.remote_id = mp->peers[mre->peer_idx].bgp_id;
 		}
 
@@ -2078,19 +2049,18 @@ network_mrt_dump(struct mrt_rib *mr, struct mrt_peer *mp, void *arg)
 	for (i = 0; i < mr->nentries; i++) {
 		mre = &mr->entries[i];
 		bzero(&ctl, sizeof(ctl));
-		mrt_to_bgpd_addr(&mr->prefix, &ctl.prefix);
+		ctl.prefix = mr->prefix;
 		ctl.prefixlen = mr->prefixlen;
 		ctl.lastchange = mre->originated;
-		mrt_to_bgpd_addr(&mre->nexthop, &ctl.true_nexthop);
-		mrt_to_bgpd_addr(&mre->nexthop, &ctl.exit_nexthop);
+		ctl.true_nexthop = mre->nexthop;
+		ctl.exit_nexthop = mre->nexthop;
 		ctl.origin = mre->origin;
 		ctl.local_pref = mre->local_pref;
 		ctl.med = mre->med;
 		ctl.aspath_len = mre->aspath_len;
 
 		if (mre->peer_idx < mp->npeers) {
-			mrt_to_bgpd_addr(&mp->peers[mre->peer_idx].addr,
-			    &ctl.remote_addr);
+			ctl.remote_addr = mp->peers[mre->peer_idx].addr;
 			ctl.remote_id = mp->peers[mre->peer_idx].bgp_id;
 		}
 
@@ -2163,13 +2133,9 @@ print_time(struct timespec *t)
 void
 show_mrt_state(struct mrt_bgp_state *ms, void *arg)
 {
-	struct bgpd_addr src, dst;
-
-	mrt_to_bgpd_addr(&ms->src, &src);
-	mrt_to_bgpd_addr(&ms->dst, &dst);
 	printf("%s %s[%u] -> ", print_time(&ms->time),
-	    log_addr(&src), ms->src_as);
-	printf("%s[%u]: %s -> %s\n", log_addr(&dst), ms->dst_as,
+	    log_addr(&ms->src), ms->src_as);
+	printf("%s[%u]: %s -> %s\n", log_addr(&ms->dst), ms->dst_as,
 	    statenames[ms->old_state], statenames[ms->new_state]);
 }
 
@@ -2497,11 +2463,11 @@ show_mrt_update(u_char *p, u_int16_t len)
 	printf("\n");
 	/* alen attributes here */
 	while (alen > 3) {
-		u_int8_t flags, type;
+		u_int8_t flags;
 		u_int16_t attrlen;
 
 		flags = p[0];
-		type = p[1];
+		/* type = p[1]; */
 
 		/* get the attribute length */
 		if (flags & ATTR_EXTLEN) {
@@ -2542,16 +2508,13 @@ show_mrt_msg(struct mrt_bgp_msg *mm, void *arg)
 	static const u_int8_t marker[MSGSIZE_HEADER_MARKER] = {
 	    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
 	    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff };
-	struct bgpd_addr src, dst;
 	u_char *p;
 	u_int16_t len;
 	u_int8_t type;
 
-	mrt_to_bgpd_addr(&mm->src, &src);
-	mrt_to_bgpd_addr(&mm->dst, &dst);
 	printf("%s %s[%u] -> ", print_time(&mm->time),
-	    log_addr(&src), mm->src_as);
-	printf("%s[%u]: size %u ", log_addr(&dst), mm->dst_as, mm->msg_len);
+	    log_addr(&mm->src), mm->src_as);
+	printf("%s[%u]: size %u ", log_addr(&mm->dst), mm->dst_as, mm->msg_len);
 	p = mm->msg;
 	len = mm->msg_len;
 
@@ -2624,25 +2587,6 @@ show_mrt_msg(struct mrt_bgp_msg *mm, void *arg)
 		return;
 	}
 	printf("\n");
-}
-
-void
-mrt_to_bgpd_addr(union mrt_addr *ma, struct bgpd_addr *ba)
-{
-	switch (ma->sa.sa_family) {
-	case AF_INET:
-	case AF_INET6:
-		sa2addr(&ma->sa, ba);
-		break;
-	case AF_VPNv4:
-		bzero(ba, sizeof(*ba));
-		ba->aid = AID_VPN_IPv4;
-		ba->vpn4.rd = ma->svpn4.sv_rd;
-		ba->vpn4.addr.s_addr = ma->svpn4.sv_addr.s_addr;
-		memcpy(ba->vpn4.labelstack, ma->svpn4.sv_label,
-		    sizeof(ba->vpn4.labelstack));
-		break;
-	}
 }
 
 const char *

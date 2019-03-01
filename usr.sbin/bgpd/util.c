@@ -1,4 +1,4 @@
-/*	$OpenBSD: util.c,v 1.43 2019/02/15 09:55:21 claudio Exp $ */
+/*	$OpenBSD: util.c,v 1.48 2019/02/27 04:31:56 claudio Exp $ */
 
 /*
  * Copyright (c) 2006 Claudio Jeker <claudio@openbsd.org>
@@ -18,9 +18,6 @@
  */
 #include <sys/types.h>
 #include <sys/socket.h>
-#include <net/if.h>
-#include <net/if_media.h>
-#include <net/if_types.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <errno.h>
@@ -74,7 +71,6 @@ log_in6addr(const struct in6_addr *addr)
 	u_int16_t		tmp16;
 
 	bzero(&sa_in6, sizeof(sa_in6));
-	sa_in6.sin6_len = sizeof(sa_in6);
 	sa_in6.sin6_family = AF_INET6;
 	memcpy(&sa_in6.sin6_addr, addr, sizeof(sa_in6.sin6_addr));
 
@@ -87,15 +83,15 @@ log_in6addr(const struct in6_addr *addr)
 		sa_in6.sin6_addr.s6_addr[3] = 0;
 	}
 
-	return (log_sockaddr((struct sockaddr *)&sa_in6));
+	return (log_sockaddr((struct sockaddr *)&sa_in6, sizeof(sa_in6)));
 }
 
 const char *
-log_sockaddr(struct sockaddr *sa)
+log_sockaddr(struct sockaddr *sa, socklen_t len)
 {
 	static char	buf[NI_MAXHOST];
 
-	if (getnameinfo(sa, sa->sa_len, buf, sizeof(buf), NULL, 0,
+	if (getnameinfo(sa, len, buf, sizeof(buf), NULL, 0,
 	    NI_NUMERICHOST))
 		return ("(unknown)");
 	else
@@ -150,13 +146,13 @@ const struct ext_comm_pairs iana_ext_comms[] = IANA_EXT_COMMUNITIES;
 /* NOTE: this function does not check if the type/subtype combo is
  * actually valid. */
 const char *
-log_ext_subtype(u_int8_t type, u_int8_t subtype)
+log_ext_subtype(short type, u_int8_t subtype)
 {
 	static char etype[6];
 	const struct ext_comm_pairs *cp;
 
 	for (cp = iana_ext_comms; cp->subname != NULL; cp++) {
-		if (type == cp->type && subtype == cp->subtype)
+		if ((type == cp->type || type == -1) && subtype == cp->subtype)
 			return (cp->subname);
 	}
 	snprintf(etype, sizeof(etype), "[%u]", subtype);
@@ -839,7 +835,7 @@ af2aid(sa_family_t af, u_int8_t safi, u_int8_t *aid)
 }
 
 struct sockaddr *
-addr2sa(struct bgpd_addr *addr, u_int16_t port)
+addr2sa(struct bgpd_addr *addr, u_int16_t port, socklen_t *len)
 {
 	static struct sockaddr_storage	 ss;
 	struct sockaddr_in		*sa_in = (struct sockaddr_in *)&ss;
@@ -852,17 +848,17 @@ addr2sa(struct bgpd_addr *addr, u_int16_t port)
 	switch (addr->aid) {
 	case AID_INET:
 		sa_in->sin_family = AF_INET;
-		sa_in->sin_len = sizeof(struct sockaddr_in);
 		sa_in->sin_addr.s_addr = addr->v4.s_addr;
 		sa_in->sin_port = htons(port);
+		*len = sizeof(struct sockaddr_in);
 		break;
 	case AID_INET6:
 		sa_in6->sin6_family = AF_INET6;
-		sa_in6->sin6_len = sizeof(struct sockaddr_in6);
 		memcpy(&sa_in6->sin6_addr, &addr->v6,
 		    sizeof(sa_in6->sin6_addr));
 		sa_in6->sin6_port = htons(port);
 		sa_in6->sin6_scope_id = addr->scope_id;
+		*len = sizeof(struct sockaddr_in6);
 		break;
 	}
 
@@ -870,7 +866,7 @@ addr2sa(struct bgpd_addr *addr, u_int16_t port)
 }
 
 void
-sa2addr(struct sockaddr *sa, struct bgpd_addr *addr)
+sa2addr(struct sockaddr *sa, struct bgpd_addr *addr, u_int16_t *port)
 {
 	struct sockaddr_in		*sa_in = (struct sockaddr_in *)sa;
 	struct sockaddr_in6		*sa_in6 = (struct sockaddr_in6 *)sa;
@@ -880,77 +876,36 @@ sa2addr(struct sockaddr *sa, struct bgpd_addr *addr)
 	case AF_INET:
 		addr->aid = AID_INET;
 		memcpy(&addr->v4, &sa_in->sin_addr, sizeof(addr->v4));
+		if (port)
+			*port = ntohs(sa_in->sin_port);
 		break;
 	case AF_INET6:
 		addr->aid = AID_INET6;
 		memcpy(&addr->v6, &sa_in6->sin6_addr, sizeof(addr->v6));
 		addr->scope_id = sa_in6->sin6_scope_id; /* I hate v6 */
+		if (port)
+			*port = ntohs(sa_in6->sin6_port);
 		break;
 	}
 }
 
-const struct if_status_description
-		if_status_descriptions[] = LINK_STATE_DESCRIPTIONS;
-const struct ifmedia_description
-		ifm_type_descriptions[] = IFM_TYPE_DESCRIPTIONS;
-
-uint64_t
-ift2ifm(uint8_t if_type)
-{
-	switch (if_type) {
-	case IFT_ETHER:
-		return (IFM_ETHER);
-	case IFT_FDDI:
-		return (IFM_FDDI);
-	case IFT_CARP:
-		return (IFM_CARP);
-	case IFT_IEEE80211:
-		return (IFM_IEEE80211);
-	default:
-		return (0);
-	}
-}
-
 const char *
-get_media_descr(uint64_t media_type)
-{
-	const struct ifmedia_description	*p;
-
-	for (p = ifm_type_descriptions; p->ifmt_string != NULL; p++)
-		if (media_type == p->ifmt_word)
-			return (p->ifmt_string);
-
-	return ("unknown media");
-}
-
-const char *
-get_linkstate(uint8_t if_type, int link_state)
-{
-	const struct if_status_description *p;
-	static char buf[8];
-
-	for (p = if_status_descriptions; p->ifs_string != NULL; p++) {
-		if (LINK_STATE_DESC_MATCH(p, if_type, link_state))
-			return (p->ifs_string);
-	}
-	snprintf(buf, sizeof(buf), "[#%d]", link_state);
-	return (buf);
-}
-
-const char *
-get_baudrate(u_int64_t baudrate, char *unit)
+get_baudrate(unsigned long long baudrate, char *unit)
 {
 	static char bbuf[16];
+	const unsigned long long kilo = 1000;
+	const unsigned long long mega = 1000ULL * kilo;
+	const unsigned long long giga = 1000ULL * mega;
 
-	if (baudrate > IF_Gbps(1))
+	if (baudrate > giga)
 		snprintf(bbuf, sizeof(bbuf), "%llu G%s",
-		    baudrate / IF_Gbps(1), unit);
-	else if (baudrate > IF_Mbps(1))
+		    baudrate / giga, unit);
+	else if (baudrate > mega)
 		snprintf(bbuf, sizeof(bbuf), "%llu M%s",
-		    baudrate / IF_Mbps(1), unit);
-	else if (baudrate > IF_Kbps(1))
+		    baudrate / mega, unit);
+	else if (baudrate > kilo)
 		snprintf(bbuf, sizeof(bbuf), "%llu K%s",
-		    baudrate / IF_Kbps(1), unit);
+		    baudrate / kilo, unit);
 	else
 		snprintf(bbuf, sizeof(bbuf), "%llu %s",
 		    baudrate, unit);

@@ -1,4 +1,4 @@
-/*	$OpenBSD: tls13_lib.c,v 1.3 2019/01/21 13:45:57 jsing Exp $ */
+/*	$OpenBSD: tls13_lib.c,v 1.9 2019/02/28 18:20:38 jsing Exp $ */
 /*
  * Copyright (c) 2018, 2019 Joel Sing <jsing@openbsd.org>
  *
@@ -61,6 +61,35 @@ tls13_cipher_hash(const SSL_CIPHER *cipher)
 	return NULL;
 }
 
+static void
+tls13_alert_received_cb(uint8_t alert_level, uint8_t alert_desc, void *arg)
+{
+	struct tls13_ctx *ctx = arg;
+	SSL *s = ctx->ssl;
+
+	if (alert_desc == SSL_AD_CLOSE_NOTIFY) {
+		ctx->ssl->internal->shutdown |= SSL_RECEIVED_SHUTDOWN;
+		S3I(ctx->ssl)->warn_alert = alert_desc;
+		return;
+	}
+
+	if (alert_desc == SSL_AD_USER_CANCELLED) {
+		/*
+		 * We treat this as advisory, since a close_notify alert
+		 * SHOULD follow this alert (RFC 8446 section 6.1).
+		 */
+		return;
+	}
+
+	/* All other alerts are treated as fatal in TLSv1.3. */
+	S3I(ctx->ssl)->fatal_alert = alert_desc;
+
+	SSLerror(ctx->ssl, SSL_AD_REASON_OFFSET + alert_desc);
+	ERR_asprintf_error_data("SSL alert number %d", alert_desc);
+
+	SSL_CTX_remove_session(s->ctx, s->session);
+}
+
 struct tls13_ctx *
 tls13_ctx_new(int mode)
 {
@@ -72,7 +101,8 @@ tls13_ctx_new(int mode)
 	ctx->mode = mode;
 
 	if ((ctx->rl = tls13_record_layer_new(tls13_legacy_wire_read_cb,
-	    tls13_legacy_wire_write_cb, NULL, NULL, ctx)) == NULL)
+	    tls13_legacy_wire_write_cb, tls13_alert_received_cb, NULL,
+	    ctx)) == NULL)
 		goto err;
 
 	return ctx;
@@ -111,6 +141,8 @@ tls13_legacy_wire_read(SSL *ssl, uint8_t *buf, size_t len)
 			return TLS13_IO_WANT_POLLIN;
 		if (BIO_should_write(ssl->rbio))
 			return TLS13_IO_WANT_POLLOUT;
+		if (n == 0)
+			return TLS13_IO_EOF;
 
 		return TLS13_IO_FAILURE;
 	}
@@ -189,10 +221,12 @@ tls13_legacy_return_code(SSL *ssl, ssize_t ret)
 		return -1;
 
 	case TLS13_IO_WANT_POLLIN:
+		BIO_set_retry_read(ssl->rbio);
 		ssl->internal->rwstate = SSL_READING;
 		return -1;
 
 	case TLS13_IO_WANT_POLLOUT:
+		BIO_set_retry_write(ssl->wbio);
 		ssl->internal->rwstate = SSL_WRITING;
 		return -1;
 	}
@@ -207,6 +241,12 @@ tls13_legacy_read_bytes(SSL *ssl, int type, unsigned char *buf, int len, int pee
 	struct tls13_ctx *ctx = ssl->internal->tls13;
 	ssize_t ret;
 
+	if (ctx == NULL || !ctx->handshake_completed) {
+		if ((ret = ssl->internal->handshake_func(ssl)) <= 0)
+			return ret;
+		return tls13_legacy_return_code(ssl, TLS13_IO_WANT_POLLIN);
+	}
+
 	if (peek) {
 		/* XXX - support peek... */
 		SSLerror(ssl, ERR_R_INTERNAL_ERROR);
@@ -217,9 +257,12 @@ tls13_legacy_read_bytes(SSL *ssl, int type, unsigned char *buf, int len, int pee
 		SSLerror(ssl, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
 		return -1;
 	}
+	if (len < 0) {
+		SSLerror(ssl, SSL_R_BAD_LENGTH); 
+		return -1;
+	}
 
 	ret = tls13_read_application_data(ctx->rl, buf, len);
-
 	return tls13_legacy_return_code(ssl, ret);
 }
 
@@ -227,14 +270,54 @@ int
 tls13_legacy_write_bytes(SSL *ssl, int type, const void *buf, int len)
 {
 	struct tls13_ctx *ctx = ssl->internal->tls13;
+	size_t n, sent;
 	ssize_t ret;
+
+	if (ctx == NULL || !ctx->handshake_completed) {
+		if ((ret = ssl->internal->handshake_func(ssl)) <= 0)
+			return ret;
+		return tls13_legacy_return_code(ssl, TLS13_IO_WANT_POLLOUT);
+	}
 
 	if (type != SSL3_RT_APPLICATION_DATA) {
 		SSLerror(ssl, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
 		return -1;
 	}
+	if (len <= 0) {
+		SSLerror(ssl, SSL_R_BAD_LENGTH); 
+		return -1;
+	}
 
-	ret = tls13_write_application_data(ctx->rl, buf, len);
+	/*
+	 * The TLSv1.3 record layer write behaviour is the same as
+	 * SSL_MODE_ENABLE_PARTIAL_WRITE.
+	 */
+	if (ssl->internal->mode & SSL_MODE_ENABLE_PARTIAL_WRITE) {
+		ret = tls13_write_application_data(ctx->rl, buf, len);
+		return tls13_legacy_return_code(ssl, ret);
+	}
 
-	return tls13_legacy_return_code(ssl, ret);
+	/*
+ 	 * In the non-SSL_MODE_ENABLE_PARTIAL_WRITE case we have to loop until
+	 * we have written out all of the requested data.
+	 */
+	sent = S3I(ssl)->wnum;
+	if (len < sent) {
+		SSLerror(ssl, SSL_R_BAD_LENGTH); 
+		return -1;
+	}
+	n = len - sent;
+	for (;;) {
+		if (n == 0) {
+			S3I(ssl)->wnum = 0;
+			return sent;
+		}
+		if ((ret = tls13_write_application_data(ctx->rl,
+		    &buf[sent], n)) <= 0) {
+			S3I(ssl)->wnum = sent;
+			return tls13_legacy_return_code(ssl, ret);
+		}
+		sent += ret;
+		n -= ret;
+	}
 }

@@ -1,4 +1,4 @@
-/*	$Id: receiver.c,v 1.17 2019/02/17 16:34:04 deraadt Exp $ */
+/*	$Id: receiver.c,v 1.19 2019/02/18 21:55:27 benno Exp $ */
 
 /*
  * Copyright (c) 2019 Kristaps Dzonsons <kristaps@bsd.lv>

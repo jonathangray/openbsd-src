@@ -1,4 +1,4 @@
-/*	$Id: extern.h,v 1.18 2019/02/17 18:11:50 deraadt Exp $ */
+/*	$Id: extern.h,v 1.23 2019/02/22 09:54:36 benno Exp $ */
 /*
  * Copyright (c) 2019 Kristaps Dzonsons <kristaps@bsd.lv>
  *
@@ -116,6 +116,7 @@ struct	opts {
 	int		 del;			/* --delete */
 	int		 devices;		/* --devices */
 	int		 specials;		/* --specials */
+	int		 numeric_ids;		/* --numeric-ids */
 	char		*rsync_path;		/* --rsync-path */
 	char		*ssh_prog;		/* --rsh or -e */
 	char		*port;			/* --port */
@@ -135,11 +136,12 @@ struct	blk {
 
 enum	blkstatst {
 	BLKSTAT_NONE = 0,
-	BLKSTAT_DATASZ,
+	BLKSTAT_NEXT,
 	BLKSTAT_DATA,
 	BLKSTAT_TOK,
 	BLKSTAT_HASH,
-	BLKSTAT_DONE
+	BLKSTAT_DONE,
+	BLKSTAT_PHASE,
 };
 
 /*
@@ -226,8 +228,6 @@ struct	upload;
 	rsync_err((_sess), __FILE__, __LINE__, (_fmt), ##__VA_ARGS__)
 #define ERRX(_sess, _fmt, ...) \
 	rsync_errx((_sess), __FILE__, __LINE__, (_fmt), ##__VA_ARGS__)
-
-__BEGIN_DECLS
 
 void		  rsync_log(struct sess *,
 			const char *, size_t, int, const char *, ...)
@@ -325,8 +325,8 @@ struct upload	 *upload_alloc(struct sess *, const char *, int, int, size_t,
 void		  upload_free(struct upload *);
 
 struct blkset	 *blk_recv(struct sess *, int, const char *);
-int		  blk_recv_ack(struct sess *,
-			int, const struct blkset *, int32_t);
+void		  blk_recv_ack(struct sess *,
+			char [20], const struct blkset *, int32_t);
 void		  blk_match(struct sess *, const struct blkset *,
 			const char *, struct blkstat *);
 int		  blk_send(struct sess *, int, size_t,
@@ -346,7 +346,7 @@ char		 *mkstemplinkat(char*, int, char *);
 char		 *mkstempfifoat(int, char *);
 char		 *mkstempnodat(int, char *, mode_t, dev_t);
 char		 *mkstempsock(const char *, char *);
-int		  mktemplate(char **, const char *, int);
+int		  mktemplate(struct sess *, char **, const char *, int);
 
 char		 *symlink_read(struct sess *, const char *);
 char		 *symlinkat_read(struct sess *, int, const char *);
@@ -364,7 +364,5 @@ void		  idents_free(struct ident *, size_t);
 int		  idents_recv(struct sess *, int, struct ident **, size_t *);
 void		  idents_remap(struct sess *, int, struct ident *, size_t);
 int		  idents_send(struct sess *, int, const struct ident *, size_t);
-
-__END_DECLS
 
 #endif /*!EXTERN_H*/

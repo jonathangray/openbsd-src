@@ -1,4 +1,4 @@
-/*	$Id: main.c,v 1.27 2019/02/17 20:11:42 deraadt Exp $ */
+/*	$Id: main.c,v 1.31 2019/02/21 22:06:26 benno Exp $ */
 /*
  * Copyright (c) 2019 Kristaps Dzonsons <kristaps@bsd.lv>
  *
@@ -138,13 +138,13 @@ fargs_parse(size_t argc, char *argv[], struct opts *opts)
 
 	if (f->host != NULL) {
 		if (strncasecmp(f->host, "rsync://", 8) == 0) {
-			/* rsync://host/module[/path] */
+			/* rsync://host[:port]/module[/path] */
 			f->remote = 1;
 			len = strlen(f->host) - 8 + 1;
 			memmove(f->host, f->host + 8, len);
 			if ((cp = strchr(f->host, '/')) == NULL)
-				errx(1, "rsync protocol "
-					"requires a module name");
+				errx(1, "rsync protocol requires a module "
+				    "name");
 			*cp++ = '\0';
 			f->module = cp;
 			if ((cp = strchr(f->module, '/')) != NULL)
@@ -315,6 +315,7 @@ main(int argc, char *argv[])
 		{ "no-owner",	no_argument,	&opts.preserve_uids,	0 },
 		{ "perms",	no_argument,	&opts.preserve_perms,	1 },
 		{ "no-perms",	no_argument,	&opts.preserve_perms,	0 },
+		{ "numeric-ids", no_argument,	&opts.numeric_ids,	1 },
 		{ "recursive",	no_argument,	&opts.recursive,	1 },
 		{ "no-recursive", no_argument,	&opts.recursive,	0 },
 		{ "specials",	no_argument,	&opts.specials,		1 },
@@ -333,7 +334,8 @@ main(int argc, char *argv[])
 
 	memset(&opts, 0, sizeof(struct opts));
 
-	while ((c = getopt_long(argc, argv, "Dae:ghlnoprtv", lopts, NULL)) != -1) {
+	while ((c = getopt_long(argc, argv, "Dae:ghlnoprtv", lopts, NULL))
+	    != -1) {
 		switch (c) {
 		case 'D':
 			opts.devices = 1;

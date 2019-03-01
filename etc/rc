@@ -1,4 +1,4 @@
-#	$OpenBSD: rc,v 1.532 2019/01/26 10:59:07 florian Exp $
+#	$OpenBSD: rc,v 1.534 2019/02/24 12:57:14 kn Exp $
 
 # System startup script run by init on autoboot or after single-user.
 # Output and error are redirected to console by init, and the console is the
@@ -175,13 +175,11 @@ reorder_libs() {
 
 	# Skip if /usr/lib, /usr/libexec or /usr/share/relink are on nfs mounted
 	# filesystems, otherwise record which ones are mounted read-only.
-	for _d in /usr/{lib,libexec,share/relink}; do
-		_dkdev=$(df $_d | sed '1d;s/ .*//')
-		_mp=$(mount | grep "^$_dkdev")
-		[[ $_mp == *" type nfs "* ]] && return
-		if [[ $_mp == *" type ffs "*"read-only"* &&
-			$_ro_list != *${_mp%% *}* ]]; then
-				_ro_list="$_ro_list ${_mp%% *}"
+	for _dkdev in $(df /usr/{lib,libexec} $_relink |
+	    sed '1d;s/ .*//' | sort -u); do
+		_mp=$(mount -t ffs | grep "^$_dkdev") || return
+		if [[ $_mp == *read-only* ]]; then
+			_ro_list="$_ro_list ${_mp%% *}"
 		fi
 	done
 
@@ -204,7 +202,7 @@ reorder_libs() {
 		_tmpdir=$(mktemp -dq $_relink/_rebuild.XXXXXXXXXXXX) &&
 		(
 		set -o errexit
-		_install='install -F -S -o root -g bin -m 0444'
+		_install='install -F -o root -g bin -m 0444'
 		_lib=${_liba##*/}
 		_lib=${_lib%.a}
 		_lib_dir=${_liba#$_relink}

@@ -1,4 +1,4 @@
-/*	$OpenBSD: parse.y,v 1.374 2019/02/15 10:10:53 claudio Exp $ */
+/*	$OpenBSD: parse.y,v 1.381 2019/02/27 04:16:02 claudio Exp $ */
 
 /*
  * Copyright (c) 2002, 2003, 2004 Henning Brauer <henning@openbsd.org>
@@ -30,7 +30,6 @@
 #include <netinet/in.h>
 #include <netinet/ip_ipsp.h>
 #include <arpa/inet.h>
-#include <netmpls/mpls.h>
 
 #include <ctype.h>
 #include <err.h>
@@ -39,6 +38,7 @@
 #include <limits.h>
 #include <stdarg.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <syslog.h>
 
@@ -164,7 +164,7 @@ static void	 add_roa_set(struct prefixset_item *, u_int32_t, u_int8_t);
 
 typedef struct {
 	union {
-		int64_t			 number;
+		long long		 number;
 		char			*string;
 		struct bgpd_addr	 addr;
 		u_int8_t		 u8;
@@ -194,7 +194,7 @@ typedef struct {
 %}
 
 %token	AS ROUTERID HOLDTIME YMIN LISTEN ON FIBUPDATE FIBPRIORITY RTABLE
-%token	NONE UNICAST VPN RD EXPORT EXPORTTRGT IMPORTTRGT
+%token	NONE UNICAST VPN RD EXPORT EXPORTTRGT IMPORTTRGT DEFAULTROUTE
 %token	RDE RIB EVALUATE IGNORE COMPARE
 %token	GROUP NEIGHBOR NETWORK
 %token	EBGP IBGP
@@ -578,13 +578,15 @@ conf_main	: AS as4number		{
 		}
 		| LISTEN ON address	{
 			struct listen_addr	*la;
+			struct sockaddr		*sa;
 
 			if ((la = calloc(1, sizeof(struct listen_addr))) ==
 			    NULL)
 				fatal("parse conf_main listen on calloc");
 
 			la->fd = -1;
-			memcpy(&la->sa, addr2sa(&$3, BGP_PORT), sizeof(la->sa));
+			sa = addr2sa(&$3, BGP_PORT, &la->sa_len);
+			memcpy(&la->sa, sa, la->sa_len);
 			TAILQ_INSERT_TAIL(conf->listen_addrs, la, entry);
 		}
 		| FIBPRIORITY NUMBER		{
@@ -1098,6 +1100,7 @@ l3vpnopts	: RD STRING {
 			struct filter_community	ext;
 			u_int64_t		rd;
 
+			memset(&ext, 0, sizeof(ext));
 			if (parseextcommunity(&ext, "rt", $2) == -1) {
 				free($2);
 				YYERROR;
@@ -1107,7 +1110,7 @@ l3vpnopts	: RD STRING {
 			 * RD is almost encode like an ext-community,
 			 * but only almost so convert here.
 			 */
-			if (community_ext_conv(&ext, 0, &rd)) {
+			if (community_ext_conv(&ext, NULL, &rd, NULL)) {
 				yyerror("bad encoding of rd");
 				YYERROR;
 			}
@@ -1369,50 +1372,11 @@ peeropts	: REMOTEAS as4number	{
 		| ANNOUNCE AS4BYTE yesno {
 			curpeer->conf.capabilities.as4byte = $3;
 		}
-		| ANNOUNCE SELF {
-			yyerror("support for the 'announce self' directive has"
-			    " been removed. Urgent configuration review "
-			    "required!");
-			YYERROR;
+		| EXPORT NONE {
+			curpeer->conf.export_type = EXPORT_NONE;
 		}
-		| ANNOUNCE STRING {
-			if (!strcmp($2, "all"))
-				logit(LOG_ERR, "%s:%d: %s", file->name,
-				    yylval.lineno,
-				    "warning: 'announce all' is deprecated");
-			else if (!strcmp($2, "none")) {
-				logit(LOG_ERR, "%s:%d: %s", file->name,
-				    yylval.lineno,
-				    "warning: 'announce none' is deprecated, "
-				    "use 'export none' instead");
-				curpeer->conf.export_type = EXPORT_NONE;
-			} else if (!strcmp($2, "default-route")) {
-				logit(LOG_ERR, "%s:%d: %s", file->name,
-				    yylval.lineno,
-				    "warning: 'announce default-route' is "
-				    "deprecated, use 'export default-route' "
-				    "instead");
-				curpeer->conf.export_type =
-				    EXPORT_DEFAULT_ROUTE;
-			} else {
-				yyerror("syntax error: unknown '%s'", $2);
-				free($2);
-				YYERROR;
-			}
-			free($2);
-		}
-		| EXPORT STRING {
-			if (!strcmp($2, "none"))
-				curpeer->conf.export_type = EXPORT_NONE;
-			else if (!strcmp($2, "default-route"))
-				curpeer->conf.export_type =
-				    EXPORT_DEFAULT_ROUTE;
-			else {
-				yyerror("invalid export type");
-				free($2);
-				YYERROR;
-			}
-			free($2);
+		| EXPORT DEFAULTROUTE {
+			curpeer->conf.export_type = EXPORT_DEFAULT_ROUTE;
 		}
 		| ENFORCE NEIGHBORAS yesno {
 			if ($3)
@@ -2817,6 +2781,7 @@ lookup(char *s)
 		{ "compare",		COMPARE},
 		{ "connect-retry",	CONNECTRETRY},
 		{ "connected",		CONNECTED},
+		{ "default-route",	DEFAULTROUTE},
 		{ "delete",		DELETE},
 		{ "demote",		DEMOTE},
 		{ "deny",		DENY},
@@ -3463,7 +3428,7 @@ symget(const char *nam)
 static int
 getcommunity(char *s, int large, u_int32_t *val, u_int8_t *flag)
 {
-	int64_t		 max = USHRT_MAX;
+	long long	 max = USHRT_MAX;
 	const char	*errstr;
 
 	*flag = 0;
@@ -3482,7 +3447,7 @@ getcommunity(char *s, int large, u_int32_t *val, u_int8_t *flag)
 		max = UINT_MAX;
 	*val = strtonum(s, 0, max, &errstr);
 	if (errstr) {
-		yyerror("Community %s is %s (max: %llu)", s, errstr, max);
+		yyerror("Community %s is %s (max: %lld)", s, errstr, max);
 		return -1;
 	}
 	return 0;
@@ -3596,7 +3561,7 @@ parsesubtype(char *name, int *type, int *subtype)
 }
 
 static int
-parseextvalue(int type, char *s, u_int32_t *v)
+parseextvalue(int type, char *s, u_int32_t *v, u_int8_t *flag)
 {
 	const char 	*errstr;
 	char		*p;
@@ -3605,6 +3570,14 @@ parseextvalue(int type, char *s, u_int32_t *v)
 
 	if (type != -1) {
 		/* nothing */
+	} else if (strcmp(s, "neighbor-as") == 0) {
+		*flag = COMMUNITY_NEIGHBOR_AS;
+		*v = 0;
+		return EXT_COMMUNITY_TRANS_FOUR_AS;
+	} else if (strcmp(s, "local-as") == 0) {
+		*flag = COMMUNITY_LOCAL_AS;
+		*v = 0;
+		return EXT_COMMUNITY_TRANS_FOUR_AS;
 	} else if ((p = strchr(s, '.')) == NULL) {
 		/* AS_PLAIN number (4 or 2 byte) */
 		strtonum(s, 0, USHRT_MAX, &errstr);
@@ -3670,12 +3643,16 @@ int
 parseextcommunity(struct filter_community *c, char *t, char *s)
 {
 	const struct ext_comm_pairs *cp;
-	const char 	*errstr;
 	u_int64_t	 ullval;
-	u_int32_t	 uval;
+	u_int32_t	 uval, uval2;
 	char		*p, *ep;
-	int		 type, subtype;
+	int		 type = 0, subtype = 0;
 
+	if (strcmp(t, "*") == 0 && strcmp(s, "*") == 0) {
+		c->type = COMMUNITY_TYPE_EXT;
+		c->dflag3 = COMMUNITY_ANY;
+		return (0);
+	}
 	if (parsesubtype(t, &type, &subtype) == 0) {
 		yyerror("Bad ext-community unknown type");
 		return (-1);
@@ -3686,33 +3663,39 @@ parseextcommunity(struct filter_community *c, char *t, char *s)
 	case EXT_COMMUNITY_TRANS_FOUR_AS:
 	case EXT_COMMUNITY_TRANS_IPV4:
 	case -1:
+		if (strcmp(s, "*") == 0) {
+			c->dflag1 = COMMUNITY_ANY;
+			break;
+		}
 		if ((p = strchr(s, ':')) == NULL) {
 			yyerror("Bad ext-community %s", s);
 			return (-1);
 		}
 		*p++ = '\0';
-		if ((type = parseextvalue(type, s, &uval)) == -1)
+		if ((type = parseextvalue(type, s, &uval, &c->dflag1)) == -1)
 			return (-1);
 		switch (type) {
 		case EXT_COMMUNITY_TRANS_TWO_AS:
-			ullval = strtonum(p, 0, UINT_MAX, &errstr);
+			if (getcommunity(p, 1, &uval2, &c->dflag2) == -1)
+				return (-1);
 			break;
 		case EXT_COMMUNITY_TRANS_IPV4:
 		case EXT_COMMUNITY_TRANS_FOUR_AS:
-			ullval = strtonum(p, 0, USHRT_MAX, &errstr);
+			if (getcommunity(p, 0, &uval2, &c->dflag2) == -1)
+				return (-1);
 			break;
 		default:
 			fatalx("parseextcommunity: unexpected result");
 		}
-		if (errstr) {
-			yyerror("Bad ext-community %s is %s", p, errstr);
-			return (-1);
-		}
 		c->c.e.data1 = uval;
-		c->c.e.data2 = ullval;
+		c->c.e.data2 = uval2;
 		break;
 	case EXT_COMMUNITY_TRANS_OPAQUE:
 	case EXT_COMMUNITY_TRANS_EVPN:
+		if (strcmp(s, "*") == 0) {
+			c->dflag1 = COMMUNITY_ANY;
+			break;
+		}
 		errno = 0;
 		ullval = strtoull(s, &ep, 0);
 		if (s[0] == '\0' || *ep != '\0') {
@@ -3726,21 +3709,33 @@ parseextcommunity(struct filter_community *c, char *t, char *s)
 		c->c.e.data2 = ullval;
 		break;
 	case EXT_COMMUNITY_NON_TRANS_OPAQUE:
-		if (strcmp(s, "valid") == 0)
-			c->c.e.data2 = EXT_COMMUNITY_OVS_VALID;
-		else if (strcmp(s, "invalid") == 0)
-			c->c.e.data2 = EXT_COMMUNITY_OVS_INVALID;
-		else if (strcmp(s, "not-found") == 0)
-			c->c.e.data2 = EXT_COMMUNITY_OVS_NOTFOUND;
-		else {
-			yyerror("Bad ext-community %s", s);
-			return (-1);
+		if (subtype == EXT_COMMUNITY_SUBTYPE_OVS) {
+			if (strcmp(s, "valid") == 0) {
+				c->c.e.data2 = EXT_COMMUNITY_OVS_VALID;
+				break;
+			} else if (strcmp(s, "invalid") == 0) {
+				c->c.e.data2 = EXT_COMMUNITY_OVS_INVALID;
+				break;
+			} else if (strcmp(s, "not-found") == 0) {
+				c->c.e.data2 = EXT_COMMUNITY_OVS_NOTFOUND;
+				break;
+			} else if (strcmp(s, "*") == 0) {
+				c->dflag1 = COMMUNITY_ANY;
+				break;
+			}
 		}
-		break;
+		yyerror("Bad ext-community %s", s);
+		return (-1);
 	}
 	c->c.e.type = type;
 	c->c.e.subtype = subtype;
 
+	/* special handling of ext-community rt * since type is not known */
+	if (c->dflag1 == COMMUNITY_ANY && c->c.e.type == -1) {
+		c->type = COMMUNITY_TYPE_EXT;
+		return (0);
+	}
+		
 	/* verify type/subtype combo */
 	for (cp = iana_ext_comms; cp->subname != NULL; cp++) {
 		if (cp->type == type && cp->subtype == subtype) {
