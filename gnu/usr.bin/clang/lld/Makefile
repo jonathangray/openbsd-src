@@ -22,6 +22,7 @@ LLVM_LIBDEPS=	lldELF \
 		lldCommon \
 		lldCore
 
-LDADD+= -L ${.OBJDIR}/../libLLVM -lLLVM
+DPADD+= ${.OBJDIR}/../libLLVM/libLLVM.a
+LDADD+= ${.OBJDIR}/../libLLVM/libLLVM.a
 
 .include <bsd.prog.mk>
