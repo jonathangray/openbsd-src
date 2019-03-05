@@ -1,4 +1,4 @@
-/*	$OpenBSD: frontend.c,v 1.20 2019/01/29 15:43:33 florian Exp $	*/
+/*	$OpenBSD: frontend.c,v 1.22 2019/03/02 03:40:45 pamela Exp $	*/
 
 /*
  * Copyright (c) 2018 Florian Obser <florian@openbsd.org>
@@ -506,18 +506,18 @@ frontend_dispatch_engine(int fd, short event, void *bula)
 
 		switch (imsg.hdr.type) {
 		case IMSG_SEND_RA:
-			if (imsg.hdr.len != IMSG_HEADER_SIZE + sizeof(send_ra))
-				fatal("%s: IMSG_SEND_RA wrong length: %d",
-				    __func__, imsg.hdr.len);
+			if (IMSG_DATA_SIZE(imsg) != sizeof(send_ra))
+				fatal("%s: IMSG_SEND_RA wrong length: %lu",
+				    __func__, IMSG_DATA_SIZE(imsg));
 			memcpy(&send_ra, imsg.data, sizeof(send_ra));
 			ra_iface = find_ra_iface_by_id(send_ra.if_index);
 			if (ra_iface)
 				ra_output(ra_iface, &send_ra.to);
 			break;
 		case IMSG_REMOVE_IF:
-			if (imsg.hdr.len != IMSG_HEADER_SIZE + sizeof(if_index))
-				fatal("%s: IMSG_REMOVE_IF wrong length: %d",
-				    __func__, imsg.hdr.len);
+			if (IMSG_DATA_SIZE(imsg) != sizeof(if_index))
+				fatal("%s: IMSG_REMOVE_IF wrong length: %lu",
+				    __func__, IMSG_DATA_SIZE(imsg));
 			memcpy(&if_index, imsg.data, sizeof(if_index));
 			ra_iface = find_ra_iface_by_id(if_index);
 			if (ra_iface) {
@@ -871,7 +871,7 @@ get_interface_prefixes(struct ra_iface *ra_iface, struct ra_prefix_conf
 		(void) strlcpy(ifr6.ifr_name, ra_iface->name,
 		    sizeof(ifr6.ifr_name));
 		memcpy(&ifr6.ifr_addr, sin6, sizeof(ifr6.ifr_addr));
-		
+
 		if (ioctl(ioctlsock, SIOCGIFNETMASK_IN6, (caddr_t)&ifr6) < 0)
 			continue; /* addr got deleted while we were looking */
 

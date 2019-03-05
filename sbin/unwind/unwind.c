@@ -1,4 +1,4 @@
-/*	$OpenBSD: unwind.c,v 1.16 2019/02/18 07:50:14 florian Exp $	*/
+/*	$OpenBSD: unwind.c,v 1.18 2019/03/02 16:11:10 florian Exp $	*/
 
 /*
  * Copyright (c) 2018 Florian Obser <florian@openbsd.org>
@@ -41,7 +41,7 @@
 #include <signal.h>
 #include <unistd.h>
 
-#include "uw_log.h"
+#include "log.h"
 #include "unwind.h"
 #include "frontend.h"
 #include "resolver.h"
@@ -303,9 +303,6 @@ main(int argc, char *argv[])
 	main_imsg_compose_frontend_fd(IMSG_CONTROLFD, 0, control_fd);
 	main_imsg_compose_frontend_fd(IMSG_ROUTESOCK, 0, frontend_routesock);
 	main_imsg_send_config(main_conf);
-
-	if (unveil(LEASE_DB_DIR, "r") == -1 && errno != ENOENT)
-		err(1, "unveil");
 
 	if (pledge("stdio inet dns rpath sendfd", NULL) == -1)
 		fatal("pledge");
