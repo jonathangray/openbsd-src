@@ -24,23 +24,6 @@
 #define __user
 #endif
 
-#define ACCESS_ONCE(x)		(*(volatile __typeof(x) *)&(x))
-
-#define READ_ONCE(x) ({		\
-	__typeof(x) __tmp = ({	\
-		barrier();	\
-		ACCESS_ONCE(x);	\
-	});			\
-	barrier();		\
-	__tmp;			\
-})
-
-#define WRITE_ONCE(x, v) do {	\
-	barrier();		\
-	ACCESS_ONCE(x) = (v);	\
-	barrier();		\
-} while(0)
-
 #define barrier()	__asm __volatile("" : : : "memory")
 
 #define __printf(x, y)
