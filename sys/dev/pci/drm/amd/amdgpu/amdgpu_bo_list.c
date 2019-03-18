@@ -60,8 +60,6 @@ int amdgpu_bo_list_create(struct amdgpu_device *adev, struct drm_file *filp,
 			  unsigned num_entries, struct amdgpu_bo_list **result)
 {
 	STUB();
-	return -ENOSYS;
-#if 0
 	unsigned last_entry = 0, first_userptr = num_entries;
 	struct amdgpu_bo_list_entry *array;
 	struct amdgpu_bo_list *list;
@@ -103,6 +101,7 @@ int amdgpu_bo_list_create(struct amdgpu_device *adev, struct drm_file *filp,
 		bo = amdgpu_bo_ref(gem_to_amdgpu_bo(gobj));
 		drm_gem_object_put_unlocked(gobj);
 
+#ifdef notyet
 		usermm = amdgpu_ttm_tt_get_usermm(bo->tbo.ttm);
 		if (usermm) {
 			if (usermm != current->mm) {
@@ -114,6 +113,9 @@ int amdgpu_bo_list_create(struct amdgpu_device *adev, struct drm_file *filp,
 		} else {
 			entry = &array[last_entry++];
 		}
+#else
+			entry = &array[last_entry++];
+#endif
 
 		entry->robj = bo;
 		entry->priority = min(info[i].bo_priority,
@@ -145,7 +147,6 @@ error_free:
 		amdgpu_bo_unref(&array[i].robj);
 	kvfree(list);
 	return r;
-#endif
 }
 
 static void amdgpu_bo_list_destroy(struct amdgpu_fpriv *fpriv, int id)
