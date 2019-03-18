@@ -2700,8 +2700,6 @@ failed:
  */
 void amdgpu_device_fini(struct amdgpu_device *adev)
 {
-	STUB();
-#if 0
 	int r;
 
 	DRM_INFO("amdgpu: finishing device.\n");
@@ -2739,14 +2737,25 @@ void amdgpu_device_fini(struct amdgpu_device *adev)
 	if (adev->flags & AMD_IS_PX)
 		vga_switcheroo_fini_domain_pm_ops(adev->dev);
 	vga_client_register(adev->pdev, NULL, NULL, NULL);
+#ifdef __linux__
 	if (adev->rio_mem)
 		pci_iounmap(adev->pdev, adev->rio_mem);
 	adev->rio_mem = NULL;
 	iounmap(adev->rmmio);
 	adev->rmmio = NULL;
+#else
+	if (adev->rio_mem_size > 0)
+		bus_space_unmap(adev->rio_mem_bst, adev->rio_mem_bsh,
+		    adev->rio_mem_size);
+	adev->rio_mem_size = 0;
+
+	if (adev->rmmio_size > 0)
+		bus_space_unmap(adev->rio_mem_bst, adev->rmmio_bsh,
+		    adev->rmmio_size);
+	adev->rmmio_size = 0;
+#endif
 	amdgpu_device_doorbell_fini(adev);
 	amdgpu_debugfs_regs_cleanup(adev);
-#endif
 }
 
 
