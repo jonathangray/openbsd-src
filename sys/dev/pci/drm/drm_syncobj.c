@@ -375,9 +375,6 @@ static int drm_syncobj_create_as_handle(struct drm_file *file_private,
 static int drm_syncobj_destroy(struct drm_file *file_private,
 			       u32 handle)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
 	struct drm_syncobj *syncobj;
 
 	spin_lock(&file_private->syncobj_table_lock);
@@ -389,7 +386,6 @@ static int drm_syncobj_destroy(struct drm_file *file_private,
 
 	drm_syncobj_put(syncobj);
 	return 0;
-#endif
 }
 
 #ifdef notyet
