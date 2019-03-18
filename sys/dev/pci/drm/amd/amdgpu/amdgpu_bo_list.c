@@ -150,8 +150,6 @@ error_free:
 
 static void amdgpu_bo_list_destroy(struct amdgpu_fpriv *fpriv, int id)
 {
-	STUB();
-#if 0
 	struct amdgpu_bo_list *list;
 
 	mutex_lock(&fpriv->bo_list_lock);
@@ -159,7 +157,6 @@ static void amdgpu_bo_list_destroy(struct amdgpu_fpriv *fpriv, int id)
 	mutex_unlock(&fpriv->bo_list_lock);
 	if (list)
 		kref_put(&list->refcount, amdgpu_bo_list_free);
-#endif
 }
 
 int amdgpu_bo_list_get(struct amdgpu_fpriv *fpriv, int id,
