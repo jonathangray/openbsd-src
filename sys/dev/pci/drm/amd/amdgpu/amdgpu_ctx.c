@@ -189,9 +189,6 @@ static void amdgpu_ctx_do_release(struct kref *ref)
 
 static int amdgpu_ctx_free(struct amdgpu_fpriv *fpriv, uint32_t id)
 {
-	STUB();
-	return -ENOSYS;
-#if 0
 	struct amdgpu_ctx_mgr *mgr = &fpriv->ctx_mgr;
 	struct amdgpu_ctx *ctx;
 
@@ -201,7 +198,6 @@ static int amdgpu_ctx_free(struct amdgpu_fpriv *fpriv, uint32_t id)
 		kref_put(&ctx->refcount, amdgpu_ctx_do_release);
 	mutex_unlock(&mgr->lock);
 	return ctx ? 0 : -EINVAL;
-#endif
 }
 
 static int amdgpu_ctx_query(struct amdgpu_device *adev,
