@@ -36,7 +36,7 @@ int idr_alloc(struct idr *, void *, int, int, unsigned int);
 #define idr_preload_end()
 void *idr_find(struct idr *, int);
 void *idr_replace(struct idr *, void *ptr, int);
-void idr_remove(struct idr *, int);
+void *idr_remove(struct idr *, int);
 void idr_destroy(struct idr *);
 int idr_for_each(struct idr *, int (*)(int, void *, void *), void *);
 void *idr_get_next(struct idr *, int *);

@@ -539,17 +539,20 @@ idr_replace(struct idr *idr, void *ptr, int id)
 	return old;
 }
 
-void
+void *
 idr_remove(struct idr *idr, int id)
 {
 	struct idr_entry find, *res;
+	void *ptr = NULL;
 
 	find.id = id;
 	res = SPLAY_FIND(idr_tree, &idr->tree, &find);
 	if (res) {
 		SPLAY_REMOVE(idr_tree, &idr->tree, res);
+		ptr = res->ptr;
 		pool_put(&idr_pool, res);
 	}
+	return ptr;
 }
 
 void *
