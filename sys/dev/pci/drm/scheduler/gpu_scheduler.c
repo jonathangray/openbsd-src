@@ -936,6 +936,8 @@ static void drm_sched_main(void *param)
 	}
 #ifdef __linux__
 	return 0;
+#else
+	kthread_exit(0);
 #endif
 }
 

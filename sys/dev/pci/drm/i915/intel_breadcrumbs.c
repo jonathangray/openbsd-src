@@ -754,6 +754,9 @@ sleep:
 		}
 	} while (1);
 	__set_current_state(TASK_RUNNING);
+#ifdef __OpenBSD__
+	kthread_exit(0);
+#endif
 }
 
 static void insert_signal(struct intel_breadcrumbs *b,
