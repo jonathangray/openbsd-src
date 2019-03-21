@@ -1,4 +1,4 @@
-/* $OpenBSD: ssl_clnt.c,v 1.56 2019/02/09 15:26:15 jsing Exp $ */
+/* $OpenBSD: ssl_clnt.c,v 1.58 2019/03/19 16:53:03 jsing Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *

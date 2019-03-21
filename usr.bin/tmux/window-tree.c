@@ -1,4 +1,4 @@
-/* $OpenBSD: window-tree.c,v 1.33 2019/03/07 20:24:21 nicm Exp $ */
+/* $OpenBSD: window-tree.c,v 1.35 2019/03/18 14:10:25 nicm Exp $ */
 
 /*
  * Copyright (c) 2017 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -55,6 +55,7 @@ static void		 window_tree_key(struct window_mode_entry *,
 
 const struct window_mode window_tree_mode = {
 	.name = "tree-mode",
+	.default_format = WINDOW_TREE_DEFAULT_FORMAT,
 
 	.init = window_tree_init,
 	.free = window_tree_free,
@@ -476,10 +477,10 @@ window_tree_draw_label(struct screen_write_ctx *ctx, u_int px, u_int py,
 	oy = (sy + 1) / 2;
 
 	if (ox > 1 && ox + len < sx - 1 && sy >= 3) {
-		screen_write_cursormove(ctx, px + ox - 1, py + oy - 1);
+		screen_write_cursormove(ctx, px + ox - 1, py + oy - 1, 0);
 		screen_write_box(ctx, len + 2, 3);
 	}
-	screen_write_cursormove(ctx, px + ox, py + oy);
+	screen_write_cursormove(ctx, px + ox, py + oy, 0);
 	screen_write_puts(ctx, gc, "%s", label);
 }
 
@@ -554,17 +555,17 @@ window_tree_draw_session(struct window_tree_modedata *data, struct session *s,
 
 	if (left) {
 		data->left = cx + 2;
-		screen_write_cursormove(ctx, cx + 2, cy);
+		screen_write_cursormove(ctx, cx + 2, cy, 0);
 		screen_write_vline(ctx, sy, 0, 0);
-		screen_write_cursormove(ctx, cx, cy + sy / 2);
+		screen_write_cursormove(ctx, cx, cy + sy / 2, 0);
 		screen_write_puts(ctx, &grid_default_cell, "<");
 	} else
 		data->left = -1;
 	if (right) {
 		data->right = cx + sx - 3;
-		screen_write_cursormove(ctx, cx + sx - 3, cy);
+		screen_write_cursormove(ctx, cx + sx - 3, cy, 0);
 		screen_write_vline(ctx, sy, 0, 0);
-		screen_write_cursormove(ctx, cx + sx - 1, cy + sy / 2);
+		screen_write_cursormove(ctx, cx + sx - 1, cy + sy / 2, 0);
 		screen_write_puts(ctx, &grid_default_cell, ">");
 	} else
 		data->right = -1;
@@ -597,7 +598,7 @@ window_tree_draw_session(struct window_tree_modedata *data, struct session *s,
 		else
 			width = each - 1;
 
-		screen_write_cursormove(ctx, cx + offset, cy);
+		screen_write_cursormove(ctx, cx + offset, cy, 0);
 		screen_write_preview(ctx, &w->active->base, width, sy);
 
 		xasprintf(&label, " %u:%s ", wl->idx, w->name);
@@ -608,7 +609,7 @@ window_tree_draw_session(struct window_tree_modedata *data, struct session *s,
 		free(label);
 
 		if (loop != end - 1) {
-			screen_write_cursormove(ctx, cx + offset + width, cy);
+			screen_write_cursormove(ctx, cx + offset + width, cy, 0);
 			screen_write_vline(ctx, sy, 0, 0);
 		}
 		loop++;
@@ -687,17 +688,17 @@ window_tree_draw_window(struct window_tree_modedata *data, struct session *s,
 
 	if (left) {
 		data->left = cx + 2;
-		screen_write_cursormove(ctx, cx + 2, cy);
+		screen_write_cursormove(ctx, cx + 2, cy, 0);
 		screen_write_vline(ctx, sy, 0, 0);
-		screen_write_cursormove(ctx, cx, cy + sy / 2);
+		screen_write_cursormove(ctx, cx, cy + sy / 2, 0);
 		screen_write_puts(ctx, &grid_default_cell, "<");
 	} else
 		data->left = -1;
 	if (right) {
 		data->right = cx + sx - 3;
-		screen_write_cursormove(ctx, cx + sx - 3, cy);
+		screen_write_cursormove(ctx, cx + sx - 3, cy, 0);
 		screen_write_vline(ctx, sy, 0, 0);
-		screen_write_cursormove(ctx, cx + sx - 1, cy + sy / 2);
+		screen_write_cursormove(ctx, cx + sx - 1, cy + sy / 2, 0);
 		screen_write_puts(ctx, &grid_default_cell, ">");
 	} else
 		data->right = -1;
@@ -729,7 +730,7 @@ window_tree_draw_window(struct window_tree_modedata *data, struct session *s,
 		else
 			width = each - 1;
 
-		screen_write_cursormove(ctx, cx + offset, cy);
+		screen_write_cursormove(ctx, cx + offset, cy, 0);
 		screen_write_preview(ctx, &wp->base, width, sy);
 
 		if (window_pane_index(wp, &pane_idx) != 0)
@@ -740,7 +741,7 @@ window_tree_draw_window(struct window_tree_modedata *data, struct session *s,
 		free(label);
 
 		if (loop != end - 1) {
-			screen_write_cursormove(ctx, cx + offset + width, cy);
+			screen_write_cursormove(ctx, cx + offset + width, cy, 0);
 			screen_write_vline(ctx, sy, 0, 0);
 		}
 		loop++;

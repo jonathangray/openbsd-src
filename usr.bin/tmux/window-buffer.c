@@ -1,4 +1,4 @@
-/* $OpenBSD: window-buffer.c,v 1.15 2019/03/07 20:24:21 nicm Exp $ */
+/* $OpenBSD: window-buffer.c,v 1.17 2019/03/18 14:10:25 nicm Exp $ */
 
 /*
  * Copyright (c) 2017 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -41,6 +41,7 @@ static void		 window_buffer_key(struct window_mode_entry *,
 
 const struct window_mode window_buffer_mode = {
 	.name = "buffer-mode",
+	.default_format = WINDOW_BUFFER_DEFAULT_FORMAT,
 
 	.init = window_buffer_init,
 	.free = window_buffer_free,
@@ -226,7 +227,7 @@ window_buffer_draw(__unused void *modedata, void *itemdata,
 		line[at] = '\0';
 
 		if (*line != '\0') {
-			screen_write_cursormove(ctx, cx, cy + i);
+			screen_write_cursormove(ctx, cx, cy + i, 0);
 			screen_write_puts(ctx, &grid_default_cell, "%s", line);
 		}
 

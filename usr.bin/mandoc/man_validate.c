@@ -1,4 +1,4 @@
-/*	$OpenBSD: man_validate.c,v 1.116 2018/12/31 10:03:38 schwarze Exp $ */
+/*	$OpenBSD: man_validate.c,v 1.118 2019/03/13 18:29:26 schwarze Exp $ */
 /*
  * Copyright (c) 2008, 2009, 2010, 2011 Kristaps Dzonsons <kristaps@bsd.lv>
  * Copyright (c) 2010, 2012-2018 Ingo Schwarze <schwarze@openbsd.org>
@@ -39,7 +39,7 @@
 
 typedef	void	(*v_check)(CHKARGS);
 
-static	void	  check_abort(CHKARGS);
+static	void	  check_abort(CHKARGS) __attribute__((__noreturn__));
 static	void	  check_par(CHKARGS);
 static	void	  check_part(CHKARGS);
 static	void	  check_root(CHKARGS);

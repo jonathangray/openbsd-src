@@ -1,4 +1,4 @@
-#	$OpenBSD: Makefile,v 1.701 2019/01/19 00:27:04 dlg Exp $
+#	$OpenBSD: Makefile,v 1.703 2019/03/18 17:30:07 anton Exp $
 
 MAN=	aac.4 abcrtc.4 ac97.4 acphy.4 acrtc.4 \
 	acpi.4 acpiac.4 acpials.4 acpiasus.4 acpibat.4 \
@@ -38,14 +38,14 @@ MAN=	aac.4 abcrtc.4 ac97.4 acphy.4 acrtc.4 \
 	ip.4 ip6.4 ipcomp.4 ipgphy.4 ipmi.4 ips.4 ipsec.4 ipw.4 \
 	isa.4 isagpio.4 isapnp.4 islrtc.4 it.4 itherm.4 iwi.4 iwn.4 iwm.4 \
 	ix.4 ixgb.4 ixl.4 jmb.4 jme.4 jmphy.4 \
-	kate.4 kcov.4 km.4 ksyms.4 kue.4 lc.4 lge.4 lii.4 lisa.4 lm.4 \
-	lmenv.4 lmn.4 lmtemp.4 lo.4 lpt.4 lxtphy.4 luphy.4 \
+	kate.4 kcov.4 km.4 ksyms.4 kubsan.4 kue.4 lc.4 lge.4 lii.4 lisa.4 \
+	lm.4 lmenv.4 lmn.4 lmtemp.4 lo.4 lpt.4 lxtphy.4 luphy.4 \
 	maestro.4 mainbus.4 malo.4 maxds.4 maxrtc.4 maxtmp.4 mbg.4 midi.4 \
 	mii.4 mfi.4 \
 	mfii.4 mlphy.4 mobileip.4 moscom.4 mos.4 mpe.4 mpath.4 mpi.4 mpii.4 \
-	mpu.4 msk.4 mpw.4 msts.4 mtd.4 mtdphy.4 mtio.4 mue.4 multicast.4 \
-	mvclock.4 mvgpio.4 mvicu.4 mvneta.4 mvpinctrl.4 mvrng.4 mvrtc.4 \
-	mvtemp.4 myx.4 \
+	mpip.4 mpu.4 msk.4 mpw.4 msts.4 mtd.4 mtdphy.4 mtio.4 mue.4 \
+	multicast.4 mvclock.4 mvgpio.4 mvicu.4 mvneta.4 mvpinctrl.4 mvrng.4 \
+	mvrtc.4 mvtemp.4 myx.4 \
 	ne.4 neo.4 nep.4 netintro.4 nfe.4 nge.4 nmea.4 \
 	nsclpcsio.4 nsgphy.4 nsphy.4 nsphyter.4 null.4 nviic.4 nvme.4 nvt.4 \
 	oce.4 ohci.4 options.4 onewire.4 oosiop.4 osiop.4 otus.4 \

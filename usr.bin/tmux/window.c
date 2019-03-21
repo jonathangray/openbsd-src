@@ -1,4 +1,4 @@
-/* $OpenBSD: window.c,v 1.217 2019/03/07 20:24:21 nicm Exp $ */
+/* $OpenBSD: window.c,v 1.225 2019/03/18 21:55:04 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -61,6 +61,17 @@ struct window_pane_tree all_window_panes;
 static u_int	next_window_pane_id;
 static u_int	next_window_id;
 static u_int	next_active_point;
+
+/* List of window modes. */
+const struct window_mode *all_window_modes[] = {
+	&window_buffer_mode,
+	&window_client_mode,
+	&window_clock_mode,
+	&window_copy_mode,
+	&window_tree_mode,
+	&window_view_mode,
+	NULL
+};
 
 static void	window_destroy(struct window *);
 
@@ -206,7 +217,6 @@ winlink_remove(struct winlinks *wwl, struct winlink *wl)
 	}
 
 	RB_REMOVE(winlinks, wwl, wl);
-	free(wl->status_text);
 	free(wl);
 }
 
@@ -470,7 +480,7 @@ window_set_active_pane(struct window *w, struct window_pane *wp)
 void
 window_redraw_active_switch(struct window *w, struct window_pane *wp)
 {
-	const struct grid_cell	*gc;
+	struct style	*sy;
 
 	if (wp == w->active)
 		return;
@@ -479,21 +489,21 @@ window_redraw_active_switch(struct window *w, struct window_pane *wp)
 	 * If window-style and window-active-style are the same, we don't need
 	 * to redraw panes when switching active panes.
 	 */
-	gc = options_get_style(w->options, "window-active-style");
-	if (style_equal(gc, options_get_style(w->options, "window-style")))
+	sy = options_get_style(w->options, "window-active-style");
+	if (style_equal(sy, options_get_style(w->options, "window-style")))
 		return;
 
 	/*
 	 * If the now active or inactive pane do not have a custom style or if
 	 * the palette is different, they need to be redrawn.
 	 */
-	if (window_pane_get_palette(w->active, w->active->colgc.fg) != -1 ||
-	    window_pane_get_palette(w->active, w->active->colgc.bg) != -1 ||
-	    style_equal(&grid_default_cell, &w->active->colgc))
+	if (window_pane_get_palette(w->active, w->active->style.gc.fg) != -1 ||
+	    window_pane_get_palette(w->active, w->active->style.gc.bg) != -1 ||
+	    style_is_default(&w->active->style))
 		w->active->flags |= PANE_REDRAW;
-	if (window_pane_get_palette(wp, wp->colgc.fg) != -1 ||
-	    window_pane_get_palette(wp, wp->colgc.bg) != -1 ||
-	    style_equal(&grid_default_cell, &wp->colgc))
+	if (window_pane_get_palette(wp, wp->style.gc.fg) != -1 ||
+	    window_pane_get_palette(wp, wp->style.gc.bg) != -1 ||
+	    style_is_default(&wp->style))
 		wp->flags |= PANE_REDRAW;
 }
 
@@ -503,8 +513,8 @@ window_get_active_at(struct window *w, u_int x, u_int y)
 	struct window_pane	*wp;
 
 	TAILQ_FOREACH(wp, &w->panes, entry) {
-                if (!window_pane_visible(wp))
-                        continue;
+		if (!window_pane_visible(wp))
+			continue;
 		if (x < wp->xoff || x > wp->xoff + wp->sx)
 			continue;
 		if (y < wp->yoff || y > wp->yoff + wp->sy)
@@ -810,7 +820,7 @@ window_pane_create(struct window *w, u_int sx, u_int sy, u_int hlimit)
 	wp->fd = -1;
 	wp->event = NULL;
 
-	wp->mode = NULL;
+	TAILQ_INIT(&wp->modes);
 
 	wp->layout_cell = NULL;
 
@@ -826,7 +836,7 @@ window_pane_create(struct window *w, u_int sx, u_int sy, u_int hlimit)
 
 	wp->saved_grid = NULL;
 
-	memcpy(&wp->colgc, &grid_default_cell, sizeof wp->colgc);
+	style_set(&wp->style, &grid_default_cell);
 
 	screen_init(&wp->base, sx, sy, hlimit);
 	wp->screen = &wp->base;
@@ -844,7 +854,7 @@ window_pane_create(struct window *w, u_int sx, u_int sy, u_int hlimit)
 static void
 window_pane_destroy(struct window_pane *wp)
 {
-	window_pane_reset_mode(wp);
+	window_pane_reset_mode_all(wp);
 	free(wp->searchstr);
 
 	if (wp->fd != -1) {
@@ -853,6 +863,8 @@ window_pane_destroy(struct window_pane *wp)
 	}
 
 	input_free(wp);
+
+	screen_free(&wp->status_screen);
 
 	screen_free(&wp->base);
 	if (wp->saved_grid != NULL)
@@ -1047,14 +1059,18 @@ window_pane_error_callback(__unused struct bufferevent *bufev,
 void
 window_pane_resize(struct window_pane *wp, u_int sx, u_int sy)
 {
+	struct window_mode_entry	*wme;
+
 	if (sx == wp->sx && sy == wp->sy)
 		return;
 	wp->sx = sx;
 	wp->sy = sy;
 
 	screen_resize(&wp->base, sx, sy, wp->saved_grid == NULL);
-	if (wp->mode != NULL && wp->mode->mode->resize != NULL)
-		wp->mode->mode->resize(wp->mode, sx, sy);
+
+	wme = TAILQ_FIRST(&wp->modes);
+	if (wme != NULL && wme->mode->resize != NULL)
+		wme->mode->resize(wme, sx, sy);
 
 	wp->flags |= PANE_RESIZE;
 }
@@ -1175,7 +1191,7 @@ window_pane_reset_palette(struct window_pane *wp)
 }
 
 int
-window_pane_get_palette(const struct window_pane *wp, int c)
+window_pane_get_palette(struct window_pane *wp, int c)
 {
 	int	new;
 
@@ -1208,7 +1224,7 @@ window_pane_mode_timer(__unused int fd, __unused short events, void *arg)
 
 	if (wp->modelast < time(NULL) - WINDOW_MODE_TIMEOUT) {
 		if (ioctl(wp->fd, FIONREAD, &n) == -1 || n > 0)
-			window_pane_reset_mode(wp);
+			window_pane_reset_mode_all(wp);
 	}
 }
 
@@ -1216,43 +1232,67 @@ int
 window_pane_set_mode(struct window_pane *wp, const struct window_mode *mode,
     struct cmd_find_state *fs, struct args *args)
 {
-	struct screen	*s;
-	struct timeval	 tv = { .tv_sec = 10 };
+	struct timeval			 tv = { .tv_sec = 10 };
+	struct window_mode_entry	*wme;
 
-	if (wp->mode != NULL)
+	if (!TAILQ_EMPTY(&wp->modes) && TAILQ_FIRST(&wp->modes)->mode == mode)
 		return (1);
 
-	wp->mode = xcalloc(1, sizeof *wp->mode);
-	wp->mode->wp = wp;
-	wp->mode->mode = mode;
-	wp->mode->prefix = 1;
-
 	wp->modelast = time(NULL);
-	evtimer_set(&wp->modetimer, window_pane_mode_timer, wp);
-	evtimer_add(&wp->modetimer, &tv);
+	if (TAILQ_EMPTY(&wp->modes)) {
+		evtimer_set(&wp->modetimer, window_pane_mode_timer, wp);
+		evtimer_add(&wp->modetimer, &tv);
+	}
 
-	if ((s = wp->mode->mode->init(wp->mode, fs, args)) != NULL)
-		wp->screen = s;
+	TAILQ_FOREACH(wme, &wp->modes, entry) {
+		if (wme->mode == mode)
+			break;
+	}
+	if (wme != NULL) {
+		TAILQ_REMOVE(&wp->modes, wme, entry);
+		TAILQ_INSERT_HEAD(&wp->modes, wme, entry);
+	} else {
+		wme = xcalloc(1, sizeof *wme);
+		wme->wp = wp;
+		wme->mode = mode;
+		wme->prefix = 1;
+		TAILQ_INSERT_HEAD(&wp->modes, wme, entry);
+		wme->screen = wme->mode->init(wme, fs, args);
+	}
+
+	wp->screen = wme->screen;
 	wp->flags |= (PANE_REDRAW|PANE_CHANGED);
 
 	server_status_window(wp->window);
 	notify_pane("pane-mode-changed", wp);
+
 	return (0);
 }
 
 void
 window_pane_reset_mode(struct window_pane *wp)
 {
-	if (wp->mode == NULL)
+	struct window_mode_entry	*wme, *next;
+
+	if (TAILQ_EMPTY(&wp->modes))
 		return;
 
-	evtimer_del(&wp->modetimer);
+	wme = TAILQ_FIRST(&wp->modes);
+	TAILQ_REMOVE(&wp->modes, wme, entry);
+	wme->mode->free(wme);
+	free(wme);
 
-	wp->mode->mode->free(wp->mode);
-	free(wp->mode);
-	wp->mode = NULL;
-
-	wp->screen = &wp->base;
+	next = TAILQ_FIRST(&wp->modes);
+	if (next == NULL) {
+		log_debug("%s: no next mode", __func__);
+		evtimer_del(&wp->modetimer);
+		wp->screen = &wp->base;
+	} else {
+		log_debug("%s: next mode is %s", __func__, next->mode->name);
+		wp->screen = next->screen;
+		if (next != NULL && next->mode->resize != NULL)
+			next->mode->resize(next, wp->sx, wp->sy);
+	}
 	wp->flags |= (PANE_REDRAW|PANE_CHANGED);
 
 	server_status_window(wp->window);
@@ -1260,15 +1300,23 @@ window_pane_reset_mode(struct window_pane *wp)
 }
 
 void
+window_pane_reset_mode_all(struct window_pane *wp)
+{
+	while (!TAILQ_EMPTY(&wp->modes))
+		window_pane_reset_mode(wp);
+}
+
+void
 window_pane_key(struct window_pane *wp, struct client *c, struct session *s,
     struct winlink *wl, key_code key, struct mouse_event *m)
 {
-	struct window_mode_entry	*wme = wp->mode;
+	struct window_mode_entry	*wme;
 	struct window_pane		*wp2;
 
 	if (KEYC_IS_MOUSE(key) && m == NULL)
 		return;
 
+	wme = TAILQ_FIRST(&wp->modes);
 	if (wme != NULL) {
 		wp->modelast = time(NULL);
 		if (wme->mode->key != NULL)
@@ -1286,7 +1334,7 @@ window_pane_key(struct window_pane *wp, struct client *c, struct session *s,
 	if (options_get_number(wp->window->options, "synchronize-panes")) {
 		TAILQ_FOREACH(wp2, &wp->window->panes, entry) {
 			if (wp2 != wp &&
-			    wp2->mode == NULL &&
+			    TAILQ_EMPTY(&wp2->modes) &&
 			    wp2->fd != -1 &&
 			    (~wp2->flags & PANE_INPUTOFF) &&
 			    window_pane_visible(wp2))

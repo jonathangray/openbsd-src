@@ -1,4 +1,4 @@
-/*	$OpenBSD: mdoc_validate.c,v 1.286 2019/03/04 13:01:52 schwarze Exp $ */
+/*	$OpenBSD: mdoc_validate.c,v 1.288 2019/03/13 18:29:26 schwarze Exp $ */
 /*
  * Copyright (c) 2008-2012 Kristaps Dzonsons <kristaps@bsd.lv>
  * Copyright (c) 2010-2019 Ingo Schwarze <schwarze@openbsd.org>
@@ -62,7 +62,7 @@ static	size_t		macro2len(enum roff_tok);
 static	void	 rewrite_macro2len(struct roff_man *, char **);
 static	int	 similar(const char *, const char *);
 
-static	void	 post_abort(POST_ARGS);
+static	void	 post_abort(POST_ARGS) __attribute__((__noreturn__));
 static	void	 post_an(POST_ARGS);
 static	void	 post_an_norm(POST_ARGS);
 static	void	 post_at(POST_ARGS);

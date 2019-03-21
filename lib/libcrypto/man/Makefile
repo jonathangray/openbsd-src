@@ -1,4 +1,4 @@
-# $OpenBSD: Makefile,v 1.142 2018/07/08 23:00:17 schwarze Exp $
+# $OpenBSD: Makefile,v 1.145 2019/03/18 11:38:16 schwarze Exp $
 
 .include <bsd.own.mk>
 
@@ -68,8 +68,8 @@ MAN=	\
 	CONF_modules_free.3 \
 	CONF_modules_load_file.3 \
 	CRYPTO_get_mem_functions.3 \
+	CRYPTO_lock.3 \
 	CRYPTO_set_ex_data.3 \
-	CRYPTO_set_locking_callback.3 \
 	DES_set_key.3 \
 	DH_generate_key.3 \
 	DH_generate_parameters.3 \
@@ -151,6 +151,8 @@ MAN=	\
 	EVP_SealInit.3 \
 	EVP_SignInit.3 \
 	EVP_VerifyInit.3 \
+	EVP_aes_128_cbc.3 \
+	EVP_sm4_cbc.3 \
 	EXTENDED_KEY_USAGE_new.3 \
 	GENERAL_NAME_new.3 \
 	HMAC.3 \

@@ -1,4 +1,4 @@
-/*	$OpenBSD: kern_tc.c,v 1.38 2019/03/09 23:04:56 cheloha Exp $ */
+/*	$OpenBSD: kern_tc.c,v 1.40 2019/03/17 01:06:15 cheloha Exp $ */
 
 /*
  * Copyright (c) 2000 Poul-Henning Kamp <phk@FreeBSD.org>
@@ -116,10 +116,12 @@ static struct timecounter *timecounters = &dummy_timecounter;
 volatile time_t time_second = 1;
 volatile time_t time_uptime = 0;
 
+int64_t adjtimedelta;		/* unapplied time correction (microseconds) */
+
 struct bintime naptime;
 static int timestepwarnings;
 
-void tc_windup(void);
+void tc_windup(struct bintime *, struct bintime *);
 
 /*
  * Return the difference between the timehands' counter value now and what
@@ -358,10 +360,9 @@ tc_setrealtimeclock(const struct timespec *ts)
 	timespec2bintime(ts, &bt);
 	bintime_sub(&bt, &bt2);
 	bintime_add(&bt2, &timehands->th_boottime);
-	timehands->th_boottime = bt;
 
 	/* XXX fiddle all the little crinkly bits around the fiords... */
-	tc_windup();
+	tc_windup(&bt, NULL);
 	mtx_leave(&timecounter_mtx);
 
 	enqueue_randomness(ts->tv_sec);
@@ -418,10 +419,9 @@ tc_setclock(const struct timespec *ts)
 	}
 
 	bt2 = timehands->th_offset;
-	timehands->th_offset = bt;
 
 	/* XXX fiddle all the little crinkly bits around the fiords... */
-	tc_windup();
+	tc_windup(NULL, &bt);
 	mtx_leave(&timecounter_mtx);
 
 #ifndef SMALL_KERNEL
@@ -444,7 +444,7 @@ tc_setclock(const struct timespec *ts)
  * timecounter and/or do seconds processing in NTP.  Slightly magic.
  */
 void
-tc_windup(void)
+tc_windup(struct bintime *new_boottime, struct bintime *new_offset)
 {
 	struct bintime bt;
 	struct timecounter *active_tc;
@@ -468,6 +468,13 @@ tc_windup(void)
 	th->th_generation = 0;
 	membar_producer();
 	memcpy(th, tho, offsetof(struct timehands, th_generation));
+
+	/*
+	 * If changing the boot offset, do so before updating the
+	 * offset fields.
+	 */
+	if (new_offset != NULL)
+		th->th_offset = *new_offset;
 
 	/*
 	 * Capture a timecounter delta on the current timecounter and if
@@ -495,6 +502,18 @@ tc_windup(void)
 	if (tho->th_counter->tc_poll_pps)
 		tho->th_counter->tc_poll_pps(tho->th_counter);
 #endif
+
+	/*
+	 * If changing the boot time, do so before NTP processing.
+	 */
+	if (new_boottime != NULL) {
+		/*
+		 * Adjtime in progress is meaningless or harmful after
+		 * setting the clock. Cancel adjtime and then set new time.
+		 */
+		adjtimedelta = 0;
+		th->th_boottime = *new_boottime;
+	}
 
 	/*
 	 * Deal with NTP second processing.  The for loop normally
@@ -639,7 +658,7 @@ tc_ticktock(void)
 	if (!mtx_enter_try(&timecounter_mtx))
 		return;
 	count = 0;
-	tc_windup();
+	tc_windup(NULL, NULL);
 	mtx_leave(&timecounter_mtx);
 }
 
@@ -723,4 +742,13 @@ tc_adjfreq(int64_t *old, int64_t *new)
 		timecounter->tc_freq_adj = *new;
 	}
 	return 0;
+}
+
+void
+tc_adjtime(int64_t *old, int64_t *new)
+{
+	if (old != NULL)
+		*old = adjtimedelta;
+	if (new != NULL)
+		adjtimedelta = *new;
 }
