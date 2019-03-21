@@ -907,11 +907,9 @@ bool amdgpu_device_need_post(struct amdgpu_device *adev)
  * Enable/disable vga decode (all asics).
  * Returns VGA resource flags.
  */
+#ifdef notyet
 static unsigned int amdgpu_device_vga_set_decode(void *cookie, bool state)
 {
-	STUB();
-	return -ENOSYS;
-#if 0
 	struct amdgpu_device *adev = cookie;
 	amdgpu_asic_set_vga_state(adev, state);
 	if (state)
@@ -919,8 +917,8 @@ static unsigned int amdgpu_device_vga_set_decode(void *cookie, bool state)
 		       VGA_RSRC_NORMAL_IO | VGA_RSRC_NORMAL_MEM;
 	else
 		return VGA_RSRC_NORMAL_IO | VGA_RSRC_NORMAL_MEM;
-#endif
 }
+#endif
 
 /**
  * amdgpu_device_check_block_size - validate the vm block size
