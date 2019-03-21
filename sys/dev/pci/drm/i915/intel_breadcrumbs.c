@@ -742,13 +742,11 @@ static void intel_breadcrumbs_signaler(void *arg)
 			}
 
 sleep:
-#ifdef __linux__
 			if (kthread_should_park())
 				kthread_parkme();
 
 			if (unlikely(kthread_should_stop()))
 				break;
-#endif
 
 			schedule();
 		}
