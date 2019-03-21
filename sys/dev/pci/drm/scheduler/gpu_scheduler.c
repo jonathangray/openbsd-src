@@ -307,8 +307,6 @@ EXPORT_SYMBOL(drm_sched_entity_flush);
  */
 void drm_sched_entity_fini(struct drm_sched_entity *entity)
 {
-	STUB();
-#if 0
 	struct drm_gpu_scheduler *sched;
 
 	sched = entity->rq->sched;
@@ -358,7 +356,6 @@ void drm_sched_entity_fini(struct drm_sched_entity *entity)
 
 	dma_fence_put(entity->last_scheduled);
 	entity->last_scheduled = NULL;
-#endif
 }
 EXPORT_SYMBOL(drm_sched_entity_fini);
 
@@ -848,16 +845,12 @@ static void drm_sched_process_job(struct dma_fence *f, struct dma_fence_cb *cb)
  */
 static bool drm_sched_blocked(struct drm_gpu_scheduler *sched)
 {
-	STUB();
-	return false;
-#if 0
 	if (kthread_should_park()) {
 		kthread_parkme();
 		return true;
 	}
 
 	return false;
-#endif
 }
 
 /**
@@ -881,27 +874,18 @@ static void drm_sched_main(void *param)
 
 #ifdef __linux__
 	sched_setscheduler(current, SCHED_FIFO, &sparam);
-
-	while (!kthread_should_stop()) {
-#else
-	while (1) {
 #endif
 
+	while (!kthread_should_stop()) {
 		struct drm_sched_entity *entity = NULL;
 		struct drm_sched_fence *s_fence;
 		struct drm_sched_job *sched_job;
 		struct dma_fence *fence;
 
-#ifdef __linux__
 		wait_event_interruptible(sched->wake_up_worker,
 					 (!drm_sched_blocked(sched) &&
 					  (entity = drm_sched_select_entity(sched))) ||
 					 kthread_should_stop());
-#else
-		wait_event_interruptible(sched->wake_up_worker,
-					 (!drm_sched_blocked(sched) &&
-					  (entity = drm_sched_select_entity(sched))));
-#endif
 
 		if (!entity)
 			continue;
