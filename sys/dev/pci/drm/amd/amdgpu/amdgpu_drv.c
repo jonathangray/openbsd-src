@@ -1181,13 +1181,9 @@ static struct pci_driver amdgpu_kms_pci_driver = {
 	.shutdown = amdgpu_pci_shutdown,
 	.driver.pm = &amdgpu_pm_ops,
 };
-#endif /* __linux__ */
 
 static int __init amdgpu_init(void)
 {
-	STUB();
-	return -ENOSYS;
-#if 0
 	int r;
 
 	if (vgacon_text_force()) {
@@ -1216,19 +1212,15 @@ error_fence:
 
 error_sync:
 	return r;
-#endif
 }
 
 static void __exit amdgpu_exit(void)
 {
-	STUB();
-#if 0
 	amdgpu_amdkfd_fini();
 	pci_unregister_driver(pdriver);
 	amdgpu_unregister_atpx_handler();
 	amdgpu_sync_fini();
 	amdgpu_fence_slab_fini();
-#endif
 }
 
 module_init(amdgpu_init);
@@ -1237,3 +1229,4 @@ module_exit(amdgpu_exit);
 MODULE_AUTHOR(DRIVER_AUTHOR);
 MODULE_DESCRIPTION(DRIVER_DESC);
 MODULE_LICENSE("GPL and additional rights");
+#endif /* __linux__ */
