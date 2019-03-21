@@ -523,9 +523,6 @@ static int amdgpu_cs_validate(void *param, struct amdgpu_bo *bo)
 static int amdgpu_cs_list_validate(struct amdgpu_cs_parser *p,
 			    struct list_head *validated)
 {
-	STUB();
-	return -ENOSYS;
-#if 0
 	struct ttm_operation_ctx ctx = { true, false };
 	struct amdgpu_bo_list_entry *lobj;
 	int r;
@@ -535,6 +532,7 @@ static int amdgpu_cs_list_validate(struct amdgpu_cs_parser *p,
 		bool binding_userptr = false;
 		struct mm_struct *usermm;
 
+#ifdef notyet
 		usermm = amdgpu_ttm_tt_get_usermm(bo->tbo.ttm);
 		if (usermm && usermm != current->mm)
 			return -EPERM;
@@ -551,6 +549,7 @@ static int amdgpu_cs_list_validate(struct amdgpu_cs_parser *p,
 						     lobj->user_pages);
 			binding_userptr = true;
 		}
+#endif
 
 		if (p->evictable == lobj)
 			p->evictable = NULL;
@@ -565,7 +564,6 @@ static int amdgpu_cs_list_validate(struct amdgpu_cs_parser *p,
 		}
 	}
 	return 0;
-#endif
 }
 
 static int amdgpu_cs_parser_bos(struct amdgpu_cs_parser *p,
