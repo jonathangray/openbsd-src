@@ -123,20 +123,21 @@ void amdgpu_gem_force_release(struct amdgpu_device *adev)
 int amdgpu_gem_object_open(struct drm_gem_object *obj,
 			   struct drm_file *file_priv)
 {
-	STUB();
-	return -ENOSYS;
-#if 0
 	struct amdgpu_bo *abo = gem_to_amdgpu_bo(obj);
 	struct amdgpu_device *adev = amdgpu_ttm_adev(abo->tbo.bdev);
 	struct amdgpu_fpriv *fpriv = file_priv->driver_priv;
 	struct amdgpu_vm *vm = &fpriv->vm;
 	struct amdgpu_bo_va *bo_va;
+#ifdef notyet
 	struct mm_struct *mm;
+#endif
 	int r;
 
+#ifdef notyet
 	mm = amdgpu_ttm_tt_get_usermm(abo->tbo.ttm);
 	if (mm && mm != current->mm)
 		return -EPERM;
+#endif
 
 	if (abo->flags & AMDGPU_GEM_CREATE_VM_ALWAYS_VALID &&
 	    abo->tbo.resv != vm->root.base.bo->tbo.resv)
@@ -154,7 +155,6 @@ int amdgpu_gem_object_open(struct drm_gem_object *obj,
 	}
 	amdgpu_bo_unreserve(abo);
 	return 0;
-#endif
 }
 
 void amdgpu_gem_object_close(struct drm_gem_object *obj,
