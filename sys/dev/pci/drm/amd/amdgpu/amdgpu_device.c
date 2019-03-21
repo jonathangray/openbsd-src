@@ -3385,9 +3385,6 @@ error:
 int amdgpu_device_gpu_recover(struct amdgpu_device *adev,
 			      struct amdgpu_job *job, bool force)
 {
-	STUB();
-	return -ENOSYS;
-#if 0
 	int i, r, resched;
 
 	if (!force && !amdgpu_device_ip_check_soft_reset(adev)) {
@@ -3472,7 +3469,6 @@ int amdgpu_device_gpu_recover(struct amdgpu_device *adev,
 	adev->in_gpu_reset = 0;
 	mutex_unlock(&adev->lock_reset);
 	return r;
-#endif
 }
 
 /**
