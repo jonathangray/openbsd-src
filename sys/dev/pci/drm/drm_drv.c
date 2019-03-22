@@ -409,6 +409,12 @@ struct drm_device *
 drm_get_device_from_kdev(dev_t kdev)
 {
 	int unit = minor(kdev) & ((1 << CLONE_SHIFT) - 1);
+	/* control */
+	if (unit >= 64 && unit < 128)
+		unit -= 64;
+	/* render */
+	if (unit >= 128)
+		unit -= 128;
 	struct drm_softc *sc;
 
 	if (unit < drm_cd.cd_ndevs) {
@@ -513,6 +519,7 @@ drmopen(dev_t kdev, int flags, int fmt, struct proc *p)
 	struct drm_device	*dev = NULL;
 	struct drm_file		*file_priv;
 	int			 ret = 0;
+	int			 realminor;
 
 	dev = drm_get_device_from_kdev(kdev);
 	if (dev == NULL || dev->dev_private == NULL)
@@ -542,6 +549,14 @@ drmopen(dev_t kdev, int flags, int fmt, struct proc *p)
 
 	file_priv->filp = (void *)&file_priv;
 	file_priv->minor = minor(kdev);
+	realminor =  file_priv->minor & ((1 << CLONE_SHIFT) - 1);
+	if (realminor < 64)
+		file_priv->minor_type = DRM_MINOR_PRIMARY;
+	else if (realminor >= 64 && realminor < 128)
+		file_priv->minor_type = DRM_MINOR_CONTROL;
+	else
+		file_priv->minor_type = DRM_MINOR_RENDER;
+
 	INIT_LIST_HEAD(&file_priv->lhead);
 	INIT_LIST_HEAD(&file_priv->fbs);
 	rw_init(&file_priv->fbs_lock, "fbslk");

@@ -671,10 +671,23 @@ drm_do_ioctl(struct drm_device *dev, int minor, u_long cmd, caddr_t data)
 		return (-EINVAL);
 	}
 
-	if (((ioctl->flags & DRM_ROOT_ONLY) && !DRM_SUSER(curproc)) ||
-	    ((ioctl->flags & DRM_AUTH) && !file_priv->authenticated) ||
-	    ((ioctl->flags & DRM_MASTER) && !file_priv->is_master))
-		return (-EACCES);
+	/* ROOT_ONLY is only for CAP_SYS_ADMIN */
+	if ((ioctl->flags & DRM_ROOT_ONLY) && !capable(CAP_SYS_ADMIN))
+		return -EACCES;
+
+	/* AUTH is only for authenticated or render client */
+	if ((ioctl->flags & DRM_AUTH) && !drm_is_render_client(file_priv) &&
+	    !file_priv->authenticated)
+		return -EACCES;
+		
+	/* MASTER is only for master or control clients */
+	if ((ioctl->flags & DRM_MASTER) && !file_priv->is_master)
+		return -EACCES;
+
+	/* Render clients must be explicitly allowed */
+	if (!(ioctl->flags & DRM_RENDER_ALLOW) &&
+	    drm_is_render_client(file_priv))
+		return -EACCES;
 
 	if (ioctl->flags & DRM_UNLOCKED)
 		retcode = func(dev, data, file_priv);

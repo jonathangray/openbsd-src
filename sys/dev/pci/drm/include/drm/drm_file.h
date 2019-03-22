@@ -242,6 +242,7 @@ struct drm_file {
 	struct drm_minor *minor;
 #else
 	int minor;
+	int minor_type;
 #endif
 
 	/**
@@ -357,10 +358,10 @@ struct drm_file {
  */
 static inline bool drm_is_primary_client(const struct drm_file *file_priv)
 {
-#ifdef notyet
+#ifdef __linux__
 	return file_priv->minor->type == DRM_MINOR_PRIMARY;
 #else
-	return 1;
+	return file_priv->minor_type == DRM_MINOR_PRIMARY;
 #endif
 }
 
@@ -375,10 +376,10 @@ static inline bool drm_is_primary_client(const struct drm_file *file_priv)
  */
 static inline bool drm_is_render_client(const struct drm_file *file_priv)
 {
-#ifdef notyet
+#ifdef __linux__
 	return file_priv->minor->type == DRM_MINOR_RENDER;
 #else
-	return 0;
+	return file_priv->minor_type == DRM_MINOR_RENDER;
 #endif
 }
 
