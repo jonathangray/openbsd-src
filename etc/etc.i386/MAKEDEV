@@ -362,6 +362,8 @@ fd)
 
 drm*)
 	M drm$U c 88 $U 600
+	r=$(($U+128))
+	M drmR$r c 88 $r 600
 	;;
 
 diskmap)
