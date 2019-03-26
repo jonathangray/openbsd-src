@@ -365,8 +365,6 @@ int amdgpu_irq_add_id(struct amdgpu_device *adev,
 void amdgpu_irq_dispatch(struct amdgpu_device *adev,
 			 struct amdgpu_iv_entry *entry)
 {
-	STUB();
-#if 0
 	unsigned client_id = entry->client_id;
 	unsigned src_id = entry->src_id;
 	struct amdgpu_irq_src *src;
@@ -385,7 +383,10 @@ void amdgpu_irq_dispatch(struct amdgpu_device *adev,
 	}
 
 	if (adev->irq.virq[src_id]) {
+		STUB();
+#ifdef notyet
 		generic_handle_irq(irq_find_mapping(adev->irq.domain, src_id));
+#endif
 	} else {
 		if (!adev->irq.client[client_id].sources) {
 			DRM_DEBUG("Unregistered interrupt client_id: %d src_id: %d\n",
@@ -403,7 +404,6 @@ void amdgpu_irq_dispatch(struct amdgpu_device *adev,
 		if (r)
 			DRM_ERROR("error processing interrupt (%d)\n", r);
 	}
-#endif
 }
 
 /**
