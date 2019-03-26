@@ -1339,6 +1339,15 @@ amdgpu_probe(struct device *parent, void *match, void *aux)
 	return 0;
 }
 
+/*
+ * some functions are only called once on init regardless of how many times
+ * amdgpu attaches in linux this is handled via module_init()/module_exit()
+ */
+int amdgpu_refcnt;
+
+int __init drm_sched_fence_slab_init(void);
+void __exit drm_sched_fence_slab_fini(void);
+
 void
 amdgpu_attach(struct device *parent, struct device *self, void *aux)
 {
@@ -1482,21 +1491,24 @@ amdgpu_attach(struct device *parent, struct device *self, void *aux)
 	printf("\n");
 
 	/* from amdgpu_init() */
-{
-	if (amdgpu_sync_init()) {
-		printf(": amdgpu_sync_init failed\n");
-		return;
-	}
+	if (amdgpu_refcnt == 0) {
+		drm_sched_fence_slab_init();
 
-	if (amdgpu_fence_slab_init()) {
-		amdgpu_sync_fini();
-		printf(": amdgpu_fence_slab_init failed\n");
-		return;
-	}
+		if (amdgpu_sync_init()) {
+			printf(": amdgpu_sync_init failed\n");
+			return;
+		}
 
-	amdgpu_kms_driver.num_ioctls = amdgpu_max_kms_ioctl;
-	amdgpu_register_atpx_handler();
-}
+		if (amdgpu_fence_slab_init()) {
+			amdgpu_sync_fini();
+			printf(": amdgpu_fence_slab_init failed\n");
+			return;
+		}
+
+		amdgpu_kms_driver.num_ioctls = amdgpu_max_kms_ioctl;
+		amdgpu_register_atpx_handler();
+	}
+	amdgpu_refcnt++;
 
 	/* from amdgpu_pci_probe() */
 {
@@ -1845,7 +1857,10 @@ amdgpu_detach(struct device *self, int flags)
 	if (adev == NULL)
 		return 0;
 
-	amdgpu_amdkfd_fini();
+	amdgpu_refcnt--;
+
+	if (amdgpu_refcnt == 0)
+		amdgpu_amdkfd_fini();
 
 	pci_intr_disestablish(adev->pc, adev->irqh);
 
@@ -1861,9 +1876,13 @@ amdgpu_detach(struct device *self, int flags)
 
 	amdgpu_device_fini(adev);
 
-	amdgpu_unregister_atpx_handler();
-	amdgpu_sync_fini();
-	amdgpu_fence_slab_fini();
+	if (amdgpu_refcnt == 0) {
+		amdgpu_unregister_atpx_handler();
+		amdgpu_sync_fini();
+		amdgpu_fence_slab_fini();
+
+		drm_sched_fence_slab_fini();
+	}
 	
 	if (adev->ddev != NULL) {
 		config_detach((struct device *)adev->ddev, flags);
