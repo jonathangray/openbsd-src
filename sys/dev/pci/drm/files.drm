@@ -516,7 +516,7 @@ file	dev/pci/drm/amd/amdgpu/amdgpu_kv_smc.c		amdgpu_cik
 file	dev/pci/drm/amd/amdgpu/amdgpu_uvd_v4_2.c	amdgpu_cik
 file	dev/pci/drm/amd/amdgpu/amdgpu_vce_v2_0.c	amdgpu_cik
 
-device	amdgpu: drmbase, ttm, wsemuldisplaydev, rasops8, rasops32, i2cbus, i2c_bitbang, drm_sched, chash, powerplay, amddal, amdgpu_cik
+device	amdgpu: drmbase, ttm, wsemuldisplaydev, rasops8, rasops32, i2cbus, i2c_bitbang, drm_sched, chash, powerplay, amddal, amdgpu_cik, amdgpu_si
 attach	amdgpu at pci
 #file	dev/pci/drm/amd/amdgpu/amdgpu_acpi.c		amdgpu
 file	dev/pci/drm/amd/amdgpu/amdgpu_afmt.c		amdgpu
