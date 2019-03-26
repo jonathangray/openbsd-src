@@ -29,7 +29,7 @@
 
 static struct pool sched_fence_slab;
 
-static int __init drm_sched_fence_slab_init(void)
+int __init drm_sched_fence_slab_init(void)
 {
 #ifdef __linux__
 	sched_fence_slab = kmem_cache_create(
@@ -45,7 +45,7 @@ static int __init drm_sched_fence_slab_init(void)
 	return 0;
 }
 
-static void __exit drm_sched_fence_slab_fini(void)
+void __exit drm_sched_fence_slab_fini(void)
 {
 	rcu_barrier();
 #ifdef __linux__
