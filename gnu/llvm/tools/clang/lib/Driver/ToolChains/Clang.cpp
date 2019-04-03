@@ -528,6 +528,18 @@ static bool useFramePointerForTargetByDefault(const ArgList &Args,
     return !areOptimizationsEnabled(Args);
   }
 
+  if (Triple.getOS() == llvm::Triple::OpenBSD) {
+    switch (Triple.getArch()) {
+    case llvm::Triple::mips64:
+    case llvm::Triple::mips64el:
+    case llvm::Triple::x86:
+    case llvm::Triple::x86_64:
+      return !areOptimizationsEnabled(Args);
+    default:
+      return true;
+    }
+  }
+
   if (Triple.isOSLinux() || Triple.getOS() == llvm::Triple::CloudABI) {
     switch (Triple.getArch()) {
     // Don't use a frame pointer on linux if optimizing for certain targets.
@@ -4103,8 +4115,6 @@ void Clang::ConstructJob(Compilation &C, const JobAction &JA,
 
   Args.AddLastArg(CmdArgs, options::OPT_pthread);
 
-  RenderSSPOptions(getToolChain(), Args, CmdArgs, KernelOrKext);
-
   // -ret-protector
   unsigned RetProtector = 1;
   if (Arg *A = Args.getLastArg(options::OPT_fno_ret_protector,
@@ -4120,7 +4130,14 @@ void Clang::ConstructJob(Compilation &C, const JobAction &JA,
       !Args.hasArg(options::OPT_fno_stack_protector) &&
       !Args.hasArg(options::OPT_pg)) {
     CmdArgs.push_back(Args.MakeArgString("-D_RET_PROTECTOR"));
-    CmdArgs.push_back(Args.MakeArgString(Twine("-ret-protector")));
+    CmdArgs.push_back(Args.MakeArgString("-ret-protector"));
+    // Consume the stack protector arguments to prevent warning
+    Args.getLastArg(options::OPT_fstack_protector_all,
+        options::OPT_fstack_protector_strong,
+        options::OPT_fstack_protector);
+  } else {
+    // If we're not using retguard, then do the usual stack protector
+    RenderSSPOptions(getToolChain(), Args, CmdArgs, KernelOrKext);
   }
 
   // -fixup-gadgets

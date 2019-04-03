@@ -1,4 +1,4 @@
-/*	$OpenBSD: rde.c,v 1.466 2019/03/13 14:35:39 claudio Exp $ */
+/*	$OpenBSD: rde.c,v 1.468 2019/03/31 17:02:47 claudio Exp $ */
 
 /*
  * Copyright (c) 2003, 2004 Henning Brauer <henning@openbsd.org>
@@ -2900,10 +2900,14 @@ rde_reload_done(void)
 	as_sets_old = conf->as_sets;
 
 	copy_config(conf, nconf);
-	SIMPLEQ_INIT(&conf->rde_prefixsets);
-	SIMPLEQ_INIT(&conf->rde_originsets);
+	/* need to copy the sets and roa table and clear them in nconf */
 	SIMPLEQ_CONCAT(&conf->rde_prefixsets, &nconf->rde_prefixsets);
 	SIMPLEQ_CONCAT(&conf->rde_originsets, &nconf->rde_originsets);
+	conf->rde_roa = nconf->rde_roa;
+	conf->as_sets = nconf->as_sets;
+	memset(&nconf->rde_roa, 0, sizeof(nconf->rde_roa));
+	nconf->as_sets = NULL;
+
 	free_config(nconf);
 	nconf = NULL;
 

@@ -1,4 +1,4 @@
-/*	$OpenBSD: if_ixl.c,v 1.26 2019/03/12 01:07:37 jmatthew Exp $ */
+/*	$OpenBSD: if_ixl.c,v 1.34 2019/04/01 03:01:14 jmatthew Exp $ */
 
 /*
  * Copyright (c) 2013-2015, Intel Corporation
@@ -51,6 +51,7 @@
 
 #include <sys/param.h>
 #include <sys/systm.h>
+#include <sys/proc.h>
 #include <sys/sockio.h>
 #include <sys/mbuf.h>
 #include <sys/kernel.h>
@@ -1061,7 +1062,6 @@ struct ixl_rx_ring {
 };
 
 struct ixl_atq {
-	SIMPLEQ_ENTRY(ixl_atq)	  iatq_entry;
 	struct ixl_aq_desc	  iatq_desc;
 	void			 *iatq_arg;
 	void			(*iatq_fn)(struct ixl_softc *, void *);
@@ -1129,9 +1129,7 @@ struct ixl_softc {
 
 #define delaymsec(_ms)	delay(1000 * (_ms))
 
-#ifdef notyet
 static void	ixl_clear_hw(struct ixl_softc *);
-#endif
 static int	ixl_pf_reset(struct ixl_softc *);
 
 static int	ixl_dmamem_alloc(struct ixl_softc *, struct ixl_dmamem *,
@@ -1397,7 +1395,7 @@ ixl_attach(struct device *parent, struct device *self, void *aux)
 	sc->sc_rx_ring_ndescs = 1024;
 
 	memtype = pci_mapreg_type(sc->sc_pc, sc->sc_tag, IXL_PCIREG);
-	if (pci_mapreg_map(pa, IXL_PCIREG, memtype, BUS_SPACE_MAP_PREFETCHABLE,
+	if (pci_mapreg_map(pa, IXL_PCIREG, memtype, 0,
 	    &sc->sc_memt, &sc->sc_memh, NULL, &sc->sc_mems, 0)) {
 		printf(": unable to map registers\n");
 		return;
@@ -1407,10 +1405,7 @@ ixl_attach(struct device *parent, struct device *self, void *aux)
 	    I40E_PFLAN_QALLOC_FIRSTQ_MASK) >>
 	    I40E_PFLAN_QALLOC_FIRSTQ_SHIFT;
 
-#ifdef notyet
 	ixl_clear_hw(sc);
-#endif
-
 	if (ixl_pf_reset(sc) == -1) {
 		/* error printed by ixl_pf_reset */
 		goto unmap;
@@ -1956,7 +1951,6 @@ ixl_iff(struct ixl_softc *sc)
 	param->flags = htole16(IXL_AQ_VSI_PROMISC_FLAG_BCAST |
 	    IXL_AQ_VSI_PROMISC_FLAG_VLAN);
 	if (ISSET(ifp->if_flags, IFF_PROMISC)) {
-		SET(ifp->if_flags, IFF_ALLMULTI);
 		param->flags |= htole16(IXL_AQ_VSI_PROMISC_FLAG_UCAST |
 		    IXL_AQ_VSI_PROMISC_FLAG_MCAST);
 	} else if (ISSET(ifp->if_flags, IFF_ALLMULTI)) {
@@ -2012,7 +2006,6 @@ ixl_down(struct ixl_softc *sc)
 
 		ixl_txr_qdis(sc, txr, 0);
 
-		ifiq_barrier(ifp->if_iqs[i]);
 		ifq_barrier(ifp->if_ifqs[i]);
 
 		if (!timeout_del(&rxr->rxr_refill))
@@ -3009,7 +3002,6 @@ ixl_atq_post(struct ixl_softc *sc, struct ixl_atq *iatq)
 static void
 ixl_atq_done(struct ixl_softc *sc)
 {
-	struct ixl_atq_list cmds = SIMPLEQ_HEAD_INITIALIZER(cmds);
 	struct ixl_aq_desc *atq, *slot;
 	struct ixl_atq *iatq;
 	unsigned int cons;
@@ -3029,12 +3021,15 @@ ixl_atq_done(struct ixl_softc *sc)
 
 	do {
 		slot = &atq[cons];
+		if (!ISSET(slot->iaq_flags, htole16(IXL_AQ_DD)))
+			break;
 
 		iatq = (struct ixl_atq *)slot->iaq_cookie;
 		iatq->iatq_desc = *slot;
-		SIMPLEQ_INSERT_TAIL(&cmds, iatq, iatq_entry);
 
 		memset(slot, 0, sizeof(*slot));
+
+		(*iatq->iatq_fn)(sc, iatq->iatq_arg);
 
 		cons++;
 		cons &= IXL_AQ_MASK;
@@ -3045,49 +3040,27 @@ ixl_atq_done(struct ixl_softc *sc)
 	    BUS_DMASYNC_PREREAD|BUS_DMASYNC_PREWRITE);
 
 	sc->sc_atq_cons = cons;
-
-	while ((iatq = SIMPLEQ_FIRST(&cmds)) != NULL) {
-		SIMPLEQ_REMOVE_HEAD(&cmds, iatq_entry);
-
-		(*iatq->iatq_fn)(sc, iatq->iatq_arg);
-	}
 }
-
-struct ixl_wakeup {
-	struct mutex mtx;
-	int notdone;
-};
 
 static void
 ixl_wakeup(struct ixl_softc *sc, void *arg)
 {
-	struct ixl_wakeup *wake = arg;
+	struct cond *c = arg;
 
-	mtx_enter(&wake->mtx);
-	wake->notdone = 0;
-	mtx_leave(&wake->mtx);
-
-	wakeup(wake);
+	cond_signal(c);
 }
 
 static void
 ixl_atq_exec(struct ixl_softc *sc, struct ixl_atq *iatq, const char *wmesg)
 {
-	struct ixl_wakeup wake = { MUTEX_INITIALIZER(IPL_NET), 1 };
+	struct cond c = COND_INITIALIZER(); 
 
 	KASSERT(iatq->iatq_desc.iaq_cookie == 0);
 
-	ixl_atq_set(iatq, ixl_wakeup, &wake);
+	ixl_atq_set(iatq, ixl_wakeup, &c);
 	ixl_atq_post(sc, iatq);
 
-	mtx_enter(&wake.mtx);
-	while (wake.notdone) {
-		mtx_leave(&wake.mtx);
-		ixl_atq_done(sc);
-		mtx_enter(&wake.mtx);
-		msleep(&wake, &wake.mtx, 0, wmesg, 1);
-	}
-	mtx_leave(&wake.mtx);
+	cond_wait(&c, wmesg);
 }
 
 static int
@@ -4015,7 +3988,6 @@ ixl_arq_unfill(struct ixl_softc *sc)
 	}
 }
 
-#ifdef notyet
 static void
 ixl_clear_hw(struct ixl_softc *sc)
 {
@@ -4101,7 +4073,6 @@ ixl_clear_hw(struct ixl_softc *sc)
 	/* short wait for all queue disables to settle */
 	delaymsec(50);
 }
-#endif
 
 static int
 ixl_pf_reset(struct ixl_softc *sc)

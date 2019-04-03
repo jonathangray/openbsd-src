@@ -1,6 +1,6 @@
-.\"	$OpenBSD: acpipci.4,v 1.2 2018/07/05 19:53:22 jmc Exp $
+.\"	$OpenBSD: acpipci.4,v 1.2 2019/04/02 19:39:32 jmc Exp $
 .\"
-.\" Copyright (c) 2018 Mark Kettenis <kettenis@openbsd.org>
+.\" Copyright (c) 2019 Mark Kettenis <kettenis@openbsd.org>
 .\"
 .\" Permission to use, copy, modify, and distribute this software for any
 .\" purpose with or without fee is hereby granted, provided that the above
@@ -14,23 +14,22 @@
 .\" ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 .\" OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: July 5 2018 $
-.Dt ACPIPCI 4 arm64
+.Dd $Mdocdate: April 2 2019 $
+.Dt ACPIPCI 4
 .Os
 .Sh NAME
 .Nm acpipci
 .Nd ACPI PCI host bridge
 .Sh SYNOPSIS
 .Cd "acpipci* at acpi?"
-.Cd "pci* at acpipci?"
+.Cd "pci* at acpipci?" Pq arm64
 .Sh DESCRIPTION
 The
 .Nm
-driver provides support for PCI host bridges based on information
-provided by ACPI.
+driver provides support for PCI host bridges based on the information
+extracted from the ACPI DSDT and SSDT tables.
 .Sh SEE ALSO
 .Xr acpi 4 ,
-.Xr acpimcfg 4 ,
 .Xr intro 4 ,
 .Xr pci 4
 .Sh HISTORY

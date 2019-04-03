@@ -1,4 +1,4 @@
-/*	$Id: uploader.c,v 1.18 2019/03/18 15:33:21 deraadt Exp $ */
+/*	$Id: uploader.c,v 1.20 2019/04/02 11:05:55 deraadt Exp $ */
 /*
  * Copyright (c) 2019 Kristaps Dzonsons <kristaps@bsd.lv>
  * Copyright (c) 2019 Florian Obser <florian@openbsd.org>
@@ -223,8 +223,7 @@ pre_link(struct upload *p, struct sess *sess)
 		if (strcmp(f->link, b)) {
 			free(b);
 			b = NULL;
-			LOG3(sess, "%s: updating "
-				"symlink: %s", f->path, f->link);
+			LOG3(sess, "%s: updating symlink: %s", f->path, f->link);
 			updatelink = 1;
 		}
 		free(b);
@@ -237,8 +236,7 @@ pre_link(struct upload *p, struct sess *sess)
 	 */
 
 	if (rc == -1 || updatelink) {
-		LOG3(sess, "%s: creating "
-			"symlink: %s", f->path, f->link);
+		LOG3(sess, "%s: creating symlink: %s", f->path, f->link);
 		if (mktemplate(sess, &temp,
 		    f->path, sess->opts->recursive) == -1) {
 			ERRX1(sess, "mktemplate");
@@ -626,8 +624,7 @@ post_dir(struct sess *sess, const struct upload *u, size_t idx)
 	 */
 
 	if (u->newdir[idx] ||
-	    (sess->opts->preserve_perms &&
-	     st.st_mode != f->st.mode)) {
+	    (sess->opts->preserve_perms && st.st_mode != f->st.mode)) {
 		rc = fchmodat(u->rootfd, f->path, f->st.mode, 0);
 		if (rc == -1) {
 			ERR(sess, "%s: fchmodat", f->path);
@@ -948,8 +945,8 @@ rsync_uploader(struct upload *u, int *fileinfd,
 		close(*fileinfd);
 		*fileinfd = -1;
 		LOG3(sess, "%s: mapped %jd B with %zu blocks",
-			u->fl[u->idx].path, (intmax_t)blk.size,
-			blk.blksz);
+		    u->fl[u->idx].path, (intmax_t)blk.size,
+		    blk.blksz);
 	} else {
 		if (*fileinfd != -1) {
 			close(*fileinfd);
@@ -1019,7 +1016,7 @@ rsync_uploader_tail(struct upload *u, struct sess *sess)
 
 
 	if (!sess->opts->preserve_times &&
-	     !sess->opts->preserve_perms)
+	    !sess->opts->preserve_perms)
 		return 1;
 
 	LOG2(sess, "fixing up directory times and permissions");

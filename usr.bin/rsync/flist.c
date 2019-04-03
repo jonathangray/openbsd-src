@@ -1,4 +1,4 @@
-/*	$Id: flist.c,v 1.20 2019/03/18 15:33:21 deraadt Exp $ */
+/*	$Id: flist.c,v 1.23 2019/03/31 09:26:05 deraadt Exp $ */
 /*
  * Copyright (c) 2019 Kristaps Dzonsons <kristaps@bsd.lv>
  * Copyright (c) 2019 Florian Obser <florian@openbsd.org>
@@ -272,6 +272,7 @@ flist_send(struct sess *sess, int fdin, int fdout, const struct flist *fl,
 		fn = f->wpath;
 		sz = strlen(f->wpath);
 		assert(sz > 0);
+		assert(sz < INT32_MAX);
 
 		/*
 		 * If applicable, unclog the read buffer.
@@ -318,19 +319,19 @@ flist_send(struct sess *sess, int fdin, int fdout, const struct flist *fl,
 		} else if (!io_write_long(sess, fdout, f->st.size)) {
 			ERRX1(sess, "io_write_long");
 			goto out;
-		} else if (!io_write_int(sess, fdout, f->st.mtime)) {
-			ERRX1(sess, "io_write_int");
+		} else if (!io_write_uint(sess, fdout, (uint32_t)f->st.mtime)) {
+			ERRX1(sess, "io_write_uint");
 			goto out;
-		} else if (!io_write_int(sess, fdout, f->st.mode)) {
-			ERRX1(sess, "io_write_int");
+		} else if (!io_write_uint(sess, fdout, f->st.mode)) {
+			ERRX1(sess, "io_write_uint");
 			goto out;
 		}
 
 		/* Conditional part: uid. */
 
 		if (sess->opts->preserve_uids) {
-			if (!io_write_int(sess, fdout, f->st.uid)) {
-				ERRX1(sess, "io_write_int");
+			if (!io_write_uint(sess, fdout, f->st.uid)) {
+				ERRX1(sess, "io_write_uint");
 				goto out;
 			}
 			if (!idents_add(sess, 0, &uids, &uidsz, f->st.uid)) {
@@ -342,8 +343,8 @@ flist_send(struct sess *sess, int fdin, int fdout, const struct flist *fl,
 		/* Conditional part: gid. */
 
 		if (sess->opts->preserve_gids) {
-			if (!io_write_int(sess, fdout, f->st.gid)) {
-				ERRX1(sess, "io_write_int");
+			if (!io_write_uint(sess, fdout, f->st.gid)) {
+				ERRX1(sess, "io_write_uint");
 				goto out;
 			}
 			if (!idents_add(sess, 1, &gids, &gidsz, f->st.gid)) {
@@ -370,12 +371,13 @@ flist_send(struct sess *sess, int fdin, int fdout, const struct flist *fl,
 		    sess->opts->preserve_links) {
 			fn = f->link;
 			sz = strlen(f->link);
+			assert(sz < INT32_MAX);
 			if (!io_write_int(sess, fdout, sz)) {
 				ERRX1(sess, "io_write_int");
 				goto out;
 			}
 			if (!io_write_buf(sess, fdout, fn, sz)) {
-				ERRX1(sess, "io_write_int");
+				ERRX1(sess, "io_write_buf");
 				goto out;
 			}
 		}
@@ -467,8 +469,7 @@ flist_recv_name(struct sess *sess, int fd, struct flist *f, uint8_t flags,
 	/* FIXME: maximum pathname length. */
 
 	if ((len = pathlen + partial) == 0) {
-		ERRX(sess, "security violation: "
-			"zero-length pathname");
+		ERRX(sess, "security violation: zero-length pathname");
 		return 0;
 	}
 
@@ -487,8 +488,8 @@ flist_recv_name(struct sess *sess, int fd, struct flist *f, uint8_t flags,
 	}
 
 	if (f->path[0] == '/') {
-		ERRX(sess, "security violation: "
-			"absolute pathname: %s", f->path);
+		ERRX(sess, "security violation: absolute pathname: %s",
+		    f->path);
 		return 0;
 	}
 
@@ -496,8 +497,8 @@ flist_recv_name(struct sess *sess, int fd, struct flist *f, uint8_t flags,
 	    (len > 2 && strcmp(f->path + len - 3, "/..") == 0) ||
 	    (len > 2 && strncmp(f->path, "../", 3) == 0) ||
 	    strcmp(f->path, "..") == 0) {
-		ERRX(sess, "%s: security violation: "
-			"backtracking pathname", f->path);
+		ERRX(sess, "%s: security violation: backtracking pathname",
+		    f->path);
 		return 0;
 	}
 
@@ -594,8 +595,9 @@ flist_recv(struct sess *sess, int fd, struct flist **flp, size_t *sz)
 	size_t		 flsz = 0, flmax = 0, lsz, gidsz = 0, uidsz = 0;
 	uint8_t		 flag;
 	char		 last[MAXPATHLEN];
-	uint64_t	 lval; /* temporary values... */
+	int64_t		 lval; /* temporary values... */
 	int32_t		 ival;
+	uint32_t	 uival;
 	struct ident	*gids = NULL, *uids = NULL;
 
 	last[0] = '\0';
@@ -624,8 +626,8 @@ flist_recv(struct sess *sess, int fd, struct flist **flp, size_t *sz)
 
 		/* Read the file size. */
 
-		if (!io_read_ulong(sess, fd, &lval)) {
-			ERRX1(sess, "io_read_ulong");
+		if (!io_read_long(sess, fd, &lval)) {
+			ERRX1(sess, "io_read_long");
 			goto out;
 		}
 		ff->st.size = lval;
@@ -633,11 +635,11 @@ flist_recv(struct sess *sess, int fd, struct flist **flp, size_t *sz)
 		/* Read the modification time. */
 
 		if (!(FLIST_TIME_SAME & flag)) {
-			if (!io_read_int(sess, fd, &ival)) {
+			if (!io_read_uint(sess, fd, &uival)) {
 				ERRX1(sess, "io_read_int");
 				goto out;
 			}
-			ff->st.mtime = ival;
+			ff->st.mtime = uival;	/* beyond 2038 */
 		} else if (fflast == NULL) {
 			ERRX(sess, "same time without last entry");
 			goto out;
@@ -647,11 +649,11 @@ flist_recv(struct sess *sess, int fd, struct flist **flp, size_t *sz)
 		/* Read the file mode. */
 
 		if (!(FLIST_MODE_SAME & flag)) {
-			if (!io_read_int(sess, fd, &ival)) {
+			if (!io_read_uint(sess, fd, &uival)) {
 				ERRX1(sess, "io_read_int");
 				goto out;
 			}
-			ff->st.mode = ival;
+			ff->st.mode = uival;
 		} else if (fflast == NULL) {
 			ERRX(sess, "same mode without last entry");
 			goto out;
@@ -662,14 +664,13 @@ flist_recv(struct sess *sess, int fd, struct flist **flp, size_t *sz)
 
 		if (sess->opts->preserve_uids) {
 			if (!(FLIST_UID_SAME & flag)) {
-				if (!io_read_int(sess, fd, &ival)) {
+				if (!io_read_uint(sess, fd, &uival)) {
 					ERRX1(sess, "io_read_int");
 					goto out;
 				}
-				ff->st.uid = ival;
+				ff->st.uid = uival;
 			} else if (fflast == NULL) {
-				ERRX(sess, "same uid "
-					"without last entry");
+				ERRX(sess, "same uid without last entry");
 				goto out;
 			} else
 				ff->st.uid = fflast->st.uid;
@@ -679,14 +680,13 @@ flist_recv(struct sess *sess, int fd, struct flist **flp, size_t *sz)
 
 		if (sess->opts->preserve_gids) {
 			if (!(FLIST_GID_SAME & flag)) {
-				if (!io_read_int(sess, fd, &ival)) {
+				if (!io_read_uint(sess, fd, &uival)) {
 					ERRX1(sess, "io_read_int");
 					goto out;
 				}
-				ff->st.gid = ival;
+				ff->st.gid = uival;
 			} else if (fflast == NULL) {
-				ERRX(sess, "same gid "
-					"without last entry");
+				ERRX(sess, "same gid without last entry");
 				goto out;
 			} else
 				ff->st.gid = fflast->st.gid;
@@ -909,8 +909,7 @@ flist_gen_dirent(struct sess *sess, char *root, struct flist **fl, size_t *sz,
 		assert(ent->fts_statp != NULL);
 		if (S_ISLNK(ent->fts_statp->st_mode) &&
 		    !sess->opts->preserve_links) {
-			WARNX(sess, "%s: skipping "
-				"symlink", ent->fts_path);
+			WARNX(sess, "%s: skipping symlink", ent->fts_path);
 			continue;
 		}
 
@@ -1040,8 +1039,7 @@ flist_gen_files(struct sess *sess, size_t argc, char **argv,
 			continue;
 		} else if (S_ISLNK(st.st_mode)) {
 			if (!sess->opts->preserve_links) {
-				WARNX(sess, "%s: skipping "
-					"symlink", argv[i]);
+				WARNX(sess, "%s: skipping symlink", argv[i]);
 				continue;
 			}
 		} else if (!S_ISREG(st.st_mode)) {

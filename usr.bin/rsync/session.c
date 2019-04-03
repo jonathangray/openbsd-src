@@ -1,4 +1,4 @@
-/*	$Id: session.c,v 1.4 2019/02/11 21:41:22 deraadt Exp $ */
+/*	$Id: session.c,v 1.6 2019/03/31 09:26:05 deraadt Exp $ */
 /*
  * Copyright (c) 2019 Kristaps Dzonsons <kristaps@bsd.lv>
  *
@@ -86,12 +86,10 @@ stats_log(struct sess *sess,
 		ts = tsize;
 
 	LOG1(sess, "Transfer complete: "
-		"%.*lf %s sent, "
-		"%.*lf %s read, "
-		"%.*lf %s file size",
-		trsz, tr, tru,
-		twsz, tw, twu,
-		tssz, ts, tsu);
+	    "%.*lf %s sent, %.*lf %s read, %.*lf %s file size",
+	    trsz, tr, tru,
+	    twsz, tw, twu,
+	    tssz, ts, tsu);
 }
 
 /*
@@ -113,14 +111,14 @@ sess_stats_send(struct sess *sess, int fd)
 	ts = sess->total_size;
 
 	if (sess->opts->server) {
-		if (!io_write_long(sess, fd, tr)) {
-			ERRX1(sess, "io_write_long");
+		if (!io_write_ulong(sess, fd, tr)) {
+			ERRX1(sess, "io_write_ulong");
 			return 0;
-		} else if (!io_write_long(sess, fd, tw)) {
-			ERRX1(sess, "io_write_long");
+		} else if (!io_write_ulong(sess, fd, tw)) {
+			ERRX1(sess, "io_write_ulong");
 			return 0;
-		} else if (!io_write_long(sess, fd, ts)) {
-			ERRX1(sess, "io_write_long");
+		} else if (!io_write_ulong(sess, fd, ts)) {
+			ERRX1(sess, "io_write_ulong");
 			return 0;
 		}
 	}

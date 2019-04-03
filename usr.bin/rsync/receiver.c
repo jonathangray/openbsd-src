@@ -1,4 +1,4 @@
-/*	$Id: receiver.c,v 1.19 2019/02/18 21:55:27 benno Exp $ */
+/*	$Id: receiver.c,v 1.22 2019/03/30 07:28:55 deraadt Exp $ */
 
 /*
  * Copyright (c) 2019 Kristaps Dzonsons <kristaps@bsd.lv>
@@ -47,7 +47,21 @@ rsync_set_metadata(struct sess *sess, int newfile,
 {
 	uid_t		 uid = (uid_t)-1;
 	gid_t		 gid = (gid_t)-1;
-	struct timespec	 tv[2];
+	mode_t		 mode;
+	struct timespec	 ts[2];
+
+	/* Conditionally adjust file modification time. */
+
+	if (sess->opts->preserve_times) {
+		ts[0].tv_nsec = UTIME_NOW;
+		ts[1].tv_sec = f->st.mtime;
+		ts[1].tv_nsec = 0;
+		if (futimens(fd, ts) == -1) {
+			ERR(sess, "%s: futimens", path);
+			return 0;
+		}
+		LOG4(sess, "%s: updated date", f->path);
+	}
 
 	/*
 	 * Conditionally adjust identifiers.
@@ -55,44 +69,30 @@ rsync_set_metadata(struct sess *sess, int newfile,
 	 * means that we're mapping into an unknown (or disallowed)
 	 * group identifier.
 	 */
-
 	if (getuid() == 0 && sess->opts->preserve_uids)
 		uid = f->st.uid;
 	if (sess->opts->preserve_gids)
 		gid = f->st.gid;
 
+	mode = f->st.mode;
 	if (uid != (uid_t)-1 || gid != (gid_t)-1) {
 		if (fchown(fd, uid, gid) == -1) {
 			if (errno != EPERM) {
 				ERR(sess, "%s: fchown", path);
 				return 0;
 			}
-			WARNX(sess, "%s: identity unknown or not available "
-				"to user.group: %u.%u", f->path, uid, gid);
+			if (getuid() == 0)
+				WARNX(sess, "%s: identity unknown or not available "
+				    "to user.group: %u.%u", f->path, uid, gid);
 		} else
 			LOG4(sess, "%s: updated uid and/or gid", f->path);
-	}
-
-	/* Conditionally adjust file modification time. */
-
-	if (sess->opts->preserve_times) {
-		struct timeval now;
-
-		gettimeofday(&now, NULL);
-		TIMEVAL_TO_TIMESPEC(&now, &tv[0]);
-		tv[1].tv_sec = f->st.mtime;
-		tv[1].tv_nsec = 0;
-		if (futimens(fd, tv) == -1) {
-			ERR(sess, "%s: futimens", path);
-			return 0;
-		}
-		LOG4(sess, "%s: updated date", f->path);
+		mode &= ~(S_ISTXT | S_ISUID | S_ISGID);
 	}
 
 	/* Conditionally adjust file permissions. */
 
 	if (newfile || sess->opts->preserve_perms) {
-		if (fchmod(fd, f->st.mode) == -1) {
+		if (fchmod(fd, mode) == -1) {
 			ERR(sess, "%s: fchmod", path);
 			return 0;
 		}
@@ -108,7 +108,21 @@ rsync_set_metadata_at(struct sess *sess, int newfile, int rootfd,
 {
 	uid_t		 uid = (uid_t)-1;
 	gid_t		 gid = (gid_t)-1;
-	struct timespec	 tv[2];
+	mode_t		 mode;
+	struct timespec	 ts[2];
+
+	/* Conditionally adjust file modification time. */
+
+	if (sess->opts->preserve_times) {
+		ts[0].tv_nsec = UTIME_NOW;
+		ts[1].tv_sec = f->st.mtime;
+		ts[1].tv_nsec = 0;
+		if (utimensat(rootfd, path, ts, AT_SYMLINK_NOFOLLOW) == -1) {
+			ERR(sess, "%s: utimensat", path);
+			return 0;
+		}
+		LOG4(sess, "%s: updated date", f->path);
+	}
 
 	/*
 	 * Conditionally adjust identifiers.
@@ -116,46 +130,30 @@ rsync_set_metadata_at(struct sess *sess, int newfile, int rootfd,
 	 * means that we're mapping into an unknown (or disallowed)
 	 * group identifier.
 	 */
-
 	if (getuid() == 0 && sess->opts->preserve_uids)
 		uid = f->st.uid;
 	if (sess->opts->preserve_gids)
 		gid = f->st.gid;
 
+	mode = f->st.mode;
 	if (uid != (uid_t)-1 || gid != (gid_t)-1) {
-		if (fchownat(rootfd, path, uid, gid, AT_SYMLINK_NOFOLLOW) ==
-		    -1) {
+		if (fchownat(rootfd, path, uid, gid, AT_SYMLINK_NOFOLLOW) == -1) {
 			if (errno != EPERM) {
 				ERR(sess, "%s: fchownat", path);
 				return 0;
 			}
-			WARNX(sess, "%s: identity unknown or not available "
-				"to user.group: %u.%u", f->path, uid, gid);
+			if (getuid() == 0)
+				WARNX(sess, "%s: identity unknown or not available "
+				    "to user.group: %u.%u", f->path, uid, gid);
 		} else
 			LOG4(sess, "%s: updated uid and/or gid", f->path);
-	}
-
-	/* Conditionally adjust file modification time. */
-
-	if (sess->opts->preserve_times) {
-		struct timeval now;
-
-		gettimeofday(&now, NULL);
-		TIMEVAL_TO_TIMESPEC(&now, &tv[0]);
-		tv[1].tv_sec = f->st.mtime;
-		tv[1].tv_nsec = 0;
-		if (utimensat(rootfd, path, tv, AT_SYMLINK_NOFOLLOW) == -1) {
-			ERR(sess, "%s: utimensat", path);
-			return 0;
-		}
-		LOG4(sess, "%s: updated date", f->path);
+		mode &= ~(S_ISTXT | S_ISUID | S_ISGID);
 	}
 
 	/* Conditionally adjust file permissions. */
 
 	if (newfile || sess->opts->preserve_perms) {
-		if (fchmodat(rootfd, path, f->st.mode, AT_SYMLINK_NOFOLLOW) ==
-		    -1) {
+		if (fchmodat(rootfd, path, mode, AT_SYMLINK_NOFOLLOW) == -1) {
 			ERR(sess, "%s: fchmodat", path);
 			return 0;
 		}
@@ -402,8 +400,9 @@ rsync_receiver(struct sess *sess, int fdin, int fdout, const char *root)
 			} else if (c == 0) {
 				assert(phase == 0);
 				phase++;
-				LOG2(sess, "%s: receiver ready "
-					"for phase 2 data", root);
+				LOG2(sess,
+				    "%s: receiver ready for phase 2 data",
+				    root);
 				break;
 			}
 
