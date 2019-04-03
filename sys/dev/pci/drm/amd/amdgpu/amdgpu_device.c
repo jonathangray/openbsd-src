@@ -297,7 +297,7 @@ u32 amdgpu_mm_rdoorbell(struct amdgpu_device *adev, u32 index)
 {
 	if (index < adev->doorbell.num_doorbells) {
 		return bus_space_read_4(adev->doorbell.bst, adev->doorbell.bsh,
-		    index);
+		    index * 4);
 	} else {
 		DRM_ERROR("reading beyond doorbell aperture: 0x%08x!\n", index);
 		return 0;
@@ -318,7 +318,7 @@ void amdgpu_mm_wdoorbell(struct amdgpu_device *adev, u32 index, u32 v)
 {
 	if (index < adev->doorbell.num_doorbells) {
 		bus_space_write_4(adev->doorbell.bst, adev->doorbell.bsh,
-		    index, v);
+		    index * 4, v);
 	} else {
 		DRM_ERROR("writing beyond doorbell aperture: 0x%08x!\n", index);
 	}
@@ -337,7 +337,7 @@ u64 amdgpu_mm_rdoorbell64(struct amdgpu_device *adev, u32 index)
 {
 	if (index < adev->doorbell.num_doorbells) {
 		return bus_space_read_8(adev->doorbell.bst, adev->doorbell.bsh,
-		    index);
+		    index * 4);
 	} else {
 		DRM_ERROR("reading beyond doorbell aperture: 0x%08x!\n", index);
 		return 0;
@@ -358,7 +358,7 @@ void amdgpu_mm_wdoorbell64(struct amdgpu_device *adev, u32 index, u64 v)
 {
 	if (index < adev->doorbell.num_doorbells) {
 		bus_space_write_8(adev->doorbell.bst, adev->doorbell.bsh,
-		    index, v);
+		    index * 4, v);
 	} else {
 		DRM_ERROR("writing beyond doorbell aperture: 0x%08x!\n", index);
 	}
