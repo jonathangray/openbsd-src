@@ -1384,13 +1384,14 @@ struct mm_struct *amdgpu_ttm_tt_get_usermm(struct ttm_tt *ttm)
 	if (gtt == NULL)
 		return NULL;
 
-	STUB();
-	return NULL;
-#if 0
 	if (gtt->usertask == NULL)
 		return NULL;
 
+#if 0
 	return gtt->usertask->mm;
+#else
+	STUB();
+	return NULL;
 #endif
 }
 
