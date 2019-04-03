@@ -185,10 +185,10 @@ dma_fence_wait_timeout(struct dma_fence *fence, bool intr, signed long timeout)
 	if (timeout < 0)
 		return -EINVAL;
 
-	if (timeout == 0)
-		return dma_fence_is_signaled(fence);
-
-	return fence->ops->wait(fence, intr, timeout);
+	if (fence->ops->wait)
+		return fence->ops->wait(fence, intr, timeout);
+	else
+		return dma_fence_default_wait(fence, intr, timeout);
 }
 
 static inline long
