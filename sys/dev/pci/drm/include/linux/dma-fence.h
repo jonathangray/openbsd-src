@@ -201,7 +201,8 @@ static inline void
 dma_fence_enable_sw_signaling(struct dma_fence *fence)
 {
 	if (!test_and_set_bit(DMA_FENCE_FLAG_ENABLE_SIGNAL_BIT, &fence->flags) &&
-	    !test_bit(DMA_FENCE_FLAG_SIGNALED_BIT, &fence->flags)) {
+	    !test_bit(DMA_FENCE_FLAG_SIGNALED_BIT, &fence->flags) &&
+	    fence->ops->enable_signaling) {
 		mtx_enter(fence->lock);
 		if (!fence->ops->enable_signaling(fence))
 			dma_fence_signal_locked(fence);
@@ -244,7 +245,7 @@ dma_fence_add_callback(struct dma_fence *fence, struct dma_fence_cb *cb,
 
 	if (test_bit(DMA_FENCE_FLAG_SIGNALED_BIT, &fence->flags))
 		ret = -ENOENT;
-	else if (!was_set) {
+	else if (!was_set && fence->ops->enable_signaling) {
 		if (!fence->ops->enable_signaling(fence)) {
 			dma_fence_signal_locked(fence);
 			ret = -ENOENT;
