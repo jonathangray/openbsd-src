@@ -740,9 +740,6 @@ int drm_sched_job_init(struct drm_sched_job *job,
 		       struct drm_sched_entity *entity,
 		       void *owner)
 {
-	STUB();
-	return -ENOSYS;
-#if 0
 	struct drm_gpu_scheduler *sched = entity->rq->sched;
 
 	job->sched = sched;
@@ -758,7 +755,6 @@ int drm_sched_job_init(struct drm_sched_job *job,
 	INIT_DELAYED_WORK(&job->work_tdr, drm_sched_job_timedout);
 
 	return 0;
-#endif
 }
 EXPORT_SYMBOL(drm_sched_job_init);
 
