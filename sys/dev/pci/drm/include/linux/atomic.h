@@ -169,7 +169,7 @@ atomic64_add_return(int i, atomic64_t *v)
 	int64_t val;
 
 	mtx_enter(&v->lock);
-	val = v->val + 1;
+	val = v->val + i;
 	v->val = val;
 	mtx_leave(&v->lock);
 
