@@ -50,6 +50,11 @@ struct ida {
 	int counter;
 };
 
+#define DEFINE_IDA(name)	\
+	struct ida name = {	\
+		.counter = 0	\
+	}
+
 void ida_init(struct ida *);
 void ida_destroy(struct ida *);
 int ida_simple_get(struct ida *, unsigned int, unsigned nt, int);
