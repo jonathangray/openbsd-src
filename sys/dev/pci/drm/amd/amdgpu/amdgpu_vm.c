@@ -2415,7 +2415,6 @@ void amdgpu_vm_bo_rmv(struct amdgpu_device *adev,
 		      struct amdgpu_bo_va *bo_va)
 {
 	STUB();
-#if 0
 	struct amdgpu_bo_va_mapping *mapping, *next;
 	struct amdgpu_vm *vm = bo_va->base.vm;
 
@@ -2427,21 +2426,24 @@ void amdgpu_vm_bo_rmv(struct amdgpu_device *adev,
 
 	list_for_each_entry_safe(mapping, next, &bo_va->valids, list) {
 		list_del(&mapping->list);
+#ifdef notyet
 		amdgpu_vm_it_remove(mapping, &vm->va);
+#endif
 		mapping->bo_va = NULL;
 		trace_amdgpu_vm_bo_unmap(bo_va, mapping);
 		list_add(&mapping->list, &vm->freed);
 	}
 	list_for_each_entry_safe(mapping, next, &bo_va->invalids, list) {
 		list_del(&mapping->list);
+#ifdef notyet
 		amdgpu_vm_it_remove(mapping, &vm->va);
+#endif
 		amdgpu_vm_free_mapping(adev, vm, mapping,
 				       bo_va->last_pt_update);
 	}
 
 	dma_fence_put(bo_va->last_pt_update);
 	kfree(bo_va);
-#endif
 }
 
 /**
