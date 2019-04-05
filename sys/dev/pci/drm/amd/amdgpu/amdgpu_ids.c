@@ -107,8 +107,6 @@ static void amdgpu_pasid_free_cb(struct dma_fence *fence,
 void amdgpu_pasid_free_delayed(struct reservation_object *resv,
 			       unsigned int pasid)
 {
-	STUB();
-#if 0
 	struct dma_fence *fence, **fences;
 	struct amdgpu_pasid_cb *cb;
 	unsigned count;
@@ -161,7 +159,6 @@ fallback:
 	reservation_object_wait_timeout_rcu(resv, true, false,
 					    MAX_SCHEDULE_TIMEOUT);
 	amdgpu_pasid_free(pasid);
-#endif
 }
 
 /*
