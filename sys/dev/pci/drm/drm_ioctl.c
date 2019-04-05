@@ -130,6 +130,74 @@ int drm_getunique(struct drm_device *dev, void *data,
 }
 
 /*
+ * Get client information.
+ *
+ * \param inode device inode.
+ * \param file_priv DRM file private.
+ * \param cmd command.
+ * \param arg user argument, pointing to a drm_client structure.
+ *
+ * \return zero on success or a negative number on failure.
+ *
+ * Searches for the client with the specified index and copies its information
+ * into userspace
+ */
+int drm_getclient(struct drm_device *dev, void *data,
+		  struct drm_file *file_priv)
+{
+	struct drm_client *client = data;
+
+	/*
+	 * Hollowed-out getclient ioctl to keep some dead old drm tests/tools
+	 * not breaking completely. Userspace tools stop enumerating one they
+	 * get -EINVAL, hence this is the return value we need to hand back for
+	 * no clients tracked.
+	 *
+	 * Unfortunately some clients (*cough* libva *cough*) use this in a fun
+	 * attempt to figure out whether they're authenticated or not. Since
+	 * that's the only thing they care about, give it to the directly
+	 * instead of walking one giant list.
+	 */
+	if (client->idx == 0) {
+		client->auth = file_priv->authenticated;
+#ifdef __linux__
+		client->pid = task_pid_vnr(current);
+		client->uid = overflowuid;
+#else
+		client->pid = curproc->p_p->ps_pid;
+		client->uid = 0xfffe;
+#endif
+		client->magic = 0;
+		client->iocs = 0;
+
+		return 0;
+	} else {
+		return -EINVAL;
+	}
+}
+
+/*
+ * Get statistics information.
+ *
+ * \param inode device inode.
+ * \param file_priv DRM file private.
+ * \param cmd command.
+ * \param arg user argument, pointing to a drm_stats structure.
+ *
+ * \return zero on success or a negative number on failure.
+ */
+static int drm_getstats(struct drm_device *dev, void *data,
+		 struct drm_file *file_priv)
+{
+	struct drm_stats *stats = data;
+
+	/* Clear stats to prevent userspace from eating its stack garbage. */
+	memset(stats, 0, sizeof(*stats));
+
+	return 0;
+}
+
+/*
  * Get device/driver capabilities
  */
 static int drm_getcap(struct drm_device *dev, void *data, struct drm_file *file_priv)
@@ -396,9 +464,9 @@ static const struct drm_ioctl_desc drm_ioctls[] = {
 #ifdef __linux__
 	DRM_IOCTL_DEF(DRM_IOCTL_IRQ_BUSID, drm_irq_by_busid, DRM_MASTER|DRM_ROOT_ONLY),
 	DRM_IOCTL_DEF(DRM_IOCTL_GET_MAP, drm_legacy_getmap_ioctl, DRM_UNLOCKED),
+#endif
 	DRM_IOCTL_DEF(DRM_IOCTL_GET_CLIENT, drm_getclient, DRM_UNLOCKED),
 	DRM_IOCTL_DEF(DRM_IOCTL_GET_STATS, drm_getstats, DRM_UNLOCKED),
-#endif
 	DRM_IOCTL_DEF(DRM_IOCTL_GET_CAP, drm_getcap, DRM_UNLOCKED|DRM_RENDER_ALLOW),
 	DRM_IOCTL_DEF(DRM_IOCTL_SET_CLIENT_CAP, drm_setclientcap, DRM_UNLOCKED),
 	DRM_IOCTL_DEF(DRM_IOCTL_SET_VERSION, drm_setversion, DRM_UNLOCKED | DRM_MASTER),
