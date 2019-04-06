@@ -55,6 +55,7 @@ struct i2c_msg {
 
 #define I2C_M_RD	0x0001
 #define I2C_M_NOSTART	0x0002
+#define I2C_M_STOP	0x0004
 
 struct i2c_algorithm {
 	int (*master_xfer)(struct i2c_adapter *, struct i2c_msg *, int);
