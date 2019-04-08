@@ -2198,8 +2198,6 @@ int amdgpu_vm_bo_unmap(struct amdgpu_device *adev,
 		       uint64_t saddr)
 {
 	STUB();
-	return -ENOSYS;
-#if 0
 	struct amdgpu_bo_va_mapping *mapping;
 	struct amdgpu_vm *vm = bo_va->base.vm;
 	bool valid = true;
@@ -2224,7 +2222,9 @@ int amdgpu_vm_bo_unmap(struct amdgpu_device *adev,
 	}
 
 	list_del(&mapping->list);
+#ifdef notyet
 	amdgpu_vm_it_remove(mapping, &vm->va);
+#endif
 	mapping->bo_va = NULL;
 	trace_amdgpu_vm_bo_unmap(bo_va, mapping);
 
@@ -2235,7 +2235,6 @@ int amdgpu_vm_bo_unmap(struct amdgpu_device *adev,
 				       bo_va->last_pt_update);
 
 	return 0;
-#endif
 }
 
 /**
