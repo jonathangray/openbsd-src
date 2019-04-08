@@ -198,9 +198,6 @@ static int amdgpu_vmid_grab_idle(struct amdgpu_vm *vm,
 				 struct amdgpu_sync *sync,
 				 struct amdgpu_vmid **idle)
 {
-	STUB();
-	return -ENOSYS;
-#if 0
 	struct amdgpu_device *adev = ring->adev;
 	unsigned vmhub = ring->funcs->vmhub;
 	struct amdgpu_vmid_mgr *id_mgr = &adev->vm_manager.id_mgr[vmhub];
@@ -252,7 +249,6 @@ static int amdgpu_vmid_grab_idle(struct amdgpu_vm *vm,
 	kfree(fences);
 
 	return 0;
-#endif
 }
 
 /**
