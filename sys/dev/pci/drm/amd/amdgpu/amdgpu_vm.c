@@ -2765,9 +2765,6 @@ error_free_sched_entity:
  */
 int amdgpu_vm_make_compute(struct amdgpu_device *adev, struct amdgpu_vm *vm)
 {
-	STUB();
-	return -ENOSYS;
-#if 0
 	bool pte_support_ats = (adev->asic_type == CHIP_RAVEN);
 	int r;
 
@@ -2776,7 +2773,11 @@ int amdgpu_vm_make_compute(struct amdgpu_device *adev, struct amdgpu_vm *vm)
 		return r;
 
 	/* Sanity checks */
+#ifdef __linux__
 	if (!RB_EMPTY_ROOT(&vm->va.rb_root) || vm->root.entries) {
+#else
+	if (!RB_EMPTY_ROOT(&vm->va) || vm->root.entries) {
+#endif
 		r = -EINVAL;
 		goto error;
 	}
@@ -2817,7 +2818,6 @@ int amdgpu_vm_make_compute(struct amdgpu_device *adev, struct amdgpu_vm *vm)
 error:
 	amdgpu_bo_unreserve(vm->root.base.bo);
 	return r;
-#endif
 }
 
 /**
