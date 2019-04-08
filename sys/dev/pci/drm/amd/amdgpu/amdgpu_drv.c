@@ -1124,6 +1124,7 @@ struct drm_driver amdgpu_kms_driver = {
 	.load = amdgpu_driver_load_kms,
 #endif
 	.open = amdgpu_driver_open_kms,
+	.mmap = amdgpu_mmap,
 	.postclose = amdgpu_driver_postclose_kms,
 	.lastclose = amdgpu_driver_lastclose_kms,
 #ifdef notyet
