@@ -2028,13 +2028,14 @@ static void amdgpu_vm_bo_insert_map(struct amdgpu_device *adev,
 				    struct amdgpu_bo_va_mapping *mapping)
 {
 	STUB();
-#if 0
 	struct amdgpu_vm *vm = bo_va->base.vm;
 	struct amdgpu_bo *bo = bo_va->base.bo;
 
 	mapping->bo_va = bo_va;
 	list_add(&mapping->list, &bo_va->invalids);
+#ifdef notyet
 	amdgpu_vm_it_insert(mapping, &vm->va);
+#endif
 
 	if (mapping->flags & AMDGPU_PTE_PRT)
 		amdgpu_vm_prt_get(adev);
@@ -2046,7 +2047,6 @@ static void amdgpu_vm_bo_insert_map(struct amdgpu_device *adev,
 		spin_unlock(&vm->moved_lock);
 	}
 	trace_amdgpu_vm_bo_map(bo_va, mapping);
-#endif
 }
 
 /**
@@ -2072,8 +2072,6 @@ int amdgpu_vm_bo_map(struct amdgpu_device *adev,
 		     uint64_t size, uint64_t flags)
 {
 	STUB();
-	return -ENOSYS;
-#if 0
 	struct amdgpu_bo_va_mapping *mapping, *tmp;
 	struct amdgpu_bo *bo = bo_va->base.bo;
 	struct amdgpu_vm *vm = bo_va->base.vm;
@@ -2093,6 +2091,7 @@ int amdgpu_vm_bo_map(struct amdgpu_device *adev,
 	saddr /= AMDGPU_GPU_PAGE_SIZE;
 	eaddr /= AMDGPU_GPU_PAGE_SIZE;
 
+#ifdef notyet
 	tmp = amdgpu_vm_it_iter_first(&vm->va, saddr, eaddr);
 	if (tmp) {
 		/* bo and tmp overlap, invalid addr */
@@ -2101,6 +2100,7 @@ int amdgpu_vm_bo_map(struct amdgpu_device *adev,
 			tmp->start, tmp->last + 1);
 		return -EINVAL;
 	}
+#endif
 
 	mapping = kmalloc(sizeof(*mapping), GFP_KERNEL);
 	if (!mapping)
@@ -2114,7 +2114,6 @@ int amdgpu_vm_bo_map(struct amdgpu_device *adev,
 	amdgpu_vm_bo_insert_map(adev, bo_va, mapping);
 
 	return 0;
-#endif
 }
 
 /**
