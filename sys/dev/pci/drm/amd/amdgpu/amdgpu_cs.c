@@ -570,8 +570,6 @@ static int amdgpu_cs_parser_bos(struct amdgpu_cs_parser *p,
 				union drm_amdgpu_cs *cs)
 {
 	STUB();
-	return -ENOSYS;
-#if 0
 	struct amdgpu_fpriv *fpriv = p->filp->driver_priv;
 	struct amdgpu_vm *vm = &fpriv->vm;
 	struct amdgpu_bo_list_entry *e;
@@ -632,8 +630,10 @@ static int amdgpu_cs_parser_bos(struct amdgpu_cs_parser *p,
 				/* We acquired a page array, but somebody
 				 * invalidated it. Free it and try again
 				 */
+#ifdef notyet
 				release_pages(e->user_pages,
 					      bo->tbo.ttm->num_pages);
+#endif
 				kvfree(e->user_pages);
 				e->user_pages = NULL;
 			}
@@ -753,13 +753,14 @@ error_free_pages:
 		if (!e->user_pages)
 			continue;
 
+#ifdef notyet
 		release_pages(e->user_pages,
 			      e->robj->tbo.ttm->num_pages);
+#endif
 		kvfree(e->user_pages);
 	}
 
 	return r;
-#endif
 }
 
 static int amdgpu_cs_sync_rings(struct amdgpu_cs_parser *p)
