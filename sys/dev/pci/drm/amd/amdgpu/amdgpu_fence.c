@@ -66,7 +66,7 @@ int amdgpu_fence_slab_init(void)
 		return -ENOMEM;
 #else
 	pool_init(&amdgpu_fence_slab, sizeof(struct amdgpu_fence),
-	    0, IPL_NONE, 0, "amdgpu_fence", NULL);
+	    0, IPL_TTY, 0, "amdgpu_fence", NULL);
 #endif
 	return 0;
 }
