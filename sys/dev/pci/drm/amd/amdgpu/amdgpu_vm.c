@@ -3029,13 +3029,12 @@ void amdgpu_vm_manager_init(struct amdgpu_device *adev)
  */
 void amdgpu_vm_manager_fini(struct amdgpu_device *adev)
 {
-	STUB();
-#if 0
+#ifdef notyet
 	WARN_ON(!idr_is_empty(&adev->vm_manager.pasid_idr));
+#endif
 	idr_destroy(&adev->vm_manager.pasid_idr);
 
 	amdgpu_vmid_mgr_fini(adev);
-#endif
 }
 
 /**
