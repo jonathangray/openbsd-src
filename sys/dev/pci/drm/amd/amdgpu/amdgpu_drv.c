@@ -1045,12 +1045,10 @@ static int amdgpu_pmops_runtime_idle(struct device *dev)
 }
 #endif /* notyet */
 
+#ifdef __linux__
 long amdgpu_drm_ioctl(struct file *filp,
 		      unsigned int cmd, unsigned long arg)
 {
-	STUB();
-	return -ENOSYS;
-#if 0
 	struct drm_file *file_priv = filp->private_data;
 	struct drm_device *dev;
 	long ret;
@@ -1064,10 +1062,8 @@ long amdgpu_drm_ioctl(struct file *filp,
 	pm_runtime_mark_last_busy(dev->dev);
 	pm_runtime_put_autosuspend(dev->dev);
 	return ret;
-#endif
 }
 
-#ifdef __linux__
 static const struct dev_pm_ops amdgpu_pm_ops = {
 	.suspend = amdgpu_pmops_suspend,
 	.resume = amdgpu_pmops_resume,
