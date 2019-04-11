@@ -220,6 +220,8 @@ struct drm_driver {
 	/* import dmabuf -> GEM */
 	struct drm_gem_object * (*gem_prime_import)(struct drm_device *dev,
 				struct dma_buf *dma_buf);
+	struct reservation_object * (*gem_prime_res_obj)(
+				struct drm_gem_object *obj);
 
 	int	(*dumb_create)(struct drm_file *file_priv,
 		    struct drm_device *dev, struct drm_mode_create_dumb *args);
