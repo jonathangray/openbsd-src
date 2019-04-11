@@ -322,6 +322,8 @@ error:
 	drm_gem_map_detach(dma_buf, attach);
 }
 
+#endif /* notyet */
+
 /**
  * amdgpu_gem_prime_res_obj - &drm_driver.gem_prime_res_obj implementation
  * @obj: GEM buffer object
@@ -335,6 +337,8 @@ struct reservation_object *amdgpu_gem_prime_res_obj(struct drm_gem_object *obj)
 
 	return bo->tbo.resv;
 }
+
+#ifdef notyet
 
 /**
  * amdgpu_gem_begin_cpu_access - &dma_buf_ops.begin_cpu_access implementation

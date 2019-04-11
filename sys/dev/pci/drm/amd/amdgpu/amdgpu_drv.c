@@ -1149,8 +1149,8 @@ struct drm_driver amdgpu_kms_driver = {
 	.prime_fd_to_handle = drm_gem_prime_fd_to_handle,
 	.gem_prime_export = amdgpu_gem_prime_export,
 	.gem_prime_import = amdgpu_gem_prime_import,
-#ifdef notyet
 	.gem_prime_res_obj = amdgpu_gem_prime_res_obj,
+#ifdef notyet
 	.gem_prime_get_sg_table = amdgpu_gem_prime_get_sg_table,
 	.gem_prime_import_sg_table = amdgpu_gem_prime_import_sg_table,
 	.gem_prime_vmap = amdgpu_gem_prime_vmap,
