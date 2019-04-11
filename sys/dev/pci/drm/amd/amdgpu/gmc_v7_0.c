@@ -1274,9 +1274,6 @@ static int gmc_v7_0_process_interrupt(struct amdgpu_device *adev,
 				      struct amdgpu_irq_src *source,
 				      struct amdgpu_iv_entry *entry)
 {
-	STUB();
-	return -ENOSYS;
-#if 0
 	u32 addr, status, mc_client, vmid;
 
 	addr = RREG32(mmVM_CONTEXT1_PROTECTION_FAULT_ADDR);
@@ -1291,6 +1288,7 @@ static int gmc_v7_0_process_interrupt(struct amdgpu_device *adev,
 	if (amdgpu_vm_fault_stop == AMDGPU_VM_FAULT_STOP_FIRST)
 		gmc_v7_0_set_fault_enable_default(adev, false);
 
+#ifdef notyet
 	if (printk_ratelimit()) {
 		dev_err(adev->dev, "GPU fault detected: %d 0x%08x\n",
 			entry->src_id, entry->src_data[0]);
@@ -1301,6 +1299,7 @@ static int gmc_v7_0_process_interrupt(struct amdgpu_device *adev,
 		gmc_v7_0_vm_decode_fault(adev, status, addr, mc_client,
 					 entry->pasid);
 	}
+#endif
 
 	vmid = REG_GET_FIELD(status, VM_CONTEXT1_PROTECTION_FAULT_STATUS,
 			     VMID);
@@ -1326,7 +1325,6 @@ static int gmc_v7_0_process_interrupt(struct amdgpu_device *adev,
 	}
 
 	return 0;
-#endif
 }
 
 static int gmc_v7_0_set_clockgating_state(void *handle,

@@ -246,9 +246,6 @@ static int gmc_v9_0_process_interrupt(struct amdgpu_device *adev,
 				struct amdgpu_irq_src *source,
 				struct amdgpu_iv_entry *entry)
 {
-	STUB();
-	return -ENOSYS;
-#if 0
 	struct amdgpu_vmhub *hub = &adev->vmhub[entry->vmid_src];
 	uint32_t status = 0;
 	u64 addr;
@@ -261,6 +258,7 @@ static int gmc_v9_0_process_interrupt(struct amdgpu_device *adev,
 		WREG32_P(hub->vm_l2_pro_fault_cntl, 1, ~1);
 	}
 
+#ifdef notyet
 	if (printk_ratelimit()) {
 		struct amdgpu_task_info task_info = { 0 };
 
@@ -279,9 +277,9 @@ static int gmc_v9_0_process_interrupt(struct amdgpu_device *adev,
 				"VM_L2_PROTECTION_FAULT_STATUS:0x%08X\n",
 				status);
 	}
+#endif
 
 	return 0;
-#endif
 }
 
 static const struct amdgpu_irq_src_funcs gmc_v9_0_irq_funcs = {
