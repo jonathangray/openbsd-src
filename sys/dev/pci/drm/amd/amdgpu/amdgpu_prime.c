@@ -408,9 +408,6 @@ struct dma_buf *amdgpu_gem_prime_export(struct drm_device *dev,
 					struct drm_gem_object *gobj,
 					int flags)
 {
-	STUB();
-	return ERR_PTR(-ENOSYS);
-#if 0
 	struct amdgpu_bo *bo = gem_to_amdgpu_bo(gobj);
 	struct dma_buf *buf;
 
@@ -420,12 +417,13 @@ struct dma_buf *amdgpu_gem_prime_export(struct drm_device *dev,
 
 	buf = drm_gem_prime_export(dev, gobj, flags);
 	if (!IS_ERR(buf)) {
+#ifdef __linux__
 		buf->file->f_mapping = dev->anon_inode->i_mapping;
+#endif
 		buf->ops = &amdgpu_dmabuf_ops;
 	}
 
 	return buf;
-#endif
 }
 
 /**
