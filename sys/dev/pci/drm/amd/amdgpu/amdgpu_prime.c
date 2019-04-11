@@ -380,21 +380,25 @@ static int amdgpu_gem_begin_cpu_access(struct dma_buf *dma_buf,
 	return ret;
 }
 
+#endif /* notyet */
+
 static const struct dma_buf_ops amdgpu_dmabuf_ops = {
+#ifdef notyet
 	.attach = amdgpu_gem_map_attach,
 	.detach = amdgpu_gem_map_detach,
 	.map_dma_buf = drm_gem_map_dma_buf,
 	.unmap_dma_buf = drm_gem_unmap_dma_buf,
+#endif
 	.release = drm_gem_dmabuf_release,
+#ifdef notyet
 	.begin_cpu_access = amdgpu_gem_begin_cpu_access,
 	.map = drm_gem_dmabuf_kmap,
 	.unmap = drm_gem_dmabuf_kunmap,
 	.mmap = drm_gem_dmabuf_mmap,
 	.vmap = drm_gem_dmabuf_vmap,
 	.vunmap = drm_gem_dmabuf_vunmap,
+#endif
 };
-
-#endif /* notyet */
 
 /**
  * amdgpu_gem_prime_export - &drm_driver.gem_prime_export implementation
