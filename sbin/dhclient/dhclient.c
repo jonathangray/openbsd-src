@@ -1,4 +1,4 @@
-/*	$OpenBSD: dhclient.c,v 1.631 2019/04/02 02:59:43 krw Exp $	*/
+/*	$OpenBSD: dhclient.c,v 1.633 2019/04/06 08:25:05 krw Exp $	*/
 
 /*
  * Copyright 2004 Henning Brauer <henning@openbsd.org>
@@ -456,7 +456,9 @@ main(int argc, char *argv[])
 			cmd_opts |= OPT_FOREGROUND;
 			break;
 		case 'i':
-			ignore_list = optarg;
+			ignore_list = strdup(optarg);
+			if (ignore_list == NULL)
+				fatal("ignore_list");
 			break;
 		case 'l':
 			path_lease_db = optarg;
@@ -562,6 +564,7 @@ main(int argc, char *argv[])
 	imsg_init(unpriv_ibuf, socket_fd[1]);
 
 	read_conf(ifi->name, ignore_list, &ifi->hw_address);
+	free(ignore_list);
 	if ((cmd_opts & OPT_NOACTION) != 0)
 		return 0;
 
@@ -1129,12 +1132,13 @@ packet_to_lease(struct interface_info *ifi, struct option_data *options)
 		name = code_to_name(i);
 		if (i == DHO_DOMAIN_SEARCH) {
 			/* Replace RFC 1035 data with a string. */
-			pretty = rfc1035_as_string(options[i].data, options[i].len);
+			pretty = rfc1035_as_string(options[i].data,
+			    options[i].len);
 			free(options[i].data);
 			options[i].data = strdup(pretty);
 			if (options[i].data == NULL)
 				fatal("RFC1035 string");
-			options[i].len = strlen(lease->options[i].data) + 1;
+			options[i].len = strlen(options[i].data) + 1;
 		} else
 			pretty = pretty_print_option(i, &options[i], 0);
 		if (strlen(pretty) == 0)
