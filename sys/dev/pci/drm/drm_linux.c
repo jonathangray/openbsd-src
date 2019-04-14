@@ -43,7 +43,7 @@ tasklet_run(void *arg)
 
 struct mutex sch_mtx = MUTEX_INITIALIZER(IPL_SCHED);
 volatile struct proc *sch_proc;
-void *sch_ident;
+volatile void *sch_ident;
 int sch_priority;
 
 void

@@ -39,7 +39,7 @@ typedef struct wait_queue_entry wait_queue_entry_t;
 
 extern struct mutex sch_mtx;
 extern volatile struct proc *sch_proc;
-extern void *sch_ident;
+extern volatile void *sch_ident;
 extern int sch_priority;
 
 struct wait_queue_head {
