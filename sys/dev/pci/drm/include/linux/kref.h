@@ -1,4 +1,4 @@
-/*	$OpenBSD$	*/
+/*	$OpenBSD: kref.h,v 1.1 2019/04/14 10:14:53 jsg Exp $	*/
 /*
  * Copyright (c) 2015 Mark Kettenis
  *

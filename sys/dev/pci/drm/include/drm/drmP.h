@@ -1,4 +1,4 @@
-/* $OpenBSD: drmP.h,v 1.219 2018/08/20 19:36:04 kettenis Exp $ */
+/* $OpenBSD: drmP.h,v 1.1 2019/04/14 10:14:52 jsg Exp $ */
 /* drmP.h -- Private header for Direct Rendering Manager -*- linux-c -*-
  * Created: Mon Jan  4 10:05:05 1999 by faith@precisioninsight.com
  */

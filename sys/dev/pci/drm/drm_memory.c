@@ -1,4 +1,4 @@
-/* $OpenBSD: drm_memory.c,v 1.27 2015/06/04 06:07:23 jsg Exp $ */
+/* $OpenBSD: drm_memory.c,v 1.28 2019/04/14 10:14:51 jsg Exp $ */
 /*-
  *Copyright 1999 Precision Insight, Inc., Cedar Park, Texas.
  * Copyright 2000 VA Linux Systems, Inc., Sunnyvale, California.

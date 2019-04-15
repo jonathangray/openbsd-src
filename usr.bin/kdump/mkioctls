@@ -1,5 +1,5 @@
 #!/bin/sh -
-#	$OpenBSD: mkioctls,v 1.40 2018/08/29 17:47:07 anton Exp $
+#	$OpenBSD: mkioctls,v 1.41 2019/04/14 10:16:00 jsg Exp $
 
 #
 # Copyright (c) 1994

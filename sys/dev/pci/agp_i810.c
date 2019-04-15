@@ -1,4 +1,4 @@
-/*	$OpenBSD: agp_i810.c,v 1.93 2015/12/19 16:07:20 kettenis Exp $	*/
+/*	$OpenBSD: agp_i810.c,v 1.94 2019/04/14 10:14:50 jsg Exp $	*/
 
 /*-
  * Copyright (c) 2000 Doug Rabson

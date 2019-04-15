@@ -1,4 +1,4 @@
-/*	$OpenBSD: drm_vma_manager.h,v 1.2 2016/04/05 20:50:44 kettenis Exp $	*/
+/*	$OpenBSD: drm_vma_manager.h,v 1.1 2019/04/14 10:14:52 jsg Exp $	*/
 #ifndef __DRM_VMA_MANAGER_H__
 #define __DRM_VMA_MANAGER_H__
 

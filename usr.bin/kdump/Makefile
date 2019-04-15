@@ -1,4 +1,4 @@
-#	$OpenBSD: Makefile,v 1.35 2018/08/29 17:47:07 anton Exp $
+#	$OpenBSD: Makefile,v 1.36 2019/04/14 10:16:00 jsg Exp $
 
 LDSTATIC=${STATIC}
 PROG=	kdump

@@ -1,4 +1,4 @@
-/*	$OpenBSD: drm_hashtab.h,v 1.1 2013/08/12 04:11:52 jsg Exp $	*/
+/*	$OpenBSD: drm_hashtab.h,v 1.1 2019/04/14 10:14:52 jsg Exp $	*/
 /**************************************************************************
  *
  * Copyright 2006 Tungsten Graphics, Inc., Bismack, ND. USA.

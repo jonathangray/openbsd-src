@@ -1,4 +1,4 @@
-/*	$OpenBSD: drm_linux.h,v 1.92 2018/10/31 08:50:25 kettenis Exp $	*/
+/*	$OpenBSD: drm_linux.h,v 1.93 2019/04/14 10:14:51 jsg Exp $	*/
 /*
  * Copyright (c) 2013, 2014, 2015 Mark Kettenis
  * Copyright (c) 2017 Martin Pieuchot

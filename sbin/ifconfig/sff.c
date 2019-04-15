@@ -1,4 +1,4 @@
-/*	$OpenBSD: sff.c,v 1.5 2019/04/10 18:02:50 deraadt Exp $ */
+/*	$OpenBSD: sff.c,v 1.7 2019/04/11 12:32:46 sthen Exp $ */
 
 /*
  * Copyright (c) 2019 David Gwynne <dlg@openbsd.org>
@@ -164,6 +164,12 @@ static const char *sff8024_con_names[] = {
 #define SFF8472_EXT_ID_MOD_DEF_6		0x06
 #define SFF8472_EXT_ID_MOD_DEF_7		0x07
 #define SFF8472_CON			2 /* SFF8027 for connector values */
+#define SFF8472_DIST_SMF_KM		14
+#define SFF8472_DIST_SMF_M		15
+#define SFF8472_DIST_OM2		16
+#define SFF8472_DIST_OM1		17
+#define SFF8472_DIST_CU			18
+#define SFF8472_DIST_OM3		19
 #define SFF8472_VENDOR_START		20
 #define SFF8472_VENDOR_END		35
 #define SFF8472_PRODUCT_START		40
@@ -295,7 +301,7 @@ if_sff_info(int s, const char *ifname, int dump)
 
 	id = pg0.sff_data[0]; /* SFF8472_ID */
 
-	printf("%s: %s ", ifname, sff_id_name(id));
+	printf("\ttransceiver: %s ", sff_id_name(id));
 	switch (id) {
 	case SFF8024_ID_SFP:
 		ext_id = pg0.sff_data[SFF8472_EXT_ID];
@@ -393,14 +399,13 @@ if_sff_power2dbm(const struct if_sffpage *sff, size_t start)
 	return (10.0 * log10f((float)power / 10000.0));
 }
 
-
 static void
 if_sff_printalarm(const char *unit, int range, float actual,
     float alrm_high, float alrm_low, float warn_high, float warn_log)
 {
 	printf("%.02f%s", actual, unit);
 	if (range == 1)
-		printf(" (low %.02f%s high %.02f%s)", alrm_low,
+		printf(" (low %.02f%s, high %.02f%s)", alrm_low,
 		    unit, alrm_high, unit);
 
 	if(actual > alrm_high || actual < alrm_low)
@@ -409,16 +414,55 @@ if_sff_printalarm(const char *unit, int range, float actual,
 		printf(" [WARNING]");
 }
 
+static void
+if_sff_printdist(const char *type, int value, int scale)
+{
+	int distance = value * scale;
+
+	if (value == 0)
+		return;
+
+	if (distance < 10000)
+		printf (", %s%u%s", value > 254 ? ">" : "", distance, type);
+	else
+		printf (", %s%0.1fk%s", value > 254 ? ">" : "",
+		    distance / 1000.0, type);
+}
+
 static int
 if_sff8472(int s, const char *ifname, int dump, const struct if_sffpage *pg0)
 {
 	struct if_sffpage ddm;
 	uint8_t con, ddm_types;
-	uint16_t wavelength;
+	int i;
 
 	con = pg0->sff_data[SFF8472_CON];
-	printf("%s (", sff_con_name(con));
+	printf("%s", sff_con_name(con));
 
+	i = if_sff_int(pg0, SFF8472_WAVELENGTH);
+	switch (i) {
+	/* Copper Cable */
+	case 0x0100: /* SFF-8431 Appendix E */
+	case 0x0400: /* SFF-8431 limiting */
+	case 0x0c00: /* SFF-8431 limiting and FC-PI-4 limiting */
+		break;
+	default:
+		printf(", %.02u nm", i);
+	}
+
+	if (pg0->sff_data[SFF8472_DIST_SMF_M] > 0 &&
+	    pg0->sff_data[SFF8472_DIST_SMF_M] < 255)
+		if_sff_printdist("m SMF",
+		    pg0->sff_data[SFF8472_DIST_SMF_M], 100);
+	else
+		if_sff_printdist("km SMF",
+		    pg0->sff_data[SFF8472_DIST_SMF_KM], 1);
+	if_sff_printdist("m OM2", pg0->sff_data[SFF8472_DIST_OM2], 10);
+	if_sff_printdist("m OM1", pg0->sff_data[SFF8472_DIST_OM1], 10);
+	if_sff_printdist("m OM3", pg0->sff_data[SFF8472_DIST_OM3], 10);
+	if_sff_printdist("m", pg0->sff_data[SFF8472_DIST_CU], 1);
+
+	printf("\n\tmodel: ");
 	if_sff_ascii_print(pg0, "",
 	    SFF8472_VENDOR_START, SFF8472_VENDOR_END, " ");
 	if_sff_ascii_print(pg0, "",
@@ -426,22 +470,9 @@ if_sff8472(int s, const char *ifname, int dump, const struct if_sffpage *pg0)
 	if_sff_ascii_print(pg0, " rev ",
 	    SFF8472_REVISION_START, SFF8472_REVISION_END, "");
 
-	wavelength = if_sff_int(pg0, SFF8472_WAVELENGTH);
-	switch (wavelength) {
-	/* Copper Cable */
-	case 0x0100: /* SFF-8431 Appendix E */
-	case 0x0400: /* SFF-8431 limiting */
-	case 0x0c00: /* SFF-8431 limiting and FC-PI-4 limiting */
-		break;
-	default:
-		printf(", %.02u nm", wavelength);
-	}
-
-	printf(")\n\t");
-
-	if_sff_ascii_print(pg0, "serial ",
+	if_sff_ascii_print(pg0, "\n\tserial: ",
 	    SFF8472_SERIAL_START, SFF8472_SERIAL_END, ", ");
-	if_sff_date_print(pg0, "date ", SFF8472_DATECODE, "\n");
+	if_sff_date_print(pg0, "date: ", SFF8472_DATECODE, "\n");
 
 	ddm_types = pg0->sff_data[SFF8472_DDM_TYPE];
 	if (pg0->sff_data[SFF8472_COMPLIANCE] == SFF8472_COMPLIANCE_NONE ||
@@ -460,7 +491,7 @@ if_sff8472(int s, const char *ifname, int dump, const struct if_sffpage *pg0)
 		    "(WARNING: needs more code)\n");
 	}
 
-	printf("\tvoltage ");
+	printf("\tvoltage: ");
 	if_sff_printalarm(" V", 0,
 	    if_sff_uint(&ddm, SFF8472_DDM_VCC) / SFF_VCC_FACTOR,
 	    if_sff_uint(&ddm, SFF8472_AW_VCC + ALRM_HIGH) / SFF_VCC_FACTOR,
@@ -468,7 +499,7 @@ if_sff8472(int s, const char *ifname, int dump, const struct if_sffpage *pg0)
 	    if_sff_uint(&ddm, SFF8472_AW_VCC + WARN_HIGH) / SFF_VCC_FACTOR,
 	    if_sff_uint(&ddm, SFF8472_AW_VCC + WARN_LOW) / SFF_VCC_FACTOR);
 
-	printf(", bias current ");
+	printf(", bias current: ");
 	if_sff_printalarm(" mA", 0,
 	    if_sff_uint(&ddm, SFF8472_DDM_TX_BIAS) / SFF_BIAS_FACTOR,
 	    if_sff_uint(&ddm, SFF8472_AW_TX_BIAS + ALRM_HIGH) / SFF_BIAS_FACTOR,
@@ -476,7 +507,7 @@ if_sff8472(int s, const char *ifname, int dump, const struct if_sffpage *pg0)
 	    if_sff_uint(&ddm, SFF8472_AW_TX_BIAS + WARN_HIGH) / SFF_BIAS_FACTOR,
 	    if_sff_uint(&ddm, SFF8472_AW_TX_BIAS + WARN_LOW) / SFF_BIAS_FACTOR);
 
-	printf("\n\ttemp ");
+	printf("\n\ttemp: ");
 	if_sff_printalarm(" C", 1,
 	    if_sff_int(&ddm, SFF8472_DDM_TEMP) / SFF_TEMP_FACTOR,
 	    if_sff_int(&ddm, SFF8472_AW_TEMP + ALRM_HIGH) / SFF_TEMP_FACTOR,
@@ -484,7 +515,7 @@ if_sff8472(int s, const char *ifname, int dump, const struct if_sffpage *pg0)
 	    if_sff_int(&ddm, SFF8472_AW_TEMP + WARN_HIGH) / SFF_TEMP_FACTOR,
 	    if_sff_int(&ddm, SFF8472_AW_TEMP + WARN_LOW) / SFF_TEMP_FACTOR);
 
-	printf("\n\ttx ");
+	printf("\n\ttx: ");
 	if_sff_printalarm(" dBm", 1,
 	    if_sff_power2dbm(&ddm, SFF8472_DDM_TX_POWER),
 	    if_sff_power2dbm(&ddm, SFF8472_AW_TX_POWER + ALRM_HIGH),
@@ -492,7 +523,7 @@ if_sff8472(int s, const char *ifname, int dump, const struct if_sffpage *pg0)
 	    if_sff_power2dbm(&ddm, SFF8472_AW_TX_POWER + WARN_HIGH),
 	    if_sff_power2dbm(&ddm, SFF8472_AW_TX_POWER + WARN_LOW));
 
-	printf("\n\trx ");
+	printf("\n\trx: ");
 	if_sff_printalarm(" dBm", 1,
 	    if_sff_power2dbm(&ddm, SFF8472_DDM_RX_POWER),
 	    if_sff_power2dbm(&ddm, SFF8472_AW_RX_POWER + ALRM_HIGH),
