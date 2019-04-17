@@ -1847,9 +1847,8 @@ void amdgpu_pm_print_power_states(struct amdgpu_device *adev)
 
 int amdgpu_pm_sysfs_init(struct amdgpu_device *adev)
 {
-	STUB();
-	return -ENOSYS;
-#if 0
+	return 0;
+#ifdef __linux__
 	int ret;
 
 	if (adev->pm.sysfs_initialized)
@@ -1961,8 +1960,7 @@ int amdgpu_pm_sysfs_init(struct amdgpu_device *adev)
 
 void amdgpu_pm_sysfs_fini(struct amdgpu_device *adev)
 {
-	STUB();
-#if 0
+#ifdef __linux__
 	if (adev->pm.dpm_enabled == 0)
 		return;
 
