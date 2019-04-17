@@ -429,7 +429,11 @@ struct amdgpu_crtc {
 	u32 lb_vblank_lead_lines;
 	struct drm_display_mode hw_mode;
 	/* for virtual dce */
+#ifdef __linux__
 	struct hrtimer vblank_timer;
+#else
+	struct timeout vblank_timer;
+#endif
 	enum amdgpu_interrupt_state vsync_timer_enabled;
 
 	int otg_inst;
