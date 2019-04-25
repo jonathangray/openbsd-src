@@ -1,4 +1,4 @@
-/* $OpenBSD: tmux.h,v 1.879 2019/04/02 09:03:39 nicm Exp $ */
+/* $OpenBSD: tmux.h,v 1.881 2019/04/23 20:36:55 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -233,8 +233,8 @@ enum {
 
 /* Termcap codes. */
 enum tty_code_code {
-	TTYC_AX = 0,
 	TTYC_ACSC,
+	TTYC_AX,
 	TTYC_BCE,
 	TTYC_BEL,
 	TTYC_BLINK,
@@ -814,7 +814,7 @@ struct window_pane {
 	int		 argc;
 	char	       **argv;
 	char		*shell;
-	const char	*cwd;
+	char		*cwd;
 
 	pid_t		 pid;
 	char		 tty[TTY_NAME_MAX];
@@ -1514,6 +1514,15 @@ struct key_table {
 };
 RB_HEAD(key_tables, key_table);
 
+/* Option data. */
+RB_HEAD(options_array, options_array_item);
+union options_value {
+	char				 *string;
+	long long			  number;
+	struct style			  style;
+	struct options_array		  array;
+};
+
 /* Option table entries. */
 enum options_table_type {
 	OPTIONS_TABLE_STRING,
@@ -1522,8 +1531,7 @@ enum options_table_type {
 	OPTIONS_TABLE_COLOUR,
 	OPTIONS_TABLE_FLAG,
 	OPTIONS_TABLE_CHOICE,
-	OPTIONS_TABLE_STYLE,
-	OPTIONS_TABLE_ARRAY,
+	OPTIONS_TABLE_STYLE
 };
 
 enum options_table_scope {
@@ -1533,10 +1541,13 @@ enum options_table_scope {
 	OPTIONS_TABLE_WINDOW,
 };
 
+#define OPTIONS_TABLE_IS_ARRAY 0x1
+
 struct options_table_entry {
 	const char		 *name;
 	enum options_table_type	  type;
 	enum options_table_scope  scope;
+	int                       flags;
 
 	u_int			  minimum;
 	u_int			  maximum;
@@ -1560,6 +1571,32 @@ struct options_table_entry {
 #define CMD_SRCDST_SESSION_USAGE "[-s src-session] [-t dst-session]"
 #define CMD_SRCDST_CLIENT_USAGE "[-s src-client] [-t dst-client]"
 #define CMD_BUFFER_USAGE "[-b buffer-name]"
+
+/* Spawn common context. */
+struct spawn_context {
+	struct cmdq_item	 *item;
+
+	struct session		 *s;
+	struct winlink		 *wl;
+
+	struct window_pane	 *wp0;
+	struct layout_cell	 *lc;
+
+	const char		 *name;
+	char			**argv;
+	int			  argc;
+
+	int			  idx;
+	const char		 *cwd;
+
+	int			  flags;
+#define SPAWN_KILL 0x1
+#define SPAWN_DETACHED 0x2
+#define SPAWN_RESPAWN 0x4
+#define SPAWN_BEFORE 0x8
+#define SPAWN_NONOTIFY 0x10
+#define SPAWN_FULLSIZE 0x20
+};
 
 /* tmux.c */
 extern struct hooks	*global_hooks;
@@ -1695,14 +1732,14 @@ struct options_entry *options_get_only(struct options *, const char *);
 struct options_entry *options_get(struct options *, const char *);
 void		 options_remove(struct options_entry *);
 void		 options_array_clear(struct options_entry *);
-const char	*options_array_get(struct options_entry *, u_int);
+union options_value *options_array_get(struct options_entry *, u_int);
 int		 options_array_set(struct options_entry *, u_int, const char *,
 		     int);
 void		 options_array_assign(struct options_entry *, const char *);
 struct options_array_item *options_array_first(struct options_entry *);
 struct options_array_item *options_array_next(struct options_array_item *);
 u_int		 options_array_item_index(struct options_array_item *);
-const char	*options_array_item_value(struct options_array_item *);
+union options_value *options_array_item_value(struct options_array_item *);
 int		 options_isarray(struct options_entry *);
 int		 options_isstring(struct options_entry *);
 const char	*options_tostring(struct options_entry *, int, int);
@@ -2232,17 +2269,17 @@ struct window	*window_find_by_id_str(const char *);
 struct window	*window_find_by_id(u_int);
 void		 window_update_activity(struct window *);
 struct window	*window_create(u_int, u_int);
-struct window	*window_create_spawn(const char *, int, char **, const char *,
-		     const char *, const char *, struct environ *,
-		     struct termios *, u_int, u_int, u_int, char **);
+void		 window_destroy(struct window *);
+void		 window_pane_set_event(struct window_pane *);
 struct window_pane *window_get_active_at(struct window *, u_int, u_int);
 struct window_pane *window_find_string(struct window *, const char *);
 int		 window_has_pane(struct window *, struct window_pane *);
-int		 window_set_active_pane(struct window *, struct window_pane *);
+int		 window_set_active_pane(struct window *, struct window_pane *,
+		     int);
 void		 window_redraw_active_switch(struct window *,
 		     struct window_pane *);
-struct window_pane *window_add_pane(struct window *, struct window_pane *, int,
-		     int, u_int);
+struct window_pane *window_add_pane(struct window *, struct window_pane *,
+		     u_int, int);
 void		 window_resize(struct window *, u_int, u_int);
 int		 window_zoom(struct window_pane *);
 int		 window_unzoom(struct window *);
@@ -2259,9 +2296,6 @@ void		 window_destroy_panes(struct window *);
 struct window_pane *window_pane_find_by_id_str(const char *);
 struct window_pane *window_pane_find_by_id(u_int);
 int		 window_pane_destroy_ready(struct window_pane *);
-int		 window_pane_spawn(struct window_pane *, int, char **,
-		     const char *, const char *, const char *, struct environ *,
-		     struct termios *, char **);
 void		 window_pane_resize(struct window_pane *, u_int, u_int);
 void		 window_pane_alternate_on(struct window_pane *,
 		     struct grid_cell *, int);
@@ -2319,7 +2353,7 @@ void		 layout_resize_pane_to(struct window_pane *, enum layout_type,
 		     u_int);
 void		 layout_assign_pane(struct layout_cell *, struct window_pane *);
 struct layout_cell *layout_split_pane(struct window_pane *, enum layout_type,
-		     int, int, int);
+		     int, int);
 void		 layout_close_pane(struct window_pane *);
 int		 layout_spread_cell(struct window *, struct layout_cell *);
 void		 layout_spread_out(struct window_pane *);
@@ -2418,10 +2452,9 @@ int		 session_alive(struct session *);
 struct session	*session_find(const char *);
 struct session	*session_find_by_id_str(const char *);
 struct session	*session_find_by_id(u_int);
-struct session	*session_create(const char *, const char *, int, char **,
-		     const char *, const char *, struct environ *,
-		     struct options *, struct termios *, int, char **);
-void		 session_destroy(struct session *, const char *);
+struct session	*session_create(const char *, const char *, const char *,
+		     struct environ *, struct options *, struct termios *);
+void		 session_destroy(struct session *, int,  const char *);
 void		 session_add_ref(struct session *, const char *);
 void		 session_remove_ref(struct session *, const char *);
 int		 session_check_name(const char *);
@@ -2492,5 +2525,9 @@ int		 style_equal(struct style *, struct style *);
 void		 style_set(struct style *, const struct grid_cell *);
 void		 style_copy(struct style *, struct style *);
 int		 style_is_default(struct style *);
+
+/* spawn.c */
+struct winlink	*spawn_window(struct spawn_context *, char **);
+struct window_pane *spawn_pane(struct spawn_context *, char **);
 
 #endif /* TMUX_H */
