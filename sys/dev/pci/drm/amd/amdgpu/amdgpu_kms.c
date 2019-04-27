@@ -1844,6 +1844,8 @@ out:
 		/* balance pm_runtime_get_sync in amdgpu_driver_unload_kms */
 		if (amdgpu_device_is_px(dev))
 			pm_runtime_put_noidle(dev->dev);
+		amdgpu_fatal_error = 1;
+		amdgpu_forcedetach(adev);
 	}
 }
 
