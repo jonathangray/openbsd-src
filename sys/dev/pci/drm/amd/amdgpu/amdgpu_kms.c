@@ -1885,7 +1885,7 @@ amdgpu_detach(struct device *self, int flags)
 	}
 	
 	if (adev->ddev != NULL) {
-		config_detach((struct device *)adev->ddev, flags);
+		config_detach(adev->ddev->dev, flags);
 		adev->ddev = NULL;
 	}
 
