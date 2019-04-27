@@ -2748,7 +2748,7 @@ void amdgpu_device_fini(struct amdgpu_device *adev)
 	adev->rio_mem_size = 0;
 
 	if (adev->rmmio_size > 0)
-		bus_space_unmap(adev->rio_mem_bst, adev->rmmio_bsh,
+		bus_space_unmap(adev->rmmio_bst, adev->rmmio_bsh,
 		    adev->rmmio_size);
 	adev->rmmio_size = 0;
 #endif
