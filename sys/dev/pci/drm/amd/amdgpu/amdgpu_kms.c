@@ -41,6 +41,11 @@
 #include "vga.h"
 
 #if NVGA > 0
+#include <dev/ic/mc6845reg.h>
+#include <dev/ic/pcdisplayvar.h>
+#include <dev/ic/vgareg.h>
+#include <dev/ic/vgavar.h>
+
 extern int vga_console_attached;
 #endif
 
@@ -1377,15 +1382,17 @@ amdgpu_attach(struct device *parent, struct device *self, void *aux)
 	    (pci_conf_read(pa->pa_pc, pa->pa_tag, PCI_COMMAND_STATUS_REG)
 	    & (PCI_COMMAND_IO_ENABLE | PCI_COMMAND_MEM_ENABLE))
 	    == (PCI_COMMAND_IO_ENABLE | PCI_COMMAND_MEM_ENABLE)) {
-		adev->console = 1;
+		adev->primary = 1;
 #if NVGA > 0
+		adev->console = vga_is_console(pa->pa_iot, -1);
 		vga_console_attached = 1;
 #endif
 	}
 #if NEFIFB > 0
-	if (efifb_is_console(pa)) {
-		adev->console = 1;
-		efifb_cndetach();
+	if (efifb_is_primary(pa)) {
+		adev->primary = 1;
+		adev->console = efifb_is_console(pa);
+		efifb_detach();
 	}
 #endif
 
@@ -1536,7 +1543,7 @@ amdgpu_attach(struct device *parent, struct device *self, void *aux)
 		amdgpu_kms_driver.driver_features |= DRIVER_ATOMIC;
 }
 
-	dev = drm_attach_pci(&amdgpu_kms_driver, pa, 0, adev->console,
+	dev = drm_attach_pci(&amdgpu_kms_driver, pa, 0, adev->primary,
 	    self, NULL);
 	adev->ddev = dev;
 	adev->pdev = dev->pdev;
@@ -1572,8 +1579,6 @@ amdgpu_attach(struct device *parent, struct device *self, void *aux)
 	config_mountroot(self, amdgpu_attachhook);
 }
 
-extern void mainbus_efifb_reattach(void);
-
 int
 amdgpu_forcedetach(struct amdgpu_device *adev)
 {
@@ -1581,7 +1586,7 @@ amdgpu_forcedetach(struct amdgpu_device *adev)
 	pcitag_t		 tag = adev->pa_tag;
 
 #if NVGA > 0
-	if (adev->console)
+	if (adev->primary)
 		vga_console_attached = 0;
 #endif
 
@@ -1592,8 +1597,8 @@ amdgpu_forcedetach(struct amdgpu_device *adev)
 		config_detach(&adev->self, 0);
 		return pci_probe_device(sc, tag, NULL, NULL);
 #if NEFIFB > 0
-	} else if (adev->console) {
-		mainbus_efifb_reattach();
+	} else if (adev->primary) {
+		efifb_reattach();
 	}
 #endif
 
@@ -1807,6 +1812,7 @@ amdgpu_attachhook(struct device *self)
 	amdgpu_stdscreen.fontheight = ri->ri_font->fontheight;
 
 	aa.console = adev->console;
+	aa.primary = adev->primary;
 	aa.scrdata = &amdgpu_screenlist;
 	aa.accessops = &amdgpu_accessops;
 	aa.accesscookie = ri;
