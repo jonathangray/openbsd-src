@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd.c,v 1.143 2019/04/23 20:36:55 nicm Exp $ */
+/* $OpenBSD: cmd.c,v 1.146 2019/05/03 18:42:40 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -335,10 +335,6 @@ cmd_try_alias(int *argc, char ***argv)
 	a = options_array_first(o);
 	while (a != NULL) {
 		ov = options_array_item_value(a);
-		if (ov == NULL) {
-			a = options_array_next(a);
-			continue;
-		}
 		cp = strchr(ov->string, '=');
 		if (cp != NULL &&
 		    (size_t)(cp - ov->string) == wanted &&
@@ -485,17 +481,16 @@ cmd_mouse_at(struct window_pane *wp, struct mouse_event *m, u_int *xp,
 	u_int	x, y;
 
 	if (last) {
-		x = m->lx;
-		y = m->ly;
+		x = m->lx + m->ox;
+		y = m->ly + m->oy;
 	} else {
-		x = m->x;
-		y = m->y;
+		x = m->x + m->ox;
+		y = m->y + m->oy;
 	}
+	log_debug("%s: x=%u, y=%u%s", __func__, x, y, last ? " (last)" : "");
 
 	if (m->statusat == 0 && y > 0)
 		y--;
-	else if (m->statusat > 0 && y >= (u_int)m->statusat)
-		y = m->statusat - 1;
 
 	if (x < wp->xoff || x >= wp->xoff + wp->sx)
 		return (-1);

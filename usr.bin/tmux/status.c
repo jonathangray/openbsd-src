@@ -1,4 +1,4 @@
-/* $OpenBSD: status.c,v 1.194 2019/04/23 20:40:03 nicm Exp $ */
+/* $OpenBSD: status.c,v 1.197 2019/05/03 10:00:48 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -320,7 +320,7 @@ status_redraw(struct client *c)
 	struct session			*s = c->session;
 	struct screen_write_ctx		 ctx;
 	struct grid_cell		 gc;
-	u_int				 lines, i, width = c->tty.sx;
+	u_int				 lines, i, n, width = c->tty.sx;
 	int				 flags, force = 0, changed = 0;
 	struct options_entry		*o;
 	union options_value		*ov;
@@ -364,15 +364,17 @@ status_redraw(struct client *c)
 
 	/* Write the status lines. */
 	o = options_get(s->options, "status-format");
-	if (o == NULL)
-		screen_write_clearscreen(&ctx, gc.bg);
-	else {
+	if (o == NULL) {
+		for (n = 0; n < width * lines; n++)
+			screen_write_putc(&ctx, &gc, ' ');
+	} else {
 		for (i = 0; i < lines; i++) {
 			screen_write_cursormove(&ctx, 0, i, 0);
 
 			ov = options_array_get(o, i);
 			if (ov == NULL) {
-				screen_write_clearline(&ctx, gc.bg);
+				for (n = 0; n < width; n++)
+					screen_write_putc(&ctx, &gc, ' ');
 				continue;
 			}
 			sle = &sl->entries[i];
@@ -386,7 +388,10 @@ status_redraw(struct client *c)
 			}
 			changed = 1;
 
-			screen_write_clearline(&ctx, gc.bg);
+			for (n = 0; n < width; n++)
+				screen_write_putc(&ctx, &gc, ' ');
+			screen_write_cursormove(&ctx, 0, i, 0);
+
 			status_free_ranges(&sle->ranges);
 			format_draw(&ctx, &gc, width, expanded, &sle->ranges);
 
@@ -1293,7 +1298,6 @@ status_prompt_complete_list(u_int *size, const char *s)
 	size_t					  slen = strlen(s), valuelen;
 	struct options_entry			 *o;
 	struct options_array_item		 *a;
-	union options_value			 *ov;
 	const char				 *layouts[] = {
 		"even-horizontal", "even-vertical", "main-horizontal",
 		"main-vertical", "tiled", NULL
@@ -1322,13 +1326,9 @@ status_prompt_complete_list(u_int *size, const char *s)
 	if (o != NULL) {
 		a = options_array_first(o);
 		while (a != NULL) {
-			ov = options_array_item_value(a);
-			if (ov == NULL)
-				goto next;
-
-			value = ov->string;
+			value = options_array_item_value(a)->string;
 			if ((cp = strchr(value, '=')) == NULL)
-			    goto next;
+				goto next;
 			valuelen = cp - value;
 			if (slen > valuelen || strncmp(value, s, slen) != 0)
 				goto next;

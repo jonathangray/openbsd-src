@@ -1,5 +1,5 @@
 #!/bin/ksh
-#	$OpenBSD: install.sub,v 1.1116 2019/04/24 18:11:00 florian Exp $
+#	$OpenBSD: install.sub,v 1.1120 2019/05/03 20:38:15 krw Exp $
 #
 # Copyright (c) 1997-2015 Todd Miller, Theo de Raadt, Ken Westerback
 # Copyright (c) 2015, Robert Peichaer <rpe@openbsd.org>
@@ -903,14 +903,11 @@ __EOT
 }
 
 # Obtain and output the inet information related to interface $1.
-# Outputs one of:
-# DOWN
-# UP
-# UP\n<addr> <netmask> <rest of inet line>[\n<more inet lines>]
+# Outputs:
+# <flags>\n<addr> <netmask> <rest of inet line>[\n<more inet lines>]
 v4_info() {
 	ifconfig $1 inet | sed -n '
-		1s/.*<UP,.*/UP/p
-		1s/.*<.*/DOWN/p
+		1s/.*flags=.*<\(.*\)>.*/\1/p
 		/inet/s/netmask //
 		/.inet /s///p'
 }
@@ -1069,14 +1066,10 @@ v4_config() {
 }
 
 # Obtain and output the inet6 information related to interface $1.
-# Outputs one of:
-# DOWN
-# UP
-# UP\n<addr> <prefixlen> <rest of inet6 line>[\n<more inet6 lines>]
+# <flags>\n<addr> <prefixlen> <rest of inet6 line>[\n<more inet6 lines>]
 v6_info() {
 	ifconfig $1 inet6 | sed -n '
-		1s/.*<UP,.*/UP/p
-		1s/.*<.*/DOWN/p
+		1s/.*flags=.*<\(.*\)>.*/\1/p
 		/scopeid/d
 		/inet6/s/prefixlen //
 		/.inet6 /s///p'
@@ -1124,53 +1117,47 @@ v6_config() {
 	# Preset the default answers by preserving possibly existing
 	# configuration from previous runs.
 	set -- $(v6_info $_if)
-	[[ -n $2 ]] && { _addr=$2; _prefixlen=$3; }
+	if [[ $1 == *AUTOCONF6* ]]; then
+		_addr=autoconf
+	elif [[ -n $2 ]]; then
+		_addr=$2
+		_prefixlen=$3
+	fi
 
-	ifconfig $_if inet6 >/dev/null 2>&1 && _prompt="or 'autoconf' "
-	_prompt="IPv6 address for $_if? (${_prompt}or 'none')"
+	_prompt="IPv6 address for $_if? (or 'autoconf' or 'none')"
 
 	while :; do
 		ask_until "$_prompt" "${_addr:-none}"
 		case $resp in
-		none)	return
+		none)	ifconfig $_if -inet6
+			return
 			;;
 		autoconf)
-			if ! ifconfig $_if inet6 >/dev/null 2>&1; then
-				echo "No INET6 support."
-				$AI && exit 1 || return
-			fi
-			if ifconfig $_if inet6 autoconf; then
-				echo "inet6 autoconf" >>$_hn
-				return
-			else
-				echo "inet6 autoconf failed."
-				$AI && exit 1 || return
-			fi
+			# Nuke any existing address before enabling autoconf.
+			ifconfig $_if -inet6
+			ifconfig $_if inet6 autoconf up
+			echo "inet6 autoconf" >>$_hn
+			return
 			;;
-		*)	_addr=$resp
+		*)	ifconfig $_if inet6 -autoconf
+			_addr=${resp%%/*}
+			if [[ $resp == */* ]]; then
+				_prefixlen=${resp##$_addr/}
+			else
+				ask_until "IPv6 prefix length for $_if?" "64"
+				_prefixlen=$resp
+			fi
+			if ifconfig $_if inet6 $_addr/$_prefixlen up; then
+				echo "inet6 $_addr $_prefixlen" >>$_hn
+				add_hostent "$_addr" "$_name"
+				v6_defroute $_if
+				return
+			fi
 			;;
 		esac
 
-		# Ask for prefix length if the user did not use CIDR notation.
-		if [[ $_addr == */* ]]; then
-			_prefixlen=
-		else
-			ask_until "IPv6 prefix length for $_if?" "${_prefixlen:=64}"
-			_prefixlen=$resp
-		fi
-
-		if ifconfig $_if inet6 $_addr ${_prefixlen:+prefixlen $_prefixlen} up; then
-			echo "inet6 $_addr $_prefixlen" >>$_hn
-			add_hostent "${_addr%%/*}" "$_name"
-			break
-		else
-			_addr=
-			_prefixlen=
-			$AI && exit 1
-		fi
+		$AI && exit 1
 	done
-
-	v6_defroute $_if
 }
 
 # Perform an 802.11 network scan on interface $1 and cache the result a file.
@@ -2782,6 +2769,11 @@ finish_up() {
 	# ensure it references the kernel as /bsd.
 	sha256 /mnt/bsd | (umask 077; sed 's,/mnt,,' >/mnt/var/db/kernel.SHA256)
 
+	# Keep SHA256.sig from installed sets for sysupgrade(8).
+	if [[ -f /tmp/SHA256.sig ]]; then
+		cp /tmp/SHA256.sig /mnt/var/db/installed.SHA256.sig
+	fi
+
 	if [[ -f $_kernel_dir.tgz ]]; then
 		echo -n "Relinking to create unique kernel..."
 		(
@@ -3275,7 +3267,7 @@ umount -af >/dev/null 2>&1
 # Make sure only successful dhcp requests retain their state.
 for _if in $(get_ifs dhcp); do
 	set -- $(v4_info $_if)
-	[[ $1 == UP && -n $2 ]] && continue
+	[[ $1 == @(UP,*) && -n $2 ]] && continue
 	ifconfig $_if delete down -group dhcp 2>/dev/null
 done
 
@@ -3388,7 +3380,7 @@ elif $UU; then
 
 	cat <<__EOT > /auto_upgrade.conf
 Location of sets = disk
-Pathname to the sets = /home/upgrade/
+Pathname to the sets = /home/_sysupgrade/
 Set name(s) = done
 __EOT
 	get_responsefile
