@@ -1,4 +1,4 @@
-/*	$Id: extern.h,v 1.28 2019/04/04 04:19:54 bket Exp $ */
+/*	$Id: extern.h,v 1.30 2019/05/08 21:30:11 benno Exp $ */
 /*
  * Copyright (c) 2019 Kristaps Dzonsons <kristaps@bsd.lv>
  *
@@ -106,7 +106,6 @@ struct	opts {
 	int		 sender;		/* --sender */
 	int		 server;		/* --server */
 	int		 recursive;		/* -r */
-	int		 verbose;		/* -v */
 	int		 dry_run;		/* -n */
 	int		 preserve_times;	/* -t */
 	int		 preserve_perms;	/* -p */
@@ -213,54 +212,49 @@ void	freeargs(arglist *);
 struct	download;
 struct	upload;
 
+extern int verbose;
+
 #define MINIMUM(a, b) (((a) < (b)) ? (a) : (b))
 
-#define LOG0(_sess, _fmt, ...) \
-	rsync_log((_sess), __FILE__, __LINE__, -1, (_fmt), ##__VA_ARGS__)
-#define LOG1(_sess, _fmt, ...) \
-	rsync_log((_sess), __FILE__, __LINE__, 0, (_fmt), ##__VA_ARGS__)
-#define LOG2(_sess, _fmt, ...) \
-	rsync_log((_sess), __FILE__, __LINE__, 1, (_fmt), ##__VA_ARGS__)
-#define LOG3(_sess, _fmt, ...) \
-	rsync_log((_sess), __FILE__, __LINE__, 2, (_fmt), ##__VA_ARGS__)
-#define LOG4(_sess, _fmt, ...) \
-	rsync_log((_sess), __FILE__, __LINE__, 3, (_fmt), ##__VA_ARGS__)
-#define ERRX1(_sess, _fmt, ...) \
-	rsync_errx1((_sess), __FILE__, __LINE__, (_fmt), ##__VA_ARGS__)
-#define WARNX(_sess, _fmt, ...) \
-	rsync_warnx((_sess), __FILE__, __LINE__, (_fmt), ##__VA_ARGS__)
-#define WARN(_sess, _fmt, ...) \
-	rsync_warn((_sess), 0, __FILE__, __LINE__, (_fmt), ##__VA_ARGS__)
-#define WARN1(_sess, _fmt, ...) \
-	rsync_warn((_sess), 1, __FILE__, __LINE__, (_fmt), ##__VA_ARGS__)
-#define WARN2(_sess, _fmt, ...) \
-	rsync_warn((_sess), 2, __FILE__, __LINE__, (_fmt), ##__VA_ARGS__)
-#define ERR(_sess, _fmt, ...) \
-	rsync_err((_sess), __FILE__, __LINE__, (_fmt), ##__VA_ARGS__)
-#define ERRX(_sess, _fmt, ...) \
-	rsync_errx((_sess), __FILE__, __LINE__, (_fmt), ##__VA_ARGS__)
+#define LOG0(_fmt, ...) \
+	rsync_log(__FILE__, __LINE__, -1, (_fmt), ##__VA_ARGS__)
+#define LOG1(_fmt, ...) \
+	rsync_log(__FILE__, __LINE__, 0, (_fmt), ##__VA_ARGS__)
+#define LOG2(_fmt, ...) \
+	rsync_log(__FILE__, __LINE__, 1, (_fmt), ##__VA_ARGS__)
+#define LOG3(_fmt, ...) \
+	rsync_log(__FILE__, __LINE__, 2, (_fmt), ##__VA_ARGS__)
+#define LOG4(_fmt, ...) \
+	rsync_log(__FILE__, __LINE__, 3, (_fmt), ##__VA_ARGS__)
+#define ERRX1(_fmt, ...) \
+	rsync_errx1(__FILE__, __LINE__, (_fmt), ##__VA_ARGS__)
+#define WARNX(_fmt, ...) \
+	rsync_warnx(__FILE__, __LINE__, (_fmt), ##__VA_ARGS__)
+#define WARN(_fmt, ...) \
+	rsync_warn(0, __FILE__, __LINE__, (_fmt), ##__VA_ARGS__)
+#define WARN1(_fmt, ...) \
+	rsync_warn(1, __FILE__, __LINE__, (_fmt), ##__VA_ARGS__)
+#define WARN2(_fmt, ...) \
+	rsync_warn(2, __FILE__, __LINE__, (_fmt), ##__VA_ARGS__)
+#define ERR(_fmt, ...) \
+	rsync_err(__FILE__, __LINE__, (_fmt), ##__VA_ARGS__)
+#define ERRX(_fmt, ...) \
+	rsync_errx(__FILE__, __LINE__, (_fmt), ##__VA_ARGS__)
 
-void		  rsync_log(struct sess *,
-			const char *, size_t, int, const char *, ...)
-			__attribute__((format(printf, 5, 6)));
-void		  rsync_warnx1(struct sess *,
-			const char *, size_t, const char *, ...)
+void		  rsync_log(const char *, size_t, int, const char *, ...)
 			__attribute__((format(printf, 4, 5)));
-void		  rsync_warn(struct sess *, int,
-			const char *, size_t, const char *, ...)
-			__attribute__((format(printf, 5, 6)));
-void		  rsync_warnx(struct sess *, const char *,
-			size_t, const char *, ...)
+void		  rsync_warnx1(const char *, size_t, const char *, ...)
+			__attribute__((format(printf, 3, 4)));
+void		  rsync_warn(int, const char *, size_t, const char *, ...)
 			__attribute__((format(printf, 4, 5)));
-void		  rsync_err(struct sess *, const char *,
-			size_t, const char *, ...)
-			__attribute__((format(printf, 4, 5)));
-void		  rsync_errx(struct sess *, const char *,
-			size_t, const char *, ...)
-			__attribute__((format(printf, 4, 5)));
-void		  rsync_errx1(struct sess *, const char *,
-			size_t, const char *, ...)
-			__attribute__((format(printf, 4, 5)));
+void		  rsync_warnx(const char *, size_t, const char *, ...)
+			__attribute__((format(printf, 3, 4)));
+void		  rsync_err(const char *, size_t, const char *, ...)
+			__attribute__((format(printf, 3, 4)));
+void		  rsync_errx(const char *, size_t, const char *, ...)
+			__attribute__((format(printf, 3, 4)));
+void		  rsync_errx1(const char *, size_t, const char *, ...)
+			__attribute__((format(printf, 3, 4)));
 
 int		  flist_del(struct sess *, int,
 			const struct flist *, size_t);
@@ -281,7 +275,7 @@ char		**fargs_cmdline(struct sess *, const struct fargs *, size_t *);
 
 int		  io_read_buf(struct sess *, int, void *, size_t);
 int		  io_read_byte(struct sess *, int, uint8_t *);
-int		  io_read_check(struct sess *, int);
+int		  io_read_check(int);
 int		  io_read_flush(struct sess *, int);
 int		  io_read_int(struct sess *, int, int32_t *);
 int		  io_read_uint(struct sess *, int, uint32_t *);
@@ -303,17 +297,13 @@ void		  io_lowbuffer_int(struct sess *, void *,
 void		  io_lowbuffer_buf(struct sess *, void *,
 			size_t *, size_t, const void *, size_t);
 
-void		  io_buffer_int(struct sess *, void *,
-			size_t *, size_t, int32_t);
-void		  io_buffer_buf(struct sess *, void *,
-			size_t *, size_t, const void *, size_t);
+void		  io_buffer_int(void *, size_t *, size_t, int32_t);
+void		  io_buffer_buf(void *, size_t *, size_t, const void *, size_t);
 
-void		  io_unbuffer_int(struct sess *, const void *,
+void		  io_unbuffer_int(const void *,
 			size_t *, size_t, int32_t *);
-int		  io_unbuffer_size(struct sess *, const void *,
-			size_t *, size_t, size_t *);
-void		  io_unbuffer_buf(struct sess *, const void *,
-			size_t *, size_t, void *, size_t);
+int		  io_unbuffer_size(const void *, size_t *, size_t, size_t *);
+void		  io_unbuffer_buf(const void *, size_t *, size_t, void *, size_t);
 
 int		  rsync_receiver(struct sess *, int, int, const char *);
 int		  rsync_sender(struct sess *, int, int, size_t, char **);
@@ -334,13 +324,12 @@ int		  rsync_uploader_tail(struct upload *, struct sess *);
 struct download	 *download_alloc(struct sess *, int,
 			const struct flist *, size_t, int);
 void		  download_free(struct download *);
-struct upload	 *upload_alloc(struct sess *, const char *, int, int, size_t,
+struct upload	 *upload_alloc(const char *, int, int, size_t,
 			const struct flist *, size_t, mode_t);
 void		  upload_free(struct upload *);
 
 struct blkset	 *blk_recv(struct sess *, int, const char *);
-void		  blk_recv_ack(struct sess *,
-			char [20], const struct blkset *, int32_t);
+void		  blk_recv_ack(char [20], const struct blkset *, int32_t);
 void		  blk_match(struct sess *, const struct blkset *,
 			const char *, struct blkstat *);
 int		  blk_send(struct sess *, int, size_t,
@@ -353,23 +342,22 @@ void		  hash_slow(const void *, size_t,
 void		  hash_file(const void *, size_t,
 			unsigned char *, const struct sess *);
 
-int		  mkpath(struct sess *, char *);
+int		  mkpath(char *);
 
 int		  mkstempat(int, char *);
 char		 *mkstemplinkat(char*, int, char *);
 char		 *mkstempfifoat(int, char *);
 char		 *mkstempnodat(int, char *, mode_t, dev_t);
 char		 *mkstempsock(const char *, char *);
-int		  mktemplate(struct sess *, char **, const char *, int);
+int		  mktemplate(char **, const char *, int);
 
-char		 *symlink_read(struct sess *, const char *);
-char		 *symlinkat_read(struct sess *, int, const char *);
+char		 *symlink_read(const char *);
+char		 *symlinkat_read(int, const char *);
 
 int		  sess_stats_send(struct sess *, int);
 int		  sess_stats_recv(struct sess *, int);
 
-int		  idents_add(struct sess *, int, struct ident **, size_t *,
-			int32_t);
+int		  idents_add(int, struct ident **, size_t *, int32_t);
 void		  idents_assign_gid(struct sess *,
 			struct flist *, size_t, const struct ident *, size_t);
 void		  idents_assign_uid(struct sess *,

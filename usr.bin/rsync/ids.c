@@ -1,4 +1,4 @@
-/*	$Id: ids.c,v 1.11 2019/03/31 09:26:05 deraadt Exp $ */
+/*	$Id: ids.c,v 1.13 2019/05/08 21:30:11 benno Exp $ */
 /*
  * Copyright (c) 2019 Kristaps Dzonsons <kristaps@bsd.lv>
  *
@@ -142,7 +142,7 @@ idents_remap(struct sess *sess, int isgid, struct ident *ids, size_t idsz)
 		else
 			ids[i].mapped = id;
 
-		LOG4(sess, "remapped identifier %s: %d -> %d",
+		LOG4("remapped identifier %s: %d -> %d",
 		    ids[i].name, ids[i].id, ids[i].mapped);
 	}
 }
@@ -155,8 +155,7 @@ idents_remap(struct sess *sess, int isgid, struct ident *ids, size_t idsz)
  * Return zero on failure, non-zero on success.
  */
 int
-idents_add(struct sess *sess, int isgid,
-	struct ident **ids, size_t *idsz, int32_t id)
+idents_add(int isgid, struct ident **ids, size_t *idsz, int32_t id)
 {
 	struct group	*grp;
 	struct passwd	*usr;
@@ -180,23 +179,23 @@ idents_add(struct sess *sess, int isgid,
 	assert(i == *idsz);
 	if (isgid) {
 		if ((grp = getgrgid((gid_t)id)) == NULL) {
-			ERR(sess, "%d: unknown gid", id);
+			ERR("%d: unknown gid", id);
 			return 0;
 		}
 		name = grp->gr_name;
 	} else {
 		if ((usr = getpwuid((uid_t)id)) == NULL) {
-			ERR(sess, "%d: unknown uid", id);
+			ERR("%d: unknown uid", id);
 			return 0;
 		}
 		name = usr->pw_name;
 	}
 
 	if ((sz = strlen(name)) > UINT8_MAX) {
-		ERRX(sess, "%d: name too long: %s", id, name);
+		ERRX("%d: name too long: %s", id, name);
 		return 0;
 	} else if (sz == 0) {
-		ERRX(sess, "%d: zero-length name", id);
+		ERRX("%d: zero-length name", id);
 		return 0;
 	}
 
@@ -204,18 +203,18 @@ idents_add(struct sess *sess, int isgid,
 
 	pp = reallocarray(*ids, *idsz + 1, sizeof(struct ident));
 	if (pp == NULL) {
-		ERR(sess, "reallocarray");
+		ERR("reallocarray");
 		return 0;
 	}
 	*ids = pp;
 	(*ids)[*idsz].id = id;
 	(*ids)[*idsz].name = strdup(name);
 	if ((*ids)[*idsz].name == NULL) {
-		ERR(sess, "strdup");
+		ERR("strdup");
 		return 0;
 	}
 
-	LOG4(sess, "adding identifier to list: %s (%u)",
+	LOG4("adding identifier to list: %s (%u)",
 	    (*ids)[*idsz].name, (*ids)[*idsz].id);
 	(*idsz)++;
 	return 1;
@@ -239,19 +238,19 @@ idents_send(struct sess *sess,
 		sz = strlen(ids[i].name);
 		assert(sz > 0 && sz <= UINT8_MAX);
 		if (!io_write_uint(sess, fd, ids[i].id)) {
-			ERRX1(sess, "io_write_uint");
+			ERRX1("io_write_uint");
 			return 0;
 		} else if (!io_write_byte(sess, fd, sz)) {
-			ERRX1(sess, "io_write_byte");
+			ERRX1("io_write_byte");
 			return 0;
 		} else if (!io_write_buf(sess, fd, ids[i].name, sz)) {
-			ERRX1(sess, "io_write_buf");
+			ERRX1("io_write_buf");
 			return 0;
 		}
 	}
 
 	if (!io_write_int(sess, fd, 0)) {
-		ERRX1(sess, "io_write_int");
+		ERRX1("io_write_int");
 		return 0;
 	}
 
@@ -274,7 +273,7 @@ idents_recv(struct sess *sess,
 
 	for (;;) {
 		if (!io_read_uint(sess, fd, &id)) {
-			ERRX1(sess, "io_read_uint");
+			ERRX1("io_read_uint");
 			return 0;
 		} else if (id == 0)
 			break;
@@ -282,7 +281,7 @@ idents_recv(struct sess *sess,
 		pp = reallocarray(*ids,
 			*idsz + 1, sizeof(struct ident));
 		if (pp == NULL) {
-			ERR(sess, "reallocarray");
+			ERR("reallocarray");
 			return 0;
 		}
 		*ids = pp;
@@ -295,19 +294,19 @@ idents_recv(struct sess *sess,
 		 */
 
 		if (!io_read_byte(sess, fd, &sz)) {
-			ERRX1(sess, "io_read_byte");
+			ERRX1("io_read_byte");
 			return 0;
 		} else if (sz == 0)
-			WARNX(sess, "zero-length name in identifier list");
+			WARNX("zero-length name in identifier list");
 
 		(*ids)[*idsz].id = id;
 		(*ids)[*idsz].name = calloc(sz + 1, 1);
 		if ((*ids)[*idsz].name == NULL) {
-			ERR(sess, "calloc");
+			ERR("calloc");
 			return 0;
 		}
 		if (!io_read_buf(sess, fd, (*ids)[*idsz].name, sz)) {
-			ERRX1(sess, "io_read_buf");
+			ERRX1("io_read_buf");
 			return 0;
 		}
 		(*idsz)++;

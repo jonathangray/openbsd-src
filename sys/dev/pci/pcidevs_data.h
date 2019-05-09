@@ -2,7 +2,7 @@
  * THIS FILE AUTOMATICALLY GENERATED.  DO NOT EDIT.
  *
  * generated from:
- *	OpenBSD: pcidevs,v 1.1886 2019/05/02 09:49:36 kettenis Exp 
+ *	OpenBSD: pcidevs,v 1.1888 2019/05/08 15:16:16 jsg Exp 
  */
 
 /*	$NetBSD: pcidevs,v 1.30 1997/06/24 06:20:24 thorpej Exp $	*/
@@ -1296,15 +1296,15 @@ static const struct pci_known_product pci_known_products[] = {
 	    "AMD64 17h PCIE",
 	},
 	{
-	    PCI_VENDOR_AMD, PCI_PRODUCT_AMD_CCPV5A,
-	    "Cryptographic Co-processor v5a",
+	    PCI_VENDOR_AMD, PCI_PRODUCT_AMD_AMD64_17_CCP_1,
+	    "AMD64 17h Crypto",
 	},
 	{
 	    PCI_VENDOR_AMD, PCI_PRODUCT_AMD_AMD64_17_HDA,
 	    "AMD64 17h HD Audio",
 	},
 	{
-	    PCI_VENDOR_AMD, PCI_PRODUCT_AMD_AMD64_17_XHCI,
+	    PCI_VENDOR_AMD, PCI_PRODUCT_AMD_AMD64_17_XHCI_1,
 	    "AMD64 17h xHCI",
 	},
 	{
@@ -1344,8 +1344,8 @@ static const struct pci_known_product pci_known_products[] = {
 	    "AMD64 17h Data Fabric",
 	},
 	{
-	    PCI_VENDOR_AMD, PCI_PRODUCT_AMD_CCPV5B,
-	    "Cryptographic Co-processor v5b",
+	    PCI_VENDOR_AMD, PCI_PRODUCT_AMD_AMD64_17_CCP_2,
+	    "AMD64 17h Crypto",
 	},
 	{
 	    PCI_VENDOR_AMD, PCI_PRODUCT_AMD_AMD64_17_PCIE_4,
@@ -1404,8 +1404,8 @@ static const struct pci_known_product pci_known_products[] = {
 	    "AMD64 16h Host",
 	},
 	{
-	    PCI_VENDOR_AMD, PCI_PRODUCT_AMD_CCPV3,
-	    "Cryptographic Co-processor v3",
+	    PCI_VENDOR_AMD, PCI_PRODUCT_AMD_AMD64_16_CCP,
+	    "AMD64 16h Crypto",
 	},
 	{
 	    PCI_VENDOR_AMD, PCI_PRODUCT_AMD_AMD64_16_3X_RC,
@@ -1512,8 +1512,8 @@ static const struct pci_known_product pci_known_products[] = {
 	    "AMD64 17h/1xh PCIE",
 	},
 	{
-	    PCI_VENDOR_AMD, PCI_PRODUCT_AMD_CCPV5C,
-	    "Cryptographic Co-processor v5c",
+	    PCI_VENDOR_AMD, PCI_PRODUCT_AMD_AMD64_17_1X_CCP,
+	    "AMD64 17h/1xh Crypto",
 	},
 	{
 	    PCI_VENDOR_AMD, PCI_PRODUCT_AMD_AMD64_17_1X_XHCI_1,
@@ -1524,8 +1524,12 @@ static const struct pci_known_product pci_known_products[] = {
 	    "AMD64 17h/1xh xHCI",
 	},
 	{
-	    PCI_VENDOR_AMD, PCI_PRODUCT_AMD_RAVENRIDGE_HDA,
-	    "Raven Ridge HD Audio",
+	    PCI_VENDOR_AMD, PCI_PRODUCT_AMD_AMD64_17_1X_ACP,
+	    "AMD64 17h/1xh I2S Audio",
+	},
+	{
+	    PCI_VENDOR_AMD, PCI_PRODUCT_AMD_AMD64_17_1X_HDA,
+	    "AMD64 17h/1xh HD Audio",
 	},
 	{
 	    PCI_VENDOR_AMD, PCI_PRODUCT_AMD_AMD64_17_1X_DF_0,
@@ -19452,8 +19456,212 @@ static const struct pci_known_product pci_known_products[] = {
 	    "200 Series HD Audio",
 	},
 	{
+	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_H310_LPC,
+	    "H310 LPC",
+	},
+	{
+	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_H370_LPC,
+	    "H370 LPC",
+	},
+	{
+	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_Z390_LPC,
+	    "Z390 LPC",
+	},
+	{
+	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_Q370_LPC,
+	    "Q370 LPC",
+	},
+	{
+	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_B360_LPC,
+	    "B360 LPC",
+	},
+	{
+	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_C246_LPC,
+	    "C246 LPC",
+	},
+	{
+	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_C242_LPC,
+	    "C242 LPC",
+	},
+	{
+	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_QM370_LPC,
+	    "QM370 LPC",
+	},
+	{
+	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_HM370_LPC,
+	    "HM370 LPC",
+	},
+	{
+	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_CM246_LPC,
+	    "CM246 LPC",
+	},
+	{
+	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_300SERIES_SMB,
+	    "300 Series SMBus",
+	},
+	{
+	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_300SERIES_SPI,
+	    "300 Series SPI",
+	},
+	{
+	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_300SERIES_PCIE_21,
+	    "300 Series PCIE",
+	},
+	{
+	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_300SERIES_PCIE_22,
+	    "300 Series PCIE",
+	},
+	{
+	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_300SERIES_PCIE_23,
+	    "300 Series PCIE",
+	},
+	{
+	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_300SERIES_PCIE_24,
+	    "300 Series PCIE",
+	},
+	{
+	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_300SERIES_PCIE_9,
+	    "300 Series PCIE",
+	},
+	{
+	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_300SERIES_PCIE_10,
+	    "300 Series PCIE",
+	},
+	{
+	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_300SERIES_PCIE_11,
+	    "300 Series PCIE",
+	},
+	{
+	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_300SERIES_PCIE_12,
+	    "300 Series PCIE",
+	},
+	{
+	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_300SERIES_PCIE_13,
+	    "300 Series PCIE",
+	},
+	{
+	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_300SERIES_PCIE_14,
+	    "300 Series PCIE",
+	},
+	{
+	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_300SERIES_PCIE_15,
+	    "300 Series PCIE",
+	},
+	{
+	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_300SERIES_PCIE_16,
+	    "300 Series PCIE",
+	},
+	{
+	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_300SERIES_PCIE_1,
+	    "300 Series PCIE",
+	},
+	{
+	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_300SERIES_PCIE_2,
+	    "300 Series PCIE",
+	},
+	{
+	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_300SERIES_PCIE_3,
+	    "300 Series PCIE",
+	},
+	{
+	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_300SERIES_PCIE_4,
+	    "300 Series PCIE",
+	},
+	{
+	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_300SERIES_PCIE_5,
+	    "300 Series PCIE",
+	},
+	{
+	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_300SERIES_PCIE_6,
+	    "300 Series PCIE",
+	},
+	{
+	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_300SERIES_PCIE_7,
+	    "300 Series PCIE",
+	},
+	{
+	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_300SERIES_PCIE_8,
+	    "300 Series PCIE",
+	},
+	{
+	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_300SERIES_PCIE_17,
+	    "300 Series PCIE",
+	},
+	{
+	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_300SERIES_PCIE_18,
+	    "300 Series PCIE",
+	},
+	{
+	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_300SERIES_PCIE_19,
+	    "300 Series PCIE",
+	},
+	{
+	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_300SERIES_PCIE_20,
+	    "300 Series PCIE",
+	},
+	{
+	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_300SERIES_CAVS,
+	    "300 Series cAVS",
+	},
+	{
+	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_300SERIES_AHCI_1,
+	    "300 Series AHCI",
+	},
+	{
+	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_300SERIES_AHCI_2,
+	    "300 Series AHCI",
+	},
+	{
+	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_300SERIES_RAID_1,
+	    "300 Series RAID",
+	},
+	{
+	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_300SERIES_RAID_2,
+	    "300 Series RAID",
+	},
+	{
+	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_300SERIES_RAID_3,
+	    "300 Series RAID",
+	},
+	{
+	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_300SERIES_HECI_1,
+	    "300 Series HECI",
+	},
+	{
+	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_300SERIES_HECI_2,
+	    "300 Series HECI",
+	},
+	{
+	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_300SERIES_IDER,
+	    "300 Series IDER",
+	},
+	{
+	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_300SERIES_KT,
+	    "300 Series KT",
+	},
+	{
+	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_300SERIES_HECI_3,
+	    "300 Series HECI",
+	},
+	{
+	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_300SERIES_HECI_4,
+	    "300 Series HECI",
+	},
+	{
+	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_300SERIES_XHCI,
+	    "300 Series xHCI",
+	},
+	{
+	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_300SERIES_SSRAM,
+	    "300 Series Shared SRAM",
+	},
+	{
 	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_WL_9560_2,
 	    "Dual Band Wireless AC 9560",
+	},
+	{
+	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_300SERIES_THERM,
+	    "300 Series Thermal",
 	},
 	{
 	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_21152,

@@ -1,6 +1,6 @@
 #!/bin/ksh
 #
-# $OpenBSD: sysupgrade.sh,v 1.14 2019/05/04 19:48:55 naddy Exp $
+# $OpenBSD: sysupgrade.sh,v 1.16 2019/05/08 15:06:20 naddy Exp $
 #
 # Copyright (c) 1997-2015 Todd Miller, Theo de Raadt, Ken Westerback
 # Copyright (c) 2015 Robert Peichaer <rpe@openbsd.org>
@@ -38,12 +38,15 @@ usage()
 
 unpriv()
 {
-	local _file=$2 _rc=0 _user=_syspatch
+	local _file _rc=0 _user=_syspatch
 
-	if [[ $1 == -f && -n ${_file} ]]; then
+	if [[ $1 == -f ]]; then
+		_file=$2
+		shift 2
+	fi
+ 	if [[ -n ${_file} ]]; then
 		>${_file}
 		chown "${_user}" "${_file}"
-		shift 2
 	fi
 	(($# >= 1))
 
@@ -130,7 +133,8 @@ cd ${SETSDIR}
 unpriv -f SHA256.sig ftp -Vmo SHA256.sig ${URL}SHA256.sig
 
 if cmp -s /var/db/installed.SHA256.sig SHA256.sig && ! $FORCE; then
-	ug_err "Already on latest snapshot."
+	echo "Already on latest snapshot."
+	exit 0
 fi
 
 _KEY=openbsd-${_KERNV[0]%.*}${_KERNV[0]#*.}-base.pub
