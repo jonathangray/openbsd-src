@@ -263,11 +263,12 @@ static void drm_sched_entity_kill_jobs_cb(struct dma_fence *f,
  */
 long drm_sched_entity_flush(struct drm_sched_entity *entity, long timeout)
 {
-	STUB();
-	return 0;
-#if 0
 	struct drm_gpu_scheduler *sched;
+#ifdef __linux__
 	struct task_struct *last_user;
+#else
+	struct proc *last_user;
+#endif
 	long ret = timeout;
 
 	sched = entity->rq->sched;
@@ -275,7 +276,11 @@ long drm_sched_entity_flush(struct drm_sched_entity *entity, long timeout)
 	 * The client will not queue more IBs during this fini, consume existing
 	 * queued IBs or discard them on SIGKILL
 	*/
+#ifdef __linux__
 	if (current->flags & PF_EXITING) {
+#else
+	if (curproc->p_p->ps_flags & PS_EXITING) {
+#endif
 		if (timeout)
 			ret = wait_event_timeout(
 					sched->job_scheduled,
@@ -286,13 +291,20 @@ long drm_sched_entity_flush(struct drm_sched_entity *entity, long timeout)
 
 
 	/* For killed process disable any more IBs enqueue right now */
+#ifdef notyet
+#ifdef __linux__
 	last_user = cmpxchg(&entity->last_user, current->group_leader, NULL);
 	if ((!last_user || last_user == current->group_leader) &&
 	    (current->flags & PF_EXITING) && (current->exit_code == SIGKILL))
+#else
+	last_user = cmpxchg(&entity->last_user, curproc->p_p->ps_mainproc, NULL);
+	if ((!last_user || last_user == curproc->p_p->ps_mainproc) &&
+	    (curproc->p_p->ps_flags & PS_EXITING) && (current->exit_code == SIGKILL))
 		drm_sched_rq_remove_entity(entity->rq, entity);
+#endif
+#endif
 
 	return ret;
-#endif
 }
 EXPORT_SYMBOL(drm_sched_entity_flush);
 
