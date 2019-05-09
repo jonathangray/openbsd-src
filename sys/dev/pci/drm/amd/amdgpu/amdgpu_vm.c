@@ -56,18 +56,45 @@
  * SI supports 16.
  */
 
-#ifdef notyet
-
 #define START(node) ((node)->start)
 #define LAST(node) ((node)->last)
 
+#ifdef __linux__
 INTERVAL_TREE_DEFINE(struct amdgpu_bo_va_mapping, rb, uint64_t, __subtree_last,
 		     START, LAST, static, amdgpu_vm_it)
+#else
+static struct amdgpu_bo_va_mapping *
+amdgpu_vm_it_iter_first(struct rb_root_cached *rb, uint64_t start, uint64_t last)
+{
+	STUB();
+	return NULL;
+}
+
+static struct amdgpu_bo_va_mapping *
+amdgpu_vm_it_iter_next(struct amdgpu_bo_va_mapping *node, uint64_t start,
+    uint64_t last)
+{
+	STUB();
+	return NULL;
+}
+
+static void
+amdgpu_vm_it_remove(struct amdgpu_bo_va_mapping *node,
+    struct rb_root_cached *root) 
+{
+	STUB();
+}
+
+static void
+amdgpu_vm_it_insert(struct amdgpu_bo_va_mapping *node,
+    struct rb_root_cached *root)
+{
+	STUB();
+}
+#endif
 
 #undef START
 #undef LAST
-
-#endif
 
 /**
  * struct amdgpu_pte_update_params - Local structure
@@ -2027,15 +2054,12 @@ static void amdgpu_vm_bo_insert_map(struct amdgpu_device *adev,
 				    struct amdgpu_bo_va *bo_va,
 				    struct amdgpu_bo_va_mapping *mapping)
 {
-	STUB();
 	struct amdgpu_vm *vm = bo_va->base.vm;
 	struct amdgpu_bo *bo = bo_va->base.bo;
 
 	mapping->bo_va = bo_va;
 	list_add(&mapping->list, &bo_va->invalids);
-#ifdef notyet
 	amdgpu_vm_it_insert(mapping, &vm->va);
-#endif
 
 	if (mapping->flags & AMDGPU_PTE_PRT)
 		amdgpu_vm_prt_get(adev);
@@ -2071,7 +2095,6 @@ int amdgpu_vm_bo_map(struct amdgpu_device *adev,
 		     uint64_t saddr, uint64_t offset,
 		     uint64_t size, uint64_t flags)
 {
-	STUB();
 	struct amdgpu_bo_va_mapping *mapping, *tmp;
 	struct amdgpu_bo *bo = bo_va->base.bo;
 	struct amdgpu_vm *vm = bo_va->base.vm;
@@ -2091,7 +2114,6 @@ int amdgpu_vm_bo_map(struct amdgpu_device *adev,
 	saddr /= AMDGPU_GPU_PAGE_SIZE;
 	eaddr /= AMDGPU_GPU_PAGE_SIZE;
 
-#ifdef notyet
 	tmp = amdgpu_vm_it_iter_first(&vm->va, saddr, eaddr);
 	if (tmp) {
 		/* bo and tmp overlap, invalid addr */
@@ -2100,7 +2122,6 @@ int amdgpu_vm_bo_map(struct amdgpu_device *adev,
 			tmp->start, tmp->last + 1);
 		return -EINVAL;
 	}
-#endif
 
 	mapping = kmalloc(sizeof(*mapping), GFP_KERNEL);
 	if (!mapping)
@@ -2197,7 +2218,6 @@ int amdgpu_vm_bo_unmap(struct amdgpu_device *adev,
 		       struct amdgpu_bo_va *bo_va,
 		       uint64_t saddr)
 {
-	STUB();
 	struct amdgpu_bo_va_mapping *mapping;
 	struct amdgpu_vm *vm = bo_va->base.vm;
 	bool valid = true;
@@ -2222,9 +2242,7 @@ int amdgpu_vm_bo_unmap(struct amdgpu_device *adev,
 	}
 
 	list_del(&mapping->list);
-#ifdef notyet
 	amdgpu_vm_it_remove(mapping, &vm->va);
-#endif
 	mapping->bo_va = NULL;
 	trace_amdgpu_vm_bo_unmap(bo_va, mapping);
 
@@ -2254,9 +2272,6 @@ int amdgpu_vm_bo_clear_mappings(struct amdgpu_device *adev,
 				struct amdgpu_vm *vm,
 				uint64_t saddr, uint64_t size)
 {
-	STUB();
-	return -ENOSYS;
-#if 0
 	struct amdgpu_bo_va_mapping *before, *after, *tmp, *next;
 	DRM_LIST_HEAD(removed);
 	uint64_t eaddr;
@@ -2342,7 +2357,6 @@ int amdgpu_vm_bo_clear_mappings(struct amdgpu_device *adev,
 	}
 
 	return 0;
-#endif
 }
 
 /**
@@ -2360,11 +2374,7 @@ int amdgpu_vm_bo_clear_mappings(struct amdgpu_device *adev,
 struct amdgpu_bo_va_mapping *amdgpu_vm_bo_lookup_mapping(struct amdgpu_vm *vm,
 							 uint64_t addr)
 {
-	STUB();
-	return NULL;
-#if 0
 	return amdgpu_vm_it_iter_first(&vm->va, addr, addr);
-#endif
 }
 
 /**
@@ -2377,8 +2387,6 @@ struct amdgpu_bo_va_mapping *amdgpu_vm_bo_lookup_mapping(struct amdgpu_vm *vm,
  */
 void amdgpu_vm_bo_trace_cs(struct amdgpu_vm *vm, struct ww_acquire_ctx *ticket)
 {
-	STUB();
-#if 0
 	struct amdgpu_bo_va_mapping *mapping;
 
 	if (!trace_amdgpu_vm_bo_cs_enabled())
@@ -2396,7 +2404,6 @@ void amdgpu_vm_bo_trace_cs(struct amdgpu_vm *vm, struct ww_acquire_ctx *ticket)
 
 		trace_amdgpu_vm_bo_cs(mapping);
 	}
-#endif
 }
 
 /**
@@ -2412,7 +2419,6 @@ void amdgpu_vm_bo_trace_cs(struct amdgpu_vm *vm, struct ww_acquire_ctx *ticket)
 void amdgpu_vm_bo_rmv(struct amdgpu_device *adev,
 		      struct amdgpu_bo_va *bo_va)
 {
-	STUB();
 	struct amdgpu_bo_va_mapping *mapping, *next;
 	struct amdgpu_vm *vm = bo_va->base.vm;
 
@@ -2424,18 +2430,14 @@ void amdgpu_vm_bo_rmv(struct amdgpu_device *adev,
 
 	list_for_each_entry_safe(mapping, next, &bo_va->valids, list) {
 		list_del(&mapping->list);
-#ifdef notyet
 		amdgpu_vm_it_remove(mapping, &vm->va);
-#endif
 		mapping->bo_va = NULL;
 		trace_amdgpu_vm_bo_unmap(bo_va, mapping);
 		list_add(&mapping->list, &vm->freed);
 	}
 	list_for_each_entry_safe(mapping, next, &bo_va->invalids, list) {
 		list_del(&mapping->list);
-#ifdef notyet
 		amdgpu_vm_it_remove(mapping, &vm->va);
-#endif
 		amdgpu_vm_free_mapping(adev, vm, mapping,
 				       bo_va->last_pt_update);
 	}
@@ -2911,9 +2913,7 @@ void amdgpu_vm_fini(struct amdgpu_device *adev, struct amdgpu_vm *vm)
 	rbtree_postorder_for_each_entry_safe(mapping, tmp,
 					     &vm->va, rb) {
 		list_del(&mapping->list);
-#ifdef notyet
 		amdgpu_vm_it_remove(mapping, &vm->va);
-#endif
 		kfree(mapping);
 	}
 #endif
