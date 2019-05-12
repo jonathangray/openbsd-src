@@ -1,4 +1,4 @@
-/*	$OpenBSD: vmd.c,v 1.108 2018/12/09 12:26:38 claudio Exp $	*/
+/*	$OpenBSD: vmd.c,v 1.112 2019/05/11 23:07:46 jasper Exp $	*/
 
 /*
  * Copyright (c) 2015 Reyk Floeter <reyk@openbsd.org>
@@ -101,7 +101,7 @@ vmd_dispatch_control(int fd, struct privsep_proc *p, struct imsg *imsg)
 		if (vmc.vmc_flags == 0) {
 			/* start an existing VM with pre-configured options */
 			if (!(ret == -1 && errno == EALREADY &&
-			    vm->vm_running == 0)) {
+			    !(vm->vm_state & VM_STATE_RUNNING))) {
 				res = errno;
 				cmd = IMSG_VMDOP_START_VM_RESPONSE;
 			}
@@ -128,12 +128,12 @@ vmd_dispatch_control(int fd, struct privsep_proc *p, struct imsg *imsg)
 				res = ENOENT;
 				cmd = IMSG_VMDOP_TERMINATE_VM_RESPONSE;
 				break;
-			} else if (vm->vm_shutdown &&
+			} else if ((vm->vm_state & VM_STATE_SHUTDOWN) &&
 			    (flags & VMOP_FORCE) == 0) {
 				res = EALREADY;
 				cmd = IMSG_VMDOP_TERMINATE_VM_RESPONSE;
 				break;
-			} else if (vm->vm_running == 0) {
+			} else if (!(vm->vm_state & VM_STATE_RUNNING)) {
 				res = EINVAL;
 				cmd = IMSG_VMDOP_TERMINATE_VM_RESPONSE;
 				break;
@@ -233,7 +233,6 @@ vmd_dispatch_control(int fd, struct privsep_proc *p, struct imsg *imsg)
 			cmd = IMSG_VMDOP_SEND_VM_RESPONSE;
 			close(imsg->fd);
 			break;
-		} else {
 		}
 		vmr.vmr_id = vid.vid_id;
 		log_debug("%s: sending fd to vmm", __func__);
@@ -282,7 +281,7 @@ vmd_dispatch_control(int fd, struct privsep_proc *p, struct imsg *imsg)
 			cmd = IMSG_VMDOP_START_VM_RESPONSE;
 			close(imsg->fd);
 		} else {
-			vm->vm_received = 1;
+			vm->vm_state |= VM_STATE_RECEIVED;
 			config_setvm(ps, vm, imsg->hdr.peerid,
 			    vmc.vmc_owner.uid);
 			log_debug("%s: sending fd to vmm", __func__);
@@ -345,6 +344,7 @@ vmd_dispatch_vmm(int fd, struct privsep_proc *p, struct imsg *imsg)
 		log_info("%s: paused vm %d successfully",
 		    vm->vm_params.vmc_params.vcp_name,
 		    vm->vm_vmid);
+		vm->vm_state |= VM_STATE_PAUSED;
 		break;
 	case IMSG_VMDOP_UNPAUSE_VM_RESPONSE:
 		IMSG_SIZE_CHECK(imsg, &vmr);
@@ -357,6 +357,7 @@ vmd_dispatch_vmm(int fd, struct privsep_proc *p, struct imsg *imsg)
 		log_info("%s: unpaused vm %d successfully.",
 		    vm->vm_params.vmc_params.vcp_name,
 		    vm->vm_vmid);
+		vm->vm_state &= ~VM_STATE_PAUSED;
 		break;
 	case IMSG_VMDOP_START_VM_RESPONSE:
 		IMSG_SIZE_CHECK(imsg, &vmr);
@@ -413,7 +414,7 @@ vmd_dispatch_vmm(int fd, struct privsep_proc *p, struct imsg *imsg)
 			break;
 		if (vmr.vmr_result == 0) {
 			/* Mark VM as shutting down */
-			vm->vm_shutdown = 1;
+			vm->vm_state |= VM_STATE_SHUTDOWN;
 		}
 		break;
 	case IMSG_VMDOP_SEND_VM_RESPONSE:
@@ -483,12 +484,9 @@ vmd_dispatch_vmm(int fd, struct privsep_proc *p, struct imsg *imsg)
 			if (vm->vm_ttyname != NULL)
 				strlcpy(vir.vir_ttyname, vm->vm_ttyname,
 				    sizeof(vir.vir_ttyname));
-			if (vm->vm_shutdown) {
-				/* XXX there might be a nicer way */
-				(void)strlcat(vir.vir_info.vir_name,
-				    " - stopping",
-				    sizeof(vir.vir_info.vir_name));
-			}
+			log_debug("%s: running vm: %d, vm_state: 0x%x",
+			    __func__, vm->vm_vmid, vm->vm_state);
+			vir.vir_state = vm->vm_state;
 			/* get the user id who started the vm */
 			vir.vir_uid = vm->vm_uid;
 			vir.vir_gid = vm->vm_params.vmc_owner.gid;
@@ -508,7 +506,7 @@ vmd_dispatch_vmm(int fd, struct privsep_proc *p, struct imsg *imsg)
 		 * kernel id to indicate that they are not running.
 		 */
 		TAILQ_FOREACH(vm, env->vmd_vms, vm_entry) {
-			if (!vm->vm_running) {
+			if (!(vm->vm_state & VM_STATE_RUNNING)) {
 				memset(&vir, 0, sizeof(vir));
 				vir.vir_info.vir_id = vm->vm_vmid;
 				strlcpy(vir.vir_info.vir_name,
@@ -522,6 +520,9 @@ vmd_dispatch_vmm(int fd, struct privsep_proc *p, struct imsg *imsg)
 				/* get the configured user id for this vm */
 				vir.vir_uid = vm->vm_params.vmc_owner.uid;
 				vir.vir_gid = vm->vm_params.vmc_owner.gid;
+				log_debug("%s: vm: %d, vm_state: 0x%x",
+				    __func__, vm->vm_vmid, vm->vm_state);
+				vir.vir_state = vm->vm_state;
 				if (proc_compose_imsg(ps, PROC_CONTROL, -1,
 				    IMSG_VMDOP_GET_INFO_VM_DATA,
 				    imsg->hdr.peerid, -1, &vir,
@@ -550,6 +551,10 @@ vmd_check_vmh(struct vm_dump_header *vmh)
 	unsigned int code, leaf;
 	unsigned int a, b, c, d;
 
+	if (strncmp(vmh->vmh_signature, VM_DUMP_SIGNATURE, strlen(VM_DUMP_SIGNATURE)) != 0) {
+		log_warnx("%s: incompatible dump signature", __func__);
+		return (-1);
+	}
 
 	if (vmh->vmh_version != VM_DUMP_VERSION) {
 		log_warnx("%s: incompatible dump version", __func__);
@@ -902,7 +907,7 @@ vmd_configure(void)
 	}
 
 	TAILQ_FOREACH(vm, env->vmd_vms, vm_entry) {
-		if (vm->vm_disabled) {
+		if (vm->vm_state & VM_STATE_DISABLED) {
 			log_debug("%s: not creating vm %s (disabled)",
 			    __func__,
 			    vm->vm_params.vmc_params.vcp_name);
@@ -947,7 +952,7 @@ vmd_reload(unsigned int reset, const char *filename)
 		if (reload) {
 			TAILQ_FOREACH_SAFE(vm, env->vmd_vms, vm_entry,
 			    next_vm) {
-				if (vm->vm_running == 0) {
+				if (!(vm->vm_state & VM_STATE_RUNNING)) {
 					DPRINTF("%s: calling vm_remove",
 					    __func__);
 					vm_remove(vm, __func__);
@@ -979,8 +984,8 @@ vmd_reload(unsigned int reset, const char *filename)
 		}
 
 		TAILQ_FOREACH(vm, env->vmd_vms, vm_entry) {
-			if (vm->vm_running == 0) {
-				if (vm->vm_disabled) {
+			if (!(vm->vm_state & VM_STATE_RUNNING)) {
+				if (vm->vm_state & VM_STATE_DISABLED) {
 					log_debug("%s: not creating vm %s"
 					    " (disabled)", __func__,
 					    vm->vm_params.vmc_params.vcp_name);
@@ -1109,8 +1114,7 @@ vm_stop(struct vmd_vm *vm, int keeptty, const char *caller)
 	    __func__, ps->ps_title[privsep_process], caller,
 	    vm->vm_vmid, keeptty ? ", keeping tty open" : "");
 
-	vm->vm_running = 0;
-	vm->vm_shutdown = 0;
+	vm->vm_state &= ~(VM_STATE_RUNNING | VM_STATE_SHUTDOWN);
 
 	user_inc(&vm->vm_params.vmc_params, vm->vm_user, 0);
 	user_put(vm->vm_user);
@@ -1290,7 +1294,7 @@ vm_register(struct privsep *ps, struct vmop_create_params *vmc,
 	vm->vm_pid = -1;
 	vm->vm_tty = -1;
 	vm->vm_receive_fd = -1;
-	vm->vm_paused = 0;
+	vm->vm_state &= ~VM_STATE_PAUSED;
 	vm->vm_user = usr;
 
 	for (i = 0; i < VMM_MAX_DISKS_PER_VM; i++)
@@ -1579,8 +1583,8 @@ vm_checkperm(struct vmd_vm *vm, struct vmop_owner *vmo, uid_t uid)
 		 * check user of running vm (the owner of a running vm can
 		 * be different to (or more specific than) the configured owner.
 		 */
-		if ((vm->vm_running && vm->vm_uid == uid) ||
-		    (!vm->vm_running && vmo->uid == uid))
+		if (((vm->vm_state & VM_STATE_RUNNING) && vm->vm_uid == uid) ||
+		    (!(vm->vm_state & VM_STATE_RUNNING) && vmo->uid == uid))
 			return (0);
 	}
 

@@ -655,7 +655,7 @@
 ./usr/lib/libtermlib.so.14.0
 ./usr/lib/libtls.so.19.6
 ./usr/lib/libusbhid.so.7.0
-./usr/lib/libutil.so.13.0
+./usr/lib/libutil.so.13.1
 ./usr/lib/libz.so.5.0
 ./usr/lib/locate
 ./usr/lib/locate/src.db
@@ -2748,7 +2748,6 @@
 ./usr/share/man/man4/macppc
 ./usr/share/man/man4/octeon
 ./usr/share/man/man4/sgi
-./usr/share/man/man4/socppc
 ./usr/share/man/man4/sparc64
 ./usr/share/man/man5
 ./usr/share/man/man6
@@ -2769,7 +2768,6 @@
 ./usr/share/man/man8/macppc
 ./usr/share/man/man8/octeon
 ./usr/share/man/man8/sgi
-./usr/share/man/man8/socppc
 ./usr/share/man/man8/sparc64
 ./usr/share/man/man8/user.8
 ./usr/share/man/man8/useradd.8
