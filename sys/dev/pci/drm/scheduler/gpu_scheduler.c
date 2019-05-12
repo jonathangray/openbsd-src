@@ -291,7 +291,6 @@ long drm_sched_entity_flush(struct drm_sched_entity *entity, long timeout)
 
 
 	/* For killed process disable any more IBs enqueue right now */
-#ifdef notyet
 #ifdef __linux__
 	last_user = cmpxchg(&entity->last_user, current->group_leader, NULL);
 	if ((!last_user || last_user == current->group_leader) &&
@@ -299,10 +298,10 @@ long drm_sched_entity_flush(struct drm_sched_entity *entity, long timeout)
 #else
 	last_user = cmpxchg(&entity->last_user, curproc->p_p->ps_mainproc, NULL);
 	if ((!last_user || last_user == curproc->p_p->ps_mainproc) &&
-	    (curproc->p_p->ps_flags & PS_EXITING) && (current->exit_code == SIGKILL))
+	    (curproc->p_p->ps_flags & PS_EXITING) &&
+	    (curproc->p_xstat == SIGKILL))
+#endif
 		drm_sched_rq_remove_entity(entity->rq, entity);
-#endif
-#endif
 
 	return ret;
 }
