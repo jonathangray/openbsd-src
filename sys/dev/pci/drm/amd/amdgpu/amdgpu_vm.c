@@ -64,9 +64,17 @@ INTERVAL_TREE_DEFINE(struct amdgpu_bo_va_mapping, rb, uint64_t, __subtree_last,
 		     START, LAST, static, amdgpu_vm_it)
 #else
 static struct amdgpu_bo_va_mapping *
-amdgpu_vm_it_iter_first(struct rb_root_cached *rb, uint64_t start, uint64_t last)
+amdgpu_vm_it_iter_first(struct rb_root_cached *root, uint64_t start,
+    uint64_t last)
 {
-	STUB();
+	struct amdgpu_bo_va_mapping *node;
+	struct rb_node *rb;
+
+	for (rb = rb_first(root); rb; rb = rb_next(rb)) {
+		node = rb_entry(rb, typeof(*node), rb);
+		if (LAST(node) >= start && START(node) <= last)
+			return node;
+	}
 	return NULL;
 }
 
@@ -75,6 +83,13 @@ amdgpu_vm_it_iter_next(struct amdgpu_bo_va_mapping *node, uint64_t start,
     uint64_t last)
 {
 	STUB();
+	struct rb_node *rb = &node->rb;
+
+	for (rb = rb_next(rb); rb; rb = rb_next(rb)) {
+		node = rb_entry(rb, typeof(*node), rb);
+		if (LAST(node) >= start && START(node) <= last)
+			return node;
+	}
 	return NULL;
 }
 
@@ -82,14 +97,29 @@ static void
 amdgpu_vm_it_remove(struct amdgpu_bo_va_mapping *node,
     struct rb_root_cached *root) 
 {
-	STUB();
+	rb_erase(&node->rb, root);
 }
 
 static void
 amdgpu_vm_it_insert(struct amdgpu_bo_va_mapping *node,
     struct rb_root_cached *root)
 {
-	STUB();
+	struct rb_node **iter = &root->rb_node;
+	struct rb_node *parent = NULL;
+	struct amdgpu_bo_va_mapping *iter_node;
+
+	while (*iter) {
+		parent = *iter;
+		iter_node = rb_entry(*iter, struct amdgpu_bo_va_mapping, rb);
+
+		if (node->start < iter_node->start)
+			iter = &(*iter)->rb_left;
+		else
+			iter = &(*iter)->rb_right;
+	}
+
+	rb_link_node(&node->rb, parent, iter);
+	rb_insert_color(&node->rb, root);
 }
 #endif
 
