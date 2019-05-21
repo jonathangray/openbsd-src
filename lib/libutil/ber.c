@@ -1,4 +1,4 @@
-/*	$OpenBSD: ber.c,v 1.6 2019/05/12 20:25:10 rob Exp $ */
+/*	$OpenBSD: ber.c,v 1.8 2019/05/21 13:29:44 rob Exp $ */
 
 /*
  * Copyright (c) 2007, 2012 Reyk Floeter <reyk@openbsd.org>
@@ -293,7 +293,7 @@ ber_get_string(struct ber_element *elm, char **s)
 {
 	if (elm->be_encoding != BER_TYPE_OCTETSTRING)
 		return -1;
-	/* Some components use getstring on binary data containing \0 */
+	/* XXX some components use getstring on binary data containing \0 */
 #if 0
 	if (memchr(elm->be_val, '\0', elm->be_len) != NULL)
 		return -1;
@@ -1265,7 +1265,7 @@ ber_read_element(struct ber *ber, struct ber_element *elm)
 				return -1;
 
 			/* smallest number of contents octets only */
-			if ((i == 1 && last == 0 && (c & 0x80) == 0) || 
+			if ((i == 1 && last == 0 && (c & 0x80) == 0) ||
 			    (i == 1 && last == 0xff && (c & 0x80) != 0))
 				return -1;
 

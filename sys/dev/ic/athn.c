@@ -1,4 +1,4 @@
-/*	$OpenBSD: athn.c,v 1.102 2019/03/01 07:39:56 stsp Exp $	*/
+/*	$OpenBSD: athn.c,v 1.104 2019/05/17 01:05:20 kevlo Exp $	*/
 
 /*-
  * Copyright (c) 2009 Damien Bergamini <damien.bergamini@free.fr>
@@ -788,7 +788,7 @@ athn_init_pll(struct athn_softc *sc, const struct ieee80211_channel *c)
 		/* Switch core clock to 117MHz. */
 		AR_WRITE_BARRIER(sc);
 		DELAY(500);
-		AR_WRITE(sc, 0x50050, 0x304);
+		AR_WRITE(sc, AR9271_CLOCK_CONTROL, 0x304);
 	}
 	AR_WRITE_BARRIER(sc);
 	DELAY(100);
@@ -1303,7 +1303,7 @@ athn_filter_noisefloor(struct athn_softc *sc)
 	int nf_ext_vals[ATHN_NF_CAL_HIST_MAX];
 	int i, cur, n;
 
-	for (i = 0; i < sc->ntxchains; i++) {
+	for (i = 0; i < sc->nrxchains; i++) {
 		if (sc->nf_hist_cur > 0)
 			cur = sc->nf_hist_cur - 1;
 		else
