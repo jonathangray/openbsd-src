@@ -282,8 +282,8 @@ mainbus_efifb_reattach(void)
 {
 	union mainbus_attach_args mba;
 	struct device *self = device_mainbus();
-
 	if (bios_efiinfo != NULL || efifb_cb_found()) {
+		efifb_cnreattach();
 		mba.mba_eaa.eaa_name = "efifb";
 		config_found(self, &mba, mainbus_print);
 	}

@@ -537,18 +537,7 @@ wsdisplay_emul_match(struct device *parent, void *match, void *aux)
 			return (0);
 	}
 
-	if (cf->wsemuldisplaydevcf_primary != WSEMULDISPLAYDEVCF_PRIMARY_UNK) {
-		/*
-		 * If primary-ness of device specified, either match
-		 * exactly (at high priority), or fail.
-		 */
-		if (cf->wsemuldisplaydevcf_primary != 0 && ap->primary != 0)
-			return (10);
-		else
-			return (0);
-	}
-
-	/* If console-ness and primary-ness unspecified, it wins. */
+	/* If console-ness unspecified, it wins. */
 	return (1);
 }
 

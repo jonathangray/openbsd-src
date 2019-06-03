@@ -73,7 +73,7 @@ define	ax88190		# AX88190-family Ethernet controllers
 # a wscons output device; used later, but needs to be near the top for
 # common file (e.g. vga) definitions.
 define	wsdisplaydev		{[mux = 1]}
-define	wsemuldisplaydev	{[console = -1], [primary = -1], [mux = 1]}
+define	wsemuldisplaydev	{[console = -1], [mux = 1]}
 define	wskbddev		{[console = -1], [mux = 1]}
 define	wsmousedev		{[mux = 0]}
 
