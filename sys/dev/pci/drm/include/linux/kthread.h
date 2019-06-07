@@ -7,11 +7,54 @@
 #include <sys/types.h>
 #include <sys/systm.h>
 
-#define kthread_stop(a)		do { printf("%s: stub\n", __func__); } while(0)
-#define kthread_park(a)		do { printf("%s: stub\n", __func__); } while(0)
-#define kthread_unpark(a)	do { printf("%s: stub\n", __func__); } while(0)
-#define kthread_should_stop()	0
-#define kthread_should_park()	0
-#define kthread_parkme()
+#include <sys/param.h>
+#include <sys/proc.h>
+#include <sys/wait.h>
+
+#include <linux/sched.h>
+
+static inline void
+kthread_parkme(void)
+{
+	while (tsleep(curproc->p_p, PPAUSE|PCATCH, "park", 0) == 0)
+		;
+}
+
+static inline bool
+kthread_should_park(void)
+{
+	return (curproc->p_p->ps_flags & PS_SHOULDPARK);
+}
+
+static inline int
+kthread_park(struct proc *p)
+{
+	atomic_setbits_int(&p->p_p->ps_flags, PS_SHOULDPARK);
+	if (p != curproc)
+		wakeup(p->p_p);
+	return 0;
+}
+
+static inline void
+kthread_unpark(struct proc *p)
+{
+	atomic_clearbits_int(&p->p_p->ps_flags, PS_SHOULDPARK);
+	if (p != curproc)
+		wakeup(p->p_p);
+}
+
+static inline bool
+kthread_should_stop(void)
+{
+	return (curproc->p_p->ps_flags & PS_SHOULDSTOP);
+}
+
+static inline int
+kthread_stop(struct proc *p)
+{
+	atomic_setbits_int(&p->p_p->ps_flags, PS_SHOULDSTOP);
+	wakeup(p->p_p);
+	return 0;
+}
 
 #endif

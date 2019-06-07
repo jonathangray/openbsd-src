@@ -295,6 +295,8 @@ struct process {
 #define	PS_PLEDGE	0x00100000	/* Has called pledge(2) */
 #define	PS_WXNEEDED	0x00200000	/* Process may violate W^X */
 #define	PS_EXECPLEDGE	0x00400000	/* Has exec pledges */
+#define	PS_SHOULDPARK	0x20000000
+#define	PS_SHOULDSTOP	0x40000000
 
 #define	PS_BITS \
     ("\20" "\01CONTROLT" "\02EXEC" "\03INEXEC" "\04EXITING" "\05SUGID" \
