@@ -58,6 +58,7 @@ file	dev/pci/drm/linux_hdmi.c		drm
 file	dev/pci/drm/linux_list_sort.c		drm
 file	dev/pci/drm/linux_radix.c		drm
 file	dev/pci/drm/linux_reservation.c		drm
+file	dev/pci/drm/linux_wwmutex.c		drm
 
 define	ttm
 file	dev/pci/drm/ttm/ttm_agp_backend.c	ttm & agp
