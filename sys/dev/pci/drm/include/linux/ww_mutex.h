@@ -32,8 +32,6 @@
 #ifndef _LINUX_WW_MUTEX_H_
 #define _LINUX_WW_MUTEX_H_
 
-#include <linux/mutex.h>
-
 /*
  * A basic, unoptimized implementation of wound/wait mutexes for DragonFly
  * modelled after the Linux API [1].
@@ -43,9 +41,14 @@
 
 #include <sys/errno.h>
 #include <sys/types.h>
-#include <machine/atomic.h>
-#include <sys/spinlock.h>
-#include <sys/spinlock2.h>
+#include <sys/systm.h>
+#include <sys/param.h>
+#include <sys/atomic.h>
+#include <sys/rwlock.h>
+
+#include <machine/intr.h>
+#include <linux/compiler.h>
+#include <linux/mutex.h>
 
 struct ww_class {
 	volatile u_long		stamp;
@@ -60,7 +63,7 @@ struct ww_acquire_ctx {
 };
 
 struct ww_mutex {
-	struct lock		base;
+	struct rrwlock		base;
 	struct ww_acquire_ctx	*ctx;
 	u_long			stamp;	/* heuristic */
 	int			blocked;
@@ -93,7 +96,7 @@ extern void ww_mutex_destroy(struct ww_mutex *ww);
 static inline bool
 ww_mutex_is_locked(struct ww_mutex *ww)
 {
-	return (lockstatus(&ww->base, NULL) != 0);
+	return (rrw_status(&ww->base) != 0);
 }
 
 /*
@@ -104,7 +107,7 @@ ww_mutex_is_locked(struct ww_mutex *ww)
 static inline int
 ww_mutex_trylock(struct ww_mutex *ww)
 {
-	return (lockmgr(&ww->base, LK_EXCLUSIVE|LK_NOWAIT) == 0);
+	return (rrw_enter(&ww->base, RW_WRITE | RW_NOSLEEP) == 0);
 }
 
 #endif	/* _LINUX_WW_MUTEX_H_ */

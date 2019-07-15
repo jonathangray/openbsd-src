@@ -30,9 +30,9 @@
 
 #include <sys/types.h>
 #include <sys/errno.h>
+#include <sys/param.h>
 #include <sys/kernel.h>
-#include <sys/spinlock.h>
-#include <sys/spinlock2.h>
+#include <sys/proc.h>
 
 #include <machine/atomic.h>
 
@@ -41,7 +41,7 @@
 void
 ww_acquire_init(struct ww_acquire_ctx *ctx, struct ww_class *ww_class)
 {
-	ctx->stamp = atomic_fetchadd_long(&ww_class->stamp, 1);
+	ctx->stamp = __sync_fetch_and_add(&ww_class->stamp, 1);
 	ctx->acquired = 0;
 	ctx->ww_class = ww_class;
 }
@@ -59,7 +59,7 @@ ww_acquire_fini(struct ww_acquire_ctx *ctx __unused)
 void
 ww_mutex_init(struct ww_mutex *ww, struct ww_class *ww_class)
 {
-	lockinit(&ww->base, ww_class->name, 0, LK_CANRECURSE);
+	rrw_init(&ww->base, ww_class->name);
 	ww->ctx = NULL;
 	ww->stamp = 0xFFFFFFFFFFFFFFFFLU;
 	ww->blocked = 0;
@@ -68,7 +68,6 @@ ww_mutex_init(struct ww_mutex *ww, struct ww_class *ww_class)
 void
 ww_mutex_destroy(struct ww_mutex *ww)
 {
-	lockuninit(&ww->base);
 }
 
 /*
@@ -82,17 +81,18 @@ int
 __wwlock(struct ww_mutex *ww, struct ww_acquire_ctx *ctx,
 	 bool slow __unused, bool intr)
 {
-	int flags = LK_EXCLUSIVE;
+	struct sleep_state sls;
+	int flags = RW_WRITE;
 	int error;
 
 	if (intr)
-		flags |= LK_PCATCH;
+		flags |= RW_INTR;
 
 	/*
 	 * Normal mutex if ctx is NULL
 	 */
 	if (ctx == NULL) {
-		error = lockmgr(&ww->base, flags);
+		error = rrw_enter(&ww->base, flags);
 		if (error)
 			error = -EINTR;
 		return error;
@@ -108,10 +108,13 @@ __wwlock(struct ww_mutex *ww, struct ww_acquire_ctx *ctx,
 	 */
 	for (;;) {
 		if (ctx->acquired != 0) {
-			flags |= LK_NOWAIT;
-			tsleep_interlock(ww, (intr ? PCATCH : 0));
+			flags |= RW_NOSLEEP;
+			sleep_setup(&sls, ww, (intr ? PCATCH : 0),
+			    ctx->ww_class->name);
+			sleep_setup_timeout(&sls, 0);
+			sleep_setup_signal(&sls, (intr ? PCATCH : 0));
 		}
-		error = lockmgr(&ww->base, flags);
+		error = rrw_enter(&ww->base, flags);
 		if (error == 0) {
 			ww->ctx = ctx;
 			ww->stamp = ctx->stamp;
@@ -131,7 +134,7 @@ __wwlock(struct ww_mutex *ww, struct ww_acquire_ctx *ctx,
 		 * NOTE: ww->ctx is not MPSAFE.
 		 * NOTE: ww->stamp is heuristical, a race is possible.
 		 */
-		KKASSERT(ctx->acquired > 0);
+		KASSERT(ctx->acquired > 0);
 
 		/*
 		 * Unwind if we aren't the oldest.
@@ -147,9 +150,8 @@ __wwlock(struct ww_mutex *ww, struct ww_acquire_ctx *ctx,
 		 *	    EINTR / ERESTART - signal
 		 *	    EWOULDBLOCK	     - timeout expired (if not 0)
 		 */
-		atomic_swap_int(&ww->blocked, 1);
-		error = tsleep(ww, PINTERLOCKED | (intr ? PCATCH : 0),
-			       ctx->ww_class->name, 0);
+		__sync_lock_test_and_set(&ww->blocked, 1);
+		error = sleep_finish_all(&sls, 1);
 		if (intr && (error == EINTR || error == ERESTART))
 			return -EINTR;
 		/* retry */
@@ -188,12 +190,12 @@ ww_mutex_unlock(struct ww_mutex *ww)
 
 	ctx = ww->ctx;
 	if (ctx) {
-		KKASSERT(ctx->acquired > 0);
+		KASSERT(ctx->acquired > 0);
 		--ctx->acquired;
 		ww->ctx = NULL;
 		ww->stamp = 0xFFFFFFFFFFFFFFFFLU;
 	}
-	lockmgr(&ww->base, LK_RELEASE);
-	if (atomic_swap_int(&ww->blocked, 0))
+	rrw_exit(&ww->base);
+	if (__sync_lock_test_and_set(&ww->blocked, 0))
 		wakeup(ww);
 }
