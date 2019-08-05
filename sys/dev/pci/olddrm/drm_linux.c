@@ -884,7 +884,10 @@ dmabuf_seek(struct file *fp, off_t *offset, int whence, struct proc *p)
 	default:
 		return (EINVAL);
 	}
-	fp->f_offset = *offset = newoff;
+	mtx_enter(&fp->f_mtx);
+	fp->f_offset = newoff;
+	mtx_leave(&fp->f_mtx);
+	*offset = newoff;
 	return (0);
 }
 
