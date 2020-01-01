@@ -982,3 +982,8 @@ get_dma_buf(struct dma_buf *dmabuf)
 {
 	FREF(dmabuf->file);
 }
+
+void
+drmbackoff(long npages)
+{
+}
