@@ -19,5 +19,6 @@ in_irq(void)
 
 #define in_interrupt()	in_irq()
 #define in_task()	(!in_irq())
+#define in_atomic()	0
 
 #endif
