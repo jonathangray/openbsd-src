@@ -12,6 +12,7 @@
 #include <linux/ioport.h>
 #include <linux/lockdep.h>
 #include <linux/pm.h>
+#include <linux/kobject.h>
 
 struct device_node;
 
