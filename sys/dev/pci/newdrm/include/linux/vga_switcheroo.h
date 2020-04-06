@@ -3,6 +3,8 @@
 #ifndef _LINUX_VGA_SWITCHEROO_H
 #define _LINUX_VGA_SWITCHEROO_H
 
+#include <linux/fb.h>
+
 #define vga_switcheroo_register_client(a, b, c)	0
 #define vga_switcheroo_unregister_client(a)
 #define vga_switcheroo_process_delayed_switch()
