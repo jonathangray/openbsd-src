@@ -36,7 +36,11 @@
 #ifndef _DRM_H_
 #define _DRM_H_
 
-#if defined(__KERNEL__)
+#ifndef __user
+#define __user
+#endif
+
+#if defined(__KERNEL__) && defined(__linux__)
 
 #include <linux/types.h>
 #include <asm/ioctl.h>
@@ -845,7 +849,11 @@ extern "C" {
 #define DRM_IOCTL_BLOCK			DRM_IOWR(0x12, struct drm_block)
 #define DRM_IOCTL_UNBLOCK		DRM_IOWR(0x13, struct drm_block)
 #define DRM_IOCTL_CONTROL		DRM_IOW( 0x14, struct drm_control)
+#ifdef __OpenBSD__
+#define DRM_IOCTL_GET_PCIINFO		DRM_IOR( 0x15, struct drm_pciinfo)
+#else
 #define DRM_IOCTL_ADD_MAP		DRM_IOWR(0x15, struct drm_map)
+#endif
 #define DRM_IOCTL_ADD_BUFS		DRM_IOWR(0x16, struct drm_buf_desc)
 #define DRM_IOCTL_MARK_BUFS		DRM_IOW( 0x17, struct drm_buf_desc)
 #define DRM_IOCTL_INFO_BUFS		DRM_IOWR(0x18, struct drm_buf_info)
@@ -990,6 +998,20 @@ struct drm_event_vblank {
 	__u32 sequence;
 	__u32 crtc_id; /* 0 on older kernels that do not support this */
 };
+
+#ifdef __OpenBSD__
+struct drm_pciinfo {
+	uint16_t	domain;
+	uint8_t		bus;
+	uint8_t		dev;
+	uint8_t		func;
+	uint16_t	vendor_id;
+	uint16_t	device_id;
+	uint16_t	subvendor_id;
+	uint16_t	subdevice_id;
+	uint8_t		revision_id;
+};
+#endif
 
 /* Event delivered at sequence. Time stamp marks when the first pixel
  * of the refresh cycle leaves the display engine for the display
