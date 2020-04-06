@@ -22,21 +22,21 @@ _machdir?=	$S/arch/${_mach}
 _archdir?=	$S/arch/${_arch}
 
 INCLUDES=	-nostdinc -I$S -I${.OBJDIR} -I$S/arch \
-		-I$S/dev/pci/drm/include \
-		-I$S/dev/pci/drm/include/uapi \
-		-I$S/dev/pci/drm/amd/include/asic_reg \
-		-I$S/dev/pci/drm/amd/include \
-		-I$S/dev/pci/drm/amd/amdgpu \
-		-I$S/dev/pci/drm/amd/display \
-		-I$S/dev/pci/drm/amd/display/include \
-		-I$S/dev/pci/drm/amd/display/dc \
-		-I$S/dev/pci/drm/amd/display/amdgpu_dm \
-		-I$S/dev/pci/drm/amd/powerplay/inc \
-		-I$S/dev/pci/drm/amd/powerplay/smumgr \
-		-I$S/dev/pci/drm/amd/powerplay/hwmgr \
-		-I$S/dev/pci/drm/amd/display/dc/inc \
-		-I$S/dev/pci/drm/amd/display/dc/inc/hw \
-		-I$S/dev/pci/drm/amd/display/modules/inc
+		-I$S/dev/pci/newdrm/include \
+		-I$S/dev/pci/newdrm/include/uapi \
+		-I$S/dev/pci/newdrm/amd/include/asic_reg \
+		-I$S/dev/pci/newdrm/amd/include \
+		-I$S/dev/pci/newdrm/amd/amdgpu \
+		-I$S/dev/pci/newdrm/amd/display \
+		-I$S/dev/pci/newdrm/amd/display/include \
+		-I$S/dev/pci/newdrm/amd/display/dc \
+		-I$S/dev/pci/newdrm/amd/display/amdgpu_dm \
+		-I$S/dev/pci/newdrm/amd/powerplay/inc \
+		-I$S/dev/pci/newdrm/amd/powerplay/smumgr \
+		-I$S/dev/pci/newdrm/amd/powerplay/hwmgr \
+		-I$S/dev/pci/newdrm/amd/display/dc/inc \
+		-I$S/dev/pci/newdrm/amd/display/dc/inc/hw \
+		-I$S/dev/pci/newdrm/amd/display/modules/inc
 CPPFLAGS=	${INCLUDES} ${IDENT} ${PARAM} -D_KERNEL -MD -MP
 CWARNFLAGS=	-Werror -Wall -Wimplicit-function-declaration \
 		-Wno-uninitialized -Wno-pointer-sign \
@@ -178,31 +178,31 @@ kcov.o: $S/dev/kcov.c
 
 HARDFLOAT_CFLAGS= -msse -msse2
 
-dcn_calcs.o: $S/dev/pci/drm/amd/display/dc/calcs/dcn_calcs.c
+dcn_calcs.o: $S/dev/pci/newdrm/amd/display/dc/calcs/dcn_calcs.c
 	${NORMAL_C} ${HARDFLOAT_CFLAGS}
-dcn_calc_auto.o: $S/dev/pci/drm/amd/display/dc/calcs/dcn_calc_auto.c
+dcn_calc_auto.o: $S/dev/pci/newdrm/amd/display/dc/calcs/dcn_calc_auto.c
 	${NORMAL_C} ${HARDFLOAT_CFLAGS}
-dcn_calc_math.o: $S/dev/pci/drm/amd/display/dc/calcs/dcn_calc_math.c
+dcn_calc_math.o: $S/dev/pci/newdrm/amd/display/dc/calcs/dcn_calc_math.c
 	${NORMAL_C} ${HARDFLOAT_CFLAGS}
-display_mode_vba.o: $S/dev/pci/drm/amd/display/dc/dml/display_mode_vba.c
+display_mode_vba.o: $S/dev/pci/newdrm/amd/display/dc/dml/display_mode_vba.c
 	${NORMAL_C} ${HARDFLOAT_CFLAGS}
-display_mode_vba_20.o: $S/dev/pci/drm/amd/display/dc/dml/dcn20/display_mode_vba_20.c
+display_mode_vba_20.o: $S/dev/pci/newdrm/amd/display/dc/dml/dcn20/display_mode_vba_20.c
 	${NORMAL_C} ${HARDFLOAT_CFLAGS}
-display_rq_dlg_calc_20.o: $S/dev/pci/drm/amd/display/dc/dml/dcn20/display_rq_dlg_calc_20.c
+display_rq_dlg_calc_20.o: $S/dev/pci/newdrm/amd/display/dc/dml/dcn20/display_rq_dlg_calc_20.c
 	${NORMAL_C} ${HARDFLOAT_CFLAGS}
-display_mode_vba_20v2.o: $S/dev/pci/drm/amd/display/dc/dml/dcn20/display_mode_vba_20v2.c
+display_mode_vba_20v2.o: $S/dev/pci/newdrm/amd/display/dc/dml/dcn20/display_mode_vba_20v2.c
 	${NORMAL_C} ${HARDFLOAT_CFLAGS}
-display_rq_dlg_calc_20v2.o: $S/dev/pci/drm/amd/display/dc/dml/dcn20/display_rq_dlg_calc_20v2.c
+display_rq_dlg_calc_20v2.o: $S/dev/pci/newdrm/amd/display/dc/dml/dcn20/display_rq_dlg_calc_20v2.c
 	${NORMAL_C} ${HARDFLOAT_CFLAGS}
-display_mode_vba_21.o: $S/dev/pci/drm/amd/display/dc/dml/dcn21/display_mode_vba_21.c
+display_mode_vba_21.o: $S/dev/pci/newdrm/amd/display/dc/dml/dcn21/display_mode_vba_21.c
 	${NORMAL_C} ${HARDFLOAT_CFLAGS}
-display_rq_dlg_calc_21.o: $S/dev/pci/drm/amd/display/dc/dml/dcn21/display_rq_dlg_calc_21.c
+display_rq_dlg_calc_21.o: $S/dev/pci/newdrm/amd/display/dc/dml/dcn21/display_rq_dlg_calc_21.c
 	${NORMAL_C} ${HARDFLOAT_CFLAGS}
-dml1_display_rq_dlg_calc.o: $S/dev/pci/drm/amd/display/dc/dml/dml1_display_rq_dlg_calc.c
+dml1_display_rq_dlg_calc.o: $S/dev/pci/newdrm/amd/display/dc/dml/dml1_display_rq_dlg_calc.c
 	${NORMAL_C} ${HARDFLOAT_CFLAGS}
-display_rq_dlg_helpers.o: $S/dev/pci/drm/amd/display/dc/dml/display_rq_dlg_helpers.c
+display_rq_dlg_helpers.o: $S/dev/pci/newdrm/amd/display/dc/dml/display_rq_dlg_helpers.c
 	${NORMAL_C} ${HARDFLOAT_CFLAGS}
-dml_common_defs.o: $S/dev/pci/drm/amd/display/dc/dml/dml_common_defs.c
+dml_common_defs.o: $S/dev/pci/newdrm/amd/display/dc/dml/dml_common_defs.c
 	${NORMAL_C} ${HARDFLOAT_CFLAGS}
 
 clean:
