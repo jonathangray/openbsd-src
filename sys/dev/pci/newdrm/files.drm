@@ -566,7 +566,7 @@ file	dev/pci/drm/amd/display/dc/basics/conversion.c			amddal
 file	dev/pci/drm/amd/display/dc/basics/dc_common.c			amddal
 file	dev/pci/drm/amd/display/dc/basics/fixpt31_32.c			amddal
 file	dev/pci/drm/amd/display/dc/basics/log_helpers.c			amddal
-file	dev/pci/drm/amd/display/dc/basics/vector.c			amddal
+file	dev/pci/drm/amd/display/dc/basics/amdgpu_vector.c		amddal
 file	dev/pci/drm/amd/display/dc/bios/bios_parser.c			amddal
 file	dev/pci/drm/amd/display/dc/bios/bios_parser2.c			amddal
 file	dev/pci/drm/amd/display/dc/bios/bios_parser_common.c		amddal
@@ -598,7 +598,7 @@ file	dev/pci/drm/amd/display/dc/clk_mgr/dcn10/rv2_clk_mgr.c		amddal & bios
 file	dev/pci/drm/amd/display/dc/clk_mgr/dcn20/dcn20_clk_mgr.c	amddal
 file	dev/pci/drm/amd/display/dc/clk_mgr/dcn21/rn_clk_mgr.c		amddal & bios
 file	dev/pci/drm/amd/display/dc/clk_mgr/dcn21/rn_clk_mgr_vbios_smu.c	amddal & bios
-file	dev/pci/drm/amd/display/dc/core/dc.c				amddal
+file	dev/pci/drm/amd/display/dc/core/amdgpu_dc.c			amddal
 file	dev/pci/drm/amd/display/dc/core/dc_debug.c			amddal
 file	dev/pci/drm/amd/display/dc/core/dc_hw_sequencer.c		amddal
 file	dev/pci/drm/amd/display/dc/core/dc_link.c			amddal
@@ -763,23 +763,23 @@ define	amdgpu_si
 file	dev/pci/drm/amd/amdgpu/dce_v6_0.c		amdgpu_si
 file	dev/pci/drm/amd/amdgpu/gfx_v6_0.c		amdgpu_si
 file	dev/pci/drm/amd/amdgpu/gmc_v6_0.c		amdgpu_si
-file	dev/pci/drm/amd/amdgpu/si.c			amdgpu_si
-file	dev/pci/drm/amd/amdgpu/si_dma.c			amdgpu_si
-file	dev/pci/drm/amd/amdgpu/si_dpm.c			amdgpu_si
+file	dev/pci/drm/amd/amdgpu/amdgpu_si.c		amdgpu_si
+file	dev/pci/drm/amd/amdgpu/amdgpu_si_dma.c		amdgpu_si
+file	dev/pci/drm/amd/amdgpu/amdgpu_si_dpm.c		amdgpu_si
 file	dev/pci/drm/amd/amdgpu/si_ih.c			amdgpu_si
-file	dev/pci/drm/amd/amdgpu/si_smc.c			amdgpu_si
+file	dev/pci/drm/amd/amdgpu/amdgpu_si_smc.c		amdgpu_si
 
 # CONFIG_DRM_AMDGPU_CIK
 define	amdgpu_cik
-file	dev/pci/drm/amd/amdgpu/cik.c			amdgpu_cik
+file	dev/pci/drm/amd/amdgpu/amdgpu_cik.c		amdgpu_cik
 file	dev/pci/drm/amd/amdgpu/cik_ih.c			amdgpu_cik
-file	dev/pci/drm/amd/amdgpu/cik_sdma.c		amdgpu_cik
+file	dev/pci/drm/amd/amdgpu/amdgpu_cik_sdma.c	amdgpu_cik
 file	dev/pci/drm/amd/amdgpu/dce_v8_0.c		amdgpu_cik
 file	dev/pci/drm/amd/amdgpu/gfx_v7_0.c		amdgpu_cik
-file	dev/pci/drm/amd/amdgpu/kv_dpm.c			amdgpu_cik
-file	dev/pci/drm/amd/amdgpu/kv_smc.c			amdgpu_cik
-file	dev/pci/drm/amd/amdgpu/uvd_v4_2.c		amdgpu_cik
-file	dev/pci/drm/amd/amdgpu/vce_v2_0.c		amdgpu_cik
+file	dev/pci/drm/amd/amdgpu/amdgpu_kv_dpm.c		amdgpu_cik
+file	dev/pci/drm/amd/amdgpu/amdgpu_kv_smc.c		amdgpu_cik
+file	dev/pci/drm/amd/amdgpu/amdgpu_uvd_v4_2.c	amdgpu_cik
+file	dev/pci/drm/amd/amdgpu/amdgpu_vce_v2_0.c	amdgpu_cik
 
 device	amdgpu: drmbase, ttm, wsemuldisplaydev, rasops8, rasops32, i2cbus, i2c_bitbang, drm_sched, chash, powerplay, amddal
 attach	amdgpu at pci
@@ -863,11 +863,11 @@ file	dev/pci/drm/amd/amdgpu/amdgpu_xgmi.c		amdgpu
 file	dev/pci/drm/amd/amdgpu/arct_reg_init.c		amdgpu
 file	dev/pci/drm/amd/amdgpu/athub_v1_0.c		amdgpu
 file	dev/pci/drm/amd/amdgpu/athub_v2_0.c		amdgpu
-file	dev/pci/drm/amd/amdgpu/atom.c			amdgpu
-file	dev/pci/drm/amd/amdgpu/atombios_crtc.c		amdgpu
-file	dev/pci/drm/amd/amdgpu/atombios_dp.c		amdgpu
-file	dev/pci/drm/amd/amdgpu/atombios_encoders.c	amdgpu
-file	dev/pci/drm/amd/amdgpu/atombios_i2c.c		amdgpu
+file	dev/pci/drm/amd/amdgpu/amdgpu_atom.c		amdgpu
+file	dev/pci/drm/amd/amdgpu/amdgpu_atombios_crtc.c	amdgpu
+file	dev/pci/drm/amd/amdgpu/amdgpu_atombios_dp.c	amdgpu
+file	dev/pci/drm/amd/amdgpu/amdgpu_atombios_encoders.c	amdgpu
+file	dev/pci/drm/amd/amdgpu/amdgpu_atombios_i2c.c	amdgpu
 file	dev/pci/drm/amd/amdgpu/cz_ih.c			amdgpu
 file	dev/pci/drm/amd/amdgpu/dce_v10_0.c		amdgpu
 file	dev/pci/drm/amd/amdgpu/dce_v11_0.c		amdgpu
