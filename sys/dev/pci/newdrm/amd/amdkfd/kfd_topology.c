@@ -983,7 +983,7 @@ int kfd_topology_init(void)
 	/* Initialize the head for the both the lists */
 	INIT_LIST_HEAD(&topology_device_list);
 	INIT_LIST_HEAD(&temp_topology_device_list);
-	init_rwsem(&topology_lock);
+	rw_init(&topology_lock, "toplk");
 
 	memset(&sys_props, 0, sizeof(sys_props));
 
