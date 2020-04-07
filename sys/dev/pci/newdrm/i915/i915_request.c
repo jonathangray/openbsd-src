@@ -1527,7 +1527,7 @@ static bool __i915_spin_request(const struct i915_request * const rq, int state)
 			break;
 
 		cpu_relax();
-	} while (!need_resched());
+	} while (!drm_need_resched());
 
 	return false;
 }
