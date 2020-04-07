@@ -42,7 +42,7 @@
  * in the caller.
  */
 static void
-drm_clflush_page(struct page *page)
+drm_clflush_page(struct vm_page *page)
 {
 	uint8_t *page_virtual;
 	unsigned int i;
@@ -57,7 +57,7 @@ drm_clflush_page(struct page *page)
 	kunmap_atomic(page_virtual);
 }
 
-static void drm_cache_flush_clflush(struct page *pages[],
+static void drm_cache_flush_clflush(struct vm_page *pages[],
 				    unsigned long num_pages)
 {
 	unsigned long i;
@@ -78,7 +78,7 @@ static void drm_cache_flush_clflush(struct page *pages[],
  * to a page in the array.
  */
 void
-drm_clflush_pages(struct page *pages[], unsigned long num_pages)
+drm_clflush_pages(struct vm_page *pages[], unsigned long num_pages)
 {
 
 #if defined(CONFIG_X86)
@@ -94,7 +94,7 @@ drm_clflush_pages(struct page *pages[], unsigned long num_pages)
 	unsigned long i;
 
 	for (i = 0; i < num_pages; i++) {
-		struct page *page = pages[i];
+		struct vm_page *page = pages[i];
 		void *page_virtual;
 
 		if (unlikely(page == NULL))

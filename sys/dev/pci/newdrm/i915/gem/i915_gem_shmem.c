@@ -35,7 +35,7 @@ static int shmem_get_pages(struct drm_i915_gem_object *obj)
 	struct sg_table *st;
 	struct scatterlist *sg;
 	struct sgt_iter sgt_iter;
-	struct page *page;
+	struct vm_page *page;
 	unsigned long last_pfn = 0;	/* suppress gcc warning */
 	unsigned int max_segment = i915_sg_segment_size();
 	unsigned int sg_page_sizes;
@@ -254,7 +254,7 @@ shmem_writeback(struct drm_i915_gem_object *obj)
 
 	/* Begin writeback on each dirty page */
 	for (i = 0; i < obj->base.size >> PAGE_SHIFT; i++) {
-		struct page *page;
+		struct vm_page *page;
 
 		page = find_lock_entry(mapping, i);
 		if (!page || xa_is_value(page))
@@ -299,7 +299,7 @@ shmem_put_pages(struct drm_i915_gem_object *obj, struct sg_table *pages)
 {
 	struct sgt_iter sgt_iter;
 	struct pagevec pvec;
-	struct page *page;
+	struct vm_page *page;
 
 	__i915_gem_object_release_shmem(obj, pages, true);
 
@@ -370,7 +370,7 @@ shmem_pwrite(struct drm_i915_gem_object *obj,
 
 	do {
 		unsigned int len, unwritten;
-		struct page *page;
+		struct vm_page *page;
 		void *data, *vaddr;
 		int err;
 		char c;
@@ -554,7 +554,7 @@ i915_gem_object_create_shmem_from_data(struct drm_i915_private *dev_priv,
 	offset = 0;
 	do {
 		unsigned int len = min_t(typeof(size), size, PAGE_SIZE);
-		struct page *page;
+		struct vm_page *page;
 		void *pgdata, *vaddr;
 
 		err = pagecache_write_begin(file, file->f_mapping,

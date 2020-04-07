@@ -304,7 +304,7 @@ void __iomem *i915_vma_pin_iomap(struct i915_vma *vma);
  */
 void i915_vma_unpin_iomap(struct i915_vma *vma);
 
-static inline struct page *i915_vma_first_page(struct i915_vma *vma)
+static inline struct vm_page *i915_vma_first_page(struct i915_vma *vma)
 {
 	GEM_BUG_ON(!vma->pages);
 	return sg_page(vma->pages->sgl);

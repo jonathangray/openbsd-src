@@ -20,7 +20,7 @@
 #include "../selftests/mock_gem_device.h"
 #include "selftests/mock_timeline.h"
 
-static struct page *hwsp_page(struct intel_timeline *tl)
+static struct vm_page *hwsp_page(struct intel_timeline *tl)
 {
 	struct drm_i915_gem_object *obj = tl->hwsp_ggtt->obj;
 

@@ -289,7 +289,7 @@ static void *i915_gem_object_map(struct drm_i915_gem_object *obj,
 
 	if (i915_gem_object_has_struct_page(obj)) {
 		struct sgt_iter iter;
-		struct page *page;
+		struct vm_page *page;
 		pte_t **ptes = mem;
 
 		for_each_sgt_page(page, iter, sgt)
@@ -522,7 +522,7 @@ lookup:
 	return sg;
 }
 
-struct page *
+struct vm_page *
 i915_gem_object_get_page(struct drm_i915_gem_object *obj, unsigned int n)
 {
 	struct scatterlist *sg;
@@ -535,11 +535,11 @@ i915_gem_object_get_page(struct drm_i915_gem_object *obj, unsigned int n)
 }
 
 /* Like i915_gem_object_get_page(), but mark the returned page dirty */
-struct page *
+struct vm_page *
 i915_gem_object_get_dirty_page(struct drm_i915_gem_object *obj,
 			       unsigned int n)
 {
-	struct page *page;
+	struct vm_page *page;
 
 	page = i915_gem_object_get_page(obj, n);
 	if (!obj->mm.dirty)

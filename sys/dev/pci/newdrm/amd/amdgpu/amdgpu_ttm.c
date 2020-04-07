@@ -785,7 +785,7 @@ static const uint64_t hmm_range_values[HMM_PFN_VALUE_MAX] = {
  * Calling function must call amdgpu_ttm_tt_userptr_range_done() once and only
  * once afterwards to stop HMM tracking
  */
-int amdgpu_ttm_tt_get_user_pages(struct amdgpu_bo *bo, struct page **pages)
+int amdgpu_ttm_tt_get_user_pages(struct amdgpu_bo *bo, struct vm_page **pages)
 {
 	struct ttm_tt *ttm = bo->tbo.ttm;
 	struct amdgpu_ttm_tt *gtt = (void *)ttm;
@@ -933,7 +933,7 @@ bool amdgpu_ttm_tt_get_user_pages_done(struct ttm_tt *ttm)
  * that backs user memory and will ultimately be mapped into the device
  * address space.
  */
-void amdgpu_ttm_tt_set_user_pages(struct ttm_tt *ttm, struct page **pages)
+void amdgpu_ttm_tt_set_user_pages(struct ttm_tt *ttm, struct vm_page **pages)
 {
 	unsigned long i;
 
@@ -2370,7 +2370,7 @@ static ssize_t amdgpu_ttm_gtt_read(struct file *f, char __user *buf,
 		loff_t p = *pos / PAGE_SIZE;
 		unsigned off = *pos & ~PAGE_MASK;
 		size_t cur_size = min_t(size_t, size, PAGE_SIZE - off);
-		struct page *page;
+		struct vm_page *page;
 		void *ptr;
 
 		if (p >= adev->gart.num_cpu_pages)
@@ -2429,7 +2429,7 @@ static ssize_t amdgpu_iomem_read(struct file *f, char __user *buf,
 		loff_t off = *pos & ~PAGE_MASK;
 		size_t bytes = PAGE_SIZE - off;
 		unsigned long pfn;
-		struct page *p;
+		struct vm_page *p;
 		void *ptr;
 
 		bytes = bytes < size ? bytes : size;
@@ -2484,7 +2484,7 @@ static ssize_t amdgpu_iomem_write(struct file *f, const char __user *buf,
 		loff_t off = *pos & ~PAGE_MASK;
 		size_t bytes = PAGE_SIZE - off;
 		unsigned long pfn;
-		struct page *p;
+		struct vm_page *p;
 		void *ptr;
 
 		bytes = bytes < size ? bytes : size;

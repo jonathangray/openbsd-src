@@ -49,7 +49,7 @@
 #include <drm/ttm/ttm_page_alloc.h>
 #include <drm/ttm/ttm_set_memory.h>
 
-#define NUM_PAGES_TO_ALLOC		(PAGE_SIZE/sizeof(struct page *))
+#define NUM_PAGES_TO_ALLOC		(PAGE_SIZE/sizeof(struct vm_page *))
 #define SMALL_ALLOCATION		16
 #define FREE_ALL_PAGES			(~0U)
 /* times are in msecs */
@@ -244,7 +244,7 @@ static struct ttm_page_pool *ttm_get_pool(int flags, bool huge,
 }
 
 /* set memory back to wb and free the pages. */
-static void ttm_pages_put(struct page *pages[], unsigned npages,
+static void ttm_pages_put(struct vm_page *pages[], unsigned npages,
 		unsigned int order)
 {
 	unsigned int i, pages_nr = (1 << order);
@@ -283,10 +283,10 @@ static void ttm_pool_update_free_locked(struct ttm_page_pool *pool,
 static int ttm_page_pool_free(struct ttm_page_pool *pool, unsigned nr_free,
 			      bool use_static)
 {
-	static struct page *static_buf[NUM_PAGES_TO_ALLOC];
+	static struct vm_page *static_buf[NUM_PAGES_TO_ALLOC];
 	unsigned long irq_flags;
-	struct page *p;
-	struct page **pages_to_free;
+	struct vm_page *p;
+	struct vm_page **pages_to_free;
 	unsigned freed_pages = 0,
 		 npages_to_free = nr_free;
 
@@ -297,7 +297,7 @@ static int ttm_page_pool_free(struct ttm_page_pool *pool, unsigned nr_free,
 		pages_to_free = static_buf;
 	else
 		pages_to_free = kmalloc_array(npages_to_free,
-					      sizeof(struct page *),
+					      sizeof(struct vm_page *),
 					      GFP_KERNEL);
 	if (!pages_to_free) {
 		pr_debug("Failed to allocate memory for pool free operation\n");
@@ -439,7 +439,7 @@ static void ttm_pool_mm_shrink_fini(struct ttm_pool_manager *manager)
 	unregister_shrinker(&manager->mm_shrink);
 }
 
-static int ttm_set_pages_caching(struct page **pages,
+static int ttm_set_pages_caching(struct vm_page **pages,
 		enum ttm_caching_state cstate, unsigned cpages)
 {
 	int r = 0;
@@ -468,7 +468,7 @@ static int ttm_set_pages_caching(struct page **pages,
  */
 static void ttm_handle_caching_state_failure(struct list_head *pages,
 		int ttm_flags, enum ttm_caching_state cstate,
-		struct page **failed_pages, unsigned cpages)
+		struct vm_page **failed_pages, unsigned cpages)
 {
 	unsigned i;
 	/* Failed pages have to be freed */
@@ -488,15 +488,15 @@ static int ttm_alloc_new_pages(struct list_head *pages, gfp_t gfp_flags,
 			       int ttm_flags, enum ttm_caching_state cstate,
 			       unsigned count, unsigned order)
 {
-	struct page **caching_array;
-	struct page *p;
+	struct vm_page **caching_array;
+	struct vm_page *p;
 	int r = 0;
 	unsigned i, j, cpages;
 	unsigned npages = 1 << order;
 	unsigned max_cpages = min(count << order, (unsigned)NUM_PAGES_TO_ALLOC);
 
 	/* allocate array for page caching change */
-	caching_array = kmalloc_array(max_cpages, sizeof(struct page *),
+	caching_array = kmalloc_array(max_cpages, sizeof(struct vm_page *),
 				      GFP_KERNEL);
 
 	if (!caching_array) {
@@ -572,7 +572,7 @@ static void ttm_page_pool_fill_locked(struct ttm_page_pool *pool, int ttm_flags,
 				      enum ttm_caching_state cstate,
 				      unsigned count, unsigned long *irq_flags)
 {
-	struct page *p;
+	struct vm_page *p;
 	int r;
 	unsigned cpages = 0;
 	/**
@@ -673,7 +673,7 @@ out:
 
 	/* clear the pages coming from the pool if requested */
 	if (ttm_flags & TTM_PAGE_FLAG_ZERO_ALLOC) {
-		struct page *page;
+		struct vm_page *page;
 
 		list_for_each_entry(page, pages, lru) {
 			if (PageHighMem(page))
@@ -705,7 +705,7 @@ out:
 }
 
 /* Put all pages in pages list to correct pool to wait for reuse */
-static void ttm_put_pages(struct page **pages, unsigned npages, int flags,
+static void ttm_put_pages(struct vm_page **pages, unsigned npages, int flags,
 			  enum ttm_caching_state cstate)
 {
 	struct ttm_page_pool *pool = ttm_get_pool(flags, false, cstate);
@@ -720,7 +720,7 @@ static void ttm_put_pages(struct page **pages, unsigned npages, int flags,
 		i = 0;
 		while (i < npages) {
 #ifdef CONFIG_TRANSPARENT_HUGEPAGE
-			struct page *p = pages[i];
+			struct vm_page *p = pages[i];
 #endif
 			unsigned order = 0, j;
 
@@ -761,7 +761,7 @@ static void ttm_put_pages(struct page **pages, unsigned npages, int flags,
 
 		spin_lock_irqsave(&huge->lock, irq_flags);
 		while ((npages - i) >= HPAGE_PMD_NR) {
-			struct page *p = pages[i];
+			struct vm_page *p = pages[i];
 			unsigned j;
 
 			if (!p)
@@ -823,7 +823,7 @@ static void ttm_put_pages(struct page **pages, unsigned npages, int flags,
  * On success pages list will hold count number of correctly
  * cached pages.
  */
-static int ttm_get_pages(struct page **pages, unsigned npages, int flags,
+static int ttm_get_pages(struct vm_page **pages, unsigned npages, int flags,
 			 enum ttm_caching_state cstate)
 {
 	struct ttm_page_pool *pool = ttm_get_pool(flags, false, cstate);
@@ -831,7 +831,7 @@ static int ttm_get_pages(struct page **pages, unsigned npages, int flags,
 	struct ttm_page_pool *huge = ttm_get_pool(flags, true, cstate);
 #endif
 	struct list_head plist;
-	struct page *p = NULL;
+	struct vm_page *p = NULL;
 	unsigned count, first;
 	int r;
 
@@ -919,7 +919,7 @@ static int ttm_get_pages(struct page **pages, unsigned npages, int flags,
 
 	first = count;
 	list_for_each_entry(p, &plist, lru) {
-		struct page *tmp = p;
+		struct vm_page *tmp = p;
 
 		/* Swap the pages if we detect consecutive order */
 		if (count > first && pages[count - 1] == tmp - 1)
@@ -1105,7 +1105,7 @@ int ttm_populate_and_map_pages(struct device *dev, struct ttm_dma_tt *tt,
 		return r;
 
 	for (i = 0; i < tt->ttm.num_pages; ++i) {
-		struct page *p = tt->ttm.pages[i];
+		struct vm_page *p = tt->ttm.pages[i];
 		size_t num_pages = 1;
 
 		for (j = i + 1; j < tt->ttm.num_pages; ++j) {
@@ -1142,7 +1142,7 @@ void ttm_unmap_and_unpopulate_pages(struct device *dev, struct ttm_dma_tt *tt)
 	unsigned i, j;
 
 	for (i = 0; i < tt->ttm.num_pages;) {
-		struct page *p = tt->ttm.pages[i];
+		struct vm_page *p = tt->ttm.pages[i];
 		size_t num_pages = 1;
 
 		if (!tt->dma_address[i] || !tt->ttm.pages[i]) {

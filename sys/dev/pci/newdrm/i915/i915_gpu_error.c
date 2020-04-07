@@ -185,7 +185,7 @@ static void pool_fini(struct pagevec *pv)
 static int pool_refill(struct pagevec *pv, gfp_t gfp)
 {
 	while (pagevec_space(pv)) {
-		struct page *p;
+		struct vm_page *p;
 
 		p = alloc_page(gfp);
 		if (!p)
@@ -212,7 +212,7 @@ static int pool_init(struct pagevec *pv, gfp_t gfp)
 
 static void *pool_alloc(struct pagevec *pv, gfp_t gfp)
 {
-	struct page *p;
+	struct vm_page *p;
 
 	p = alloc_page(gfp);
 	if (!p && pagevec_count(pv))
@@ -223,7 +223,7 @@ static void *pool_alloc(struct pagevec *pv, gfp_t gfp)
 
 static void pool_free(struct pagevec *pv, void *addr)
 {
-	struct page *p = virt_to_page(addr);
+	struct vm_page *p = virt_to_page(addr);
 
 	if (pagevec_space(pv))
 		pagevec_add(pv, p);
@@ -1043,7 +1043,7 @@ i915_vma_coredump_create(const struct intel_gt *gt,
 				break;
 		}
 	} else {
-		struct page *page;
+		struct vm_page *page;
 
 		for_each_sgt_page(page, iter, vma->pages) {
 			void *s;

@@ -1723,7 +1723,7 @@ out:
 static int check_scratch_page(struct i915_gem_context *ctx, u32 *out)
 {
 	struct i915_address_space *vm;
-	struct page *page;
+	struct vm_page *page;
 	u32 *vaddr;
 	int err = 0;
 

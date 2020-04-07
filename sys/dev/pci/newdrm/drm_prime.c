@@ -802,7 +802,7 @@ static const struct dma_buf_ops drm_gem_prime_dmabuf_ops =  {
  *
  * This is useful for implementing &drm_gem_object_funcs.get_sg_table.
  */
-struct sg_table *drm_prime_pages_to_sg(struct page **pages, unsigned int nr_pages)
+struct sg_table *drm_prime_pages_to_sg(struct vm_page **pages, unsigned int nr_pages)
 {
 	struct sg_table *sg = NULL;
 	int ret;
@@ -956,12 +956,12 @@ EXPORT_SYMBOL(drm_gem_prime_import);
  * Drivers can use this in their &drm_driver.gem_prime_import_sg_table
  * implementation.
  */
-int drm_prime_sg_to_page_addr_arrays(struct sg_table *sgt, struct page **pages,
+int drm_prime_sg_to_page_addr_arrays(struct sg_table *sgt, struct vm_page **pages,
 				     dma_addr_t *addrs, int max_entries)
 {
 	unsigned count;
 	struct scatterlist *sg;
-	struct page *page;
+	struct vm_page *page;
 	u32 len, index;
 	dma_addr_t addr;
 

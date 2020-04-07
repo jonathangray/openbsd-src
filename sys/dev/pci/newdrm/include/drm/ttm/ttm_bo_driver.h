@@ -408,7 +408,7 @@ extern struct ttm_bo_global {
 	 */
 
 	struct kobject kobj;
-	struct page *dummy_read_page;
+	struct vm_page *dummy_read_page;
 	spinlock_t lru_lock;
 
 	/**

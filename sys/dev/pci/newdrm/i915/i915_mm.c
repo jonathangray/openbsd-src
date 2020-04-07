@@ -42,7 +42,7 @@ static int remap_pfn(pte_t *pte, unsigned long addr, void *data)
 {
 	struct remap_pfn *r = data;
 
-	/* Special PTE are not associated with any struct page */
+	/* Special PTE are not associated with any struct vm_page */
 	set_pte_at(r->mm, addr, pte, pte_mkspecial(pfn_pte(r->pfn, r->prot)));
 	r->pfn++;
 
@@ -66,7 +66,7 @@ static int remap_sg(pte_t *pte, unsigned long addr, void *data)
 	if (GEM_WARN_ON(!r->sgt.pfn))
 		return -EINVAL;
 
-	/* Special PTE are not associated with any struct page */
+	/* Special PTE are not associated with any struct vm_page */
 	set_pte_at(r->mm, addr, pte,
 		   pte_mkspecial(pfn_pte(sgt_pfn(r), r->prot)));
 	r->pfn++; /* track insertions in case we need to unwind later */

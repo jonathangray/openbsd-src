@@ -139,7 +139,7 @@ typedef u64 gen8_pte_t;
 	__for_each_sgt_daddr(__dp, __iter, __sgt, I915_GTT_PAGE_SIZE)
 
 struct i915_page_dma {
-	struct page *page;
+	struct vm_page *page;
 	union {
 		dma_addr_t daddr;
 

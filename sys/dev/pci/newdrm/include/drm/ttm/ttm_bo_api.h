@@ -234,7 +234,7 @@ struct ttm_buffer_object {
 #define TTM_BO_MAP_IOMEM_MASK 0x80
 struct ttm_bo_kmap_obj {
 	void *virtual;
-	struct page *page;
+	struct vm_page *page;
 	enum {
 		ttm_bo_map_iomap        = 1 | TTM_BO_MAP_IOMEM_MASK,
 		ttm_bo_map_vmap         = 2,
@@ -668,7 +668,7 @@ int ttm_bo_mmap_obj(struct vm_area_struct *vma, struct ttm_buffer_object *bo);
 int ttm_bo_mmap(struct file *filp, struct vm_area_struct *vma,
 		struct ttm_bo_device *bdev);
 
-void *ttm_kmap_atomic_prot(struct page *page, pgprot_t prot);
+void *ttm_kmap_atomic_prot(struct vm_page *page, pgprot_t prot);
 
 void ttm_kunmap_atomic_prot(void *addr, pgprot_t prot);
 

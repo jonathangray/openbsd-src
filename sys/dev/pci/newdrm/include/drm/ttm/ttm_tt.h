@@ -105,7 +105,7 @@ struct ttm_backend_func {
 struct ttm_tt {
 	struct ttm_bo_device *bdev;
 	struct ttm_backend_func *func;
-	struct page **pages;
+	struct vm_page **pages;
 	uint32_t page_flags;
 	unsigned long num_pages;
 	struct sg_table *sg; /* for SG objects via dma-buf */

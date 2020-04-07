@@ -78,7 +78,7 @@ create_st:
 
 	do {
 		int order = min(fls(npages) - 1, max_order);
-		struct page *page;
+		struct vm_page *page;
 
 		do {
 			page = alloc_pages(gfp | (order ? QUIET : MAYFAIL),

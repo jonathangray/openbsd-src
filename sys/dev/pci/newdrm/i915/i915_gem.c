@@ -301,7 +301,7 @@ i915_gem_create_ioctl(struct drm_device *dev, void *data,
 }
 
 static int
-shmem_pread(struct page *page, int offset, int len, char __user *user_data,
+shmem_pread(struct vm_page *page, int offset, int len, char __user *user_data,
 	    bool needs_clflush)
 {
 	char *vaddr;
@@ -343,7 +343,7 @@ i915_gem_shmem_pread(struct drm_i915_gem_object *obj,
 	user_data = u64_to_user_ptr(args->data_ptr);
 	offset = offset_in_page(args->offset);
 	for (idx = args->offset >> PAGE_SHIFT; remain; idx++) {
-		struct page *page = i915_gem_object_get_page(obj, idx);
+		struct vm_page *page = i915_gem_object_get_page(obj, idx);
 		unsigned int length = min_t(u64, remain, PAGE_SIZE - offset);
 
 		ret = shmem_pread(page, offset, length, user_data,
@@ -696,7 +696,7 @@ out_rpm:
  * writing if needs_clflush is set.
  */
 static int
-shmem_pwrite(struct page *page, int offset, int len, char __user *user_data,
+shmem_pwrite(struct vm_page *page, int offset, int len, char __user *user_data,
 	     bool needs_clflush_before,
 	     bool needs_clflush_after)
 {
@@ -750,7 +750,7 @@ i915_gem_shmem_pwrite(struct drm_i915_gem_object *obj,
 	remain = args->size;
 	offset = offset_in_page(args->offset);
 	for (idx = args->offset >> PAGE_SHIFT; remain; idx++) {
-		struct page *page = i915_gem_object_get_page(obj, idx);
+		struct vm_page *page = i915_gem_object_get_page(obj, idx);
 		unsigned int length = min_t(u64, remain, PAGE_SIZE - offset);
 
 		ret = shmem_pwrite(page, offset, length, user_data,

@@ -37,34 +37,34 @@
 
 #include <asm/set_memory.h>
 
-static inline int ttm_set_pages_array_wb(struct page **pages, int addrinarray)
+static inline int ttm_set_pages_array_wb(struct vm_page **pages, int addrinarray)
 {
 	return set_pages_array_wb(pages, addrinarray);
 }
 
-static inline int ttm_set_pages_array_wc(struct page **pages, int addrinarray)
+static inline int ttm_set_pages_array_wc(struct vm_page **pages, int addrinarray)
 {
 	return set_pages_array_wc(pages, addrinarray);
 }
 
-static inline int ttm_set_pages_array_uc(struct page **pages, int addrinarray)
+static inline int ttm_set_pages_array_uc(struct vm_page **pages, int addrinarray)
 {
 	return set_pages_array_uc(pages, addrinarray);
 }
 
-static inline int ttm_set_pages_wb(struct page *page, int numpages)
+static inline int ttm_set_pages_wb(struct vm_page *page, int numpages)
 {
 	return set_pages_wb(page, numpages);
 }
 
-static inline int ttm_set_pages_wc(struct page *page, int numpages)
+static inline int ttm_set_pages_wc(struct vm_page *page, int numpages)
 {
 	unsigned long addr = (unsigned long)page_address(page);
 
 	return set_memory_wc(addr, numpages);
 }
 
-static inline int ttm_set_pages_uc(struct page *page, int numpages)
+static inline int ttm_set_pages_uc(struct vm_page *page, int numpages)
 {
 	return set_pages_uc(page, numpages);
 }
@@ -75,7 +75,7 @@ static inline int ttm_set_pages_uc(struct page *page, int numpages)
 
 #include <asm/agp.h>
 
-static inline int ttm_set_pages_array_wb(struct page **pages, int addrinarray)
+static inline int ttm_set_pages_array_wb(struct vm_page **pages, int addrinarray)
 {
 	int i;
 
@@ -84,7 +84,7 @@ static inline int ttm_set_pages_array_wb(struct page **pages, int addrinarray)
 	return 0;
 }
 
-static inline int ttm_set_pages_array_wc(struct page **pages, int addrinarray)
+static inline int ttm_set_pages_array_wc(struct vm_page **pages, int addrinarray)
 {
 	int i;
 
@@ -93,7 +93,7 @@ static inline int ttm_set_pages_array_wc(struct page **pages, int addrinarray)
 	return 0;
 }
 
-static inline int ttm_set_pages_array_uc(struct page **pages, int addrinarray)
+static inline int ttm_set_pages_array_uc(struct vm_page **pages, int addrinarray)
 {
 	int i;
 
@@ -102,7 +102,7 @@ static inline int ttm_set_pages_array_uc(struct page **pages, int addrinarray)
 	return 0;
 }
 
-static inline int ttm_set_pages_wb(struct page *page, int numpages)
+static inline int ttm_set_pages_wb(struct vm_page *page, int numpages)
 {
 	int i;
 
@@ -113,34 +113,34 @@ static inline int ttm_set_pages_wb(struct page *page, int numpages)
 
 #else /* for CONFIG_AGP */
 
-static inline int ttm_set_pages_array_wb(struct page **pages, int addrinarray)
+static inline int ttm_set_pages_array_wb(struct vm_page **pages, int addrinarray)
 {
 	return 0;
 }
 
-static inline int ttm_set_pages_array_wc(struct page **pages, int addrinarray)
+static inline int ttm_set_pages_array_wc(struct vm_page **pages, int addrinarray)
 {
 	return 0;
 }
 
-static inline int ttm_set_pages_array_uc(struct page **pages, int addrinarray)
+static inline int ttm_set_pages_array_uc(struct vm_page **pages, int addrinarray)
 {
 	return 0;
 }
 
-static inline int ttm_set_pages_wb(struct page *page, int numpages)
+static inline int ttm_set_pages_wb(struct vm_page *page, int numpages)
 {
 	return 0;
 }
 
 #endif /* for CONFIG_AGP */
 
-static inline int ttm_set_pages_wc(struct page *page, int numpages)
+static inline int ttm_set_pages_wc(struct vm_page *page, int numpages)
 {
 	return 0;
 }
 
-static inline int ttm_set_pages_uc(struct page *page, int numpages)
+static inline int ttm_set_pages_uc(struct vm_page *page, int numpages)
 {
 	return 0;
 }

@@ -87,7 +87,7 @@ static int check_partial_mapping(struct drm_i915_gem_object *obj,
 	struct i915_vma *vma;
 	unsigned long page;
 	u32 __iomem *io;
-	struct page *p;
+	struct vm_page *p;
 	unsigned int n;
 	u64 offset;
 	u32 *cpu;
@@ -200,7 +200,7 @@ static int check_partial_mappings(struct drm_i915_gem_object *obj,
 		struct i915_ggtt_view view =
 			compute_partial_view(obj, page, MIN_CHUNK_PAGES);
 		u32 __iomem *io;
-		struct page *p;
+		struct vm_page *p;
 		unsigned int n;
 		u64 offset;
 		u32 *cpu;

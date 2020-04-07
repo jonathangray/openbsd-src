@@ -505,7 +505,7 @@ i915_pages_create_for_stolen(struct drm_device *dev,
 
 	GEM_BUG_ON(range_overflows(offset, size, resource_size(&i915->dsm)));
 
-	/* We hide that we have no struct page backing our stolen object
+	/* We hide that we have no struct vm_page backing our stolen object
 	 * by wrapping the contiguous physical allocation with a fake
 	 * dma mapping in a single scatterlist.
 	 */

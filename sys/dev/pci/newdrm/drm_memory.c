@@ -63,8 +63,8 @@ static void *agp_remap(unsigned long offset, unsigned long size,
 	unsigned long i, num_pages =
 	    PAGE_ALIGN(size) / PAGE_SIZE;
 	struct drm_agp_mem *agpmem;
-	struct page **page_map;
-	struct page **phys_page_map;
+	struct vm_page **page_map;
+	struct vm_page **phys_page_map;
 	void *addr;
 
 	size = PAGE_ALIGN(size);
@@ -87,7 +87,7 @@ static void *agp_remap(unsigned long offset, unsigned long size,
 	 * page-table instead (that's probably faster anyhow...).
 	 */
 	/* note: use vmalloc() because num_pages could be large... */
-	page_map = vmalloc(array_size(num_pages, sizeof(struct page *)));
+	page_map = vmalloc(array_size(num_pages, sizeof(struct vm_page *)));
 	if (!page_map)
 		return NULL;
 

@@ -49,7 +49,7 @@ static noinline int expect_pfn_sg(struct pfn_table *pt,
 
 	pfn = pt->start;
 	for_each_sg(pt->st.sgl, sg, pt->st.nents, n) {
-		struct page *page = sg_page(sg);
+		struct vm_page *page = sg_page(sg);
 		unsigned int npages = npages_fn(n, pt->st.nents, rnd);
 
 		if (page_to_pfn(page) != pfn) {
@@ -87,7 +87,7 @@ static noinline int expect_pfn_sg_page_iter(struct pfn_table *pt,
 
 	pfn = pt->start;
 	for_each_sg_page(pt->st.sgl, &sgiter, pt->st.nents, 0) {
-		struct page *page = sg_page_iter_page(&sgiter);
+		struct vm_page *page = sg_page_iter_page(&sgiter);
 
 		if (page != pfn_to_page(pfn)) {
 			pr_err("%s: %s left pages out of order, expected pfn %lu, found pfn %lu (using for_each_sg_page)\n",
@@ -114,7 +114,7 @@ static noinline int expect_pfn_sgtiter(struct pfn_table *pt,
 				       unsigned long timeout)
 {
 	struct sgt_iter sgt;
-	struct page *page;
+	struct vm_page *page;
 	unsigned long pfn;
 
 	pfn = pt->start;
@@ -204,8 +204,8 @@ static unsigned int random_page_size_pages(unsigned long n,
 	return page_count[(prandom_u32_state(rnd) % 3)];
 }
 
-static inline bool page_contiguous(struct page *first,
-				   struct page *last,
+static inline bool page_contiguous(struct vm_page *first,
+				   struct vm_page *last,
 				   unsigned long npages)
 {
 	return first + npages == last;

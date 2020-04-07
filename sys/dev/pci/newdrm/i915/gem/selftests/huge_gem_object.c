@@ -13,7 +13,7 @@ static void huge_free_pages(struct drm_i915_gem_object *obj,
 {
 	unsigned long nreal = obj->scratch / PAGE_SIZE;
 	struct sgt_iter sgt_iter;
-	struct page *page;
+	struct vm_page *page;
 
 	for_each_sgt_page(page, sgt_iter, pages) {
 		__free_page(page);
@@ -45,7 +45,7 @@ static int huge_get_pages(struct drm_i915_gem_object *obj)
 
 	sg = pages->sgl;
 	for (n = 0; n < nreal; n++) {
-		struct page *page;
+		struct vm_page *page;
 
 		page = alloc_page(GFP | __GFP_HIGHMEM);
 		if (!page) {

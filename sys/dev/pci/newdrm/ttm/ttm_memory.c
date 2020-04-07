@@ -630,7 +630,7 @@ int ttm_mem_global_alloc(struct ttm_mem_global *glob, uint64_t memory,
 EXPORT_SYMBOL(ttm_mem_global_alloc);
 
 int ttm_mem_global_alloc_page(struct ttm_mem_global *glob,
-			      struct page *page, uint64_t size,
+			      struct vm_page *page, uint64_t size,
 			      struct ttm_operation_ctx *ctx)
 {
 	struct ttm_mem_zone *zone = NULL;
@@ -650,7 +650,7 @@ int ttm_mem_global_alloc_page(struct ttm_mem_global *glob,
 	return ttm_mem_global_alloc_zone(glob, zone, size, ctx);
 }
 
-void ttm_mem_global_free_page(struct ttm_mem_global *glob, struct page *page,
+void ttm_mem_global_free_page(struct ttm_mem_global *glob, struct vm_page *page,
 			      uint64_t size)
 {
 	struct ttm_mem_zone *zone = NULL;

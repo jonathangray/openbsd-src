@@ -396,8 +396,8 @@ void drm_gem_free_mmap_offset(struct drm_gem_object *obj);
 int drm_gem_create_mmap_offset(struct drm_gem_object *obj);
 int drm_gem_create_mmap_offset_size(struct drm_gem_object *obj, size_t size);
 
-struct page **drm_gem_get_pages(struct drm_gem_object *obj);
-void drm_gem_put_pages(struct drm_gem_object *obj, struct page **pages,
+struct vm_page **drm_gem_get_pages(struct drm_gem_object *obj);
+void drm_gem_put_pages(struct drm_gem_object *obj, struct vm_page **pages,
 		bool dirty, bool accessed);
 
 int drm_gem_objects_lookup(struct drm_file *filp, void __user *bo_handles,

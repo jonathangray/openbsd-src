@@ -280,7 +280,7 @@ static int ttm_copy_io_page(void *dst, void *src, unsigned long page)
  * unmapping using this api must be correctly nested. Unmapping should
  * occur in the reverse order of mapping.
  */
-void *ttm_kmap_atomic_prot(struct page *page, pgprot_t prot)
+void *ttm_kmap_atomic_prot(struct vm_page *page, pgprot_t prot)
 {
 	if (pgprot_val(prot) == pgprot_val(PAGE_KERNEL))
 		return kmap_atomic(page);
@@ -309,7 +309,7 @@ static int ttm_copy_io_ttm_page(struct ttm_tt *ttm, void *src,
 				unsigned long page,
 				pgprot_t prot)
 {
-	struct page *d = ttm->pages[page];
+	struct vm_page *d = ttm->pages[page];
 	void *dst;
 
 	if (!d)
@@ -331,7 +331,7 @@ static int ttm_copy_ttm_io_page(struct ttm_tt *ttm, void *dst,
 				unsigned long page,
 				pgprot_t prot)
 {
-	struct page *s = ttm->pages[page];
+	struct vm_page *s = ttm->pages[page];
 	void *src;
 
 	if (!s)

@@ -54,13 +54,13 @@ static int i915_gem_object_get_pages_phys(struct drm_i915_gem_object *obj)
 	sg->offset = 0;
 	sg->length = obj->base.size;
 
-	sg_assign_page(sg, (struct page *)vaddr);
+	sg_assign_page(sg, (struct vm_page *)vaddr);
 	sg_dma_address(sg) = dma;
 	sg_dma_len(sg) = obj->base.size;
 
 	dst = vaddr;
 	for (i = 0; i < obj->base.size / PAGE_SIZE; i++) {
-		struct page *page;
+		struct vm_page *page;
 		void *src;
 
 		page = shmem_read_mapping_page(mapping, i);
@@ -106,7 +106,7 @@ i915_gem_object_put_pages_phys(struct drm_i915_gem_object *obj,
 		int i;
 
 		for (i = 0; i < obj->base.size / PAGE_SIZE; i++) {
-			struct page *page;
+			struct vm_page *page;
 			char *dst;
 
 			page = shmem_read_mapping_page(mapping, i);

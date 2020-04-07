@@ -61,7 +61,7 @@ static void update_shadow_pdps(struct intel_vgpu_workload *workload)
 	struct drm_i915_gem_object *ctx_obj =
 		workload->req->context->state->obj;
 	struct execlist_ring_context *shadow_ring_context;
-	struct page *page;
+	struct vm_page *page;
 
 	if (WARN_ON(!workload->shadow_mm))
 		return;
@@ -131,7 +131,7 @@ static int populate_shadow_context(struct intel_vgpu_workload *workload)
 	struct drm_i915_gem_object *ctx_obj =
 		workload->req->context->state->obj;
 	struct execlist_ring_context *shadow_ring_context;
-	struct page *page;
+	struct vm_page *page;
 	void *dst;
 	unsigned long context_gpa, context_page_num;
 	int i;
@@ -786,7 +786,7 @@ static void update_guest_context(struct intel_vgpu_workload *workload)
 	struct intel_vgpu *vgpu = workload->vgpu;
 	struct drm_i915_gem_object *ctx_obj = rq->context->state->obj;
 	struct execlist_ring_context *shadow_ring_context;
-	struct page *page;
+	struct vm_page *page;
 	void *src;
 	unsigned long context_gpa, context_page_num;
 	int i;

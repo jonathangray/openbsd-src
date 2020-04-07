@@ -113,7 +113,7 @@ static int ttm_sg_tt_alloc_page_directory(struct ttm_dma_tt *ttm)
 	return 0;
 }
 
-static int ttm_tt_set_page_caching(struct page *p,
+static int ttm_tt_set_page_caching(struct vm_page *p,
 				   enum ttm_caching_state c_old,
 				   enum ttm_caching_state c_new)
 {
@@ -148,7 +148,7 @@ static int ttm_tt_set_caching(struct ttm_tt *ttm,
 			      enum ttm_caching_state c_state)
 {
 	int i, j;
-	struct page *cur_page;
+	struct vm_page *cur_page;
 	int ret;
 
 	if (ttm->caching_state == c_state)
@@ -349,8 +349,8 @@ int ttm_tt_swapin(struct ttm_tt *ttm)
 {
 	struct address_space *swap_space;
 	struct file *swap_storage;
-	struct page *from_page;
-	struct page *to_page;
+	struct vm_page *from_page;
+	struct vm_page *to_page;
 	int i;
 	int ret = -ENOMEM;
 
@@ -391,8 +391,8 @@ int ttm_tt_swapout(struct ttm_tt *ttm, struct file *persistent_swap_storage)
 {
 	struct address_space *swap_space;
 	struct file *swap_storage;
-	struct page *from_page;
-	struct page *to_page;
+	struct vm_page *from_page;
+	struct vm_page *to_page;
 	int i;
 	int ret = -ENOMEM;
 
@@ -477,7 +477,7 @@ int ttm_tt_populate(struct ttm_tt *ttm, struct ttm_operation_ctx *ctx)
 static void ttm_tt_clear_mapping(struct ttm_tt *ttm)
 {
 	pgoff_t i;
-	struct page **page = ttm->pages;
+	struct vm_page **page = ttm->pages;
 
 	if (ttm->page_flags & TTM_PAGE_FLAG_SG)
 		return;

@@ -3411,7 +3411,7 @@ static int intel_init_workaround_bb(struct intel_engine_cs *engine)
 	struct i915_wa_ctx_bb *wa_bb[2] = { &wa_ctx->indirect_ctx,
 					    &wa_ctx->per_ctx };
 	wa_bb_func_t wa_bb_fn[2];
-	struct page *page;
+	struct vm_page *page;
 	void *batch, *batch_ptr;
 	unsigned int i;
 	int ret;

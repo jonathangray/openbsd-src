@@ -54,7 +54,7 @@ static inline void *drm_vmalloc_dma(unsigned long size)
 
 static void drm_sg_cleanup(struct drm_sg_mem * entry)
 {
-	struct page *page;
+	struct vm_page *page;
 	int i;
 
 	for (i = 0; i < entry->pages; i++) {

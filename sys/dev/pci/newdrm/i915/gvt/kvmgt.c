@@ -167,7 +167,7 @@ static void gvt_unpin_guest_page(struct intel_vgpu *vgpu, unsigned long gfn,
 
 /* Pin a normal or compound guest page for dma. */
 static int gvt_pin_guest_page(struct intel_vgpu *vgpu, unsigned long gfn,
-		unsigned long size, struct page **page)
+		unsigned long size, struct vm_page **page)
 {
 	unsigned long base_pfn = 0;
 	int total_pages;
@@ -219,7 +219,7 @@ static int gvt_dma_map_page(struct intel_vgpu *vgpu, unsigned long gfn,
 		dma_addr_t *dma_addr, unsigned long size)
 {
 	struct device *dev = &vgpu->gvt->gt->i915->drm.pdev->dev;
-	struct page *page = NULL;
+	struct vm_page *page = NULL;
 	int ret;
 
 	ret = gvt_pin_guest_page(vgpu, gfn, size, &page);

@@ -128,7 +128,7 @@ struct drm_sg_mem {
 	unsigned long handle;
 	void *virtual;
 	int pages;
-	struct page **pagelist;
+	struct vm_page **pagelist;
 	dma_addr_t *busaddr;
 };
 

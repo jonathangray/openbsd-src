@@ -550,10 +550,10 @@ static void drm_gem_check_release_pagevec(struct pagevec *pvec)
  * after drm_gem_object_init() via mapping_set_gfp_mask(). shmem-core takes care
  * to keep pages in the required zone during swap-in.
  */
-struct page **drm_gem_get_pages(struct drm_gem_object *obj)
+struct vm_page **drm_gem_get_pages(struct drm_gem_object *obj)
 {
 	struct address_space *mapping;
-	struct page *p, **pages;
+	struct vm_page *p, **pages;
 	struct pagevec pvec;
 	int i, npages;
 
@@ -568,7 +568,7 @@ struct page **drm_gem_get_pages(struct drm_gem_object *obj)
 
 	npages = obj->size >> PAGE_SHIFT;
 
-	pages = kvmalloc_array(npages, sizeof(struct page *), GFP_KERNEL);
+	pages = kvmalloc_array(npages, sizeof(struct vm_page *), GFP_KERNEL);
 	if (pages == NULL)
 		return ERR_PTR(-ENOMEM);
 
@@ -613,7 +613,7 @@ EXPORT_SYMBOL(drm_gem_get_pages);
  * @dirty: if true, pages will be marked as dirty
  * @accessed: if true, the pages will be marked as accessed
  */
-void drm_gem_put_pages(struct drm_gem_object *obj, struct page **pages,
+void drm_gem_put_pages(struct drm_gem_object *obj, struct vm_page **pages,
 		bool dirty, bool accessed)
 {
 	int i, npages;

@@ -254,11 +254,11 @@ struct scatterlist *
 i915_gem_object_get_sg(struct drm_i915_gem_object *obj,
 		       unsigned int n, unsigned int *offset);
 
-struct page *
+struct vm_page *
 i915_gem_object_get_page(struct drm_i915_gem_object *obj,
 			 unsigned int n);
 
-struct page *
+struct vm_page *
 i915_gem_object_get_dirty_page(struct drm_i915_gem_object *obj,
 			       unsigned int n);
 

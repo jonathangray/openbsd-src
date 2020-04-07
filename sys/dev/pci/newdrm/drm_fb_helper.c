@@ -634,7 +634,7 @@ void drm_fb_helper_deferred_io(struct fb_info *info,
 			       struct list_head *pagelist)
 {
 	unsigned long start, end, min, max;
-	struct page *page;
+	struct vm_page *page;
 	u32 y1, y2;
 
 	min = ULONG_MAX;

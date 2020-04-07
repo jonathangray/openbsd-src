@@ -51,7 +51,7 @@
 #include <drm/ttm/ttm_page_alloc.h>
 #include <drm/ttm/ttm_set_memory.h>
 
-#define NUM_PAGES_TO_ALLOC		(PAGE_SIZE/sizeof(struct page *))
+#define NUM_PAGES_TO_ALLOC		(PAGE_SIZE/sizeof(struct vm_page *))
 #define SMALL_ALLOCATION		4
 #define FREE_ALL_PAGES			(~0U)
 #define VADDR_FLAG_HUGE_POOL		1UL
@@ -121,7 +121,7 @@ struct dma_pool {
 struct dma_page {
 	struct list_head page_list;
 	unsigned long vaddr;
-	struct page *p;
+	struct vm_page *p;
 	dma_addr_t dma;
 };
 
@@ -263,7 +263,7 @@ static struct kobj_type ttm_pool_kobj_type = {
 };
 
 static int ttm_set_pages_caching(struct dma_pool *pool,
-				 struct page **pages, unsigned cpages)
+				 struct vm_page **pages, unsigned cpages)
 {
 	int r = 0;
 	/* Set page caching */
@@ -351,7 +351,7 @@ static void ttm_pool_update_free_locked(struct dma_pool *pool,
 /* set memory back to wb and free the pages. */
 static void ttm_dma_page_put(struct dma_pool *pool, struct dma_page *d_page)
 {
-	struct page *page = d_page->p;
+	struct vm_page *page = d_page->p;
 	unsigned num_pages;
 
 	/* Don't set WB on WB page pool. */
@@ -367,7 +367,7 @@ static void ttm_dma_page_put(struct dma_pool *pool, struct dma_page *d_page)
 }
 
 static void ttm_dma_pages_put(struct dma_pool *pool, struct list_head *d_pages,
-			      struct page *pages[], unsigned npages)
+			      struct vm_page *pages[], unsigned npages)
 {
 	struct dma_page *d_page, *tmp;
 
@@ -403,10 +403,10 @@ static void ttm_dma_pages_put(struct dma_pool *pool, struct list_head *d_pages,
 static unsigned ttm_dma_page_pool_free(struct dma_pool *pool, unsigned nr_free,
 				       bool use_static)
 {
-	static struct page *static_buf[NUM_PAGES_TO_ALLOC];
+	static struct vm_page *static_buf[NUM_PAGES_TO_ALLOC];
 	unsigned long irq_flags;
 	struct dma_page *dma_p, *tmp;
-	struct page **pages_to_free;
+	struct vm_page **pages_to_free;
 	struct list_head d_pages;
 	unsigned freed_pages = 0,
 		 npages_to_free = nr_free;
@@ -418,7 +418,7 @@ static unsigned ttm_dma_page_pool_free(struct dma_pool *pool, unsigned nr_free,
 		pages_to_free = static_buf;
 	else
 		pages_to_free = kmalloc_array(npages_to_free,
-					      sizeof(struct page *),
+					      sizeof(struct vm_page *),
 					      GFP_KERNEL);
 
 	if (!pages_to_free) {
@@ -664,11 +664,11 @@ static struct dma_pool *ttm_dma_find_pool(struct device *dev,
  */
 static void ttm_dma_handle_caching_state_failure(struct dma_pool *pool,
 						 struct list_head *d_pages,
-						 struct page **failed_pages,
+						 struct vm_page **failed_pages,
 						 unsigned cpages)
 {
 	struct dma_page *d_page, *tmp;
-	struct page *p;
+	struct vm_page *p;
 	unsigned i = 0;
 
 	p = failed_pages[0];
@@ -699,16 +699,16 @@ static int ttm_dma_pool_alloc_new_pages(struct dma_pool *pool,
 					struct list_head *d_pages,
 					unsigned count)
 {
-	struct page **caching_array;
+	struct vm_page **caching_array;
 	struct dma_page *dma_p;
-	struct page *p;
+	struct vm_page *p;
 	int r = 0;
 	unsigned i, j, npages, cpages;
 	unsigned max_cpages = min(count,
-			(unsigned)(PAGE_SIZE/sizeof(struct page *)));
+			(unsigned)(PAGE_SIZE/sizeof(struct vm_page *)));
 
 	/* allocate array for page caching change */
-	caching_array = kmalloc_array(max_cpages, sizeof(struct page *),
+	caching_array = kmalloc_array(max_cpages, sizeof(struct vm_page *),
 				      GFP_KERNEL);
 
 	if (!caching_array) {
