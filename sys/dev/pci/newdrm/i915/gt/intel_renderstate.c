@@ -148,7 +148,7 @@ static int render_state_setup(struct intel_renderstate *so,
 	 * Since we are sending length, we need to strictly conform to
 	 * all requirements. For Gen2 this must be a multiple of 8.
 	 */
-	so->aux_size = ALIGN(so->aux_size, 8);
+	so->aux_size = roundup2(so->aux_size, 8);
 
 	if (needs_clflush)
 		drm_clflush_virt_range(d, i * sizeof(u32));

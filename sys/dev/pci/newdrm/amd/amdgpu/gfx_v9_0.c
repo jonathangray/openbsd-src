@@ -1342,21 +1342,21 @@ static int gfx_v9_0_init_cp_gfx_microcode(struct amdgpu_device *adev,
 		info->fw = adev->gfx.pfp_fw;
 		header = (const struct common_firmware_header *)info->fw->data;
 		adev->firmware.fw_size +=
-			ALIGN(le32_to_cpu(header->ucode_size_bytes), PAGE_SIZE);
+			roundup2(le32_to_cpu(header->ucode_size_bytes), PAGE_SIZE);
 
 		info = &adev->firmware.ucode[AMDGPU_UCODE_ID_CP_ME];
 		info->ucode_id = AMDGPU_UCODE_ID_CP_ME;
 		info->fw = adev->gfx.me_fw;
 		header = (const struct common_firmware_header *)info->fw->data;
 		adev->firmware.fw_size +=
-			ALIGN(le32_to_cpu(header->ucode_size_bytes), PAGE_SIZE);
+			roundup2(le32_to_cpu(header->ucode_size_bytes), PAGE_SIZE);
 
 		info = &adev->firmware.ucode[AMDGPU_UCODE_ID_CP_CE];
 		info->ucode_id = AMDGPU_UCODE_ID_CP_CE;
 		info->fw = adev->gfx.ce_fw;
 		header = (const struct common_firmware_header *)info->fw->data;
 		adev->firmware.fw_size +=
-			ALIGN(le32_to_cpu(header->ucode_size_bytes), PAGE_SIZE);
+			roundup2(le32_to_cpu(header->ucode_size_bytes), PAGE_SIZE);
 	}
 
 out:
@@ -1468,7 +1468,7 @@ static int gfx_v9_0_init_rlc_microcode(struct amdgpu_device *adev,
 		info->fw = adev->gfx.rlc_fw;
 		header = (const struct common_firmware_header *)info->fw->data;
 		adev->firmware.fw_size +=
-			ALIGN(le32_to_cpu(header->ucode_size_bytes), PAGE_SIZE);
+			roundup2(le32_to_cpu(header->ucode_size_bytes), PAGE_SIZE);
 
 		if (adev->gfx.rlc.is_rlc_v2_1 &&
 		    adev->gfx.rlc.save_restore_list_cntl_size_bytes &&
@@ -1478,19 +1478,19 @@ static int gfx_v9_0_init_rlc_microcode(struct amdgpu_device *adev,
 			info->ucode_id = AMDGPU_UCODE_ID_RLC_RESTORE_LIST_CNTL;
 			info->fw = adev->gfx.rlc_fw;
 			adev->firmware.fw_size +=
-				ALIGN(adev->gfx.rlc.save_restore_list_cntl_size_bytes, PAGE_SIZE);
+				roundup2(adev->gfx.rlc.save_restore_list_cntl_size_bytes, PAGE_SIZE);
 
 			info = &adev->firmware.ucode[AMDGPU_UCODE_ID_RLC_RESTORE_LIST_GPM_MEM];
 			info->ucode_id = AMDGPU_UCODE_ID_RLC_RESTORE_LIST_GPM_MEM;
 			info->fw = adev->gfx.rlc_fw;
 			adev->firmware.fw_size +=
-				ALIGN(adev->gfx.rlc.save_restore_list_gpm_size_bytes, PAGE_SIZE);
+				roundup2(adev->gfx.rlc.save_restore_list_gpm_size_bytes, PAGE_SIZE);
 
 			info = &adev->firmware.ucode[AMDGPU_UCODE_ID_RLC_RESTORE_LIST_SRM_MEM];
 			info->ucode_id = AMDGPU_UCODE_ID_RLC_RESTORE_LIST_SRM_MEM;
 			info->fw = adev->gfx.rlc_fw;
 			adev->firmware.fw_size +=
-				ALIGN(adev->gfx.rlc.save_restore_list_srm_size_bytes, PAGE_SIZE);
+				roundup2(adev->gfx.rlc.save_restore_list_srm_size_bytes, PAGE_SIZE);
 		}
 	}
 
@@ -1550,13 +1550,13 @@ static int gfx_v9_0_init_cp_compute_microcode(struct amdgpu_device *adev,
 		header = (const struct common_firmware_header *)info->fw->data;
 		cp_hdr = (const struct gfx_firmware_header_v1_0 *)info->fw->data;
 		adev->firmware.fw_size +=
-			ALIGN(le32_to_cpu(header->ucode_size_bytes) - le32_to_cpu(cp_hdr->jt_size) * 4, PAGE_SIZE);
+			roundup2(le32_to_cpu(header->ucode_size_bytes) - le32_to_cpu(cp_hdr->jt_size) * 4, PAGE_SIZE);
 
 		info = &adev->firmware.ucode[AMDGPU_UCODE_ID_CP_MEC1_JT];
 		info->ucode_id = AMDGPU_UCODE_ID_CP_MEC1_JT;
 		info->fw = adev->gfx.mec_fw;
 		adev->firmware.fw_size +=
-			ALIGN(le32_to_cpu(cp_hdr->jt_size) * 4, PAGE_SIZE);
+			roundup2(le32_to_cpu(cp_hdr->jt_size) * 4, PAGE_SIZE);
 
 		if (adev->gfx.mec2_fw) {
 			info = &adev->firmware.ucode[AMDGPU_UCODE_ID_CP_MEC2];
@@ -1565,7 +1565,7 @@ static int gfx_v9_0_init_cp_compute_microcode(struct amdgpu_device *adev,
 			header = (const struct common_firmware_header *)info->fw->data;
 			cp_hdr = (const struct gfx_firmware_header_v1_0 *)info->fw->data;
 			adev->firmware.fw_size +=
-				ALIGN(le32_to_cpu(header->ucode_size_bytes) - le32_to_cpu(cp_hdr->jt_size) * 4, PAGE_SIZE);
+				roundup2(le32_to_cpu(header->ucode_size_bytes) - le32_to_cpu(cp_hdr->jt_size) * 4, PAGE_SIZE);
 
 			/* TODO: Determine if MEC2 JT FW loading can be removed
 				 for all GFX V9 asic and above */
@@ -1575,7 +1575,7 @@ static int gfx_v9_0_init_cp_compute_microcode(struct amdgpu_device *adev,
 				info->ucode_id = AMDGPU_UCODE_ID_CP_MEC2_JT;
 				info->fw = adev->gfx.mec2_fw;
 				adev->firmware.fw_size +=
-					ALIGN(le32_to_cpu(cp_hdr->jt_size) * 4,
+					roundup2(le32_to_cpu(cp_hdr->jt_size) * 4,
 					PAGE_SIZE);
 			}
 		}
@@ -1888,7 +1888,7 @@ static int gfx_v9_0_rlc_init(struct amdgpu_device *adev)
 
 	if (adev->asic_type == CHIP_RAVEN || adev->asic_type == CHIP_RENOIR) {
 		/* TODO: double check the cp_table_size for RV */
-		adev->gfx.rlc.cp_table_size = ALIGN(96 * 5 * 4, 2048) + (64 * 1024); /* JT + GDS */
+		adev->gfx.rlc.cp_table_size = roundup2(96 * 5 * 4, 2048) + (64 * 1024); /* JT + GDS */
 		r = amdgpu_gfx_rlc_init_cpt(adev);
 		if (r)
 			return r;
@@ -4477,9 +4477,9 @@ static int gfx_v9_0_do_edc_gpr_workarounds(struct amdgpu_device *adev)
 		(gpr_reg_size * 3 + 4 + 5 + 2) * 4; /* SGPRS1 */
 	total_size +=
 		(gpr_reg_size * 3 + 4 + 5 + 2) * 4; /* SGPRS2 */
-	total_size = ALIGN(total_size, 256);
+	total_size = roundup2(total_size, 256);
 	vgpr_offset = total_size;
-	total_size += ALIGN(vgpr_init_shader_size, 256);
+	total_size += roundup2(vgpr_init_shader_size, 256);
 	sgpr_offset = total_size;
 	total_size += sizeof(sgpr_init_compute_shader);
 

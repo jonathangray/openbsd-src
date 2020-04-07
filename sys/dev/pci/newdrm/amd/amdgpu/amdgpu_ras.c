@@ -1313,7 +1313,7 @@ int amdgpu_ras_interrupt_add_handler(struct amdgpu_device *adev,
 
 	INIT_WORK(&data->ih_work, amdgpu_ras_interrupt_process_handler);
 
-	data->aligned_element_size = ALIGN(data->element_size, 8);
+	data->aligned_element_size = roundup2(data->element_size, 8);
 	/* the ring can store 64 iv entries. */
 	data->ring_size = 64 * data->aligned_element_size;
 	data->ring = kmalloc(data->ring_size, GFP_KERNEL);
@@ -1442,7 +1442,7 @@ static int amdgpu_ras_realloc_eh_data_space(struct amdgpu_device *adev,
 {
 	unsigned int old_space = data->count + data->space_left;
 	unsigned int new_space = old_space + pages;
-	unsigned int align_space = ALIGN(new_space, 512);
+	unsigned int align_space = roundup2(new_space, 512);
 	void *bps = kmalloc(align_space * sizeof(*data->bps), GFP_KERNEL);
 	struct amdgpu_bo **bps_bo =
 			kmalloc(align_space * sizeof(*data->bps_bo), GFP_KERNEL);

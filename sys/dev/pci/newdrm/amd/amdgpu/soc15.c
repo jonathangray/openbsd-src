@@ -328,7 +328,7 @@ static bool soc15_read_bios_from_rom(struct amdgpu_device *adev,
 		return false;
 
 	dw_ptr = (u32 *)bios;
-	length_dw = ALIGN(length_bytes, 4) / 4;
+	length_dw = roundup2(length_bytes, 4) / 4;
 
 	switch (adev->asic_type) {
 	case CHIP_VEGA20:

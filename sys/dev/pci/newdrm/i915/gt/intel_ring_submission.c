@@ -1994,7 +1994,7 @@ static int gen7_ctx_switch_bb_init(struct intel_engine_cs *engine)
 	if (size <= 0)
 		return size;
 
-	size = ALIGN(size, PAGE_SIZE);
+	size = roundup2(size, PAGE_SIZE);
 	obj = i915_gem_object_create_internal(engine->i915, size);
 	if (IS_ERR(obj))
 		return PTR_ERR(obj);

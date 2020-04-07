@@ -254,7 +254,7 @@ void intel_wopcm_init(struct intel_wopcm *wopcm)
 	 * for HuC firmware and mandatory reserved area.
 	 */
 	guc_wopcm_base = huc_fw_size + WOPCM_RESERVED_SIZE;
-	guc_wopcm_base = ALIGN(guc_wopcm_base, GUC_WOPCM_OFFSET_ALIGNMENT);
+	guc_wopcm_base = roundup2(guc_wopcm_base, GUC_WOPCM_OFFSET_ALIGNMENT);
 
 	/*
 	 * Need to clamp guc_wopcm_base now to make sure the following math is

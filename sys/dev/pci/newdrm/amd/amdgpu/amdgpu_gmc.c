@@ -186,7 +186,7 @@ void amdgpu_gmc_gart_location(struct amdgpu_device *adev, struct amdgpu_gmc *mc)
 	 * the GART base on a 4GB boundary as well.
 	 */
 	size_bf = mc->fb_start;
-	size_af = max_mc_address + 1 - ALIGN(mc->fb_end + 1, four_gb);
+	size_af = max_mc_address + 1 - roundup2(mc->fb_end + 1, four_gb);
 
 	if (mc->gart_size > max(size_bf, size_af)) {
 		dev_warn(adev->dev, "limiting GART\n");
@@ -232,19 +232,19 @@ void amdgpu_gmc_agp_location(struct amdgpu_device *adev, struct amdgpu_gmc *mc)
 
 	if (mc->fb_start > mc->gart_start) {
 		size_bf = (mc->fb_start & sixteen_gb_mask) -
-			ALIGN(mc->gart_end + 1, sixteen_gb);
-		size_af = mc->mc_mask + 1 - ALIGN(mc->fb_end + 1, sixteen_gb);
+			roundup2(mc->gart_end + 1, sixteen_gb);
+		size_af = mc->mc_mask + 1 - roundup2(mc->fb_end + 1, sixteen_gb);
 	} else {
 		size_bf = mc->fb_start & sixteen_gb_mask;
 		size_af = (mc->gart_start & sixteen_gb_mask) -
-			ALIGN(mc->fb_end + 1, sixteen_gb);
+			roundup2(mc->fb_end + 1, sixteen_gb);
 	}
 
 	if (size_bf > size_af) {
 		mc->agp_start = (mc->fb_start - size_bf) & sixteen_gb_mask;
 		mc->agp_size = size_bf;
 	} else {
-		mc->agp_start = ALIGN(mc->fb_end + 1, sixteen_gb);
+		mc->agp_start = roundup2(mc->fb_end + 1, sixteen_gb);
 		mc->agp_size = size_af;
 	}
 

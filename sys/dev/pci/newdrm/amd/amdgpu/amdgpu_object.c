@@ -367,7 +367,7 @@ int amdgpu_bo_create_kernel_at(struct amdgpu_device *adev,
 	int r;
 
 	offset &= PAGE_MASK;
-	size = ALIGN(size, PAGE_SIZE);
+	size = roundup2(size, PAGE_SIZE);
 
 	r = amdgpu_bo_create_reserved(adev, size, PAGE_SIZE, domain, bo_ptr,
 				      NULL, cpu_addr);
@@ -533,12 +533,12 @@ static int amdgpu_bo_do_create(struct amdgpu_device *adev,
 		size <<= PAGE_SHIFT;
 	} else if (bp->domain & AMDGPU_GEM_DOMAIN_GDS) {
 		/* Both size and alignment must be a multiple of 4. */
-		page_align = ALIGN(bp->byte_align, 4);
-		size = ALIGN(size, 4) << PAGE_SHIFT;
+		page_align = roundup2(bp->byte_align, 4);
+		size = roundup2(size, 4) << PAGE_SHIFT;
 	} else {
 		/* Memory should be aligned at least to a page size. */
-		page_align = ALIGN(bp->byte_align, PAGE_SIZE) >> PAGE_SHIFT;
-		size = ALIGN(size, PAGE_SIZE);
+		page_align = roundup2(bp->byte_align, PAGE_SIZE) >> PAGE_SHIFT;
+		size = roundup2(size, PAGE_SIZE);
 	}
 
 	if (!amdgpu_bo_validate_size(adev, size, bp->domain))

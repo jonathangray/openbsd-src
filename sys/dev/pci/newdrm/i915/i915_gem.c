@@ -257,12 +257,12 @@ i915_gem_dumb_create(struct drm_file *file,
 	}
 
 	/* have to work out size/pitch and return them */
-	args->pitch = ALIGN(args->width * cpp, 64);
+	args->pitch = roundup2(args->width * cpp, 64);
 
 	/* align stride to page size so that we can remap */
 	if (args->pitch > intel_plane_fb_max_stride(to_i915(dev), format,
 						    DRM_FORMAT_MOD_LINEAR))
-		args->pitch = ALIGN(args->pitch, 4096);
+		args->pitch = roundup2(args->pitch, 4096);
 
 	if (args->pitch < args->width)
 		return -EINVAL;

@@ -1151,12 +1151,12 @@ static int load_dmcu_fw(struct amdgpu_device *adev)
 	adev->firmware.ucode[AMDGPU_UCODE_ID_DMCU_ERAM].ucode_id = AMDGPU_UCODE_ID_DMCU_ERAM;
 	adev->firmware.ucode[AMDGPU_UCODE_ID_DMCU_ERAM].fw = adev->dm.fw_dmcu;
 	adev->firmware.fw_size +=
-		ALIGN(le32_to_cpu(hdr->header.ucode_size_bytes) - le32_to_cpu(hdr->intv_size_bytes), PAGE_SIZE);
+		roundup2(le32_to_cpu(hdr->header.ucode_size_bytes) - le32_to_cpu(hdr->intv_size_bytes), PAGE_SIZE);
 
 	adev->firmware.ucode[AMDGPU_UCODE_ID_DMCU_INTV].ucode_id = AMDGPU_UCODE_ID_DMCU_INTV;
 	adev->firmware.ucode[AMDGPU_UCODE_ID_DMCU_INTV].fw = adev->dm.fw_dmcu;
 	adev->firmware.fw_size +=
-		ALIGN(le32_to_cpu(hdr->intv_size_bytes), PAGE_SIZE);
+		roundup2(le32_to_cpu(hdr->intv_size_bytes), PAGE_SIZE);
 
 	adev->dm.dmcu_fw_version = le32_to_cpu(hdr->header.ucode_version);
 
@@ -1225,7 +1225,7 @@ static int dm_dmub_sw_init(struct amdgpu_device *adev)
 		adev->firmware.ucode[AMDGPU_UCODE_ID_DMCUB].fw =
 			adev->dm.dmub_fw;
 		adev->firmware.fw_size +=
-			ALIGN(le32_to_cpu(hdr->inst_const_bytes), PAGE_SIZE);
+			roundup2(le32_to_cpu(hdr->inst_const_bytes), PAGE_SIZE);
 
 		DRM_INFO("Loading DMUB firmware via PSP: version=0x%08X\n",
 			 adev->dm.dmcub_fw_version);

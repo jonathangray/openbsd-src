@@ -98,7 +98,7 @@ static bool __i915_error_grow(struct drm_i915_error_state_buf *e, size_t len)
 		e->end = sgl + SG_MAX_SINGLE_ALLOC - 1;
 	}
 
-	e->size = ALIGN(len + 1, SZ_64K);
+	e->size = roundup2(len + 1, SZ_64K);
 	e->buf = kmalloc(e->size, ALLOW_FAIL);
 	if (!e->buf) {
 		e->size = PAGE_ALIGN(len + 1);

@@ -50,14 +50,14 @@ static int alloc_gm(struct intel_vgpu *vgpu, bool high_gm)
 	if (high_gm) {
 		node = &vgpu->gm.high_gm_node;
 		size = vgpu_hidden_sz(vgpu);
-		start = ALIGN(gvt_hidden_gmadr_base(gvt), I915_GTT_PAGE_SIZE);
-		end = ALIGN(gvt_hidden_gmadr_end(gvt), I915_GTT_PAGE_SIZE);
+		start = roundup2(gvt_hidden_gmadr_base(gvt), I915_GTT_PAGE_SIZE);
+		end = roundup2(gvt_hidden_gmadr_end(gvt), I915_GTT_PAGE_SIZE);
 		flags = PIN_HIGH;
 	} else {
 		node = &vgpu->gm.low_gm_node;
 		size = vgpu_aperture_sz(vgpu);
-		start = ALIGN(gvt_aperture_gmadr_base(gvt), I915_GTT_PAGE_SIZE);
-		end = ALIGN(gvt_aperture_gmadr_end(gvt), I915_GTT_PAGE_SIZE);
+		start = roundup2(gvt_aperture_gmadr_base(gvt), I915_GTT_PAGE_SIZE);
+		end = roundup2(gvt_aperture_gmadr_end(gvt), I915_GTT_PAGE_SIZE);
 		flags = PIN_MAPPABLE;
 	}
 
@@ -259,7 +259,7 @@ static int alloc_resource(struct intel_vgpu *vgpu,
 	if (request > avail)
 		goto no_enough_resource;
 
-	vgpu_aperture_sz(vgpu) = ALIGN(request, I915_GTT_PAGE_SIZE);
+	vgpu_aperture_sz(vgpu) = roundup2(request, I915_GTT_PAGE_SIZE);
 
 	item = "high GM space";
 	max = gvt_hidden_sz(gvt) - HOST_HIGH_GM_SIZE;
@@ -270,7 +270,7 @@ static int alloc_resource(struct intel_vgpu *vgpu,
 	if (request > avail)
 		goto no_enough_resource;
 
-	vgpu_hidden_sz(vgpu) = ALIGN(request, I915_GTT_PAGE_SIZE);
+	vgpu_hidden_sz(vgpu) = roundup2(request, I915_GTT_PAGE_SIZE);
 
 	item = "fence";
 	max = gvt_fence_sz(gvt) - HOST_FENCE;

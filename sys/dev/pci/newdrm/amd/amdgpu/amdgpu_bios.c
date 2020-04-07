@@ -171,7 +171,7 @@ static bool amdgpu_read_bios_from_rom(struct amdgpu_device *adev)
 
 	/* valid vbios, go on */
 	len = AMD_VBIOS_LENGTH(header);
-	len = ALIGN(len, 4);
+	len = roundup2(len, 4);
 	adev->bios = kmalloc(len, GFP_KERNEL);
 	if (!adev->bios) {
 		DRM_ERROR("no memory to allocate for BIOS\n");

@@ -183,7 +183,7 @@ int smu_v11_0_init_microcode(struct smu_context *smu)
 		ucode->fw = adev->pm.fw;
 		header = (const struct common_firmware_header *)ucode->fw->data;
 		adev->firmware.fw_size +=
-			ALIGN(le32_to_cpu(header->ucode_size_bytes), PAGE_SIZE);
+			roundup2(le32_to_cpu(header->ucode_size_bytes), PAGE_SIZE);
 	}
 
 out:

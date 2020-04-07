@@ -1726,7 +1726,7 @@ static u64 amdgpu_ttm_training_get_c2p_offset(u64 vram_size)
        if ((vram_size & (SZ_1M - 1)) < (SZ_4K + 1) )
                vram_size -= SZ_1M;
 
-       return ALIGN(vram_size, SZ_1M);
+       return roundup2(vram_size, SZ_1M);
 }
 
 /**
@@ -2039,7 +2039,7 @@ static int amdgpu_map_buffer(struct ttm_buffer_object *bo,
 	*addr += (u64)window * AMDGPU_GTT_MAX_TRANSFER_SIZE *
 		AMDGPU_GPU_PAGE_SIZE;
 
-	num_dw = ALIGN(adev->mman.buffer_funcs->copy_num_dw, 8);
+	num_dw = roundup2(adev->mman.buffer_funcs->copy_num_dw, 8);
 	num_bytes = num_pages * 8;
 
 	r = amdgpu_job_alloc_with_ib(adev, num_dw * 4 + num_bytes, &job);
@@ -2099,7 +2099,7 @@ int amdgpu_copy_buffer(struct amdgpu_ring *ring, uint64_t src_offset,
 
 	max_bytes = adev->mman.buffer_funcs->copy_max_bytes;
 	num_loops = DIV_ROUND_UP(byte_count, max_bytes);
-	num_dw = ALIGN(num_loops * adev->mman.buffer_funcs->copy_num_dw, 8);
+	num_dw = roundup2(num_loops * adev->mman.buffer_funcs->copy_num_dw, 8);
 
 	r = amdgpu_job_alloc_with_ib(adev, num_dw * 4, &job);
 	if (r)

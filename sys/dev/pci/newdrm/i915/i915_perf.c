@@ -1893,7 +1893,7 @@ alloc_oa_config_buffer(struct i915_perf_stream *stream,
 	config_length += num_lri_dwords(oa_config->b_counter_regs_len);
 	config_length += num_lri_dwords(oa_config->flex_regs_len);
 	config_length += 3; /* MI_BATCH_BUFFER_START */
-	config_length = ALIGN(sizeof(u32) * config_length, I915_GTT_PAGE_SIZE);
+	config_length = roundup2(sizeof(u32) * config_length, I915_GTT_PAGE_SIZE);
 
 	obj = i915_gem_object_create_shmem(stream->perf->i915, config_length);
 	if (IS_ERR(obj)) {

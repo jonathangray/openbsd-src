@@ -2003,7 +2003,7 @@ static int cik_init_microcode(struct radeon_device *rdev)
 		mc_req_size = BONAIRE_MC_UCODE_SIZE * 4;
 		mc2_req_size = BONAIRE_MC2_UCODE_SIZE * 4;
 		sdma_req_size = CIK_SDMA_UCODE_SIZE * 4;
-		smc_req_size = ALIGN(BONAIRE_SMC_UCODE_SIZE, 4);
+		smc_req_size = roundup2(BONAIRE_SMC_UCODE_SIZE, 4);
 		num_fw = 8;
 		break;
 	case CHIP_HAWAII:
@@ -2019,7 +2019,7 @@ static int cik_init_microcode(struct radeon_device *rdev)
 		mc_req_size = HAWAII_MC_UCODE_SIZE * 4;
 		mc2_req_size = HAWAII_MC2_UCODE_SIZE * 4;
 		sdma_req_size = CIK_SDMA_UCODE_SIZE * 4;
-		smc_req_size = ALIGN(HAWAII_SMC_UCODE_SIZE, 4);
+		smc_req_size = roundup2(HAWAII_SMC_UCODE_SIZE, 4);
 		num_fw = 8;
 		break;
 	case CHIP_KAVERI:
@@ -8332,7 +8332,7 @@ static int cik_startup(struct radeon_device *rdev)
 		}
 	}
 	rdev->rlc.cs_data = ci_cs_data;
-	rdev->rlc.cp_table_size = ALIGN(CP_ME_TABLE_SIZE * 5 * 4, 2048); /* CP JT */
+	rdev->rlc.cp_table_size = roundup2(CP_ME_TABLE_SIZE * 5 * 4, 2048); /* CP JT */
 	rdev->rlc.cp_table_size += 64 * 1024; /* GDS */
 	r = sumo_rlc_init(rdev);
 	if (r) {

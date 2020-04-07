@@ -453,7 +453,7 @@ static int vce_v4_0_sw_init(void *handle)
 		adev->firmware.ucode[AMDGPU_UCODE_ID_VCE].ucode_id = AMDGPU_UCODE_ID_VCE;
 		adev->firmware.ucode[AMDGPU_UCODE_ID_VCE].fw = adev->vce.fw;
 		adev->firmware.fw_size +=
-			ALIGN(le32_to_cpu(hdr->ucode_size_bytes), PAGE_SIZE);
+			roundup2(le32_to_cpu(hdr->ucode_size_bytes), PAGE_SIZE);
 		DRM_INFO("PSP loading VCE firmware\n");
 	} else {
 		r = amdgpu_vce_resume(adev);

@@ -143,9 +143,9 @@ static int amdgpufb_create_pinned_object(struct amdgpu_fbdev *rfbdev,
 	mode_cmd->pitches[0] = amdgpu_align_pitch(adev, mode_cmd->width, cpp,
 						  fb_tiled);
 	domain = amdgpu_display_supported_domains(adev, flags);
-	height = ALIGN(mode_cmd->height, 8);
+	height = roundup2(mode_cmd->height, 8);
 	size = mode_cmd->pitches[0] * height;
-	aligned_size = ALIGN(size, PAGE_SIZE);
+	aligned_size = roundup2(size, PAGE_SIZE);
 	ret = amdgpu_gem_object_create(adev, aligned_size, 0, domain, flags,
 				       ttm_bo_type_kernel, NULL, &gobj);
 	if (ret) {

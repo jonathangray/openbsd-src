@@ -226,7 +226,7 @@ void intel_dsb_indexed_reg_write(struct intel_dsb *dsb, i915_reg_t reg,
 	reg_val = buf[dsb->ins_start_offset + 1] & DSB_REG_VALUE_MASK;
 	if (reg_val != i915_mmio_reg_offset(reg)) {
 		/* Every instruction should be 8 byte aligned. */
-		dsb->free_pos = ALIGN(dsb->free_pos, 2);
+		dsb->free_pos = roundup2(dsb->free_pos, 2);
 
 		dsb->ins_start_offset = dsb->free_pos;
 
@@ -317,7 +317,7 @@ void intel_dsb_commit(struct intel_dsb *dsb)
 	intel_de_write(dev_priv, DSB_HEAD(pipe, dsb->id),
 		       i915_ggtt_offset(dsb->vma));
 
-	tail = ALIGN(dsb->free_pos * 4, CACHELINE_BYTES);
+	tail = roundup2(dsb->free_pos * 4, CACHELINE_BYTES);
 	if (tail > dsb->free_pos * 4)
 		memset(&dsb->cmd_buf[dsb->free_pos], 0,
 		       (tail - dsb->free_pos * 4));

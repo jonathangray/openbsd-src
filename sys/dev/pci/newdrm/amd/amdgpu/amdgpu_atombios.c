@@ -1734,9 +1734,9 @@ bool amdgpu_atombios_scratch_need_asic_init(struct amdgpu_device *adev)
  * data to or from atom. Note that atom operates on dw units.
  *
  * Use to_le=true when sending data to atom and provide at least
- * ALIGN(num_bytes,4) bytes in the dst buffer.
+ * roundup2(num_bytes,4) bytes in the dst buffer.
  *
- * Use to_le=false when receiving data from atom and provide ALIGN(num_bytes,4)
+ * Use to_le=false when receiving data from atom and provide roundup2(num_bytes,4)
  * byes in the src buffer.
  */
 void amdgpu_atombios_copy_swap(u8 *dst, u8 *src, u8 num_bytes, bool to_le)
@@ -1744,7 +1744,7 @@ void amdgpu_atombios_copy_swap(u8 *dst, u8 *src, u8 num_bytes, bool to_le)
 #ifdef __BIG_ENDIAN
 	u32 src_tmp[5], dst_tmp[5];
 	int i;
-	u8 align_num_bytes = ALIGN(num_bytes, 4);
+	u8 align_num_bytes = roundup2(num_bytes, 4);
 
 	if (to_le) {
 		memcpy(src_tmp, src, num_bytes);

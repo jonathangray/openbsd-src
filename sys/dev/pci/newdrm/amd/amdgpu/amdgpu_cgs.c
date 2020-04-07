@@ -223,7 +223,7 @@ static int amdgpu_cgs_get_firmware_info(struct cgs_device *cgs_device,
 
 		if ((type == CGS_UCODE_ID_CP_MEC_JT1) ||
 		    (type == CGS_UCODE_ID_CP_MEC_JT2)) {
-			gpu_addr += ALIGN(le32_to_cpu(header->header.ucode_size_bytes), PAGE_SIZE);
+			gpu_addr += roundup2(le32_to_cpu(header->header.ucode_size_bytes), PAGE_SIZE);
 			data_size = le32_to_cpu(header->jt_size) << 2;
 		}
 
@@ -455,7 +455,7 @@ static int amdgpu_cgs_get_firmware_info(struct cgs_device *cgs_device,
 				ucode->fw = adev->pm.fw;
 				header = (const struct common_firmware_header *)ucode->fw->data;
 				adev->firmware.fw_size +=
-					ALIGN(le32_to_cpu(header->ucode_size_bytes), PAGE_SIZE);
+					roundup2(le32_to_cpu(header->ucode_size_bytes), PAGE_SIZE);
 			}
 		}
 
