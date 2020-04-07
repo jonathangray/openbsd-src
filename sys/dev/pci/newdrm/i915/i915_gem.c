@@ -452,7 +452,7 @@ i915_gem_gtt_pread(struct drm_i915_gem_object *obj,
 					     i915_gem_object_get_dma_address(obj, offset >> PAGE_SHIFT),
 					     node.start, I915_CACHE_NONE, 0);
 		} else {
-			page_base += offset & PAGE_MASK;
+			page_base += offset & ~PAGE_MASK;
 		}
 
 		if (gtt_user_read(&ggtt->iomap, page_base, page_offset,
@@ -655,7 +655,7 @@ i915_gem_gtt_pwrite_fast(struct drm_i915_gem_object *obj,
 					     node.start, I915_CACHE_NONE, 0);
 			wmb(); /* flush modifications to the GGTT (insert_page) */
 		} else {
-			page_base += offset & PAGE_MASK;
+			page_base += offset & ~PAGE_MASK;
 		}
 		/* If we get a fault while copying data, then (presumably) our
 		 * source page isn't available.  Return the error and we'll

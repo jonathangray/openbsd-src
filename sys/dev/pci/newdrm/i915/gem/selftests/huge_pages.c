@@ -1257,7 +1257,7 @@ static u32 igt_random_size(struct rnd_state *prng,
 	GEM_BUG_ON(min_page_size < PAGE_SIZE);
 	GEM_BUG_ON(min_page_size > max_page_size);
 
-	mask = ((max_page_size << 1ULL) - 1) & PAGE_MASK;
+	mask = ((max_page_size << 1ULL) - 1) & ~PAGE_MASK;
 	size = prandom_u32_state(prng) & mask;
 	if (size < min_page_size)
 		size |= min_page_size;

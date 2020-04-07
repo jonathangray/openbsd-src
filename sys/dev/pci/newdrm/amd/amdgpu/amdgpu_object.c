@@ -366,7 +366,7 @@ int amdgpu_bo_create_kernel_at(struct amdgpu_device *adev,
 	unsigned int i;
 	int r;
 
-	offset &= PAGE_MASK;
+	offset &= ~PAGE_MASK;
 	size = roundup2(size, PAGE_SIZE);
 
 	r = amdgpu_bo_create_reserved(adev, size, PAGE_SIZE, domain, bo_ptr,

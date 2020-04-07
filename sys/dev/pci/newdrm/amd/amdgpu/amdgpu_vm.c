@@ -1218,7 +1218,7 @@ uint64_t amdgpu_vm_map_gart(const dma_addr_t *pages_addr, uint64_t addr)
 	result = pages_addr[addr >> PAGE_SHIFT];
 
 	/* in case cpu page size != gpu page size*/
-	result |= addr & (~PAGE_MASK);
+	result |= addr & (PAGE_MASK);
 
 	result &= 0xFFFFFFFFFFFFF000ULL;
 

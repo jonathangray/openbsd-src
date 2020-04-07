@@ -911,7 +911,7 @@ static unsigned long drm_addr_inflate(unsigned long addr,
 						       0, flags);
 	if (IS_ERR_VALUE(inflated_addr))
 		return addr;
-	if (inflated_addr & ~PAGE_MASK)
+	if (inflated_addr & PAGE_MASK)
 		return addr;
 
 	inflated_offset = inflated_addr & (huge_size - 1);
@@ -976,7 +976,7 @@ unsigned long drm_get_unmapped_area(struct file *file,
 	addr = current->mm->get_unmapped_area(file, uaddr, len, pgoff, flags);
 	if (IS_ERR_VALUE(addr))
 		return addr;
-	if (addr & ~PAGE_MASK)
+	if (addr & PAGE_MASK)
 		return addr;
 	if (addr > TASK_SIZE - len)
 		return addr;
