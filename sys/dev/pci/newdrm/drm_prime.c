@@ -214,7 +214,7 @@ void drm_prime_remove_buf_handle_locked(struct drm_prime_file_private *prime_fpr
 
 void drm_prime_init_file_private(struct drm_prime_file_private *prime_fpriv)
 {
-	mutex_init(&prime_fpriv->lock);
+	rw_init(&prime_fpriv->lock, "primlk");
 	prime_fpriv->dmabufs = RB_ROOT;
 	prime_fpriv->handles = RB_ROOT;
 }

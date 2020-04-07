@@ -4365,7 +4365,7 @@ int intel_power_domains_init(struct drm_i915_private *dev_priv)
 
 	BUILD_BUG_ON(POWER_DOMAIN_NUM > 64);
 
-	mutex_init(&power_domains->lock);
+	rw_init(&power_domains->lock, "ipdl");
 
 	INIT_DELAYED_WORK(&power_domains->async_put_work,
 			  intel_display_power_put_async_work);

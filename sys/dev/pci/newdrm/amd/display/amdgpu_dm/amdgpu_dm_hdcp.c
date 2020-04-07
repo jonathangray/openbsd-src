@@ -576,7 +576,7 @@ struct hdcp_workqueue *hdcp_create_workqueue(struct amdgpu_device *adev, struct 
 	hdcp_work->max_link = max_caps;
 
 	for (i = 0; i < max_caps; i++) {
-		mutex_init(&hdcp_work[i].mutex);
+		rw_init(&hdcp_work[i].mutex, "amhdcp");
 
 		INIT_WORK(&hdcp_work[i].cpirq_work, event_cpirq);
 		INIT_WORK(&hdcp_work[i].property_update_work, event_property_update);

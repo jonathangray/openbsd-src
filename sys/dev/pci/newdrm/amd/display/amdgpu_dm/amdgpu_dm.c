@@ -903,8 +903,8 @@ static int amdgpu_dm_init(struct amdgpu_device *adev)
 	memset(&init_params, 0, sizeof(init_params));
 #endif
 
-	mutex_init(&adev->dm.dc_lock);
-	mutex_init(&adev->dm.audio_lock);
+	rw_init(&adev->dm.dc_lock, "dmdc");
+	rw_init(&adev->dm.audio_lock, "dmaud");
 
 	if(amdgpu_dm_irq_init(adev)) {
 		DRM_ERROR("amdgpu: failed to initialize DM IRQ support.\n");
@@ -5883,7 +5883,7 @@ void amdgpu_dm_connector_init_helper(struct amdgpu_display_manager *dm,
 	aconnector->base.dpms = DRM_MODE_DPMS_OFF;
 	aconnector->hpd.hpd = AMDGPU_HPD_NONE; /* not used */
 	aconnector->audio_inst = -1;
-	mutex_init(&aconnector->hpd_lock);
+	rw_init(&aconnector->hpd_lock, "dmhpd");
 
 	/*
 	 * configure support HPD hot plug connector_>polled default value is 0

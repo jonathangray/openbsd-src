@@ -43,7 +43,7 @@ int drm_client_modeset_create(struct drm_client_dev *client)
 	if (!client->modesets)
 		return -ENOMEM;
 
-	mutex_init(&client->modeset_mutex);
+	rw_init(&client->modeset_mutex, "clmdset");
 
 	drm_for_each_crtc(crtc, dev)
 		client->modesets[i++].crtc = crtc;

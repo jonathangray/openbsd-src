@@ -921,7 +921,7 @@ static int init_kfd_vm(struct amdgpu_vm *vm, void **process_info,
 		if (!info)
 			return -ENOMEM;
 
-		mutex_init(&info->lock);
+		rw_init(&info->lock, "aginfo");
 		INIT_LIST_HEAD(&info->vm_list_head);
 		INIT_LIST_HEAD(&info->kfd_bo_list);
 		INIT_LIST_HEAD(&info->userptr_valid_list);
@@ -1198,7 +1198,7 @@ int amdgpu_amdkfd_gpuvm_alloc_memory_of_gpu(
 		goto err;
 	}
 	INIT_LIST_HEAD(&(*mem)->bo_va_list);
-	mutex_init(&(*mem)->lock);
+	rw_init(&(*mem)->lock, "gpuvma");
 	(*mem)->aql_queue = !!(flags & KFD_IOC_ALLOC_MEM_FLAGS_AQL_QUEUE_MEM);
 
 	/* Workaround for AQL queue wraparound bug. Map the same
@@ -1680,7 +1680,7 @@ int amdgpu_amdkfd_gpuvm_import_dmabuf(struct kgd_dev *kgd,
 		*mmap_offset = amdgpu_bo_mmap_offset(bo);
 
 	INIT_LIST_HEAD(&(*mem)->bo_va_list);
-	mutex_init(&(*mem)->lock);
+	rw_init(&(*mem)->lock, "gpuvmi");
 	
 	(*mem)->alloc_flags =
 		((bo->preferred_domains & AMDGPU_GEM_DOMAIN_VRAM) ?
@@ -2169,7 +2169,7 @@ int amdgpu_amdkfd_add_gws_to_process(void *info, void *gws, struct kgd_mem **mem
 	if (!*mem)
 		return -ENOMEM;
 
-	mutex_init(&(*mem)->lock);
+	rw_init(&(*mem)->lock, "aggws");
 	INIT_LIST_HEAD(&(*mem)->bo_va_list);
 	(*mem)->bo = amdgpu_bo_ref(gws_bo);
 	(*mem)->domain = AMDGPU_GEM_DOMAIN_GWS;

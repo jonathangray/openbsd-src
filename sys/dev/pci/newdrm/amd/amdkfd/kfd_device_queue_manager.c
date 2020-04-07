@@ -909,7 +909,7 @@ static int initialize_nocpsch(struct device_queue_manager *dqm)
 	if (!dqm->allocated_queues)
 		return -ENOMEM;
 
-	mutex_init(&dqm->lock_hidden);
+	rw_init(&dqm->lock_hidden, "dqmlk");
 	INIT_LIST_HEAD(&dqm->queues);
 	dqm->active_queue_count = dqm->next_pipe_to_allocate = 0;
 	dqm->active_cp_queue_count = 0;
@@ -1078,7 +1078,7 @@ static int initialize_cpsch(struct device_queue_manager *dqm)
 {
 	pr_debug("num of pipes: %d\n", get_pipes_per_mec(dqm));
 
-	mutex_init(&dqm->lock_hidden);
+	rw_init(&dqm->lock_hidden, "dqmlkh");
 	INIT_LIST_HEAD(&dqm->queues);
 	dqm->active_queue_count = dqm->processes_count = 0;
 	dqm->active_cp_queue_count = 0;

@@ -838,7 +838,7 @@ i915_gem_userptr_ioctl(struct drm_device *dev,
 
 int i915_gem_init_userptr(struct drm_i915_private *dev_priv)
 {
-	mutex_init(&dev_priv->mm_lock);
+	rw_init(&dev_priv->mm_lock, "usrptr");
 	hash_init(dev_priv->mm_structs);
 
 	dev_priv->mm.userptr_wq =

@@ -372,7 +372,7 @@ static void gvt_cache_init(struct intel_vgpu *vgpu)
 	vdev->gfn_cache = RB_ROOT;
 	vdev->dma_addr_cache = RB_ROOT;
 	vdev->nr_cache_entries = 0;
-	mutex_init(&vdev->cache_lock);
+	rw_init(&vdev->cache_lock, "gvtch");
 }
 
 static void kvmgt_protect_table_init(struct kvmgt_guest_info *info)

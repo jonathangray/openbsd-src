@@ -266,7 +266,7 @@ int drm_connector_init(struct drm_device *dev,
 
 	INIT_LIST_HEAD(&connector->probed_modes);
 	INIT_LIST_HEAD(&connector->modes);
-	mutex_init(&connector->mutex);
+	rw_init(&connector->mutex, "cnlk");
 	connector->edid_blob_ptr = NULL;
 	connector->tile_blob_ptr = NULL;
 	connector->status = connector_status_unknown;

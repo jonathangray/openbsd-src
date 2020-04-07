@@ -251,7 +251,7 @@ int intel_timeline_init(struct intel_timeline *timeline,
 
 	timeline->fence_context = dma_fence_context_alloc(1);
 
-	mutex_init(&timeline->mutex);
+	rw_init(&timeline->mutex, "itmln");
 
 	INIT_ACTIVE_FENCE(&timeline->last_request);
 	INIT_LIST_HEAD(&timeline->requests);

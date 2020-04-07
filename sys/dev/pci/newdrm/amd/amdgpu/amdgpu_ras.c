@@ -1687,7 +1687,7 @@ int amdgpu_ras_recovery_init(struct amdgpu_device *adev)
 		goto out;
 	}
 
-	mutex_init(&con->recovery_lock);
+	rw_init(&con->recovery_lock, "rasrec");
 	INIT_WORK(&con->recovery_work, amdgpu_ras_do_recovery);
 	atomic_set(&con->in_recovery, 0);
 	con->adev = adev;

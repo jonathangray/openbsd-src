@@ -7487,7 +7487,7 @@ intel_dp_drrs_init(struct intel_connector *connector,
 	struct drm_display_mode *downclock_mode = NULL;
 
 	INIT_DELAYED_WORK(&dev_priv->drrs.work, intel_edp_drrs_downclock_work);
-	mutex_init(&dev_priv->drrs.mutex);
+	rw_init(&dev_priv->drrs.mutex, "drrs");
 
 	if (INTEL_GEN(dev_priv) <= 6) {
 		drm_dbg_kms(&dev_priv->drm,

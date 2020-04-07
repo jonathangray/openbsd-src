@@ -5213,14 +5213,14 @@ int drm_dp_mst_topology_mgr_init(struct drm_dp_mst_topology_mgr *mgr,
 {
 	struct drm_dp_mst_topology_state *mst_state;
 
-	mutex_init(&mgr->lock);
-	mutex_init(&mgr->qlock);
-	mutex_init(&mgr->payload_lock);
-	mutex_init(&mgr->delayed_destroy_lock);
-	mutex_init(&mgr->up_req_lock);
-	mutex_init(&mgr->probe_lock);
+	rw_init(&mgr->lock, "mst");
+	rw_init(&mgr->qlock, "mstq");
+	rw_init(&mgr->payload_lock, "mstpl");
+	rw_init(&mgr->delayed_destroy_lock, "mstdc");
+	rw_init(&mgr->up_req_lock, "mstup");
+	rw_init(&mgr->probe_lock, "mstprb");
 #if IS_ENABLED(CONFIG_DRM_DEBUG_DP_MST_TOPOLOGY_REFS)
-	mutex_init(&mgr->topology_ref_history_lock);
+	rw_init(&mgr->topology_ref_history_lock, "mstref");
 #endif
 	INIT_LIST_HEAD(&mgr->tx_msg_downq);
 	INIT_LIST_HEAD(&mgr->destroy_port_list);

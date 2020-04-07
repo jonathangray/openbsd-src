@@ -1169,7 +1169,7 @@ int ttm_dma_page_alloc_init(struct ttm_mem_global *glob, unsigned max_pages)
 	if (!_manager)
 		return -ENOMEM;
 
-	mutex_init(&_manager->lock);
+	rw_init(&_manager->lock, "ttm_manager");
 	INIT_LIST_HEAD(&_manager->pools);
 
 	_manager->options.max_size = max_pages;

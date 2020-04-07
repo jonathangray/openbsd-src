@@ -4390,12 +4390,12 @@ void i915_perf_init(struct drm_i915_private *i915)
 	}
 
 	if (perf->ops.enable_metric_set) {
-		mutex_init(&perf->lock);
+		rw_init(&perf->lock, "perflk");
 
 		oa_sample_rate_hard_limit = 1000 *
 			(RUNTIME_INFO(i915)->cs_timestamp_frequency_khz / 2);
 
-		mutex_init(&perf->metrics_lock);
+		rw_init(&perf->metrics_lock, "metricslk");
 		idr_init(&perf->metrics_idr);
 
 		/* We set up some ratelimit state to potentially throttle any

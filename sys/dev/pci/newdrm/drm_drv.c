@@ -639,10 +639,10 @@ int drm_dev_init(struct drm_device *dev,
 	INIT_LIST_HEAD(&dev->vblank_event_list);
 
 	spin_lock_init(&dev->event_lock);
-	mutex_init(&dev->struct_mutex);
-	mutex_init(&dev->filelist_mutex);
-	mutex_init(&dev->clientlist_mutex);
-	mutex_init(&dev->master_mutex);
+	rw_init(&dev->struct_mutex, "drmdevlk");
+	rw_init(&dev->filelist_mutex, "drmfile");
+	rw_init(&dev->clientlist_mutex, "drmcl");
+	rw_init(&dev->master_mutex, "drmm");
 
 	dev->anon_inode = drm_fs_inode_new();
 	if (IS_ERR(dev->anon_inode)) {

@@ -1353,7 +1353,7 @@ void intel_fbc_init(struct drm_i915_private *dev_priv)
 	struct intel_fbc *fbc = &dev_priv->fbc;
 
 	INIT_WORK(&fbc->underrun_work, intel_fbc_underrun_work_fn);
-	mutex_init(&fbc->lock);
+	rw_init(&fbc->lock, "fbclk");
 	fbc->active = false;
 
 	if (!drm_mm_initialized(&dev_priv->mm.stolen))

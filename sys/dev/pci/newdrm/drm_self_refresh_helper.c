@@ -244,7 +244,7 @@ int drm_self_refresh_helper_init(struct drm_crtc *crtc)
 	INIT_DELAYED_WORK(&sr_data->entry_work,
 			  drm_self_refresh_helper_entry_work);
 	sr_data->crtc = crtc;
-	mutex_init(&sr_data->avg_mutex);
+	rw_init(&sr_data->avg_mutex, "sravg");
 	ewma_psr_time_init(&sr_data->entry_avg_ms);
 	ewma_psr_time_init(&sr_data->exit_avg_ms);
 

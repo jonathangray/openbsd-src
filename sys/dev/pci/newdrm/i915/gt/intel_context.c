@@ -297,7 +297,7 @@ intel_context_init(struct intel_context *ce,
 	INIT_LIST_HEAD(&ce->signal_link);
 	INIT_LIST_HEAD(&ce->signals);
 
-	mutex_init(&ce->pin_mutex);
+	rw_init(&ce->pin_mutex, "cepin");
 
 	i915_active_init(&ce->active,
 			 __intel_context_active, __intel_context_retire);

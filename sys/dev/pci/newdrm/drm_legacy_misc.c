@@ -48,7 +48,7 @@ void drm_legacy_init_members(struct drm_device *dev)
 	INIT_LIST_HEAD(&dev->vmalist);
 	INIT_LIST_HEAD(&dev->maplist);
 	spin_lock_init(&dev->buf_lock);
-	mutex_init(&dev->ctxlist_mutex);
+	rw_init(&dev->ctxlist_mutex, "drmoctx");
 }
 
 void drm_legacy_destroy_members(struct drm_device *dev)

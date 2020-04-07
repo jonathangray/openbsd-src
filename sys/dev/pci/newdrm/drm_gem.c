@@ -86,7 +86,7 @@ drm_gem_init(struct drm_device *dev)
 {
 	struct drm_vma_offset_manager *vma_offset_manager;
 
-	mutex_init(&dev->object_name_lock);
+	rw_init(&dev->object_name_lock, "drmonl");
 	idr_init_base(&dev->object_name_idr, 1);
 
 	vma_offset_manager = kzalloc(sizeof(*vma_offset_manager), GFP_KERNEL);

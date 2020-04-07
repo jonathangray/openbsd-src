@@ -780,7 +780,7 @@ static int smu_early_init(void *handle)
 	smu->adev = adev;
 	smu->pm_enabled = !!amdgpu_dpm;
 	smu->is_apu = false;
-	mutex_init(&smu->mutex);
+	rw_init(&smu->mutex, "ppsmu");
 
 	return smu_set_funcs(adev);
 }
@@ -877,18 +877,18 @@ static int smu_sw_init(void *handle)
 
 	smu->pool_size = adev->pm.smu_prv_buffer_size;
 	smu->smu_feature.feature_num = SMU_FEATURE_MAX;
-	mutex_init(&smu->smu_feature.mutex);
+	rw_init(&smu->smu_feature.mutex, "smuf");
 	bitmap_zero(smu->smu_feature.supported, SMU_FEATURE_MAX);
 	bitmap_zero(smu->smu_feature.enabled, SMU_FEATURE_MAX);
 	bitmap_zero(smu->smu_feature.allowed, SMU_FEATURE_MAX);
 
-	mutex_init(&smu->smu_baco.mutex);
+	rw_init(&smu->smu_baco.mutex, "smubaco");
 	smu->smu_baco.state = SMU_BACO_STATE_EXIT;
 	smu->smu_baco.platform_support = false;
 
-	mutex_init(&smu->sensor_lock);
-	mutex_init(&smu->metrics_lock);
-	mutex_init(&smu->message_lock);
+	rw_init(&smu->sensor_lock, "smusens");
+	rw_init(&smu->metrics_lock, "smumet");
+	rw_init(&smu->message_lock, "smumes");
 
 	smu->watermarks_bitmap = 0;
 	smu->power_profile_mode = PP_SMC_POWER_PROFILE_BOOTUP_DEFAULT;

@@ -446,7 +446,7 @@ int intel_fbdev_init(struct drm_device *dev)
 	if (ifbdev == NULL)
 		return -ENOMEM;
 
-	mutex_init(&ifbdev->hpd_lock);
+	rw_init(&ifbdev->hpd_lock, "hdplk");
 	drm_fb_helper_prepare(dev, &ifbdev->helper, &intel_fb_helper_funcs);
 
 	if (!intel_fbdev_init_bios(dev, ifbdev))

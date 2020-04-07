@@ -2836,7 +2836,7 @@ int amdgpu_vm_init(struct amdgpu_device *adev, struct amdgpu_vm *vm,
 	vm->last_update = NULL;
 	vm->last_direct = dma_fence_get_stub();
 
-	mutex_init(&vm->eviction_lock);
+	rw_init(&vm->eviction_lock, "avmev");
 	vm->evicting = false;
 
 	amdgpu_vm_bo_param(adev, vm, adev->vm_manager.root_level, false, &bp);
@@ -3168,7 +3168,7 @@ void amdgpu_vm_manager_init(struct amdgpu_device *adev)
 	spin_lock_init(&adev->vm_manager.pasid_lock);
 
 	adev->vm_manager.xgmi_map_counter = 0;
-	mutex_init(&adev->vm_manager.lock_pstate);
+	rw_init(&adev->vm_manager.lock_pstate, "avmps");
 }
 
 /**

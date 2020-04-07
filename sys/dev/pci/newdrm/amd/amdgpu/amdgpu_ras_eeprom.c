@@ -258,7 +258,7 @@ int amdgpu_ras_eeprom_init(struct amdgpu_ras_eeprom_control *control)
 	if (!__get_eeprom_i2c_addr(adev, &control->i2c_address))
 		return -EINVAL;
 
-	mutex_init(&control->tbl_mutex);
+	rw_init(&control->tbl_mutex, "rastbl");
 
 	msg.addr = control->i2c_address;
 	/* Read/Create table header from EEPROM address 0 */

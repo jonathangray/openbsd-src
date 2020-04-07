@@ -97,7 +97,7 @@ void intel_vgpu_detect(struct drm_i915_private *dev_priv)
 	dev_priv->vgpu.caps = readl(shared_area + vgtif_offset(vgt_caps));
 
 	dev_priv->vgpu.active = true;
-	mutex_init(&dev_priv->vgpu.lock);
+	rw_init(&dev_priv->vgpu.lock, "vgpul");
 	drm_info(&dev_priv->drm, "Virtual GPU for Intel GVT-g detected.\n");
 
 out:

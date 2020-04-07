@@ -1994,7 +1994,7 @@ int intel_hdcp_init(struct intel_connector *connector,
 	}
 
 	hdcp->shim = shim;
-	mutex_init(&hdcp->mutex);
+	rw_init(&hdcp->mutex, "ihdcp");
 	INIT_DELAYED_WORK(&hdcp->check_work, intel_hdcp_check_work);
 	INIT_WORK(&hdcp->prop_work, intel_hdcp_prop_work);
 	init_waitqueue_head(&hdcp->cp_irq_queue);

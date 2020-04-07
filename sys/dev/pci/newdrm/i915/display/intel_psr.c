@@ -1479,7 +1479,7 @@ void intel_psr_init(struct drm_i915_private *dev_priv)
 
 	INIT_WORK(&dev_priv->psr.work, intel_psr_work);
 	INIT_DELAYED_WORK(&dev_priv->psr.dc3co_work, tgl_dc3co_disable_work);
-	mutex_init(&dev_priv->psr.lock);
+	rw_init(&dev_priv->psr.lock, "psrlk");
 }
 
 static int psr_get_status_and_error_status(struct intel_dp *intel_dp,

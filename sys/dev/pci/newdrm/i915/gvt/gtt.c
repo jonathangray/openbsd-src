@@ -2725,7 +2725,7 @@ int intel_gvt_init_gtt(struct intel_gvt *gvt)
 		}
 	}
 	INIT_LIST_HEAD(&gvt->gtt.ppgtt_mm_lru_list_head);
-	mutex_init(&gvt->gtt.ppgtt_mm_lock);
+	rw_init(&gvt->gtt.ppgtt_mm_lock, "gvtmm");
 	return 0;
 }
 

@@ -719,12 +719,12 @@ __create_context(struct drm_i915_private *i915)
 	kref_init(&ctx->ref);
 	ctx->i915 = i915;
 	ctx->sched.priority = I915_USER_PRIORITY(I915_PRIORITY_NORMAL);
-	mutex_init(&ctx->mutex);
+	rw_init(&ctx->mutex, "gemctx");
 
 	spin_lock_init(&ctx->stale.lock);
 	INIT_LIST_HEAD(&ctx->stale.engines);
 
-	mutex_init(&ctx->engines_mutex);
+	rw_init(&ctx->engines_mutex, "gemeng");
 	e = default_engines(ctx);
 	if (IS_ERR(e)) {
 		err = PTR_ERR(e);

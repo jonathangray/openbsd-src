@@ -211,7 +211,7 @@ int drm_debugfs_init(struct drm_minor *minor, int minor_id,
 	int ret;
 
 	INIT_LIST_HEAD(&minor->debugfs_list);
-	mutex_init(&minor->debugfs_lock);
+	rw_init(&minor->debugfs_lock, "dbgfs");
 	sprintf(name, "%d", minor_id);
 	minor->debugfs_root = debugfs_create_dir(name, root);
 

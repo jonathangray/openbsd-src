@@ -4319,7 +4319,7 @@ void intel_shared_dpll_init(struct drm_device *dev)
 
 	dev_priv->dpll.mgr = dpll_mgr;
 	dev_priv->dpll.num_shared_dpll = i;
-	mutex_init(&dev_priv->dpll.lock);
+	rw_init(&dev_priv->dpll.lock, "dplllk");
 
 	BUG_ON(dev_priv->dpll.num_shared_dpll > I915_NUM_PLLS);
 }

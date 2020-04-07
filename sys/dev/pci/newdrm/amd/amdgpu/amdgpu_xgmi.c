@@ -367,8 +367,8 @@ struct amdgpu_hive_info *amdgpu_get_xgmi_hive(struct amdgpu_device *adev, int lo
 	tmp->adev = adev;
 	tmp->hive_id = adev->gmc.xgmi.hive_id;
 	INIT_LIST_HEAD(&tmp->device_list);
-	mutex_init(&tmp->hive_lock);
-	mutex_init(&tmp->reset_lock);
+	rw_init(&tmp->hive_lock, "aghive");
+	rw_init(&tmp->reset_lock, "aghvres");
 	task_barrier_init(&tmp->tb);
 
 	if (lock)

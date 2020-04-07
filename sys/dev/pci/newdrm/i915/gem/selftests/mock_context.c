@@ -28,14 +28,14 @@ mock_context(struct drm_i915_private *i915,
 
 	i915_gem_context_set_persistence(ctx);
 
-	mutex_init(&ctx->engines_mutex);
+	rw_init(&ctx->engines_mutex, "mkeng");
 	e = default_engines(ctx);
 	if (IS_ERR(e))
 		goto err_free;
 	RCU_INIT_POINTER(ctx->engines, e);
 
 	INIT_RADIX_TREE(&ctx->handles_vma, GFP_KERNEL);
-	mutex_init(&ctx->mutex);
+	rw_init(&ctx->mutex, "mkctx");
 
 	if (name) {
 		struct i915_ppgtt *ppgtt;

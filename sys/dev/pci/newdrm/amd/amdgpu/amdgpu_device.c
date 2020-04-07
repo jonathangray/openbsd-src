@@ -2895,19 +2895,19 @@ int amdgpu_device_init(struct amdgpu_device *adev,
 	/* mutex initialization are all done here so we
 	 * can recall function without having locking issues */
 	atomic_set(&adev->irq.ih.lock, 0);
-	mutex_init(&adev->firmware.mutex);
-	mutex_init(&adev->pm.mutex);
-	mutex_init(&adev->gfx.gpu_clock_mutex);
-	mutex_init(&adev->srbm_mutex);
-	mutex_init(&adev->gfx.pipe_reserve_mutex);
-	mutex_init(&adev->gfx.gfx_off_mutex);
-	mutex_init(&adev->grbm_idx_mutex);
-	mutex_init(&adev->mn_lock);
-	mutex_init(&adev->virt.vf_errors.lock);
+	rw_init(&adev->firmware.mutex, "agfw");
+	rw_init(&adev->pm.mutex, "agpm");
+	rw_init(&adev->gfx.gpu_clock_mutex, "gfxclk");
+	rw_init(&adev->srbm_mutex, "srbm");
+	rw_init(&adev->gfx.pipe_reserve_mutex, "pipers");
+	rw_init(&adev->gfx.gfx_off_mutex, "gfxoff");
+	rw_init(&adev->grbm_idx_mutex, "grbmidx");
+	rw_init(&adev->mn_lock, "agpumn");
+	rw_init(&adev->virt.vf_errors.lock, "vferr");
 	hash_init(adev->mn_hash);
-	mutex_init(&adev->lock_reset);
-	mutex_init(&adev->psp.mutex);
-	mutex_init(&adev->notifier_lock);
+	rw_init(&adev->lock_reset, "aglkrst");
+	rw_init(&adev->psp.mutex, "agpsp");
+	rw_init(&adev->notifier_lock, "agnf");
 
 	r = amdgpu_device_check_arguments(adev);
 	if (r)
@@ -2924,7 +2924,7 @@ int amdgpu_device_init(struct amdgpu_device *adev,
 	spin_lock_init(&adev->mm_stats.lock);
 
 	INIT_LIST_HEAD(&adev->shadow_list);
-	mutex_init(&adev->shadow_list_lock);
+	rw_init(&adev->shadow_list_lock, "sdwlst");
 
 	INIT_LIST_HEAD(&adev->ring_lru_list);
 	spin_lock_init(&adev->ring_lru_list_lock);

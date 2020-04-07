@@ -738,7 +738,7 @@ static struct kfd_process *create_process(const struct task_struct *thread)
 		goto err_alloc_process;
 
 	kref_init(&process->ref);
-	mutex_init(&process->mutex);
+	rw_init(&process->mutex, "kfdproc");
 	process->mm = thread->mm;
 	process->lead_thread = thread->group_leader;
 	INIT_LIST_HEAD(&process->per_device_data);

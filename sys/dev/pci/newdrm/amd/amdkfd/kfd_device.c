@@ -535,7 +535,7 @@ struct kfd_dev *kgd2kfd_probe(struct kgd_dev *kgd,
 	kfd->kfd2kgd = f2g;
 	atomic_set(&kfd->compute_profile, 0);
 
-	mutex_init(&kfd->doorbell_mutex);
+	rw_init(&kfd->doorbell_mutex, "kfddb");
 	memset(&kfd->doorbell_available_index, 0,
 		sizeof(kfd->doorbell_available_index));
 
@@ -987,7 +987,7 @@ static int kfd_gtt_sa_init(struct kfd_dev *kfd, unsigned int buf_size,
 	pr_debug("gtt_sa_num_of_chunks = %d, gtt_sa_bitmap = %p\n",
 			kfd->gtt_sa_num_of_chunks, kfd->gtt_sa_bitmap);
 
-	mutex_init(&kfd->gtt_sa_lock);
+	rw_init(&kfd->gtt_sa_lock, "gttsa");
 
 	return 0;
 

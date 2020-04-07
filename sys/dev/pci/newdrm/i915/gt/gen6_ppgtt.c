@@ -360,7 +360,7 @@ static struct i915_vma *pd_vma_create(struct gen6_ppgtt *ppgtt, int size)
 	i915_active_init(&vma->active, NULL, NULL);
 
 	kref_init(&vma->ref);
-	mutex_init(&vma->pages_mutex);
+	rw_init(&vma->pages_mutex, "vmapg");
 	vma->vm = i915_vm_get(&ggtt->vm);
 	vma->ops = &pd_vma_ops;
 	vma->private = ppgtt;
@@ -440,8 +440,8 @@ struct i915_ppgtt *gen6_ppgtt_create(struct intel_gt *gt)
 	if (!ppgtt)
 		return ERR_PTR(-ENOMEM);
 
-	mutex_init(&ppgtt->flush);
-	mutex_init(&ppgtt->pin_mutex);
+	rw_init(&ppgtt->flush, "ppgfl");
+	rw_init(&ppgtt->pin_mutex, "ppgpin");
 
 	ppgtt_init(&ppgtt->base, gt);
 	ppgtt->base.vm.top = 1;

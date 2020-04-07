@@ -495,7 +495,7 @@ static int init_ggtt(struct i915_ggtt *ggtt)
 	if (ret)
 		return ret;
 
-	mutex_init(&ggtt->error_mutex);
+	rw_init(&ggtt->error_mutex, "ggtter");
 	if (ggtt->mappable_end) {
 		/* Reserve a mappable slot for our lockless error capture */
 		ret = drm_mm_insert_node_in_range(&ggtt->vm.mm,

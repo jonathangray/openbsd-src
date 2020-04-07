@@ -1365,7 +1365,7 @@ void intel_gt_set_wedged_on_init(struct intel_gt *gt)
 void intel_gt_init_reset(struct intel_gt *gt)
 {
 	init_waitqueue_head(&gt->reset.queue);
-	mutex_init(&gt->reset.mutex);
+	rw_init(&gt->reset.mutex, "gtres");
 	init_srcu_struct(&gt->reset.backoff_srcu);
 
 	/* no GPU until we are ready! */

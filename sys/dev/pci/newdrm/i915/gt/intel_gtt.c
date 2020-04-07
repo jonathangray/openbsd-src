@@ -238,7 +238,7 @@ void i915_address_space_init(struct i915_address_space *vm, int subclass)
 	 * Do a dummy acquire now under fs_reclaim so that any allocation
 	 * attempt holding the lock is immediately reported by lockdep.
 	 */
-	mutex_init(&vm->mutex);
+	rw_init(&vm->mutex, "vmlk");
 	lockdep_set_subclass(&vm->mutex, subclass);
 	i915_gem_shrinker_taints_mutex(vm->i915, &vm->mutex);
 

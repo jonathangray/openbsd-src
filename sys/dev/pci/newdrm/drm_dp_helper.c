@@ -1060,8 +1060,8 @@ EXPORT_SYMBOL(drm_dp_remote_aux_init);
  */
 void drm_dp_aux_init(struct drm_dp_aux *aux)
 {
-	mutex_init(&aux->hw_mutex);
-	mutex_init(&aux->cec.lock);
+	rw_init(&aux->hw_mutex, "drmdp");
+	rw_init(&aux->cec.lock, "drmcec");
 	INIT_WORK(&aux->crc_work, drm_dp_aux_crc_work);
 
 	aux->ddc.algo = &drm_dp_i2c_algo;

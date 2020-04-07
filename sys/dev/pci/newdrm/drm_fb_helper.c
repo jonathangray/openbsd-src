@@ -440,7 +440,7 @@ void drm_fb_helper_prepare(struct drm_device *dev, struct drm_fb_helper *helper,
 	INIT_WORK(&helper->resume_work, drm_fb_helper_resume_worker);
 	INIT_WORK(&helper->dirty_work, drm_fb_helper_dirty_work);
 	helper->dirty_clip.x1 = helper->dirty_clip.y1 = ~0;
-	mutex_init(&helper->lock);
+	rw_init(&helper->lock, "fbhlk");
 	helper->funcs = funcs;
 	helper->dev = dev;
 }

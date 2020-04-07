@@ -1633,8 +1633,8 @@ void gen5_rps_irq_handler(struct intel_rps *rps)
 
 void intel_rps_init_early(struct intel_rps *rps)
 {
-	mutex_init(&rps->lock);
-	mutex_init(&rps->power.mutex);
+	rw_init(&rps->lock, "rpslk");
+	rw_init(&rps->power.mutex, "rpspwr");
 
 	INIT_WORK(&rps->work, rps_work);
 

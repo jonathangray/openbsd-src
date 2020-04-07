@@ -378,7 +378,7 @@ static int i915_gem_init_stolen(struct drm_i915_private *i915)
 	resource_size_t reserved_base, stolen_top;
 	resource_size_t reserved_total, reserved_size;
 
-	mutex_init(&i915->mm.stolen_lock);
+	rw_init(&i915->mm.stolen_lock, "stln");
 
 	if (intel_vgpu_active(i915)) {
 		dev_notice(i915->drm.dev,
