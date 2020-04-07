@@ -2365,7 +2365,7 @@ int amdgpu_vm_bo_clear_mappings(struct amdgpu_device *adev,
 				uint64_t saddr, uint64_t size)
 {
 	struct amdgpu_bo_va_mapping *before, *after, *tmp, *next;
-	LIST_HEAD(removed);
+	DRM_LIST_HEAD(removed);
 	uint64_t eaddr;
 
 	eaddr = saddr + size - 1;

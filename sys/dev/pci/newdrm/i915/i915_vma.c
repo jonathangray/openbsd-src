@@ -1097,7 +1097,7 @@ void i915_vma_release(struct kref *ref)
 void i915_vma_parked(struct intel_gt *gt)
 {
 	struct i915_vma *vma, *next;
-	LIST_HEAD(closed);
+	DRM_LIST_HEAD(closed);
 
 	spin_lock_irq(&gt->closed_lock);
 	list_for_each_entry_safe(vma, next, &gt->closed_vma, closed_link) {

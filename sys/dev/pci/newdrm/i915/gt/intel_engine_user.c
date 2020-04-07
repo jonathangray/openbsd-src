@@ -189,7 +189,7 @@ void intel_engines_driver_register(struct drm_i915_private *i915)
 	u8 uabi_instances[4] = {};
 	struct list_head *it, *next;
 	struct rb_node **p, *prev;
-	LIST_HEAD(engines);
+	DRM_LIST_HEAD(engines);
 
 	sort_engines(i915, &engines);
 

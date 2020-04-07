@@ -690,7 +690,7 @@ static int igt_mock_ppgtt_huge_fill(void *arg)
 	unsigned long max_pages = ppgtt->vm.total >> PAGE_SHIFT;
 	unsigned long page_num;
 	bool single = false;
-	LIST_HEAD(objects);
+	DRM_LIST_HEAD(objects);
 	IGT_TIMEOUT(end_time);
 	int err = -ENODEV;
 

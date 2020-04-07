@@ -148,7 +148,7 @@ static void signal_irq_work(struct irq_work *work)
 	const ktime_t timestamp = ktime_get();
 	struct intel_context *ce, *cn;
 	struct list_head *pos, *next;
-	LIST_HEAD(signal);
+	DRM_LIST_HEAD(signal);
 
 	spin_lock(&b->irq_lock);
 

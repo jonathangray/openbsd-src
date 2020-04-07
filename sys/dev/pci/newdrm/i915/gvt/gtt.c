@@ -761,7 +761,7 @@ static void ppgtt_free_all_spt(struct intel_vgpu *vgpu)
 {
 	struct intel_vgpu_ppgtt_spt *spt, *spn;
 	struct radix_tree_iter iter;
-	LIST_HEAD(all_spt);
+	DRM_LIST_HEAD(all_spt);
 	void __rcu **slot;
 
 	rcu_read_lock();

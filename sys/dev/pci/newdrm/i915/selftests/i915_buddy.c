@@ -323,7 +323,7 @@ static int igt_buddy_alloc_smoke(void *arg)
 		struct i915_buddy_block *block;
 		int max_order = order[i];
 		bool timeout = false;
-		LIST_HEAD(blocks);
+		DRM_LIST_HEAD(blocks);
 		int order;
 		u64 total;
 
@@ -408,7 +408,7 @@ static int igt_buddy_alloc_pessimistic(void *arg)
 	struct i915_buddy_block *block, *bn;
 	struct i915_buddy_mm mm;
 	unsigned int order;
-	LIST_HEAD(blocks);
+	DRM_LIST_HEAD(blocks);
 	int err;
 
 	/*
@@ -499,7 +499,7 @@ static int igt_buddy_alloc_optimistic(void *arg)
 	const int max_order = 16;
 	struct i915_buddy_block *block;
 	struct i915_buddy_mm mm;
-	LIST_HEAD(blocks);
+	DRM_LIST_HEAD(blocks);
 	int order;
 	int err;
 
@@ -549,8 +549,8 @@ static int igt_buddy_alloc_pathological(void *arg)
 	const int max_order = 16;
 	struct i915_buddy_block *block;
 	struct i915_buddy_mm mm;
-	LIST_HEAD(blocks);
-	LIST_HEAD(holes);
+	DRM_LIST_HEAD(blocks);
+	DRM_LIST_HEAD(holes);
 	int order, top;
 	int err;
 
@@ -631,7 +631,7 @@ static int igt_buddy_alloc_range(void *arg)
 {
 	struct i915_buddy_mm mm;
 	unsigned long page_num;
-	LIST_HEAD(blocks);
+	DRM_LIST_HEAD(blocks);
 	u64 chunk_size;
 	u64 offset;
 	u64 size;
@@ -659,7 +659,7 @@ static int igt_buddy_alloc_range(void *arg)
 
 	for_each_prime_number_from(page_num, 1, ULONG_MAX - 1) {
 		struct i915_buddy_block *block;
-		LIST_HEAD(tmp);
+		DRM_LIST_HEAD(tmp);
 
 		size = min(page_num * mm.chunk_size, rem);
 

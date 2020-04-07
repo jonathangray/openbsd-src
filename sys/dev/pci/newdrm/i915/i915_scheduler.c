@@ -233,7 +233,7 @@ static void __i915_schedule(struct i915_sched_node *node,
 	struct i915_dependency *dep, *p;
 	struct i915_dependency stack;
 	struct sched_cache cache;
-	LIST_HEAD(dfs);
+	DRM_LIST_HEAD(dfs);
 
 	/* Needed in order to use the temporary link inside i915_dependency */
 	lockdep_assert_held(&schedule_lock);

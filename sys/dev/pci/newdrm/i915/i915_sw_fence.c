@@ -160,7 +160,7 @@ static void __i915_sw_fence_wake_up_all(struct i915_sw_fence *fence,
 				list_move_tail(&pos->entry, continuation);
 		}
 	} else {
-		LIST_HEAD(extra);
+		DRM_LIST_HEAD(extra);
 
 		do {
 			list_for_each_entry_safe(pos, next, &x->head, entry) {

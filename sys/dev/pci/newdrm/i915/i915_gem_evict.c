@@ -249,7 +249,7 @@ int i915_gem_evict_for_node(struct i915_address_space *vm,
 			    struct drm_mm_node *target,
 			    unsigned int flags)
 {
-	LIST_HEAD(eviction_list);
+	DRM_LIST_HEAD(eviction_list);
 	struct drm_mm_node *node;
 	u64 start = target->start;
 	u64 end = start + target->size;
@@ -372,7 +372,7 @@ int i915_gem_evict_vm(struct i915_address_space *vm)
 
 	do {
 		struct i915_vma *vma, *vn;
-		LIST_HEAD(eviction_list);
+		DRM_LIST_HEAD(eviction_list);
 
 		list_for_each_entry(vma, &vm->bound_list, vm_link) {
 			if (i915_vma_is_pinned(vma))

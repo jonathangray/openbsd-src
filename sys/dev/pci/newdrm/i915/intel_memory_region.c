@@ -136,7 +136,7 @@ __intel_memory_region_get_block_buddy(struct intel_memory_region *mem,
 				      unsigned int flags)
 {
 	struct i915_buddy_block *block;
-	LIST_HEAD(blocks);
+	DRM_LIST_HEAD(blocks);
 	int ret;
 
 	ret = __intel_memory_region_get_pages_buddy(mem, size, flags, &blocks);

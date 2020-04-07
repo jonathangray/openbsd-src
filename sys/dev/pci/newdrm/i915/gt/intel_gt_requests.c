@@ -123,7 +123,7 @@ long intel_gt_retire_requests_timeout(struct intel_gt *gt, long timeout)
 	struct intel_timeline *tl, *tn;
 	unsigned long active_count = 0;
 	bool interruptible;
-	LIST_HEAD(free);
+	DRM_LIST_HEAD(free);
 
 	interruptible = true;
 	if (unlikely(timeout < 0))

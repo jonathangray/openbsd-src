@@ -52,7 +52,7 @@ static int igt_mock_fill(void *arg)
 	resource_size_t rem;
 	unsigned long max_pages;
 	unsigned long page_num;
-	LIST_HEAD(objects);
+	DRM_LIST_HEAD(objects);
 	int err = 0;
 
 	page_size = mem->mm.chunk_size;
@@ -134,8 +134,8 @@ static int igt_mock_contiguous(void *arg)
 	struct intel_memory_region *mem = arg;
 	struct drm_i915_gem_object *obj;
 	unsigned long n_objects;
-	LIST_HEAD(objects);
-	LIST_HEAD(holes);
+	DRM_LIST_HEAD(objects);
+	DRM_LIST_HEAD(holes);
 	I915_RND_STATE(prng);
 	resource_size_t total;
 	resource_size_t min;

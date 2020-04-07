@@ -351,7 +351,7 @@ static int fill_hole(struct i915_address_space *vm,
 	const unsigned long max_step = max(int_sqrt(max_pages), 2UL);
 	unsigned long npages, prime, flags;
 	struct i915_vma *vma;
-	LIST_HEAD(objects);
+	DRM_LIST_HEAD(objects);
 	int err;
 
 	/* Try binding many VMA working inwards from either edge */
@@ -825,7 +825,7 @@ static int __shrink_hole(struct i915_address_space *vm,
 	struct drm_i915_gem_object *obj;
 	unsigned long flags = PIN_OFFSET_FIXED | PIN_USER;
 	unsigned int order = 12;
-	LIST_HEAD(objects);
+	DRM_LIST_HEAD(objects);
 	int err = 0;
 	u64 addr;
 
@@ -1298,7 +1298,7 @@ static int igt_gtt_reserve(void *arg)
 	struct i915_ggtt *ggtt = arg;
 	struct drm_i915_gem_object *obj, *on;
 	I915_RND_STATE(prng);
-	LIST_HEAD(objects);
+	DRM_LIST_HEAD(objects);
 	u64 total;
 	int err = -ENODEV;
 
@@ -1498,7 +1498,7 @@ static int igt_gtt_insert(void *arg)
 		},
 		{}
 	}, *ii;
-	LIST_HEAD(objects);
+	DRM_LIST_HEAD(objects);
 	u64 total;
 	int err = -ENODEV;
 

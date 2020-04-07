@@ -130,7 +130,7 @@ static int igt_evict_something(void *arg)
 {
 	struct intel_gt *gt = arg;
 	struct i915_ggtt *ggtt = gt->ggtt;
-	LIST_HEAD(objects);
+	DRM_LIST_HEAD(objects);
 	int err;
 
 	/* Fill the GGTT with pinned objects and try to evict one. */
@@ -178,7 +178,7 @@ static int igt_overcommit(void *arg)
 	struct i915_ggtt *ggtt = gt->ggtt;
 	struct drm_i915_gem_object *obj;
 	struct i915_vma *vma;
-	LIST_HEAD(objects);
+	DRM_LIST_HEAD(objects);
 	int err;
 
 	/* Fill the GGTT with pinned objects and then try to pin one more.
@@ -217,7 +217,7 @@ static int igt_evict_for_vma(void *arg)
 		.start = 0,
 		.size = 4096,
 	};
-	LIST_HEAD(objects);
+	DRM_LIST_HEAD(objects);
 	int err;
 
 	/* Fill the GGTT with pinned objects and try to evict a range. */
@@ -272,7 +272,7 @@ static int igt_evict_for_cache_color(void *arg)
 	};
 	struct drm_i915_gem_object *obj;
 	struct i915_vma *vma;
-	LIST_HEAD(objects);
+	DRM_LIST_HEAD(objects);
 	int err;
 
 	/*
@@ -355,7 +355,7 @@ static int igt_evict_vm(void *arg)
 {
 	struct intel_gt *gt = arg;
 	struct i915_ggtt *ggtt = gt->ggtt;
-	LIST_HEAD(objects);
+	DRM_LIST_HEAD(objects);
 	int err;
 
 	/* Fill the GGTT with pinned objects and try to evict everything. */

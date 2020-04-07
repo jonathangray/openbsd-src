@@ -3514,7 +3514,7 @@ add_alternate_cea_modes(struct drm_connector *connector, struct edid *edid)
 {
 	struct drm_device *dev = connector->dev;
 	struct drm_display_mode *mode, *tmp;
-	LIST_HEAD(list);
+	DRM_LIST_HEAD(list);
 	int modes = 0;
 
 	/* Don't add CEA modes if the CEA extension block is missing */

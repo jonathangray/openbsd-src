@@ -73,7 +73,7 @@ void i915_gem_suspend_late(struct drm_i915_private *i915)
 
 	spin_lock_irqsave(&i915->mm.obj_lock, flags);
 	for (phase = phases; *phase; phase++) {
-		LIST_HEAD(keep);
+		DRM_LIST_HEAD(keep);
 
 		while ((obj = first_mm_object(*phase))) {
 			list_move_tail(&obj->mm.link, &keep);

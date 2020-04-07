@@ -102,7 +102,7 @@ void i915_gem_close_object(struct drm_gem_object *gem, struct drm_file *file)
 	struct drm_i915_file_private *fpriv = file->driver_priv;
 	struct i915_mmap_offset *mmo, *mn;
 	struct i915_lut_handle *lut, *ln;
-	LIST_HEAD(close);
+	DRM_LIST_HEAD(close);
 
 	i915_gem_object_lock(obj);
 	list_for_each_entry_safe(lut, ln, &obj->lut_list, obj_link) {

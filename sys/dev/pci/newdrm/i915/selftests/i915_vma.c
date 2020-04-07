@@ -154,8 +154,8 @@ static int igt_vma_create(void *arg)
 	unsigned long num_obj, num_ctx;
 	unsigned long no, nc;
 	IGT_TIMEOUT(end_time);
-	LIST_HEAD(contexts);
-	LIST_HEAD(objects);
+	DRM_LIST_HEAD(contexts);
+	DRM_LIST_HEAD(objects);
 	int err = -ENOMEM;
 
 	/* Exercise creating many vma amonst many objections, checking the

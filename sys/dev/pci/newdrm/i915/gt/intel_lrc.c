@@ -1700,7 +1700,7 @@ static void virtual_xfer_breadcrumbs(struct virtual_engine *ve,
 
 static void defer_request(struct i915_request *rq, struct list_head * const pl)
 {
-	LIST_HEAD(list);
+	DRM_LIST_HEAD(list);
 
 	/*
 	 * We want to move the interrupted request to the back of
@@ -2485,7 +2485,7 @@ static void __execlists_submission_tasklet(struct intel_engine_cs *const engine)
 
 static void __execlists_hold(struct i915_request *rq)
 {
-	LIST_HEAD(list);
+	DRM_LIST_HEAD(list);
 
 	do {
 		struct i915_dependency *p;
@@ -2605,7 +2605,7 @@ static bool hold_request(const struct i915_request *rq)
 
 static void __execlists_unhold(struct i915_request *rq)
 {
-	LIST_HEAD(list);
+	DRM_LIST_HEAD(list);
 
 	do {
 		struct i915_dependency *p;
