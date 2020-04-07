@@ -2083,7 +2083,7 @@ static int arcturus_i2c_eeprom_write_data(struct i2c_adapter *control,
 		 * end of write transaction. During this time the EEPROM will not be
 		 * responsive to any more commands - so wait a bit more.
 		 */
-		msleep(10);
+		drm_msleep(10);
 
 	} else
 		pr_err("arcturus_i2c_write- error occurred :%x", ret);

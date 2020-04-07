@@ -1666,7 +1666,7 @@ static int hdcp2_authenticate_and_encrypt(struct intel_connector *connector)
 		 * Ensuring the required 200mSec min time interval between
 		 * Session Key Exchange and encryption.
 		 */
-		msleep(HDCP_2_2_DELAY_BEFORE_ENCRYPTION_EN);
+		drm_msleep(HDCP_2_2_DELAY_BEFORE_ENCRYPTION_EN);
 		ret = hdcp2_enable_encryption(connector);
 		if (ret < 0) {
 			drm_dbg_kms(&i915->drm,

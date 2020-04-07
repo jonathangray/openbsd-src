@@ -989,7 +989,7 @@ static int vcn_v2_5_start(struct amdgpu_device *adev)
 				if (status & 2)
 					break;
 				if (amdgpu_emu_mode == 1)
-					msleep(500);
+					drm_msleep(500);
 				else
 					mdelay(10);
 			}

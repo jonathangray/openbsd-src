@@ -790,7 +790,7 @@ void dce110_edp_wait_for_hpd_ready(
 			break;
 		}
 
-		msleep(HPD_CHECK_INTERVAL);
+		drm_msleep(HPD_CHECK_INTERVAL);
 
 		time_elapsed += HPD_CHECK_INTERVAL;
 	} while (time_elapsed < timeout);
@@ -844,7 +844,7 @@ void dce110_edp_power_control(
 				wait_time_ms = edp_poweroff_time_ms - duration_in_ms;
 
 			if (wait_time_ms) {
-				msleep(wait_time_ms);
+				drm_msleep(wait_time_ms);
 				dm_output_to_console("%s: wait %lld ms to power on eDP.\n",
 						__func__, wait_time_ms);
 			}
@@ -943,7 +943,7 @@ void dce110_edp_backlight_control(
 	link_transmitter_control(ctx->dc_bios, &cntl);
 
 	if (enable && link->dpcd_sink_ext_caps.bits.oled)
-		msleep(OLED_POST_T7_DELAY);
+		drm_msleep(OLED_POST_T7_DELAY);
 
 	if (link->dpcd_sink_ext_caps.bits.oled ||
 		link->dpcd_sink_ext_caps.bits.hdr_aux_backlight_control == 1 ||
@@ -955,7 +955,7 @@ void dce110_edp_backlight_control(
 		edp_receiver_ready_T9(link);
 
 	if (!enable && link->dpcd_sink_ext_caps.bits.oled)
-		msleep(OLED_PRE_T11_DELAY);
+		drm_msleep(OLED_PRE_T11_DELAY);
 }
 
 void dce110_enable_audio_stream(struct pipe_ctx *pipe_ctx)

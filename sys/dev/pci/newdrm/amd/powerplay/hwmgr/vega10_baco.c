@@ -107,7 +107,7 @@ int vega10_baco_set_state(struct pp_hwmgr *hwmgr, enum BACO_STATE state)
 		}
 	} else if (state == BACO_STATE_OUT) {
 		/* HW requires at least 20ms between regulator off and on */
-		msleep(20);
+		drm_msleep(20);
 		/* Execute Hardware BACO exit sequence */
 		if (soc15_baco_program_registers(hwmgr, exit_baco_tbl,
 					     ARRAY_SIZE(exit_baco_tbl))) {

@@ -803,7 +803,7 @@ static bool perform_post_lt_adj_req_sequence(
 				break;
 			}
 
-			msleep(1);
+			drm_msleep(1);
 		}
 
 		if (!req_drv_setting_changed) {
@@ -1536,7 +1536,7 @@ bool perform_link_training_with_retries(
 		if (stream->sink_patches.dppowerup_delay > 0) {
 			int delay_dp_power_up_in_ms = stream->sink_patches.dppowerup_delay;
 
-			msleep(delay_dp_power_up_in_ms);
+			drm_msleep(delay_dp_power_up_in_ms);
 		}
 
 		dp_set_panel_mode(link, panel_mode);
@@ -1563,7 +1563,7 @@ bool perform_link_training_with_retries(
 
 		dp_disable_link_phy(link, signal);
 
-		msleep(delay_between_attempts);
+		drm_msleep(delay_between_attempts);
 
 		delay_between_attempts += LINK_TRAINING_RETRY_DELAY;
 	}
@@ -2017,7 +2017,7 @@ bool dp_verify_link_cap_with_retries(
 			success = true;
 			break;
 		}
-		msleep(10);
+		drm_msleep(10);
 	}
 	return success;
 }
@@ -4255,7 +4255,7 @@ void dpcd_set_source_specific_data(struct dc_link *link)
 
 	// Sink may need to configure internals based on vendor, so allow some
 	// time before proceeding with possibly vendor specific transactions
-	msleep(post_oui_delay);
+	drm_msleep(post_oui_delay);
 }
 
 bool dc_link_set_backlight_level_nits(struct dc_link *link,

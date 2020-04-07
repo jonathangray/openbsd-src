@@ -669,7 +669,7 @@ void intel_dsi_msleep(struct intel_dsi *intel_dsi, int msec)
 	if (is_vid_mode(intel_dsi) && dev_priv->vbt.dsi.seq_version >= 3)
 		return;
 
-	msleep(msec);
+	drm_msleep(msec);
 }
 
 void intel_dsi_log_params(struct intel_dsi *intel_dsi)

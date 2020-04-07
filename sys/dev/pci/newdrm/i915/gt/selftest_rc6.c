@@ -51,10 +51,10 @@ int live_rc6_manual(void *arg)
 
 	/* Force RC6 off for starters */
 	__intel_rc6_disable(rc6);
-	msleep(1); /* wakeup is not immediate, takes about 100us on icl */
+	drm_msleep(1); /* wakeup is not immediate, takes about 100us on icl */
 
 	res[0] = rc6_residency(rc6);
-	msleep(250);
+	drm_msleep(250);
 	res[1] = rc6_residency(rc6);
 	if ((res[1] - res[0]) >> 10) {
 		pr_err("RC6 residency increased by %lldus while disabled for 250ms!\n",
@@ -67,7 +67,7 @@ int live_rc6_manual(void *arg)
 	intel_rc6_park(rc6);
 
 	res[0] = rc6_residency(rc6);
-	msleep(100);
+	drm_msleep(100);
 	res[1] = rc6_residency(rc6);
 
 	if (res[1] == res[0]) {

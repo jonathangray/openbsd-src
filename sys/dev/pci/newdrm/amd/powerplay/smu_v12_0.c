@@ -283,7 +283,7 @@ int smu_v12_0_gfx_off_control(struct smu_context *smu, bool enable)
 
 		/* confirm gfx is back to "on" state, timeout is 0.5 second */
 		while (!(smu_v12_0_get_gfxoff_status(smu) == 2)) {
-			msleep(1);
+			drm_msleep(1);
 			timeout--;
 			if (timeout == 0) {
 				DRM_ERROR("disable gfxoff timeout and failed!\n");

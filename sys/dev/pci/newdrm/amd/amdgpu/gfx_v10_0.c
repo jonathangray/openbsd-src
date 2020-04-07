@@ -527,7 +527,7 @@ static int gfx_v10_0_ring_test_ring(struct amdgpu_ring *ring)
 		if (tmp == 0xDEADBEEF)
 			break;
 		if (amdgpu_emu_mode == 1)
-			msleep(1);
+			drm_msleep(1);
 		else
 			udelay(1);
 	}

@@ -547,7 +547,7 @@ static void read_current_link_settings_on_detect(struct dc_link *link)
 			break;
 		}
 
-		msleep(8);
+		drm_msleep(8);
 	}
 
 	// Read DPCD 00100h to find if standard link rates are set
@@ -1566,7 +1566,7 @@ static enum dc_status enable_link_dp(struct dc_state *state,
 		link->dpcd_sink_ext_caps.bits.hdr_aux_backlight_control == 1) {
 		dc_link_set_default_brightness_aux(link); // TODO: use cached if known
 		if (link->dpcd_sink_ext_caps.bits.oled == 1)
-			msleep(bl_oled_enable_delay);
+			drm_msleep(bl_oled_enable_delay);
 		dc_link_backlight_enable_aux(link, true);
 	}
 
@@ -2192,7 +2192,7 @@ static enum dc_status enable_link(
 		break;
 	case SIGNAL_TYPE_DISPLAY_PORT_MST:
 		status = enable_link_dp_mst(state, pipe_ctx);
-		msleep(200);
+		drm_msleep(200);
 		break;
 	case SIGNAL_TYPE_DVI_SINGLE_LINK:
 	case SIGNAL_TYPE_DVI_DUAL_LINK:
@@ -3088,7 +3088,7 @@ void core_link_enable_stream(
 			&pipe_ctx->stream->link->cur_link_settings);
 
 		if (stream->sink_patches.delay_ignore_msa > 0)
-			msleep(stream->sink_patches.delay_ignore_msa);
+			drm_msleep(stream->sink_patches.delay_ignore_msa);
 
 		if (dc_is_dp_signal(pipe_ctx->stream->signal))
 			enable_stream_features(pipe_ctx);

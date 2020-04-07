@@ -972,7 +972,7 @@ static int do_reset(struct intel_gt *gt, intel_engine_mask_t stalled_mask)
 
 	err = __intel_gt_reset(gt, ALL_ENGINES);
 	for (i = 0; err && i < RESET_MAX_RETRIES; i++) {
-		msleep(10 * (i + 1));
+		drm_msleep(10 * (i + 1));
 		err = __intel_gt_reset(gt, ALL_ENGINES);
 	}
 	if (err)

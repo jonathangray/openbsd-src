@@ -72,7 +72,7 @@ void amdgpu_virt_kiq_reg_write_reg_wait(struct amdgpu_device *adev,
 	might_sleep();
 	while (r < 1 && cnt++ < MAX_KIQ_REG_TRY) {
 
-		msleep(MAX_KIQ_REG_BAILOUT_INTERVAL);
+		drm_msleep(MAX_KIQ_REG_BAILOUT_INTERVAL);
 		r = amdgpu_fence_wait_polling(ring, seq, MAX_KIQ_REG_WAIT);
 	}
 

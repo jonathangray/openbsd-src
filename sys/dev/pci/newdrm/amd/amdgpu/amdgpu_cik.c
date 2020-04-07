@@ -1559,7 +1559,7 @@ static void cik_pcie_gen3_enable(struct amdgpu_device *adev)
 				tmp |= PCIE_LC_CNTL4__LC_REDO_EQ_MASK;
 				WREG32_PCIE(ixPCIE_LC_CNTL4, tmp);
 
-				msleep(100);
+				drm_msleep(100);
 
 				/* linkctl */
 				pcie_capability_read_word(root, PCI_EXP_LNKCTL,
@@ -1871,7 +1871,7 @@ static void cik_get_pcie_usage(struct amdgpu_device *adev, uint64_t *count0,
 	 */
 	WREG32_PCIE(ixPCIE_PERF_COUNT_CNTL, 0x00000005);
 
-	msleep(1000);
+	drm_msleep(1000);
 
 	/* Load the shadow and disable the perf counters
 	 * Write 0x2:

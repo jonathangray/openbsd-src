@@ -583,7 +583,7 @@ static uint32_t smu_v11_0_i2c_eeprom_write_data(struct i2c_adapter *control,
 		 * TODO Improve to wait for first ACK for slave address after
 		 * internal write cycle done.
 		 */
-		msleep(10);
+		drm_msleep(10);
 
 	return ret;
 

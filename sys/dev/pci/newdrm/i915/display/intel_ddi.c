@@ -1607,7 +1607,7 @@ void intel_ddi_disable_transcoder_func(const struct intel_crtc_state *crtc_state
 	    intel_crtc_has_type(crtc_state, INTEL_OUTPUT_HDMI)) {
 		DRM_DEBUG_KMS("Quirk Increase DDI disabled time\n");
 		/* Quirk time at 100ms for reliable operation */
-		msleep(100);
+		drm_msleep(100);
 	}
 }
 

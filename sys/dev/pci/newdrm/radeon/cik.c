@@ -9605,7 +9605,7 @@ static void cik_pcie_gen3_enable(struct radeon_device *rdev)
 				tmp |= LC_REDO_EQ;
 				WREG32_PCIE_PORT(PCIE_LC_CNTL4, tmp);
 
-				msleep(100);
+				drm_msleep(100);
 
 				/* linkctl */
 				pcie_capability_read_word(root, PCI_EXP_LNKCTL,

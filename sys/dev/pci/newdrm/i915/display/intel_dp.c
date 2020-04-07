@@ -1135,7 +1135,7 @@ static int edp_notify_handler(struct notifier_block *this, unsigned long code,
 			intel_de_write(dev_priv, pp_div_reg, pp_div | 0x1F);
 			intel_de_write(dev_priv, pp_ctrl_reg,
 				       PANEL_UNLOCK_REGS);
-			msleep(intel_dp->panel_power_cycle_delay);
+			drm_msleep(intel_dp->panel_power_cycle_delay);
 		}
 	}
 
@@ -1383,7 +1383,7 @@ intel_dp_aux_xfer(struct intel_dp *intel_dp,
 		status = intel_uncore_read_notrace(uncore, ch_ctl);
 		if ((status & DP_AUX_CH_CTL_SEND_BUSY) == 0)
 			break;
-		msleep(1);
+		drm_msleep(1);
 	}
 	/* just trace the final value */
 	trace_i915_reg_rw(false, ch_ctl, status, sizeof(status), true);
@@ -2749,7 +2749,7 @@ static bool edp_panel_vdd_on(struct intel_dp *intel_dp)
 			    "[ENCODER:%d:%s] panel power wasn't enabled\n",
 			    intel_dig_port->base.base.base.id,
 			    intel_dig_port->base.base.name);
-		msleep(intel_dp->panel_power_up_delay);
+		drm_msleep(intel_dp->panel_power_up_delay);
 	}
 
 	return need_to_disable;
@@ -3227,7 +3227,7 @@ void intel_dp_sink_dpms(struct intel_dp *intel_dp, int mode)
 						 DP_SET_POWER_D0);
 			if (ret == 1)
 				break;
-			msleep(1);
+			drm_msleep(1);
 		}
 
 		if (ret == 1 && lspcon->active)
@@ -4304,7 +4304,7 @@ intel_dp_link_down(struct intel_encoder *encoder,
 		intel_set_pch_fifo_underrun_reporting(dev_priv, PIPE_A, true);
 	}
 
-	msleep(intel_dp->panel_power_down_delay);
+	drm_msleep(intel_dp->panel_power_down_delay);
 
 	intel_dp->DP = DP;
 

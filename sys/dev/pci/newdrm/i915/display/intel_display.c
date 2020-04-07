@@ -1048,7 +1048,7 @@ static bool pipe_scanline_is_moving(struct drm_i915_private *dev_priv,
 		line_mask = DSL_LINEMASK_GEN3;
 
 	line1 = intel_de_read(dev_priv, reg) & line_mask;
-	msleep(5);
+	drm_msleep(5);
 	line2 = intel_de_read(dev_priv, reg) & line_mask;
 
 	return line1 != line2;

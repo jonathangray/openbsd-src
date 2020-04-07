@@ -161,7 +161,7 @@ static enum mod_hdcp_status poll_l_prime_available(struct mod_hdcp *hdcp)
 		status = MOD_HDCP_STATUS_INVALID_OPERATION;
 	else
 		for (; num_polls; num_polls--) {
-			msleep(wait_time);
+			drm_msleep(wait_time);
 
 			status = mod_hdcp_read_rxstatus(hdcp);
 			if (status != MOD_HDCP_STATUS_SUCCESS)
@@ -472,7 +472,7 @@ static enum mod_hdcp_status locality_check(struct mod_hdcp *hdcp,
 			 hdcp, "lc_init_write"))
 		goto out;
 	if (is_dp_hdcp(hdcp))
-		msleep(16);
+		drm_msleep(16);
 	else
 		if (!mod_hdcp_execute_and_set(poll_l_prime_available,
 				&input->l_prime_available_poll, &status,
