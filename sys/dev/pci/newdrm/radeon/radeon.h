@@ -254,7 +254,7 @@ bool radeon_get_bios(struct radeon_device *rdev);
  */
 struct radeon_dummy_page {
 	uint64_t	entry;
-	struct page	*page;
+	struct vm_page	*page;
 	dma_addr_t	addr;
 };
 int radeon_dummy_page_init(struct radeon_device *rdev);
@@ -655,7 +655,7 @@ struct radeon_gart {
 	unsigned			num_gpu_pages;
 	unsigned			num_cpu_pages;
 	unsigned			table_size;
-	struct page			**pages;
+	struct vm_page			**pages;
 	uint64_t			*pages_entry;
 	bool				ready;
 };
