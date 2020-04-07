@@ -1593,7 +1593,7 @@ void radeon_dpm_enable_vce(struct radeon_device *rdev, bool enable);
 struct radeon_pm {
 	struct rwlock		mutex;
 	/* write locked while reprogramming mclk */
-	struct rw_semaphore	mclk_lock;
+	struct rwlock		mclk_lock;
 	u32			active_crtcs;
 	int			active_crtc_count;
 	int			req_vblank;
@@ -2314,7 +2314,7 @@ struct radeon_device {
 	struct device			*dev;
 	struct drm_device		*ddev;
 	struct pci_dev			*pdev;
-	struct rw_semaphore		exclusive_lock;
+	struct rwlock			exclusive_lock;
 	/* ASIC */
 	union radeon_asic_config	config;
 	enum radeon_family		family;
