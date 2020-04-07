@@ -71,7 +71,7 @@ struct intel_guc {
 	u32 mmio_msg;
 
 	/* To serialize the intel_guc_send actions */
-	struct mutex send_mutex;
+	struct rwlock send_mutex;
 };
 
 static

@@ -32,7 +32,7 @@ struct intel_rps_ei {
 };
 
 struct intel_rps {
-	struct mutex lock; /* protects enabling and the worker */
+	struct rwlock lock; /* protects enabling and the worker */
 
 	/*
 	 * work, interrupts_enabled and pm_iir are protected by
@@ -73,7 +73,7 @@ struct intel_rps {
 	int last_adj;
 
 	struct {
-		struct mutex mutex;
+		struct rwlock mutex;
 
 		enum { LOW_POWER, BETWEEN, HIGH_POWER } mode;
 		unsigned int interactive;

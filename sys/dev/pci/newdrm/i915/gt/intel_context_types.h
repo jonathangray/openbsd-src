@@ -84,7 +84,7 @@ struct intel_context {
 	unsigned int active_count; /* protected by timeline->mutex */
 
 	atomic_t pin_count;
-	struct mutex pin_mutex; /* guards pinning and associated on-gpuing */
+	struct rwlock pin_mutex; /* guards pinning and associated on-gpuing */
 
 	/**
 	 * active: Active tracker for the rq activity (inc. external) on this

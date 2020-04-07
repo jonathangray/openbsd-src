@@ -249,7 +249,7 @@ struct i915_address_space {
 	 */
 	atomic_t open;
 
-	struct mutex mutex; /* protects vma and our lists */
+	struct rwlock mutex; /* protects vma and our lists */
 #define VM_CLASS_GGTT 0
 #define VM_CLASS_PPGTT 1
 
@@ -345,7 +345,7 @@ struct i915_ggtt {
 	/* Manual runtime pm autosuspend delay for user GGTT mmaps */
 	struct intel_wakeref_auto userfault_wakeref;
 
-	struct mutex error_mutex;
+	struct rwlock error_mutex;
 	struct drm_mm_node error_capture;
 	struct drm_mm_node uc_fw;
 };

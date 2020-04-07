@@ -366,7 +366,7 @@ enum i915_cache_level {
 struct intel_fbc {
 	/* This is always the inner lock when overlapping with struct_mutex and
 	 * it's the outer lock when overlapping with stolen_lock. */
-	struct mutex lock;
+	struct rwlock lock;
 	unsigned threshold;
 	unsigned int possible_framebuffer_bits;
 	unsigned int busy_bits;
@@ -469,7 +469,7 @@ enum drrs_support_type {
 
 struct intel_dp;
 struct i915_drrs {
-	struct mutex mutex;
+	struct rwlock mutex;
 	struct delayed_work work;
 	struct intel_dp *dp;
 	unsigned busy_frontbuffer_bits;
@@ -478,7 +478,7 @@ struct i915_drrs {
 };
 
 struct i915_psr {
-	struct mutex lock;
+	struct rwlock lock;
 
 #define I915_PSR_DEBUG_MODE_MASK	0x0f
 #define I915_PSR_DEBUG_DEFAULT		0x00
@@ -559,7 +559,7 @@ struct i915_gem_mm {
 	struct drm_mm stolen;
 	/** Protects the usage of the GTT stolen memory allocator. This is
 	 * always the inner lock when overlapping with struct_mutex. */
-	struct mutex stolen_lock;
+	struct rwlock stolen_lock;
 
 	/* Protects bound_list/unbound_list and #drm_i915_gem_object.mm.link */
 	spinlock_t obj_lock;
@@ -806,7 +806,7 @@ struct i915_frontbuffer_tracking {
 };
 
 struct i915_virtual_gpu {
-	struct mutex lock; /* serialises sending of g2v_notify command pkts */
+	struct rwlock lock; /* serialises sending of g2v_notify command pkts */
 	bool active;
 	u32 caps;
 };
@@ -866,7 +866,7 @@ struct drm_i915_private {
 
 	/** gmbus_mutex protects against concurrent usage of the single hw gmbus
 	 * controller on different i2c buses. */
-	struct mutex gmbus_mutex;
+	struct rwlock gmbus_mutex;
 
 	/**
 	 * Base address of where the gmbus and gpio blocks are located (either
@@ -899,7 +899,7 @@ struct drm_i915_private {
 	struct pm_qos_request pm_qos;
 
 	/* Sideband mailbox protection */
-	struct mutex sb_lock;
+	struct rwlock sb_lock;
 	struct pm_qos_request sb_qos;
 
 	/** Cached value of IMR to avoid reads in updating the bitfield */
@@ -921,10 +921,10 @@ struct drm_i915_private {
 	struct intel_overlay *overlay;
 
 	/* backlight registers and fields in struct intel_panel */
-	struct mutex backlight_lock;
+	struct rwlock backlight_lock;
 
 	/* protects panel power sequencer state */
-	struct mutex pps_mutex;
+	struct rwlock pps_mutex;
 
 	unsigned int fsb_freq, mem_freq, is_ddr3;
 	unsigned int skl_preferred_vco_freq;
@@ -975,7 +975,7 @@ struct drm_i915_private {
 
 	struct i915_gem_mm mm;
 	DECLARE_HASHTABLE(mm_structs, 7);
-	struct mutex mm_lock;
+	struct rwlock mm_lock;
 
 	/* Kernel Modesetting */
 
@@ -989,7 +989,7 @@ struct drm_i915_private {
 	 * share registers.
 	 */
 	struct {
-		struct mutex lock;
+		struct rwlock lock;
 
 		int num_shared_dpll;
 		struct intel_shared_dpll shared_dplls[I915_NUM_PLLS];
@@ -1052,7 +1052,7 @@ struct drm_i915_private {
 	 * av_mutex - mutex for audio/video sync
 	 *
 	 */
-	struct mutex av_mutex;
+	struct rwlock av_mutex;
 	int audio_power_refcount;
 	u32 audio_freq_cntrl;
 
@@ -1115,7 +1115,7 @@ struct drm_i915_private {
 		 * protects * intel_crtc->wm.active and
 		 * crtc_state->wm.need_postvbl_update.
 		 */
-		struct mutex wm_mutex;
+		struct rwlock wm_mutex;
 
 		/*
 		 * Set during HW readout of watermarks/DDB.  Some platforms
@@ -1204,7 +1204,7 @@ struct drm_i915_private {
 	bool hdcp_comp_added;
 
 	/* Mutex to protect the above hdcp component related values. */
-	struct mutex hdcp_comp_mutex;
+	struct rwlock hdcp_comp_mutex;
 
 	I915_SELFTEST_DECLARE(struct i915_selftest_stash selftest;)
 

@@ -167,7 +167,7 @@ struct intel_vgpu_submission {
 
 struct intel_vgpu {
 	struct intel_gvt *gvt;
-	struct mutex vgpu_lock;
+	struct rwlock vgpu_lock;
 	int id;
 	unsigned long handle; /* vGPU handle used by hypervisor MPT modules */
 	bool active;
@@ -200,7 +200,7 @@ struct intel_vgpu {
 	void *vdev;
 
 	struct list_head dmabuf_obj_list_head;
-	struct mutex dmabuf_lock;
+	struct rwlock dmabuf_lock;
 	struct idr object_idr;
 
 	u32 scan_nonprivbb;
@@ -282,9 +282,9 @@ struct intel_gvt {
 	/* GVT scope lock, protect GVT itself, and all resource currently
 	 * not yet protected by special locks(vgpu and scheduler lock).
 	 */
-	struct mutex lock;
+	struct rwlock lock;
 	/* scheduler scope lock, protect gvt and vgpu schedule related data */
-	struct mutex sched_lock;
+	struct rwlock sched_lock;
 
 	struct intel_gt *gt;
 	struct idr vgpu_idr;	/* vGPU IDR pool */

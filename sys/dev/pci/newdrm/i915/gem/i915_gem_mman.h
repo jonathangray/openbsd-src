@@ -15,7 +15,7 @@ struct drm_file;
 struct drm_i915_gem_object;
 struct file;
 struct i915_mmap_offset;
-struct mutex;
+struct rwlock;
 
 int i915_gem_mmap_gtt_version(void);
 int i915_gem_mmap(struct file *filp, struct vm_area_struct *vma);

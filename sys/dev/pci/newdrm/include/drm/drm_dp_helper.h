@@ -1347,7 +1347,7 @@ struct drm_connector;
  * @unregister_work: unregister the CEC adapter
  */
 struct drm_dp_aux_cec {
-	struct mutex lock;
+	struct rwlock lock;
 	struct cec_adapter *adap;
 	struct drm_connector *connector;
 	struct delayed_work unregister_work;
@@ -1398,7 +1398,7 @@ struct drm_dp_aux {
 	struct i2c_adapter ddc;
 	struct device *dev;
 	struct drm_crtc *crtc;
-	struct mutex hw_mutex;
+	struct rwlock hw_mutex;
 	struct work_struct crc_work;
 	u8 crc_count;
 	ssize_t (*transfer)(struct drm_dp_aux *aux,

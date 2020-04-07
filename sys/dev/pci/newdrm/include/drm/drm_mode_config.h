@@ -366,7 +366,7 @@ struct drm_mode_config {
 	 *
 	 * The one important thing this protects is the use of @acquire_ctx.
 	 */
-	struct mutex mutex;
+	struct rwlock mutex;
 
 	/**
 	 * @connection_mutex:
@@ -394,7 +394,7 @@ struct drm_mode_config {
 	 * Mutex for KMS ID allocation and management. Protects both @object_idr
 	 * and @tile_idr.
 	 */
-	struct mutex idr_mutex;
+	struct rwlock idr_mutex;
 
 	/**
 	 * @object_idr:
@@ -413,7 +413,7 @@ struct drm_mode_config {
 	struct idr tile_idr;
 
 	/** @fb_lock: Mutex to protect fb the global @fb_list and @num_fb. */
-	struct mutex fb_lock;
+	struct rwlock fb_lock;
 	/** @num_fb: Number of entries on @fb_list. */
 	int num_fb;
 	/** @fb_list: List of all &struct drm_framebuffer. */
@@ -538,7 +538,7 @@ struct drm_mode_config {
 	 * Mutex for blob property allocation and management, protects
 	 * @property_blob_list and &drm_file.blobs.
 	 */
-	struct mutex blob_lock;
+	struct rwlock blob_lock;
 
 	/**
 	 * @property_blob_list:

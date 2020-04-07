@@ -183,7 +183,7 @@ struct ttm_mem_type_manager {
 	uint32_t default_caching;
 	const struct ttm_mem_type_manager_func *func;
 	void *priv;
-	struct mutex io_reserve_mutex;
+	struct rwlock io_reserve_mutex;
 	bool use_io_reserve_lru;
 	bool io_reserve_fastpath;
 	spinlock_t move_lock;

@@ -34,7 +34,7 @@ struct intel_wakeref_ops {
 
 struct intel_wakeref {
 	atomic_t count;
-	struct mutex mutex;
+	struct rwlock mutex;
 
 	intel_wakeref_t wakeref;
 

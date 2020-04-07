@@ -129,14 +129,14 @@ struct drm_device {
 	 *
 	 * Lock for others (not &drm_minor.master and &drm_file.is_master)
 	 */
-	struct mutex struct_mutex;
+	struct rwlock struct_mutex;
 
 	/**
 	 * @master_mutex:
 	 *
 	 * Lock for &drm_minor.master and &drm_file.is_master
 	 */
-	struct mutex master_mutex;
+	struct rwlock master_mutex;
 
 	/**
 	 * @open_count:
@@ -147,7 +147,7 @@ struct drm_device {
 	atomic_t open_count;
 
 	/** @filelist_mutex: Protects @filelist. */
-	struct mutex filelist_mutex;
+	struct rwlock filelist_mutex;
 	/**
 	 * @filelist:
 	 *
@@ -168,7 +168,7 @@ struct drm_device {
 	 *
 	 * Protects &clientlist access.
 	 */
-	struct mutex clientlist_mutex;
+	struct rwlock clientlist_mutex;
 
 	/**
 	 * @clientlist:
@@ -279,7 +279,7 @@ struct drm_device {
 	struct drm_mode_config mode_config;
 
 	/** @object_name_lock: GEM information */
-	struct mutex object_name_lock;
+	struct rwlock object_name_lock;
 
 	/** @object_name_idr: GEM information */
 	struct idr object_name_idr;
@@ -315,7 +315,7 @@ struct drm_device {
 	struct list_head ctxlist;
 
 	/* Context handle management - mutex for &ctxlist */
-	struct mutex ctxlist_mutex;
+	struct rwlock ctxlist_mutex;
 
 	/* Context handle management */
 	struct idr ctx_idr;

@@ -747,7 +747,7 @@ struct drm_bridge {
 	/**
 	 * @hpd_mutex: Protects the @hpd_cb and @hpd_data fields.
 	 */
-	struct mutex hpd_mutex;
+	struct rwlock hpd_mutex;
 	/**
 	 * @hpd_cb: Hot plug detection callback, registered with
 	 * drm_bridge_hpd_enable().

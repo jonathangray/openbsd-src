@@ -81,7 +81,7 @@ struct i915_gem_context {
 	 * CONTEXT_USER_ENGINES flag is set).
 	 */
 	struct i915_gem_engines __rcu *engines;
-	struct mutex engines_mutex; /* guards writes to engines */
+	struct rwlock engines_mutex; /* guards writes to engines */
 
 	struct intel_timeline *timeline;
 
@@ -143,7 +143,7 @@ struct i915_gem_context {
 #define CONTEXT_CLOSED			0
 #define CONTEXT_USER_ENGINES		1
 
-	struct mutex mutex;
+	struct rwlock mutex;
 
 	struct i915_sched_attr sched;
 

@@ -77,7 +77,7 @@ struct drm_minor {
 	struct dentry *debugfs_root;
 
 	struct list_head debugfs_list;
-	struct mutex debugfs_lock; /* Protects debugfs_list. */
+	struct rwlock debugfs_lock; /* Protects debugfs_list. */
 };
 
 /**
@@ -280,7 +280,7 @@ struct drm_file {
 	struct list_head fbs;
 
 	/** @fbs_lock: Protects @fbs. */
-	struct mutex fbs_lock;
+	struct rwlock fbs_lock;
 
 	/**
 	 * @blobs:
@@ -326,7 +326,7 @@ struct drm_file {
 	int event_space;
 
 	/** @event_read_lock: Serializes drm_read(). */
-	struct mutex event_read_lock;
+	struct rwlock event_read_lock;
 
 	/**
 	 * @prime:

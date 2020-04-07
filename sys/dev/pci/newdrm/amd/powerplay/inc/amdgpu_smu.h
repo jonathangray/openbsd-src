@@ -310,7 +310,7 @@ struct smu_feature
 	DECLARE_BITMAP(supported, SMU_FEATURE_MAX);
 	DECLARE_BITMAP(allowed, SMU_FEATURE_MAX);
 	DECLARE_BITMAP(enabled, SMU_FEATURE_MAX);
-	struct mutex mutex;
+	struct rwlock mutex;
 };
 
 struct smu_clocks {
@@ -347,7 +347,7 @@ enum smu_baco_state
 
 struct smu_baco_context
 {
-	struct mutex mutex;
+	struct rwlock mutex;
 	uint32_t state;
 	bool platform_support;
 };
@@ -359,10 +359,10 @@ struct smu_context
 	struct amdgpu_irq_src		*irq_source;
 
 	const struct pptable_funcs	*ppt_funcs;
-	struct mutex			mutex;
-	struct mutex			sensor_lock;
-	struct mutex			metrics_lock;
-	struct mutex			message_lock;
+	struct rwlock			mutex;
+	struct rwlock			sensor_lock;
+	struct rwlock			metrics_lock;
+	struct rwlock			message_lock;
 	uint64_t pool_size;
 
 	struct smu_table_context	smu_table;

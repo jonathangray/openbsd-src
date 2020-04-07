@@ -50,7 +50,7 @@ struct intel_guc_log {
 		bool started;
 		struct work_struct flush_work;
 		struct rchan *channel;
-		struct mutex lock;
+		struct rwlock lock;
 		u32 full_count;
 	} relay;
 	/* logging related stats */

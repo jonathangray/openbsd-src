@@ -329,7 +329,7 @@ struct amdgpu_ras {
 	struct amdgpu_device *adev;
 	/* error handler data */
 	struct ras_err_handler_data *eh_data;
-	struct mutex recovery_lock;
+	struct rwlock recovery_lock;
 
 	uint32_t flags;
 	bool reboot;

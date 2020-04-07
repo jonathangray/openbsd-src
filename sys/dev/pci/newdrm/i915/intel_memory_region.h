@@ -80,7 +80,7 @@ struct intel_memory_region {
 	struct drm_mm_node fake_mappable;
 
 	struct i915_buddy_mm mm;
-	struct mutex mm_lock;
+	struct rwlock mm_lock;
 
 	struct kref kref;
 
@@ -97,7 +97,7 @@ struct intel_memory_region {
 	dma_addr_t remap_addr;
 
 	struct {
-		struct mutex lock; /* Protects access to objects */
+		struct rwlock lock; /* Protects access to objects */
 		struct list_head list;
 		struct list_head purgeable;
 	} objects;

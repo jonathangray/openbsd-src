@@ -115,7 +115,7 @@ struct intel_fbdev {
 	bool hpd_waiting : 1;
 
 	/* Protects hpd_suspended */
-	struct mutex hpd_lock;
+	struct rwlock hpd_lock;
 };
 
 enum intel_hotplug_state {
@@ -347,7 +347,7 @@ struct intel_hdcp_shim {
 struct intel_hdcp {
 	const struct intel_hdcp_shim *shim;
 	/* Mutex for hdcp state of the connector */
-	struct mutex mutex;
+	struct rwlock mutex;
 	u64 value;
 	struct delayed_work check_work;
 	struct work_struct prop_work;
@@ -1378,7 +1378,7 @@ struct intel_digital_port {
 	/* Used for DP and ICL+ TypeC/DP and TypeC/HDMI ports. */
 	enum aux_ch aux_ch;
 	enum intel_display_power_domain ddi_io_power_domain;
-	struct mutex tc_lock;	/* protects the TypeC port mode */
+	struct rwlock tc_lock;	/* protects the TypeC port mode */
 	intel_wakeref_t tc_lock_wakeref;
 	int tc_link_refcount;
 	bool tc_legacy_port:1;

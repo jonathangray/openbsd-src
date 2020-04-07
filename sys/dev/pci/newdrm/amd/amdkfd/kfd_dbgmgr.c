@@ -37,7 +37,7 @@
 
 static DEFINE_MUTEX(kfd_dbgmgr_mutex);
 
-struct mutex *kfd_get_dbgmgr_mutex(void)
+struct rwlock *kfd_get_dbgmgr_mutex(void)
 {
 	return &kfd_dbgmgr_mutex;
 }

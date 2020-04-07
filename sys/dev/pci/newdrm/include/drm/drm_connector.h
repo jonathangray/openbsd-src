@@ -1150,7 +1150,7 @@ struct drm_connector {
 	 * @registered. Most of the connector state is still protected by
 	 * &drm_mode_config.mutex.
 	 */
-	struct mutex mutex;
+	struct rwlock mutex;
 
 	/**
 	 * @index: Compacted connector index, which matches the position inside

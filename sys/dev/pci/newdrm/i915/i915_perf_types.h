@@ -386,7 +386,7 @@ struct i915_perf {
 	 * Lock associated with adding/modifying/removing OA configs
 	 * in perf->metrics_idr.
 	 */
-	struct mutex metrics_lock;
+	struct rwlock metrics_lock;
 
 	/*
 	 * List of dynamic configurations (struct i915_oa_config), you
@@ -398,7 +398,7 @@ struct i915_perf {
 	 * Lock associated with anything below within this structure
 	 * except exclusive_stream.
 	 */
-	struct mutex lock;
+	struct rwlock lock;
 
 	/*
 	 * The stream currently using the OA unit. If accessed

@@ -123,7 +123,7 @@ struct kvmgt_vdev {
 	struct rb_root gfn_cache;
 	struct rb_root dma_addr_cache;
 	unsigned long nr_cache_entries;
-	struct mutex cache_lock;
+	struct rwlock cache_lock;
 
 	struct notifier_block iommu_notifier;
 	struct notifier_block group_notifier;

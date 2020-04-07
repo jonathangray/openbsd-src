@@ -420,7 +420,7 @@ void i915_gem_driver_unregister__shrinker(struct drm_i915_private *i915)
 }
 
 void i915_gem_shrinker_taints_mutex(struct drm_i915_private *i915,
-				    struct mutex *mutex)
+				    struct rwlock *mutex)
 {
 	bool unlock = false;
 

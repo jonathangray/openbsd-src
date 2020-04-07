@@ -11,12 +11,12 @@
 struct gen6_ppgtt {
 	struct i915_ppgtt base;
 
-	struct mutex flush;
+	struct rwlock flush;
 	struct i915_vma *vma;
 	gen6_pte_t __iomem *pd_addr;
 
 	atomic_t pin_count;
-	struct mutex pin_mutex;
+	struct rwlock pin_mutex;
 
 	bool scan_for_unused_pt;
 };

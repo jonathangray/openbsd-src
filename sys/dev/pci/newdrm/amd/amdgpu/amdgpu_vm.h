@@ -243,7 +243,7 @@ struct amdgpu_vm {
 	/* Lock to prevent eviction while we are updating page tables
 	 * use vm_eviction_lock/unlock(vm)
 	 */
-	struct mutex		eviction_lock;
+	struct rwlock		eviction_lock;
 	bool			evicting;
 	unsigned int		saved_flags;
 
@@ -352,7 +352,7 @@ struct amdgpu_vm_manager {
 
 	/* counter of mapped memory through xgmi */
 	uint32_t				xgmi_map_counter;
-	struct mutex				lock_pstate;
+	struct rwlock				lock_pstate;
 };
 
 #define amdgpu_vm_copy_pte(adev, ib, pe, src, count) ((adev)->vm_manager.vm_pte_funcs->copy_pte((ib), (pe), (src), (count)))

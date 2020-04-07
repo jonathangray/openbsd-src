@@ -46,7 +46,7 @@ struct amdgpu_ras_eeprom_control {
 	struct amdgpu_ras_eeprom_table_header tbl_hdr;
 	uint32_t next_addr;
 	unsigned int num_recs;
-	struct mutex tbl_mutex;
+	struct rwlock tbl_mutex;
 	bool bus_locked;
 	uint32_t tbl_byte_sum;
 	uint16_t i2c_address; // 8-bit represented address

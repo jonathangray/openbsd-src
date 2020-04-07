@@ -210,7 +210,7 @@ struct i915_power_domains {
 
 	intel_wakeref_t wakeref;
 
-	struct mutex lock;
+	struct rwlock lock;
 	int domain_use_count[POWER_DOMAIN_NUM];
 
 	struct delayed_work async_put_work;
