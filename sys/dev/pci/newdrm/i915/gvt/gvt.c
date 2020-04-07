@@ -314,7 +314,7 @@ int intel_gvt_init_device(struct drm_i915_private *i915)
 	gvt_dbg_core("init gvt device\n");
 
 	idr_init(&gvt->vgpu_idr);
-	spin_lock_init(&gvt->scheduler.mmio_context_lock);
+	mtx_init(&gvt->scheduler.mmio_context_lock, IPL_TTY);
 	rw_init(&gvt->lock, "gvtlk");
 	rw_init(&gvt->sched_lock, "gvtsched");
 	gvt->gt = &i915->gt;

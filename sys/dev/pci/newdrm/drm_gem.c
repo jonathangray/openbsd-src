@@ -921,7 +921,7 @@ void
 drm_gem_open(struct drm_device *dev, struct drm_file *file_private)
 {
 	idr_init_base(&file_private->object_idr, 1);
-	spin_lock_init(&file_private->table_lock);
+	mtx_init(&file_private->table_lock, IPL_NONE);
 }
 
 /**

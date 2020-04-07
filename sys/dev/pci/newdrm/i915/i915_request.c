@@ -663,7 +663,7 @@ static void __i915_request_ctor(void *arg)
 {
 	struct i915_request *rq = arg;
 
-	spin_lock_init(&rq->lock);
+	mtx_init(&rq->lock, IPL_TTY);
 	i915_sched_node_init(&rq->sched);
 	i915_sw_fence_init(&rq->submit, submit_notify);
 	i915_sw_fence_init(&rq->semaphore, semaphore_notify);

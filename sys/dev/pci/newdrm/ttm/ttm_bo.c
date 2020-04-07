@@ -1541,7 +1541,7 @@ int ttm_bo_init_mm(struct ttm_bo_device *bdev, unsigned type,
 	man->io_reserve_fastpath = true;
 	man->use_io_reserve_lru = false;
 	rw_init(&man->io_reserve_mutex, "ior");
-	spin_lock_init(&man->move_lock);
+	mtx_init(&man->move_lock, IPL_NONE);
 	INIT_LIST_HEAD(&man->io_reserve_lru);
 
 	ret = bdev->driver->init_mem_type(bdev, type, man);
@@ -1604,7 +1604,7 @@ static int ttm_bo_global_init(void)
 	if (ret)
 		goto out;
 
-	spin_lock_init(&glob->lru_lock);
+	mtx_init(&glob->lru_lock, IPL_NONE);
 	glob->dummy_read_page = alloc_page(__GFP_ZERO | GFP_DMA32);
 
 	if (unlikely(glob->dummy_read_page == NULL)) {

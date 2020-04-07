@@ -21,10 +21,10 @@ void intel_gt_init_early(struct intel_gt *gt, struct drm_i915_private *i915)
 	gt->i915 = i915;
 	gt->uncore = &i915->uncore;
 
-	spin_lock_init(&gt->irq_lock);
+	mtx_init(&gt->irq_lock, IPL_TTY);
 
 	INIT_LIST_HEAD(&gt->closed_vma);
-	spin_lock_init(&gt->closed_lock);
+	mtx_init(&gt->closed_lock, IPL_TTY);
 
 	intel_gt_init_reset(gt);
 	intel_gt_init_requests(gt);

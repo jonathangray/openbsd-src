@@ -1107,7 +1107,7 @@ static int gmc_v9_0_sw_init(void *handle)
 	else
 		mmhub_v1_0_init(adev);
 
-	spin_lock_init(&adev->gmc.invalidate_lock);
+	mtx_init(&adev->gmc.invalidate_lock, IPL_TTY);
 
 	r = amdgpu_atomfirmware_get_vram_info(adev,
 		&vram_width, &vram_type, &vram_vendor);

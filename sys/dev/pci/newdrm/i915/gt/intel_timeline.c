@@ -265,10 +265,10 @@ void intel_gt_init_timelines(struct intel_gt *gt)
 {
 	struct intel_gt_timelines *timelines = &gt->timelines;
 
-	spin_lock_init(&timelines->lock);
+	mtx_init(&timelines->lock, IPL_TTY);
 	INIT_LIST_HEAD(&timelines->active_list);
 
-	spin_lock_init(&timelines->hwsp_lock);
+	mtx_init(&timelines->hwsp_lock, IPL_TTY);
 	INIT_LIST_HEAD(&timelines->hwsp_free_list);
 }
 

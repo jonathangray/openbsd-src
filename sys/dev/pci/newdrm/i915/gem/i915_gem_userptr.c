@@ -163,7 +163,7 @@ i915_mmu_notifier_create(struct i915_mm_struct *mm)
 	if (mn == NULL)
 		return ERR_PTR(-ENOMEM);
 
-	spin_lock_init(&mn->lock);
+	mtx_init(&mn->lock, IPL_TTY);
 	mn->mn.ops = &i915_gem_userptr_notifier;
 	mn->objects = RB_ROOT_CACHED;
 	mn->mm = mm;

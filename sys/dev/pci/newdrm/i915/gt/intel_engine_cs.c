@@ -685,7 +685,7 @@ intel_engine_init_active(struct intel_engine_cs *engine, unsigned int subclass)
 	INIT_LIST_HEAD(&engine->active.requests);
 	INIT_LIST_HEAD(&engine->active.hold);
 
-	spin_lock_init(&engine->active.lock);
+	mtx_init(&engine->active.lock, IPL_TTY);
 	lockdep_set_subclass(&engine->active.lock, subclass);
 
 	/*

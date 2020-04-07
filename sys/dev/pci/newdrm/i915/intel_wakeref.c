@@ -141,7 +141,7 @@ static void wakeref_auto_timeout(struct timer_list *t)
 void intel_wakeref_auto_init(struct intel_wakeref_auto *wf,
 			     struct intel_runtime_pm *rpm)
 {
-	spin_lock_init(&wf->lock);
+	mtx_init(&wf->lock, IPL_TTY);
 	timer_setup(&wf->timer, wakeref_auto_timeout, 0);
 	refcount_set(&wf->count, 0);
 	wf->wakeref = 0;

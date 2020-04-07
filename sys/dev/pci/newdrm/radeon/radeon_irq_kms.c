@@ -289,7 +289,7 @@ int radeon_irq_kms_init(struct radeon_device *rdev)
 {
 	int r = 0;
 
-	spin_lock_init(&rdev->irq.lock);
+	mtx_init(&rdev->irq.lock, IPL_TTY);
 
 	/* Disable vblank irqs aggressively for power-saving */
 	rdev->ddev->vblank_disable_immediate = true;

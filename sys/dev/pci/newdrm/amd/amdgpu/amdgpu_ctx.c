@@ -168,7 +168,7 @@ static int amdgpu_ctx_init(struct amdgpu_device *adev,
 	ctx->adev = adev;
 
 	kref_init(&ctx->refcount);
-	spin_lock_init(&ctx->ring_lock);
+	mtx_init(&ctx->ring_lock, IPL_TTY);
 	rw_init(&ctx->lock, "amctxlk");
 
 	ctx->reset_counter = atomic_read(&adev->gpu_reset_counter);

@@ -302,7 +302,7 @@ int amdgpu_gfx_kiq_init_ring(struct amdgpu_device *adev,
 	struct amdgpu_kiq *kiq = &adev->gfx.kiq;
 	int r = 0;
 
-	spin_lock_init(&kiq->ring_lock);
+	mtx_init(&kiq->ring_lock, IPL_TTY);
 
 	r = amdgpu_device_wb_get(adev, &kiq->reg_val_offs);
 	if (r)

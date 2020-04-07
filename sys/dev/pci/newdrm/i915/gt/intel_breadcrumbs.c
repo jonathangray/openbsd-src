@@ -253,7 +253,7 @@ void intel_engine_init_breadcrumbs(struct intel_engine_cs *engine)
 {
 	struct intel_breadcrumbs *b = &engine->breadcrumbs;
 
-	spin_lock_init(&b->irq_lock);
+	mtx_init(&b->irq_lock, IPL_TTY);
 	INIT_LIST_HEAD(&b->signalers);
 
 	init_irq_work(&b->irq_work, signal_irq_work);

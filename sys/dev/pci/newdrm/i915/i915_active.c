@@ -291,7 +291,7 @@ void __i915_active_init(struct i915_active *ref,
 	if (bits & I915_ACTIVE_MAY_SLEEP)
 		ref->flags |= I915_ACTIVE_RETIRE_SLEEPS;
 
-	spin_lock_init(&ref->tree_lock);
+	mtx_init(&ref->tree_lock, IPL_TTY);
 	ref->tree = RB_ROOT;
 	ref->cache = NULL;
 

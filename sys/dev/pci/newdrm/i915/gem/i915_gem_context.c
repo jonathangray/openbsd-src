@@ -721,7 +721,7 @@ __create_context(struct drm_i915_private *i915)
 	ctx->sched.priority = I915_USER_PRIORITY(I915_PRIORITY_NORMAL);
 	rw_init(&ctx->mutex, "gemctx");
 
-	spin_lock_init(&ctx->stale.lock);
+	mtx_init(&ctx->stale.lock, IPL_TTY);
 	INIT_LIST_HEAD(&ctx->stale.engines);
 
 	rw_init(&ctx->engines_mutex, "gemeng");
@@ -885,7 +885,7 @@ i915_gem_create_context(struct drm_i915_private *i915, unsigned int flags)
 
 static void init_contexts(struct i915_gem_contexts *gc)
 {
-	spin_lock_init(&gc->lock);
+	mtx_init(&gc->lock, IPL_TTY);
 	INIT_LIST_HEAD(&gc->list);
 
 	INIT_WORK(&gc->free_work, contexts_free_worker);

@@ -37,7 +37,7 @@
 void
 intel_uncore_mmio_debug_init_early(struct intel_uncore_mmio_debug *mmio_debug)
 {
-	spin_lock_init(&mmio_debug->lock);
+	mtx_init(&mmio_debug->lock, IPL_TTY);
 	mmio_debug->unclaimed_mmio_check = 1;
 }
 
@@ -1703,7 +1703,7 @@ static void uncore_mmio_cleanup(struct intel_uncore *uncore)
 void intel_uncore_init_early(struct intel_uncore *uncore,
 			     struct drm_i915_private *i915)
 {
-	spin_lock_init(&uncore->lock);
+	mtx_init(&uncore->lock, IPL_TTY);
 	uncore->i915 = i915;
 	uncore->rpm = &i915->runtime_pm;
 	uncore->debug = &i915->mmio_debug;

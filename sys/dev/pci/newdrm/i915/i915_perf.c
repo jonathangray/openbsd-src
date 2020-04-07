@@ -2896,7 +2896,7 @@ static int i915_oa_stream_init(struct i915_perf_stream *stream,
 		     CLOCK_MONOTONIC, HRTIMER_MODE_REL);
 	stream->poll_check_timer.function = oa_poll_check_timer_cb;
 	init_waitqueue_head(&stream->poll_wq);
-	spin_lock_init(&stream->oa_buffer.ptr_lock);
+	mtx_init(&stream->oa_buffer.ptr_lock, IPL_TTY);
 
 	return 0;
 

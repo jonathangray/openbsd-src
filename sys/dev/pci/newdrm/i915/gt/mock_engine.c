@@ -310,7 +310,7 @@ struct intel_engine_cs *mock_engine(struct drm_i915_private *i915,
 	i915->gt.engine_class[0][id] = &engine->base;
 
 	/* fake hw queue */
-	spin_lock_init(&engine->hw_lock);
+	mtx_init(&engine->hw_lock, IPL_TTY);
 	timer_setup(&engine->hw_delay, hw_delay_complete, 0);
 	INIT_LIST_HEAD(&engine->hw_queue);
 

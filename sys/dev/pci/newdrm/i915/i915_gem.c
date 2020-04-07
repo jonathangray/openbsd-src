@@ -1208,7 +1208,7 @@ void i915_gem_driver_release(struct drm_i915_private *dev_priv)
 
 static void i915_gem_init__mm(struct drm_i915_private *i915)
 {
-	spin_lock_init(&i915->mm.obj_lock);
+	mtx_init(&i915->mm.obj_lock, IPL_NONE);
 
 	init_llist_head(&i915->mm.free_list);
 
@@ -1223,7 +1223,7 @@ void i915_gem_init_early(struct drm_i915_private *dev_priv)
 	i915_gem_init__mm(dev_priv);
 	i915_gem_init__contexts(dev_priv);
 
-	spin_lock_init(&dev_priv->fb_tracking.lock);
+	mtx_init(&dev_priv->fb_tracking.lock, IPL_TTY);
 }
 
 void i915_gem_cleanup_early(struct drm_i915_private *dev_priv)
@@ -1311,7 +1311,7 @@ int i915_gem_open(struct drm_i915_private *i915, struct drm_file *file)
 	file_priv->dev_priv = i915;
 	file_priv->file = file;
 
-	spin_lock_init(&file_priv->mm.lock);
+	mtx_init(&file_priv->mm.lock, IPL_NONE);
 	INIT_LIST_HEAD(&file_priv->mm.request_list);
 
 	file_priv->bsd_engine = -1;

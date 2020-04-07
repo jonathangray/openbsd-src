@@ -14,7 +14,7 @@
 void stash_init(struct pagestash *stash)
 {
 	pagevec_init(&stash->pvec);
-	spin_lock_init(&stash->lock);
+	mtx_init(&stash->lock, IPL_TTY);
 }
 
 static struct vm_page *stash_pop_page(struct pagestash *stash)

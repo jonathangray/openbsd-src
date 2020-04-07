@@ -161,7 +161,7 @@ void intel_engine_pool_init(struct intel_engine_pool *pool)
 {
 	int n;
 
-	spin_lock_init(&pool->lock);
+	mtx_init(&pool->lock, IPL_TTY);
 	for (n = 0; n < ARRAY_SIZE(pool->cache_list); n++)
 		INIT_LIST_HEAD(&pool->cache_list[n]);
 }

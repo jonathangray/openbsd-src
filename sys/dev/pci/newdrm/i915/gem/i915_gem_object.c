@@ -55,14 +55,14 @@ void i915_gem_object_init(struct drm_i915_gem_object *obj,
 {
 	__mutex_init(&obj->mm.lock, "obj->mm.lock", key);
 
-	spin_lock_init(&obj->vma.lock);
+	mtx_init(&obj->vma.lock, IPL_TTY);
 	INIT_LIST_HEAD(&obj->vma.list);
 
 	INIT_LIST_HEAD(&obj->mm.link);
 
 	INIT_LIST_HEAD(&obj->lut_list);
 
-	spin_lock_init(&obj->mmo.lock);
+	mtx_init(&obj->mmo.lock, IPL_TTY);
 	obj->mmo.offsets = RB_ROOT;
 
 	init_rcu_head(&obj->rcu);

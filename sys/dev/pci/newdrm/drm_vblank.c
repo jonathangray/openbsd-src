@@ -464,8 +464,8 @@ int drm_vblank_init(struct drm_device *dev, unsigned int num_crtcs)
 	int ret = -ENOMEM;
 	unsigned int i;
 
-	spin_lock_init(&dev->vbl_lock);
-	spin_lock_init(&dev->vblank_time_lock);
+	mtx_init(&dev->vbl_lock, IPL_TTY);
+	mtx_init(&dev->vblank_time_lock, IPL_TTY);
 
 	dev->num_crtcs = num_crtcs;
 

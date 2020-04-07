@@ -403,7 +403,7 @@ void drm_mode_config_init(struct drm_device *dev)
 	idr_init(&dev->mode_config.object_idr);
 	idr_init(&dev->mode_config.tile_idr);
 	ida_init(&dev->mode_config.connector_ida);
-	spin_lock_init(&dev->mode_config.connector_list_lock);
+	mtx_init(&dev->mode_config.connector_list_lock, IPL_TTY);
 
 	init_llist_head(&dev->mode_config.connector_free_list);
 	INIT_WORK(&dev->mode_config.connector_free_work, drm_connector_free_work_fn);

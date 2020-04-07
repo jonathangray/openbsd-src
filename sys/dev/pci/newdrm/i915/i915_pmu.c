@@ -1119,7 +1119,7 @@ void i915_pmu_register(struct drm_i915_private *i915)
 		return;
 	}
 
-	spin_lock_init(&pmu->lock);
+	mtx_init(&pmu->lock, IPL_TTY);
 	hrtimer_init(&pmu->timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
 	pmu->timer.function = i915_sample;
 	pmu->cpuhp.slot = CPUHP_INVALID;

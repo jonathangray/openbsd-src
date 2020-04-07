@@ -47,7 +47,7 @@ void drm_legacy_init_members(struct drm_device *dev)
 	INIT_LIST_HEAD(&dev->ctxlist);
 	INIT_LIST_HEAD(&dev->vmalist);
 	INIT_LIST_HEAD(&dev->maplist);
-	spin_lock_init(&dev->buf_lock);
+	mtx_init(&dev->buf_lock, IPL_TTY);
 	rw_init(&dev->ctxlist_mutex, "drmoctx");
 }
 
@@ -102,6 +102,6 @@ void drm_legacy_dev_reinit(struct drm_device *dev)
 
 void drm_master_legacy_init(struct drm_master *master)
 {
-	spin_lock_init(&master->lock.spinlock);
+	mtx_init(&master->lock.spinlock, IPL_TTY);
 	init_waitqueue_head(&master->lock.lock_queue);
 }

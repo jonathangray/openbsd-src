@@ -98,7 +98,7 @@ void amdgpu_amdkfd_gpuvm_init_mem_limits(void)
 	mem = si.totalram - si.totalhigh;
 	mem *= si.mem_unit;
 
-	spin_lock_init(&kfd_mem_limit.mem_limit_lock);
+	mtx_init(&kfd_mem_limit.mem_limit_lock, IPL_TTY);
 	kfd_mem_limit.max_system_mem_limit = mem - (mem >> 4);
 	kfd_mem_limit.max_ttm_mem_limit = (mem >> 1) - (mem >> 3);
 	pr_debug("Kernel memory limit %lluM, TTM limit %lluM\n",

@@ -175,7 +175,7 @@ void intel_guc_init_early(struct intel_guc *guc)
 	intel_guc_submission_init_early(guc);
 
 	rw_init(&guc->send_mutex, "gucsm");
-	spin_lock_init(&guc->irq_lock);
+	mtx_init(&guc->irq_lock, IPL_TTY);
 	if (INTEL_GEN(i915) >= 11) {
 		guc->notify_reg = GEN11_GUC_HOST_INTERRUPT;
 		guc->interrupts.reset = gen11_reset_guc_interrupts;

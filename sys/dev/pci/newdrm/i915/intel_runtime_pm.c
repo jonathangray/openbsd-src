@@ -77,7 +77,7 @@ static void __print_depot_stack(depot_stack_handle_t stack,
 
 static void init_intel_runtime_pm_wakeref(struct intel_runtime_pm *rpm)
 {
-	spin_lock_init(&rpm->debug.lock);
+	mtx_init(&rpm->debug.lock, IPL_TTY);
 }
 
 static noinline depot_stack_handle_t

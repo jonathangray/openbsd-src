@@ -426,8 +426,8 @@ static int i915_driver_early_probe(struct drm_i915_private *dev_priv)
 	intel_uncore_mmio_debug_init_early(&dev_priv->mmio_debug);
 	intel_uncore_init_early(&dev_priv->uncore, dev_priv);
 
-	spin_lock_init(&dev_priv->irq_lock);
-	spin_lock_init(&dev_priv->gpu_error.lock);
+	mtx_init(&dev_priv->irq_lock, IPL_TTY);
+	mtx_init(&dev_priv->gpu_error.lock, IPL_TTY);
 	rw_init(&dev_priv->backlight_lock, "blight");
 
 	rw_init(&dev_priv->sb_lock, "sb");
