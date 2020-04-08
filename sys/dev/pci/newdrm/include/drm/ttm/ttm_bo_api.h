@@ -645,6 +645,7 @@ int ttm_bo_kmap(struct ttm_buffer_object *bo, unsigned long start_page,
  */
 void ttm_bo_kunmap(struct ttm_bo_kmap_obj *map);
 
+#ifdef notyet
 /**
  * ttm_bo_mmap_obj - mmap memory backed by a ttm buffer object.
  *
@@ -667,6 +668,7 @@ int ttm_bo_mmap_obj(struct vm_area_struct *vma, struct ttm_buffer_object *bo);
  */
 int ttm_bo_mmap(struct file *filp, struct vm_area_struct *vma,
 		struct ttm_bo_device *bdev);
+#endif
 
 void *ttm_kmap_atomic_prot(struct vm_page *page, pgprot_t prot);
 
@@ -722,6 +724,7 @@ static inline bool ttm_bo_uses_embedded_gem_object(struct ttm_buffer_object *bo)
 /* Default number of pre-faulted pages in the TTM fault handler */
 #define TTM_BO_VM_NUM_PREFAULT 16
 
+#ifdef notyet
 vm_fault_t ttm_bo_vm_reserve(struct ttm_buffer_object *bo,
 			     struct vm_fault *vmf);
 
@@ -738,5 +741,6 @@ void ttm_bo_vm_close(struct vm_area_struct *vma);
 
 int ttm_bo_vm_access(struct vm_area_struct *vma, unsigned long addr,
 		     void *buf, int len, int write);
+#endif /* notyet */
 
 #endif

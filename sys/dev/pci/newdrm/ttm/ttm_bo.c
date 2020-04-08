@@ -53,10 +53,12 @@ unsigned ttm_bo_glob_use_count;
 struct ttm_bo_global ttm_bo_glob;
 EXPORT_SYMBOL(ttm_bo_glob);
 
+#ifdef notyet
 static struct attribute ttm_bo_count = {
 	.name = "bo_count",
 	.mode = S_IRUGO
 };
+#endif
 
 /* default destructor */
 static void ttm_bo_default_destroy(struct ttm_buffer_object *bo)
@@ -113,6 +115,7 @@ static void ttm_bo_mem_space_debug(struct ttm_buffer_object *bo,
 	}
 }
 
+#ifdef notyet
 static ssize_t ttm_bo_global_show(struct kobject *kobj,
 				  struct attribute *attr,
 				  char *buffer)
@@ -132,11 +135,14 @@ static struct attribute *ttm_bo_global_attrs[] = {
 static const struct sysfs_ops ttm_bo_global_ops = {
 	.show = &ttm_bo_global_show
 };
+#endif
 
 static struct kobj_type ttm_bo_glob_kobj_type  = {
 	.release = &ttm_bo_global_kobj_release,
+#ifdef __linux__
 	.sysfs_ops = &ttm_bo_global_ops,
 	.default_attrs = ttm_bo_global_attrs
+#endif
 };
 
 
@@ -1735,10 +1741,40 @@ bool ttm_mem_reg_is_pci(struct ttm_bo_device *bdev, struct ttm_mem_reg *mem)
 
 void ttm_bo_unmap_virtual_locked(struct ttm_buffer_object *bo)
 {
+	STUB();
+#ifdef notyet
 	struct ttm_bo_device *bdev = bo->bdev;
 
+#ifdef __linux__
 	drm_vma_node_unmap(&bo->base.vma_node, bdev->dev_mapping);
+#else
+	if (drm_vma_node_has_offset(&bo->vma_node) &&
+	    bo->mem.bus.io_reserved_vm) {
+		struct vm_page *pg;
+		bus_addr_t addr;
+		paddr_t paddr;
+		unsigned i;
+
+		if (bo->mem.bus.is_iomem) {
+			addr = bo->mem.bus.base + bo->mem.bus.offset;
+			paddr = bus_space_mmap(bdev->memt, addr, 0, 0, 0);
+			for (i = 0; i < bo->mem.num_pages; i++) {
+				pg = PHYS_TO_VM_PAGE(paddr);
+				if (pg)
+					pmap_page_protect(pg, PROT_NONE);
+				paddr += PAGE_SIZE;
+			}
+		} else if (bo->ttm) {
+			for (i = 0; i < bo->ttm->num_pages; i++) {
+				pg = bo->ttm->pages[i];
+				if (pg)
+					pmap_page_protect(pg, PROT_NONE);
+			}
+		}
+	}
+#endif
 	ttm_mem_io_free_vm(bo);
+#endif
 }
 
 void ttm_bo_unmap_virtual(struct ttm_buffer_object *bo)
