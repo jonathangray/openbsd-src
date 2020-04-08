@@ -26,4 +26,9 @@ drm_writeback_get_out_fence(struct drm_writeback_connector *connector)
 	return NULL;
 }
 
+static inline void
+drm_writeback_cleanup_job(struct drm_writeback_job *j)
+{
+}
+
 #endif
