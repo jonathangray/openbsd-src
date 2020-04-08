@@ -28,8 +28,6 @@
 
 #include <linux/kconfig.h>
 
-#define STUB() do { printf("%s: stub\n", __func__); } while(0)
-
 #define KBUILD_MODNAME "drm"
 
 #define KHZ2PICOS(a)	(1000000000UL/(a))
