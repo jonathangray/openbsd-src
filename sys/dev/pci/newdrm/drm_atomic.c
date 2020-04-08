@@ -784,9 +784,18 @@ drm_atomic_get_private_obj_state(struct drm_atomic_state *state,
 
 	num_objs = state->num_private_objs + 1;
 	size = sizeof(*state->private_objs) * num_objs;
+#ifdef __linux__
 	arr = krealloc(state->private_objs, size, GFP_KERNEL);
 	if (!arr)
 		return ERR_PTR(-ENOMEM);
+#else
+	arr = kmalloc(size, GFP_KERNEL);
+	if (!arr)
+		return ERR_PTR(-ENOMEM);
+	memcpy(arr, state->private_objs,
+	    sizeof(*state->private_objs) * state->num_private_objs);
+	kfree(state->private_objs);
+#endif
 
 	state->private_objs = arr;
 	index = state->num_private_objs;
@@ -959,9 +968,18 @@ drm_atomic_get_connector_state(struct drm_atomic_state *state,
 		struct __drm_connnectors_state *c;
 		int alloc = max(index + 1, config->num_connector);
 
+#ifdef __linux__
 		c = krealloc(state->connectors, alloc * sizeof(*state->connectors), GFP_KERNEL);
 		if (!c)
 			return ERR_PTR(-ENOMEM);
+#else
+		c = kmalloc(alloc * sizeof(*state->connectors), GFP_KERNEL);
+		if (!c)
+			return ERR_PTR(-ENOMEM);
+		memcpy(c, state->connectors,
+		    state->num_connector * sizeof(*state->connectors));
+		kfree(state->connectors);
+#endif
 
 		state->connectors = c;
 		memset(&state->connectors[state->num_connector], 0,

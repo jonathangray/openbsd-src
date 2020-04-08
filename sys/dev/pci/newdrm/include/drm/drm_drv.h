@@ -483,8 +483,10 @@ struct drm_driver {
 	 * FIXME: There's way too much duplication going on here, and also moved
 	 * to &drm_gem_object_funcs.
 	 */
+#ifdef __linux__
 	int (*gem_prime_mmap)(struct drm_gem_object *obj,
 				struct vm_area_struct *vma);
+#endif
 
 	/**
 	 * @dumb_create:
