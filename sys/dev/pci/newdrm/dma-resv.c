@@ -71,8 +71,13 @@ static struct dma_resv_list *dma_resv_list_alloc(unsigned int shared_max)
 	if (!list)
 		return NULL;
 
+#ifdef __linux__
 	list->shared_max = (ksize(list) - offsetof(typeof(*list), shared)) /
 		sizeof(*list->shared);
+#else
+	list->shared_max = (offsetof(typeof(*list), shared[shared_max]) -
+	    offsetof(typeof(*list), shared)) / sizeof(*list->shared);
+#endif
 
 	return list;
 }
@@ -462,15 +467,29 @@ int dma_resv_get_fences_rcu(struct dma_resv *obj,
 		if (sz) {
 			struct dma_fence **nshared;
 
+#ifdef __linux__
 			nshared = krealloc(shared, sz,
 					   GFP_NOWAIT | __GFP_NOWARN);
+#else
+			nshared = kmalloc(sz, GFP_NOWAIT | __GFP_NOWARN);
+			if (nshared != NULL && shared != NULL)
+				memcpy(nshared, shared, sz);
+			kfree(shared);
+#endif
 			if (!nshared) {
 				rcu_read_unlock();
 
 				dma_fence_put(fence_excl);
 				fence_excl = NULL;
 
+#ifdef __linux__
 				nshared = krealloc(shared, sz, GFP_KERNEL);
+#else
+				nshared = kmalloc(sz, GFP_KERNEL);
+				if (nshared != NULL && shared != NULL)
+					memcpy(nshared, shared, sz);
+				kfree(shared);
+#endif
 				if (nshared) {
 					shared = nshared;
 					continue;
