@@ -26,6 +26,7 @@
  * Daniel Vetter <daniel.vetter@ffwll.ch>
  */
 
+#include <linux/compiler.h>
 #include <drm/drm_atomic_uapi.h>
 #include <drm/drm_atomic.h>
 #include <drm/drm_print.h>
@@ -1150,10 +1151,20 @@ static int prepare_signaling(struct drm_device *dev,
 			struct dma_fence *fence;
 			struct drm_out_fence_state *f;
 
+#ifdef __linux__
 			f = krealloc(*fence_state, sizeof(**fence_state) *
 				     (*num_fences + 1), GFP_KERNEL);
 			if (!f)
 				return -ENOMEM;
+#else
+			f = kmalloc(sizeof(**fence_state) *
+				     (*num_fences + 1), GFP_KERNEL);
+			if (!f)
+				return -ENOMEM;
+			memcpy(f, *fence_state,
+			    sizeof(**fence_state) * (*num_fences));
+			kfree(*fence_state);
+#endif
 
 			memset(&f[*num_fences], 0, sizeof(*f));
 
@@ -1189,10 +1200,20 @@ static int prepare_signaling(struct drm_device *dev,
 		if (!fence_ptr)
 			continue;
 
+#ifdef __linux__
 		f = krealloc(*fence_state, sizeof(**fence_state) *
 			     (*num_fences + 1), GFP_KERNEL);
 		if (!f)
 			return -ENOMEM;
+#else
+		f = kmalloc(sizeof(**fence_state) *
+			     (*num_fences + 1), GFP_KERNEL);
+		if (!f)
+			return -ENOMEM;
+		memcpy(f, *fence_state,
+		    sizeof(**fence_state) * (*num_fences));
+		kfree(*fence_state);
+#endif
 
 		memset(&f[*num_fences], 0, sizeof(*f));
 
