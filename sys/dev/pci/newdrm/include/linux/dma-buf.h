@@ -20,7 +20,7 @@
 
 #include <sys/types.h>
 #include <sys/systm.h>
-#include <linux/reservation.h>
+#include <linux/dma-resv.h>
 
 struct dma_buf_ops;
 
@@ -47,7 +47,7 @@ struct dma_buf_export_info {
 	size_t size;
 	int flags;
 	void *priv;
-	struct reservation_object *resv;
+	struct dma_resv *resv;
 };
 
 #define DEFINE_DMA_BUF_EXPORT_INFO(x)  struct dma_buf_export_info x 
