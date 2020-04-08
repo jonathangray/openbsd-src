@@ -10,6 +10,13 @@
 #include <linux/kgdb.h>
 #include <linux/fs.h>
 
+struct fb_cmap;
+struct fb_fillrect;
+struct fb_copyarea;
+struct fb_image;
+
+struct apertures_struct;
+
 struct fb_var_screeninfo {
 	int pixclock;
 	uint32_t width;
