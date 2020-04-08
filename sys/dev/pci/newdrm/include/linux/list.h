@@ -61,6 +61,13 @@ list_is_singular(const struct list_head *head) {
 }
 
 static inline int
+list_is_first(const struct list_head *list,
+    const struct list_head *head)
+{
+	return list->prev == head;
+}
+
+static inline int
 list_is_last(const struct list_head *list,
     const struct list_head *head)
 {
