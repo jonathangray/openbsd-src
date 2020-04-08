@@ -62,8 +62,6 @@
 #define PCI_MEM64_END	0xffffffffffffffff
 #endif
 
-#define roundup2(x, y) (((x)+((y)-1))&(~((y)-1))) /* if y is powers of two */
-
 #ifdef __macppc__
 static inline int
 of_machine_is_compatible(const char *model)

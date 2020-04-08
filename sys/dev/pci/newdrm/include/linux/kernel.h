@@ -66,6 +66,7 @@
 
 #define mult_frac(x, n, d) (((x) * (n)) / (d))
 
+#define roundup2(x, y) (((x)+((y)-1))&(~((y)-1))) /* if y is powers of two */
 #define round_up(x, y) ((((x) + ((y) - 1)) / (y)) * (y))
 #define round_down(x, y) (((x) / (y)) * (y)) /* y is power of two */
 #define rounddown(x, y) (((x) / (y)) * (y)) /* arbitary y */
