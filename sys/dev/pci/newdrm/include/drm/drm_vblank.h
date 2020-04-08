@@ -101,7 +101,7 @@ struct drm_vblank_crtc {
 	 * drm_vblank_offdelay module option and the setting of the
 	 * &drm_device.max_vblank_count value.
 	 */
-	struct timer_list disable_timer;
+	struct timeout disable_timer;
 
 	/**
 	 * @seqlock: Protect vblank count and time.
