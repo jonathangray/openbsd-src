@@ -31,4 +31,10 @@ drm_writeback_cleanup_job(struct drm_writeback_job *j)
 {
 }
 
+static inline int
+drm_writeback_prepare_job(struct drm_writeback_job *j)
+{
+	return 0;
+}
+
 #endif
