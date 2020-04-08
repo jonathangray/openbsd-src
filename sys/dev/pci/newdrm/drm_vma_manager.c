@@ -85,7 +85,7 @@
 void drm_vma_offset_manager_init(struct drm_vma_offset_manager *mgr,
 				 unsigned long page_offset, unsigned long size)
 {
-	rwlock_init(&mgr->vm_lock);
+	rw_init(&mgr->vm_lock, "drmvmo");
 	drm_mm_init(&mgr->vm_addr_space_mm, page_offset, size);
 }
 EXPORT_SYMBOL(drm_vma_offset_manager_init);

@@ -148,7 +148,7 @@ static inline void drm_vma_node_reset(struct drm_vma_offset_node *node)
 {
 	memset(node, 0, sizeof(*node));
 	node->vm_files = RB_ROOT;
-	rwlock_init(&node->vm_lock);
+	rw_init(&node->vm_lock, "drmvma");
 }
 
 /**
