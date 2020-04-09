@@ -1,6 +1,9 @@
 #ifndef _DRM_DEVICE_H_
 #define _DRM_DEVICE_H_
 
+#include <sys/types.h>
+#include <sys/selinfo.h>
+
 #include <linux/list.h>
 #include <linux/kref.h>
 #include <linux/mutex.h>
