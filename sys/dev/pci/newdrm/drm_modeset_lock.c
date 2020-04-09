@@ -98,7 +98,11 @@ void drm_modeset_lock_all(struct drm_device *dev)
 	struct drm_modeset_acquire_ctx *ctx;
 	int ret;
 
+#ifdef __linux__
 	ctx = kzalloc(sizeof(*ctx), GFP_KERNEL | __GFP_NOFAIL);
+#else
+	ctx = kzalloc(sizeof(*ctx), M_WAITOK);
+#endif
 	if (WARN_ON(!ctx))
 		return;
 
