@@ -1,7 +1,7 @@
 /* Public domain. */
 
-#ifndef DRM_WRITEBACK_H
-#define DRM_WRITEBACK_H
+#ifndef _DRM_WRITEBACK_H
+#define _DRM_WRITEBACK_H
 
 #include <drm/drm_connector.h>
 

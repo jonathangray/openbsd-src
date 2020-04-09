@@ -1,7 +1,7 @@
 /* Public domain. */
 
-#ifndef DRM_LEASE_H
-#define DRM_LEASE_H
+#ifndef _DRM_LEASE_H
+#define _DRM_LEASE_H
 
 struct drm_master;
 
