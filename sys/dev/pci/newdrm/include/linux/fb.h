@@ -50,4 +50,10 @@ struct fb_info {
 
 #define fb_set_suspend(x, y)
 
+static inline int
+fb_get_options(const char *name, char **opt)
+{
+	return 0;
+}
+
 #endif
