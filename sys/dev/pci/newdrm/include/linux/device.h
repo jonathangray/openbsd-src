@@ -13,6 +13,7 @@
 #include <linux/lockdep.h>
 #include <linux/pm.h>
 #include <linux/kobject.h>
+#include <linux/ratelimit.h> /* dev_printk.h -> ratelimit.h */
 
 struct device_node;
 
