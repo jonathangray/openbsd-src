@@ -1149,3 +1149,21 @@ error:
 
 module_init(drm_core_init);
 module_exit(drm_core_exit);
+
+/*
+ * Compute order.  Can be made faster.
+ */
+int
+drm_order(unsigned long size)
+{
+	int order;
+	unsigned long tmp;
+
+	for (order = 0, tmp = size; tmp >>= 1; ++order)
+		;
+
+	if (size & ~(1 << order))
+		++order;
+
+	return order;
+}
