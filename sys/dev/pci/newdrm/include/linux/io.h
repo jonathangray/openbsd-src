@@ -3,7 +3,9 @@
 #ifndef _LINUX_IO_H
 #define _LINUX_IO_H
 
+#include <sys/types.h>
 #include <sys/systm.h>
+
 #include <linux/types.h>
 #include <linux/compiler.h>
 

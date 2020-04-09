@@ -31,6 +31,7 @@
 #define GENMASK(h, l)		(((~0UL) >> (BITS_PER_LONG - (h) - 1)) & ((~0UL) << (l)))
 #define GENMASK_ULL(h, l)	(((~0ULL) >> (BITS_PER_LONG_LONG - (h) - 1)) & ((~0ULL) << (l)))
 
+#define BITS_PER_TYPE(x)	(8 * sizeof(x))
 #define BITS_TO_LONGS(x)	howmany((x), 8 * sizeof(long))
 
 static inline uint8_t
