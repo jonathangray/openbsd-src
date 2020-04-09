@@ -31,6 +31,8 @@ struct fb_info {
 	bool skip_vt_switch;
 };
 
+#define KHZ2PICOS(a)	(1000000000UL/(a))
+
 #define FB_BLANK_UNBLANK	0
 #define FB_BLANK_NORMAL		1
 #define FB_BLANK_HSYNC_SUSPEND	2
