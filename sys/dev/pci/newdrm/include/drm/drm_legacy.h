@@ -165,7 +165,9 @@ struct drm_local_map *drm_legacy_findmap(struct drm_device *dev, unsigned int to
 void drm_legacy_rmmap(struct drm_device *d, struct drm_local_map *map);
 int drm_legacy_rmmap_locked(struct drm_device *d, struct drm_local_map *map);
 struct drm_local_map *drm_legacy_getsarea(struct drm_device *dev);
+#ifdef __linux__
 int drm_legacy_mmap(struct file *filp, struct vm_area_struct *vma);
+#endif
 
 int drm_legacy_addbufs_agp(struct drm_device *d, struct drm_buf_desc *req);
 int drm_legacy_addbufs_pci(struct drm_device *d, struct drm_buf_desc *req);

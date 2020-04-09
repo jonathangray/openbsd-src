@@ -302,7 +302,11 @@ out:
  */
 bool drm_is_current_master(struct drm_file *fpriv)
 {
+#ifdef notyet
 	return fpriv->is_master && drm_lease_owner(fpriv->master) == fpriv->minor->dev->master;
+#else
+	return (fpriv->is_master == 1);
+#endif
 }
 EXPORT_SYMBOL(drm_is_current_master);
 
