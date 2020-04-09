@@ -95,6 +95,9 @@ static struct hlist_node *drm_ht_find_key(struct drm_open_hash *ht,
 static struct hlist_node *drm_ht_find_key_rcu(struct drm_open_hash *ht,
 					      unsigned long key)
 {
+	STUB();
+	return NULL;
+#ifdef notyet
 	struct drm_hash_item *entry;
 	struct hlist_head *h_list;
 	unsigned int hashed_key;
@@ -108,10 +111,14 @@ static struct hlist_node *drm_ht_find_key_rcu(struct drm_open_hash *ht,
 			break;
 	}
 	return NULL;
+#endif
 }
 
 int drm_ht_insert_item(struct drm_open_hash *ht, struct drm_hash_item *item)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct drm_hash_item *entry;
 	struct hlist_head *h_list;
 	struct hlist_node *parent;
@@ -134,6 +141,7 @@ int drm_ht_insert_item(struct drm_open_hash *ht, struct drm_hash_item *item)
 		hlist_add_head_rcu(&item->head, h_list);
 	}
 	return 0;
+#endif
 }
 EXPORT_SYMBOL(drm_ht_insert_item);
 
@@ -182,6 +190,9 @@ EXPORT_SYMBOL(drm_ht_find_item);
 
 int drm_ht_remove_key(struct drm_open_hash *ht, unsigned long key)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct hlist_node *list;
 
 	list = drm_ht_find_key(ht, key);
@@ -190,12 +201,17 @@ int drm_ht_remove_key(struct drm_open_hash *ht, unsigned long key)
 		return 0;
 	}
 	return -EINVAL;
+#endif
 }
 
 int drm_ht_remove_item(struct drm_open_hash *ht, struct drm_hash_item *item)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	hlist_del_init_rcu(&item->head);
 	return 0;
+#endif
 }
 EXPORT_SYMBOL(drm_ht_remove_item);
 
