@@ -16,7 +16,6 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <drm/drmP.h>
 #include <dev/pci/ppbreg.h>
 #include <sys/event.h>
 #include <sys/filedesc.h>

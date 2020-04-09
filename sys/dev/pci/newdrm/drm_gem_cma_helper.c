@@ -28,7 +28,6 @@
 
 #include <sys/param.h>
 
-#include <drm/drmP.h>
 #include <drm/drm_gem_cma_helper.h>
 
 #include <uvm/uvm.h>
