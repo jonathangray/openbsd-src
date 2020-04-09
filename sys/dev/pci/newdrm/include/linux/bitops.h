@@ -25,6 +25,7 @@
 
 #define BIT(x)		(1UL << (x))
 #define BIT_ULL(x)	(1ULL << (x))
+#define BIT_MASK(x)	(1UL << ((x) % BITS_PER_LONG))
 #define BITS_PER_BYTE	8
 
 #define GENMASK(h, l)		(((~0UL) >> (BITS_PER_LONG - (h) - 1)) & ((~0UL) << (l)))
