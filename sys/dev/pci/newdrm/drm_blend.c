@@ -427,6 +427,9 @@ static int drm_atomic_state_zpos_cmp(const void *a, const void *b)
 static int drm_atomic_helper_crtc_normalize_zpos(struct drm_crtc *crtc,
 					  struct drm_crtc_state *crtc_state)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct drm_atomic_state *state = crtc_state->state;
 	struct drm_device *dev = crtc->dev;
 	int total_planes = dev->mode_config.num_total_plane;
@@ -473,6 +476,7 @@ static int drm_atomic_helper_crtc_normalize_zpos(struct drm_crtc *crtc,
 done:
 	kfree(states);
 	return ret;
+#endif
 }
 
 /**
