@@ -70,6 +70,8 @@ struct drm_device {
 	/** @driver: DRM driver managing the device */
 	struct drm_driver *driver;
 
+	struct klist note;
+
 	/**
 	 * @dev_private:
 	 *

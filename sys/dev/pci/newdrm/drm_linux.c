@@ -16,17 +16,37 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <dev/pci/ppbreg.h>
+#include <sys/types.h>
+#include <sys/param.h>
 #include <sys/event.h>
 #include <sys/filedesc.h>
 #include <sys/kthread.h>
 #include <sys/stat.h>
 #include <sys/unistd.h>
+#include <sys/proc.h>
+#include <sys/pool.h>
+#include <sys/file.h>
+#include <sys/fcntl.h>
+
+#include <dev/pci/ppbreg.h>
+
 #include <linux/dma-buf.h>
 #include <linux/mod_devicetable.h>
 #include <linux/acpi.h>
 #include <linux/pagevec.h>
 #include <linux/dma-fence-array.h>
+#include <linux/interrupt.h>
+#include <linux/err.h>
+#include <linux/idr.h>
+#include <linux/scatterlist.h>
+#include <linux/i2c.h>
+#include <linux/pci.h>
+#include <linux/notifier.h>
+#include <linux/backlight.h>
+#include <linux/shrinker.h>
+
+#include <drm/drm_device.h>
+#include <drm/drm_print.h>
 
 #if defined(__amd64__) || defined(__i386__)
 #include "bios.h"
