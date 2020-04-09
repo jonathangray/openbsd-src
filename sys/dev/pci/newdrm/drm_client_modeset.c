@@ -760,6 +760,9 @@ bail:
  */
 int drm_client_modeset_probe(struct drm_client_dev *client, unsigned int width, unsigned int height)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct drm_connector *connector, **connectors = NULL;
 	struct drm_connector_list_iter conn_iter;
 	struct drm_device *dev = client->dev;
@@ -876,6 +879,7 @@ free_connectors:
 	kfree(connectors);
 
 	return ret;
+#endif
 }
 EXPORT_SYMBOL(drm_client_modeset_probe);
 
