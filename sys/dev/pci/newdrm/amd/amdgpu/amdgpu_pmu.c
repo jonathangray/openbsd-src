@@ -39,7 +39,7 @@ struct amdgpu_pmu_entry {
 	unsigned int pmu_perf_type;
 };
 
-static LIST_HEAD(amdgpu_pmu_list);
+static DRM_LIST_HEAD(amdgpu_pmu_list);
 
 
 /* initialize perf counter */

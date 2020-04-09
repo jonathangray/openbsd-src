@@ -92,7 +92,7 @@
  */
 
 static DEFINE_MUTEX(bridge_lock);
-static LIST_HEAD(bridge_list);
+static DRM_LIST_HEAD(bridge_list);
 
 /**
  * drm_bridge_add - add the given bridge to the global bridge list

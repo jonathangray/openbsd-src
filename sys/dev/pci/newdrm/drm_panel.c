@@ -30,7 +30,7 @@
 #include <drm/drm_print.h>
 
 static DEFINE_MUTEX(panel_lock);
-static LIST_HEAD(panel_list);
+static DRM_LIST_HEAD(panel_list);
 
 /**
  * DOC: drm panel

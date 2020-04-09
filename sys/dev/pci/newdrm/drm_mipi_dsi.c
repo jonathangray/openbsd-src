@@ -248,7 +248,7 @@ void mipi_dsi_device_unregister(struct mipi_dsi_device *dsi)
 EXPORT_SYMBOL(mipi_dsi_device_unregister);
 
 static DEFINE_MUTEX(host_lock);
-static LIST_HEAD(host_list);
+static DRM_LIST_HEAD(host_list);
 
 /**
  * of_find_mipi_dsi_host_by_node() - find the MIPI DSI host matching a
