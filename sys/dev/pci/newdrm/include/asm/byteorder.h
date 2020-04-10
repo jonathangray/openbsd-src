@@ -19,4 +19,6 @@
 #define cpu_to_be16(x) htobe16(x)
 #define cpu_to_be32(x) htobe32(x)
 
+#define swab16(x) swap16(x)
+
 #endif
