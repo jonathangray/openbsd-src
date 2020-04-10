@@ -312,3 +312,24 @@ void drm_legacy_pci_exit(struct drm_driver *driver, struct pci_driver *pdriver)
 EXPORT_SYMBOL(drm_legacy_pci_exit);
 
 #endif
+
+int
+drm_getpciinfo(struct drm_device *dev, void *data, struct drm_file *file_priv)
+{
+	struct drm_pciinfo *info = data;
+
+	if (dev->pdev == NULL)
+		return -ENOTTY;
+
+	info->domain = 0;
+	info->bus = dev->pdev->bus->number;
+	info->dev = PCI_SLOT(dev->pdev->devfn);
+	info->func = PCI_FUNC(dev->pdev->devfn);
+	info->vendor_id = dev->pdev->vendor;
+	info->device_id = dev->pdev->device;
+	info->subvendor_id = dev->pdev->subsystem_vendor;
+	info->subdevice_id = dev->pdev->subsystem_device;
+	info->revision_id = 0;
+
+	return 0;
+}

@@ -40,6 +40,7 @@
 #include <drm/drm_file.h>
 #include <drm/drm_ioctl.h>
 #include <drm/drm_print.h>
+#include <drm/drm_pci.h>
 
 #include "drm_crtc_internal.h"
 #include "drm_internal.h"
@@ -144,6 +145,9 @@ drm_unset_busid(struct drm_device *dev,
 
 static int drm_set_busid(struct drm_device *dev, struct drm_file *file_priv)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct drm_master *master = file_priv->master;
 	int ret;
 
@@ -164,6 +168,7 @@ static int drm_set_busid(struct drm_device *dev, struct drm_file *file_priv)
 	}
 
 	return 0;
+#endif
 }
 
 /*
@@ -197,8 +202,13 @@ int drm_getclient(struct drm_device *dev, void *data,
 	 */
 	if (client->idx == 0) {
 		client->auth = file_priv->authenticated;
+#ifdef __linux__
 		client->pid = task_pid_vnr(current);
 		client->uid = overflowuid;
+#else
+		client->pid = curproc->p_p->ps_pid;
+		client->uid = 0xfffe;
+#endif
 		client->magic = 0;
 		client->iocs = 0;
 
@@ -336,11 +346,13 @@ drm_setclientcap(struct drm_device *dev, void *data, struct drm_file *file_priv)
 	case DRM_CLIENT_CAP_ATOMIC:
 		if (!drm_core_check_feature(dev, DRIVER_ATOMIC))
 			return -EOPNOTSUPP;
+#ifdef notyet
 		/* The modesetting DDX has a totally broken idea of atomic. */
 		if (current->comm[0] == 'X' && req->value == 1) {
 			pr_info("broken atomic modeset userspace detected, disabling atomic\n");
 			return -EOPNOTSUPP;
 		}
+#endif
 		if (req->value > 2)
 			return -EINVAL;
 		file_priv->atomic = req->value;
@@ -593,14 +605,24 @@ static const struct drm_ioctl_desc drm_ioctls[] = {
 	DRM_IOCTL_DEF(DRM_IOCTL_UNBLOCK, drm_noop, DRM_AUTH|DRM_MASTER|DRM_ROOT_ONLY),
 	DRM_IOCTL_DEF(DRM_IOCTL_AUTH_MAGIC, drm_authmagic, DRM_MASTER),
 
+#ifdef __linux__
 	DRM_LEGACY_IOCTL_DEF(DRM_IOCTL_ADD_MAP, drm_legacy_addmap_ioctl, DRM_AUTH|DRM_MASTER|DRM_ROOT_ONLY),
+#else
+	DRM_IOCTL_DEF(DRM_IOCTL_GET_PCIINFO, drm_getpciinfo, DRM_UNLOCKED|DRM_RENDER_ALLOW),
+#endif
 	DRM_LEGACY_IOCTL_DEF(DRM_IOCTL_RM_MAP, drm_legacy_rmmap_ioctl, DRM_AUTH),
 
 	DRM_LEGACY_IOCTL_DEF(DRM_IOCTL_SET_SAREA_CTX, drm_legacy_setsareactx, DRM_AUTH|DRM_MASTER|DRM_ROOT_ONLY),
 	DRM_LEGACY_IOCTL_DEF(DRM_IOCTL_GET_SAREA_CTX, drm_legacy_getsareactx, DRM_AUTH),
 
+#ifdef __linux__
 	DRM_IOCTL_DEF(DRM_IOCTL_SET_MASTER, drm_setmaster_ioctl, DRM_ROOT_ONLY),
 	DRM_IOCTL_DEF(DRM_IOCTL_DROP_MASTER, drm_dropmaster_ioctl, DRM_ROOT_ONLY),
+#else
+	/* On OpenBSD xorg privdrop has already occurred before this point */
+	DRM_IOCTL_DEF(DRM_IOCTL_SET_MASTER, drm_noop, DRM_ROOT_ONLY),
+	DRM_IOCTL_DEF(DRM_IOCTL_DROP_MASTER, drm_noop, DRM_ROOT_ONLY),
+#endif
 
 	DRM_LEGACY_IOCTL_DEF(DRM_IOCTL_ADD_CTX, drm_legacy_addctx, DRM_AUTH|DRM_ROOT_ONLY),
 	DRM_LEGACY_IOCTL_DEF(DRM_IOCTL_RM_CTX, drm_legacy_rmctx, DRM_AUTH|DRM_MASTER|DRM_ROOT_ONLY),
@@ -711,10 +733,12 @@ static const struct drm_ioctl_desc drm_ioctls[] = {
 		      DRM_RENDER_ALLOW),
 	DRM_IOCTL_DEF(DRM_IOCTL_CRTC_GET_SEQUENCE, drm_crtc_get_sequence_ioctl, 0),
 	DRM_IOCTL_DEF(DRM_IOCTL_CRTC_QUEUE_SEQUENCE, drm_crtc_queue_sequence_ioctl, 0),
+#ifdef __linux__
 	DRM_IOCTL_DEF(DRM_IOCTL_MODE_CREATE_LEASE, drm_mode_create_lease_ioctl, DRM_MASTER),
 	DRM_IOCTL_DEF(DRM_IOCTL_MODE_LIST_LESSEES, drm_mode_list_lessees_ioctl, DRM_MASTER),
 	DRM_IOCTL_DEF(DRM_IOCTL_MODE_GET_LEASE, drm_mode_get_lease_ioctl, DRM_MASTER),
 	DRM_IOCTL_DEF(DRM_IOCTL_MODE_REVOKE_LEASE, drm_mode_revoke_lease_ioctl, DRM_MASTER),
+#endif
 };
 
 #define DRM_CORE_IOCTL_COUNT	ARRAY_SIZE( drm_ioctls )
@@ -770,6 +794,9 @@ static const struct drm_ioctl_desc drm_ioctls[] = {
 long drm_ioctl_kernel(struct file *file, drm_ioctl_t *func, void *kdata,
 		      u32 flags)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct drm_file *file_priv = file->private_data;
 	struct drm_device *dev = file_priv->minor->dev;
 	int retcode;
@@ -791,6 +818,7 @@ long drm_ioctl_kernel(struct file *file, drm_ioctl_t *func, void *kdata,
 		mutex_unlock(&drm_global_mutex);
 	}
 	return retcode;
+#endif
 }
 EXPORT_SYMBOL(drm_ioctl_kernel);
 
@@ -810,6 +838,9 @@ EXPORT_SYMBOL(drm_ioctl_kernel);
 long drm_ioctl(struct file *filp,
 	      unsigned int cmd, unsigned long arg)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct drm_file *file_priv = filp->private_data;
 	struct drm_device *dev;
 	const struct drm_ioctl_desc *ioctl = NULL;
@@ -900,6 +931,7 @@ long drm_ioctl(struct file *filp,
 	if (retcode)
 		DRM_DEBUG("pid=%d, ret = %d\n", task_pid_nr(current), retcode);
 	return retcode;
+#endif
 }
 EXPORT_SYMBOL(drm_ioctl);
 

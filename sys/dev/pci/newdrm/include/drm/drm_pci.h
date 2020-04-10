@@ -60,4 +60,6 @@ static inline void drm_pci_free(struct drm_device *dev,
 
 #endif
 
+int drm_getpciinfo(struct drm_device *, void *, struct drm_file *);
+
 #endif /* _DRM_PCI_H_ */
