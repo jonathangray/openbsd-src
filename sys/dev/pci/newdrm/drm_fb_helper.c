@@ -54,11 +54,15 @@ module_param_named(fbdev_emulation, drm_fbdev_emulation, bool, 0600);
 MODULE_PARM_DESC(fbdev_emulation,
 		 "Enable legacy fbdev emulation [default=true]");
 
+#ifdef __linux__
 static int drm_fbdev_overalloc = CONFIG_DRM_FBDEV_OVERALLOC;
 module_param(drm_fbdev_overalloc, int, 0444);
 MODULE_PARM_DESC(drm_fbdev_overalloc,
 		 "Overallocation of the fbdev buffer (%) [default="
 		 __MODULE_STRING(CONFIG_DRM_FBDEV_OVERALLOC) "]");
+#else
+static int drm_fbdev_overalloc = 100;
+#endif
 
 /*
  * In order to keep user-space compatibility, we want in certain use-cases
@@ -510,6 +514,7 @@ struct fb_info *drm_fb_helper_alloc_fbi(struct drm_fb_helper *fb_helper)
 	if (!info)
 		return ERR_PTR(-ENOMEM);
 
+#ifdef __linux__
 	ret = fb_alloc_cmap(&info->cmap, 256, 0);
 	if (ret)
 		goto err_release;
@@ -519,17 +524,20 @@ struct fb_info *drm_fb_helper_alloc_fbi(struct drm_fb_helper *fb_helper)
 		ret = -ENOMEM;
 		goto err_free_cmap;
 	}
+#endif
 
 	fb_helper->fbdev = info;
 	info->skip_vt_switch = true;
 
 	return info;
 
+#ifdef __linux__
 err_free_cmap:
 	fb_dealloc_cmap(&info->cmap);
 err_release:
 	framebuffer_release(info);
 	return ERR_PTR(ret);
+#endif
 }
 EXPORT_SYMBOL(drm_fb_helper_alloc_fbi);
 
@@ -571,8 +579,10 @@ void drm_fb_helper_fini(struct drm_fb_helper *fb_helper)
 
 	info = fb_helper->fbdev;
 	if (info) {
+#ifdef __linux__
 		if (info->cmap.len)
 			fb_dealloc_cmap(&info->cmap);
+#endif
 		framebuffer_release(info);
 	}
 	fb_helper->fbdev = NULL;
@@ -622,6 +632,7 @@ static void drm_fb_helper_dirty(struct fb_info *info, u32 x, u32 y,
 	schedule_work(&helper->dirty_work);
 }
 
+#ifdef __linux__
 /**
  * drm_fb_helper_deferred_io() - fbdev deferred_io callback function
  * @info: fb_info struct pointer
@@ -790,6 +801,8 @@ void drm_fb_helper_cfb_imageblit(struct fb_info *info,
 }
 EXPORT_SYMBOL(drm_fb_helper_cfb_imageblit);
 
+#endif /* __linux__ */
+
 /**
  * drm_fb_helper_set_suspend - wrapper around fb_set_suspend
  * @fb_helper: driver-allocated fbdev helper, can be NULL
@@ -825,6 +838,8 @@ EXPORT_SYMBOL(drm_fb_helper_set_suspend);
 void drm_fb_helper_set_suspend_unlocked(struct drm_fb_helper *fb_helper,
 					bool suspend)
 {
+	STUB();
+#ifdef notyet
 	if (!fb_helper || !fb_helper->fbdev)
 		return;
 
@@ -849,8 +864,11 @@ void drm_fb_helper_set_suspend_unlocked(struct drm_fb_helper *fb_helper,
 
 	fb_set_suspend(fb_helper->fbdev, suspend);
 	console_unlock();
+#endif
 }
 EXPORT_SYMBOL(drm_fb_helper_set_suspend_unlocked);
+
+#ifdef __linux__
 
 static int setcmap_pseudo_palette(struct fb_cmap *cmap, struct fb_info *info)
 {
@@ -1298,6 +1316,8 @@ int drm_fb_helper_check_var(struct fb_var_screeninfo *var,
 }
 EXPORT_SYMBOL(drm_fb_helper_check_var);
 
+#endif /* __linux__ */
+
 /**
  * drm_fb_helper_set_par - implementation for &fb_ops.fb_set_par
  * @info: fbdev registered by the helper
@@ -1340,6 +1360,9 @@ static void pan_set(struct drm_fb_helper *fb_helper, int x, int y)
 static int pan_display_atomic(struct fb_var_screeninfo *var,
 			      struct fb_info *info)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct drm_fb_helper *fb_helper = info->par;
 	int ret;
 
@@ -1353,11 +1376,15 @@ static int pan_display_atomic(struct fb_var_screeninfo *var,
 		pan_set(fb_helper, info->var.xoffset, info->var.yoffset);
 
 	return ret;
+#endif
 }
 
 static int pan_display_legacy(struct fb_var_screeninfo *var,
 			      struct fb_info *info)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct drm_fb_helper *fb_helper = info->par;
 	struct drm_client_dev *client = &fb_helper->client;
 	struct drm_mode_set *modeset;
@@ -1381,6 +1408,7 @@ static int pan_display_legacy(struct fb_var_screeninfo *var,
 	mutex_unlock(&client->modeset_mutex);
 
 	return ret;
+#endif
 }
 
 /**
@@ -1589,9 +1617,13 @@ static int drm_fb_helper_single_fb_probe(struct drm_fb_helper *fb_helper,
 	if (ret < 0)
 		return ret;
 
+#ifdef __linux__
 	strcpy(fb_helper->fb->comm, "[fbcon]");
+#endif
 	return 0;
 }
+
+#ifdef __linux__
 
 static void drm_fb_helper_fill_fix(struct fb_info *info, uint32_t pitch,
 				   uint32_t depth)
@@ -1662,6 +1694,8 @@ void drm_fb_helper_fill_info(struct fb_info *info,
 
 }
 EXPORT_SYMBOL(drm_fb_helper_fill_info);
+
+#endif /* __linux__ */
 
 /*
  * This is a continuation of drm_setup_crtcs() that sets up anything related
@@ -1927,6 +1961,7 @@ void drm_fb_helper_output_poll_changed(struct drm_device *dev)
 }
 EXPORT_SYMBOL(drm_fb_helper_output_poll_changed);
 
+#ifdef __linux__
 /* @user: 1=userspace, 0=fbcon */
 static int drm_fbdev_fb_open(struct fb_info *info, int user)
 {
@@ -2218,6 +2253,8 @@ int drm_fbdev_generic_setup(struct drm_device *dev, unsigned int preferred_bpp)
 	return 0;
 }
 EXPORT_SYMBOL(drm_fbdev_generic_setup);
+
+#endif /* __linux__ */
 
 /* The Kconfig DRM_KMS_HELPER selects FRAMEBUFFER_CONSOLE (if !EXPERT)
  * but the module doesn't depend on any fb console symbols.  At least

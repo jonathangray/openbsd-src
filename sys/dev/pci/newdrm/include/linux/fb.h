@@ -29,6 +29,7 @@ struct fb_info {
 	void *par;
 	int fbcon_rotate_hint;
 	bool skip_vt_switch;
+	int flags;
 };
 
 #define KHZ2PICOS(a)	(1000000000UL/(a))
@@ -42,6 +43,8 @@ struct fb_info {
 #define FBINFO_STATE_RUNNING	0
 #define FBINFO_STATE_SUSPENDED	1
 
+#define FBINFO_HIDE_SMEM_START	0
+
 #define FB_ROTATE_UR		0
 #define FB_ROTATE_CW		1
 #define FB_ROTATE_UD		2
@@ -52,10 +55,27 @@ struct fb_info {
 
 #define fb_set_suspend(x, y)
 
+static inline void
+framebuffer_release(struct fb_info *fbi)
+{
+	kfree(fbi);
+}
+
 static inline int
 fb_get_options(const char *name, char **opt)
 {
 	return 0;
+}
+
+static inline int
+register_framebuffer(struct fb_info *fbi)
+{
+	return 0;
+}
+
+static inline void
+unregister_framebuffer(struct fb_info *fbi)
+{
 }
 
 #endif
