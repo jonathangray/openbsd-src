@@ -28,6 +28,7 @@
 
 #include <drm/drm_encoder_slave.h>
 
+#ifdef notyet
 /**
  * drm_i2c_encoder_init - Initialize an I2C slave encoder
  * @dev:	DRM device.
@@ -119,6 +120,7 @@ void drm_i2c_encoder_destroy(struct drm_encoder *drm_encoder)
 	module_put(module);
 }
 EXPORT_SYMBOL(drm_i2c_encoder_destroy);
+#endif /* notyet */
 
 /*
  * Wrapper fxns which can be plugged in to drm_encoder_helper_funcs:

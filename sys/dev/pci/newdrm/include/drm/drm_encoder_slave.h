@@ -101,11 +101,12 @@ struct drm_encoder_slave {
 };
 #define to_encoder_slave(x) container_of((x), struct drm_encoder_slave, base)
 
+#ifdef notyet
 int drm_i2c_encoder_init(struct drm_device *dev,
 			 struct drm_encoder_slave *encoder,
 			 struct i2c_adapter *adap,
 			 const struct i2c_board_info *info);
-
+#endif
 
 /**
  * struct drm_i2c_encoder_driver
@@ -118,11 +119,13 @@ int drm_i2c_encoder_init(struct drm_device *dev,
  * @slave_priv members of @encoder.
  */
 struct drm_i2c_encoder_driver {
+#ifdef notyet
 	struct i2c_driver i2c_driver;
 
 	int (*encoder_init)(struct i2c_client *client,
 			    struct drm_device *dev,
 			    struct drm_encoder_slave *encoder);
+#endif
 
 };
 #define to_drm_i2c_encoder_driver(x) container_of((x),			\
@@ -145,7 +148,11 @@ static inline struct i2c_client *drm_i2c_encoder_get_client(struct drm_encoder *
 static inline int drm_i2c_encoder_register(struct module *owner,
 					   struct drm_i2c_encoder_driver *driver)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	return i2c_register_driver(owner, &driver->i2c_driver);
+#endif
 }
 
 /**
@@ -154,7 +161,10 @@ static inline int drm_i2c_encoder_register(struct module *owner,
  */
 static inline void drm_i2c_encoder_unregister(struct drm_i2c_encoder_driver *driver)
 {
+	STUB();
+#ifdef notyet
 	i2c_del_driver(&driver->i2c_driver);
+#endif
 }
 
 void drm_i2c_encoder_destroy(struct drm_encoder *encoder);
