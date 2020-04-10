@@ -154,6 +154,9 @@ bool drm_dev_needs_global_mutex(struct drm_device *dev)
  */
 struct drm_file *drm_file_alloc(struct drm_minor *minor)
 {
+	STUB();
+	return ERR_PTR(-ENOSYS);
+#ifdef notyet
 	struct drm_device *dev = minor->dev;
 	struct drm_file *file;
 	int ret;
@@ -205,6 +208,7 @@ out_prime_destroy:
 	kfree(file);
 
 	return ERR_PTR(ret);
+#endif
 }
 
 static void drm_events_release(struct drm_file *file_priv)
@@ -246,6 +250,8 @@ static void drm_events_release(struct drm_file *file_priv)
  */
 void drm_file_free(struct drm_file *file)
 {
+	STUB();
+#ifdef notyet
 	struct drm_device *dev;
 
 	if (!file)
@@ -295,10 +301,13 @@ void drm_file_free(struct drm_file *file)
 
 	put_pid(file->pid);
 	kfree(file);
+#endif
 }
 
 static void drm_close_helper(struct file *filp)
 {
+	STUB();
+#ifdef notyet
 	struct drm_file *file_priv = filp->private_data;
 	struct drm_device *dev = file_priv->minor->dev;
 
@@ -307,6 +316,7 @@ static void drm_close_helper(struct file *filp)
 	mutex_unlock(&dev->filelist_mutex);
 
 	drm_file_free(file_priv);
+#endif
 }
 
 /*
@@ -334,6 +344,9 @@ static int drm_cpu_valid(void)
  */
 static int drm_open_helper(struct file *filp, struct drm_minor *minor)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct drm_device *dev = minor->dev;
 	struct drm_file *priv;
 	int ret;
@@ -388,6 +401,7 @@ static int drm_open_helper(struct file *filp, struct drm_minor *minor)
 #endif
 
 	return 0;
+#endif
 }
 
 /**
@@ -405,6 +419,9 @@ static int drm_open_helper(struct file *filp, struct drm_minor *minor)
  */
 int drm_open(struct inode *inode, struct file *filp)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct drm_device *dev;
 	struct drm_minor *minor;
 	int retcode;
@@ -446,6 +463,7 @@ err_undo:
 		mutex_unlock(&drm_global_mutex);
 	drm_minor_release(minor);
 	return retcode;
+#endif
 }
 EXPORT_SYMBOL(drm_open);
 
@@ -479,6 +497,9 @@ void drm_lastclose(struct drm_device * dev)
  */
 int drm_release(struct inode *inode, struct file *filp)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct drm_file *file_priv = filp->private_data;
 	struct drm_minor *minor = file_priv->minor;
 	struct drm_device *dev = minor->dev;
@@ -499,6 +520,7 @@ int drm_release(struct inode *inode, struct file *filp)
 	drm_minor_release(minor);
 
 	return 0;
+#endif
 }
 EXPORT_SYMBOL(drm_release);
 
@@ -519,6 +541,9 @@ EXPORT_SYMBOL(drm_release);
  */
 int drm_release_noglobal(struct inode *inode, struct file *filp)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct drm_file *file_priv = filp->private_data;
 	struct drm_minor *minor = file_priv->minor;
 	struct drm_device *dev = minor->dev;
@@ -533,6 +558,7 @@ int drm_release_noglobal(struct inode *inode, struct file *filp)
 	drm_minor_release(minor);
 
 	return 0;
+#endif
 }
 EXPORT_SYMBOL(drm_release_noglobal);
 
@@ -565,6 +591,9 @@ EXPORT_SYMBOL(drm_release_noglobal);
 ssize_t drm_read(struct file *filp, char __user *buffer,
 		 size_t count, loff_t *offset)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct drm_file *file_priv = filp->private_data;
 	struct drm_device *dev = file_priv->minor->dev;
 	ssize_t ret;
@@ -630,9 +659,11 @@ put_back_event:
 	mutex_unlock(&file_priv->event_read_lock);
 
 	return ret;
+#endif
 }
 EXPORT_SYMBOL(drm_read);
 
+#ifdef notyet
 /**
  * drm_poll - poll method for DRM file
  * @filp: file pointer
@@ -662,6 +693,7 @@ __poll_t drm_poll(struct file *filp, struct poll_table_struct *wait)
 	return mask;
 }
 EXPORT_SYMBOL(drm_poll);
+#endif
 
 /**
  * drm_event_reserve_init_locked - init a DRM event and reserve space for it
@@ -854,6 +886,9 @@ EXPORT_SYMBOL(drm_send_event);
  */
 struct file *mock_drm_getfile(struct drm_minor *minor, unsigned int flags)
 {
+	STUB();
+	return ERR_PTR(-ENOSYS);
+#ifdef notyet
 	struct drm_device *dev = minor->dev;
 	struct drm_file *priv;
 	struct file *file;
@@ -875,6 +910,7 @@ struct file *mock_drm_getfile(struct drm_minor *minor, unsigned int flags)
 	priv->filp = file;
 
 	return file;
+#endif
 }
 EXPORT_SYMBOL_FOR_TESTS_ONLY(mock_drm_getfile);
 
