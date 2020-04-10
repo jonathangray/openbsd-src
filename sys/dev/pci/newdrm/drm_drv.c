@@ -64,7 +64,9 @@ static bool drm_core_init_complete = false;
 
 static struct dentry *drm_debugfs_root;
 
+#ifdef notyet
 DEFINE_STATIC_SRCU(drm_unplug_srcu);
+#endif
 
 /*
  * DRM Minors
@@ -140,6 +142,8 @@ err_free:
 
 static void drm_minor_free(struct drm_device *dev, unsigned int type)
 {
+	STUB();
+#ifdef notyet
 	struct drm_minor **slot, *minor;
 	unsigned long flags;
 
@@ -156,10 +160,14 @@ static void drm_minor_free(struct drm_device *dev, unsigned int type)
 
 	kfree(minor);
 	*slot = NULL;
+#endif
 }
 
 static int drm_minor_register(struct drm_device *dev, unsigned int type)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct drm_minor *minor;
 	unsigned long flags;
 	int ret;
@@ -191,10 +199,13 @@ static int drm_minor_register(struct drm_device *dev, unsigned int type)
 err_debugfs:
 	drm_debugfs_cleanup(minor);
 	return ret;
+#endif
 }
 
 static void drm_minor_unregister(struct drm_device *dev, unsigned int type)
 {
+	STUB();
+#ifdef notyet
 	struct drm_minor *minor;
 	unsigned long flags;
 
@@ -210,6 +221,7 @@ static void drm_minor_unregister(struct drm_device *dev, unsigned int type)
 	device_del(minor->kdev);
 	dev_set_drvdata(minor->kdev, NULL); /* safety belt */
 	drm_debugfs_cleanup(minor);
+#endif
 }
 
 /*
@@ -447,6 +459,9 @@ EXPORT_SYMBOL(drm_put_dev);
  */
 bool drm_dev_enter(struct drm_device *dev, int *idx)
 {
+	STUB();
+	return true;
+#ifdef notyet
 	*idx = srcu_read_lock(&drm_unplug_srcu);
 
 	if (dev->unplugged) {
@@ -455,6 +470,7 @@ bool drm_dev_enter(struct drm_device *dev, int *idx)
 	}
 
 	return true;
+#endif
 }
 EXPORT_SYMBOL(drm_dev_enter);
 
@@ -467,7 +483,10 @@ EXPORT_SYMBOL(drm_dev_enter);
  */
 void drm_dev_exit(int idx)
 {
+	STUB();
+#ifdef notyet
 	srcu_read_unlock(&drm_unplug_srcu, idx);
+#endif
 }
 EXPORT_SYMBOL(drm_dev_exit);
 
@@ -483,6 +502,8 @@ EXPORT_SYMBOL(drm_dev_exit);
  */
 void drm_dev_unplug(struct drm_device *dev)
 {
+	STUB();
+#ifdef notyet
 	/*
 	 * After synchronizing any critical read section is guaranteed to see
 	 * the new value of ->unplugged, and any critical section which might
@@ -493,6 +514,7 @@ void drm_dev_unplug(struct drm_device *dev)
 	synchronize_srcu(&drm_unplug_srcu);
 
 	drm_dev_unregister(dev);
+#endif
 }
 EXPORT_SYMBOL(drm_dev_unplug);
 
@@ -517,6 +539,7 @@ EXPORT_SYMBOL(drm_dev_unplug);
 static int drm_fs_cnt;
 static struct vfsmount *drm_fs_mnt;
 
+#ifdef notyet
 static int drm_fs_init_fs_context(struct fs_context *fc)
 {
 	return init_pseudo(fc, 0x010203ff) ? 0 : -ENOMEM;
@@ -528,9 +551,13 @@ static struct file_system_type drm_fs_type = {
 	.init_fs_context = drm_fs_init_fs_context,
 	.kill_sb	= kill_anon_super,
 };
+#endif
 
 static struct inode *drm_fs_inode_new(void)
 {
+	STUB();
+	return ERR_PTR(-ENOSYS);
+#ifdef notyet
 	struct inode *inode;
 	int r;
 
@@ -545,14 +572,18 @@ static struct inode *drm_fs_inode_new(void)
 		simple_release_fs(&drm_fs_mnt, &drm_fs_cnt);
 
 	return inode;
+#endif
 }
 
 static void drm_fs_inode_free(struct inode *inode)
 {
+	STUB();
+#ifdef notyet
 	if (inode) {
 		iput(inode);
 		simple_release_fs(&drm_fs_mnt, &drm_fs_cnt);
 	}
+#endif
 }
 
 /**
@@ -615,6 +646,8 @@ int drm_dev_init(struct drm_device *dev,
 		 struct drm_driver *driver,
 		 struct device *parent)
 {
+	return -ENOSYS;
+#ifdef notyet
 	int ret;
 
 	if (!drm_core_init_complete) {
@@ -699,6 +732,7 @@ err_free:
 	mutex_destroy(&dev->struct_mutex);
 	drm_legacy_destroy_members(dev);
 	return ret;
+#endif
 }
 EXPORT_SYMBOL(drm_dev_init);
 
@@ -724,6 +758,9 @@ int devm_drm_dev_init(struct device *parent,
 		      struct drm_device *dev,
 		      struct drm_driver *driver)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	int ret;
 
 	if (WARN_ON(!driver->release))
@@ -738,6 +775,7 @@ int devm_drm_dev_init(struct device *parent,
 		devm_drm_dev_init_release(dev);
 
 	return ret;
+#endif
 }
 EXPORT_SYMBOL(devm_drm_dev_init);
 
@@ -755,6 +793,8 @@ EXPORT_SYMBOL(devm_drm_dev_init);
  */
 void drm_dev_fini(struct drm_device *dev)
 {
+	STUB();
+#ifdef notyet
 	drm_vblank_cleanup(dev);
 
 	if (drm_core_check_feature(dev, DRIVER_GEM))
@@ -775,6 +815,7 @@ void drm_dev_fini(struct drm_device *dev)
 	mutex_destroy(&dev->struct_mutex);
 	drm_legacy_destroy_members(dev);
 	kfree(dev->unique);
+#endif
 }
 EXPORT_SYMBOL(drm_dev_fini);
 
@@ -1075,6 +1116,9 @@ EXPORT_SYMBOL(drm_dev_set_unique);
 
 static int drm_stub_open(struct inode *inode, struct file *filp)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	const struct file_operations *new_fops;
 	struct drm_minor *minor;
 	int err;
@@ -1101,25 +1145,34 @@ out:
 	drm_minor_release(minor);
 
 	return err;
+#endif
 }
 
+#ifdef notyet
 static const struct file_operations drm_stub_fops = {
 	.owner = THIS_MODULE,
 	.open = drm_stub_open,
 	.llseek = noop_llseek,
 };
+#endif
 
 static void drm_core_exit(void)
 {
+	STUB();
+#ifdef notyet
 	unregister_chrdev(DRM_MAJOR, "drm");
 	debugfs_remove(drm_debugfs_root);
 	drm_sysfs_destroy();
 	idr_destroy(&drm_minors_idr);
 	drm_connector_ida_destroy();
+#endif
 }
 
 static int __init drm_core_init(void)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	int ret;
 
 	drm_connector_ida_init();
@@ -1145,6 +1198,7 @@ static int __init drm_core_init(void)
 error:
 	drm_core_exit();
 	return ret;
+#endif
 }
 
 module_init(drm_core_init);
