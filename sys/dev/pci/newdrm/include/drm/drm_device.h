@@ -75,6 +75,10 @@ struct drm_device {
 
 	struct klist note;
 
+	struct mutex	quiesce_mtx;
+	int		quiesce;
+	int		quiesce_count;
+
 	/**
 	 * @dev_private:
 	 *

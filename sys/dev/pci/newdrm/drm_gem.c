@@ -49,6 +49,157 @@
 
 #include "drm_internal.h"
 
+#include <uvm/uvm.h>
+
+void drm_unref(struct uvm_object *);
+void drm_ref(struct uvm_object *);
+boolean_t drm_flush(struct uvm_object *, voff_t, voff_t, int);
+int drm_fault(struct uvm_faultinfo *, vaddr_t, vm_page_t *, int, int,
+    vm_fault_t, vm_prot_t, int);
+
+struct uvm_pagerops drm_pgops = {
+	NULL,
+	drm_ref,
+	drm_unref,
+	drm_fault,
+	drm_flush,
+};
+
+void
+drm_ref(struct uvm_object *uobj)
+{
+	struct drm_gem_object *obj =
+	    container_of(uobj, struct drm_gem_object, uobj);
+
+	drm_gem_object_get(obj);
+}
+
+void
+drm_unref(struct uvm_object *uobj)
+{
+	struct drm_gem_object *obj =
+	    container_of(uobj, struct drm_gem_object, uobj);
+
+	drm_gem_object_put_unlocked(obj);
+}
+
+int
+drm_fault(struct uvm_faultinfo *ufi, vaddr_t vaddr, vm_page_t *pps,
+    int npages, int centeridx, vm_fault_t fault_type,
+    vm_prot_t access_type, int flags)
+{
+	STUB();
+	return -1;
+#ifdef notyet
+	struct vm_map_entry *entry = ufi->entry;
+	struct uvm_object *uobj = entry->object.uvm_obj;
+	struct drm_gem_object *obj =
+	    container_of(uobj, struct drm_gem_object, uobj);
+	struct drm_device *dev = obj->dev;
+	int ret;
+
+	/*
+	 * we do not allow device mappings to be mapped copy-on-write
+	 * so we kill any attempt to do so here.
+	 */
+	
+	if (UVM_ET_ISCOPYONWRITE(entry)) {
+		uvmfault_unlockall(ufi, ufi->entry->aref.ar_amap, uobj, NULL);
+		return(VM_PAGER_ERROR);
+	}
+
+	/*
+	 * We could end up here as the result of a copyin(9) or
+	 * copyout(9) while handling an ioctl.  So we must be careful
+	 * not to deadlock.  Therefore we only block if the quiesce
+	 * count is zero, which guarantees we didn't enter from within
+	 * an ioctl code path.
+	 */
+	mtx_enter(&dev->quiesce_mtx);
+	if (dev->quiesce && dev->quiesce_count == 0) {
+		mtx_leave(&dev->quiesce_mtx);
+		uvmfault_unlockall(ufi, ufi->entry->aref.ar_amap, uobj, NULL);
+		mtx_enter(&dev->quiesce_mtx);
+		while (dev->quiesce) {
+			msleep_nsec(&dev->quiesce, &dev->quiesce_mtx,
+			    PZERO, "drmflt", INFSLP);
+		}
+		mtx_leave(&dev->quiesce_mtx);
+		return(VM_PAGER_REFAULT);
+	}
+	dev->quiesce_count++;
+	mtx_leave(&dev->quiesce_mtx);
+
+	/* Call down into driver to do the magic */
+	ret = dev->driver->gem_fault(obj, ufi, entry->offset + (vaddr -
+	    entry->start), vaddr, pps, npages, centeridx,
+	    access_type, flags);
+
+	mtx_enter(&dev->quiesce_mtx);
+	dev->quiesce_count--;
+	if (dev->quiesce)
+		wakeup(&dev->quiesce_count);
+	mtx_leave(&dev->quiesce_mtx);
+
+	return (ret);
+#endif
+}
+
+boolean_t	
+drm_flush(struct uvm_object *uobj, voff_t start, voff_t stop, int flags)
+{
+	return (TRUE);
+}
+
+struct uvm_object *
+udv_attach_drm(dev_t device, vm_prot_t accessprot, voff_t off, vsize_t size)
+{
+	STUB();
+	return NULL;
+#ifdef notyet
+	struct drm_device *dev = drm_get_device_from_kdev(device);
+	struct drm_gem_object *obj;
+	struct drm_vma_offset_node *node;
+	struct drm_file *priv;
+	struct file *filp;
+
+	if (cdevsw[major(device)].d_mmap != drmmmap)
+		return NULL;
+
+	if (dev == NULL)
+		return NULL;
+
+	if (dev->driver->mmap)
+		return dev->driver->mmap(dev, off, size);
+
+	mutex_lock(&dev->struct_mutex);
+
+	priv = drm_find_file_by_minor(dev, minor(device));
+	if (priv == 0) {
+		mutex_unlock(&dev->struct_mutex);
+		return NULL;
+	}
+	filp = priv->filp;
+
+	node = drm_vma_offset_exact_lookup(dev->vma_offset_manager,
+					   off >> PAGE_SHIFT,
+					   atop(round_page(size)));
+	if (!node) {
+		mutex_unlock(&dev->struct_mutex);
+		return NULL;
+	} else if (!drm_vma_node_is_allowed(node, filp)) {
+		mutex_unlock(&dev->struct_mutex);
+		return NULL;
+	}
+
+	obj = container_of(node, struct drm_gem_object, vma_node);
+	drm_gem_object_get(obj);
+
+	mutex_unlock(&dev->struct_mutex);
+	return &obj->uobj;
+#endif
+}
+
 /** @file drm_gem.c
  *
  * This file provides some of the base ioctls and library routines for
@@ -112,6 +263,8 @@ drm_gem_destroy(struct drm_device *dev)
 	dev->vma_offset_manager = NULL;
 }
 
+#ifdef __linux__
+
 /**
  * drm_gem_object_init - initialize an allocated shmem-backed GEM object
  * @dev: drm_device the object should be initialized for
@@ -137,6 +290,30 @@ int drm_gem_object_init(struct drm_device *dev,
 	return 0;
 }
 EXPORT_SYMBOL(drm_gem_object_init);
+
+#else
+
+int drm_gem_object_init(struct drm_device *dev,
+			struct drm_gem_object *obj, size_t size)
+{
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
+	drm_gem_private_object_init(dev, obj, size);
+	
+	obj->uao = uao_create(size, 0);
+	uvm_objinit(&obj->uobj, &drm_pgops, 1);
+	
+	atomic_inc(&dev->obj_count);
+	atomic_add(obj->size, &dev->obj_memory);
+
+	obj->filp = (void *)obj->uao;
+
+	return 0;
+#endif
+}
+
+#endif
 
 /**
  * drm_gem_private_object_init - initialize an allocated private GEM object
@@ -524,9 +701,12 @@ EXPORT_SYMBOL(drm_gem_create_mmap_offset);
  */
 static void drm_gem_check_release_pagevec(struct pagevec *pvec)
 {
+	STUB();
+#ifdef notyet
 	check_move_unevictable_pages(pvec);
 	__pagevec_release(pvec);
 	cond_resched();
+#endif
 }
 
 /**
@@ -552,6 +732,9 @@ static void drm_gem_check_release_pagevec(struct pagevec *pvec)
  */
 struct vm_page **drm_gem_get_pages(struct drm_gem_object *obj)
 {
+	STUB();
+	return ERR_PTR(-ENOSYS);
+#ifdef notyet
 	struct address_space *mapping;
 	struct vm_page *p, **pages;
 	struct pagevec pvec;
@@ -603,6 +786,7 @@ fail:
 
 	kvfree(pages);
 	return ERR_CAST(p);
+#endif
 }
 EXPORT_SYMBOL(drm_gem_get_pages);
 
@@ -616,6 +800,8 @@ EXPORT_SYMBOL(drm_gem_get_pages);
 void drm_gem_put_pages(struct drm_gem_object *obj, struct vm_page **pages,
 		bool dirty, bool accessed)
 {
+	STUB();
+#ifdef notyet
 	int i, npages;
 	struct address_space *mapping;
 	struct pagevec pvec;
@@ -650,6 +836,7 @@ void drm_gem_put_pages(struct drm_gem_object *obj, struct vm_page **pages,
 		drm_gem_check_release_pagevec(&pvec);
 
 	kvfree(pages);
+#endif
 }
 EXPORT_SYMBOL(drm_gem_put_pages);
 
@@ -1041,6 +1228,8 @@ drm_gem_object_put(struct drm_gem_object *obj)
 }
 EXPORT_SYMBOL(drm_gem_object_put);
 
+#ifdef __linux
+
 /**
  * drm_gem_vm_open - vma->ops->open implementation for GEM
  * @vma: VM area structure
@@ -1214,6 +1403,8 @@ int drm_gem_mmap(struct file *filp, struct vm_area_struct *vma)
 }
 EXPORT_SYMBOL(drm_gem_mmap);
 
+#endif /* __linux__ */
+
 void drm_gem_print_info(struct drm_printer *p, unsigned int indent,
 			const struct drm_gem_object *obj)
 {
@@ -1356,6 +1547,7 @@ drm_gem_unlock_reservations(struct drm_gem_object **objs, int count,
 }
 EXPORT_SYMBOL(drm_gem_unlock_reservations);
 
+#ifdef notyet
 /**
  * drm_gem_fence_array_add - Adds the fence to an array of fences to be
  * waited on, deduplicating fences from the same context.
@@ -1448,3 +1640,5 @@ int drm_gem_fence_array_add_implicit(struct xarray *fence_array,
 	return ret;
 }
 EXPORT_SYMBOL(drm_gem_fence_array_add_implicit);
+
+#endif /* notyet */

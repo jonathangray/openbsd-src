@@ -672,6 +672,7 @@ int drm_dev_init(struct drm_device *dev,
 	INIT_LIST_HEAD(&dev->vblank_event_list);
 
 	mtx_init(&dev->event_lock, IPL_TTY);
+	mtx_init(&dev->quiesce_mtx, IPL_NONE);
 	rw_init(&dev->struct_mutex, "drmdevlk");
 	rw_init(&dev->filelist_mutex, "drmfile");
 	rw_init(&dev->clientlist_mutex, "drmcl");
