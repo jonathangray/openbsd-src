@@ -37,7 +37,9 @@
 #include <linux/highmem.h>
 #include <linux/pci.h>
 #include <linux/vmalloc.h>
+#ifdef __linux__
 #include <xen/xen.h>
+#endif
 
 #include <drm/drm_agpsupport.h>
 #include <drm/drm_cache.h>
@@ -127,6 +129,8 @@ static inline void *agp_remap(unsigned long offset, unsigned long size,
 
 #endif /* CONFIG_AGP */
 
+#ifdef __linux__
+
 void drm_legacy_ioremap(struct drm_local_map *map, struct drm_device *dev)
 {
 	if (dev->agp && dev->agp->cant_use_aperture && map->type == _DRM_AGP)
@@ -157,8 +161,13 @@ void drm_legacy_ioremapfree(struct drm_local_map *map, struct drm_device *dev)
 }
 EXPORT_SYMBOL(drm_legacy_ioremapfree);
 
+#endif /* __linux__ */
+
 bool drm_need_swiotlb(int dma_bits)
 {
+	STUB();
+	return false;
+#ifdef notyet
 	struct resource *tmp;
 	resource_size_t max_iomem = 0;
 
@@ -186,5 +195,6 @@ bool drm_need_swiotlb(int dma_bits)
 	}
 
 	return max_iomem > ((u64)1 << dma_bits);
+#endif
 }
 EXPORT_SYMBOL(drm_need_swiotlb);
