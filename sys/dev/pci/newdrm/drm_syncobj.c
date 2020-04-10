@@ -202,7 +202,11 @@
 
 struct syncobj_wait_entry {
 	struct list_head node;
+#ifdef __linux__
 	struct task_struct *task;
+#else
+	struct proc *task;
+#endif
 	struct dma_fence *fence;
 	struct dma_fence_cb fence_cb;
 	u64    point;
@@ -240,6 +244,8 @@ EXPORT_SYMBOL(drm_syncobj_find);
 static void drm_syncobj_fence_add_wait(struct drm_syncobj *syncobj,
 				       struct syncobj_wait_entry *wait)
 {
+	STUB();
+#ifdef notyet
 	struct dma_fence *fence;
 
 	if (wait->fence)
@@ -260,6 +266,7 @@ static void drm_syncobj_fence_add_wait(struct drm_syncobj *syncobj,
 		wait->fence = fence;
 	}
 	spin_unlock(&syncobj->lock);
+#endif
 }
 
 static void drm_syncobj_remove_wait(struct drm_syncobj *syncobj,
@@ -287,6 +294,8 @@ void drm_syncobj_add_point(struct drm_syncobj *syncobj,
 			   struct dma_fence *fence,
 			   uint64_t point)
 {
+	STUB();
+#ifdef notyet
 	struct syncobj_wait_entry *cur, *tmp;
 	struct dma_fence *prev;
 
@@ -308,6 +317,7 @@ void drm_syncobj_add_point(struct drm_syncobj *syncobj,
 	/* Walk the chain once to trigger garbage collection */
 	dma_fence_chain_for_each(fence, prev);
 	dma_fence_put(prev);
+#endif
 }
 EXPORT_SYMBOL(drm_syncobj_add_point);
 
@@ -352,10 +362,13 @@ EXPORT_SYMBOL(drm_syncobj_replace_fence);
  */
 static void drm_syncobj_assign_null_handle(struct drm_syncobj *syncobj)
 {
+	STUB();
+#ifdef notyet
 	struct dma_fence *fence = dma_fence_get_stub();
 
 	drm_syncobj_replace_fence(syncobj, fence);
 	dma_fence_put(fence);
+#endif
 }
 
 /* 5s default for wait submission */
@@ -379,6 +392,9 @@ int drm_syncobj_find_fence(struct drm_file *file_private,
 			   u32 handle, u64 point, u64 flags,
 			   struct dma_fence **fence)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct drm_syncobj *syncobj = drm_syncobj_find(file_private, handle);
 	struct syncobj_wait_entry wait;
 	u64 timeout = nsecs_to_jiffies64(DRM_SYNCOBJ_WAIT_FOR_SUBMIT_TIMEOUT);
@@ -433,6 +449,7 @@ int drm_syncobj_find_fence(struct drm_file *file_private,
 		drm_syncobj_remove_wait(syncobj, &wait);
 
 	return ret;
+#endif
 }
 EXPORT_SYMBOL(drm_syncobj_find_fence);
 
@@ -555,6 +572,7 @@ static int drm_syncobj_destroy(struct drm_file *file_private,
 	return 0;
 }
 
+#ifdef notyet
 static int drm_syncobj_file_release(struct inode *inode, struct file *file)
 {
 	struct drm_syncobj *syncobj = file->private_data;
@@ -566,6 +584,7 @@ static int drm_syncobj_file_release(struct inode *inode, struct file *file)
 static const struct file_operations drm_syncobj_file_fops = {
 	.release = drm_syncobj_file_release,
 };
+#endif
 
 /**
  * drm_syncobj_get_fd - get a file descriptor from a syncobj
@@ -578,6 +597,9 @@ static const struct file_operations drm_syncobj_file_fops = {
  */
 int drm_syncobj_get_fd(struct drm_syncobj *syncobj, int *p_fd)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct file *file;
 	int fd;
 
@@ -598,6 +620,7 @@ int drm_syncobj_get_fd(struct drm_syncobj *syncobj, int *p_fd)
 
 	*p_fd = fd;
 	return 0;
+#endif
 }
 EXPORT_SYMBOL(drm_syncobj_get_fd);
 
@@ -618,6 +641,9 @@ static int drm_syncobj_handle_to_fd(struct drm_file *file_private,
 static int drm_syncobj_fd_to_handle(struct drm_file *file_private,
 				    int fd, u32 *handle)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct drm_syncobj *syncobj;
 	struct fd f = fdget(fd);
 	int ret;
@@ -648,6 +674,7 @@ static int drm_syncobj_fd_to_handle(struct drm_file *file_private,
 
 	fdput(f);
 	return ret;
+#endif
 }
 
 static int drm_syncobj_import_sync_file_fence(struct drm_file *file_private,
@@ -909,6 +936,8 @@ static void syncobj_wait_fence_func(struct dma_fence *fence,
 static void syncobj_wait_syncobj_func(struct drm_syncobj *syncobj,
 				      struct syncobj_wait_entry *wait)
 {
+	STUB();
+#ifdef notyet
 	struct dma_fence *fence;
 
 	/* This happens inside the syncobj lock */
@@ -926,6 +955,7 @@ static void syncobj_wait_syncobj_func(struct drm_syncobj *syncobj,
 
 	wake_up_process(wait->task);
 	list_del_init(&wait->node);
+#endif
 }
 
 static signed long drm_syncobj_array_wait_timeout(struct drm_syncobj **syncobjs,
@@ -935,6 +965,9 @@ static signed long drm_syncobj_array_wait_timeout(struct drm_syncobj **syncobjs,
 						  signed long timeout,
 						  uint32_t *idx)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct syncobj_wait_entry *entries;
 	struct dma_fence *fence;
 	uint64_t *points;
@@ -967,7 +1000,11 @@ static signed long drm_syncobj_array_wait_timeout(struct drm_syncobj **syncobjs,
 	for (i = 0; i < count; ++i) {
 		struct dma_fence *fence;
 
+#ifdef __linux__
 		entries[i].task = current;
+#else
+		entries[i].task = curproc;
+#endif
 		entries[i].point = points[i];
 		fence = drm_syncobj_fence_get(syncobjs[i]);
 		if (!fence || dma_fence_chain_find_seqno(&fence, points[i])) {
@@ -1069,6 +1106,7 @@ err_free_points:
 	kfree(points);
 
 	return timeout;
+#endif
 }
 
 /**
@@ -1331,6 +1369,8 @@ int
 drm_syncobj_timeline_signal_ioctl(struct drm_device *dev, void *data,
 				  struct drm_file *file_private)
 {
+	return -ENOSYS;
+#ifdef notyet
 	struct drm_syncobj_timeline_array *args = data;
 	struct drm_syncobj **syncobjs;
 	struct dma_fence_chain **chains;
@@ -1398,11 +1438,15 @@ out:
 	drm_syncobj_array_free(syncobjs, args->count_handles);
 
 	return ret;
+#endif
 }
 
 int drm_syncobj_query_ioctl(struct drm_device *dev, void *data,
 			    struct drm_file *file_private)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct drm_syncobj_timeline_array *args = data;
 	struct drm_syncobj **syncobjs;
 	uint64_t __user *points = u64_to_user_ptr(args->points);
@@ -1467,4 +1511,5 @@ int drm_syncobj_query_ioctl(struct drm_device *dev, void *data,
 	drm_syncobj_array_free(syncobjs, args->count_handles);
 
 	return ret;
+#endif
 }
