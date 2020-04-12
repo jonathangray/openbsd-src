@@ -240,6 +240,9 @@ void drm_prime_destroy_file_private(struct drm_prime_file_private *prime_fpriv)
 struct dma_buf *drm_gem_dmabuf_export(struct drm_device *dev,
 				      struct dma_buf_export_info *exp_info)
 {
+	STUB();
+	return NULL;
+#ifdef notyet
 	struct drm_gem_object *obj = exp_info->priv;
 	struct dma_buf *dma_buf;
 
@@ -252,6 +255,7 @@ struct dma_buf *drm_gem_dmabuf_export(struct drm_device *dev,
 	dma_buf->file->f_mapping = obj->dev->anon_inode->i_mapping;
 
 	return dma_buf;
+#endif
 }
 EXPORT_SYMBOL(drm_gem_dmabuf_export);
 
@@ -444,12 +448,14 @@ int drm_gem_prime_handle_to_fd(struct drm_device *dev,
 	}
 
 	mutex_lock(&dev->object_name_lock);
+#ifdef notyet
 	/* re-export the original imported object */
 	if (obj->import_attach) {
 		dmabuf = obj->import_attach->dmabuf;
 		get_dma_buf(dmabuf);
 		goto out_have_obj;
 	}
+#endif
 
 	if (obj->dma_buf) {
 		get_dma_buf(obj->dma_buf);
@@ -600,6 +606,8 @@ void drm_gem_map_detach(struct dma_buf *dma_buf,
 }
 EXPORT_SYMBOL(drm_gem_map_detach);
 
+#ifdef notyet
+
 /**
  * drm_gem_map_dma_buf - map_dma_buf implementation for GEM
  * @attach: attachment whose scatterlist is to be returned
@@ -659,6 +667,8 @@ void drm_gem_unmap_dma_buf(struct dma_buf_attachment *attach,
 }
 EXPORT_SYMBOL(drm_gem_unmap_dma_buf);
 
+#endif /* notyet */
+
 /**
  * drm_gem_dmabuf_vmap - dma_buf vmap implementation for GEM
  * @dma_buf: buffer to be mapped
@@ -696,6 +706,8 @@ void drm_gem_dmabuf_vunmap(struct dma_buf *dma_buf, void *vaddr)
 	drm_gem_vunmap(obj, vaddr);
 }
 EXPORT_SYMBOL(drm_gem_dmabuf_vunmap);
+
+#ifdef notyet
 
 /**
  * drm_gem_prime_mmap - PRIME mmap function for GEM drivers
@@ -779,16 +791,22 @@ int drm_gem_dmabuf_mmap(struct dma_buf *dma_buf, struct vm_area_struct *vma)
 }
 EXPORT_SYMBOL(drm_gem_dmabuf_mmap);
 
+#endif /* notyet */
+
 static const struct dma_buf_ops drm_gem_prime_dmabuf_ops =  {
+#ifdef notyet
 	.cache_sgt_mapping = true,
 	.attach = drm_gem_map_attach,
 	.detach = drm_gem_map_detach,
 	.map_dma_buf = drm_gem_map_dma_buf,
 	.unmap_dma_buf = drm_gem_unmap_dma_buf,
+#endif
 	.release = drm_gem_dmabuf_release,
+#ifdef notyet
 	.mmap = drm_gem_dmabuf_mmap,
 	.vmap = drm_gem_dmabuf_vmap,
 	.vunmap = drm_gem_dmabuf_vunmap,
+#endif
 };
 
 /**
@@ -804,6 +822,9 @@ static const struct dma_buf_ops drm_gem_prime_dmabuf_ops =  {
  */
 struct sg_table *drm_prime_pages_to_sg(struct vm_page **pages, unsigned int nr_pages)
 {
+	STUB();
+	return NULL;
+#ifdef notyet
 	struct sg_table *sg = NULL;
 	int ret;
 
@@ -822,6 +843,7 @@ struct sg_table *drm_prime_pages_to_sg(struct vm_page **pages, unsigned int nr_p
 out:
 	kfree(sg);
 	return ERR_PTR(ret);
+#endif
 }
 EXPORT_SYMBOL(drm_prime_pages_to_sg);
 
@@ -839,8 +861,10 @@ struct dma_buf *drm_gem_prime_export(struct drm_gem_object *obj,
 {
 	struct drm_device *dev = obj->dev;
 	struct dma_buf_export_info exp_info = {
+#ifdef __linux__
 		.exp_name = KBUILD_MODNAME, /* white lie for debug */
 		.owner = dev->driver->fops->owner,
+#endif
 		.ops = &drm_gem_prime_dmabuf_ops,
 		.size = obj->size,
 		.flags = flags,
@@ -887,13 +911,16 @@ struct drm_gem_object *drm_gem_prime_import_dev(struct drm_device *dev,
 		}
 	}
 
+#ifdef notyet
 	if (!dev->driver->gem_prime_import_sg_table)
 		return ERR_PTR(-EINVAL);
+#endif
 
 	attach = dma_buf_attach(dma_buf, attach_dev);
 	if (IS_ERR(attach))
 		return ERR_CAST(attach);
 
+#ifdef notyet
 	get_dma_buf(dma_buf);
 
 	sgt = dma_buf_map_attachment(attach, DMA_BIDIRECTIONAL);
@@ -920,6 +947,10 @@ fail_detach:
 	dma_buf_put(dma_buf);
 
 	return ERR_PTR(ret);
+#else
+	ret = 0;
+	panic(__func__);
+#endif
 }
 EXPORT_SYMBOL(drm_gem_prime_import_dev);
 
@@ -999,6 +1030,8 @@ EXPORT_SYMBOL(drm_prime_sg_to_page_addr_arrays);
  */
 void drm_prime_gem_destroy(struct drm_gem_object *obj, struct sg_table *sg)
 {
+	STUB();
+#ifdef notyet
 	struct dma_buf_attachment *attach;
 	struct dma_buf *dma_buf;
 	attach = obj->import_attach;
@@ -1008,5 +1041,6 @@ void drm_prime_gem_destroy(struct drm_gem_object *obj, struct sg_table *sg)
 	dma_buf_detach(attach->dmabuf, attach);
 	/* remove the reference */
 	dma_buf_put(dma_buf);
+#endif
 }
 EXPORT_SYMBOL(drm_prime_gem_destroy);
