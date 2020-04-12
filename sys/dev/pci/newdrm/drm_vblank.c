@@ -184,7 +184,7 @@ static void drm_reset_vblank_timestamp(struct drm_device *dev, unsigned int pipe
 	 * interrupt and assign 0 for now, to mark the vblanktimestamp as invalid.
 	 */
 	if (!rc)
-		t_vblank = 0;
+		t_vblank = (struct timeval) {0, 0};
 
 	/*
 	 * +1 to make sure user will never see the same
@@ -293,7 +293,7 @@ static void drm_update_vblank_count(struct drm_device *dev, unsigned int pipe,
 	 * for now, to mark the vblanktimestamp as invalid.
 	 */
 	if (!rc && !in_vblank_irq)
-		t_vblank = 0;
+		t_vblank = (struct timeval) {0, 0};
 
 	store_vblank(dev, pipe, diff, t_vblank, cur_vblank);
 }
@@ -410,9 +410,9 @@ out:
 	spin_unlock_irqrestore(&dev->vblank_time_lock, irqflags);
 }
 
-static void vblank_disable_fn(struct timer_list *t)
+static void vblank_disable_fn(unsigned long arg)
 {
-	struct drm_vblank_crtc *vblank = from_timer(vblank, t, disable_timer);
+	struct drm_vblank_crtc *vblank = (void *)arg;
 	struct drm_device *dev = vblank->dev;
 	unsigned int pipe = vblank->pipe;
 	unsigned long irqflags;
@@ -479,8 +479,9 @@ int drm_vblank_init(struct drm_device *dev, unsigned int num_crtcs)
 		vblank->dev = dev;
 		vblank->pipe = i;
 		init_waitqueue_head(&vblank->queue);
-		timer_setup(&vblank->disable_timer, vblank_disable_fn, 0);
-		seqlock_init(&vblank->seqlock);
+		setup_timer(&vblank->disable_timer, vblank_disable_fn,
+		    (unsigned long)vblank);
+		seqlock_init(&vblank->seqlock, IPL_NONE);
 	}
 
 	DRM_INFO("Supports vblank timestamp caching Rev 2 (21.10.2013).\n");
@@ -870,7 +871,7 @@ static u64 drm_vblank_count_and_time(struct drm_device *dev, unsigned int pipe,
 	unsigned int seq;
 
 	if (WARN_ON(pipe >= dev->num_crtcs)) {
-		*vblanktime = 0;
+		*vblanktime = (struct timeval) {0, 0};
 		return 0;
 	}
 
@@ -1134,7 +1135,7 @@ static void drm_vblank_put(struct drm_device *dev, unsigned int pipe)
 		if (drm_vblank_offdelay == 0)
 			return;
 		else if (drm_vblank_offdelay < 0)
-			vblank_disable_fn(&vblank->disable_timer);
+			vblank_disable_fn((unsigned long)vblank);
 		else if (!dev->vblank_disable_immediate)
 			mod_timer(&vblank->disable_timer,
 				  jiffies + ((drm_vblank_offdelay * HZ)/1000));
@@ -1173,6 +1174,19 @@ void drm_wait_one_vblank(struct drm_device *dev, unsigned int pipe)
 
 	if (WARN_ON(pipe >= dev->num_crtcs))
 		return;
+
+#ifdef __OpenBSD__
+	/*
+	 * If we're cold, vblank interrupts won't happen even if
+	 * they're turned on by the driver.  Just stall long enough
+	 * for a vblank to pass.  This assumes a vrefresh of at least
+	 * 25 Hz.
+	 */
+	if (cold) {
+		delay(40000);
+		return;
+	}
+#endif
 
 	ret = drm_vblank_get(dev, pipe);
 	if (WARN(ret, "vblank not available on crtc %i, ret=%i\n", pipe, ret))
@@ -1882,7 +1896,7 @@ bool drm_handle_vblank(struct drm_device *dev, unsigned int pipe)
 	spin_unlock_irqrestore(&dev->event_lock, irqflags);
 
 	if (disable_irq)
-		vblank_disable_fn(&vblank->disable_timer);
+		vblank_disable_fn((unsigned long)vblank);
 
 	return true;
 }
