@@ -22,6 +22,8 @@
 #include <sys/param.h>
 #include <uvm/uvm_extern.h>
 
+#include <linux/mm.h>
+
 struct scatterlist {
 	dma_addr_t dma_address;
 	unsigned int offset;
