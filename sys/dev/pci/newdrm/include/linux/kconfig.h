@@ -10,6 +10,7 @@
 #define IS_ENABLED(x)		((x) - 0)
 #define IS_REACHABLE(x)		((x) - 0)
 #define IS_BUILTIN(x)		((x) - 0)
+#define IS_MODULE(x)		0
 
 #if BYTE_ORDER == BIG_ENDIAN
 #define __BIG_ENDIAN
