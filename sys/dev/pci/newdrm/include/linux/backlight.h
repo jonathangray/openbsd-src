@@ -5,8 +5,6 @@
 
 #include <sys/task.h>
 
-#include <linux/fb.h>
-
 struct backlight_device;
 
 struct backlight_properties {
@@ -56,27 +54,8 @@ backlight_force_update(struct backlight_device *bd, int reason)
 
 void backlight_schedule_update_status(struct backlight_device *);
 
-static inline int
-backlight_enable(struct backlight_device *bd)
-{
-	if (bd == NULL)
-		return 0;
-
-	bd->props.power = FB_BLANK_UNBLANK;
-
-	return bd->ops->update_status(bd);
-}
-
-static inline int
-backlight_disable(struct backlight_device *bd)
-{
-	if (bd == NULL)
-		return 0;
-
-	bd->props.power = FB_BLANK_POWERDOWN;
-
-	return bd->ops->update_status(bd);
-}
+int backlight_enable(struct backlight_device *);
+int backlight_disable(struct backlight_device *);
 
 #define devm_of_find_backlight(x)	NULL
 

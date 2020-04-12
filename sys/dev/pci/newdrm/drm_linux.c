@@ -25,7 +25,6 @@
 #include <sys/unistd.h>
 #include <sys/proc.h>
 #include <sys/pool.h>
-#include <sys/file.h>
 #include <sys/fcntl.h>
 
 #include <dev/pci/ppbreg.h>
@@ -44,6 +43,7 @@
 #include <linux/notifier.h>
 #include <linux/backlight.h>
 #include <linux/shrinker.h>
+#include <linux/fb.h>
 
 #include <drm/drm_device.h>
 #include <drm/drm_print.h>
@@ -1216,6 +1216,28 @@ void
 backlight_schedule_update_status(struct backlight_device *bd)
 {
 	task_add(systq, &bd->task);
+}
+
+inline int
+backlight_enable(struct backlight_device *bd)
+{
+	if (bd == NULL)
+		return 0;
+
+	bd->props.power = FB_BLANK_UNBLANK;
+
+	return bd->ops->update_status(bd);
+}
+
+inline int
+backlight_disable(struct backlight_device *bd)
+{
+	if (bd == NULL)
+		return 0;
+
+	bd->props.power = FB_BLANK_POWERDOWN;
+
+	return bd->ops->update_status(bd);
 }
 
 void
