@@ -73,6 +73,9 @@ struct drm_device {
 	/** @driver: DRM driver managing the device */
 	struct drm_driver *driver;
 
+	bus_dma_tag_t		dmat;
+	bus_space_tag_t		bst;
+
 	struct klist note;
 
 	struct mutex	quiesce_mtx;

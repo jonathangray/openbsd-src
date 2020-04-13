@@ -30,6 +30,11 @@
 #endif
 #endif
 
+#include "pci.h"
+#if NPCI > 0
+#define CONFIG_PCI				1
+#endif
+
 #include "agp.h"
 #if NAGP > 0
 #define CONFIG_AGP				1

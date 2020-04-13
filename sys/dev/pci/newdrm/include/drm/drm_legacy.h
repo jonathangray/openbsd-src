@@ -79,7 +79,16 @@ struct drm_buf {
 	void *dev_private;		 /**< Per-buffer private storage */
 };
 
+struct drm_dmamem {
+	bus_dmamap_t		map;
+	caddr_t			kva;
+	bus_size_t		size;
+	int			nsegs;
+	bus_dma_segment_t	segs[1];
+};
+
 typedef struct drm_dma_handle {
+	struct drm_dmamem *mem;
 	dma_addr_t busaddr;
 	void *vaddr;
 	size_t size;
