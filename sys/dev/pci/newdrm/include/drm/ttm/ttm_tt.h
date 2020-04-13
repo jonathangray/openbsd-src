@@ -109,7 +109,7 @@ struct ttm_tt {
 	uint32_t page_flags;
 	unsigned long num_pages;
 	struct sg_table *sg; /* for SG objects via dma-buf */
-	struct file *swap_storage;
+	struct uvm_object *swap_storage;
 	enum ttm_caching_state caching_state;
 	enum {
 		tt_bound,
@@ -231,7 +231,7 @@ int ttm_tt_swapin(struct ttm_tt *ttm);
  * and cache flushes and potential page splitting / combining.
  */
 int ttm_tt_set_placement_caching(struct ttm_tt *ttm, uint32_t placement);
-int ttm_tt_swapout(struct ttm_tt *ttm, struct file *persistent_swap_storage);
+int ttm_tt_swapout(struct ttm_tt *ttm, struct uvm_object *persistent_swap_storage);
 
 /**
  * ttm_tt_populate - allocate pages for a ttm

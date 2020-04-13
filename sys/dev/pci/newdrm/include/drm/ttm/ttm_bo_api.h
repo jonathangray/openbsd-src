@@ -187,7 +187,7 @@ struct ttm_buffer_object {
 	 */
 
 	struct ttm_mem_reg mem;
-	struct file *persistent_swap_storage;
+	struct uvm_object *persistent_swap_storage;
 	struct ttm_tt *ttm;
 	bool evicted;
 	bool deleted;
