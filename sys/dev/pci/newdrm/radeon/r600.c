@@ -1466,8 +1466,8 @@ static int r600_mc_init(struct radeon_device *rdev)
 	}
 	rdev->mc.vram_width = numchan * chansize;
 	/* Could aper size report 0 ? */
-	rdev->mc.aper_base = pci_resource_start(rdev->pdev, 0);
-	rdev->mc.aper_size = pci_resource_len(rdev->pdev, 0);
+	rdev->mc.aper_base = rdev->fb_aper_offset;
+	rdev->mc.aper_size = rdev->fb_aper_size;
 	/* Setup GPU memory space */
 	rdev->mc.mc_vram_size = RREG32(CONFIG_MEMSIZE);
 	rdev->mc.real_vram_size = RREG32(CONFIG_MEMSIZE);
@@ -4111,6 +4111,8 @@ int r600_irq_process(struct radeon_device *rdev)
 
 	wptr = r600_get_ih_wptr(rdev);
 
+	if (wptr == rdev->ih.rptr)
+		return IRQ_NONE;
 restart_ih:
 	/* is somebody else already processing irqs? */
 	if (atomic_xchg(&rdev->ih.lock, 1))
@@ -4492,6 +4494,7 @@ static void r600_pcie_gen2_enable(struct radeon_device *rdev)
 {
 	u32 link_width_cntl, lanes, speed_cntl, training_cntl, tmp;
 	u16 link_cntl2;
+	enum pci_bus_speed max_bus_speed;
 
 	if (radeon_pcie_gen2 == 0)
 		return;
@@ -4510,8 +4513,9 @@ static void r600_pcie_gen2_enable(struct radeon_device *rdev)
 	if (rdev->family <= CHIP_R600)
 		return;
 
-	if ((rdev->pdev->bus->max_bus_speed != PCIE_SPEED_5_0GT) &&
-		(rdev->pdev->bus->max_bus_speed != PCIE_SPEED_8_0GT))
+	max_bus_speed = pcie_get_speed_cap(rdev->pdev->bus->self);
+	if ((max_bus_speed != PCIE_SPEED_5_0GT) &&
+		(max_bus_speed != PCIE_SPEED_8_0GT))
 		return;
 
 	speed_cntl = RREG32_PCIE_PORT(PCIE_LC_SPEED_CNTL);
