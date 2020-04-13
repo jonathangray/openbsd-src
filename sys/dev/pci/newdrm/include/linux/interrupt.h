@@ -10,6 +10,7 @@
 #include <linux/irqflags.h>
 #include <linux/atomic.h>
 #include <linux/compiler.h>
+#include <linux/irqreturn.h>
 
 #define IRQF_SHARED	0
 

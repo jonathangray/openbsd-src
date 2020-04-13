@@ -1737,7 +1737,7 @@ u32 cik_get_xclk(struct radeon_device *rdev)
 u32 cik_mm_rdoorbell(struct radeon_device *rdev, u32 index)
 {
 	if (index < rdev->doorbell.num_doorbells) {
-		return readl(rdev->doorbell.ptr + index);
+		return bus_space_read_4(rdev->memt, rdev->doorbell.bsh, index * 4);
 	} else {
 		DRM_ERROR("reading beyond doorbell aperture: 0x%08x!\n", index);
 		return 0;
@@ -1757,7 +1757,7 @@ u32 cik_mm_rdoorbell(struct radeon_device *rdev, u32 index)
 void cik_mm_wdoorbell(struct radeon_device *rdev, u32 index, u32 v)
 {
 	if (index < rdev->doorbell.num_doorbells) {
-		writel(v, rdev->doorbell.ptr + index);
+		bus_space_write_4(rdev->memt, rdev->doorbell.bsh, index * 4, v);
 	} else {
 		DRM_ERROR("writing beyond doorbell aperture: 0x%08x!\n", index);
 	}
@@ -5381,8 +5381,8 @@ static int cik_mc_init(struct radeon_device *rdev)
 	}
 	rdev->mc.vram_width = numchan * chansize;
 	/* Could aper size report 0 ? */
-	rdev->mc.aper_base = pci_resource_start(rdev->pdev, 0);
-	rdev->mc.aper_size = pci_resource_len(rdev->pdev, 0);
+	rdev->mc.aper_base = rdev->fb_aper_offset;
+	rdev->mc.aper_size = rdev->fb_aper_size;
 	/* size in MB on si */
 	rdev->mc.mc_vram_size = RREG32(CONFIG_MEMSIZE) * 1024ULL * 1024ULL;
 	rdev->mc.real_vram_size = RREG32(CONFIG_MEMSIZE) * 1024ULL * 1024ULL;
@@ -7566,6 +7566,8 @@ int cik_irq_process(struct radeon_device *rdev)
 
 	wptr = cik_get_ih_wptr(rdev);
 
+	if (wptr == rdev->ih.rptr)
+		return IRQ_NONE;
 restart_ih:
 	/* is somebody else already processing irqs? */
 	if (atomic_xchg(&rdev->ih.lock, 1))

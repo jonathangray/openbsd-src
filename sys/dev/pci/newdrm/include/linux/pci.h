@@ -96,6 +96,12 @@ struct pci_dev {
 #define PCI_EXP_LNKCTL		0x10
 #define PCI_EXP_LNKCTL_HAWD	0x0200
 #define PCI_EXP_LNKCTL2		0x30
+#define PCI_EXP_LNKCTL2_ENTER_COMP	0x0010
+#define PCI_EXP_LNKCTL2_TX_MARGIN	0x0380
+#define PCI_EXP_LNKCTL2_TLS		PCI_PCIE_LCSR2_TLS
+#define PCI_EXP_LNKCTL2_TLS_2_5GT	PCI_PCIE_LCSR2_TLS_2_5
+#define PCI_EXP_LNKCTL2_TLS_5_0GT	PCI_PCIE_LCSR2_TLS_5
+#define PCI_EXP_LNKCTL2_TLS_8_0GT	PCI_PCIE_LCSR2_TLS_8
 
 #define PCI_COMMAND		PCI_COMMAND_STATUS_REG
 #define PCI_COMMAND_MEMORY	PCI_COMMAND_MEM_ENABLE
@@ -210,6 +216,12 @@ pci_pcie_cap(struct pci_dev *pdev)
 }
 
 static inline bool
+pci_is_pcie(struct pci_dev *pdev)
+{
+	return (pci_pcie_cap(pdev) > 0);
+}
+
+static inline bool
 pci_is_root_bus(struct pci_bus *pbus)
 {
 	return (pbus->bridgetag == NULL);
@@ -225,6 +237,30 @@ pcie_capability_read_dword(struct pci_dev *pdev, int off, u32 *val)
 		return -EINVAL;
 	}
 	*val = pci_conf_read(pdev->pc, pdev->tag, pos + off);
+	return 0;
+}
+
+static inline int
+pcie_capability_read_word(struct pci_dev *pdev, int off, u16 *val)
+{
+	int pos;
+	if (!pci_get_capability(pdev->pc, pdev->tag, PCI_CAP_PCIEXPRESS,
+	    &pos, NULL)) {
+		*val = 0;
+		return -EINVAL;
+	}
+	pci_read_config_word(pdev, pos + off, val);
+	return 0;
+}
+
+static inline int
+pcie_capability_write_word(struct pci_dev *pdev, int off, u16 val)
+{
+	int pos;
+	if (!pci_get_capability(pdev->pc, pdev->tag, PCI_CAP_PCIEXPRESS,
+	    &pos, NULL))
+		return -EINVAL;
+	pci_write_config_word(pdev, pos + off, val);
 	return 0;
 }
 
