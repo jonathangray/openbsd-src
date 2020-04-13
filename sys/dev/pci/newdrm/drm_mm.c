@@ -152,21 +152,29 @@ static void show_leaks(struct drm_mm *mm) { }
 #define START(node) ((node)->start)
 #define LAST(node)  ((node)->start + (node)->size - 1)
 
+#ifdef notyet
 INTERVAL_TREE_DEFINE(struct drm_mm_node, rb,
 		     u64, __subtree_last,
 		     START, LAST, static inline, drm_mm_interval_tree)
+#endif
 
 struct drm_mm_node *
 __drm_mm_interval_first(const struct drm_mm *mm, u64 start, u64 last)
 {
+	STUB();
+	return NULL;
+#ifdef notyet
 	return drm_mm_interval_tree_iter_first((struct rb_root_cached *)&mm->interval_tree,
 					       start, last) ?: (struct drm_mm_node *)&mm->head_node;
+#endif
 }
 EXPORT_SYMBOL(__drm_mm_interval_first);
 
 static void drm_mm_interval_tree_add_node(struct drm_mm_node *hole_node,
 					  struct drm_mm_node *node)
 {
+	STUB();
+#ifdef notyet
 	struct drm_mm *mm = hole_node->mm;
 	struct rb_node **link, *rb;
 	struct drm_mm_node *parent;
@@ -210,9 +218,10 @@ static void drm_mm_interval_tree_add_node(struct drm_mm_node *hole_node,
 	rb_link_node(&node->rb, rb, link);
 	rb_insert_augmented_cached(&node->rb, &mm->interval_tree, leftmost,
 				   &drm_mm_interval_tree_augment);
+#endif
 }
 
-#define RB_INSERT(root, member, expr) do { \
+#define DRM_RB_INSERT(root, member, expr) do { \
 	struct rb_node **link = &root.rb_node, *rb = NULL; \
 	u64 x = expr(node); \
 	while (*link) { \
@@ -264,7 +273,7 @@ static void add_hole(struct drm_mm_node *node)
 	DRM_MM_BUG_ON(!drm_mm_hole_follows(node));
 
 	insert_hole_size(&mm->holes_size, node);
-	RB_INSERT(mm->holes_addr, rb_hole_addr, HOLE_ADDR);
+	DRM_RB_INSERT(mm->holes_addr, rb_hole_addr, HOLE_ADDR);
 
 	list_add(&node->hole_stack, &mm->hole_stack);
 }
@@ -576,6 +585,8 @@ static inline bool drm_mm_node_scanned_block(const struct drm_mm_node *node)
  */
 void drm_mm_remove_node(struct drm_mm_node *node)
 {
+	STUB();
+#ifdef notyet
 	struct drm_mm *mm = node->mm;
 	struct drm_mm_node *prev_node;
 
@@ -595,6 +606,7 @@ void drm_mm_remove_node(struct drm_mm_node *node)
 	add_hole(prev_node);
 
 	clear_bit_unlock(DRM_MM_NODE_ALLOCATED_BIT, &node->flags);
+#endif
 }
 EXPORT_SYMBOL(drm_mm_remove_node);
 
@@ -609,6 +621,8 @@ EXPORT_SYMBOL(drm_mm_remove_node);
  */
 void drm_mm_replace_node(struct drm_mm_node *old, struct drm_mm_node *new)
 {
+	STUB();
+#ifdef notyet
 	struct drm_mm *mm = old->mm;
 
 	DRM_MM_BUG_ON(!drm_mm_node_allocated(old));
@@ -630,6 +644,7 @@ void drm_mm_replace_node(struct drm_mm_node *old, struct drm_mm_node *new)
 	}
 
 	clear_bit_unlock(DRM_MM_NODE_ALLOCATED_BIT, &old->flags);
+#endif
 }
 EXPORT_SYMBOL(drm_mm_replace_node);
 
