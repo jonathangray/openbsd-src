@@ -3745,8 +3745,8 @@ int evergreen_mc_init(struct radeon_device *rdev)
 	}
 	rdev->mc.vram_width = numchan * chansize;
 	/* Could aper size report 0 ? */
-	rdev->mc.aper_base = pci_resource_start(rdev->pdev, 0);
-	rdev->mc.aper_size = pci_resource_len(rdev->pdev, 0);
+	rdev->mc.aper_base = rdev->fb_aper_offset;
+	rdev->mc.aper_size = rdev->fb_aper_size;
 	/* Setup GPU memory space */
 	if ((rdev->family == CHIP_PALM) ||
 	    (rdev->family == CHIP_SUMO) ||
@@ -4720,6 +4720,8 @@ int evergreen_irq_process(struct radeon_device *rdev)
 
 	wptr = evergreen_get_ih_wptr(rdev);
 
+	if (wptr == rdev->ih.rptr)
+		return IRQ_NONE;
 restart_ih:
 	/* is somebody else already processing irqs? */
 	if (atomic_xchg(&rdev->ih.lock, 1))
@@ -5325,6 +5327,7 @@ void evergreen_fini(struct radeon_device *rdev)
 void evergreen_pcie_gen2_enable(struct radeon_device *rdev)
 {
 	u32 link_width_cntl, speed_cntl;
+	enum pci_bus_speed max_bus_speed;
 
 	if (radeon_pcie_gen2 == 0)
 		return;
@@ -5339,8 +5342,9 @@ void evergreen_pcie_gen2_enable(struct radeon_device *rdev)
 	if (ASIC_IS_X2(rdev))
 		return;
 
-	if ((rdev->pdev->bus->max_bus_speed != PCIE_SPEED_5_0GT) &&
-		(rdev->pdev->bus->max_bus_speed != PCIE_SPEED_8_0GT))
+	max_bus_speed = pcie_get_speed_cap(rdev->pdev->bus->self);
+	if ((max_bus_speed != PCIE_SPEED_5_0GT) &&
+		(max_bus_speed != PCIE_SPEED_8_0GT))
 		return;
 
 	speed_cntl = RREG32_PCIE_PORT(PCIE_LC_SPEED_CNTL);

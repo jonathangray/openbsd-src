@@ -264,6 +264,27 @@ pcie_capability_write_word(struct pci_dev *pdev, int off, u16 val)
 	return 0;
 }
 
+static inline int
+pcie_get_readrq(struct pci_dev *pdev)
+{
+	uint16_t val;
+
+	pcie_capability_read_word(pdev, PCI_PCIE_DCSR, &val);
+
+	return 128 << ((val & PCI_PCIE_DCSR_MPS) >> 12);
+}
+
+static inline int
+pcie_set_readrq(struct pci_dev *pdev, int rrq)
+{
+	uint16_t val;
+	
+	pcie_capability_read_word(pdev, PCI_PCIE_DCSR, &val);
+	val &= ~PCI_PCIE_DCSR_MPS;
+	val |= (ffs(rrq) - 8) << 12;
+	return pcie_capability_write_word(pdev, PCI_PCIE_DCSR, val);
+}
+
 #define pci_set_master(x)
 #define pci_clear_master(x)
 
