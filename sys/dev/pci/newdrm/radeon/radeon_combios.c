@@ -415,10 +415,17 @@ radeon_bios_get_hardcoded_edid(struct radeon_device *rdev)
 	return NULL;
 }
 
+#ifdef __clang__
+static inline struct radeon_i2c_bus_rec combios_setup_i2c_bus(struct radeon_device *rdev,
+						       enum radeon_combios_ddc ddc,
+						       u32 clk_mask,
+						       u32 data_mask)
+#else
 static struct radeon_i2c_bus_rec combios_setup_i2c_bus(struct radeon_device *rdev,
 						       enum radeon_combios_ddc ddc,
 						       u32 clk_mask,
 						       u32 data_mask)
+#endif
 {
 	struct radeon_i2c_bus_rec i2c;
 	int ddc_line = 0;
@@ -1460,7 +1467,7 @@ bool radeon_get_legacy_connector_info_from_table(struct drm_device *dev)
 
 	rdev->mode_info.connector_table = radeon_connector_table;
 	if (rdev->mode_info.connector_table == CT_NONE) {
-#ifdef CONFIG_PPC_PMAC
+#ifdef __macppc__
 		if (of_machine_is_compatible("PowerBook3,3")) {
 			/* powerbook with VGA */
 			rdev->mode_info.connector_table = CT_POWERBOOK_VGA;
@@ -1526,7 +1533,7 @@ bool radeon_get_legacy_connector_info_from_table(struct drm_device *dev)
 			/* SAM440ep RV250 embedded board */
 			rdev->mode_info.connector_table = CT_SAM440EP;
 		} else
-#endif /* CONFIG_PPC_PMAC */
+#endif /* __macppc__ */
 #ifdef CONFIG_PPC64
 		if (ASIC_IS_RN50(rdev))
 			rdev->mode_info.connector_table = CT_RN50_POWER;
@@ -2699,6 +2706,7 @@ void radeon_combios_get_power_modes(struct radeon_device *rdev)
 			else
 				i2c_bus = combios_setup_i2c_bus(rdev, gpio, 0, 0);
 			rdev->pm.i2c_bus = radeon_i2c_lookup(rdev, &i2c_bus);
+#ifdef notyet
 			if (rdev->pm.i2c_bus) {
 				struct i2c_board_info info = { };
 				const char *name = thermal_controller_names[thermal_controller];
@@ -2706,6 +2714,7 @@ void radeon_combios_get_power_modes(struct radeon_device *rdev)
 				strlcpy(info.type, name, sizeof(info.type));
 				i2c_new_device(&rdev->pm.i2c_bus->adapter, &info);
 			}
+#endif
 		}
 	} else {
 		/* boards with a thermal chip, but no overdrive table */
@@ -2716,6 +2725,7 @@ void radeon_combios_get_power_modes(struct radeon_device *rdev)
 		    (dev->pdev->subsystem_device == 0xc002)) {
 			i2c_bus = combios_setup_i2c_bus(rdev, DDC_MONID, 0, 0);
 			rdev->pm.i2c_bus = radeon_i2c_lookup(rdev, &i2c_bus);
+#ifdef notyet
 			if (rdev->pm.i2c_bus) {
 				struct i2c_board_info info = { };
 				const char *name = "f75375";
@@ -2725,6 +2735,7 @@ void radeon_combios_get_power_modes(struct radeon_device *rdev)
 				DRM_INFO("Possible %s thermal controller at 0x%02x\n",
 					 name, info.addr);
 			}
+#endif
 		}
 	}
 
