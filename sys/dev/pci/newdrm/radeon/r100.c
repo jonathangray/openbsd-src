@@ -2774,8 +2774,8 @@ void r100_vram_init_sizes(struct radeon_device *rdev)
 	u64 config_aper_size;
 
 	/* work out accessible VRAM */
-	rdev->mc.aper_base = pci_resource_start(rdev->pdev, 0);
-	rdev->mc.aper_size = pci_resource_len(rdev->pdev, 0);
+	rdev->mc.aper_base = rdev->fb_aper_offset;
+	rdev->mc.aper_size = rdev->fb_aper_size;
 	rdev->mc.visible_vram_size = r100_get_accessible_vram(rdev);
 	/* FIXME we don't use the second aperture yet when we could use it */
 	if (rdev->mc.visible_vram_size > rdev->mc.aper_size)
@@ -4117,8 +4117,10 @@ uint32_t r100_mm_rreg_slow(struct radeon_device *rdev, uint32_t reg)
 	uint32_t ret;
 
 	spin_lock_irqsave(&rdev->mmio_idx_lock, flags);
-	writel(reg, ((void __iomem *)rdev->rmmio) + RADEON_MM_INDEX);
-	ret = readl(((void __iomem *)rdev->rmmio) + RADEON_MM_DATA);
+	bus_space_write_4(rdev->memt, rdev->rmmio_bsh,
+	    RADEON_MM_INDEX, reg);
+	ret = bus_space_read_4(rdev->memt, rdev->rmmio_bsh,
+	    RADEON_MM_DATA);
 	spin_unlock_irqrestore(&rdev->mmio_idx_lock, flags);
 	return ret;
 }
@@ -4128,27 +4130,33 @@ void r100_mm_wreg_slow(struct radeon_device *rdev, uint32_t reg, uint32_t v)
 	unsigned long flags;
 
 	spin_lock_irqsave(&rdev->mmio_idx_lock, flags);
-	writel(reg, ((void __iomem *)rdev->rmmio) + RADEON_MM_INDEX);
-	writel(v, ((void __iomem *)rdev->rmmio) + RADEON_MM_DATA);
+	bus_space_write_4(rdev->memt, rdev->rmmio_bsh,
+	    RADEON_MM_INDEX, reg);
+	bus_space_write_4(rdev->memt, rdev->rmmio_bsh,
+	    RADEON_MM_DATA, v);
 	spin_unlock_irqrestore(&rdev->mmio_idx_lock, flags);
 }
 
 u32 r100_io_rreg(struct radeon_device *rdev, u32 reg)
 {
 	if (reg < rdev->rio_mem_size)
-		return ioread32(rdev->rio_mem + reg);
+		return bus_space_read_4(rdev->iot, rdev->rio_mem, reg);
 	else {
-		iowrite32(reg, rdev->rio_mem + RADEON_MM_INDEX);
-		return ioread32(rdev->rio_mem + RADEON_MM_DATA);
+		bus_space_write_4(rdev->iot, rdev->rio_mem,
+		    RADEON_MM_INDEX, reg);
+		return bus_space_read_4(rdev->iot, rdev->rio_mem,
+		    RADEON_MM_DATA);
 	}
 }
 
 void r100_io_wreg(struct radeon_device *rdev, u32 reg, u32 v)
 {
 	if (reg < rdev->rio_mem_size)
-		iowrite32(v, rdev->rio_mem + reg);
+		bus_space_write_4(rdev->iot, rdev->rio_mem, reg, v);
 	else {
-		iowrite32(reg, rdev->rio_mem + RADEON_MM_INDEX);
-		iowrite32(v, rdev->rio_mem + RADEON_MM_DATA);
+		bus_space_write_4(rdev->iot, rdev->rio_mem,
+		    RADEON_MM_INDEX, reg);
+		bus_space_write_4(rdev->iot, rdev->rio_mem,
+		    RADEON_MM_DATA, v);
 	}
 }
