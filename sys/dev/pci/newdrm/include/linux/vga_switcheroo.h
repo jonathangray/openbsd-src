@@ -13,6 +13,7 @@
 #define vga_switcheroo_unlock_ddc(x)
 #define vga_switcheroo_handler_flags()		0
 #define vga_switcheroo_client_fb_set(a, b)
+#define vga_switcheroo_init_domain_pm_ops(a, b)
 
 #define VGA_SWITCHEROO_CAN_SWITCH_DDC		1
 

@@ -30,6 +30,7 @@
 #include <linux/io.h>
 #include <linux/ioport.h>
 #include <linux/kobject.h>
+#include <linux/dma-mapping.h> /* pci-dma-compat.h -> dma-mapping.h */
 
 struct pci_dev;
 

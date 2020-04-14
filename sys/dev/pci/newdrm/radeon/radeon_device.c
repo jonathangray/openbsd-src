@@ -337,17 +337,21 @@ void radeon_scratch_free(struct radeon_device *rdev, uint32_t reg)
 static int radeon_doorbell_init(struct radeon_device *rdev)
 {
 	/* doorbell bar mapping */
+#ifdef __linux__
 	rdev->doorbell.base = pci_resource_start(rdev->pdev, 2);
 	rdev->doorbell.size = pci_resource_len(rdev->pdev, 2);
+#endif
 
 	rdev->doorbell.num_doorbells = min_t(u32, rdev->doorbell.size / sizeof(u32), RADEON_MAX_DOORBELLS);
 	if (rdev->doorbell.num_doorbells == 0)
 		return -EINVAL;
 
+#ifdef __linux__
 	rdev->doorbell.ptr = ioremap(rdev->doorbell.base, rdev->doorbell.num_doorbells * sizeof(u32));
 	if (rdev->doorbell.ptr == NULL) {
 		return -ENOMEM;
 	}
+#endif
 	DRM_INFO("doorbell mmio base: 0x%08X\n", (uint32_t)rdev->doorbell.base);
 	DRM_INFO("doorbell mmio size: %u\n", (unsigned)rdev->doorbell.size);
 
@@ -365,8 +369,15 @@ static int radeon_doorbell_init(struct radeon_device *rdev)
  */
 static void radeon_doorbell_fini(struct radeon_device *rdev)
 {
+#ifdef __linux__
 	iounmap(rdev->doorbell.ptr);
 	rdev->doorbell.ptr = NULL;
+#else
+	if (rdev->doorbell.size > 0)
+		bus_space_unmap(rdev->memt, rdev->doorbell.bsh,
+		    rdev->doorbell.size);
+	rdev->doorbell.size = 0;
+#endif
 }
 
 /**
@@ -637,7 +648,7 @@ void radeon_gtt_location(struct radeon_device *rdev, struct radeon_mc *mc)
 bool radeon_device_is_virtual(void)
 {
 #ifdef CONFIG_X86
-	return boot_cpu_has(X86_FEATURE_HYPERVISOR);
+	return (cpu_ecxfeature & CPUIDECX_HV);
 #else
 	return false;
 #endif
@@ -662,10 +673,12 @@ bool radeon_card_posted(struct radeon_device *rdev)
 		return false;
 
 	/* required for EFI mode on macbook2,1 which uses an r5xx asic */
+#ifdef notyet
 	if (efi_enabled(EFI_BOOT) &&
 	    (rdev->pdev->subsystem_vendor == PCI_VENDOR_ID_APPLE) &&
 	    (rdev->family < CHIP_R600))
 		return false;
+#endif
 
 	if (ASIC_IS_NODCE(rdev))
 		goto check_memsize;
@@ -779,19 +792,13 @@ bool radeon_boot_test_post_card(struct radeon_device *rdev)
  */
 int radeon_dummy_page_init(struct radeon_device *rdev)
 {
-	if (rdev->dummy_page.page)
+	if (rdev->dummy_page.dmah)
 		return 0;
-	rdev->dummy_page.page = alloc_page(GFP_DMA32 | GFP_KERNEL | __GFP_ZERO);
-	if (rdev->dummy_page.page == NULL)
+	rdev->dummy_page.dmah = drm_dmamem_alloc(rdev->dmat, PAGE_SIZE, PAGE_SIZE, 1,
+	    PAGE_SIZE, 0, BUS_DMA_WAITOK);
+	if (!rdev->dummy_page.dmah)
 		return -ENOMEM;
-	rdev->dummy_page.addr = pci_map_page(rdev->pdev, rdev->dummy_page.page,
-					0, PAGE_SIZE, PCI_DMA_BIDIRECTIONAL);
-	if (pci_dma_mapping_error(rdev->pdev, rdev->dummy_page.addr)) {
-		dev_err(&rdev->pdev->dev, "Failed to DMA MAP the dummy page\n");
-		__free_page(rdev->dummy_page.page);
-		rdev->dummy_page.page = NULL;
-		return -ENOMEM;
-	}
+	rdev->dummy_page.addr = (bus_addr_t)rdev->dummy_page.dmah->map->dm_segs[0].ds_addr;
 	rdev->dummy_page.entry = radeon_gart_get_page_entry(rdev->dummy_page.addr,
 							    RADEON_GART_PAGE_DUMMY);
 	return 0;
@@ -806,12 +813,12 @@ int radeon_dummy_page_init(struct radeon_device *rdev)
  */
 void radeon_dummy_page_fini(struct radeon_device *rdev)
 {
-	if (rdev->dummy_page.page == NULL)
+	if (rdev->dummy_page.dmah == NULL)
 		return;
-	pci_unmap_page(rdev->pdev, rdev->dummy_page.addr,
-			PAGE_SIZE, PCI_DMA_BIDIRECTIONAL);
-	__free_page(rdev->dummy_page.page);
-	rdev->dummy_page.page = NULL;
+
+	drm_dmamem_free(rdev->dmat, rdev->dummy_page.dmah);
+	rdev->dummy_page.dmah = NULL;
+	rdev->dummy_page.addr = 0;
 }
 
 
@@ -983,7 +990,7 @@ int radeon_atombios_init(struct radeon_device *rdev)
 	atom_card_info->reg_read = cail_reg_read;
 	atom_card_info->reg_write = cail_reg_write;
 	/* needed for iio ops */
-	if (rdev->rio_mem) {
+	if (rdev->rio_mem_size > 0) {
 		atom_card_info->ioreg_read = cail_ioreg_read;
 		atom_card_info->ioreg_write = cail_ioreg_write;
 	} else {
@@ -1075,6 +1082,9 @@ void radeon_combios_fini(struct radeon_device *rdev)
  */
 static unsigned int radeon_vga_set_decode(void *cookie, bool state)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct radeon_device *rdev = cookie;
 	radeon_vga_set_state(rdev, state);
 	if (state)
@@ -1082,6 +1092,7 @@ static unsigned int radeon_vga_set_decode(void *cookie, bool state)
 		       VGA_RSRC_NORMAL_IO | VGA_RSRC_NORMAL_MEM;
 	else
 		return VGA_RSRC_NORMAL_IO | VGA_RSRC_NORMAL_MEM;
+#endif
 }
 
 /**
@@ -1220,6 +1231,7 @@ static void radeon_check_arguments(struct radeon_device *rdev)
  * Callback for the switcheroo driver.  Suspends or resumes the
  * the asics before or after it is powered up using ACPI methods.
  */
+#ifdef notyet
 static void radeon_switcheroo_set_state(struct pci_dev *pdev, enum vga_switcheroo_state state)
 {
 	struct drm_device *dev = pci_get_drvdata(pdev);
@@ -1271,6 +1283,7 @@ static const struct vga_switcheroo_client_ops radeon_switcheroo_ops = {
 	.reprobe = NULL,
 	.can_switch = radeon_switcheroo_can_switch,
 };
+#endif
 
 /**
  * radeon_device_init - initialize the driver
@@ -1294,7 +1307,6 @@ int radeon_device_init(struct radeon_device *rdev,
 	bool runtime = false;
 
 	rdev->shutdown = false;
-	rdev->dev = &pdev->dev;
 	rdev->ddev = ddev;
 	rdev->pdev = pdev;
 	rdev->flags = flags;
@@ -1309,7 +1321,7 @@ int radeon_device_init(struct radeon_device *rdev,
 	}
 	rdev->fence_context = dma_fence_context_alloc(RADEON_NUM_RINGS);
 
-	DRM_INFO("initializing kernel modesetting (%s 0x%04X:0x%04X 0x%04X:0x%04X 0x%02X).\n",
+	printf("initializing kernel modesetting (%s 0x%04X:0x%04X 0x%04X:0x%04X 0x%02X).\n",
 		 radeon_family_name[rdev->family], pdev->vendor, pdev->device,
 		 pdev->subsystem_vendor, pdev->subsystem_device, pdev->revision);
 
@@ -1401,6 +1413,7 @@ int radeon_device_init(struct radeon_device *rdev,
 	mtx_init(&rdev->rcu_idx_lock, IPL_TTY);
 	mtx_init(&rdev->didt_idx_lock, IPL_TTY);
 	mtx_init(&rdev->end_idx_lock, IPL_TTY);
+#ifdef __linux__
 	if (rdev->family >= CHIP_BONAIRE) {
 		rdev->rmmio_base = pci_resource_start(rdev->pdev, 5);
 		rdev->rmmio_size = pci_resource_len(rdev->pdev, 5);
@@ -1411,12 +1424,14 @@ int radeon_device_init(struct radeon_device *rdev,
 	rdev->rmmio = ioremap(rdev->rmmio_base, rdev->rmmio_size);
 	if (rdev->rmmio == NULL)
 		return -ENOMEM;
+#endif
 
 	/* doorbell bar mapping */
 	if (rdev->family >= CHIP_BONAIRE)
 		radeon_doorbell_init(rdev);
 
 	/* io port mapping */
+#ifdef linux
 	for (i = 0; i < DEVICE_COUNT_RESOURCE; i++) {
 		if (pci_resource_flags(rdev->pdev, i) & IORESOURCE_IO) {
 			rdev->rio_mem_size = pci_resource_len(rdev->pdev, i);
@@ -1426,6 +1441,7 @@ int radeon_device_init(struct radeon_device *rdev,
 	}
 	if (rdev->rio_mem == NULL)
 		DRM_ERROR("Unable to find PCI I/O BAR\n");
+#endif
 
 	if (rdev->flags & RADEON_IS_PX)
 		radeon_device_handle_px_quirks(rdev);
@@ -1537,11 +1553,21 @@ void radeon_device_fini(struct radeon_device *rdev)
 	if (rdev->flags & RADEON_IS_PX)
 		vga_switcheroo_fini_domain_pm_ops(rdev->dev);
 	vga_client_register(rdev->pdev, NULL, NULL, NULL);
+#ifdef __linux__
 	if (rdev->rio_mem)
 		pci_iounmap(rdev->pdev, rdev->rio_mem);
 	rdev->rio_mem = NULL;
 	iounmap(rdev->rmmio);
 	rdev->rmmio = NULL;
+#else
+	if (rdev->rio_mem_size > 0)
+		bus_space_unmap(rdev->iot, rdev->rio_mem, rdev->rio_mem_size);
+	rdev->rio_mem_size = 0;
+
+	if (rdev->rmmio_size > 0)
+		bus_space_unmap(rdev->memt, rdev->rmmio_bsh, rdev->rmmio_size);
+	rdev->rmmio_size = 0;
+#endif
 	if (rdev->family >= CHIP_BONAIRE)
 		radeon_doorbell_fini(rdev);
 }
@@ -1573,9 +1599,13 @@ int radeon_suspend_kms(struct drm_device *dev, bool suspend,
 	}
 
 	rdev = dev->dev_private;
+	if (rdev->shutdown)
+		return 0;
 
+#ifdef notyet
 	if (dev->switch_power_state == DRM_SWITCH_POWER_OFF)
 		return 0;
+#endif
 
 	drm_kms_helper_poll_disable(dev);
 
@@ -1672,8 +1702,10 @@ int radeon_resume_kms(struct drm_device *dev, bool resume, bool fbcon)
 	struct drm_crtc *crtc;
 	int r;
 
+#ifdef notyet
 	if (dev->switch_power_state == DRM_SWITCH_POWER_OFF)
 		return 0;
+#endif
 
 	if (fbcon) {
 		console_lock();
