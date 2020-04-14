@@ -51,6 +51,7 @@
 #include <drm/radeon_drm.h>
 
 #include "radeon_drv.h"
+#include "radeon.h"
 
 /*
  * KMS wrapper.
@@ -138,7 +139,11 @@ extern int radeon_get_crtc_scanoutpos(struct drm_device *dev, unsigned int crtc,
 extern bool radeon_is_px(struct drm_device *dev);
 extern const struct drm_ioctl_desc radeon_ioctls_kms[];
 extern int radeon_max_kms_ioctl;
+#ifdef __linux__
 int radeon_mmap(struct file *filp, struct vm_area_struct *vma);
+#else
+struct uvm_object *radeon_mmap(struct drm_device *, voff_t, vsize_t);
+#endif
 int radeon_mode_dumb_mmap(struct drm_file *filp,
 			  struct drm_device *dev,
 			  uint32_t handle, uint64_t *offset_p);
@@ -161,10 +166,12 @@ void radeon_unregister_atpx_handler(void);
 bool radeon_has_atpx_dgpu_power_cntl(void);
 bool radeon_is_atpx_hybrid(void);
 #else
+#ifdef notyet
 static inline void radeon_register_atpx_handler(void) {}
 static inline void radeon_unregister_atpx_handler(void) {}
 static inline bool radeon_has_atpx_dgpu_power_cntl(void) { return false; }
 static inline bool radeon_is_atpx_hybrid(void) { return false; }
+#endif
 #endif
 
 int radeon_no_wb;
@@ -309,16 +316,19 @@ int radeon_cik_support = 1;
 MODULE_PARM_DESC(cik_support, "CIK support (1 = enabled (default), 0 = disabled)");
 module_param_named(cik_support, radeon_cik_support, int, 0444);
 
-static struct pci_device_id pciidlist[] = {
+const struct pci_device_id radeondrm_pciidlist[] = {
 	radeon_PCI_IDS
 };
 
 MODULE_DEVICE_TABLE(pci, pciidlist);
 
+#ifdef notyet
 static struct drm_driver kms_driver;
+#endif
 
 bool radeon_device_is_virtual(void);
 
+#ifdef __linux__
 static int radeon_pci_probe(struct pci_dev *pdev,
 			    const struct pci_device_id *ent)
 {
@@ -599,14 +609,23 @@ static const struct file_operations radeon_driver_kms_fops = {
 #endif
 };
 
-static struct drm_driver kms_driver = {
+#endif /* __linux__ */
+
+struct drm_driver kms_driver = {
 	.driver_features =
 	    DRIVER_GEM | DRIVER_RENDER,
+#ifdef notyet
 	.load = radeon_driver_load_kms,
+#endif
 	.open = radeon_driver_open_kms,
+#ifdef __OpenBSD__
+	.mmap = radeon_mmap,
+#endif
 	.postclose = radeon_driver_postclose_kms,
 	.lastclose = radeon_driver_lastclose_kms,
+#ifdef notyet
 	.unload = radeon_driver_unload_kms,
+#endif
 	.irq_preinstall = radeon_driver_irq_preinstall_kms,
 	.irq_postinstall = radeon_driver_irq_postinstall_kms,
 	.irq_uninstall = radeon_driver_irq_uninstall_kms,
@@ -615,19 +634,26 @@ static struct drm_driver kms_driver = {
 	.gem_free_object_unlocked = radeon_gem_object_free,
 	.gem_open_object = radeon_gem_object_open,
 	.gem_close_object = radeon_gem_object_close,
+#ifdef __OpenBSD__
+	.gem_size = sizeof(struct radeon_bo),
+#endif
 	.dumb_create = radeon_mode_dumb_create,
 	.dumb_map_offset = radeon_mode_dumb_mmap,
+#ifdef __linux__
 	.fops = &radeon_driver_kms_fops,
+#endif
 
 	.prime_handle_to_fd = drm_gem_prime_handle_to_fd,
 	.prime_fd_to_handle = drm_gem_prime_fd_to_handle,
 	.gem_prime_export = radeon_gem_prime_export,
+#ifdef notyet
 	.gem_prime_pin = radeon_gem_prime_pin,
 	.gem_prime_unpin = radeon_gem_prime_unpin,
 	.gem_prime_get_sg_table = radeon_gem_prime_get_sg_table,
 	.gem_prime_import_sg_table = radeon_gem_prime_import_sg_table,
 	.gem_prime_vmap = radeon_gem_prime_vmap,
 	.gem_prime_vunmap = radeon_gem_prime_vunmap,
+#endif
 
 	.name = DRIVER_NAME,
 	.desc = DRIVER_DESC,
@@ -637,7 +663,10 @@ static struct drm_driver kms_driver = {
 	.patchlevel = KMS_DRIVER_PATCHLEVEL,
 };
 
+#ifdef notyet
 static struct drm_driver *driver;
+#endif
+#ifdef __linux__
 static struct pci_driver *pdriver;
 
 static struct pci_driver radeon_kms_pci_driver = {
@@ -648,7 +677,9 @@ static struct pci_driver radeon_kms_pci_driver = {
 	.shutdown = radeon_pci_shutdown,
 	.driver.pm = &radeon_pm_ops,
 };
+#endif /* __linux__ */
 
+#ifdef notyet
 static int __init radeon_init(void)
 {
 	if (vgacon_text_force() && radeon_modeset == -1) {
@@ -662,7 +693,9 @@ static int __init radeon_init(void)
 	if (radeon_modeset == 1) {
 		DRM_INFO("radeon kernel modesetting enabled.\n");
 		driver = &kms_driver;
+#ifdef __linux__
 		pdriver = &radeon_kms_pci_driver;
+#endif
 		driver->driver_features |= DRIVER_MODESET;
 		driver->num_ioctls = radeon_max_kms_ioctl;
 		radeon_register_atpx_handler();
@@ -681,6 +714,7 @@ static void __exit radeon_exit(void)
 	radeon_unregister_atpx_handler();
 	mmu_notifier_synchronize();
 }
+#endif /* notyet */
 
 module_init(radeon_init);
 module_exit(radeon_exit);

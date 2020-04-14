@@ -488,6 +488,11 @@ struct drm_driver {
 				struct vm_area_struct *vma);
 #endif
 
+#ifdef __OpenBSD__
+	struct uvm_object *(*mmap)(struct drm_device *, voff_t, vsize_t);
+	size_t gem_size;
+#endif
+
 	/**
 	 * @dumb_create:
 	 *
