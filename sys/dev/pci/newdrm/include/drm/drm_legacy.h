@@ -94,6 +94,10 @@ typedef struct drm_dma_handle {
 	size_t size;
 } drm_dma_handle_t;
 
+struct drm_dmamem	*drm_dmamem_alloc(bus_dma_tag_t, bus_size_t, bus_size_t,
+			     int, bus_size_t, int, int);
+void			 drm_dmamem_free(bus_dma_tag_t, struct drm_dmamem *);
+
 /**
  * Buffer entry.  There is one of this for each buffer size order.
  */

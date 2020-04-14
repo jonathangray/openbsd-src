@@ -70,21 +70,23 @@
  */
 int radeon_gart_table_ram_alloc(struct radeon_device *rdev)
 {
-	void *ptr;
+	struct drm_dmamem *dmah;
+	int flags = 0;
 
-	ptr = pci_alloc_consistent(rdev->pdev, rdev->gart.table_size,
-				   &rdev->gart.table_addr);
-	if (ptr == NULL) {
-		return -ENOMEM;
-	}
 #ifdef CONFIG_X86
 	if (rdev->family == CHIP_RS400 || rdev->family == CHIP_RS480 ||
 	    rdev->family == CHIP_RS690 || rdev->family == CHIP_RS740) {
-		set_memory_uc((unsigned long)ptr,
-			      rdev->gart.table_size >> PAGE_SHIFT);
+		flags |= BUS_DMA_NOCACHE;
 	}
 #endif
-	rdev->gart.ptr = ptr;
+	dmah = drm_dmamem_alloc(rdev->dmat, rdev->gart.table_size,
+	    rdev->gart.table_size, 1, rdev->gart.table_size, flags, 0);
+	if (dmah == NULL) {
+		return -ENOMEM;
+	}
+	rdev->gart.dmah = dmah;
+	rdev->gart.table_addr = dmah->map->dm_segs[0].ds_addr;
+	rdev->gart.ptr = dmah->kva;
 	memset((void *)rdev->gart.ptr, 0, rdev->gart.table_size);
 	return 0;
 }
@@ -103,16 +105,14 @@ void radeon_gart_table_ram_free(struct radeon_device *rdev)
 	if (rdev->gart.ptr == NULL) {
 		return;
 	}
-#ifdef CONFIG_X86
+#if defined (CONFIG_X86) && defined(__linux__)
 	if (rdev->family == CHIP_RS400 || rdev->family == CHIP_RS480 ||
 	    rdev->family == CHIP_RS690 || rdev->family == CHIP_RS740) {
 		set_memory_wb((unsigned long)rdev->gart.ptr,
 			      rdev->gart.table_size >> PAGE_SHIFT);
 	}
 #endif
-	pci_free_consistent(rdev->pdev, rdev->gart.table_size,
-			    (void *)rdev->gart.ptr,
-			    rdev->gart.table_addr);
+	drm_dmamem_free(rdev->dmat, rdev->gart.dmah);
 	rdev->gart.ptr = NULL;
 	rdev->gart.table_addr = 0;
 }

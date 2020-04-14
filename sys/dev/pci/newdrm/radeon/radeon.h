@@ -79,6 +79,7 @@
 #include <drm/ttm/ttm_execbuf_util.h>
 
 #include <drm/drm_gem.h>
+#include <drm/drm_legacy.h>
 
 #include <dev/wscons/wsconsio.h>
 #include <dev/wscons/wsdisplayvar.h>
