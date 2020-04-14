@@ -5,6 +5,7 @@
 
 #include <sys/types.h>
 #include <sys/systm.h>
+#include <sys/memrange.h> /* for MDF_WRITECOMBINE */
 
 #include <linux/types.h>
 #include <linux/compiler.h>
@@ -69,5 +70,10 @@ iowrite64(u64 val, volatile void __iomem *addr)
 #define writel(v, p) iowrite32(v, p)
 #define readq(p) ioread64(p)
 #define writeq(v, p) iowrite64(v, p)
+
+int	drm_mtrr_add(unsigned long, size_t, int);
+int	drm_mtrr_del(int, unsigned long, size_t, int);
+
+#define DRM_MTRR_WC	MDF_WRITECOMBINE
 
 #endif

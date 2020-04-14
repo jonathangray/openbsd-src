@@ -12,6 +12,8 @@
 #include <drm/drm_hashtab.h>
 #include <drm/drm_mode_config.h>
 
+#include <sys/pool.h>
+
 struct drm_driver;
 struct drm_minor;
 struct drm_master;
@@ -289,6 +291,8 @@ struct drm_device {
 
 	/** @mode_config: Current mode config */
 	struct drm_mode_config mode_config;
+
+	struct pool objpl;
 
 	/** @object_name_lock: GEM information */
 	struct rwlock object_name_lock;
