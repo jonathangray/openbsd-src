@@ -62,4 +62,10 @@ static inline void drm_pci_free(struct drm_device *dev,
 
 int drm_getpciinfo(struct drm_device *, void *, struct drm_file *);
 
+int drm_pciprobe(struct pci_attach_args *, const struct pci_device_id * );
+const struct pci_device_id *drm_find_description(int, int,
+    const struct pci_device_id *);
+struct drm_device *drm_attach_pci(struct drm_driver *, struct pci_attach_args *,
+    int, int, struct device *, struct drm_device *);
+
 #endif /* _DRM_PCI_H_ */

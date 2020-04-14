@@ -69,6 +69,18 @@ struct pci_dev {
 };
 #define PCI_ANY_ID (uint16_t) (~0U)
 
+#ifndef PCI_MEM_START
+#define PCI_MEM_START	0
+#endif
+
+#ifndef PCI_MEM_END
+#define PCI_MEM_END	0xffffffff
+#endif
+
+#ifndef PCI_MEM64_END
+#define PCI_MEM64_END	0xffffffffffffffff
+#endif
+
 #define PCI_VENDOR_ID_APPLE	PCI_VENDOR_APPLE
 #define PCI_VENDOR_ID_ASUSTEK	PCI_VENDOR_ASUSTEK
 #define PCI_VENDOR_ID_ATI	PCI_VENDOR_ATI
