@@ -352,6 +352,7 @@ static void radeon_pm_print_states(struct radeon_device *rdev)
 	}
 }
 
+#ifdef notyet
 static ssize_t radeon_get_pm_profile(struct device *dev,
 				     struct device_attribute *attr,
 				     char *buf)
@@ -376,9 +377,11 @@ static ssize_t radeon_set_pm_profile(struct device *dev,
 	struct radeon_device *rdev = ddev->dev_private;
 
 	/* Can't set profile when the card is off */
+#ifdef notyet
 	if  ((rdev->flags & RADEON_IS_PX) &&
 	     (ddev->switch_power_state != DRM_SWITCH_POWER_ON))
 		return -EINVAL;
+#endif
 
 	mutex_lock(&rdev->pm.mutex);
 	if (rdev->pm.pm_method == PM_METHOD_PROFILE) {
@@ -428,12 +431,14 @@ static ssize_t radeon_set_pm_method(struct device *dev,
 	struct drm_device *ddev = dev_get_drvdata(dev);
 	struct radeon_device *rdev = ddev->dev_private;
 
+#ifdef notyet
 	/* Can't set method when the card is off */
 	if  ((rdev->flags & RADEON_IS_PX) &&
 	     (ddev->switch_power_state != DRM_SWITCH_POWER_ON)) {
 		count = -EINVAL;
 		goto fail;
 	}
+#endif
 
 	/* we don't support the legacy modes with dpm */
 	if (rdev->pm.pm_method == PM_METHOD_DPM) {
@@ -500,8 +505,10 @@ static ssize_t radeon_set_dpm_state(struct device *dev,
 	mutex_unlock(&rdev->pm.mutex);
 
 	/* Can't set dpm state when the card is off */
+#ifdef notyet
 	if (!(rdev->flags & RADEON_IS_PX) ||
 	    (ddev->switch_power_state == DRM_SWITCH_POWER_ON))
+#endif
 		radeon_pm_compute_clocks(rdev);
 
 fail:
@@ -516,9 +523,11 @@ static ssize_t radeon_get_dpm_forced_performance_level(struct device *dev,
 	struct radeon_device *rdev = ddev->dev_private;
 	enum radeon_dpm_forced_level level = rdev->pm.dpm.forced_level;
 
+#ifdef notyet
 	if  ((rdev->flags & RADEON_IS_PX) &&
 	     (ddev->switch_power_state != DRM_SWITCH_POWER_ON))
 		return snprintf(buf, PAGE_SIZE, "off\n");
+#endif
 
 	return snprintf(buf, PAGE_SIZE, "%s\n",
 			(level == RADEON_DPM_FORCED_LEVEL_AUTO) ? "auto" :
@@ -536,9 +545,11 @@ static ssize_t radeon_set_dpm_forced_performance_level(struct device *dev,
 	int ret = 0;
 
 	/* Can't force performance level when the card is off */
+#ifdef notyet
 	if  ((rdev->flags & RADEON_IS_PX) &&
 	     (ddev->switch_power_state != DRM_SWITCH_POWER_ON))
 		return -EINVAL;
+#endif
 
 	mutex_lock(&rdev->pm.mutex);
 	if (strncmp("low", buf, strlen("low")) == 0) {
@@ -565,7 +576,9 @@ fail:
 
 	return count;
 }
+#endif
 
+#ifdef notyet
 static ssize_t radeon_hwmon_get_pwm1_enable(struct device *dev,
 					    struct device_attribute *attr,
 					    char *buf)
@@ -781,6 +794,7 @@ static const struct attribute_group *hwmon_groups[] = {
 	&hwmon_attrgroup,
 	NULL
 };
+#endif
 
 static int radeon_hwmon_init(struct radeon_device *rdev)
 {
@@ -797,6 +811,7 @@ static int radeon_hwmon_init(struct radeon_device *rdev)
 	case THERMAL_TYPE_KV:
 		if (rdev->asic->pm.get_temperature == NULL)
 			return err;
+#ifdef notyet
 		rdev->pm.int_hwmon_dev = hwmon_device_register_with_groups(rdev->dev,
 									   "radeon", rdev,
 									   hwmon_groups);
@@ -805,6 +820,7 @@ static int radeon_hwmon_init(struct radeon_device *rdev)
 			dev_err(rdev->dev,
 				"Unable to register hwmon device: %d\n", err);
 		}
+#endif
 		break;
 	default:
 		break;
@@ -815,8 +831,10 @@ static int radeon_hwmon_init(struct radeon_device *rdev)
 
 static void radeon_hwmon_fini(struct radeon_device *rdev)
 {
+#ifdef notyet
 	if (rdev->pm.int_hwmon_dev)
 		hwmon_device_unregister(rdev->pm.int_hwmon_dev);
+#endif
 }
 
 static void radeon_dpm_thermal_work_handler(struct work_struct *work)
@@ -1542,6 +1560,7 @@ int radeon_pm_late_init(struct radeon_device *rdev)
 
 	if (rdev->pm.pm_method == PM_METHOD_DPM) {
 		if (rdev->pm.dpm_enabled) {
+#ifdef __linux__
 			if (!rdev->pm.sysfs_initialized) {
 				ret = device_create_file(rdev->dev, &dev_attr_power_dpm_state);
 				if (ret)
@@ -1558,6 +1577,7 @@ int radeon_pm_late_init(struct radeon_device *rdev)
 					DRM_ERROR("failed to create device file for power method\n");
 				rdev->pm.sysfs_initialized = true;
 			}
+#endif
 
 			mutex_lock(&rdev->pm.mutex);
 			ret = radeon_dpm_late_enable(rdev);
@@ -1573,6 +1593,7 @@ int radeon_pm_late_init(struct radeon_device *rdev)
 			}
 		}
 	} else {
+#ifdef __linux__
 		if ((rdev->pm.num_power_states > 1) &&
 		    (!rdev->pm.sysfs_initialized)) {
 			/* where's the best place to put these? */
@@ -1585,6 +1606,7 @@ int radeon_pm_late_init(struct radeon_device *rdev)
 			if (!ret)
 				rdev->pm.sysfs_initialized = true;
 		}
+#endif
 	}
 	return ret;
 }
