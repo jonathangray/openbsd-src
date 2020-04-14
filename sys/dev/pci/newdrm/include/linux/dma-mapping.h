@@ -10,5 +10,6 @@
 #define dma_set_coherent_mask(x, y)	0
 #define dma_set_max_seg_size(x, y)	0
 #define dma_set_mask_and_coherent(x, y)	0
+#define dma_addressing_limited(x)	false
 
 #endif

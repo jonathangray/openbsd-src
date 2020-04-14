@@ -53,6 +53,16 @@
 #include "radeon_reg.h"
 #include "radeon.h"
 
+#ifdef __amd64__
+#include "efifb.h"
+#endif
+
+#if NEFIFB > 0
+#include <machine/efifbvar.h>
+#endif
+
+#define DRM_FILE_PAGE_OFFSET (0x100000000ULL >> PAGE_SHIFT)
+
 static int radeon_ttm_debugfs_init(struct radeon_device *rdev);
 static void radeon_ttm_debugfs_fini(struct radeon_device *rdev);
 
@@ -175,12 +185,16 @@ static void radeon_evict_flags(struct ttm_buffer_object *bo,
 
 static int radeon_verify_access(struct ttm_buffer_object *bo, struct file *filp)
 {
+	STUB();
+	return 0;
+#ifdef notyet
 	struct radeon_bo *rbo = container_of(bo, struct radeon_bo, tbo);
 
 	if (radeon_ttm_tt_has_userptr(bo->ttm))
 		return -EPERM;
 	return drm_vma_node_verify_access(&rbo->tbo.base.vma_node,
 					  filp->private_data);
+#endif
 }
 
 static void radeon_move_null(struct ttm_buffer_object *bo,
@@ -479,6 +493,9 @@ struct radeon_ttm_tt {
 /* prepare the sg table with the user pages */
 static int radeon_ttm_tt_pin_userptr(struct ttm_tt *ttm)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct radeon_device *rdev = radeon_get_rdev(ttm->bdev);
 	struct radeon_ttm_tt *gtt = (void *)ttm;
 	unsigned pinned = 0, nents;
@@ -537,10 +554,13 @@ release_sg:
 release_pages:
 	release_pages(ttm->pages, pinned);
 	return r;
+#endif
 }
 
 static void radeon_ttm_tt_unpin_userptr(struct ttm_tt *ttm)
 {
+	STUB();
+#ifdef notyet
 	struct radeon_device *rdev = radeon_get_rdev(ttm->bdev);
 	struct radeon_ttm_tt *gtt = (void *)ttm;
 	struct sg_page_iter sg_iter;
@@ -566,6 +586,7 @@ static void radeon_ttm_tt_unpin_userptr(struct ttm_tt *ttm)
 	}
 
 	sg_free_table(ttm->sg);
+#endif
 }
 
 static int radeon_ttm_backend_bind(struct ttm_tt *ttm,
@@ -633,7 +654,7 @@ static struct ttm_tt *radeon_ttm_tt_create(struct ttm_buffer_object *bo,
 	rdev = radeon_get_rdev(bo->bdev);
 #if IS_ENABLED(CONFIG_AGP)
 	if (rdev->flags & RADEON_IS_AGP) {
-		return ttm_agp_tt_create(bo, rdev->ddev->agp->bridge,
+		return ttm_agp_tt_create(bo, rdev->ddev->agp,
 					 page_flags);
 	}
 #endif
@@ -676,8 +697,10 @@ static int radeon_ttm_tt_populate(struct ttm_tt *ttm,
 	}
 
 	if (slave && ttm->sg) {
+#ifdef notyet
 		drm_prime_sg_to_page_addr_arrays(ttm->sg, ttm->pages,
 						 gtt->ttm.dma_address, ttm->num_pages);
+#endif
 		ttm->state = tt_unbound;
 		return 0;
 	}
@@ -734,6 +757,9 @@ static void radeon_ttm_tt_unpopulate(struct ttm_tt *ttm)
 int radeon_ttm_tt_set_userptr(struct ttm_tt *ttm, uint64_t addr,
 			      uint32_t flags)
 {
+	STUB();
+	return -ENOSYS;
+#if 0
 	struct radeon_ttm_tt *gtt = radeon_ttm_tt_to_gtt(ttm);
 
 	if (gtt == NULL)
@@ -743,6 +769,7 @@ int radeon_ttm_tt_set_userptr(struct ttm_tt *ttm, uint64_t addr,
 	gtt->usermm = current->mm;
 	gtt->userflags = flags;
 	return 0;
+#endif
 }
 
 bool radeon_ttm_tt_has_userptr(struct ttm_tt *ttm)
@@ -783,17 +810,33 @@ static struct ttm_bo_driver radeon_bo_driver = {
 int radeon_ttm_init(struct radeon_device *rdev)
 {
 	int r;
+	unsigned long stolen_size = 0;
+
+#if NEFIFB > 0
+	stolen_size = efifb_stolen();
+#endif
 
 	/* No others user of address space so set it to 0 */
+#ifdef notyet
 	r = ttm_bo_device_init(&rdev->mman.bdev,
 			       &radeon_bo_driver,
 			       rdev->ddev->anon_inode->i_mapping,
 			       rdev->ddev->vma_offset_manager,
 			       dma_addressing_limited(&rdev->pdev->dev));
+#else
+	r = ttm_bo_device_init(&rdev->mman.bdev,
+			       &radeon_bo_driver,
+			       /*rdev->ddev->anon_inode->i_mapping*/ NULL,
+			       rdev->ddev->vma_offset_manager,
+			       dma_addressing_limited(&rdev->pdev->dev));
+#endif
 	if (r) {
 		DRM_ERROR("failed initializing buffer object driver(%d).\n", r);
 		return r;
 	}
+	rdev->mman.bdev.iot = rdev->iot;
+	rdev->mman.bdev.memt = rdev->memt;
+	rdev->mman.bdev.dmat = rdev->dmat;
 	rdev->mman.initialized = true;
 	r = ttm_bo_init_mm(&rdev->mman.bdev, TTM_PL_VRAM,
 				rdev->mc.real_vram_size >> PAGE_SHIFT);
@@ -804,9 +847,15 @@ int radeon_ttm_init(struct radeon_device *rdev)
 	/* Change the size here instead of the init above so only lpfn is affected */
 	radeon_ttm_set_active_vram_size(rdev, rdev->mc.visible_vram_size);
 
-	r = radeon_bo_create(rdev, 256 * 1024, PAGE_SIZE, true,
+#ifdef __sparc64__
+	r = radeon_bo_create(rdev, rdev->fb_offset, PAGE_SIZE, true,
 			     RADEON_GEM_DOMAIN_VRAM, 0, NULL,
 			     NULL, &rdev->stolen_vga_memory);
+#else
+	r = radeon_bo_create(rdev, stolen_size, PAGE_SIZE, true,
+			     RADEON_GEM_DOMAIN_VRAM, 0, NULL,
+			     NULL, &rdev->stolen_vga_memory);
+#endif
 	if (r) {
 		return r;
 	}
@@ -875,6 +924,8 @@ void radeon_ttm_set_active_vram_size(struct radeon_device *rdev, u64 size)
 	man->size = size >> PAGE_SHIFT;
 }
 
+#ifdef __linux__
+
 static vm_fault_t radeon_ttm_fault(struct vm_fault *vmf)
 {
 	struct ttm_buffer_object *bo;
@@ -915,6 +966,58 @@ int radeon_mmap(struct file *filp, struct vm_area_struct *vma)
 	vma->vm_ops = &radeon_ttm_vm_ops;
 	return 0;
 }
+#else
+
+static struct uvm_pagerops radeon_ttm_vm_ops;
+static const struct uvm_pagerops *ttm_vm_ops = NULL;
+
+static int
+radeon_ttm_fault(struct uvm_faultinfo *ufi, vaddr_t vaddr, vm_page_t *pps,
+    int npages, int centeridx, vm_fault_t fault_type,
+    vm_prot_t access_type, int flags)
+{
+	struct ttm_buffer_object *bo;
+	struct radeon_device *rdev;
+	int r;
+
+	bo = (struct ttm_buffer_object *)ufi->entry->object.uvm_obj;
+	rdev = radeon_get_rdev(bo->bdev);
+	down_read(&rdev->pm.mclk_lock);
+	r = ttm_vm_ops->pgo_fault(ufi, vaddr, pps, npages, centeridx,
+				  fault_type, access_type, flags);
+	up_read(&rdev->pm.mclk_lock);
+	return r;
+}
+
+struct uvm_object *
+radeon_mmap(struct drm_device *dev, voff_t off, vsize_t size)
+{
+	struct radeon_device *rdev = dev->dev_private;
+	struct uvm_object *uobj;
+
+	if (unlikely(off < DRM_FILE_PAGE_OFFSET))
+		return NULL;
+
+#if 0
+	file_priv = filp->private_data;
+	rdev = file_priv->minor->dev->dev_private;
+	if (rdev == NULL) {
+		return -EINVAL;
+	}
+#endif
+	uobj = ttm_bo_mmap(off, size, &rdev->mman.bdev);
+	if (unlikely(uobj == NULL)) {
+		return NULL;
+	}
+	if (unlikely(ttm_vm_ops == NULL)) {
+		ttm_vm_ops = uobj->pgops;
+		radeon_ttm_vm_ops = *ttm_vm_ops;
+		radeon_ttm_vm_ops.pgo_fault = &radeon_ttm_fault;
+	}
+	uobj->pgops = &radeon_ttm_vm_ops;
+	return uobj;
+}
+#endif
 
 #if defined(CONFIG_DEBUG_FS)
 
@@ -1027,7 +1130,7 @@ static ssize_t radeon_ttm_gtt_read(struct file *f, char __user *buf,
 			ptr += off;
 
 			r = copy_to_user(buf, ptr, cur_size);
-			kunmap(rdev->gart.pages[p]);
+			kunmap(ptr);
 		} else
 			r = clear_user(buf, cur_size);
 

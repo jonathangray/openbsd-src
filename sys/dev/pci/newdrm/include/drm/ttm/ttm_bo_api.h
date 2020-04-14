@@ -42,6 +42,8 @@
 #include <linux/bitmap.h>
 #include <linux/dma-resv.h>
 
+#include <uvm/uvm_extern.h>
+
 struct ttm_bo_global;
 
 struct ttm_bo_device;
@@ -743,5 +745,7 @@ void ttm_bo_vm_close(struct vm_area_struct *vma);
 int ttm_bo_vm_access(struct vm_area_struct *vma, unsigned long addr,
 		     void *buf, int len, int write);
 #endif /* notyet */
+
+struct uvm_object *ttm_bo_mmap(voff_t, vsize_t, struct ttm_bo_device *);
 
 #endif
