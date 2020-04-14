@@ -1064,7 +1064,7 @@ static inline bool radeon_test_signaled(struct radeon_fence *fence)
 
 struct radeon_wait_cb {
 	struct dma_fence_cb base;
-	struct task_struct *task;
+	void *task;
 };
 
 static void
@@ -1083,7 +1083,7 @@ static signed long radeon_fence_default_wait(struct dma_fence *f, bool intr,
 	struct radeon_device *rdev = fence->rdev;
 	struct radeon_wait_cb cb;
 
-	cb.task = current;
+	cb.task = curproc;
 
 	if (dma_fence_add_callback(f, &cb.base, radeon_fence_wait_cb))
 		return t;
@@ -1106,6 +1106,7 @@ static signed long radeon_fence_default_wait(struct dma_fence *f, bool intr,
 			break;
 		}
 
+		KASSERT(sch_ident != NULL);
 		t = schedule_timeout(t);
 
 		if (t > 0 && intr && signal_pending(current))
