@@ -32,6 +32,8 @@
 
 #include <drm/drm_device.h>
 
+#include <uvm/uvm_extern.h>
+
 struct drm_file;
 struct drm_gem_object;
 struct drm_master;
