@@ -205,7 +205,7 @@ void radeon_driver_irq_uninstall_kms(struct drm_device *dev)
  * Returns true if MSIs should be enabled, false if MSIs
  * should not be enabled.
  */
-static bool radeon_msi_ok(struct radeon_device *rdev)
+bool radeon_msi_ok(struct radeon_device *rdev)
 {
 	/* RV370/RV380 was first asic with MSI support */
 	if (rdev->family < CHIP_RV380)
