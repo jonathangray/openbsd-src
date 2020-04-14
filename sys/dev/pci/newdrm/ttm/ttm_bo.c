@@ -60,6 +60,12 @@ static struct attribute ttm_bo_count = {
 };
 #endif
 
+struct kobject *
+ttm_get_kobj(void)
+{
+	return (NULL);
+}
+
 /* default destructor */
 static void ttm_bo_default_destroy(struct ttm_buffer_object *bo)
 {
