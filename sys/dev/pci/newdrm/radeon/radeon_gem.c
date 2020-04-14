@@ -85,7 +85,11 @@ retry:
 		return r;
 	}
 	*obj = &robj->tbo.base;
+#ifdef __linux__
 	robj->pid = task_pid_nr(current);
+#else
+	robj->pid = curproc->p_p->ps_pid;
+#endif
 
 	mutex_lock(&rdev->gem.mutex);
 	list_add_tail(&robj->list, &rdev->gem.objects);
@@ -289,6 +293,8 @@ int radeon_gem_create_ioctl(struct drm_device *dev, void *data,
 int radeon_gem_userptr_ioctl(struct drm_device *dev, void *data,
 			     struct drm_file *filp)
 {
+	return -ENOSYS;
+#ifdef notyet
 	struct ttm_operation_ctx ctx = { true, false };
 	struct radeon_device *rdev = dev->dev_private;
 	struct drm_radeon_gem_userptr *args = data;
@@ -375,6 +381,7 @@ handle_lockup:
 	r = radeon_gem_handle_lockup(rdev, r);
 
 	return r;
+#endif
 }
 
 int radeon_gem_set_domain_ioctl(struct drm_device *dev, void *data,
