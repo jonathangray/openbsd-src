@@ -130,8 +130,7 @@ static int radeon_cs_parser_relocs(struct radeon_cs_parser *p)
 		 * IGP chips to avoid image corruptions
 		 */
 		if (p->ring == R600_RING_TYPE_UVD_INDEX &&
-		    (i <= 0 || pci_find_capability(p->rdev->ddev->pdev,
-						   PCI_CAP_ID_AGP) ||
+		    (i <= 0 || (p->rdev->flags & RADEON_IS_AGP) ||
 		     p->rdev->family == CHIP_RS780 ||
 		     p->rdev->family == CHIP_RS880)) {
 
@@ -195,13 +194,17 @@ static int radeon_cs_parser_relocs(struct radeon_cs_parser *p)
 	if (p->cs_flags & RADEON_CS_USE_VM)
 		p->vm_bos = radeon_vm_get_bos(p->rdev, p->ib.vm,
 					      &p->validated);
+#ifdef notyet
 	if (need_mmap_lock)
 		down_read(&current->mm->mmap_sem);
+#endif
 
 	r = radeon_bo_list_validate(p->rdev, &p->ticket, &p->validated, p->ring);
 
+#ifdef notyet
 	if (need_mmap_lock)
 		up_read(&current->mm->mmap_sem);
+#endif
 
 	return r;
 }
