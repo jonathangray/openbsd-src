@@ -104,8 +104,37 @@ int radeon_vce_init(struct radeon_device *rdev)
 		return -EINVAL;
 
 	c += strlen(fw_version);
+#ifdef notyet
 	if (sscanf(c, "%2hhd.%2hhd.%2hhd]", &start, &mid, &end) != 3)
 		return -EINVAL;
+#else
+#if 0
+	int x;
+	printf("\n%s A\n", __func__);
+	for (x = 0; x < 16; x++) {
+		printf("%02x ", c[x]);
+	}
+#endif
+	if (c[2] != '.') {
+		printf("%s %s bad start value\n", rdev->self.dv_xname, __func__);
+		return -EINVAL;
+	}
+	start = (10 * (c[0] - '0')) + (c[1] - '0');
+	c += 3;
+
+	if (c[1] != '.') {
+		printf("%s %s bad mid value\n", rdev->self.dv_xname, __func__);
+		return -EINVAL;
+	}
+	mid = c[0] - '0';
+	c += 2;
+
+	if (c[1] != ']') {
+		printf("%s %s bad end value\n", rdev->self.dv_xname, __func__);
+		return -EINVAL;
+	}
+	end = c[0] - '0';
+#endif
 
 	/* search for feedback version */
 
@@ -119,10 +148,25 @@ int radeon_vce_init(struct radeon_device *rdev)
 		return -EINVAL;
 
 	c += strlen(fb_version);
+#ifdef notyet
 	if (sscanf(c, "%2u]", &rdev->vce.fb_version) != 1)
 		return -EINVAL;
+#else
+#if 0
+	printf("\n%s B\n", __func__);
+	for (x = 0; x < 16; x++) {
+		printf("%02x ", c[x]);
+	}
+	printf("\n");
+#endif
+	if (c[2] != ']') {
+		printf("%s %s bad fb_version value\n", rdev->self.dv_xname, __func__);
+		return -EINVAL;
+	}
+	rdev->vce.fb_version = (10 * (c[0] - '0')) + (c[1] - '0');
+#endif
 
-	DRM_INFO("Found VCE firmware/feedback version %hhd.%hhd.%hhd / %d!\n",
+	DRM_INFO("Found VCE firmware/feedback version %d.%d.%d / %d!\n",
 		 start, mid, end, rdev->vce.fb_version);
 
 	rdev->vce.fw_version = (start << 24) | (mid << 16) | (end << 8);
