@@ -128,6 +128,7 @@ bool drm_master_internal_acquire(struct drm_device *dev);
 void drm_master_internal_release(struct drm_device *dev);
 
 /* drm_sysfs.c */
+#ifdef __linux__
 extern struct class *drm_class;
 
 int drm_sysfs_init(void);
@@ -137,6 +138,24 @@ int drm_sysfs_connector_add(struct drm_connector *connector);
 void drm_sysfs_connector_remove(struct drm_connector *connector);
 
 void drm_sysfs_lease_event(struct drm_device *dev);
+#else
+static inline struct device *
+drm_sysfs_minor_alloc(struct drm_minor *minor)
+{
+	return ERR_PTR(-ENOSYS);
+}
+
+static inline int
+drm_sysfs_connector_add(struct drm_connector *connector)
+{
+	return 0;
+}
+
+static inline void
+drm_sysfs_connector_remove(struct drm_connector *connector)
+{
+}
+#endif
 
 /* drm_gem.c */
 struct drm_gem_object;
