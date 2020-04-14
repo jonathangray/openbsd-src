@@ -48,6 +48,7 @@ struct radeon_fbdev {
 	struct radeon_device *rdev;
 };
 
+#ifdef __linux__
 static int
 radeonfb_open(struct fb_info *info, int user)
 {
@@ -82,7 +83,9 @@ static const struct fb_ops radeonfb_ops = {
 	.fb_copyarea = drm_fb_helper_cfb_copyarea,
 	.fb_imageblit = drm_fb_helper_cfb_imageblit,
 };
+#endif
 
+void radeondrm_burner_cb(void *);
 
 int radeon_align_pitch(struct radeon_device *rdev, int width, int cpp, bool tiled)
 {
@@ -215,6 +218,7 @@ static int radeonfb_create(struct drm_fb_helper *helper,
 		container_of(helper, struct radeon_fbdev, helper);
 	struct radeon_device *rdev = rfbdev->rdev;
 	struct fb_info *info;
+	struct rasops_info *ri = &rdev->ro;
 	struct drm_framebuffer *fb = NULL;
 	struct drm_mode_fb_cmd2 mode_cmd;
 	struct drm_gem_object *gobj = NULL;
@@ -263,9 +267,12 @@ static int radeonfb_create(struct drm_fb_helper *helper,
 
 	memset_io(rbo->kptr, 0x0, radeon_bo_size(rbo));
 
+#ifdef __linux__
 	info->fbops = &radeonfb_ops;
+#endif
 
 	tmp = radeon_bo_gpu_offset(rbo) - rdev->mc.vram_start;
+#ifdef __linux__
 	info->fix.smem_start = rdev->mc.aper_base + tmp;
 	info->fix.smem_len = radeon_bo_size(rbo);
 	info->screen_base = rbo->kptr;
@@ -276,19 +283,47 @@ static int radeonfb_create(struct drm_fb_helper *helper,
 	/* setup aperture base/size for vesafb takeover */
 	info->apertures->ranges[0].base = rdev->ddev->mode_config.fb_base;
 	info->apertures->ranges[0].size = rdev->mc.aper_size;
+#endif
 
 	/* Use default scratch pixmap (info->pixmap.flags = FB_PIXMAP_SYSTEM) */
 
+#ifdef __linux__
 	if (info->screen_base == NULL) {
 		ret = -ENOSPC;
 		goto out;
 	}
 
 	DRM_INFO("fb mappable at 0x%lX\n",  info->fix.smem_start);
+#endif
 	DRM_INFO("vram apper at 0x%lX\n",  (unsigned long)rdev->mc.aper_base);
 	DRM_INFO("size %lu\n", (unsigned long)radeon_bo_size(rbo));
 	DRM_INFO("fb depth is %d\n", fb->format->depth);
 	DRM_INFO("   pitch is %d\n", fb->pitches[0]);
+
+	ri->ri_bits = rbo->kptr;
+	ri->ri_depth = fb->format->cpp[0] * 8;
+	ri->ri_stride = fb->pitches[0];
+	ri->ri_width = sizes->fb_width;
+	ri->ri_height = sizes->fb_height;
+
+	switch (fb->format->format) {
+	case DRM_FORMAT_XRGB8888:
+		ri->ri_rnum = 8;
+		ri->ri_rpos = 16;
+		ri->ri_gnum = 8;
+		ri->ri_gpos = 8;
+		ri->ri_bnum = 8;
+		ri->ri_bpos = 0;
+		break;
+	case DRM_FORMAT_RGB565:
+		ri->ri_rnum = 5;
+		ri->ri_rpos = 11;
+		ri->ri_gnum = 6;
+		ri->ri_gpos = 5;
+		ri->ri_bnum = 5;
+		ri->ri_bpos = 0;
+		break;
+	}
 
 	vga_switcheroo_client_fb_set(rdev->ddev->pdev, info);
 	return 0;
@@ -306,6 +341,7 @@ out:
 	return ret;
 }
 
+#ifdef notyet
 static int radeon_fbdev_destroy(struct drm_device *dev, struct radeon_fbdev *rfbdev)
 {
 	struct drm_framebuffer *fb = &rfbdev->fb;
@@ -322,6 +358,7 @@ static int radeon_fbdev_destroy(struct drm_device *dev, struct radeon_fbdev *rfb
 
 	return 0;
 }
+#endif
 
 static const struct drm_fb_helper_funcs radeon_fb_helper_funcs = {
 	.fb_probe = radeonfb_create,
@@ -358,6 +395,31 @@ int radeon_fbdev_init(struct radeon_device *rdev)
 	if (ret)
 		goto free;
 
+	task_set(&rdev->burner_task, radeondrm_burner_cb, rdev);
+
+#ifdef __sparc64__
+{
+	struct drm_fb_helper *fb_helper = &rfbdev->helper;
+	struct drm_fb_helper_connector *fb_helper_conn;
+	int i;
+
+	for (i = 0; i < fb_helper->connector_count; i++) {
+		struct drm_cmdline_mode *mode;
+		struct drm_connector *connector;
+
+		fb_helper_conn = fb_helper->connector_info[i];
+		connector = fb_helper_conn->connector;
+		mode = &connector->cmdline_mode;
+
+		mode->specified = true;
+		mode->xres = rdev->sf.sf_width;
+		mode->yres = rdev->sf.sf_height;
+		mode->bpp_specified = true;
+		mode->bpp = rdev->sf.sf_depth;
+	}
+}
+#endif
+
 	/* disable all the possible outputs/crtcs before entering KMS mode */
 	drm_helper_disable_unused_functions(rdev->ddev);
 
@@ -379,7 +441,11 @@ void radeon_fbdev_fini(struct radeon_device *rdev)
 	if (!rdev->mode_info.rfbdev)
 		return;
 
+	task_del(systq, &rdev->burner_task);
+
+#ifdef notyet
 	radeon_fbdev_destroy(rdev->ddev, rdev->mode_info.rfbdev);
+#endif
 	kfree(rdev->mode_info.rfbdev);
 	rdev->mode_info.rfbdev = NULL;
 }
@@ -398,4 +464,37 @@ bool radeon_fbdev_robj_is_fb(struct radeon_device *rdev, struct radeon_bo *robj)
 	if (robj == gem_to_radeon_bo(rdev->mode_info.rfbdev->fb.obj[0]))
 		return true;
 	return false;
+}
+
+void
+radeondrm_burner(void *v, u_int on, u_int flags)
+{
+	struct rasops_info *ri = v;
+	struct radeon_device *rdev = ri->ri_hw;
+
+	task_del(systq, &rdev->burner_task);
+
+	if (on)
+		rdev->burner_fblank = FB_BLANK_UNBLANK;
+	else {
+		if (flags & WSDISPLAY_BURN_VBLANK)
+			rdev->burner_fblank = FB_BLANK_VSYNC_SUSPEND;
+		else
+			rdev->burner_fblank = FB_BLANK_NORMAL;
+	}
+
+	/*
+	 * Setting the DPMS mode may sleep while waiting for vblank so
+	 * hand things off to a taskq.
+	 */
+	task_add(systq, &rdev->burner_task);
+}
+
+void
+radeondrm_burner_cb(void *arg1)
+{
+	struct radeon_device *rdev = arg1;
+	struct drm_fb_helper *helper = &rdev->mode_info.rfbdev->helper;
+
+	drm_fb_helper_blank(rdev->burner_fblank, helper->fbdev);
 }
