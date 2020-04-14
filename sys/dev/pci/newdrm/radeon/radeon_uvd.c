@@ -155,7 +155,7 @@ int radeon_uvd_init(struct radeon_device *rdev)
 			family_id = le32_to_cpu(hdr->ucode_version) & 0xff;
 			version_major = (le32_to_cpu(hdr->ucode_version) >> 24) & 0xff;
 			version_minor = (le32_to_cpu(hdr->ucode_version) >> 8) & 0xff;
-			DRM_INFO("Found UVD firmware Version: %hu.%hu Family ID: %hu\n",
+			DRM_INFO("Found UVD firmware Version: %u.%u Family ID: %u\n",
 				 version_major, version_minor, family_id);
 
 			/*
@@ -615,7 +615,7 @@ static int radeon_uvd_cs_reloc(struct radeon_cs_parser *p,
 	}
 
 	if ((start >> 28) != ((end - 1) >> 28)) {
-		DRM_ERROR("reloc %LX-%LX crossing 256MB boundary!\n",
+		DRM_ERROR("reloc %llX-%llX crossing 256MB boundary!\n",
 			  start, end);
 		return -EINVAL;
 	}
@@ -623,7 +623,7 @@ static int radeon_uvd_cs_reloc(struct radeon_cs_parser *p,
 	/* TODO: is this still necessary on NI+ ? */
 	if ((cmd == 0 || cmd == 0x3) &&
 	    (start >> 28) != (p->rdev->uvd.gpu_addr >> 28)) {
-		DRM_ERROR("msg/fb buffer %LX-%LX out of 256MB segment!\n",
+		DRM_ERROR("msg/fb buffer %llX-%llX out of 256MB segment!\n",
 			  start, end);
 		return -EINVAL;
 	}
