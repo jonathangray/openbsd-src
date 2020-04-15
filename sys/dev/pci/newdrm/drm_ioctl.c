@@ -28,6 +28,8 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
+#include <sys/filio.h>
+
 #include <linux/export.h>
 #include <linux/nospec.h>
 #include <linux/pci.h>
@@ -997,3 +999,120 @@ bool drm_ioctl_flags(unsigned int nr, unsigned int *flags)
 	return true;
 }
 EXPORT_SYMBOL(drm_ioctl_flags);
+
+int
+drm_do_ioctl(struct drm_device *dev, int minor, u_long cmd, caddr_t data)
+{
+	struct drm_file *file_priv;
+	const struct drm_ioctl_desc *ioctl;
+	drm_ioctl_t *func;
+	unsigned int nr = DRM_IOCTL_NR(cmd);
+	int retcode = -EINVAL;
+	unsigned int usize, asize;
+
+	mutex_lock(&dev->struct_mutex);
+	file_priv = drm_find_file_by_minor(dev, minor);
+	mutex_unlock(&dev->struct_mutex);
+	if (file_priv == NULL) {
+		DRM_ERROR("can't find authenticator\n");
+		return -EINVAL;
+	}
+
+	DRM_DEBUG("pid=%d, cmd=0x%02lx, nr=0x%02x, dev 0x%lx, auth=%d\n",
+	    curproc->p_p->ps_pid, cmd, (u_int)DRM_IOCTL_NR(cmd), (long)&dev->dev,
+	    file_priv->authenticated);
+
+	switch (cmd) {
+	case FIONBIO:
+	case FIOASYNC:
+		return 0;
+	}
+
+	if ((nr >= DRM_CORE_IOCTL_COUNT) &&
+	    ((nr < DRM_COMMAND_BASE) || (nr >= DRM_COMMAND_END)))
+		return (-EINVAL);
+	if ((nr >= DRM_COMMAND_BASE) && (nr < DRM_COMMAND_END) &&
+	    (nr < DRM_COMMAND_BASE + dev->driver->num_ioctls)) {
+		uint32_t drv_size;
+		ioctl = &dev->driver->ioctls[nr - DRM_COMMAND_BASE];
+		drv_size = IOCPARM_LEN(ioctl->cmd);
+		usize = asize = IOCPARM_LEN(cmd);
+		if (drv_size > asize)
+			asize = drv_size;
+	} else if ((nr >= DRM_COMMAND_END) || (nr < DRM_COMMAND_BASE)) {
+		uint32_t drv_size;
+		ioctl = &drm_ioctls[nr];
+
+		drv_size = IOCPARM_LEN(ioctl->cmd);
+		usize = asize = IOCPARM_LEN(cmd);
+		if (drv_size > asize)
+			asize = drv_size;
+		cmd = ioctl->cmd;
+	} else
+		return (-EINVAL);
+
+	func = ioctl->func;
+	if (!func) {
+		DRM_DEBUG("no function\n");
+		return (-EINVAL);
+	}
+
+	/* ROOT_ONLY is only for CAP_SYS_ADMIN */
+	if ((ioctl->flags & DRM_ROOT_ONLY) && !capable(CAP_SYS_ADMIN))
+		return -EACCES;
+
+	/* AUTH is only for authenticated or render client */
+	if ((ioctl->flags & DRM_AUTH) && !drm_is_render_client(file_priv) &&
+	    !file_priv->authenticated)
+		return -EACCES;
+		
+	/* MASTER is only for master or control clients */
+	if ((ioctl->flags & DRM_MASTER) && !file_priv->is_master)
+		return -EACCES;
+
+	/* Render clients must be explicitly allowed */
+	if (!(ioctl->flags & DRM_RENDER_ALLOW) &&
+	    drm_is_render_client(file_priv))
+		return -EACCES;
+
+	if (ioctl->flags & DRM_UNLOCKED)
+		retcode = func(dev, data, file_priv);
+	else {
+		/* XXX lock */
+		retcode = func(dev, data, file_priv);
+		/* XXX unlock */
+	}
+
+	return (retcode);
+}
+
+/* drmioctl is called whenever a process performs an ioctl on /dev/drm.
+ */
+int
+drmioctl(dev_t kdev, u_long cmd, caddr_t data, int flags, struct proc *p)
+{
+	struct drm_device *dev = drm_get_device_from_kdev(kdev);
+	int error;
+
+	if (dev == NULL)
+		return ENODEV;
+
+	mtx_enter(&dev->quiesce_mtx);
+	while (dev->quiesce)
+		msleep_nsec(&dev->quiesce, &dev->quiesce_mtx, PZERO, "drmioc",
+		    INFSLP);
+	dev->quiesce_count++;
+	mtx_leave(&dev->quiesce_mtx);
+
+	error = -drm_do_ioctl(dev, minor(kdev), cmd, data);
+	if (error < 0 && error != ERESTART && error != EJUSTRETURN)
+		printf("%s: cmd 0x%lx errno %d\n", __func__, cmd, error);
+
+	mtx_enter(&dev->quiesce_mtx);
+	dev->quiesce_count--;
+	if (dev->quiesce)
+		wakeup(&dev->quiesce_count);
+	mtx_leave(&dev->quiesce_mtx);
+
+	return (error);
+}
