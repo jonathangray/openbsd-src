@@ -211,9 +211,8 @@ out_prime_destroy:
 #endif
 }
 
-static void drm_events_release(struct drm_file *file_priv)
+void drm_events_release(struct drm_file *file_priv, struct drm_device *dev)
 {
-	struct drm_device *dev = file_priv->minor->dev;
 	struct drm_pending_event *e, *et;
 	unsigned long flags;
 
@@ -467,6 +466,7 @@ err_undo:
 }
 EXPORT_SYMBOL(drm_open);
 
+#ifdef notyet
 void drm_lastclose(struct drm_device * dev)
 {
 	DRM_DEBUG("\n");
@@ -480,6 +480,7 @@ void drm_lastclose(struct drm_device * dev)
 
 	drm_client_dev_restore(dev);
 }
+#endif
 
 /**
  * drm_release - release method for DRM file

@@ -8,9 +8,11 @@
 #include <linux/kref.h>
 #include <linux/mutex.h>
 #include <linux/idr.h>
+#include <linux/pci.h>
 
 #include <drm/drm_hashtab.h>
 #include <drm/drm_mode_config.h>
+#include <uapi/drm/drm.h> /* for drm_magic_t */
 
 #include <sys/pool.h>
 
@@ -79,6 +81,7 @@ struct drm_device {
 	bus_space_tag_t		bst;
 
 	struct klist note;
+	struct pci_dev  _pdev;
 
 	struct mutex	quiesce_mtx;
 	int		quiesce;
@@ -167,7 +170,14 @@ struct drm_device {
 	 *
 	 * List of userspace clients, linked through &drm_file.lhead.
 	 */
+#ifdef __linux__
 	struct list_head filelist;
+#else
+	SPLAY_HEAD(drm_file_tree, drm_file)	files;
+	drm_magic_t magicid;
+#endif
+
+	int unique_len;
 
 	/**
 	 * @filelist_internal:

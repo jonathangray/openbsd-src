@@ -61,6 +61,7 @@
  * trusted clients.
  */
 
+#ifdef notyet
 int drm_getmagic(struct drm_device *dev, void *data, struct drm_file *file_priv)
 {
 	struct drm_auth *auth = data;
@@ -99,6 +100,7 @@ int drm_authmagic(struct drm_device *dev, void *data,
 
 	return file ? 0 : -EINVAL;
 }
+#endif
 
 struct drm_master *drm_master_create(struct drm_device *dev)
 {
@@ -245,6 +247,9 @@ out_unlock:
 
 int drm_master_open(struct drm_file *file_priv)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct drm_device *dev = file_priv->minor->dev;
 	int ret = 0;
 
@@ -258,10 +263,13 @@ int drm_master_open(struct drm_file *file_priv)
 	mutex_unlock(&dev->master_mutex);
 
 	return ret;
+#endif
 }
 
 void drm_master_release(struct drm_file *file_priv)
 {
+	STUB();
+#ifdef notyet
 	struct drm_device *dev = file_priv->minor->dev;
 	struct drm_master *master = file_priv->master;
 
@@ -288,6 +296,7 @@ out:
 	if (file_priv->master)
 		drm_master_put(&file_priv->master);
 	mutex_unlock(&dev->master_mutex);
+#endif
 }
 
 /**
