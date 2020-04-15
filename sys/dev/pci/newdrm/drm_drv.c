@@ -1075,3 +1075,12 @@ void drm_dev_unregister(struct drm_device *dev)
 }
 EXPORT_SYMBOL(drm_dev_unregister);
 
+void
+drm_dev_get(struct drm_device *dev)
+{
+}
+
+void
+drm_dev_put(struct drm_device *dev)
+{
+}
