@@ -665,7 +665,6 @@ out:
 		schedule_delayed_work(delayed_work, DRM_OUTPUT_POLL_PERIOD);
 }
 
-#ifdef __linux__
 /**
  * drm_kms_helper_is_poll_worker - is %current task an output poll worker?
  *
@@ -680,12 +679,15 @@ out:
  */
 bool drm_kms_helper_is_poll_worker(void)
 {
+	STUB();
+	return false;
+#ifdef __linux__
 	struct work_struct *work = current_work();
 
 	return work && work->func == output_poll_execute;
+#endif
 }
 EXPORT_SYMBOL(drm_kms_helper_is_poll_worker);
-#endif
 
 /**
  * drm_kms_helper_poll_disable - disable output polling
