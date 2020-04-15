@@ -720,5 +720,6 @@ static inline bool drm_drv_uses_atomic_modeset(struct drm_device *dev)
 
 int drm_dev_set_unique(struct drm_device *dev, const char *name);
 
+struct drm_device *drm_get_device_from_kdev(dev_t);
 
 #endif

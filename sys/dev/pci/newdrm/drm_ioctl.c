@@ -743,6 +743,41 @@ static const struct drm_ioctl_desc drm_ioctls[] = {
 
 #define DRM_CORE_IOCTL_COUNT	ARRAY_SIZE( drm_ioctls )
 
+int
+pledge_ioctl_drm(struct proc *p, long com, dev_t device)
+{
+	struct drm_device *dev = drm_get_device_from_kdev(device);
+	unsigned int nr = DRM_IOCTL_NR(com);
+	const struct drm_ioctl_desc *ioctl;
+
+	if (dev == NULL)
+		return EPERM;
+
+	if (nr < DRM_CORE_IOCTL_COUNT &&
+	    ((nr < DRM_COMMAND_BASE || nr >= DRM_COMMAND_END)))
+		ioctl = &drm_ioctls[nr];
+	else if (nr >= DRM_COMMAND_BASE && nr < DRM_COMMAND_END &&
+	    nr < DRM_COMMAND_BASE + dev->driver->num_ioctls)
+		ioctl = &dev->driver->ioctls[nr - DRM_COMMAND_BASE];
+	else
+		return EPERM;
+
+	if (ioctl->flags & DRM_RENDER_ALLOW)
+		return 0;
+
+	/*
+	 * These are dangerous, but we have to allow them until we
+	 * have prime/dma-buf support.
+	 */
+	switch (com) {
+	case DRM_IOCTL_GET_MAGIC:
+	case DRM_IOCTL_GEM_OPEN:
+		return 0;
+	}
+
+	return EPERM;
+}
+
 /**
  * DOC: driver specific ioctls
  *
