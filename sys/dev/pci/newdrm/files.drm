@@ -74,7 +74,7 @@ file	dev/pci/newdrm/drm_property.c		drm
 file	dev/pci/newdrm/drm_rect.c			drm
 #file	dev/pci/newdrm/drm_scatter.c		drm
 file	dev/pci/newdrm/drm_scdc_helper.c		drm
-##file	dev/pci/newdrm/drm_self_refresh_helper.c	drm
+file	dev/pci/newdrm/drm_self_refresh_helper.c	drm
 file	dev/pci/newdrm/drm_syncobj.c		drm
 file	dev/pci/newdrm/drm_trace_points.c		drm
 file	dev/pci/newdrm/drm_vblank.c		drm
