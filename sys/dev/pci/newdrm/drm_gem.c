@@ -49,6 +49,7 @@
 
 #include "drm_internal.h"
 
+#include <sys/conf.h>
 #include <uvm/uvm.h>
 
 void drm_unref(struct uvm_object *);
@@ -154,9 +155,6 @@ drm_flush(struct uvm_object *uobj, voff_t start, voff_t stop, int flags)
 struct uvm_object *
 udv_attach_drm(dev_t device, vm_prot_t accessprot, voff_t off, vsize_t size)
 {
-	STUB();
-	return NULL;
-#ifdef notyet
 	struct drm_device *dev = drm_get_device_from_kdev(device);
 	struct drm_gem_object *obj;
 	struct drm_vma_offset_node *node;
@@ -180,24 +178,33 @@ udv_attach_drm(dev_t device, vm_prot_t accessprot, voff_t off, vsize_t size)
 		return NULL;
 	}
 	filp = priv->filp;
+	mutex_unlock(&dev->struct_mutex);
 
-	node = drm_vma_offset_exact_lookup(dev->vma_offset_manager,
+	drm_vma_offset_lock_lookup(dev->vma_offset_manager);
+	node = drm_vma_offset_exact_lookup_locked(dev->vma_offset_manager,
 					   off >> PAGE_SHIFT,
 					   atop(round_page(size)));
-	if (!node) {
-		mutex_unlock(&dev->struct_mutex);
-		return NULL;
-	} else if (!drm_vma_node_is_allowed(node, filp)) {
-		mutex_unlock(&dev->struct_mutex);
-		return NULL;
+	if (likely(node)) {
+		obj = container_of(node, struct drm_gem_object, vma_node);
+		/*
+		 * When the object is being freed, after it hits 0-refcnt it
+		 * proceeds to tear down the object. In the process it will
+		 * attempt to remove the VMA offset and so acquire this
+		 * mgr->vm_lock.  Therefore if we find an object with a 0-refcnt
+		 * that matches our range, we know it is in the process of being
+		 * destroyed and will be freed as soon as we release the lock -
+		 * so we have to check for the 0-refcnted object and treat it as
+		 * invalid.
+		 */
+		if (!kref_get_unless_zero(&obj->refcount))
+			obj = NULL;
 	}
+	drm_vma_offset_unlock_lookup(dev->vma_offset_manager);
 
-	obj = container_of(node, struct drm_gem_object, vma_node);
-	drm_gem_object_get(obj);
+	if (obj == NULL)
+		return NULL;
 
-	mutex_unlock(&dev->struct_mutex);
 	return &obj->uobj;
-#endif
 }
 
 /** @file drm_gem.c
