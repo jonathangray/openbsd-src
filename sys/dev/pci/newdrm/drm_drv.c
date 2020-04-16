@@ -285,11 +285,16 @@ drm_attach(struct device *parent, struct device *self, void *aux)
 #endif
 	}
 
-	rw_init(&dev->struct_mutex, "drmdevlk");
-	mtx_init(&dev->event_lock, IPL_TTY);
 	mtx_init(&dev->quiesce_mtx, IPL_NONE);
+	mtx_init(&dev->event_lock, IPL_TTY);
+	rw_init(&dev->struct_mutex, "drmdevlk");
+	rw_init(&dev->filelist_mutex, "drmflist");
+	rw_init(&dev->clientlist_mutex, "drmclist");
+	rw_init(&dev->master_mutex, "drmmast");
 
 	SPLAY_INIT(&dev->files);
+	INIT_LIST_HEAD(&dev->filelist_internal);
+	INIT_LIST_HEAD(&dev->clientlist);
 	INIT_LIST_HEAD(&dev->vblank_event_list);
 
 	if (drm_core_check_feature(dev, DRIVER_USE_AGP)) {

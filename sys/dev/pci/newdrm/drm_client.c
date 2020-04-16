@@ -33,13 +33,14 @@
 
 static int drm_client_open(struct drm_client_dev *client)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
 	struct drm_device *dev = client->dev;
 	struct drm_file *file;
 
+#ifdef __linux__
 	file = drm_file_alloc(dev->primary);
+#else
+	file = drm_file_alloc(dev);
+#endif
 	if (IS_ERR(file))
 		return PTR_ERR(file);
 
@@ -50,7 +51,6 @@ static int drm_client_open(struct drm_client_dev *client)
 	client->file = file;
 
 	return 0;
-#endif
 }
 
 static void drm_client_close(struct drm_client_dev *client)
