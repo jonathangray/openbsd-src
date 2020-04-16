@@ -1600,12 +1600,18 @@ static int drm_fb_helper_single_fb_probe(struct drm_fb_helper *fb_helper,
 	mutex_unlock(&client->modeset_mutex);
 
 	if (crtc_count == 0 || sizes.fb_width == -1 || sizes.fb_height == -1) {
+#ifdef __linux__
 		drm_info(dev, "Cannot find any crtc or sizes\n");
 
 		/* First time: disable all crtc's.. */
 		if (!fb_helper->deferred_setup)
 			drm_client_modeset_commit(client);
 		return -EAGAIN;
+#else
+		drm_info(dev, "Cannot find any crtc or sizes - going 1024x768\n");
+		sizes.fb_width = sizes.surface_width = 1024;
+		sizes.fb_height = sizes.surface_height = 768;
+#endif
 	}
 
 	/* Handle our overallocation */
