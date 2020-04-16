@@ -1748,14 +1748,12 @@ bool ttm_mem_reg_is_pci(struct ttm_bo_device *bdev, struct ttm_mem_reg *mem)
 
 void ttm_bo_unmap_virtual_locked(struct ttm_buffer_object *bo)
 {
-	STUB();
-#ifdef notyet
 	struct ttm_bo_device *bdev = bo->bdev;
 
 #ifdef __linux__
 	drm_vma_node_unmap(&bo->base.vma_node, bdev->dev_mapping);
 #else
-	if (drm_vma_node_has_offset(&bo->vma_node) &&
+	if (drm_mm_node_allocated(&bo->base.vma_node.vm_node) &&
 	    bo->mem.bus.io_reserved_vm) {
 		struct vm_page *pg;
 		bus_addr_t addr;
@@ -1781,7 +1779,6 @@ void ttm_bo_unmap_virtual_locked(struct ttm_buffer_object *bo)
 	}
 #endif
 	ttm_mem_io_free_vm(bo);
-#endif
 }
 
 void ttm_bo_unmap_virtual(struct ttm_buffer_object *bo)
