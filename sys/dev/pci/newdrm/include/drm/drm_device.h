@@ -111,6 +111,7 @@ struct drm_device {
 	 */
 	bool registered;
 
+#ifdef __linux__
 	/**
 	 * @master:
 	 *
@@ -118,6 +119,7 @@ struct drm_device {
 	 * Protected by &master_mutex
 	 */
 	struct drm_master *master;
+#endif
 
 	/**
 	 * @driver_features: per-device driver features
