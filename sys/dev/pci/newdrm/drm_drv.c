@@ -239,6 +239,9 @@ drm_attach(struct device *parent, struct device *self, void *aux)
 	dev->dev_private = parent;
 	dev->driver = da->driver;
 
+	/* no per-device feature limits by default */
+	dev->driver_features = ~0u;
+
 	dev->dmat = da->dmat;
 	dev->bst = da->bst;
 	dev->unique = da->busid;
