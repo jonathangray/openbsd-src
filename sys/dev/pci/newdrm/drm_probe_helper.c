@@ -679,7 +679,6 @@ out:
  */
 bool drm_kms_helper_is_poll_worker(void)
 {
-	STUB();
 	return false;
 #ifdef __linux__
 	struct work_struct *work = current_work();
