@@ -760,9 +760,6 @@ bail:
  */
 int drm_client_modeset_probe(struct drm_client_dev *client, unsigned int width, unsigned int height)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
 	struct drm_connector *connector, **connectors = NULL;
 	struct drm_connector_list_iter conn_iter;
 	struct drm_device *dev = client->dev;
@@ -785,11 +782,21 @@ int drm_client_modeset_probe(struct drm_client_dev *client, unsigned int width, 
 	drm_client_for_each_connector_iter(connector, &conn_iter) {
 		struct drm_connector **tmp;
 
+#ifdef __linux__
 		tmp = krealloc(connectors, (connector_count + 1) * sizeof(*connectors), GFP_KERNEL);
 		if (!tmp) {
 			ret = -ENOMEM;
 			goto free_connectors;
 		}
+#else
+		tmp = kmalloc((connector_count + 1) * sizeof(*connectors), GFP_KERNEL);
+		if (!tmp) {
+			ret = -ENOMEM;
+			goto free_connectors;
+		}
+		memcpy(tmp, connectors, connector_count * sizeof(*connectors));
+		kfree(connectors);
+#endif
 
 		connectors = tmp;
 		drm_connector_get(connector);
@@ -879,7 +886,6 @@ free_connectors:
 	kfree(connectors);
 
 	return ret;
-#endif
 }
 EXPORT_SYMBOL(drm_client_modeset_probe);
 
