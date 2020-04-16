@@ -815,6 +815,8 @@ int radeon_ttm_init(struct radeon_device *rdev)
 #if NEFIFB > 0
 	stolen_size = efifb_stolen();
 #endif
+	if (stolen_size == 0)
+		stolen_size = 256 * 1024;
 
 	/* No others user of address space so set it to 0 */
 #ifdef notyet
