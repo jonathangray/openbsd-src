@@ -1057,30 +1057,16 @@ drm_do_ioctl(struct drm_device *dev, int minor, u_long cmd, caddr_t data)
 		return (-EINVAL);
 	}
 
-	/* ROOT_ONLY is only for CAP_SYS_ADMIN */
-	if ((ioctl->flags & DRM_ROOT_ONLY) && !capable(CAP_SYS_ADMIN))
-		return -EACCES;
-
-	/* AUTH is only for authenticated or render client */
-	if ((ioctl->flags & DRM_AUTH) && !drm_is_render_client(file_priv) &&
-	    !file_priv->authenticated)
-		return -EACCES;
-		
-	/* MASTER is only for master or control clients */
-	if ((ioctl->flags & DRM_MASTER) && !file_priv->is_master)
-		return -EACCES;
-
-	/* Render clients must be explicitly allowed */
-	if (!(ioctl->flags & DRM_RENDER_ALLOW) &&
-	    drm_is_render_client(file_priv))
-		return -EACCES;
+	retcode = drm_ioctl_permit(ioctl->flags, file_priv);
+	if (unlikely(retcode))
+		return retcode;
 
 	if (ioctl->flags & DRM_UNLOCKED)
 		retcode = func(dev, data, file_priv);
 	else {
-		/* XXX lock */
+		mutex_lock(&drm_global_mutex);
 		retcode = func(dev, data, file_priv);
-		/* XXX unlock */
+		mutex_unlock(&drm_global_mutex);
 	}
 
 	return (retcode);
