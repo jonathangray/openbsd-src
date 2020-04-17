@@ -147,16 +147,17 @@ drm_unset_busid(struct drm_device *dev,
 
 static int drm_set_busid(struct drm_device *dev, struct drm_file *file_priv)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
 	struct drm_master *master = file_priv->master;
 	int ret;
 
 	if (master->unique != NULL)
 		drm_unset_busid(dev, master);
 
+#ifdef __linux__
 	if (dev->dev && dev_is_pci(dev->dev)) {
+#else
+	if (1) {
+#endif
 		ret = drm_pci_set_busid(dev, master);
 		if (ret) {
 			drm_unset_busid(dev, master);
@@ -170,7 +171,6 @@ static int drm_set_busid(struct drm_device *dev, struct drm_file *file_priv)
 	}
 
 	return 0;
-#endif
 }
 
 /*

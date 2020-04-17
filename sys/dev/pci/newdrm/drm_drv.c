@@ -474,8 +474,6 @@ drm_firstopen(struct drm_device *dev)
 	if (dev->driver->firstopen)
 		dev->driver->firstopen(dev);
 
-	dev->magicid = 1;
-
 	if (!drm_core_check_feature(dev, DRIVER_MODESET))
 		dev->irq_enabled = 0;
 	dev->if_version = 0;
@@ -631,8 +629,12 @@ drmopen(dev_t kdev, int flags, int fmt, struct proc *p)
 
 	mutex_lock(&dev->struct_mutex);
 	/* first opener automatically becomes master */
-	if (drm_is_primary_client(file_priv))
+	if (drm_is_primary_client(file_priv)) {
+		ret = drm_master_open(file_priv);
+		if (ret != 0)
+			goto out_prime_destroy;
 		file_priv->is_master = SPLAY_EMPTY(&dev->files);
+	}
 	if (file_priv->is_master)
 		file_priv->authenticated = 1;
 
@@ -927,65 +929,6 @@ drm_pci_free(struct drm_device *dev, struct drm_dma_handle *dmah)
 
 	drm_dmamem_free(dev->dmat, dmah->mem);
 	free(dmah, M_DRM, sizeof(*dmah));
-}
-
-/**
- * Called by the client, this returns a unique magic number to be authorized
- * by the master.
- *
- * The master may use its own knowledge of the client (such as the X
- * connection that the magic is passed over) to determine if the magic number
- * should be authenticated.
- */
-int
-drm_getmagic(struct drm_device *dev, void *data, struct drm_file *file_priv)
-{
-	struct drm_auth		*auth = data;
-
-	if (dev->magicid == 0)
-		dev->magicid = 1;
-
-	/* Find unique magic */
-	if (file_priv->magic) {
-		auth->magic = file_priv->magic;
-	} else {
-		mutex_lock(&dev->struct_mutex);
-		file_priv->magic = auth->magic = dev->magicid++;
-		mutex_unlock(&dev->struct_mutex);
-		DRM_DEBUG("%d\n", auth->magic);
-	}
-
-	DRM_DEBUG("%u\n", auth->magic);
-	return 0;
-}
-
-/**
- * Marks the client associated with the given magic number as authenticated.
- */
-int
-drm_authmagic(struct drm_device *dev, void *data, struct drm_file *file_priv)
-{
-	struct drm_file	*p;
-	struct drm_auth	*auth = data;
-	int		 ret = -EINVAL;
-
-	DRM_DEBUG("%u\n", auth->magic);
-
-	if (auth->magic == 0)
-		return ret;
-
-	mutex_lock(&dev->struct_mutex);
-	SPLAY_FOREACH(p, drm_file_tree, &dev->files) {
-		if (p->magic == auth->magic) {
-			p->authenticated = 1;
-			p->magic = 0;
-			ret = 0;
-			break;
-		}
-	}
-	mutex_unlock(&dev->struct_mutex);
-
-	return ret;
 }
 
 /*

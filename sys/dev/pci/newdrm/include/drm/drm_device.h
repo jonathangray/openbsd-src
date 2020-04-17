@@ -12,7 +12,6 @@
 
 #include <drm/drm_hashtab.h>
 #include <drm/drm_mode_config.h>
-#include <uapi/drm/drm.h> /* for drm_magic_t */
 
 #include <sys/pool.h>
 
@@ -58,6 +57,8 @@ enum switch_power_state {
  * may contain multiple heads.
  */
 struct drm_device {
+	struct device	*dev;
+
 	/**
 	 * @legacy_dev_list:
 	 *
@@ -71,8 +72,10 @@ struct drm_device {
 	/** @ref: Object ref-count */
 	struct kref ref;
 
+#ifdef __linux__
 	/** @dev: Device structure of bus-device */
 	struct device *dev;
+#endif
 
 	/** @driver: DRM driver managing the device */
 	struct drm_driver *driver;
@@ -111,7 +114,6 @@ struct drm_device {
 	 */
 	bool registered;
 
-#ifdef __linux__
 	/**
 	 * @master:
 	 *
@@ -119,7 +121,6 @@ struct drm_device {
 	 * Protected by &master_mutex
 	 */
 	struct drm_master *master;
-#endif
 
 	/**
 	 * @driver_features: per-device driver features
@@ -178,7 +179,6 @@ struct drm_device {
 	struct list_head filelist;
 #else
 	SPLAY_HEAD(drm_file_tree, drm_file)	files;
-	drm_magic_t magicid;
 #endif
 
 	int unique_len;

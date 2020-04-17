@@ -96,6 +96,8 @@ void drm_pci_free(struct drm_device * dev, drm_dma_handle_t * dmah)
 
 EXPORT_SYMBOL(drm_pci_free);
 
+#endif /* __linux__ */
+
 static int drm_get_pci_domain(struct drm_device *dev)
 {
 #ifndef __alpha__
@@ -123,6 +125,8 @@ int drm_pci_set_busid(struct drm_device *dev, struct drm_master *master)
 	master->unique_len = strlen(master->unique);
 	return 0;
 }
+
+#ifdef __linux__
 
 static int drm_pci_irq_by_busid(struct drm_device *dev, struct drm_irq_busid *p)
 {

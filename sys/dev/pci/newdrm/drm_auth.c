@@ -61,7 +61,6 @@
  * trusted clients.
  */
 
-#ifdef notyet
 int drm_getmagic(struct drm_device *dev, void *data, struct drm_file *file_priv)
 {
 	struct drm_auth *auth = data;
@@ -100,7 +99,6 @@ int drm_authmagic(struct drm_device *dev, void *data,
 
 	return file ? 0 : -EINVAL;
 }
-#endif
 
 struct drm_master *drm_master_create(struct drm_device *dev)
 {
@@ -127,9 +125,6 @@ struct drm_master *drm_master_create(struct drm_device *dev)
 static int drm_set_master(struct drm_device *dev, struct drm_file *fpriv,
 			  bool new_master)
 {
-	STUB();
-	return 0;
-#ifdef notyet
 	int ret = 0;
 
 	dev->master = drm_master_get(fpriv->master);
@@ -141,7 +136,6 @@ static int drm_set_master(struct drm_device *dev, struct drm_file *fpriv,
 	}
 
 	return ret;
-#endif
 }
 
 static int drm_new_set_master(struct drm_device *dev, struct drm_file *fpriv)
@@ -183,9 +177,6 @@ out_err:
 int drm_setmaster_ioctl(struct drm_device *dev, void *data,
 			struct drm_file *file_priv)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
 	int ret = 0;
 
 	mutex_lock(&dev->master_mutex);
@@ -217,26 +208,19 @@ int drm_setmaster_ioctl(struct drm_device *dev, void *data,
 out_unlock:
 	mutex_unlock(&dev->master_mutex);
 	return ret;
-#endif
 }
 
 static void drm_drop_master(struct drm_device *dev,
 			    struct drm_file *fpriv)
 {
-	STUB();
-#ifdef notyet
 	if (dev->driver->master_drop)
 		dev->driver->master_drop(dev, fpriv);
 	drm_master_put(&dev->master);
-#endif
 }
 
 int drm_dropmaster_ioctl(struct drm_device *dev, void *data,
 			 struct drm_file *file_priv)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
 	int ret = -EINVAL;
 
 	mutex_lock(&dev->master_mutex);
@@ -257,7 +241,6 @@ int drm_dropmaster_ioctl(struct drm_device *dev, void *data,
 out_unlock:
 	mutex_unlock(&dev->master_mutex);
 	return ret;
-#endif
 }
 
 int drm_master_open(struct drm_file *file_priv)
@@ -382,7 +365,7 @@ EXPORT_SYMBOL(drm_master_put);
 bool drm_master_internal_acquire(struct drm_device *dev)
 {
 	mutex_lock(&dev->master_mutex);
-	if (!SPLAY_EMPTY(&dev->files)) {
+	if (dev->master) {
 		mutex_unlock(&dev->master_mutex);
 		return false;
 	}
