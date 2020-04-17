@@ -626,17 +626,14 @@ drmopen(dev_t kdev, int flags, int fmt, struct proc *p)
 		}
 	}
 
-	mutex_lock(&dev->struct_mutex);
 	/* first opener automatically becomes master */
 	if (drm_is_primary_client(file_priv)) {
 		ret = drm_master_open(file_priv);
 		if (ret != 0)
 			goto out_prime_destroy;
-		file_priv->is_master = SPLAY_EMPTY(&dev->files);
 	}
-	if (file_priv->is_master)
-		file_priv->authenticated = 1;
 
+	mutex_lock(&dev->struct_mutex);
 	SPLAY_INSERT(drm_file_tree, &dev->files, file_priv);
 	mutex_unlock(&dev->struct_mutex);
 
