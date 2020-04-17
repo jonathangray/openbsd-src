@@ -265,6 +265,7 @@ drm_attach(struct device *parent, struct device *self, void *aux)
 		dev->pdev->bus = &dev->pdev->_bus;
 		dev->pdev->bus->pc = pa->pa_pc;
 		dev->pdev->bus->number = pa->pa_bus;
+		dev->pdev->bus->domain_nr = pa->pa_domain;
 		dev->pdev->bus->bridgetag = pa->pa_bridgetag;
 
 		if (pa->pa_bridgetag != NULL) {
@@ -1013,7 +1014,7 @@ drm_getpciinfo(struct drm_device *dev, void *data, struct drm_file *file_priv)
 	if (dev->pdev == NULL)
 		return -ENOTTY;
 
-	info->domain = 0;
+	info->domain = dev->pdev->bus->domain_nr;
 	info->bus = dev->pdev->bus->number;
 	info->dev = PCI_SLOT(dev->pdev->devfn);
 	info->func = PCI_FUNC(dev->pdev->devfn);

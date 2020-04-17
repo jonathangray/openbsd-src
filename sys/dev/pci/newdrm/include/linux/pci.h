@@ -38,6 +38,7 @@ struct pci_dev;
 struct pci_bus {
 	pci_chipset_tag_t pc;
 	unsigned char	number;
+	int		domain_nr;
 	pcitag_t	*bridgetag;
 	struct pci_dev	*self;
 };
