@@ -86,6 +86,12 @@ static struct dentry *drm_debugfs_root;
 DEFINE_STATIC_SRCU(drm_unplug_srcu);
 #endif
 
+/*
+ * Some functions are only called once on init regardless of how many times
+ * drm attaches.  In linux this is handled via module_init()/module_exit()
+ */
+int drm_refcnt; 
+
 struct drm_softc {
 	struct device		sc_dev;
 	struct drm_device 	*sc_drm;
@@ -1370,6 +1376,10 @@ drm_attach(struct device *parent, struct device *self, void *aux)
 	struct drm_device *dev = da->drm;
 	int ret;
 
+	if (drm_refcnt == 0)
+		drm_core_init();
+	drm_refcnt++;
+
 	drm_linux_init();
 
 	if (dev == NULL) {
@@ -1492,6 +1502,10 @@ drm_detach(struct device *self, int flags)
 {
 	struct drm_softc *sc = (struct drm_softc *)self;
 	struct drm_device *dev = sc->sc_drm;
+
+	drm_refcnt--;
+	if (drm_refcnt == 0)
+		drm_core_exit();
 
 	drm_lastclose(dev);
 
