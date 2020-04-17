@@ -245,9 +245,6 @@ out_unlock:
 
 int drm_master_open(struct drm_file *file_priv)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
 	struct drm_device *dev = file_priv->minor->dev;
 	int ret = 0;
 
@@ -261,13 +258,10 @@ int drm_master_open(struct drm_file *file_priv)
 	mutex_unlock(&dev->master_mutex);
 
 	return ret;
-#endif
 }
 
 void drm_master_release(struct drm_file *file_priv)
 {
-	STUB();
-#ifdef notyet
 	struct drm_device *dev = file_priv->minor->dev;
 	struct drm_master *master = file_priv->master;
 
@@ -294,7 +288,6 @@ out:
 	if (file_priv->master)
 		drm_master_put(&file_priv->master);
 	mutex_unlock(&dev->master_mutex);
-#endif
 }
 
 /**

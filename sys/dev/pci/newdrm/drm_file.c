@@ -152,15 +152,9 @@ bool drm_dev_needs_global_mutex(struct drm_device *dev)
  * RETURNS:
  * Pointer to newly allocated context, ERR_PTR on failure.
  */
-#ifdef __linux__
 struct drm_file *drm_file_alloc(struct drm_minor *minor)
-#else
-struct drm_file *drm_file_alloc(struct drm_device *dev)
-#endif
 {
-#ifdef __linux__
 	struct drm_device *dev = minor->dev;
-#endif
 	struct drm_file *file;
 	int ret;
 
@@ -170,8 +164,8 @@ struct drm_file *drm_file_alloc(struct drm_device *dev)
 
 #ifdef __linux__
 	file->pid = get_pid(task_pid(current));
-	file->minor = minor;
 #endif
+	file->minor = minor;
 
 	/* for compatibility root is always authenticated */
 	file->authenticated = capable(CAP_SYS_ADMIN);

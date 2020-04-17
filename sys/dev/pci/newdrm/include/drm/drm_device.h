@@ -99,13 +99,11 @@ struct drm_device {
 	 */
 	void *dev_private;
 
-#ifdef __linux__
 	/** @primary: Primary node */
 	struct drm_minor *primary;
 
 	/** @render: Render node */
 	struct drm_minor *render;
-#endif
 
 	/**
 	 * @registered:

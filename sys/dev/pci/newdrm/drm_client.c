@@ -36,11 +36,7 @@ static int drm_client_open(struct drm_client_dev *client)
 	struct drm_device *dev = client->dev;
 	struct drm_file *file;
 
-#ifdef __linux__
 	file = drm_file_alloc(dev->primary);
-#else
-	file = drm_file_alloc(dev);
-#endif
 	if (IS_ERR(file))
 		return PTR_ERR(file);
 

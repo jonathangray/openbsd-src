@@ -217,6 +217,47 @@ drm_probe(struct device *parent, void *match, void *aux)
 	return (1);
 }
 
+/*
+ * DRM Minors
+ * A DRM device can provide several char-dev interfaces on the DRM-Major. Each
+ * of them is represented by a drm_minor object. Depending on the capabilities
+ * of the device-driver, different interfaces are registered.
+ *
+ * Minors can be accessed via dev->$minor_name. This pointer is either
+ * NULL or a valid drm_minor pointer and stays valid as long as the device is
+ * valid. This means, DRM minors have the same life-time as the underlying
+ * device. However, this doesn't mean that the minor is active. Minors are
+ * registered and unregistered dynamically according to device-state.
+ */
+
+static struct drm_minor **drm_minor_get_slot(struct drm_device *dev,
+					     unsigned int type)
+{
+	switch (type) {
+	case DRM_MINOR_PRIMARY:
+		return &dev->primary;
+	case DRM_MINOR_RENDER:
+		return &dev->render;
+	default:
+		BUG();
+	}
+}
+
+static int drm_minor_alloc(struct drm_device *dev, unsigned int type)
+{
+	struct drm_minor *minor;
+
+	minor = kzalloc(sizeof(*minor), GFP_KERNEL);
+	if (!minor)
+		return -ENOMEM;
+
+	minor->type = type;
+	minor->dev = dev;
+
+	*drm_minor_get_slot(dev, type) = minor;
+	return 0;
+}
+
 void
 drm_attach(struct device *parent, struct device *self, void *aux)
 {
@@ -296,6 +337,16 @@ drm_attach(struct device *parent, struct device *self, void *aux)
 	INIT_LIST_HEAD(&dev->filelist_internal);
 	INIT_LIST_HEAD(&dev->clientlist);
 	INIT_LIST_HEAD(&dev->vblank_event_list);
+
+	if (drm_core_check_feature(dev, DRIVER_RENDER)) {
+		ret = drm_minor_alloc(dev, DRM_MINOR_RENDER);
+		if (ret)
+			goto error;
+	}
+
+	ret = drm_minor_alloc(dev, DRM_MINOR_PRIMARY);
+	if (ret)
+		goto error;
 
 	if (drm_core_check_feature(dev, DRIVER_USE_AGP)) {
 #if IS_ENABLED(CONFIG_AGP)
@@ -432,7 +483,8 @@ drm_find_description(int vendor, int device, const struct pci_device_id *idlist)
 int
 drm_file_cmp(struct drm_file *f1, struct drm_file *f2)
 {
-	return (f1->minor < f2->minor ? -1 : f1->minor > f2->minor);
+	return (f1->minor->index < f2->minor->index ? -1 :
+	    f1->minor->index > f2->minor->index);
 }
 
 SPLAY_GENERATE(drm_file_tree, drm_file, link, drm_file_cmp);
@@ -441,8 +493,11 @@ struct drm_file *
 drm_find_file_by_minor(struct drm_device *dev, int minor)
 {
 	struct drm_file	key;
+	struct drm_minor dm;
+	
+	key.minor = &dm;
+	key.minor->index = minor;	
 
-	key.minor = minor;
 	return (SPLAY_FIND(drm_file_tree, &dev->files, &key));
 }
 
@@ -558,7 +613,7 @@ drmopen(dev_t kdev, int flags, int fmt, struct proc *p)
 	struct drm_device	*dev = NULL;
 	struct drm_file		*file_priv;
 	int			 ret = 0;
-	int			 realminor;
+	int			 dminor, realminor, minor_type;
 
 	dev = drm_get_device_from_kdev(kdev);
 	if (dev == NULL || dev->dev_private == NULL)
@@ -587,14 +642,18 @@ drmopen(dev_t kdev, int flags, int fmt, struct proc *p)
 	}
 
 	file_priv->filp = (void *)&file_priv;
-	file_priv->minor = minor(kdev);
-	realminor =  file_priv->minor & ((1 << CLONE_SHIFT) - 1);
+
+	dminor = minor(kdev);
+	realminor =  dminor & ((1 << CLONE_SHIFT) - 1);
 	if (realminor < 64)
-		file_priv->minor_type = DRM_MINOR_PRIMARY;
+		minor_type = DRM_MINOR_PRIMARY;
 	else if (realminor >= 64 && realminor < 128)
-		file_priv->minor_type = DRM_MINOR_CONTROL;
+		minor_type = DRM_MINOR_CONTROL;
 	else
-		file_priv->minor_type = DRM_MINOR_RENDER;
+		minor_type = DRM_MINOR_RENDER;
+
+	file_priv->minor = *drm_minor_get_slot(dev, minor_type);
+	file_priv->minor->index = minor(kdev);
 
 	INIT_LIST_HEAD(&file_priv->lhead);
 	INIT_LIST_HEAD(&file_priv->fbs);
