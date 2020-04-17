@@ -347,6 +347,12 @@ int pci_resize_resource(struct pci_dev *, int, int);
 #define pci_set_drvdata(x, y)
 
 static inline int
+pci_domain_nr(struct pci_bus *pbus)
+{
+	return pbus->domain_nr;
+}
+
+static inline int
 pci_set_power_state(struct pci_dev *dev, int state)
 {
 	return 0;
