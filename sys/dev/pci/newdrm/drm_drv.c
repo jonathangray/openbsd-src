@@ -317,7 +317,7 @@ drm_attach(struct device *parent, struct device *self, void *aux)
 		    "drmobjpl", NULL);
 	}
 
-	if (dev->driver->driver_features & DRIVER_GEM) {
+	if (drm_core_check_feature(dev, DRIVER_GEM)) {
 		ret = drm_gem_init(dev);
 		if (ret) {
 			DRM_ERROR("Cannot initialize graphics execution manager (GEM)\n");
@@ -341,11 +341,11 @@ drm_detach(struct device *self, int flags)
 
 	drm_lastclose(dev);
 
-	if (dev->driver->driver_features & DRIVER_GEM)
+	if (drm_core_check_feature(dev, DRIVER_GEM)) {
 		drm_gem_destroy(dev);
 
-	if (dev->driver->driver_features & DRIVER_GEM)
 		pool_destroy(&dev->objpl);
+	}
 
 	drm_vblank_cleanup(dev);
 
