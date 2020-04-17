@@ -245,7 +245,6 @@ drm_attach(struct device *parent, struct device *self, void *aux)
 	dev->dmat = da->dmat;
 	dev->bst = da->bst;
 	dev->unique = da->busid;
-	dev->unique_len = da->busid_len;
 
 	if (da->pa) {
 		struct pci_attach_args *pa = da->pa;
@@ -323,7 +322,7 @@ drm_attach(struct device *parent, struct device *self, void *aux)
 			DRM_ERROR("Cannot initialize graphics execution manager (GEM)\n");
 			goto error;
 		}
-	}	
+	}
 
 	printf("\n");
 	return;

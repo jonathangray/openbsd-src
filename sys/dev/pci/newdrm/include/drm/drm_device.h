@@ -181,8 +181,6 @@ struct drm_device {
 	SPLAY_HEAD(drm_file_tree, drm_file)	files;
 #endif
 
-	int unique_len;
-
 	/**
 	 * @filelist_internal:
 	 *
