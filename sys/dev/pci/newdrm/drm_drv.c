@@ -1780,9 +1780,9 @@ drmopen(dev_t kdev, int flags, int fmt, struct proc *p)
 	file_priv->filp = (void *)&file_priv;
 	file_priv->fminor = minor(kdev);
 
-	mutex_lock(&dev->struct_mutex);
+	mutex_lock(&dev->filelist_mutex);
 	SPLAY_INSERT(drm_file_tree, &dev->files, file_priv);
-	mutex_unlock(&dev->struct_mutex);
+	mutex_unlock(&dev->filelist_mutex);
 
 	return (0);
 
@@ -1807,16 +1807,17 @@ drmclose(dev_t kdev, int flags, int fmt, struct proc *p)
 
 	DRM_DEBUG("open_count = %d\n", dev->open_count);
 
-	mutex_lock(&dev->struct_mutex);
+	mutex_lock(&dev->filelist_mutex);
 	file_priv = drm_find_file_by_minor(dev, minor(kdev));
 	if (file_priv == NULL) {
 		DRM_ERROR("can't find authenticator\n");
 		retcode = EINVAL;
+		mutex_unlock(&dev->filelist_mutex);
 		goto done;
 	}
-	mutex_unlock(&dev->struct_mutex);
 
 	SPLAY_REMOVE(drm_file_tree, &dev->files, file_priv);
+	mutex_unlock(&dev->filelist_mutex);
 	drm_file_free(file_priv);
 done:
 	if (--dev->open_count == 0)
@@ -1836,9 +1837,9 @@ drmread(dev_t kdev, struct uio *uio, int ioflag)
 	if (dev == NULL)
 		return (ENXIO);
 
-	mutex_lock(&dev->struct_mutex);
+	mutex_lock(&dev->filelist_mutex);
 	file_priv = drm_find_file_by_minor(dev, minor(kdev));
-	mutex_unlock(&dev->struct_mutex);
+	mutex_unlock(&dev->filelist_mutex);
 	if (file_priv == NULL)
 		return (ENXIO);
 
@@ -1924,9 +1925,9 @@ drmpoll(dev_t kdev, int events, struct proc *p)
 	if (dev == NULL)
 		return (POLLERR);
 
-	mutex_lock(&dev->struct_mutex);
+	mutex_lock(&dev->filelist_mutex);
 	file_priv = drm_find_file_by_minor(dev, minor(kdev));
-	mutex_unlock(&dev->struct_mutex);
+	mutex_unlock(&dev->filelist_mutex);
 	if (file_priv == NULL)
 		return (POLLERR);
 

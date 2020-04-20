@@ -1010,9 +1010,9 @@ drm_do_ioctl(struct drm_device *dev, int minor, u_long cmd, caddr_t data)
 	int retcode = -EINVAL;
 	unsigned int usize, asize;
 
-	mutex_lock(&dev->struct_mutex);
+	mutex_lock(&dev->filelist_mutex);
 	file_priv = drm_find_file_by_minor(dev, minor);
-	mutex_unlock(&dev->struct_mutex);
+	mutex_unlock(&dev->filelist_mutex);
 	if (file_priv == NULL) {
 		DRM_ERROR("can't find authenticator\n");
 		return -EINVAL;
