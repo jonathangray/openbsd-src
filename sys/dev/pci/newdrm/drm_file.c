@@ -158,7 +158,12 @@ struct drm_file *drm_file_alloc(struct drm_minor *minor)
 	struct drm_file *file;
 	int ret;
 
+#ifdef __linux__
 	file = kzalloc(sizeof(*file), GFP_KERNEL);
+#else
+	file = kzalloc(max(dev->driver->file_priv_size, sizeof(*file)),
+	    GFP_KERNEL);
+#endif
 	if (!file)
 		return ERR_PTR(-ENOMEM);
 
@@ -209,8 +214,9 @@ out_prime_destroy:
 	return ERR_PTR(ret);
 }
 
-void drm_events_release(struct drm_file *file_priv, struct drm_device *dev)
+static void drm_events_release(struct drm_file *file_priv)
 {
+	struct drm_device *dev = file_priv->minor->dev;
 	struct drm_pending_event *e, *et;
 	unsigned long flags;
 
@@ -247,8 +253,6 @@ void drm_events_release(struct drm_file *file_priv, struct drm_device *dev)
  */
 void drm_file_free(struct drm_file *file)
 {
-	STUB();
-#ifdef notyet
 	struct drm_device *dev;
 
 	if (!file)
@@ -256,10 +260,15 @@ void drm_file_free(struct drm_file *file)
 
 	dev = file->minor->dev;
 
+#ifdef __linux__
 	DRM_DEBUG("pid = %d, device = 0x%lx, open_count = %d\n",
 		  task_pid_nr(current),
 		  (long)old_encode_dev(file->minor->kdev->devt),
 		  atomic_read(&dev->open_count));
+#else
+	DRM_DEBUG("pid = %d, device = 0x%lx, open_count = %d\n",
+	    curproc->p_p->ps_pid, (long)&dev->dev, dev->open_count);
+#endif
 
 	if (drm_core_check_feature(dev, DRIVER_LEGACY) &&
 	    dev->driver->preclose)
@@ -298,13 +307,11 @@ void drm_file_free(struct drm_file *file)
 
 	put_pid(file->pid);
 	kfree(file);
-#endif
 }
 
+#ifdef __linux__
 static void drm_close_helper(struct file *filp)
 {
-	STUB();
-#ifdef notyet
 	struct drm_file *file_priv = filp->private_data;
 	struct drm_device *dev = file_priv->minor->dev;
 
@@ -313,8 +320,8 @@ static void drm_close_helper(struct file *filp)
 	mutex_unlock(&dev->filelist_mutex);
 
 	drm_file_free(file_priv);
-#endif
 }
+#endif
 
 /*
  * Check whether DRI will run on this CPU.
@@ -339,11 +346,9 @@ static int drm_cpu_valid(void)
  * Creates and initializes a drm_file structure for the file private data in \p
  * filp and add it into the double linked list in \p dev.
  */
+#ifdef __linux__
 static int drm_open_helper(struct file *filp, struct drm_minor *minor)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
 	struct drm_device *dev = minor->dev;
 	struct drm_file *priv;
 	int ret;
@@ -398,8 +403,8 @@ static int drm_open_helper(struct file *filp, struct drm_minor *minor)
 #endif
 
 	return 0;
-#endif
 }
+#endif /* __linux__ */
 
 /**
  * drm_open - open method for DRM file
@@ -414,11 +419,9 @@ static int drm_open_helper(struct file *filp, struct drm_minor *minor)
  *
  * 0 on success or negative errno value on falure.
  */
+#ifdef __linux__
 int drm_open(struct inode *inode, struct file *filp)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
 	struct drm_device *dev;
 	struct drm_minor *minor;
 	int retcode;
@@ -460,9 +463,9 @@ err_undo:
 		mutex_unlock(&drm_global_mutex);
 	drm_minor_release(minor);
 	return retcode;
-#endif
 }
 EXPORT_SYMBOL(drm_open);
+#endif
 
 #ifdef notyet
 void drm_lastclose(struct drm_device * dev)

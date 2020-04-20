@@ -245,6 +245,8 @@ struct drm_file {
 	/** @minor: &struct drm_minor for this file. */
 	struct drm_minor *minor;
 
+	int fminor;
+
 	/**
 	 * @object_idr:
 	 *

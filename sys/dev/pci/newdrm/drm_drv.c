@@ -1605,8 +1605,7 @@ drm_find_description(int vendor, int device, const struct pci_device_id *idlist)
 int
 drm_file_cmp(struct drm_file *f1, struct drm_file *f2)
 {
-	return (f1->minor->index < f2->minor->index ? -1 :
-	    f1->minor->index > f2->minor->index);
+	return (f1->fminor < f2->fminor ? -1 : f1->fminor > f2->fminor);
 }
 
 SPLAY_GENERATE(drm_file_tree, drm_file, link, drm_file_cmp);
@@ -1615,11 +1614,8 @@ struct drm_file *
 drm_find_file_by_minor(struct drm_device *dev, int minor)
 {
 	struct drm_file	key;
-	struct drm_minor dm;
 	
-	key.minor = &dm;
-	key.minor->index = minor;	
-
+	key.fminor = minor;
 	return (SPLAY_FIND(drm_file_tree, &dev->files, &key));
 }
 
@@ -1734,6 +1730,7 @@ drmopen(dev_t kdev, int flags, int fmt, struct proc *p)
 {
 	struct drm_device	*dev = NULL;
 	struct drm_file		*file_priv;
+	struct drm_minor	*dm;
 	int			 ret = 0;
 	int			 dminor, realminor, minor_type;
 
@@ -1755,16 +1752,6 @@ drmopen(dev_t kdev, int flags, int fmt, struct proc *p)
 		mutex_unlock(&dev->struct_mutex);
 	}
 
-	/* always allocate at least enough space for our data */
-	file_priv = mallocarray(1, max(dev->driver->file_priv_size,
-	    sizeof(*file_priv)), M_DRM, M_NOWAIT | M_ZERO);
-	if (file_priv == NULL) {
-		ret = ENOMEM;
-		goto err;
-	}
-
-	file_priv->filp = (void *)&file_priv;
-
 	dminor = minor(kdev);
 	realminor =  dminor & ((1 << CLONE_SHIFT) - 1);
 	if (realminor < 64)
@@ -1774,45 +1761,24 @@ drmopen(dev_t kdev, int flags, int fmt, struct proc *p)
 	else
 		minor_type = DRM_MINOR_RENDER;
 
-	file_priv->minor = *drm_minor_get_slot(dev, minor_type);
-	file_priv->minor->index = minor(kdev);
+	dm = *drm_minor_get_slot(dev, minor_type);
+	dm->index = minor(kdev);
 
-	INIT_LIST_HEAD(&file_priv->lhead);
-	INIT_LIST_HEAD(&file_priv->fbs);
-	rw_init(&file_priv->fbs_lock, "fbslk");
-	INIT_LIST_HEAD(&file_priv->blobs);
-	INIT_LIST_HEAD(&file_priv->pending_event_list);
-	INIT_LIST_HEAD(&file_priv->event_list);
-	init_waitqueue_head(&file_priv->event_wait);
-	file_priv->event_space = 4096; /* 4k for event buffer */
-	DRM_DEBUG("minor = %d\n", file_priv->minor);
-
-	/* for compatibility root is always authenticated */
-	file_priv->authenticated = (suser(p) == 0);
-
-	rw_init(&file_priv->event_read_lock, "evread");
-
-	if (drm_core_check_feature(dev, DRIVER_GEM))
-		drm_gem_open(dev, file_priv);
-
-	if (drm_core_check_feature(dev, DRIVER_SYNCOBJ))
-		drm_syncobj_open(file_priv);
-
-	drm_prime_init_file_private(&file_priv->prime);
-
-	if (dev->driver->open) {
-		ret = dev->driver->open(dev, file_priv);
-		if (ret != 0) {
-			goto out_prime_destroy;
-		}
+	file_priv = drm_file_alloc(dm);
+	if (IS_ERR(file_priv)) {
+		ret = ENOMEM;
+		goto err;
 	}
 
 	/* first opener automatically becomes master */
 	if (drm_is_primary_client(file_priv)) {
 		ret = drm_master_open(file_priv);
 		if (ret != 0)
-			goto out_prime_destroy;
+			goto out_file_free;
 	}
+
+	file_priv->filp = (void *)&file_priv;
+	file_priv->fminor = minor(kdev);
 
 	mutex_lock(&dev->struct_mutex);
 	SPLAY_INSERT(drm_file_tree, &dev->files, file_priv);
@@ -1820,21 +1786,14 @@ drmopen(dev_t kdev, int flags, int fmt, struct proc *p)
 
 	return (0);
 
-out_prime_destroy:
-	drm_prime_destroy_file_private(&file_priv->prime);
-	if (drm_core_check_feature(dev, DRIVER_SYNCOBJ))
-		drm_syncobj_release(file_priv);
-	if (drm_core_check_feature(dev, DRIVER_GEM))
-		drm_gem_release(dev, file_priv);
-	free(file_priv, M_DRM, 0);
+out_file_free:
+	drm_file_free(file_priv);
 err:
 	mutex_lock(&dev->struct_mutex);
 	--dev->open_count;
 	mutex_unlock(&dev->struct_mutex);
 	return (ret);
 }
-
-void drm_events_release(struct drm_file *file_priv, struct drm_device *dev);
 
 int
 drmclose(dev_t kdev, int flags, int fmt, struct proc *p)
@@ -1857,42 +1816,11 @@ drmclose(dev_t kdev, int flags, int fmt, struct proc *p)
 	}
 	mutex_unlock(&dev->struct_mutex);
 
-	if (drm_core_check_feature(dev, DRIVER_LEGACY) &&
-	    dev->driver->preclose)
-		dev->driver->preclose(dev, file_priv);
-
-	DRM_DEBUG("pid = %d, device = 0x%lx, open_count = %d\n",
-	    curproc->p_p->ps_pid, (long)&dev->dev, dev->open_count);
-
-	drm_events_release(file_priv, dev);
-
-	if (drm_core_check_feature(dev, DRIVER_MODESET)) {
-		drm_fb_release(file_priv);
-		drm_property_destroy_user_blobs(dev, file_priv);
-	}
-
-	if (drm_core_check_feature(dev, DRIVER_SYNCOBJ))
-		drm_syncobj_release(file_priv);
-
-	if (drm_core_check_feature(dev, DRIVER_GEM))
-		drm_gem_release(dev, file_priv);
-
-	if (dev->driver->postclose)
-		dev->driver->postclose(dev, file_priv);
-
-	drm_prime_destroy_file_private(&file_priv->prime);
-
-	mutex_lock(&dev->struct_mutex);
-
 	SPLAY_REMOVE(drm_file_tree, &dev->files, file_priv);
-	free(file_priv, M_DRM, 0);
-
+	drm_file_free(file_priv);
 done:
-	if (--dev->open_count == 0) {
-		mutex_unlock(&dev->struct_mutex);
+	if (--dev->open_count == 0)
 		drm_lastclose(dev);
-	} else
-		mutex_unlock(&dev->struct_mutex);
 
 	return (retcode);
 }
