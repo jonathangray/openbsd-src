@@ -156,7 +156,7 @@ struct uvm_object *
 udv_attach_drm(dev_t device, vm_prot_t accessprot, voff_t off, vsize_t size)
 {
 	struct drm_device *dev = drm_get_device_from_kdev(device);
-	struct drm_gem_object *obj;
+	struct drm_gem_object *obj = NULL;
 	struct drm_vma_offset_node *node;
 	struct drm_file *priv;
 	struct file *filp;
