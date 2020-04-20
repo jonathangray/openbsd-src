@@ -192,19 +192,23 @@ static int drm_minor_alloc(struct drm_device *dev, unsigned int type)
 
 	minor->index = r;
 
+#ifdef __linux__
 	minor->kdev = drm_sysfs_minor_alloc(minor);
 	if (IS_ERR(minor->kdev)) {
 		r = PTR_ERR(minor->kdev);
 		goto err_index;
 	}
+#endif
 
 	*drm_minor_get_slot(dev, type) = minor;
 	return 0;
 
+#ifdef __linux__
 err_index:
 	spin_lock_irqsave(&drm_minor_lock, flags);
 	idr_remove(&drm_minors_idr, minor->index);
 	spin_unlock_irqrestore(&drm_minor_lock, flags);
+#endif
 err_free:
 	kfree(minor);
 	return r;
