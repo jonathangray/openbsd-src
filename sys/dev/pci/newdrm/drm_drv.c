@@ -1679,7 +1679,7 @@ filt_drmdetach(struct knote *kn)
 	int s;
 
 	s = spltty();
-	SLIST_REMOVE(&dev->note, kn, knote, kn_selnext);
+	klist_remove(&dev->note, kn);
 	splx(s);
 }
 
@@ -1719,7 +1719,7 @@ drmkqfilter(dev_t kdev, struct knote *kn)
 	kn->kn_hook = dev;
 
 	s = spltty();
-	SLIST_INSERT_HEAD(&dev->note, kn, kn_selnext);
+	klist_insert(&dev->note, kn);
 	splx(s);
 
 	return (0);
