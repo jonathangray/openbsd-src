@@ -1,4 +1,4 @@
-/* $OpenBSD: popup.c,v 1.6 2020/04/01 09:05:27 nicm Exp $ */
+/* $OpenBSD: popup.c,v 1.13 2020/04/13 18:59:41 nicm Exp $ */
 
 /*
  * Copyright (c) 2020 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -64,7 +64,7 @@ popup_write_screen(struct client *c, struct popup_data *pd)
 	struct format_tree	*ft;
 	u_int			 i, y;
 
-	ft = format_create(item->client, item, FORMAT_NONE, 0);
+	ft = format_create(c, item, FORMAT_NONE, 0);
 	if (cmd_find_valid_state(&pd->fs))
 		format_defaults(ft, c, pd->fs.s, pd->fs.wl, pd->fs.wp);
 	else
@@ -152,9 +152,9 @@ popup_free_cb(struct client *c)
 
 	if (item != NULL) {
 		if (pd->ictx != NULL &&
-		    item->client != NULL &&
-		    item->client->session == NULL)
-			item->client->retval = pd->status;
+		    cmdq_get_client(item) != NULL &&
+		    cmdq_get_client(item)->session == NULL)
+			cmdq_get_client(item)->retval = pd->status;
 		cmdq_continue(item);
 	}
 	server_client_unref(pd->c);
@@ -200,9 +200,9 @@ popup_handle_drag(struct client *c, struct popup_data *pd,
 		pd->dy = m->y - pd->py;
 		server_redraw_client(c);
 	} else if (pd->dragging == SIZE) {
-		if (m->x < pd->px + 2)
+		if (m->x < pd->px + 3)
 			return;
-		if (m->y < pd->py + 2)
+		if (m->y < pd->py + 3)
 			return;
 		pd->sx = m->x - pd->px;
 		pd->sy = m->y - pd->py;
@@ -222,11 +222,12 @@ popup_key_cb(struct client *c, struct key_event *event)
 	struct popup_data	*pd = c->overlay_data;
 	struct mouse_event	*m = &event->m;
 	struct cmd_find_state	*fs = &pd->fs;
-	struct cmdq_item	*new_item;
-	struct cmd_parse_result	*pr;
 	struct format_tree	*ft;
 	const char		*cmd, *buf;
 	size_t			 len;
+	struct cmdq_state	*state;
+	enum cmd_parse_status	 status;
+	char			*error;
 
 	if (KEYC_IS_MOUSE(event->key)) {
 		if (pd->dragging != OFF) {
@@ -294,25 +295,19 @@ popup_key_cb(struct client *c, struct key_event *event)
 	cmd = format_expand(ft, pd->cmd);
 	format_free(ft);
 
-	pr = cmd_parse_from_string(cmd, NULL);
-	switch (pr->status) {
-	case CMD_PARSE_EMPTY:
-		break;
-	case CMD_PARSE_ERROR:
-		new_item = cmdq_get_error(pr->error);
-		free(pr->error);
-		cmdq_append(c, new_item);
-		break;
-	case CMD_PARSE_SUCCESS:
-		if (pd->item != NULL)
-			m = &pd->item->shared->mouse;
-		else
-			m = NULL;
-		new_item = cmdq_get_command(pr->cmdlist, fs, m, 0);
-		cmd_list_free(pr->cmdlist);
-		cmdq_append(c, new_item);
-		break;
+	if (pd->item != NULL)
+		event = cmdq_get_event(pd->item);
+	else
+		event = NULL;
+	state = cmdq_new_state(&pd->fs, event, 0);
+
+	status = cmd_parse_and_append(cmd, NULL, c, state, &error);
+	if (status == CMD_PARSE_ERROR) {
+		cmdq_append(c, cmdq_get_error(error));
+		free(error);
 	}
+	cmdq_free_state(state);
+
 	return (1);
 
 out:
@@ -382,7 +377,7 @@ popup_width(struct cmdq_item *item, u_int nlines, const char **lines,
 	struct format_tree	*ft;
 	u_int			 i, width = 0, tmpwidth;
 
-	ft = format_create(item->client, item, FORMAT_NONE, 0);
+	ft = format_create(cmdq_get_client(item), item, FORMAT_NONE, 0);
 	if (fs != NULL && cmd_find_valid_state(fs))
 		format_defaults(ft, c, fs->s, fs->wl, fs->wp);
 	else

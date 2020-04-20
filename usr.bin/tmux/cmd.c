@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd.c,v 1.157 2020/03/24 08:09:43 nicm Exp $ */
+/* $OpenBSD: cmd.c,v 1.160 2020/04/13 16:19:37 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -207,8 +207,27 @@ const struct cmd_entry *cmd_table[] = {
 	NULL
 };
 
+/* Instance of a command. */
+struct cmd {
+	const struct cmd_entry	 *entry;
+	struct args		 *args;
+	u_int			  group;
+
+	char			 *file;
+	u_int			  line;
+
+	char			 *alias;
+	int			  argc;
+	char			**argv;
+
+	TAILQ_ENTRY(cmd)	  qentry;
+};
+TAILQ_HEAD(cmds, cmd);
+
+/* Next group number for new command list. */
 static u_int cmd_list_next_group = 1;
 
+/* Log an argument vector. */
 void printflike(3, 4)
 cmd_log_argv(int argc, char **argv, const char *fmt, ...)
 {
@@ -225,6 +244,7 @@ cmd_log_argv(int argc, char **argv, const char *fmt, ...)
 	free(prefix);
 }
 
+/* Prepend to an argument vector. */
 void
 cmd_prepend_argv(int *argc, char ***argv, char *arg)
 {
@@ -241,6 +261,7 @@ cmd_prepend_argv(int *argc, char ***argv, char *arg)
 	(*argc)++;
 }
 
+/* Append to an argument vector. */
 void
 cmd_append_argv(int *argc, char ***argv, char *arg)
 {
@@ -248,6 +269,7 @@ cmd_append_argv(int *argc, char ***argv, char *arg)
 	(*argv)[(*argc)++] = xstrdup(arg);
 }
 
+/* Pack an argument vector up into a buffer. */
 int
 cmd_pack_argv(int argc, char **argv, char *buf, size_t len)
 {
@@ -270,6 +292,7 @@ cmd_pack_argv(int argc, char **argv, char *buf, size_t len)
 	return (0);
 }
 
+/* Unpack an argument vector from a packed buffer. */
 int
 cmd_unpack_argv(char *buf, size_t len, int argc, char ***argv)
 {
@@ -298,6 +321,7 @@ cmd_unpack_argv(char *buf, size_t len, int argc, char ***argv)
 	return (0);
 }
 
+/* Copy an argument vector, ensuring it is terminated by NULL. */
 char **
 cmd_copy_argv(int argc, char **argv)
 {
@@ -314,6 +338,7 @@ cmd_copy_argv(int argc, char **argv)
 	return (new_argv);
 }
 
+/* Free an argument vector. */
 void
 cmd_free_argv(int argc, char **argv)
 {
@@ -326,6 +351,7 @@ cmd_free_argv(int argc, char **argv)
 	free(argv);
 }
 
+/* Convert argument vector to a string. */
 char *
 cmd_stringify_argv(int argc, char **argv)
 {
@@ -352,6 +378,38 @@ cmd_stringify_argv(int argc, char **argv)
 	return (buf);
 }
 
+/* Get entry for command. */
+const struct cmd_entry *
+cmd_get_entry(struct cmd *cmd)
+{
+	return (cmd->entry);
+}
+
+/* Get arguments for command. */
+struct args *
+cmd_get_args(struct cmd *cmd)
+{
+	return (cmd->args);
+}
+
+/* Get group for command. */
+u_int
+cmd_get_group(struct cmd *cmd)
+{
+	return (cmd->group);
+}
+
+/* Get file and line for command. */
+void
+cmd_get_source(struct cmd *cmd, const char **file, u_int *line)
+{
+	if (file != NULL)
+		*file = cmd->file;
+	if (line != NULL)
+		*line = cmd->line;
+}
+
+/* Look for an alias for a command. */
 char *
 cmd_get_alias(const char *name)
 {
@@ -382,6 +440,7 @@ cmd_get_alias(const char *name)
 	return (NULL);
 }
 
+/* Look up a command entry by name. */
 static const struct cmd_entry *
 cmd_find(const char *name, char **cause)
 {
@@ -431,6 +490,7 @@ ambiguous:
 	return (NULL);
 }
 
+/* Parse a single command from an argument vector. */
 struct cmd *
 cmd_parse(int argc, char **argv, const char *file, u_int line, char **cause)
 {
@@ -479,6 +539,7 @@ usage:
 	return (NULL);
 }
 
+/* Free a command. */
 void
 cmd_free(struct cmd *cmd)
 {
@@ -491,6 +552,7 @@ cmd_free(struct cmd *cmd)
 	free(cmd);
 }
 
+/* Get a command as a string. */
 char *
 cmd_print(struct cmd *cmd)
 {
@@ -506,6 +568,7 @@ cmd_print(struct cmd *cmd)
 	return (out);
 }
 
+/* Create a new command list. */
 struct cmd_list *
 cmd_list_new(void)
 {
@@ -514,29 +577,33 @@ cmd_list_new(void)
 	cmdlist = xcalloc(1, sizeof *cmdlist);
 	cmdlist->references = 1;
 	cmdlist->group = cmd_list_next_group++;
-	TAILQ_INIT(&cmdlist->list);
+	cmdlist->list = xcalloc(1, sizeof *cmdlist->list);
+	TAILQ_INIT(cmdlist->list);
 	return (cmdlist);
 }
 
+/* Append a command to a command list. */
 void
 cmd_list_append(struct cmd_list *cmdlist, struct cmd *cmd)
 {
 	cmd->group = cmdlist->group;
-	TAILQ_INSERT_TAIL(&cmdlist->list, cmd, qentry);
+	TAILQ_INSERT_TAIL(cmdlist->list, cmd, qentry);
 }
 
+/* Move all commands from one command list to another */
 void
 cmd_list_move(struct cmd_list *cmdlist, struct cmd_list *from)
 {
 	struct cmd	*cmd, *cmd1;
 
-	TAILQ_FOREACH_SAFE(cmd, &from->list, qentry, cmd1) {
-		TAILQ_REMOVE(&from->list, cmd, qentry);
-		TAILQ_INSERT_TAIL(&cmdlist->list, cmd, qentry);
+	TAILQ_FOREACH_SAFE(cmd, from->list, qentry, cmd1) {
+		TAILQ_REMOVE(from->list, cmd, qentry);
+		TAILQ_INSERT_TAIL(cmdlist->list, cmd, qentry);
 	}
 	cmdlist->group = cmd_list_next_group++;
 }
 
+/* Free a command list. */
 void
 cmd_list_free(struct cmd_list *cmdlist)
 {
@@ -545,42 +612,92 @@ cmd_list_free(struct cmd_list *cmdlist)
 	if (--cmdlist->references != 0)
 		return;
 
-	TAILQ_FOREACH_SAFE(cmd, &cmdlist->list, qentry, cmd1) {
-		TAILQ_REMOVE(&cmdlist->list, cmd, qentry);
+	TAILQ_FOREACH_SAFE(cmd, cmdlist->list, qentry, cmd1) {
+		TAILQ_REMOVE(cmdlist->list, cmd, qentry);
 		cmd_free(cmd);
 	}
-
+	free(cmdlist->list);
 	free(cmdlist);
 }
 
+/* Get a command list as a string. */
 char *
 cmd_list_print(struct cmd_list *cmdlist, int escaped)
 {
-	struct cmd	*cmd;
+	struct cmd	*cmd, *next;
 	char		*buf, *this;
 	size_t		 len;
 
 	len = 1;
 	buf = xcalloc(1, len);
 
-	TAILQ_FOREACH(cmd, &cmdlist->list, qentry) {
+	TAILQ_FOREACH(cmd, cmdlist->list, qentry) {
 		this = cmd_print(cmd);
 
-		len += strlen(this) + 4;
+		len += strlen(this) + 6;
 		buf = xrealloc(buf, len);
 
 		strlcat(buf, this, len);
-		if (TAILQ_NEXT(cmd, qentry) != NULL) {
-			if (escaped)
-				strlcat(buf, " \\; ", len);
-			else
-				strlcat(buf, " ; ", len);
+
+		next = TAILQ_NEXT(cmd, qentry);
+		if (next != NULL) {
+			if (cmd->group != next->group) {
+				if (escaped)
+					strlcat(buf, " \\;\\; ", len);
+				else
+					strlcat(buf, " ;; ", len);
+			} else {
+				if (escaped)
+					strlcat(buf, " \\; ", len);
+				else
+					strlcat(buf, " ; ", len);
+			}
 		}
 
 		free(this);
 	}
 
 	return (buf);
+}
+
+/* Get first command in list. */
+struct cmd *
+cmd_list_first(struct cmd_list *cmdlist)
+{
+	return (TAILQ_FIRST(cmdlist->list));
+}
+
+/* Get next command in list. */
+struct cmd *
+cmd_list_next(struct cmd *cmd)
+{
+	return (TAILQ_NEXT(cmd, qentry));
+}
+
+/* Do all of the commands in this command list have this flag? */
+int
+cmd_list_all_have(struct cmd_list *cmdlist, int flag)
+{
+	struct cmd	*cmd;
+
+	TAILQ_FOREACH(cmd, cmdlist->list, qentry) {
+		if (~cmd->entry->flags & flag)
+			return (0);
+	}
+	return (1);
+}
+
+/* Do any of the commands in this command list have this flag? */
+int
+cmd_list_any_have(struct cmd_list *cmdlist, int flag)
+{
+	struct cmd	*cmd;
+
+	TAILQ_FOREACH(cmd, cmdlist->list, qentry) {
+		if (cmd->entry->flags & flag)
+			return (1);
+	}
+	return (0);
 }
 
 /* Adjust current mouse position for a pane. */

@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-resize-pane.c,v 1.41 2020/03/31 17:13:20 nicm Exp $ */
+/* $OpenBSD: cmd-resize-pane.c,v 1.46 2020/04/13 14:46:04 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -49,13 +49,14 @@ const struct cmd_entry cmd_resize_pane_entry = {
 static enum cmd_retval
 cmd_resize_pane_exec(struct cmd *self, struct cmdq_item *item)
 {
-	struct args		*args = self->args;
-	struct cmdq_shared	*shared = item->shared;
-	struct window_pane	*wp = item->target.wp;
-	struct winlink		*wl = item->target.wl;
+	struct args		*args = cmd_get_args(self);
+	struct cmd_find_state	*target = cmdq_get_target(item);
+	struct key_event	*event = cmdq_get_event(item);
+	struct window_pane	*wp = target->wp;
+	struct winlink		*wl = target->wl;
 	struct window		*w = wl->window;
-	struct client		*c = item->client;
-	struct session		*s = item->target.s;
+	struct client		*c = cmdq_get_client(item);
+	struct session		*s = target->s;
 	const char	       	*errstr;
 	char			*cause;
 	u_int			 adjust;
@@ -75,12 +76,12 @@ cmd_resize_pane_exec(struct cmd *self, struct cmdq_item *item)
 	}
 
 	if (args_has(args, 'M')) {
-		if (cmd_mouse_window(&shared->mouse, &s) == NULL)
+		if (!event->m.valid || cmd_mouse_window(&event->m, &s) == NULL)
 			return (CMD_RETURN_NORMAL);
 		if (c == NULL || c->session != s)
 			return (CMD_RETURN_NORMAL);
 		c->tty.mouse_drag_update = cmd_resize_pane_mouse_update;
-		cmd_resize_pane_mouse_update(c, &shared->mouse);
+		cmd_resize_pane_mouse_update(c, &event->m);
 		return (CMD_RETURN_NORMAL);
 	}
 

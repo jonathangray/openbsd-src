@@ -1,4 +1,4 @@
-/* $OpenBSD: tls13_client.c,v 1.46 2020/03/10 17:23:25 jsing Exp $ */
+/* $OpenBSD: tls13_client.c,v 1.49 2020/04/17 17:16:53 jsing Exp $ */
 /*
  * Copyright (c) 2018, 2019 Joel Sing <jsing@openbsd.org>
  *
@@ -36,6 +36,8 @@ tls13_connect(struct tls13_ctx *ctx)
 static int
 tls13_client_init(struct tls13_ctx *ctx)
 {
+	const uint16_t *groups;
+	size_t groups_len;
 	SSL *s = ctx->ssl;
 
 	if (!ssl_supported_version_range(s, &ctx->hs->min_version,
@@ -51,12 +53,29 @@ tls13_client_init(struct tls13_ctx *ctx)
 	if (!tls1_transcript_init(s))
 		return 0;
 
-	if ((ctx->hs->key_share = tls13_key_share_new(NID_X25519)) == NULL)
+	/* Generate a key share using our preferred group. */
+	tls1_get_group_list(s, 0, &groups, &groups_len);
+	if (groups_len < 1)
+		return 0;
+	if ((ctx->hs->key_share = tls13_key_share_new(groups[0])) == NULL)
 		return 0;
 	if (!tls13_key_share_generate(ctx->hs->key_share))
 		return 0;
 
 	arc4random_buf(s->s3->client_random, SSL3_RANDOM_SIZE);
+
+	/*
+	 * The legacy session identifier should either be set to an
+	 * unpredictable 32-byte value or zero length... a non-zero length
+	 * legacy session identifier triggers compatibility mode (see RFC 8446
+	 * Appendix D.4). In the pre-TLSv1.3 case a zero length value is used.
+	 */
+	if (ctx->hs->max_version >= TLS1_3_VERSION) {
+		arc4random_buf(ctx->hs->legacy_session_id,
+		    sizeof(ctx->hs->legacy_session_id));
+		ctx->hs->legacy_session_id_len =
+		    sizeof(ctx->hs->legacy_session_id);
+	}
 
 	return 1;
 }
@@ -175,11 +194,6 @@ tls13_client_hello_build(struct tls13_ctx *ctx, CBB *cbb)
 		goto err;
 	if (!CBB_add_bytes(cbb, s->s3->client_random, SSL3_RANDOM_SIZE))
 		goto err;
-
-	/* Either 32-random bytes or zero length... */
-	arc4random_buf(ctx->hs->legacy_session_id,
-	    sizeof(ctx->hs->legacy_session_id));
-	ctx->hs->legacy_session_id_len = sizeof(ctx->hs->legacy_session_id);
 
 	if (!CBB_add_u8_length_prefixed(cbb, &session_id))
 		goto err;
@@ -552,23 +566,20 @@ tls13_server_hello_recv(struct tls13_ctx *ctx, CBS *cbs)
 int
 tls13_client_hello_retry_send(struct tls13_ctx *ctx, CBB *cbb)
 {
-	int nid;
-
 	/*
-	 * Ensure that the server supported group is not the same
-	 * as the one we previously offered and that it was one that
-	 * we listed in our supported groups.
+	 * Ensure that the server supported group is one that we listed in our
+	 * supported groups and is not the same as the key share we previously
+	 * offered.
 	 */
-	if (ctx->hs->server_group == tls13_key_share_group(ctx->hs->key_share))
+	if (!tls1_check_curve(ctx->ssl, ctx->hs->server_group))
 		return 0; /* XXX alert */
-	if ((nid = tls1_ec_curve_id2nid(ctx->hs->server_group)) == 0)
-		return 0;
-	if (nid != NID_X25519 && nid != NID_X9_62_prime256v1 && nid != NID_secp384r1)
+	if (ctx->hs->server_group == tls13_key_share_group(ctx->hs->key_share))
 		return 0; /* XXX alert */
 
 	/* Switch to new key share. */
 	tls13_key_share_free(ctx->hs->key_share);
-	if ((ctx->hs->key_share = tls13_key_share_new(nid)) == NULL)
+	if ((ctx->hs->key_share =
+	    tls13_key_share_new(ctx->hs->server_group)) == NULL)
 		return 0;
 	if (!tls13_key_share_generate(ctx->hs->key_share))
 		return 0;

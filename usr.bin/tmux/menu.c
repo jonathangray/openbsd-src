@@ -1,4 +1,4 @@
-/* $OpenBSD: menu.c,v 1.15 2020/03/24 08:09:44 nicm Exp $ */
+/* $OpenBSD: menu.c,v 1.23 2020/04/16 17:20:23 nicm Exp $ */
 
 /*
  * Copyright (c) 2019 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -149,10 +149,14 @@ menu_draw_cb(struct client *c, __unused struct screen_redraw_ctx *ctx0)
 	struct menu		*menu = md->menu;
 	struct screen_write_ctx	 ctx;
 	u_int			 i, px = md->px, py = md->py;
+	struct grid_cell	 gc;
+
+	memcpy(&gc, &grid_default_cell, sizeof gc);
+	style_apply(&gc, c->session->curw->window->options, "mode-style");
 
 	screen_write_start(&ctx, NULL, s);
 	screen_write_clearscreen(&ctx, 8);
-	screen_write_menu(&ctx, menu, md->choice);
+	screen_write_menu(&ctx, menu, md->choice, &gc);
 	screen_write_stop(&ctx);
 
 	for (i = 0; i < screen_size_y(&md->s); i++)
@@ -183,10 +187,11 @@ menu_key_cb(struct client *c, struct key_event *event)
 	struct mouse_event		*m = &event->m;
 	u_int				 i;
 	int				 count = menu->count, old = md->choice;
-	const struct menu_item		*item;
-	struct cmdq_item		*new_item;
-	struct cmd_parse_result		*pr;
 	const char			*name;
+	const struct menu_item		*item;
+	struct cmdq_state		*state;
+	enum cmd_parse_status		 status;
+	char				*error;
 
 	if (KEYC_IS_MOUSE(event->key)) {
 		if (md->flags & MENU_NOMOUSE) {
@@ -271,25 +276,19 @@ chosen:
 	    return (1);
 	}
 
-	pr = cmd_parse_from_string(item->command, NULL);
-	switch (pr->status) {
-	case CMD_PARSE_EMPTY:
-		break;
-	case CMD_PARSE_ERROR:
-		new_item = cmdq_get_error(pr->error);
-		free(pr->error);
-		cmdq_append(c, new_item);
-		break;
-	case CMD_PARSE_SUCCESS:
-		if (md->item != NULL)
-			m = &md->item->shared->mouse;
-		else
-			m = NULL;
-		new_item = cmdq_get_command(pr->cmdlist, &md->fs, m, 0);
-		cmd_list_free(pr->cmdlist);
-		cmdq_append(c, new_item);
-		break;
+	if (md->item != NULL)
+		event = cmdq_get_event(md->item);
+	else
+		event = NULL;
+	state = cmdq_new_state(&md->fs, event, 0);
+
+	status = cmd_parse_and_append(item->command, NULL, c, state, &error);
+	if (status == CMD_PARSE_ERROR) {
+		cmdq_append(c, cmdq_get_error(error));
+		free(error);
 	}
+	cmdq_free_state(state);
+
 	return (1);
 }
 
@@ -299,6 +298,8 @@ menu_display(struct menu *menu, int flags, struct cmdq_item *item, u_int px,
     void *data)
 {
 	struct menu_data	*md;
+	u_int			 i;
+	const char		*name;
 
 	if (c->tty.sx < menu->width + 4 || c->tty.sy < menu->count + 2)
 		return (-1);
@@ -319,7 +320,18 @@ menu_display(struct menu *menu, int flags, struct cmdq_item *item, u_int px,
 	md->py = py;
 
 	md->menu = menu;
-	md->choice = -1;
+	if (md->flags & MENU_NOMOUSE) {
+		for (i = 0; i < menu->count; i++) {
+			name = menu->items[i].name;
+			if (name != NULL && *name != '-')
+				break;
+		}
+		if (i != menu->count)
+			md->choice = i;
+		else
+			md->choice = -1;
+	} else
+		md->choice = -1;
 
 	md->cb = cb;
 	md->data = data;

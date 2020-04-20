@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-break-pane.c,v 1.50 2019/11/28 09:45:15 nicm Exp $ */
+/* $OpenBSD: cmd-break-pane.c,v 1.55 2020/04/13 20:51:57 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -48,16 +48,18 @@ const struct cmd_entry cmd_break_pane_entry = {
 static enum cmd_retval
 cmd_break_pane_exec(struct cmd *self, struct cmdq_item *item)
 {
-	struct args		*args = self->args;
-	struct cmd_find_state	*current = &item->shared->current;
-	struct client		*c = cmd_find_client(item, NULL, 1);
-	struct winlink		*wl = item->source.wl;
-	struct session		*src_s = item->source.s;
-	struct session		*dst_s = item->target.s;
-	struct window_pane	*wp = item->source.wp;
+	struct args		*args = cmd_get_args(self);
+	struct cmd_find_state	*current = cmdq_get_current(item);
+	struct cmd_find_state	*target = cmdq_get_target(item);
+	struct cmd_find_state	*source = cmdq_get_source(item);
+	struct client		*tc = cmdq_get_target_client(item);
+	struct winlink		*wl = source->wl;
+	struct session		*src_s = source->s;
+	struct session		*dst_s = target->s;
+	struct window_pane	*wp = source->wp;
 	struct window		*w = wl->window;
 	char			*name, *cause;
-	int			 idx = item->target.idx;
+	int			 idx = target->idx;
 	const char		*template;
 	char			*cp;
 
@@ -81,7 +83,7 @@ cmd_break_pane_exec(struct cmd *self, struct cmdq_item *item)
 	wp->flags |= PANE_STYLECHANGED;
 	TAILQ_INSERT_HEAD(&w->panes, wp, entry);
 	w->active = wp;
-	w->latest = c;
+	w->latest = tc;
 
 	if (!args_has(args, 'n')) {
 		name = default_window_name(w);
@@ -98,7 +100,7 @@ cmd_break_pane_exec(struct cmd *self, struct cmdq_item *item)
 	if (idx == -1)
 		idx = -1 - options_get_number(dst_s->options, "base-index");
 	wl = session_attach(dst_s, w, idx, &cause); /* can't fail */
-	if (!args_has(self->args, 'd')) {
+	if (!args_has(args, 'd')) {
 		session_select(dst_s, wl->idx);
 		cmd_find_from_session(current, dst_s, 0);
 	}
@@ -113,7 +115,7 @@ cmd_break_pane_exec(struct cmd *self, struct cmdq_item *item)
 	if (args_has(args, 'P')) {
 		if ((template = args_get(args, 'F')) == NULL)
 			template = BREAK_PANE_TEMPLATE;
-		cp = format_single(item, template, c, dst_s, wl, wp);
+		cp = format_single(item, template, tc, dst_s, wl, wp);
 		cmdq_print(item, "%s", cp);
 		free(cp);
 	}

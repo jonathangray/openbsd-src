@@ -1,4 +1,4 @@
-/* $OpenBSD: control.c,v 1.25 2019/12/12 11:39:56 nicm Exp $ */
+/* $OpenBSD: control.c,v 1.30 2020/04/13 18:59:41 nicm Exp $ */
 
 /*
  * Copyright (c) 2012 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -42,7 +42,7 @@ control_write(struct client *c, const char *fmt, ...)
 static enum cmd_retval
 control_error(struct cmdq_item *item, void *data)
 {
-	struct client	*c = item->client;
+	struct client	*c = cmdq_get_client(item);
 	char		*error = data;
 
 	cmdq_guard(item, "begin", 1);
@@ -56,13 +56,13 @@ control_error(struct cmdq_item *item, void *data)
 /* Control input callback. Read lines and fire commands. */
 static void
 control_callback(__unused struct client *c, __unused const char *path,
-    int error, int closed, struct evbuffer *buffer, __unused void *data)
+    int read_error, int closed, struct evbuffer *buffer, __unused void *data)
 {
-	char			*line;
-	struct cmdq_item	*item;
-	struct cmd_parse_result	*pr;
+	char			*line, *error;
+	struct cmdq_state	*state;
+	enum cmd_parse_status	 status;
 
-	if (closed || error != 0)
+	if (closed || read_error != 0)
 		c->flags |= CLIENT_EXIT;
 
 	for (;;) {
@@ -76,21 +76,11 @@ control_callback(__unused struct client *c, __unused const char *path,
 			break;
 		}
 
-		pr = cmd_parse_from_string(line, NULL);
-		switch (pr->status) {
-		case CMD_PARSE_EMPTY:
-			break;
-		case CMD_PARSE_ERROR:
-			item = cmdq_get_callback(control_error, pr->error);
-			cmdq_append(c, item);
-			break;
-		case CMD_PARSE_SUCCESS:
-			item = cmdq_get_command(pr->cmdlist, NULL, NULL, 0);
-			item->shared->flags |= CMDQ_SHARED_CONTROL;
-			cmdq_append(c, item);
-			cmd_list_free(pr->cmdlist);
-			break;
-		}
+		state = cmdq_new_state(NULL, NULL, CMDQ_STATE_CONTROL);
+		status = cmd_parse_and_append(line, NULL, c, state, &error);
+		if (status == CMD_PARSE_ERROR)
+			cmdq_append(c, cmdq_get_callback(control_error, error));
+		cmdq_free_state(state);
 
 		free(line);
 	}

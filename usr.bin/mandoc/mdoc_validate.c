@@ -1,4 +1,4 @@
-/* $OpenBSD: mdoc_validate.c,v 1.297 2020/04/02 14:55:29 schwarze Exp $ */
+/* $OpenBSD: mdoc_validate.c,v 1.300 2020/04/18 20:28:46 schwarze Exp $ */
 /*
  * Copyright (c) 2010-2020 Ingo Schwarze <schwarze@openbsd.org>
  * Copyright (c) 2008-2012 Kristaps Dzonsons <kristaps@bsd.lv>
@@ -35,11 +35,11 @@
 #include "mandoc.h"
 #include "mandoc_xr.h"
 #include "roff.h"
-#include "tag.h"
 #include "mdoc.h"
 #include "libmandoc.h"
 #include "roff_int.h"
 #include "libmdoc.h"
+#include "tag.h"
 
 /* FIXME: .Bl -diag can't have non-text children in HEAD. */
 
@@ -1090,6 +1090,7 @@ post_tg(POST_ARGS)
 	struct roff_node *n;	/* The .Tg node. */
 	struct roff_node *nch;	/* The first child of the .Tg node. */
 	struct roff_node *nn;   /* The next node after the .Tg node. */
+	struct roff_node *np;	/* The parent of the next node. */
 	struct roff_node *nt;	/* The TEXT node containing the tag. */
 	size_t		  len;	/* The number of bytes in the tag. */
 
@@ -1135,7 +1136,7 @@ post_tg(POST_ARGS)
 	}
 
 	/* By default, tag the .Tg node itself. */
-	if (nn == NULL)
+	if (nn == NULL || nn->flags & NODE_ID)
 		nn = n;
 
 	/* Explicit tagging of specific macros. */
@@ -1143,8 +1144,41 @@ post_tg(POST_ARGS)
 	case MDOC_Sh:
 	case MDOC_Ss:
 	case MDOC_Fo:
-		nn = nn->head;
-		/* FALLTHROUGH */
+		nn = nn->head->child == NULL ? n : nn->head;
+		break;
+	case MDOC_It:
+		np = nn->parent;
+		while (np->tok != MDOC_Bl)
+			np = np->parent;
+		switch (np->norm->Bl.type) {
+		case LIST_column:
+			break;
+		case LIST_diag:
+		case LIST_hang:
+		case LIST_inset:
+		case LIST_ohang:
+		case LIST_tag:
+			nn = nn->head;
+			break;
+		case LIST_bullet:
+		case LIST_dash:
+		case LIST_enum:
+		case LIST_hyphen:
+		case LIST_item:
+			nn = nn->body->child == NULL ? n : nn->body;
+			break;
+		default:
+			abort();
+		}
+		break;
+	case MDOC_Bd:
+	case MDOC_Bl:
+	case MDOC_D1:
+	case MDOC_Dl:
+		nn = nn->body->child == NULL ? n : nn->body;
+		break;
+	case MDOC_Pp:
+		break;
 	case MDOC_Cm:
 	case MDOC_Dv:
 	case MDOC_Em:
@@ -1157,9 +1191,9 @@ post_tg(POST_ARGS)
 	case MDOC_Ms:
 	case MDOC_No:
 	case MDOC_Sy:
-		if (nn->child != NULL && (nn->flags & NODE_ID) == 0)
-			break;
-		/* FALLTHROUGH */
+		if (nn->child == NULL)
+			nn = n;
+		break;
 	default:
 		nn = n;
 		break;
@@ -2163,8 +2197,8 @@ post_hyph(POST_ARGS)
 			if (*cp == '-' &&
 			    isalpha((unsigned char)cp[-1]) &&
 			    isalpha((unsigned char)cp[1])) {
-				if (n->string == NULL && n->flags & NODE_ID)
-					n->string = mandoc_strdup(nch->string);
+				if (n->tag == NULL && n->flags & NODE_ID)
+					n->tag = mandoc_strdup(nch->string);
 				*cp = ASCII_HYPH;
 			}
 	}

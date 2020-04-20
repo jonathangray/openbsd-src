@@ -1,4 +1,4 @@
-/*	$OpenBSD: acpivar.h,v 1.105 2019/09/07 13:46:20 kettenis Exp $	*/
+/*	$OpenBSD: acpivar.h,v 1.107 2020/04/14 20:42:26 kettenis Exp $	*/
 /*
  * Copyright (c) 2005 Thorsten Lockert <tholo@sigmasoft.com>
  *
@@ -208,7 +208,8 @@ struct acpi_softc {
 
 	bus_space_tag_t		sc_iot;
 	bus_space_tag_t		sc_memt;
-	bus_dma_tag_t		sc_dmat;
+	bus_dma_tag_t		sc_cc_dmat;
+	bus_dma_tag_t		sc_ci_dmat;
 
 	/*
 	 * First-level ACPI tables
@@ -371,6 +372,7 @@ int	acpi_matchhids(struct acpi_attach_args *, const char *[], const char *);
 int	acpi_parsehid(struct aml_node *, void *, char *, char *, size_t);
 int64_t	acpi_getsta(struct acpi_softc *sc, struct aml_node *);
 
+int	acpi_getprop(struct aml_node *, const char *, void *, int);
 uint32_t acpi_getpropint(struct aml_node *, const char *, uint32_t);
 
 int	acpi_record_event(struct acpi_softc *, u_int);

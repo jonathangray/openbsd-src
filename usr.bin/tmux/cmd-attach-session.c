@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-attach-session.c,v 1.79 2019/11/29 16:04:07 nicm Exp $ */
+/* $OpenBSD: cmd-attach-session.c,v 1.83 2020/04/13 14:46:04 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -50,10 +50,11 @@ enum cmd_retval
 cmd_attach_session(struct cmdq_item *item, const char *tflag, int dflag,
     int xflag, int rflag, const char *cflag, int Eflag)
 {
-	struct cmd_find_state	*current = &item->shared->current;
+	struct cmd_find_state	*current = cmdq_get_current(item);
+	struct cmd_find_state	 target;
 	enum cmd_find_type	 type;
 	int			 flags;
-	struct client		*c = item->client, *c_loop;
+	struct client		*c = cmdq_get_client(item), *c_loop;
 	struct session		*s;
 	struct winlink		*wl;
 	struct window_pane	*wp;
@@ -80,11 +81,11 @@ cmd_attach_session(struct cmdq_item *item, const char *tflag, int dflag,
 		type = CMD_FIND_SESSION;
 		flags = CMD_FIND_PREFER_UNATTACHED;
 	}
-	if (cmd_find_target(&item->target, item, tflag, type, flags) != 0)
+	if (cmd_find_target(&target, item, tflag, type, flags) != 0)
 		return (CMD_RETURN_ERROR);
-	s = item->target.s;
-	wl = item->target.wl;
-	wp = item->target.wp;
+	s = target.s;
+	wl = target.wl;
+	wp = target.wp;
 
 	if (wl != NULL) {
 		if (wp != NULL)
@@ -118,7 +119,7 @@ cmd_attach_session(struct cmdq_item *item, const char *tflag, int dflag,
 			environ_update(s->options, c->environ, s->environ);
 
 		c->session = s;
-		if (~item->shared->flags & CMDQ_SHARED_REPEAT)
+		if (~cmdq_get_flags(item) & CMDQ_STATE_REPEAT)
 			server_client_set_key_table(c, NULL);
 		tty_update_client_offset(c);
 		status_timer_start(c);
@@ -177,7 +178,7 @@ cmd_attach_session(struct cmdq_item *item, const char *tflag, int dflag,
 static enum cmd_retval
 cmd_attach_session_exec(struct cmd *self, struct cmdq_item *item)
 {
-	struct args	*args = self->args;
+	struct args	*args = cmd_get_args(self);
 
 	return (cmd_attach_session(item, args_get(args, 't'),
 	    args_has(args, 'd'), args_has(args, 'x'), args_has(args, 'r'),

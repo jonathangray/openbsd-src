@@ -17,9 +17,9 @@
 .\" ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT
 .\" OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.\" $OpenBSD: crontab.5,v 1.37 2020/01/06 19:44:09 job Exp $
+.\" $OpenBSD: crontab.5,v 1.41 2020/04/18 17:11:40 jmc Exp $
 .\"
-.Dd $Mdocdate: January 6 2020 $
+.Dd $Mdocdate: April 18 2020 $
 .Dt CRONTAB 5
 .Os
 .Sh NAME
@@ -92,7 +92,7 @@ to preserve leading or trailing blanks.
 .Pp
 Lines in the system
 .Nm
-have six fixed fields plus a command, in the form:
+have six fixed fields, an optional flags field, and a command, in the form:
 .Bd -ragged -offset indent
 .Ar minute
 .Ar hour
@@ -100,18 +100,20 @@ have six fixed fields plus a command, in the form:
 .Ar month
 .Ar day-of-week
 .Ar user
+.Op Ar flags
 .Ar command
 .Ed
 .Pp
 While lines in a user
 .Nm
-have five fixed fields plus a command, in the form:
+have five fixed fields, an optional flags field, and a command, in the form:
 .Bd -ragged -offset indent
 .Ar minute
 .Ar hour
 .Ar day-of-month
 .Ar month
 .Ar day-of-week
+.Op Ar flags
 .Ar command
 .Ed
 .Pp
@@ -126,6 +128,7 @@ The allowed values for the fields are:
 .It Ar month Ta * or 1\(en12 or a name (see below)
 .It Ar day-of-week Ta * or 0\(en7 or a name (0 or 7 is Sunday)
 .It Ar user Ta a valid username
+.It Op Ar flags Ta runtime flags, denoted with '-'
 .It Ar command Ta text
 .El
 .Pp
@@ -144,7 +147,18 @@ For example,
 .Ar hour
 entry specifies execution at hours 8, 9, 10 and 11.
 .Pp
-Step values can be used in conjunction with ranges.
+A random value (within the legal range) may be obtained by using the
+.Ql ~
+character in a field.
+The interval of the random value may be specified explicitly, for example
+.Dq 0~30
+will result in a random value between 0 and 30 inclusive.
+If either (or both) of the numbers on either side of the
+.Ql ~
+are omitted, the appropriate limit (low or high) for the field will be used.
+.Pp
+Step values can be used in conjunction with ranges (but not random ranges
+which represent a single number).
 Following a range with
 .No / Ns Ar number
 specifies skips of
@@ -173,6 +187,32 @@ Use the first three letters of the particular
 day or month (case doesn't matter).
 Ranges or lists of names are not allowed.
 .Pp
+Some
+.Ar flags
+relating to process operation can be provided before the
+.Ar command
+field.
+Flags are denoted with '-' and may be combined.
+.Bl -tag -width Ds
+.It Fl n Ar command
+No mail is sent after a successful run.
+The execution output will only be mailed if the command exits with a non-zero
+exit code.
+The
+.Fl n
+option is an attempt to cure potentially copious volumes of mail coming from
+.Xr cron 8 .
+.It Fl q Ar command
+Execution will not be logged.
+.It Fl s Ar command
+Only a single instance of
+.Ar command
+will be run concurrently.
+Additional instances of
+.Ar command
+will not be scheduled until the earlier one completes.
+.El
+.Pp
 The
 .Ar command
 field (the rest of the line) is the command to be
@@ -193,20 +233,6 @@ will be changed into newline characters, and all data
 after the first
 .Ql %
 will be sent to the command as standard input.
-.Pp
-Commands may be modified as follows:
-.Bl -tag -width Ds
-.It Fl n Ar command
-No mail is sent after a successful run.
-The execution output will only be mailed if the command exits with a non-zero
-exit code.
-The
-.Fl n
-option is an attempt to cure potentially copious volumes of mail coming from
-.Xr cron 8 .
-.It Fl q Ar command
-Execution will not be logged.
-.El
 .Pp
 Commands are executed by
 .Xr cron 8
@@ -318,6 +344,9 @@ MAILTO=paul
 23 0-23/2 * * * echo "run 23 minutes after midn, 2am, 4am ..., everyday"
 
 5 4 * * sun     echo "run at 5 after 4 every sunday"
+
+# run hourly at a random time within the first 30 minutes of the hour
+0~30 * * * *   /usr/libexec/spamd-setup
 .Ed
 .Sh SEE ALSO
 .Xr crontab 1 ,
@@ -338,13 +367,11 @@ field may use 7 to represent Sunday.
 Ranges may include
 .Dq steps .
 .It
+Random intervals are supported using the
+.Ql ~
+character.
+.It
 Months or days of the week can be specified by name.
-.It
-Mailing after a successful run can be suppressed with
-.Fl n .
-.It
-Logging can be suppressed with
-.Ql -q .
 .It
 Environment variables can be set in a crontab.
 .It
@@ -355,6 +382,10 @@ at all.
 All of the
 .Ql @
 commands that can appear in place of the first five fields.
+.It
+All of the
+.Op Fl nqs
+flags.
 .El
 .Sh AUTHORS
 .Nm

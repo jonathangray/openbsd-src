@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-find.c,v 1.73 2019/06/12 09:10:29 nicm Exp $ */
+/* $OpenBSD: cmd-find.c,v 1.78 2020/04/13 14:46:04 nicm Exp $ */
 
 /*
  * Copyright (c) 2015 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -961,10 +961,11 @@ cmd_find_target(struct cmd_find_state *fs, struct cmdq_item *item,
 	if (server_check_marked() && (flags & CMD_FIND_DEFAULT_MARKED)) {
 		fs->current = &marked_pane;
 		log_debug("%s: current is marked pane", __func__);
-	} else if (cmd_find_valid_state(&item->shared->current)) {
-		fs->current = &item->shared->current;
+	} else if (cmd_find_valid_state(cmdq_get_current(item))) {
+		fs->current = cmdq_get_current(item);
 		log_debug("%s: current is from queue", __func__);
-	} else if (cmd_find_from_client(&current, item->client, flags) == 0) {
+	} else if (cmd_find_from_client(&current, cmdq_get_client(item),
+	    flags) == 0) {
 		fs->current = &current;
 		log_debug("%s: current is from client", __func__);
 	} else {
@@ -981,7 +982,7 @@ cmd_find_target(struct cmd_find_state *fs, struct cmdq_item *item,
 
 	/* Mouse target is a plain = or {mouse}. */
 	if (strcmp(target, "=") == 0 || strcmp(target, "{mouse}") == 0) {
-		m = &item->shared->mouse;
+		m = &cmdq_get_event(item)->m;
 		switch (type) {
 		case CMD_FIND_PANE:
 			fs->wp = cmd_mouse_pane(m, &fs->s, &fs->wl);
@@ -1231,29 +1232,31 @@ no_pane:
 static struct client *
 cmd_find_current_client(struct cmdq_item *item, int quiet)
 {
-	struct client		*c;
+	struct client		*c = NULL, *found;
 	struct session		*s;
 	struct window_pane	*wp;
 	struct cmd_find_state	 fs;
 
-	if (item->client != NULL && item->client->session != NULL)
-		return (item->client);
+	if (item != NULL)
+		c = cmdq_get_client(item);
+	if (c != NULL && c->session != NULL)
+		return (c);
 
-	c = NULL;
-	if ((wp = cmd_find_inside_pane(item->client)) != NULL) {
+	found = NULL;
+	if (c != NULL && (wp = cmd_find_inside_pane(c)) != NULL) {
 		cmd_find_clear_state(&fs, CMD_FIND_QUIET);
 		fs.w = wp->window;
 		if (cmd_find_best_session_with_window(&fs) == 0)
-			c = cmd_find_best_client(fs.s);
+			found = cmd_find_best_client(fs.s);
 	} else {
 		s = cmd_find_best_session(NULL, 0, CMD_FIND_QUIET);
 		if (s != NULL)
-			c = cmd_find_best_client(s);
+			found = cmd_find_best_client(s);
 	}
-	if (c == NULL && !quiet)
+	if (found == NULL && item != NULL && !quiet)
 		cmdq_error(item, "no current client");
-	log_debug("%s: no target, return %p", __func__, c);
-	return (c);
+	log_debug("%s: no target, return %p", __func__, found);
+	return (found);
 }
 
 /* Find the target client or report an error and return NULL. */

@@ -1,4 +1,4 @@
-/*	$OpenBSD: dev.c,v 1.66 2020/03/31 06:29:05 ratchov Exp $	*/
+/*	$OpenBSD: dev.c,v 1.70 2020/04/16 12:26:55 ratchov Exp $	*/
 /*
  * Copyright (c) 2008-2012 Alexandre Ratchov <alex@caoua.org>
  *
@@ -348,7 +348,25 @@ dev_midi_vol(struct dev *d, struct slot *s)
 void
 dev_midi_master(struct dev *d)
 {
+	struct ctl *c;
+	unsigned int master, v;
 	struct sysex x;
+
+	if (d->master_enabled)
+		master = d->master;
+	else {
+		master = 0;
+		for (c = d->ctl_list; c != NULL; c = c->next) {
+			if (c->type != CTL_NUM ||
+			    strcmp(c->group, "") != 0 ||
+			    strcmp(c->node0.name, "output") != 0 ||
+			    strcmp(c->func, "level") != 0)
+				continue;
+			v = (c->curval * 127 + c->maxval / 2) / c->maxval;
+			if (master < v)
+				master = v;
+		}
+	}
 
 	memset(&x, 0, sizeof(struct sysex));
 	x.start = SYSEX_START;
@@ -357,7 +375,7 @@ dev_midi_master(struct dev *d)
 	x.id0 = SYSEX_CONTROL;
 	x.id1 = SYSEX_MASTER;
 	x.u.master.fine = 0;
-	x.u.master.coarse = d->master;
+	x.u.master.coarse = master;
 	x.u.master.end = SYSEX_END;
 	midi_send(d->midi, (unsigned char *)&x, SYSEX_SIZE(master));
 }
@@ -441,8 +459,10 @@ dev_midi_omsg(void *arg, unsigned char *msg, int len)
 		if (x->id0 == SYSEX_CONTROL && x->id1 == SYSEX_MASTER) {
 			if (len == SYSEX_SIZE(master)) {
 				dev_master(d, x->u.master.coarse);
-				dev_onval(d, CTLADDR_MASTER,
-				    x->u.master.coarse);
+				if (d->master_enabled) {
+					dev_onval(d, CTLADDR_MASTER,
+					   x->u.master.coarse);
+				}
 			}
 			return;
 		}
@@ -654,7 +674,8 @@ dev_mix_adjvol(struct dev *d)
 		}
 		if (weight > i->opt->maxweight)
 			weight = i->opt->maxweight;
-		i->mix.weight = ADATA_MUL(weight, MIDI_TO_ADATA(d->master));
+		i->mix.weight = d->master_enabled ?
+		    ADATA_MUL(weight, MIDI_TO_ADATA(d->master)) : weight;
 #ifdef DEBUG
 		if (log_level >= 3) {
 			slot_log(i);
@@ -945,15 +966,30 @@ dev_onmove(struct dev *d, int delta)
 void
 dev_master(struct dev *d, unsigned int master)
 {
+	struct ctl *c;
+	unsigned int v;
+
 	if (log_level >= 2) {
 		dev_log(d);
 		log_puts(": master volume set to ");
 		log_putu(master);
 		log_puts("\n");
 	}
-	d->master = master;
-	if (d->mode & MODE_PLAY)
-		dev_mix_adjvol(d);
+	if (d->master_enabled) {
+		d->master = master;
+		if (d->mode & MODE_PLAY)
+			dev_mix_adjvol(d);
+	} else {
+		for (c = d->ctl_list; c != NULL; c = c->next) {
+			if (c->type != CTL_NUM ||
+			    strcmp(c->group, "") != 0 ||
+			    strcmp(c->node0.name, "output") != 0 ||
+			    strcmp(c->func, "level") != 0)
+				continue;
+			v = (master * c->maxval + 64) / 127;
+			dev_setctl(d, c->addr, v);
+		}
+	}
 }
 
 /*
@@ -1012,7 +1048,7 @@ dev_new(char *path, struct aparams *par,
 		d->slot[i].ops = NULL;
 		d->slot[i].vol = MIDI_MAXCTL;
 		d->slot[i].serial = d->serial++;
-		strlcpy(d->slot[i].name, "prog", SLOT_NAMEMAX);
+		memset(d->slot[i].name, 0, SLOT_NAMEMAX);
 	}
 	for (i = 0; i < DEV_NCTLSLOT; i++) {
 		d->ctlslot[i].ops = NULL;
@@ -1120,6 +1156,7 @@ dev_open(struct dev *d)
 	int i;
 	char name[CTL_NAMEMAX];
 
+	d->master_enabled = 0;
 	d->mode = d->reqmode;
 	d->round = d->reqround;
 	d->bufsz = d->reqbufsz;
@@ -1142,14 +1179,14 @@ dev_open(struct dev *d)
 		return 0;
 
 	for (i = 0; i < DEV_NSLOT; i++) {
+		if (d->slot[i].name[0] == 0)
+			continue;
 		slot_ctlname(&d->slot[i], name, CTL_NAMEMAX);
 		dev_addctl(d, "app", CTL_NUM,
 		    CTLADDR_SLOT_LEVEL(i),
 		    name, -1, "level",
 		    NULL, -1, 127, d->slot[i].vol);
 	}
-	dev_addctl(d, "", CTL_NUM,
-	    CTLADDR_MASTER, "output", -1, "level", NULL, -1, 127, d->master);
 
 	d->pstate = DEV_INIT;
 	return 1;
@@ -2239,6 +2276,9 @@ ctl_log(struct ctl *c)
 	log_puts(c->func);
 	log_puts("=");
 	switch (c->type) {
+	case CTL_NONE:
+		log_puts("none");
+		break;
 	case CTL_NUM:
 	case CTL_SW:
 		log_putu(c->curval);
@@ -2327,17 +2367,47 @@ dev_rmctl(struct dev *d, int addr)
 	}
 #endif
 	c->refs_mask &= ~CTL_DEVMASK;
-	if (c->refs_mask != 0)
+	if (c->refs_mask == 0) {
+		*pc = c->next;
+		xfree(c);
 		return;
-	*pc = c->next;
-	xfree(c);
+	}
+	c->desc_mask = ~0;
 }
 
 void
 dev_ctlsync(struct dev *d)
 {
+	struct ctl *c;
 	struct ctlslot *s;
-	int i;
+	int found, i;
+
+	found = 0;
+	for (c = d->ctl_list; c != NULL; c = c->next) {
+		if (c->addr != CTLADDR_MASTER &&
+		    c->type == CTL_NUM &&
+		    strcmp(c->group, "") == 0 &&
+		    strcmp(c->node0.name, "output") == 0 &&
+		    strcmp(c->func, "level") == 0)
+			found = 1;
+	}
+
+	if (d->master_enabled && found) {
+		if (log_level >= 2) {
+			dev_log(d);
+			log_puts(": software master level control disabled\n");
+		}
+		d->master_enabled = 0;
+		dev_rmctl(d, CTLADDR_MASTER);
+	} else if (!d->master_enabled && !found) {
+		if (log_level >= 2) {
+			dev_log(d);
+			log_puts(": software master level control enabled\n");
+		}
+		d->master_enabled = 1;
+		dev_addctl(d, "", CTL_NUM, CTLADDR_MASTER,
+		    "output", -1, "level", NULL, -1, 127, d->master);
+	}
 
 	for (s = d->ctlslot, i = DEV_NCTLSLOT; i > 0; i--, s++) {
 		if (s->ops)
@@ -2391,8 +2461,10 @@ dev_setctl(struct dev *d, int addr, int val)
 		dev_ref(d);
 	} else {
 		if (addr == CTLADDR_MASTER) {
-			dev_master(d, val);
-			dev_midi_master(d);
+			if (d->master_enabled) {
+				dev_master(d, val);
+				dev_midi_master(d);
+			}
 		} else {
 			num = addr - CTLADDR_SLOT_LEVEL(0);
 			slot_setvol(d->slot + num, val);
@@ -2428,15 +2500,21 @@ dev_label(struct dev *d, int i)
 	struct ctl *c;
 	char name[CTL_NAMEMAX];
 
+	slot_ctlname(&d->slot[i], name, CTL_NAMEMAX);
+
 	c = d->ctl_list;
 	for (;;) {
-		if (c == NULL)
+		if (c == NULL) {
+			dev_addctl(d, "app", CTL_NUM,
+			    CTLADDR_SLOT_LEVEL(i),
+			    name, -1, "level",
+			    NULL, -1, 127, d->slot[i].vol);
 			return;
+		}
 		if (c->addr == CTLADDR_SLOT_LEVEL(i))
 			break;
 		c = c->next;
 	}
-	slot_ctlname(&d->slot[i], name, CTL_NAMEMAX);
 	if (strcmp(c->node0.name, name) == 0)
 		return;
 	strlcpy(c->node0.name, name, CTL_NAMEMAX);

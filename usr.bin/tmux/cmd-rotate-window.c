@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-rotate-window.c,v 1.27 2019/08/14 09:58:31 nicm Exp $ */
+/* $OpenBSD: cmd-rotate-window.c,v 1.31 2020/04/13 14:46:04 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -43,16 +43,18 @@ const struct cmd_entry cmd_rotate_window_entry = {
 static enum cmd_retval
 cmd_rotate_window_exec(struct cmd *self, struct cmdq_item *item)
 {
-	struct cmd_find_state	*current = &item->shared->current;
-	struct winlink		*wl = item->target.wl;
+	struct args		*args = cmd_get_args(self);
+	struct cmd_find_state	*current = cmdq_get_current(item);
+	struct cmd_find_state	*target = cmdq_get_target(item);
+	struct winlink		*wl = target->wl;
 	struct window		*w = wl->window;
 	struct window_pane	*wp, *wp2;
 	struct layout_cell	*lc;
 	u_int			 sx, sy, xoff, yoff;
 
-	window_push_zoom(w, args_has(self->args, 'Z'));
+	window_push_zoom(w, args_has(args, 'Z'));
 
-	if (args_has(self->args, 'D')) {
+	if (args_has(args, 'D')) {
 		wp = TAILQ_LAST(&w->panes, window_panes);
 		TAILQ_REMOVE(&w->panes, wp, entry);
 		TAILQ_INSERT_HEAD(&w->panes, wp, entry);

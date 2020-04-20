@@ -1,4 +1,4 @@
-/* $OpenBSD: cfg.c,v 1.78 2019/12/19 09:22:33 nicm Exp $ */
+/* $OpenBSD: cfg.c,v 1.80 2020/04/13 15:55:51 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -183,7 +183,7 @@ load_cfg(const char *path, struct client *c, struct cmdq_item *item, int flags,
 		return (0);
 	}
 
-	new_item0 = cmdq_get_command(pr->cmdlist, NULL, NULL, 0);
+	new_item0 = cmdq_get_command(pr->cmdlist, NULL);
 	if (item != NULL)
 		new_item0 = cmdq_insert_after(item, new_item0);
 	else
@@ -229,7 +229,7 @@ load_cfg_from_buffer(const void *buf, size_t len, const char *path,
 		return (0);
 	}
 
-	new_item0 = cmdq_get_command(pr->cmdlist, NULL, NULL, 0);
+	new_item0 = cmdq_get_command(pr->cmdlist, NULL);
 	if (item != NULL)
 		new_item0 = cmdq_insert_after(item, new_item0);
 	else
@@ -284,7 +284,7 @@ cfg_show_causes(struct session *s)
 
 	wme = TAILQ_FIRST(&wp->modes);
 	if (wme == NULL || wme->mode != &window_view_mode)
-		window_pane_set_mode(wp, &window_view_mode, NULL, NULL);
+		window_pane_set_mode(wp, NULL, &window_view_mode, NULL, NULL);
 	for (i = 0; i < cfg_ncauses; i++) {
 		window_copy_add(wp, "%s", cfg_causes[i]);
 		free(cfg_causes[i]);

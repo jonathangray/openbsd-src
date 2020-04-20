@@ -1,4 +1,4 @@
-/* $OpenBSD: term_tag.c,v 1.2 2020/04/02 22:10:27 schwarze Exp $ */
+/* $OpenBSD: term_tag.c,v 1.4 2020/04/18 20:28:46 schwarze Exp $ */
 /*
  * Copyright (c) 2015,2016,2018,2019,2020 Ingo Schwarze <schwarze@openbsd.org>
  *
@@ -29,6 +29,7 @@
 
 #include "mandoc.h"
 #include "roff.h"
+#include "roff_int.h"
 #include "tag.h"
 #include "term_tag.h"
 
@@ -127,9 +128,7 @@ term_tag_write(struct roff_node *n, size_t line)
 
 	if (tag_files.tfs == NULL)
 		return;
-	if (n->string == NULL)
-		n = n->child;
-	cp = n->string;
+	cp = n->tag == NULL ? n->child->string : n->tag;
 	if (cp[0] == '\\' && (cp[1] == '&' || cp[1] == 'e'))
 		cp += 2;
 	len = strcspn(cp, " \t\\");

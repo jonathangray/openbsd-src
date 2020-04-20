@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-show-messages.c,v 1.28 2018/08/23 15:45:05 nicm Exp $ */
+/* $OpenBSD: cmd-show-messages.c,v 1.31 2020/04/13 20:54:15 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -39,7 +39,7 @@ const struct cmd_entry cmd_show_messages_entry = {
 	.args = { "JTt:", 0, 0 },
 	.usage = "[-JT] " CMD_TARGET_CLIENT_USAGE,
 
-	.flags = CMD_AFTERHOOK,
+	.flags = CMD_AFTERHOOK|CMD_CLIENT_TFLAG,
 	.exec = cmd_show_messages_exec
 };
 
@@ -69,14 +69,11 @@ cmd_show_messages_terminals(struct cmdq_item *item, int blank)
 static enum cmd_retval
 cmd_show_messages_exec(struct cmd *self, struct cmdq_item *item)
 {
-	struct args		*args = self->args;
-	struct client		*c;
+	struct args		*args = cmd_get_args(self);
+	struct client		*tc = cmdq_get_target_client(item);
 	struct message_entry	*msg;
 	char			*tim;
 	int			 done, blank;
-
-	if ((c = cmd_find_client(item, args_get(args, 't'), 0)) == NULL)
-		return (CMD_RETURN_ERROR);
 
 	done = blank = 0;
 	if (args_has(args, 'T')) {
@@ -90,10 +87,9 @@ cmd_show_messages_exec(struct cmd *self, struct cmdq_item *item)
 	if (done)
 		return (CMD_RETURN_NORMAL);
 
-	TAILQ_FOREACH(msg, &c->message_log, entry) {
+	TAILQ_FOREACH(msg, &tc->message_log, entry) {
 		tim = ctime(&msg->msg_time);
 		*strchr(tim, '\n') = '\0';
-
 		cmdq_print(item, "%s %s", tim, msg->msg);
 	}
 

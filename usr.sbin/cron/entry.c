@@ -1,4 +1,4 @@
-/*	$OpenBSD: entry.c,v 1.49 2018/06/13 11:27:30 job Exp $	*/
+/*	$OpenBSD: entry.c,v 1.52 2020/04/18 16:19:02 deraadt Exp $	*/
 
 /*
  * Copyright 1988,1990,1993,1994 by Paul Vixie
@@ -37,7 +37,7 @@
 
 typedef	enum ecode {
 	e_none, e_minute, e_hour, e_dom, e_month, e_dow,
-	e_cmd, e_timespec, e_username, e_option, e_memory
+	e_cmd, e_timespec, e_username, e_option, e_memory, e_flags
 } ecode_e;
 
 static const char *ecodes[] = {
@@ -51,7 +51,8 @@ static const char *ecodes[] = {
 	"bad time specifier",
 	"bad username",
 	"bad option",
-	"out of memory"
+	"out of memory",
+	"bad flags"
 };
 
 static const char *MonthNames[] = {
@@ -333,42 +334,44 @@ load_entry(FILE *file, void (*error_func)(const char *), struct passwd *pw,
 		e->envp = tenvp;
 	}
 
-	/* If the first character of the command is '-' it is a cron option.
+	/* An optional series of '-'-prefixed flags in getopt style can
+	 * occur before the command.
 	 */
 	ch = get_char(file);
 	while (ch == '-') {
-		switch (ch = get_char(file)) {
-		case 'n':
-			/* only allow the user to set the option once */
-			if ((e->flags & MAIL_WHEN_ERR) == MAIL_WHEN_ERR) {
-				ecode = e_option;
+		int flags = 0, loop = 1;
+
+		while (loop) {
+			switch (ch = get_char(file)) {
+			case 'n':
+				flags |= MAIL_WHEN_ERR;
+				break;
+			case 'q':
+				flags |= DONT_LOG;
+				break;
+			case 's':
+				flags |= SINGLE_JOB;
+				break;
+			case ' ':
+			case '\t':
+				Skip_Blanks(ch, file)
+				loop = 0;
+				break;
+			case EOF:
+			case '\n':
+				ecode = e_cmd;
+				goto eof;
+			default:
+				ecode = e_flags;
 				goto eof;
 			}
-			e->flags |= MAIL_WHEN_ERR;
-			break;
-		case 'q':
-			/* only allow the user to set the option once */
-			if ((e->flags & DONT_LOG) == DONT_LOG) {
-				ecode = e_option;
-				goto eof;
-			}
-			e->flags |= DONT_LOG;
-			break;
-		default:
-			ecode = e_option;
-			goto eof;
-		}
-		ch = get_char(file);
-		if (ch!='\t' && ch!=' ') {
-			ecode = e_option;
-			goto eof;
 		}
 
-		Skip_Blanks(ch, file)
-		if (ch == EOF || ch == '\n') {
-			ecode = e_cmd;
+		if (flags == 0) {
+			ecode = e_flags;
 			goto eof;
 		}
+		e->flags |= flags;
 	}
 	unget_char(ch, file);
 
@@ -450,33 +453,29 @@ static int
 get_range(bitstr_t *bits, int low, int high, const char *names[],
 	  int ch, FILE *file)
 {
-	/* range = number | number "-" number [ "/" number ]
+	/* range = number | number* "~" number* | number "-" number ["/" number]
 	 */
 
 	int i, num1, num2, num3;
 
+	num1 = low;
+	num2 = high;
+
 	if (ch == '*') {
-		/* '*' means "first-last" but can still be modified by /step
+		/* '*' means [low, high] but can still be modified by /step
 		 */
-		num1 = low;
-		num2 = high;
 		ch = get_char(file);
 		if (ch == EOF)
 			return (EOF);
 	} else {
-		ch = get_number(&num1, low, names, ch, file, ",- \t\n");
-		if (ch == EOF)
-			return (EOF);
-
-		if (ch != '-') {
-			/* not a range, it's a single number.
-			 */
-			if (EOF == set_element(bits, low, high, num1)) {
-				unget_char(ch, file);
+		if (ch != '~') {
+			ch = get_number(&num1, low, names, ch, file, ",-~ \t\n");
+			if (ch == EOF)
 				return (EOF);
-			}
-			return (ch);
-		} else {
+		}
+
+		switch (ch) {
+		case '-':
 			/* eat the dash
 			 */
 			ch = get_char(file);
@@ -488,6 +487,37 @@ get_range(bitstr_t *bits, int low, int high, const char *names[],
 			ch = get_number(&num2, low, names, ch, file, "/, \t\n");
 			if (ch == EOF || num1 > num2)
 				return (EOF);
+			break;
+		case '~':
+			/* eat the tilde
+			 */
+			ch = get_char(file);
+			if (ch == EOF)
+				return (EOF);
+
+			/* get the (optional) number following the tilde
+			 */
+			ch = get_number(&num2, low, names, ch, file, ", \t\n");
+			if (ch == EOF)
+				ch = get_char(file);
+			if (ch == EOF || num1 > num2) {
+				unget_char(ch, file);
+				return (EOF);
+			}
+
+			/* get a random number in the interval [num1, num2]
+			 */
+			num3 = num1;
+			num1 = arc4random_uniform(num2 - num3 + 1) + num3;
+			/* FALLTHROUGH */
+		default:
+			/* not a range, it's a single number.
+			 */
+			if (EOF == set_element(bits, low, high, num1)) {
+				unget_char(ch, file);
+				return (EOF);
+			}
+			return (ch);
 		}
 	}
 

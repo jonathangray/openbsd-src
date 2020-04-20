@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-set-option.c,v 1.128 2020/03/17 11:10:12 nicm Exp $ */
+/* $OpenBSD: cmd-set-option.c,v 1.133 2020/04/13 20:54:15 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -69,10 +69,10 @@ const struct cmd_entry cmd_set_hook_entry = {
 	.name = "set-hook",
 	.alias = NULL,
 
-	.args = { "agRt:u", 1, 2 },
-	.usage = "[-agRu] " CMD_TARGET_SESSION_USAGE " hook [command]",
+	.args = { "agpRt:uw", 1, 2 },
+	.usage = "[-agpRuw] " CMD_TARGET_PANE_USAGE " hook [command]",
 
-	.target = { 't', CMD_FIND_SESSION, CMD_FIND_CANFAIL },
+	.target = { 't', CMD_FIND_PANE, CMD_FIND_CANFAIL },
 
 	.flags = CMD_AFTERHOOK,
 	.exec = cmd_set_option_exec
@@ -81,12 +81,11 @@ const struct cmd_entry cmd_set_hook_entry = {
 static enum cmd_retval
 cmd_set_option_exec(struct cmd *self, struct cmdq_item *item)
 {
-	struct args			*args = self->args;
+	struct args			*args = cmd_get_args(self);
 	int				 append = args_has(args, 'a');
-	struct cmd_find_state		*fs = &item->target;
-	struct client			*c, *loop;
-	struct session			*s = fs->s;
-	struct winlink			*wl = fs->wl;
+	struct cmd_find_state		*target = cmdq_get_target(item);
+	struct client			*loop;
+	struct session			*s = target->s;
 	struct window			*w;
 	struct window_pane		*wp;
 	struct options			*oo;
@@ -96,14 +95,13 @@ cmd_set_option_exec(struct cmd *self, struct cmdq_item *item)
 	int				 scope;
 	struct style			*sy;
 
-	window = (self->entry == &cmd_set_window_option_entry);
+	window = (cmd_get_entry(self) == &cmd_set_window_option_entry);
 
 	/* Expand argument. */
-	c = cmd_find_client(item, NULL, 1);
-	argument = format_single(item, args->argv[0], c, s, wl, NULL);
+	argument = format_single_from_target(item, args->argv[0]);
 
 	/* If set-hook -R, fire the hook straight away. */
-	if (self->entry == &cmd_set_hook_entry && args_has(args, 'R')) {
+	if (cmd_get_entry(self) == &cmd_set_hook_entry && args_has(args, 'R')) {
 		notify_hook(item, argument);
 		free(argument);
 		return (CMD_RETURN_NORMAL);
@@ -123,12 +121,13 @@ cmd_set_option_exec(struct cmd *self, struct cmdq_item *item)
 	if (args->argc < 2)
 		value = NULL;
 	else if (args_has(args, 'F'))
-		value = format_single(item, args->argv[1], c, s, wl, NULL);
+		value = format_single_from_target(item, args->argv[1]);
 	else
 		value = xstrdup(args->argv[1]);
 
 	/* Get the scope and table for the option .*/
-	scope = options_scope_from_name(args, window, name, fs, &oo, &cause);
+	scope = options_scope_from_name(args, window, name, target, &oo,
+	    &cause);
 	if (scope == OPTIONS_TABLE_NONE) {
 		if (args_has(args, 'q'))
 			goto out;
@@ -288,7 +287,7 @@ cmd_set_option_set(struct cmd *self, struct cmdq_item *item, struct options *oo,
     struct options_entry *parent, const char *value)
 {
 	const struct options_table_entry	*oe;
-	struct args				*args = self->args;
+	struct args				*args = cmd_get_args(self);
 	int					 append = args_has(args, 'a');
 	struct options_entry			*o;
 	long long				 number;

@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-load-buffer.c,v 1.57 2019/12/12 11:39:56 nicm Exp $ */
+/* $OpenBSD: cmd-load-buffer.c,v 1.60 2020/04/13 20:51:57 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Tiago Cunha <me@tiagocunha.org>
@@ -83,12 +83,8 @@ cmd_load_buffer_done(__unused struct client *c, const char *path, int error,
 static enum cmd_retval
 cmd_load_buffer_exec(struct cmd *self, struct cmdq_item *item)
 {
-	struct args			*args = self->args;
+	struct args			*args = cmd_get_args(self);
 	struct cmd_load_buffer_data	*cdata;
-	struct client			*c = cmd_find_client(item, NULL, 1);
-	struct session			*s = item->target.s;
-	struct winlink			*wl = item->target.wl;
-	struct window_pane		*wp = item->target.wp;
 	const char			*bufname = args_get(args, 'b');
 	char				*path;
 
@@ -99,8 +95,8 @@ cmd_load_buffer_exec(struct cmd *self, struct cmdq_item *item)
 	else
 		cdata->name = NULL;
 
-	path = format_single(item, args->argv[0], c, s, wl, wp);
-	file_read(item->client, path, cmd_load_buffer_done, cdata);
+	path = format_single_from_target(item, args->argv[0]);
+	file_read(cmdq_get_client(item), path, cmd_load_buffer_done, cdata);
 	free(path);
 
 	return (CMD_RETURN_WAIT);

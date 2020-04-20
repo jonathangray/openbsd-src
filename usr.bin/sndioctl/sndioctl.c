@@ -1,4 +1,4 @@
-/*	$OpenBSD: sndioctl.c,v 1.2 2020/02/26 14:47:48 ratchov Exp $	*/
+/*	$OpenBSD: sndioctl.c,v 1.5 2020/04/16 12:57:14 ratchov Exp $	*/
 /*
  * Copyright (c) 2014-2020 Alexandre Ratchov <alex@caoua.org>
  *
@@ -51,7 +51,7 @@ void print_desc(struct info *, int);
 void print_val(struct info *, int);
 void print_par(struct info *, int, char *);
 int parse_name(char **, char *);
-int parse_unit(char **, unsigned int *);
+int parse_unit(char **, int *);
 int parse_val(char **, float *);
 int parse_node(char **, char *, int *);
 int parse_modeval(char **, int *, float *);
@@ -64,7 +64,7 @@ void onctl(void *, unsigned, unsigned);
 
 struct sioctl_hdl *hdl;
 struct info *infolist;
-int i_flag = 0, v_flag = 0, m_flag = 0;
+int i_flag = 0, v_flag = 0, m_flag = 0, n_flag = 0, q_flag = 0;
 
 static inline int
 isname_first(int c)
@@ -401,12 +401,14 @@ print_val(struct info *p, int mono)
 void
 print_par(struct info *p, int mono, char *comment)
 {
-	if (p->desc.group[0] != 0) {
-		printf("%s", p->desc.group);
-		printf("/");
+	if (!n_flag) {
+		if (p->desc.group[0] != 0) {
+			printf("%s", p->desc.group);
+			printf("/");
+		}
+		print_node(&p->desc.node0, mono);
+		printf(".%s=", p->desc.func);
 	}
-	print_node(&p->desc.node0, mono);
-	printf(".%s=", p->desc.func);
 	if (i_flag)
 		print_desc(p, mono);
 	else
@@ -447,7 +449,7 @@ parse_name(char **line, char *name)
  * parse a decimal integer
  */
 int
-parse_unit(char **line, unsigned int *num)
+parse_unit(char **line, int *num)
 {
 	char *p = *line;
 	unsigned int val;
@@ -853,7 +855,7 @@ main(int argc, char **argv)
 	struct pollfd *pfds;
 	int nfds, revents;
 
-	while ((c = getopt(argc, argv, "df:imv")) != -1) {
+	while ((c = getopt(argc, argv, "df:imnqv")) != -1) {
 		switch (c) {
 		case 'd':
 			d_flag = 1;
@@ -867,12 +869,18 @@ main(int argc, char **argv)
 		case 'm':
 			m_flag = 1;
 			break;
+		case 'n':
+			n_flag = 1;
+			break;
+		case 'q':
+			q_flag = 1;
+			break;
 		case 'v':
 			v_flag++;
 			break;
 		default:
 			fprintf(stderr, "usage: sndioctl "
-			    "[-dimv] [-f device] [command ...]\n");
+			    "[-dimnqv] [-f device] [command ...]\n");
 			exit(1);
 		}
 	}
@@ -908,7 +916,8 @@ main(int argc, char **argv)
 			}
 		}
 		commit();
-		list();
+		if (!q_flag)
+			list();
 	}
 	if (m_flag) {
 		pfds = malloc(sizeof(struct pollfd) * sioctl_nfds(hdl));

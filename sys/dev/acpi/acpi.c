@@ -1,4 +1,4 @@
-/* $OpenBSD: acpi.c,v 1.379 2020/04/03 08:24:52 mpi Exp $ */
+/* $OpenBSD: acpi.c,v 1.382 2020/04/14 20:42:26 kettenis Exp $ */
 /*
  * Copyright (c) 2005 Thorsten Lockert <tholo@sigmasoft.com>
  * Copyright (c) 2005 Jordan Hargrave <jordan@openbsd.org>
@@ -2961,6 +2961,57 @@ acpi_foundsony(struct aml_node *node, void *arg)
 
 /* Support for _DSD Device Properties. */
 
+int
+acpi_getprop(struct aml_node *node, const char *prop, void *buf, int buflen)
+{
+	struct aml_value dsd;
+	int i;
+
+	/* daffd814-6eba-4d8c-8a91-bc9bbf4aa301 */
+	static uint8_t prop_guid[] = {
+		0x14, 0xd8, 0xff, 0xda, 0xba, 0x6e, 0x8c, 0x4d,
+		0x8a, 0x91, 0xbc, 0x9b, 0xbf, 0x4a, 0xa3, 0x01,
+	};
+
+	if (aml_evalname(acpi_softc, node, "_DSD", 0, NULL, &dsd))
+		return -1;
+
+	if (dsd.type != AML_OBJTYPE_PACKAGE || dsd.length != 2 ||
+	    dsd.v_package[0]->type != AML_OBJTYPE_BUFFER ||
+	    dsd.v_package[1]->type != AML_OBJTYPE_PACKAGE)
+		return -1;
+
+	/* Check UUID. */
+	if (dsd.v_package[0]->length != sizeof(prop_guid) ||
+	    memcmp(dsd.v_package[0]->v_buffer, prop_guid,
+	    sizeof(prop_guid)) != 0)
+		return -1;
+
+	/* Check properties. */
+	for (i = 0; i < dsd.v_package[1]->length; i++) {
+		struct aml_value *res = dsd.v_package[1]->v_package[i];
+		int len;
+
+		if (res->type != AML_OBJTYPE_PACKAGE || res->length != 2 ||
+		    res->v_package[0]->type != AML_OBJTYPE_STRING)
+			continue;
+
+		len = res->v_package[1]->length;
+		switch (res->v_package[1]->type) {
+		case AML_OBJTYPE_BUFFER:
+			memcpy(buf, res->v_package[1]->v_buffer,
+			    min(len, buflen));
+			return len;
+		case AML_OBJTYPE_STRING:
+			memcpy(buf, res->v_package[1]->v_string,
+			    min(len, buflen));
+			return len;
+		}
+	}
+
+	return -1;
+}
+
 uint32_t
 acpi_getpropint(struct aml_node *node, const char *prop, uint32_t defval)
 {
@@ -2999,7 +3050,7 @@ acpi_getpropint(struct aml_node *node, const char *prop, uint32_t defval)
 		if (strcmp(res->v_package[0]->v_string, prop) == 0)
 			return res->v_package[1]->v_integer;
 	}
-	
+
 	return defval;
 }
 
@@ -3122,6 +3173,7 @@ acpi_foundhid(struct aml_node *node, void *arg)
 	char		 	 dev[32];
 	struct acpi_attach_args	 aaa;
 	int64_t			 sta;
+	int64_t			 cca;
 #ifndef SMALL_KERNEL
 	int			 i;
 #endif
@@ -3133,12 +3185,15 @@ acpi_foundhid(struct aml_node *node, void *arg)
 	if ((sta & STA_PRESENT) == 0)
 		return (0);
 
+	if (aml_evalinteger(sc, node->parent, "_CCA", 0, NULL, &cca))
+		cca = 1;
+
 	acpi_attach_deps(sc, node->parent);
 
 	memset(&aaa, 0, sizeof(aaa));
 	aaa.aaa_iot = sc->sc_iot;
 	aaa.aaa_memt = sc->sc_memt;
-	aaa.aaa_dmat = sc->sc_dmat;
+	aaa.aaa_dmat = cca ? sc->sc_cc_dmat : sc->sc_ci_dmat;
 	aaa.aaa_node = node->parent;
 	aaa.aaa_dev = dev;
 	aaa.aaa_cdev = cdev;
@@ -3476,7 +3531,7 @@ acpi_filtdetach(struct knote *kn)
 	int s;
 
 	s = spltty();
-	SLIST_REMOVE(sc->sc_note, kn, knote, kn_selnext);
+	klist_remove(sc->sc_note, kn);
 	splx(s);
 }
 
@@ -3510,7 +3565,7 @@ acpikqfilter(dev_t dev, struct knote *kn)
 	kn->kn_hook = sc;
 
 	s = spltty();
-	SLIST_INSERT_HEAD(sc->sc_note, kn, kn_selnext);
+	klist_insert(sc->sc_note, kn);
 	splx(s);
 
 	return (0);

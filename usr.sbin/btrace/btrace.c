@@ -1,4 +1,4 @@
-/*	$OpenBSD: btrace.c,v 1.12 2020/03/27 16:22:26 cheloha Exp $ */
+/*	$OpenBSD: btrace.c,v 1.14 2020/04/15 16:59:04 mpi Exp $ */
 
 /*
  * Copyright (c) 2019 - 2020 Martin Pieuchot <mpi@openbsd.org>
@@ -564,11 +564,18 @@ rule_printmaps(struct bt_rule *r)
 		struct bt_arg *ba;
 
 		SLIST_FOREACH(ba, &bs->bs_args, ba_next) {
+			struct bt_var *bv = ba->ba_value;
+
 			if (ba->ba_type != B_AT_MAP)
 				continue;
 
-			map_print(ba->ba_value, SIZE_T_MAX);
-			map_clear(ba->ba_value);
+			if (bv->bv_value != NULL) {
+				struct map *map = (struct map *)bv->bv_value;
+
+				map_print(map, SIZE_T_MAX, bv_name(bv));
+				map_clear(map);
+				bv->bv_value = NULL;
+			}
 		}
 	}
 }
@@ -605,10 +612,6 @@ builtin_nsecs(struct dt_evt *dtev)
 	return TIMESPEC_TO_NSEC(&dtev->dtev_tsp);
 }
 
-#include <machine/vmparam.h>
-#include <machine/param.h>
-#define	INKERNEL(va)	((va) >= VM_MIN_KERNEL_ADDRESS)
-
 const char *
 builtin_stack(struct dt_evt *dtev, int kernel)
 {
@@ -617,19 +620,12 @@ builtin_stack(struct dt_evt *dtev, int kernel)
 	size_t i;
 	int n = 0;
 
-	if (st->st_count == 0)
+	if (!kernel || st->st_count == 0)
 		return "";
 
 	for (i = 0; i < st->st_count; i++) {
-		if (INKERNEL(st->st_pc[i])) {
-			if (!kernel)
-				continue;
-			n += kelf_snprintsym(buf + n, sizeof(buf) - 1 - n,
-			    st->st_pc[i]);
-		} else if (!kernel) {
-			n += snprintf(buf + n, sizeof(buf) - 1 - n, "0x%lx\n",
-			    st->st_pc[1]);
-		}
+		n += kelf_snprintsym(buf + n, sizeof(buf) - 1 - n,
+		    st->st_pc[i]);
 	}
 
 	return buf;
@@ -657,7 +653,8 @@ stmt_clear(struct bt_stmt *bs)
 	assert(bs->bs_var == NULL);
 	assert(ba->ba_type == B_AT_VAR);
 
-	map_clear(bv);
+	map_clear((struct map *)bv->bv_value);
+	bv->bv_value = NULL;
 
 	debug("map=%p '%s' clear\n", bv->bv_value, bv_name(bv));
 }
@@ -680,7 +677,7 @@ stmt_delete(struct bt_stmt *bs, struct dt_evt *dtev)
 	debug("map=%p '%s' delete key=%p '%s'\n", bv->bv_value, bv_name(bv),
 	    bkey, ba2hash(bkey, dtev));
 
-	map_delete(bv, ba2hash(bkey, dtev));
+	map_delete((struct map *)bv->bv_value, ba2hash(bkey, dtev));
 }
 
 /*
@@ -703,7 +700,8 @@ stmt_insert(struct bt_stmt *bs, struct dt_evt *dtev)
 	debug("map=%p '%s' insert key=%p '%s' bval=%p\n", bv->bv_value,
 	    bv_name(bv), bkey, ba2hash(bkey, dtev), bval);
 
-	map_insert(bv, ba2hash(bkey, dtev), bval);
+	bv->bv_value = (struct bt_arg *)map_insert((struct map *)bv->bv_value,
+	    ba2hash(bkey, dtev), bval);
 }
 
 /*
@@ -729,7 +727,7 @@ stmt_print(struct bt_stmt *bs, struct dt_evt *dtev)
 		top = ba2long(btop, dtev);
 	}
 
-	map_print(bv, top);
+	map_print((struct map *)bv->bv_value, top, bv_name(bv));
 
 	debug("map=%p '%s' print (top=%d)\n", bv->bv_value, bv_name(bv), top);
 }
@@ -801,7 +799,7 @@ stmt_zero(struct bt_stmt *bs)
 	assert(bs->bs_var == NULL);
 	assert(ba->ba_type == B_AT_VAR);
 
-	map_zero(bv);
+	map_zero((struct map *)bv->bv_value);
 
 	debug("map=%p '%s' zero\n", bv->bv_value, bv_name(bv));
 }
@@ -902,6 +900,7 @@ const char *
 ba2str(struct bt_arg *ba, struct dt_evt *dtev)
 {
 	static char buf[sizeof("18446744073709551615")]; /* UINT64_MAX */
+	struct bt_var *bv;
 	const char *str;
 
 	switch (ba->ba_type) {
@@ -941,7 +940,9 @@ ba2str(struct bt_arg *ba, struct dt_evt *dtev)
 		str = buf;
 		break;
 	case B_AT_MAP:
-		str = ba2str(map_get(ba->ba_value, ba2str(ba->ba_key, dtev)), dtev);
+		bv = ba->ba_value;
+		str = ba2str(map_get((struct map *)bv->bv_value,
+		    ba2str(ba->ba_key, dtev)), dtev);
 		break;
 	case B_AT_VAR:
 		str = ba2str(ba_read(ba), dtev);

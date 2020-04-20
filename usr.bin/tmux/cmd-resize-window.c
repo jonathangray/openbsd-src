@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-resize-window.c,v 1.3 2019/11/28 09:45:15 nicm Exp $ */
+/* $OpenBSD: cmd-resize-window.c,v 1.5 2020/04/13 10:59:58 nicm Exp $ */
 
 /*
  * Copyright (c) 2018 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -46,10 +46,11 @@ const struct cmd_entry cmd_resize_window_entry = {
 static enum cmd_retval
 cmd_resize_window_exec(struct cmd *self, struct cmdq_item *item)
 {
-	struct args		*args = self->args;
-	struct winlink		*wl = item->target.wl;
+	struct args		*args = cmd_get_args(self);
+	struct cmd_find_state	*target = cmdq_get_target(item);
+	struct winlink		*wl = target->wl;
 	struct window		*w = wl->window;
-	struct session		*s = item->target.s;
+	struct session		*s = target->s;
 	const char	       	*errstr;
 	char			*cause;
 	u_int			 adjust, sx, sy;

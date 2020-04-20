@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-new-session.c,v 1.123 2020/04/03 13:54:31 nicm Exp $ */
+/* $OpenBSD: cmd-new-session.c,v 1.130 2020/04/13 20:51:57 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -66,8 +66,10 @@ const struct cmd_entry cmd_has_session_entry = {
 static enum cmd_retval
 cmd_new_session_exec(struct cmd *self, struct cmdq_item *item)
 {
-	struct args		*args = self->args;
-	struct client		*c = item->client;
+	struct args		*args = cmd_get_args(self);
+	struct cmd_find_state	*current = cmdq_get_current(item);
+	struct cmd_find_state	*target = cmdq_get_target(item);
+	struct client		*c = cmdq_get_client(item);
 	struct session		*s, *as, *groupwith;
 	struct environ		*env;
 	struct options		*oo;
@@ -81,7 +83,7 @@ cmd_new_session_exec(struct cmd *self, struct cmdq_item *item)
 	enum cmd_retval		 retval;
 	struct cmd_find_state    fs;
 
-	if (self->entry == &cmd_has_session_entry) {
+	if (cmd_get_entry(self) == &cmd_has_session_entry) {
 		/*
 		 * cmd_find_target() will fail if the session cannot be found,
 		 * so always return success here.
@@ -106,7 +108,7 @@ cmd_new_session_exec(struct cmd *self, struct cmdq_item *item)
 		if (newname != NULL)
 			as = session_find(newname);
 		else
-			as = item->target.s;
+			as = target->s;
 		if (as != NULL) {
 			retval = cmd_attach_session(item, as->name,
 			    args_has(args, 'D'), args_has(args, 'X'), 0, NULL,
@@ -123,7 +125,7 @@ cmd_new_session_exec(struct cmd *self, struct cmdq_item *item)
 	/* Is this going to be part of a session group? */
 	group = args_get(args, 't');
 	if (group != NULL) {
-		groupwith = item->target.s;
+		groupwith = target->s;
 		if (groupwith == NULL) {
 			if (!session_check_name(group)) {
 				cmdq_error(item, "bad group name: %s", group);
@@ -172,7 +174,7 @@ cmd_new_session_exec(struct cmd *self, struct cmdq_item *item)
 	 * over.
 	 */
 	if (!detached && !already_attached && c->tty.fd != -1) {
-		if (server_client_check_nested(item->client)) {
+		if (server_client_check_nested(cmdq_get_client(item))) {
 			cmdq_error(item, "sessions should be nested with care, "
 			    "unset $TMUX to force");
 			goto fail;
@@ -207,7 +209,8 @@ cmd_new_session_exec(struct cmd *self, struct cmdq_item *item)
 				goto fail;
 			}
 		}
-	}
+	} else
+		dsx = 80;
 	if (args_has(args, 'y')) {
 		tmp = args_get(args, 'y');
 		if (strcmp(tmp, "-") == 0) {
@@ -222,7 +225,8 @@ cmd_new_session_exec(struct cmd *self, struct cmdq_item *item)
 				goto fail;
 			}
 		}
-	}
+	} else
+		dsy = 24;
 
 	/* Find new session size. */
 	if (!detached && !is_control) {
@@ -233,13 +237,14 @@ cmd_new_session_exec(struct cmd *self, struct cmdq_item *item)
 	} else {
 		tmp = options_get_string(global_s_options, "default-size");
 		if (sscanf(tmp, "%ux%u", &sx, &sy) != 2) {
-			sx = 80;
-			sy = 24;
-		}
-		if (args_has(args, 'x'))
 			sx = dsx;
-		if (args_has(args, 'y'))
 			sy = dsy;
+		} else {
+			if (args_has(args, 'x'))
+				sx = dsx;
+			if (args_has(args, 'y'))
+				sy = dsy;
+		}
 	}
 	if (sx == 0)
 		sx = 1;
@@ -264,7 +269,6 @@ cmd_new_session_exec(struct cmd *self, struct cmdq_item *item)
 	memset(&sc, 0, sizeof sc);
 	sc.item = item;
 	sc.s = s;
-	sc.c = c;
 
 	sc.name = args_get(args, 'n');
 	sc.argc = args->argc;
@@ -311,7 +315,7 @@ cmd_new_session_exec(struct cmd *self, struct cmdq_item *item)
 		} else if (c->session != NULL)
 			c->last_session = c->session;
 		c->session = s;
-		if (~item->shared->flags & CMDQ_SHARED_REPEAT)
+		if (~cmdq_get_flags(item) & CMDQ_STATE_REPEAT)
 			server_client_set_key_table(c, NULL);
 		tty_update_client_offset(c);
 		status_timer_start(c);
@@ -339,10 +343,10 @@ cmd_new_session_exec(struct cmd *self, struct cmdq_item *item)
 		free(cp);
 	}
 
-	if (!detached) {
+	if (!detached)
 		c->flags |= CLIENT_ATTACHED;
-		cmd_find_from_session(&item->shared->current, s, 0);
-	}
+	if (!args_has(args, 'd'))
+		cmd_find_from_session(current, s, 0);
 
 	cmd_find_from_session(&fs, s, 0);
 	cmdq_insert_hook(s, item, &fs, "after-new-session");

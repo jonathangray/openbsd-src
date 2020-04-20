@@ -1,4 +1,4 @@
-.\" $OpenBSD: tmux.1,v 1.731 2020/04/05 08:40:31 nicm Exp $
+.\" $OpenBSD: tmux.1,v 1.743 2020/04/18 07:19:29 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
 .\"
@@ -14,7 +14,7 @@
 .\" IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 .\" OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: April 5 2020 $
+.Dd $Mdocdate: April 18 2020 $
 .Dt TMUX 1
 .Os
 .Sh NAME
@@ -1055,12 +1055,18 @@ List the syntax of
 .Ar command
 or - if omitted - of all commands supported by
 .Nm .
-.It Ic list-sessions Op Fl F Ar format
+.It Xo Ic list-sessions
+.Op Fl F Ar format
+.Op Fl f Ar filter
+.Xc
 .D1 (alias: Ic ls )
 List all sessions managed by the server.
-For the meaning of the
 .Fl F
-flag, see the
+specifies the format of each line and
+.Fl f
+a filter.
+Only sessions for which the filter is true are shown.
+See the
 .Sx FORMATS
 section.
 .It Ic lock-client Op Fl t Ar target-client
@@ -1425,6 +1431,10 @@ This mode is entered with the
 command, bound to
 .Ql \&[
 by default.
+Copied text can be pasted with the
+.Ic paste-buffer
+command, bound to
+.Ql \&] .
 .It
 View mode, which is like copy mode but is entered when a command that produces
 output, such as
@@ -1473,9 +1483,9 @@ The following commands are supported in copy mode:
 .It Li "clear-selection" Ta "Escape" Ta "C-g"
 .It Li "copy-end-of-line [<prefix>]" Ta "D" Ta "C-k"
 .It Li "copy-line [<prefix>]" Ta "" Ta ""
-.It Li "copy-pipe <command> [<prefix>]" Ta "" Ta ""
-.It Li "copy-pipe-no-clear <command> [<prefix>]" Ta "" Ta ""
-.It Li "copy-pipe-and-cancel <command> [<prefix>]" Ta "" Ta ""
+.It Li "copy-pipe [<command>] [<prefix>]" Ta "" Ta ""
+.It Li "copy-pipe-no-clear [<command>] [<prefix>]" Ta "" Ta ""
+.It Li "copy-pipe-and-cancel [<command>] [<prefix>]" Ta "" Ta ""
 .It Li "copy-selection [<prefix>]" Ta "" Ta ""
 .It Li "copy-selection-no-clear [<prefix>]" Ta "" Ta ""
 .It Li "copy-selection-and-cancel [<prefix>]" Ta "Enter" Ta "M-w"
@@ -1513,6 +1523,7 @@ The following commands are supported in copy mode:
 .It Li "previous-space" Ta "B" Ta ""
 .It Li "previous-word" Ta "b" Ta "M-b"
 .It Li "rectangle-toggle" Ta "v" Ta "R"
+.It Li "refresh-from-pane" Ta "r" Ta "r"
 .It Li "scroll-down" Ta "C-e" Ta "C-Down"
 .It Li "scroll-down-and-cancel" Ta "" Ta ""
 .It Li "scroll-up" Ta "C-y" Ta "C-Up"
@@ -1603,6 +1614,7 @@ command is:
 .Bl -tag -width Ds
 .It Xo Ic copy-mode
 .Op Fl eHMqu
+.Op Fl s Ar src-pane
 .Op Fl t Ar target-pane
 .Xc
 Enter copy mode.
@@ -1616,6 +1628,11 @@ begins a mouse drag (only valid if bound to a mouse key binding, see
 hides the position indicator in the top right.
 .Fl q
 cancels copy mode and any other modes.
+.Fl s
+copies from
+.Ar src-pane
+instead of
+.Ar target-pane .
 .Pp
 .Fl e
 specifies that scrolling to the bottom of the history (to the visible screen)
@@ -2051,6 +2068,7 @@ is given, the newly linked window is not selected.
 .It Xo Ic list-panes
 .Op Fl as
 .Op Fl F Ar format
+.Op Fl f Ar filter
 .Op Fl t Ar target
 .Xc
 .D1 (alias: Ic lsp )
@@ -2067,14 +2085,18 @@ is a session (or the current session).
 If neither is given,
 .Ar target
 is a window (or the current window).
-For the meaning of the
 .Fl F
-flag, see the
+specifies the format of each line and
+.Fl f
+a filter.
+Only panes for which the filter is true are shown.
+See the
 .Sx FORMATS
 section.
 .It Xo Ic list-windows
 .Op Fl a
 .Op Fl F Ar format
+.Op Fl f Ar filter
 .Op Fl t Ar target-session
 .Xc
 .D1 (alias: Ic lsw )
@@ -2083,9 +2105,12 @@ If
 is given, list all windows on the server.
 Otherwise, list windows in the current session or in
 .Ar target-session .
-For the meaning of the
 .Fl F
-flag, see the
+specifies the format of each line and
+.Fl f
+a filter.
+Only windows for which the filter is true are shown.
+See the
 .Sx FORMATS
 section.
 .It Xo Ic move-pane
@@ -3065,6 +3090,10 @@ be set to
 .Ql screen ,
 .Ql tmux
 or a derivative of them.
+.It Ic copy-command Ar shell-command
+Give the command to pipe to if the
+.Ic copy-pipe
+copy mode command is used without arguments.
 .It Ic escape-time Ar time
 Set the time in milliseconds for which
 .Nm
@@ -3307,6 +3336,9 @@ with
 .Fl np .
 .It Ic message-command-style Ar style
 Set status line message command style.
+This is used for the command prompt with
+.Xr vi 1
+keys when in command mode.
 For how to specify
 .Ar style ,
 see the
@@ -3314,6 +3346,7 @@ see the
 section.
 .It Ic message-style Ar style
 Set status line message style.
+This is used for messages and for the command prompt.
 For how to specify
 .Ar style ,
 see the
@@ -3868,6 +3901,7 @@ hook and there are a number of hooks not associated with commands.
 .Pp
 Hooks are stored as array options, members of the array are executed in
 order when the hook is triggered.
+Like options different hooks may be global or belong to a session, window or pane.
 Hooks may be configured with the
 .Ic set-hook
 or
@@ -3960,8 +3994,8 @@ Run when a window is unlinked from a session.
 Hooks are managed with these commands:
 .Bl -tag -width Ds
 .It Xo Ic set-hook
-.Op Fl agRu
-.Op Fl t Ar target-session
+.Op Fl agpRuw
+.Op Fl t Ar target-pane
 .Ar hook-name
 .Ar command
 .Xc
@@ -3973,18 +4007,8 @@ unsets) hook
 .Ar hook-name
 to
 .Ar command .
-If
-.Fl g
-is given,
-.Em hook-name
-is added to the global list of hooks, otherwise it is added to the session
-hooks (for
-.Ar target-session
-with
-.Fl t ) .
-.Fl a
-appends to a hook.
-Like options, session hooks inherit from the global ones.
+The flags are the same as for
+.Ic set-option .
 .Pp
 With
 .Fl R ,
@@ -3992,12 +4016,12 @@ run
 .Ar hook-name
 immediately.
 .It Xo Ic show-hooks
-.Op Fl g
-.Op Fl t Ar target-session
+.Op Fl gpw
+.Op Fl t Ar target-pane
 .Xc
-Shows the global list of hooks with
-.Fl g ,
-otherwise the session hooks.
+Shows hooks.
+The flags are the same as for
+.Ic show-options .
 .El
 .Sh MOUSE SUPPORT
 If the
@@ -4408,6 +4432,7 @@ The following variables are available, where appropriate:
 .It Li "pane_at_top" Ta "" Ta "1 if pane is at the top of window"
 .It Li "pane_bottom" Ta "" Ta "Bottom of pane"
 .It Li "pane_current_command" Ta "" Ta "Current command if available"
+.It Li "pane_current_path" Ta "" Ta "Current path if available"
 .It Li "pane_dead" Ta "" Ta "1 if pane is dead"
 .It Li "pane_dead_status" Ta "" Ta "Exit status of process in dead pane"
 .It Li "pane_format" Ta "" Ta "1 if format is for a pane"
@@ -4425,6 +4450,7 @@ The following variables are available, where appropriate:
 .It Li "pane_pipe" Ta "" Ta "1 if pane is being piped"
 .It Li "pane_right" Ta "" Ta "Right of pane"
 .It Li "pane_search_string" Ta "" Ta "Last search string in copy mode"
+.It Li "pane_skipped" Ta "" Ta "Bytes skipped as not visible in pane"
 .It Li "pane_start_command" Ta "" Ta "Command pane started with"
 .It Li "pane_synchronized" Ta "" Ta "1 if pane is synchronized"
 .It Li "pane_tabs" Ta "" Ta "Pane tab positions"
@@ -4432,6 +4458,7 @@ The following variables are available, where appropriate:
 .It Li "pane_top" Ta "" Ta "Top of pane"
 .It Li "pane_tty" Ta "" Ta "Pseudo terminal of pane"
 .It Li "pane_width" Ta "" Ta "Width of pane"
+.It Li "pane_written" Ta "" Ta "Bytes written by pane (aside from redrawing)"
 .It Li "pid" Ta "" Ta "Server PID"
 .It Li "popup_key" Ta "" Ta "Key pressed in popup"
 .It Li "popup_mouse_x" Ta "" Ta "Mouse X position in popup"
@@ -5245,12 +5272,16 @@ Delete the buffer named
 or the most recently added automatically named buffer if not specified.
 .It Xo Ic list-buffers
 .Op Fl F Ar format
+.Op Fl f Ar filter
 .Xc
 .D1 (alias: Ic lsb )
 List the global buffers.
-For the meaning of the
 .Fl F
-flag, see the
+specifies the format of each line and
+.Fl f
+a filter.
+Only buffers for which the filter is true are shown.
+See the
 .Sx FORMATS
 section.
 .It Xo Ic load-buffer
@@ -5436,7 +5467,7 @@ The server crashed or otherwise exited without telling the client the reason.
 understands some unofficial extensions to
 .Xr terminfo 5 :
 .Bl -tag -width Ds
-.It Em Cs , Cr
+.It Em \&Cs , Cr
 Set the cursor colour.
 The first takes a single string argument and is used to set the colour;
 the second takes no arguments and restores the default cursor colour.
@@ -5486,6 +5517,8 @@ $ printf '\e033[4 q'
 If
 .Em Se
 is not set, \&Ss with argument 0 will be used to reset the cursor style instead.
+.It Em \&Sync
+Show that the terminal supports synchronized updates.
 .It Em \&Tc
 Indicate that the terminal supports the
 .Ql direct colour
@@ -5500,6 +5533,11 @@ capabilities to the
 .Nm
 .Xr terminfo 5
 entry).
+.Pp
+This is equivalent to the
+.Em RGB
+.Xr terminfo 5
+capability.
 .It Em \&Ms
 Store the current buffer in the host terminal's selection (clipboard).
 See the

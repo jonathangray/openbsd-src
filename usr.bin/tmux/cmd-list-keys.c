@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-list-keys.c,v 1.52 2020/04/05 08:40:31 nicm Exp $ */
+/* $OpenBSD: cmd-list-keys.c,v 1.56 2020/04/13 20:51:57 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -85,7 +85,7 @@ static int
 cmd_list_keys_print_notes(struct cmdq_item *item, struct args *args,
     const char *tablename, u_int keywidth, key_code only, const char *prefix)
 {
-	struct client		*c = cmd_find_client(item, NULL, 1);
+	struct client		*tc = cmdq_get_target_client(item);
 	struct key_table	*table;
 	struct key_binding	*bd;
 	const char		*key;
@@ -111,8 +111,8 @@ cmd_list_keys_print_notes(struct cmdq_item *item, struct args *args,
 		else
 			note = xstrdup(bd->note);
 		tmp = utf8_padcstr(key, keywidth + 1);
-		if (args_has(args, '1') && c != NULL)
-			status_message_set(c, "%s%s%s", prefix, tmp, note);
+		if (args_has(args, '1') && tc != NULL)
+			status_message_set(tc, "%s%s%s", prefix, tmp, note);
 		else
 			cmdq_print(item, "%s%s%s", prefix, tmp, note);
 		free(tmp);
@@ -144,7 +144,7 @@ cmd_list_keys_get_prefix(struct args *args, key_code *prefix)
 static enum cmd_retval
 cmd_list_keys_exec(struct cmd *self, struct cmdq_item *item)
 {
-	struct args		*args = self->args;
+	struct args		*args = cmd_get_args(self);
 	struct key_table	*table;
 	struct key_binding	*bd;
 	const char		*tablename, *r;
@@ -153,7 +153,7 @@ cmd_list_keys_exec(struct cmd *self, struct cmdq_item *item)
 	int			 repeat, width, tablewidth, keywidth, found = 0;
 	size_t			 tmpsize, tmpused, cplen;
 
-	if (self->entry == &cmd_list_commands_entry)
+	if (cmd_get_entry(self) == &cmd_list_commands_entry)
 		return (cmd_list_keys_commands(self, item));
 
 	if (args->argc != 0) {
@@ -269,7 +269,7 @@ cmd_list_keys_exec(struct cmd *self, struct cmdq_item *item)
 				tmpsize *= 2;
 				tmp = xrealloc(tmp, tmpsize);
 			}
-			tmpused = strlcat(tmp, cp, tmpsize);
+			strlcat(tmp, cp, tmpsize);
 			tmpused = strlcat(tmp, " ", tmpsize);
 			free(cp);
 
@@ -279,7 +279,7 @@ cmd_list_keys_exec(struct cmd *self, struct cmdq_item *item)
 				tmpsize *= 2;
 				tmp = xrealloc(tmp, tmpsize);
 			}
-			tmpused = strlcat(tmp, cp, tmpsize);
+			strlcat(tmp, cp, tmpsize);
 			tmpused = strlcat(tmp, " ", tmpsize);
 			free(cp);
 
@@ -313,7 +313,7 @@ out:
 static enum cmd_retval
 cmd_list_keys_commands(struct cmd *self, struct cmdq_item *item)
 {
-	struct args		 *args = self->args;
+	struct args		 *args = cmd_get_args(self);
 	const struct cmd_entry	**entryp;
 	const struct cmd_entry	 *entry;
 	struct format_tree	 *ft;
@@ -329,7 +329,7 @@ cmd_list_keys_commands(struct cmd *self, struct cmdq_item *item)
 		    "#{command_list_usage}";
 	}
 
-	ft = format_create(item->client, item, FORMAT_NONE, 0);
+	ft = format_create(cmdq_get_client(item), item, FORMAT_NONE, 0);
 	format_defaults(ft, NULL, NULL, NULL, NULL);
 
 	for (entryp = cmd_table; *entryp != NULL; entryp++) {

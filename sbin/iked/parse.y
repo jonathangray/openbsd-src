@@ -1,4 +1,4 @@
-/*	$OpenBSD: parse.y,v 1.90 2020/03/28 21:05:19 tobhe Exp $	*/
+/*	$OpenBSD: parse.y,v 1.93 2020/04/14 11:30:15 tobhe Exp $	*/
 
 /*
  * Copyright (c) 2019 Tobias Heider <tobias.heider@stusta.de>
@@ -1994,7 +1994,6 @@ set_policy(char *idstr, int type, struct iked_policy *pol)
 		return (-1);
 	}
 
-	lc_string(idstr);
 	if ((size_t)snprintf(keyfile, sizeof(keyfile),
 	    IKED_CA IKED_PUBKEY_DIR "%s/%s", prefix,
 	    idstr) >= sizeof(keyfile)) {
@@ -2479,6 +2478,9 @@ print_policy(struct iked_policy *pol)
 		print_verbose(" active");
 	else
 		print_verbose(" passive");
+	
+	if (pol->pol_flags & IKED_POLICY_IPCOMP)
+		print_verbose(" ipcomp");
 
 	if (pol->pol_flags & IKED_POLICY_TRANSPORT)
 		print_verbose(" transport");

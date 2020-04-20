@@ -1,4 +1,4 @@
-/* $OpenBSD: key-bindings.c,v 1.116 2020/04/02 05:35:15 nicm Exp $ */
+/* $OpenBSD: key-bindings.c,v 1.123 2020/04/17 08:03:22 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -333,10 +333,10 @@ key_bindings_init(void)
 		"bind -n MouseDown2Pane select-pane -t=\\; if -F '#{||:#{pane_in_mode},#{mouse_any_flag}}' { send -M } { paste -p }",
 
 		/* Mouse button 1 double click on pane. */
-		"bind -n DoubleClick1Pane select-pane -t=\\; if -F '#{||:#{pane_in_mode},#{mouse_any_flag}}' { send -M } { copy-mode -H; send -X select-word; run -d0.3; send -X copy-selection-and-cancel }",
+		"bind -n DoubleClick1Pane select-pane -t=\\; if -F '#{||:#{pane_in_mode},#{mouse_any_flag}}' { send -M } { copy-mode -H; send -X select-word; run -d0.3; send -X copy-pipe-and-cancel }",
 
 		/* Mouse button 1 triple click on pane. */
-		"bind -n TripleClick1Pane select-pane -t=\\; if -F '#{||:#{pane_in_mode},#{mouse_any_flag}}' { send -M } { copy-mode -H; send -X select-line; run -d0.3; send -X copy-selection-and-cancel }",
+		"bind -n TripleClick1Pane select-pane -t=\\; if -F '#{||:#{pane_in_mode},#{mouse_any_flag}}' { send -M } { copy-mode -H; send -X select-line; run -d0.3; send -X copy-pipe-and-cancel }",
 
 		/* Mouse button 1 drag on border. */
 		"bind -n MouseDrag1Border resize-pane -M",
@@ -374,7 +374,7 @@ key_bindings_init(void)
 		"bind -Tcopy-mode C-r command-prompt -ip'(search up)' -I'#{pane_search_string}' 'send -X search-backward-incremental \"%%%\"'",
 		"bind -Tcopy-mode C-s command-prompt -ip'(search down)' -I'#{pane_search_string}' 'send -X search-forward-incremental \"%%%\"'",
 		"bind -Tcopy-mode C-v send -X page-down",
-		"bind -Tcopy-mode C-w send -X copy-selection-and-cancel",
+		"bind -Tcopy-mode C-w send -X copy-pipe-and-cancel",
 		"bind -Tcopy-mode Escape send -X cancel",
 		"bind -Tcopy-mode Space send -X page-down",
 		"bind -Tcopy-mode , send -X jump-reverse",
@@ -387,16 +387,17 @@ key_bindings_init(void)
 		"bind -Tcopy-mode g command-prompt -p'(goto line)' 'send -X goto-line \"%%%\"'",
 		"bind -Tcopy-mode n send -X search-again",
 		"bind -Tcopy-mode q send -X cancel",
+		"bind -Tcopy-mode r send -X refresh-from-pane",
 		"bind -Tcopy-mode t command-prompt -1p'(jump to forward)' 'send -X jump-to-forward \"%%%\"'",
 		"bind -Tcopy-mode Home send -X start-of-line",
 		"bind -Tcopy-mode End send -X end-of-line",
 		"bind -Tcopy-mode MouseDown1Pane select-pane",
 		"bind -Tcopy-mode MouseDrag1Pane select-pane\\; send -X begin-selection",
-		"bind -Tcopy-mode MouseDragEnd1Pane send -X copy-selection-and-cancel",
+		"bind -Tcopy-mode MouseDragEnd1Pane send -X copy-pipe-and-cancel",
 		"bind -Tcopy-mode WheelUpPane select-pane\\; send -N5 -X scroll-up",
 		"bind -Tcopy-mode WheelDownPane select-pane\\; send -N5 -X scroll-down",
-		"bind -Tcopy-mode DoubleClick1Pane select-pane\\; send -X select-word\\; run -d0.3\\; send -X copy-selection-and-cancel",
-		"bind -Tcopy-mode TripleClick1Pane select-pane\\; send -X select-line\\; run -d0.3\\; send -X copy-selection-and-cancel",
+		"bind -Tcopy-mode DoubleClick1Pane select-pane\\; send -X select-word\\; run -d0.3\\; send -X copy-pipe-and-cancel",
+		"bind -Tcopy-mode TripleClick1Pane select-pane\\; send -X select-line\\; run -d0.3\\; send -X copy-pipe-and-cancel",
 		"bind -Tcopy-mode NPage send -X page-down",
 		"bind -Tcopy-mode PPage send -X page-up",
 		"bind -Tcopy-mode Up send -X cursor-up",
@@ -422,7 +423,7 @@ key_bindings_init(void)
 		"bind -Tcopy-mode M-m send -X back-to-indentation",
 		"bind -Tcopy-mode M-r send -X middle-line",
 		"bind -Tcopy-mode M-v send -X page-up",
-		"bind -Tcopy-mode M-w send -X copy-selection-and-cancel",
+		"bind -Tcopy-mode M-w send -X copy-pipe-and-cancel",
 		"bind -Tcopy-mode 'M-{' send -X previous-paragraph",
 		"bind -Tcopy-mode 'M-}' send -X next-paragraph",
 		"bind -Tcopy-mode M-Up send -X halfpage-up",
@@ -439,8 +440,8 @@ key_bindings_init(void)
 		"bind -Tcopy-mode-vi C-b send -X page-up",
 		"bind -Tcopy-mode-vi C-f send -X page-down",
 		"bind -Tcopy-mode-vi C-h send -X cursor-left",
-		"bind -Tcopy-mode-vi C-j send -X copy-selection-and-cancel",
-		"bind -Tcopy-mode-vi Enter send -X copy-selection-and-cancel",
+		"bind -Tcopy-mode-vi C-j send -X copy-pipe-and-cancel",
+		"bind -Tcopy-mode-vi Enter send -X copy-pipe-and-cancel",
 		"bind -Tcopy-mode-vi C-u send -X halfpage-up",
 		"bind -Tcopy-mode-vi C-v send -X rectangle-toggle",
 		"bind -Tcopy-mode-vi C-y send -X scroll-up",
@@ -489,6 +490,7 @@ key_bindings_init(void)
 		"bind -Tcopy-mode-vi n send -X search-again",
 		"bind -Tcopy-mode-vi o send -X other-end",
 		"bind -Tcopy-mode-vi q send -X cancel",
+		"bind -Tcopy-mode-vi r send -X refresh-from-pane",
 		"bind -Tcopy-mode-vi t command-prompt -1p'(jump to forward)' 'send -X jump-to-forward \"%%%\"'",
 		"bind -Tcopy-mode-vi v send -X rectangle-toggle",
 		"bind -Tcopy-mode-vi w send -X next-word",
@@ -497,11 +499,11 @@ key_bindings_init(void)
 		"bind -Tcopy-mode-vi % send -X next-matching-bracket",
 		"bind -Tcopy-mode-vi MouseDown1Pane select-pane",
 		"bind -Tcopy-mode-vi MouseDrag1Pane select-pane\\; send -X begin-selection",
-		"bind -Tcopy-mode-vi MouseDragEnd1Pane send -X copy-selection-and-cancel",
+		"bind -Tcopy-mode-vi MouseDragEnd1Pane send -X copy-pipe-and-cancel",
 		"bind -Tcopy-mode-vi WheelUpPane select-pane\\; send -N5 -X scroll-up",
 		"bind -Tcopy-mode-vi WheelDownPane select-pane\\; send -N5 -X scroll-down",
-		"bind -Tcopy-mode-vi DoubleClick1Pane select-pane\\; send -X select-word\\; run -d0.3\\; send -X copy-selection-and-cancel",
-		"bind -Tcopy-mode-vi TripleClick1Pane select-pane\\; send -X select-line\\; run -d0.3\\; send -X copy-selection-and-cancel",
+		"bind -Tcopy-mode-vi DoubleClick1Pane select-pane\\; send -X select-word\\; run -d0.3\\; send -X copy-pipe-and-cancel",
+		"bind -Tcopy-mode-vi TripleClick1Pane select-pane\\; send -X select-line\\; run -d0.3\\; send -X copy-pipe-and-cancel",
 		"bind -Tcopy-mode-vi BSpace send -X cursor-left",
 		"bind -Tcopy-mode-vi NPage send -X page-down",
 		"bind -Tcopy-mode-vi PPage send -X page-up",
@@ -519,7 +521,7 @@ key_bindings_init(void)
 		pr = cmd_parse_from_string(defaults[i], NULL);
 		if (pr->status != CMD_PARSE_SUCCESS)
 			fatalx("bad default key: %s", defaults[i]);
-		cmdq_append(NULL, cmdq_get_command(pr->cmdlist, NULL, NULL, 0));
+		cmdq_append(NULL, cmdq_get_command(pr->cmdlist, NULL));
 		cmd_list_free(pr->cmdlist);
 	}
 }
@@ -533,27 +535,24 @@ key_bindings_read_only(struct cmdq_item *item, __unused void *data)
 
 struct cmdq_item *
 key_bindings_dispatch(struct key_binding *bd, struct cmdq_item *item,
-    struct client *c, struct mouse_event *m, struct cmd_find_state *fs)
+    struct client *c, struct key_event *event, struct cmd_find_state *fs)
 {
-	struct cmd		*cmd;
 	struct cmdq_item	*new_item;
-	int			 readonly;
+	struct cmdq_state	*new_state;
+	int			 readonly, flags = 0;
 
 	if (c == NULL || (~c->flags & CLIENT_READONLY))
 		readonly = 1;
-	else {
-		readonly = 1;
-		TAILQ_FOREACH(cmd, &bd->cmdlist->list, qentry) {
-			if (~cmd->entry->flags & CMD_READONLY)
-				readonly = 0;
-		}
-	}
+	else
+		readonly = cmd_list_all_have(bd->cmdlist, CMD_READONLY);
 	if (!readonly)
 		new_item = cmdq_get_callback(key_bindings_read_only, NULL);
 	else {
-		new_item = cmdq_get_command(bd->cmdlist, fs, m, 0);
 		if (bd->flags & KEY_BINDING_REPEAT)
-			new_item->shared->flags |= CMDQ_SHARED_REPEAT;
+			flags |= CMDQ_STATE_REPEAT;
+		new_state = cmdq_new_state(fs, event, flags);
+		new_item = cmdq_get_command(bd->cmdlist, new_state);
+		cmdq_free_state(new_state);
 	}
 	if (item != NULL)
 		new_item = cmdq_insert_after(item, new_item);

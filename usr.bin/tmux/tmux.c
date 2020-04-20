@@ -1,4 +1,4 @@
-/* $OpenBSD: tmux.c,v 1.195 2020/03/31 17:14:40 nicm Exp $ */
+/* $OpenBSD: tmux.c,v 1.197 2020/04/16 07:28:36 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -28,6 +28,7 @@
 #include <locale.h>
 #include <paths.h>
 #include <pwd.h>
+#include <signal.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
@@ -168,6 +169,17 @@ setblocking(int fd, int state)
 }
 
 const char *
+sig2name(int signo)
+{
+     static char	s[11];
+
+     if (signo > 0 && signo < NSIG)
+	     return (sys_signame[signo]);
+     xsnprintf(s, sizeof s, "%d", signo);
+     return (s);
+}
+
+const char *
 find_cwd(void)
 {
 	char		 resolved1[PATH_MAX], resolved2[PATH_MAX];
@@ -224,7 +236,7 @@ getversion(void)
 			fatalx("uname failed");
 		xasprintf(&version, "openbsd-%s", u.release);
 	}
-	return version;
+	return (version);
 }
 
 int

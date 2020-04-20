@@ -1,4 +1,4 @@
-/* $OpenBSD: grid.c,v 1.104 2020/03/31 17:13:20 nicm Exp $ */
+/* $OpenBSD: grid.c,v 1.106 2020/04/15 12:59:20 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -47,8 +47,6 @@ const struct grid_cell grid_cleared_cell = {
 static const struct grid_cell_entry grid_cleared_entry = {
 	GRID_FLAG_CLEARED, { .data = { 0, 8, 8, ' ' } }
 };
-
-static void	grid_empty_line(struct grid *, u_int, u_int);
 
 /* Store cell in entry. */
 static void
@@ -454,7 +452,7 @@ grid_expand_line(struct grid *gd, u_int py, u_int sx, u_int bg)
 }
 
 /* Empty a line and set background colour if needed. */
-static void
+void
 grid_empty_line(struct grid *gd, u_int py, u_int bg)
 {
 	memset(&gd->linedata[py], 0, sizeof gd->linedata[py]);
@@ -1343,17 +1341,13 @@ grid_wrap_position(struct grid *gd, u_int px, u_int py, u_int *wx, u_int *wy)
 void
 grid_unwrap_position(struct grid *gd, u_int *px, u_int *py, u_int wx, u_int wy)
 {
-	u_int	yy, ax = 0, ay = 0;
+	u_int	yy, ay = 0;
 
 	for (yy = 0; yy < gd->hsize + gd->sy - 1; yy++) {
 		if (ay == wy)
 			break;
-		if (gd->linedata[yy].flags & GRID_LINE_WRAPPED)
-			ax += gd->linedata[yy].cellused;
-		else {
-			ax = 0;
+		if (~gd->linedata[yy].flags & GRID_LINE_WRAPPED)
 			ay++;
-		}
 	}
 
 	/*

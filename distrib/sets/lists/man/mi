@@ -244,6 +244,8 @@
 ./usr/share/man/man1/perl5281delta.1
 ./usr/share/man/man1/perl5282delta.1
 ./usr/share/man/man1/perl5300delta.1
+./usr/share/man/man1/perl5301delta.1
+./usr/share/man/man1/perl5302delta.1
 ./usr/share/man/man1/perl561delta.1
 ./usr/share/man/man1/perl56delta.1
 ./usr/share/man/man1/perl581delta.1
@@ -1242,10 +1244,13 @@
 ./usr/share/man/man4/armv7/intc.4
 ./usr/share/man/man4/armv7/intro.4
 ./usr/share/man/man4/armv7/omap.4
+./usr/share/man/man4/armv7/omclock.4
+./usr/share/man/man4/armv7/omcm.4
 ./usr/share/man/man4/armv7/omdog.4
 ./usr/share/man/man4/armv7/omgpio.4
 ./usr/share/man/man4/armv7/ommmc.4
 ./usr/share/man/man4/armv7/omrng.4
+./usr/share/man/man4/armv7/omsysc.4
 ./usr/share/man/man4/armv7/omwugen.4
 ./usr/share/man/man4/armv7/prcm.4
 ./usr/share/man/man4/armv7/sxie.4
@@ -1277,7 +1282,11 @@
 ./usr/share/man/man4/azalia.4
 ./usr/share/man/man4/bce.4
 ./usr/share/man/man4/bcmaux.4
+./usr/share/man/man4/bcmclock.4
 ./usr/share/man/man4/bcmdog.4
+./usr/share/man/man4/bcmirng.4
+./usr/share/man/man4/bcmmbox.4
+./usr/share/man/man4/bcmpcie.4
 ./usr/share/man/man4/bcmrng.4
 ./usr/share/man/man4/bcmtemp.4
 ./usr/share/man/man4/bdpmic.4
@@ -1295,6 +1304,7 @@
 ./usr/share/man/man4/brgphy.4
 ./usr/share/man/man4/bridge.4
 ./usr/share/man/man4/brswphy.4
+./usr/share/man/man4/bse.4
 ./usr/share/man/man4/bwfm.4
 ./usr/share/man/man4/bwi.4
 ./usr/share/man/man4/bytgpio.4
@@ -1815,6 +1825,7 @@
 ./usr/share/man/man4/sgi/zs.4
 ./usr/share/man/man4/sili.4
 ./usr/share/man/man4/simplefb.4
+./usr/share/man/man4/simplepanel.4
 ./usr/share/man/man4/siop.4
 ./usr/share/man/man4/sis.4
 ./usr/share/man/man4/sk.4

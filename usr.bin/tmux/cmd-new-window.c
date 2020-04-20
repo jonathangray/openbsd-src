@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-new-window.c,v 1.82 2020/04/03 13:54:31 nicm Exp $ */
+/* $OpenBSD: cmd-new-window.c,v 1.87 2020/04/13 20:51:57 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -51,13 +51,14 @@ const struct cmd_entry cmd_new_window_entry = {
 static enum cmd_retval
 cmd_new_window_exec(struct cmd *self, struct cmdq_item *item)
 {
-	struct args		*args = self->args;
-	struct cmd_find_state	*current = &item->shared->current;
+	struct args		*args = cmd_get_args(self);
+	struct cmd_find_state	*current = cmdq_get_current(item);
+	struct cmd_find_state	*target = cmdq_get_target(item);
 	struct spawn_context	 sc;
-	struct client		*c = cmd_find_client(item, NULL, 1);
-	struct session		*s = item->target.s;
-	struct winlink		*wl = item->target.wl;
-	int			 idx = item->target.idx;
+	struct client		*tc = cmdq_get_target_client(item);
+	struct session		*s = target->s;
+	struct winlink		*wl = target->wl;
+	int			 idx = target->idx;
 	struct winlink		*new_wl;
 	char			*cause = NULL, *cp;
 	const char		*template, *add;
@@ -72,7 +73,7 @@ cmd_new_window_exec(struct cmd *self, struct cmdq_item *item)
 	memset(&sc, 0, sizeof sc);
 	sc.item = item;
 	sc.s = s;
-	sc.c = c;
+	sc.tc = tc;
 
 	sc.name = args_get(args, 'n');
 	sc.argc = args->argc;
@@ -108,7 +109,7 @@ cmd_new_window_exec(struct cmd *self, struct cmdq_item *item)
 	if (args_has(args, 'P')) {
 		if ((template = args_get(args, 'F')) == NULL)
 			template = NEW_WINDOW_TEMPLATE;
-		cp = format_single(item, template, c, s, new_wl,
+		cp = format_single(item, template, tc, s, new_wl,
 		    new_wl->window->active);
 		cmdq_print(item, "%s", cp);
 		free(cp);

@@ -1,4 +1,4 @@
-/*	$OpenBSD: ommmc.c,v 1.33 2020/02/18 12:13:39 mpi Exp $	*/
+/*	$OpenBSD: ommmc.c,v 1.35 2020/04/10 22:02:45 kettenis Exp $	*/
 
 /*
  * Copyright (c) 2009 Dale Rahn <drahn@openbsd.org>
@@ -35,6 +35,7 @@
 #include <armv7/omap/prcmvar.h>
 
 #include <dev/ofw/openfirm.h>
+#include <dev/ofw/ofw_gpio.h>
 #include <dev/ofw/ofw_pinctrl.h>
 #include <dev/ofw/fdt.h>
 
@@ -190,9 +191,11 @@ struct ommmc_softc {
 	struct device sc_dev;
 	bus_space_tag_t		sc_iot;
 	bus_space_handle_t	sc_ioh;
+	int			sc_node;
 	void			*sc_ih; /* Interrupt handler */
 	uint32_t		sc_flags;
 #define FL_HSS		(1 << 0)
+	uint32_t		sc_gpio[4];
 
 	struct device *sdmmc;		/* generic SD/MMC device */
 	int clockbit;			/* clock control bit */
@@ -317,7 +320,7 @@ ommmc_attach(struct device *parent, struct device *self, void *aux)
 		size = faa->fa_reg[0].size;
 	}
 
-	unit = 0;
+	unit = -1;
 	if ((len = OF_getprop(faa->fa_node, "ti,hwmods", hwmods,
 	    sizeof(hwmods))) == 5) {
 		if (!strncmp(hwmods, "mmc", 3) &&
@@ -329,12 +332,14 @@ ommmc_attach(struct device *parent, struct device *self, void *aux)
 	if (bus_space_map(sc->sc_iot, addr, size, 0, &sc->sc_ioh))
 		panic("%s: bus_space_map failed!", __func__);
 
+	sc->sc_node = faa->fa_node;
 	printf("\n");
 
 	pinctrl_byname(faa->fa_node, "default");
 
 	/* Enable ICLKEN, FCLKEN? */
-	prcm_enablemodule(PRCM_MMC0 + unit);
+	if (unit != -1)
+		prcm_enablemodule(PRCM_MMC0 + unit);
 
 	sc->sc_ih = arm_intr_establish_fdt(faa->fa_node, IPL_SDMMC,
 	    ommmc_intr, sc, DEVNAME(sc));
@@ -342,6 +347,11 @@ ommmc_attach(struct device *parent, struct device *self, void *aux)
 		printf("%s: cannot map interrupt\n", DEVNAME(sc));
 		goto err;
 	}
+
+	OF_getpropintarray(faa->fa_node, "cd-gpios", sc->sc_gpio,
+	    sizeof(sc->sc_gpio));
+	if (sc->sc_gpio[0])
+		gpio_controller_config_pin(sc->sc_gpio, GPIO_CONFIG_INPUT);
 
 	/* Controller Voltage Capabilities Initialization */
 	HSET4(sc, MMCHS_CAPA, MMCHS_CAPA_VS18 | MMCHS_CAPA_VS30);
@@ -439,7 +449,7 @@ ommmc_attach(struct device *parent, struct device *self, void *aux)
 	}
 	width = OF_getpropint(faa->fa_node, "bus-width", 1);
 	/* with bbb emmc width > 1 ommmc_wait_intr MMCHS_STAT_CC times out */
-	if (unit != 0)
+	if (unit > 0)
 		width = 1;
 	if (width >= 8)
 		saa.caps |= SMC_CAPS_8BIT_MODE;
@@ -587,6 +597,19 @@ int
 ommmc_card_detect(sdmmc_chipset_handle_t sch)
 {
 	struct ommmc_softc *sc = sch;
+
+	if (OF_getproplen(sc->sc_node, "non-removable") == 0)
+		return 1;
+
+	if (sc->sc_gpio[0]) {
+		int inverted, val;
+
+		val = gpio_controller_get_pin(sc->sc_gpio);
+
+		inverted = (OF_getproplen(sc->sc_node, "cd-inverted") == 0);
+		return inverted ? !val : val;
+	}
+
 	return !ISSET(HREAD4(sc, MMCHS_SYSTEST), MMCHS_SYSTEST_SDCD) ?
 	    1 : 0;
 }
