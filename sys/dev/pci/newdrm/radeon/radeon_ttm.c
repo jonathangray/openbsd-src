@@ -978,12 +978,12 @@ radeon_ttm_fault(struct uvm_faultinfo *ufi, vaddr_t vaddr, vm_page_t *pps,
     int npages, int centeridx, vm_fault_t fault_type,
     vm_prot_t access_type, int flags)
 {
-	struct ttm_buffer_object *bo;
+	struct drm_gem_object *bo;
 	struct radeon_device *rdev;
 	int r;
 
-	bo = (struct ttm_buffer_object *)ufi->entry->object.uvm_obj;
-	rdev = radeon_get_rdev(bo->bdev);
+	bo = (struct drm_gem_object *)ufi->entry->object.uvm_obj;
+	rdev = bo->dev->dev_private;
 	down_read(&rdev->pm.mclk_lock);
 	r = ttm_vm_ops->pgo_fault(ufi, vaddr, pps, npages, centeridx,
 				  fault_type, access_type, flags);

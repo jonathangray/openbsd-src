@@ -169,8 +169,6 @@ struct ttm_tt;
 struct ttm_buffer_object {
 	struct drm_gem_object base;
 
-	struct uvm_object uobj;
-
 	/**
 	 * Members constant at init.
 	 */

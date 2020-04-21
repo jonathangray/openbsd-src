@@ -898,9 +898,9 @@ ttm_bo_mmap(voff_t off, vsize_t size, struct ttm_bo_device *bdev)
 		goto out_unref;
 #endif
 
-	bo->uobj.pgops = &ttm_bo_vm_ops;
-	bo->uobj.uo_refs++;
-	return &bo->uobj;
+	bo->base.uobj.pgops = &ttm_bo_vm_ops;
+	bo->base.uobj.uo_refs++;
+	return &bo->base.uobj;
 out_unref:
 	ttm_bo_put(bo);
 	return NULL;

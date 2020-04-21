@@ -184,6 +184,12 @@ struct drm_gem_object_funcs {
  * Buffer objects are often abbreviated to BO.
  */
 struct drm_gem_object {
+	/*
+	 * This must be first as uobj is cast to ttm_buffer_object for
+	 * radeon_ttm_fault() the first member of that struct is drm_gem_object
+	 */
+	struct uvm_object uobj;
+
 	/**
 	 * @refcount:
 	 *
@@ -313,7 +319,6 @@ struct drm_gem_object {
 	 */
 	const struct drm_gem_object_funcs *funcs;
 
-	struct uvm_object uobj;
 	SPLAY_ENTRY(drm_gem_object) entry;
 	struct uvm_object *uao;
 };
