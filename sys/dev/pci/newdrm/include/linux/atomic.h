@@ -236,6 +236,13 @@ clear_bit(u_int b, volatile void *p)
 }
 
 static inline void
+clear_bit_unlock(u_int b, volatile void *p)
+{
+	membar_enter();
+	clear_bit(b, p);
+}
+
+static inline void
 set_bit(u_int b, volatile void *p)
 {
 	atomic_set_int(((volatile u_int *)p) + (b >> 5), 1 << (b & 0x1f));
