@@ -585,8 +585,6 @@ static inline bool drm_mm_node_scanned_block(const struct drm_mm_node *node)
  */
 void drm_mm_remove_node(struct drm_mm_node *node)
 {
-	STUB();
-#ifdef notyet
 	struct drm_mm *mm = node->mm;
 	struct drm_mm_node *prev_node;
 
@@ -598,7 +596,9 @@ void drm_mm_remove_node(struct drm_mm_node *node)
 	if (drm_mm_hole_follows(node))
 		rm_hole(node);
 
+#ifdef __linux__
 	drm_mm_interval_tree_remove(node, &mm->interval_tree);
+#endif
 	list_del(&node->node_list);
 
 	if (drm_mm_hole_follows(prev_node))
@@ -606,7 +606,6 @@ void drm_mm_remove_node(struct drm_mm_node *node)
 	add_hole(prev_node);
 
 	clear_bit_unlock(DRM_MM_NODE_ALLOCATED_BIT, &node->flags);
-#endif
 }
 EXPORT_SYMBOL(drm_mm_remove_node);
 
