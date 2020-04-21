@@ -729,7 +729,7 @@ static inline bool ttm_bo_uses_embedded_gem_object(struct ttm_buffer_object *bo)
 /* Default number of pre-faulted pages in the TTM fault handler */
 #define TTM_BO_VM_NUM_PREFAULT 16
 
-#ifdef notyet
+#ifdef __linux__
 vm_fault_t ttm_bo_vm_reserve(struct ttm_buffer_object *bo,
 			     struct vm_fault *vmf);
 
@@ -746,7 +746,10 @@ void ttm_bo_vm_close(struct vm_area_struct *vma);
 
 int ttm_bo_vm_access(struct vm_area_struct *vma, unsigned long addr,
 		     void *buf, int len, int write);
-#endif /* notyet */
+#else
+int ttm_bo_vm_fault(struct uvm_faultinfo *, vaddr_t, vm_page_t *,
+    int, int, vm_fault_t, vm_prot_t, int);
+#endif /* !__linux__ */
 
 struct uvm_object *ttm_bo_mmap(voff_t, vsize_t, struct ttm_bo_device *);
 
