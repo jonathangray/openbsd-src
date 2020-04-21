@@ -179,30 +179,22 @@ udv_attach_drm(dev_t device, vm_prot_t accessprot, voff_t off, vsize_t size)
 	filp = priv->filp;
 	mutex_unlock(&dev->filelist_mutex);
 
-	drm_vma_offset_lock_lookup(dev->vma_offset_manager);
-	node = drm_vma_offset_exact_lookup_locked(dev->vma_offset_manager,
+	mutex_lock(&dev->struct_mutex);
+	node = drm_vma_offset_exact_lookup(dev->vma_offset_manager,
 					   off >> PAGE_SHIFT,
 					   atop(round_page(size)));
-	if (likely(node)) {
-		obj = container_of(node, struct drm_gem_object, vma_node);
-		/*
-		 * When the object is being freed, after it hits 0-refcnt it
-		 * proceeds to tear down the object. In the process it will
-		 * attempt to remove the VMA offset and so acquire this
-		 * mgr->vm_lock.  Therefore if we find an object with a 0-refcnt
-		 * that matches our range, we know it is in the process of being
-		 * destroyed and will be freed as soon as we release the lock -
-		 * so we have to check for the 0-refcnted object and treat it as
-		 * invalid.
-		 */
-		if (!kref_get_unless_zero(&obj->refcount))
-			obj = NULL;
-	}
-	drm_vma_offset_unlock_lookup(dev->vma_offset_manager);
-
-	if (obj == NULL)
+	if (!node) {
+		mutex_unlock(&dev->struct_mutex);
 		return NULL;
+	} else if (!drm_vma_node_is_allowed(node, filp)) {
+		mutex_unlock(&dev->struct_mutex);
+		return NULL;
+	}
 
+	obj = container_of(node, struct drm_gem_object, vma_node);
+	drm_gem_object_get(obj);
+
+	mutex_unlock(&dev->struct_mutex);
 	return &obj->uobj;
 }
 
@@ -439,7 +431,7 @@ drm_gem_object_release_handle(int id, void *ptr, void *data)
 		dev->driver->gem_close_object(obj, file_priv);
 
 	drm_gem_remove_prime_handles(obj, file_priv);
-	drm_vma_node_revoke(&obj->vma_node, file_priv);
+	drm_vma_node_revoke(&obj->vma_node, file_priv->filp);
 
 	drm_gem_object_handle_put_unlocked(obj);
 
@@ -583,7 +575,7 @@ drm_gem_handle_create_tail(struct drm_file *file_priv,
 
 	handle = ret;
 
-	ret = drm_vma_node_allow(&obj->vma_node, file_priv);
+	ret = drm_vma_node_allow(&obj->vma_node, file_priv->filp);
 	if (ret)
 		goto err_remove;
 
@@ -601,7 +593,7 @@ drm_gem_handle_create_tail(struct drm_file *file_priv,
 	return 0;
 
 err_revoke:
-	drm_vma_node_revoke(&obj->vma_node, file_priv);
+	drm_vma_node_revoke(&obj->vma_node, file_priv->filp);
 err_remove:
 	spin_lock(&file_priv->table_lock);
 	idr_remove(&file_priv->object_idr, handle);
