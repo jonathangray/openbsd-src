@@ -47,7 +47,7 @@
 
 #include "drm_legacy.h"
 
-#if IS_ENABLED(CONFIG_AGP)
+#if IS_ENABLED(CONFIG_AGP) && defined(__linux__)
 
 #ifdef HAVE_PAGE_AGP
 # include <asm/agp.h>
