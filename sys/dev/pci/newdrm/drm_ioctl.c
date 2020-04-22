@@ -624,8 +624,8 @@ static const struct drm_ioctl_desc drm_ioctls[] = {
 	DRM_IOCTL_DEF(DRM_IOCTL_DROP_MASTER, drm_dropmaster_ioctl, DRM_ROOT_ONLY),
 #else
 	/* On OpenBSD xorg privdrop has already occurred before this point */
-	DRM_IOCTL_DEF(DRM_IOCTL_SET_MASTER, drm_noop, DRM_ROOT_ONLY),
-	DRM_IOCTL_DEF(DRM_IOCTL_DROP_MASTER, drm_noop, DRM_ROOT_ONLY),
+	DRM_IOCTL_DEF(DRM_IOCTL_SET_MASTER, drm_noop, DRM_UNLOCKED),
+	DRM_IOCTL_DEF(DRM_IOCTL_DROP_MASTER, drm_noop, DRM_UNLOCKED),
 #endif
 
 	DRM_LEGACY_IOCTL_DEF(DRM_IOCTL_ADD_CTX, drm_legacy_addctx, DRM_AUTH|DRM_ROOT_ONLY),
