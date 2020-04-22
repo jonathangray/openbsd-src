@@ -1733,24 +1733,22 @@ drmopen(dev_t kdev, int flags, int fmt, struct proc *p)
 	struct drm_minor	*dm;
 	int			 ret = 0;
 	int			 dminor, realminor, minor_type;
+	int need_setup = 0;
 
 	dev = drm_get_device_from_kdev(kdev);
 	if (dev == NULL || dev->dev_private == NULL)
 		return (ENXIO);
 
-	DRM_DEBUG("open_count = %d\n", dev->open_count);
+	DRM_DEBUG("open_count = %d\n", atomic_read(&dev->open_count));
 
 	if (flags & O_EXCL)
 		return (EBUSY); /* No exclusive opens */
 
-	mutex_lock(&dev->struct_mutex);
-	if (dev->open_count++ == 0) {
-		mutex_unlock(&dev->struct_mutex);
-		if ((ret = drm_firstopen(dev)) != 0)
-			goto err;
-	} else {
-		mutex_unlock(&dev->struct_mutex);
-	}
+	if (drm_dev_needs_global_mutex(dev))
+		mutex_lock(&drm_global_mutex);
+
+	if (!atomic_fetch_inc(&dev->open_count))
+		need_setup = 1;
 
 	dminor = minor(kdev);
 	realminor =  dminor & ((1 << CLONE_SHIFT) - 1);
@@ -1784,14 +1782,23 @@ drmopen(dev_t kdev, int flags, int fmt, struct proc *p)
 	SPLAY_INSERT(drm_file_tree, &dev->files, file_priv);
 	mutex_unlock(&dev->filelist_mutex);
 
-	return (0);
+	if (need_setup) {
+		ret = drm_legacy_setup(dev);
+		if (ret)
+			goto out_file_free;
+	}
+
+	if (drm_dev_needs_global_mutex(dev))
+		mutex_unlock(&drm_global_mutex);
+
+	return 0;
 
 out_file_free:
 	drm_file_free(file_priv);
 err:
-	mutex_lock(&dev->struct_mutex);
-	--dev->open_count;
-	mutex_unlock(&dev->struct_mutex);
+	atomic_dec(&dev->open_count);
+	if (drm_dev_needs_global_mutex(dev))
+		mutex_unlock(&drm_global_mutex);
 	return (ret);
 }
 
@@ -1805,7 +1812,10 @@ drmclose(dev_t kdev, int flags, int fmt, struct proc *p)
 	if (dev == NULL)
 		return (ENXIO);
 
-	DRM_DEBUG("open_count = %d\n", dev->open_count);
+	if (drm_dev_needs_global_mutex(dev))
+		mutex_lock(&drm_global_mutex);
+
+	DRM_DEBUG("open_count = %d\n", atomic_read(&dev->open_count));
 
 	mutex_lock(&dev->filelist_mutex);
 	file_priv = drm_find_file_by_minor(dev, minor(kdev));
@@ -1820,8 +1830,11 @@ drmclose(dev_t kdev, int flags, int fmt, struct proc *p)
 	mutex_unlock(&dev->filelist_mutex);
 	drm_file_free(file_priv);
 done:
-	if (--dev->open_count == 0)
+	if (atomic_dec_and_test(&dev->open_count))
 		drm_lastclose(dev);
+
+	if (drm_dev_needs_global_mutex(dev))
+		mutex_unlock(&drm_global_mutex);
 
 	return (retcode);
 }

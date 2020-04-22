@@ -267,7 +267,8 @@ void drm_file_free(struct drm_file *file)
 		  atomic_read(&dev->open_count));
 #else
 	DRM_DEBUG("pid = %d, device = 0x%lx, open_count = %d\n",
-	    curproc->p_p->ps_pid, (long)&dev->dev, dev->open_count);
+	    curproc->p_p->ps_pid, (long)&dev->dev,
+	    atomic_read(&dev->open_count));
 #endif
 
 	if (drm_core_check_feature(dev, DRIVER_LEGACY) &&
