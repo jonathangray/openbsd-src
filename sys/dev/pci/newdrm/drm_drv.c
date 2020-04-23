@@ -1640,38 +1640,6 @@ drm_get_device_from_kdev(dev_t kdev)
 	return NULL;
 }
 
-int
-drm_firstopen(struct drm_device *dev)
-{
-	if (dev->driver->firstopen)
-		dev->driver->firstopen(dev);
-
-	if (!drm_core_check_feature(dev, DRIVER_MODESET))
-		dev->irq_enabled = 0;
-	dev->if_version = 0;
-
-	DRM_DEBUG("\n");
-
-	return 0;
-}
-
-void
-drm_lastclose(struct drm_device *dev)
-{
-	DRM_DEBUG("\n");
-
-	if (dev->driver->lastclose != NULL)
-		dev->driver->lastclose(dev);
-
-	if (!drm_core_check_feature(dev, DRIVER_MODESET) && dev->irq_enabled)
-		drm_irq_uninstall(dev);
-
-#if IS_ENABLED(CONFIG_AGP)
-	if (!drm_core_check_feature(dev, DRIVER_MODESET))
-		drm_agp_takedown(dev);
-#endif
-}
-
 void
 filt_drmdetach(struct knote *kn)
 {

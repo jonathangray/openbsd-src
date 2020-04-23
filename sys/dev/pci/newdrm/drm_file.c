@@ -468,7 +468,6 @@ err_undo:
 EXPORT_SYMBOL(drm_open);
 #endif
 
-#ifdef notyet
 void drm_lastclose(struct drm_device * dev)
 {
 	DRM_DEBUG("\n");
@@ -482,7 +481,6 @@ void drm_lastclose(struct drm_device * dev)
 
 	drm_client_dev_restore(dev);
 }
-#endif
 
 /**
  * drm_release - release method for DRM file
