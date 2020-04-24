@@ -28,6 +28,7 @@
 
 #define printk(fmt, arg...)	printf(fmt, ## arg)
 #define pr_warn(fmt, arg...)	printf(pr_fmt(fmt), ## arg)
+#define pr_warn_ratelimited(fmt, arg...)	printf(pr_fmt(fmt), ## arg)
 #define pr_warn_once(fmt, arg...)	printk_once(pr_fmt(fmt), ## arg)
 #define pr_notice(fmt, arg...)	printf(pr_fmt(fmt), ## arg)
 #define pr_crit(fmt, arg...)	printf(pr_fmt(fmt), ## arg)
