@@ -36,8 +36,8 @@
 #include <sys/types.h>
 #include <sys/mutex.h>
 #include <machine/intr.h>
-#include <machine/atomic.h>
 #include <linux/types.h>
+#include <linux/compiler.h>	/* via x86/include/asm/atomic.h */
 
 #define atomic_set(p, v)	(*(p) = (v))
 #define atomic_read(p)		(*(p))
