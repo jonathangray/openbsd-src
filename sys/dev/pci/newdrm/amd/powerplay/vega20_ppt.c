@@ -976,7 +976,7 @@ static int vega20_print_clk_levels(struct smu_context *smu,
 		}
 
 		for (i = 0; i < clocks.num_levels; i++)
-			size += sprintf(buf + size, "%d: %uMhz %s\n", i,
+			size += snprintf(buf + size, PAGE_SIZE - size, "%d: %uMhz %s\n", i,
 					clocks.data[i].clocks_in_khz / 1000,
 					(clocks.data[i].clocks_in_khz == now * 10)
 					? "*" : "");
@@ -997,7 +997,7 @@ static int vega20_print_clk_levels(struct smu_context *smu,
 		}
 
 		for (i = 0; i < clocks.num_levels; i++)
-			size += sprintf(buf + size, "%d: %uMhz %s\n",
+			size += snprintf(buf + size, PAGE_SIZE - size, "%d: %uMhz %s\n",
 				i, clocks.data[i].clocks_in_khz / 1000,
 				(clocks.data[i].clocks_in_khz == now * 10)
 				? "*" : "");
@@ -1018,7 +1018,7 @@ static int vega20_print_clk_levels(struct smu_context *smu,
 		}
 
 		for (i = 0; i < clocks.num_levels; i++)
-			size += sprintf(buf + size, "%d: %uMhz %s\n",
+			size += snprintf(buf + size, PAGE_SIZE - size, "%d: %uMhz %s\n",
 				i, clocks.data[i].clocks_in_khz / 1000,
 				(clocks.data[i].clocks_in_khz == now * 10)
 				? "*" : "");
@@ -1033,7 +1033,7 @@ static int vega20_print_clk_levels(struct smu_context *smu,
 
 		single_dpm_table = &(dpm_table->fclk_table);
 		for (i = 0; i < single_dpm_table->count; i++)
-			size += sprintf(buf + size, "%d: %uMhz %s\n",
+			size += snprintf(buf + size, PAGE_SIZE - size, "%d: %uMhz %s\n",
 				i, single_dpm_table->dpm_levels[i].value,
 				(single_dpm_table->dpm_levels[i].value == now / 100)
 				? "*" : "");
@@ -1054,7 +1054,7 @@ static int vega20_print_clk_levels(struct smu_context *smu,
 		}
 
 		for (i = 0; i < clocks.num_levels; i++)
-			size += sprintf(buf + size, "%d: %uMhz %s\n",
+			size += snprintf(buf + size, PAGE_SIZE - size, "%d: %uMhz %s\n",
 				i, clocks.data[i].clocks_in_khz / 1000,
 				(clocks.data[i].clocks_in_khz == now * 10) ? "*" : "");
 		break;
@@ -1067,7 +1067,7 @@ static int vega20_print_clk_levels(struct smu_context *smu,
 			      PCIE_LC_LINK_WIDTH_CNTL__LC_LINK_WIDTH_RD_MASK)
 			>> PCIE_LC_LINK_WIDTH_CNTL__LC_LINK_WIDTH_RD__SHIFT;
 		for (i = 0; i < NUM_LINK_LEVELS; i++)
-			size += sprintf(buf + size, "%d: %s %s %dMhz %s\n", i,
+			size += snprintf(buf + size, PAGE_SIZE - size, "%d: %s %s %dMhz %s\n", i,
 					(pptable->PcieGenSpeed[i] == 0) ? "2.5GT/s," :
 					(pptable->PcieGenSpeed[i] == 1) ? "5.0GT/s," :
 					(pptable->PcieGenSpeed[i] == 2) ? "8.0GT/s," :
@@ -1087,10 +1087,10 @@ static int vega20_print_clk_levels(struct smu_context *smu,
 	case SMU_OD_SCLK:
 		if (od8_settings->od8_settings_array[OD8_SETTING_GFXCLK_FMIN].feature_id &&
 		    od8_settings->od8_settings_array[OD8_SETTING_GFXCLK_FMAX].feature_id) {
-			size = sprintf(buf, "%s:\n", "OD_SCLK");
-			size += sprintf(buf + size, "0: %10uMhz\n",
+			size = snprintf(buf, PAGE_SIZE, "%s:\n", "OD_SCLK");
+			size += snprintf(buf + size, PAGE_SIZE - size, "0: %10uMhz\n",
 					od_table->GfxclkFmin);
-			size += sprintf(buf + size, "1: %10uMhz\n",
+			size += snprintf(buf + size, PAGE_SIZE - size, "1: %10uMhz\n",
 					od_table->GfxclkFmax);
 		}
 
@@ -1098,8 +1098,8 @@ static int vega20_print_clk_levels(struct smu_context *smu,
 
 	case SMU_OD_MCLK:
 		if (od8_settings->od8_settings_array[OD8_SETTING_UCLK_FMAX].feature_id) {
-			size = sprintf(buf, "%s:\n", "OD_MCLK");
-			size += sprintf(buf + size, "1: %10uMhz\n",
+			size = snprintf(buf, PAGE_SIZE, "%s:\n", "OD_MCLK");
+			size += snprintf(buf + size, PAGE_SIZE - size, "1: %10uMhz\n",
 					 od_table->UclkFmax);
 		}
 
@@ -1112,14 +1112,14 @@ static int vega20_print_clk_levels(struct smu_context *smu,
 		    od8_settings->od8_settings_array[OD8_SETTING_GFXCLK_VOLTAGE1].feature_id &&
 		    od8_settings->od8_settings_array[OD8_SETTING_GFXCLK_VOLTAGE2].feature_id &&
 		    od8_settings->od8_settings_array[OD8_SETTING_GFXCLK_VOLTAGE3].feature_id) {
-			size = sprintf(buf, "%s:\n", "OD_VDDC_CURVE");
-			size += sprintf(buf + size, "0: %10uMhz %10dmV\n",
+			size = snprintf(buf, PAGE_SIZE, "%s:\n", "OD_VDDC_CURVE");
+			size += snprintf(buf + size, PAGE_SIZE - size, "0: %10uMhz %10dmV\n",
 					od_table->GfxclkFreq1,
 					od_table->GfxclkVolt1 / VOLTAGE_SCALE);
-			size += sprintf(buf + size, "1: %10uMhz %10dmV\n",
+			size += snprintf(buf + size, PAGE_SIZE - size, "1: %10uMhz %10dmV\n",
 					od_table->GfxclkFreq2,
 					od_table->GfxclkVolt2 / VOLTAGE_SCALE);
-			size += sprintf(buf + size, "2: %10uMhz %10dmV\n",
+			size += snprintf(buf + size, PAGE_SIZE - size, "2: %10uMhz %10dmV\n",
 					od_table->GfxclkFreq3,
 					od_table->GfxclkVolt3 / VOLTAGE_SCALE);
 		}
@@ -1127,11 +1127,11 @@ static int vega20_print_clk_levels(struct smu_context *smu,
 		break;
 
 	case SMU_OD_RANGE:
-		size = sprintf(buf, "%s:\n", "OD_RANGE");
+		size = snprintf(buf, PAGE_SIZE, "%s:\n", "OD_RANGE");
 
 		if (od8_settings->od8_settings_array[OD8_SETTING_GFXCLK_FMIN].feature_id &&
 		    od8_settings->od8_settings_array[OD8_SETTING_GFXCLK_FMAX].feature_id) {
-			size += sprintf(buf + size, "SCLK: %7uMhz %10uMhz\n",
+			size += snprintf(buf + size, PAGE_SIZE - size, "SCLK: %7uMhz %10uMhz\n",
 					od8_settings->od8_settings_array[OD8_SETTING_GFXCLK_FMIN].min_value,
 					od8_settings->od8_settings_array[OD8_SETTING_GFXCLK_FMAX].max_value);
 		}
@@ -1144,7 +1144,7 @@ static int vega20_print_clk_levels(struct smu_context *smu,
 				return ret;
 			}
 
-			size += sprintf(buf + size, "MCLK: %7uMhz %10uMhz\n",
+			size += snprintf(buf + size, PAGE_SIZE - size, "MCLK: %7uMhz %10uMhz\n",
 					clocks.data[0].clocks_in_khz / 1000,
 					od8_settings->od8_settings_array[OD8_SETTING_UCLK_FMAX].max_value);
 		}
@@ -1155,22 +1155,22 @@ static int vega20_print_clk_levels(struct smu_context *smu,
 		    od8_settings->od8_settings_array[OD8_SETTING_GFXCLK_VOLTAGE1].feature_id &&
 		    od8_settings->od8_settings_array[OD8_SETTING_GFXCLK_VOLTAGE2].feature_id &&
 		    od8_settings->od8_settings_array[OD8_SETTING_GFXCLK_VOLTAGE3].feature_id) {
-			size += sprintf(buf + size, "VDDC_CURVE_SCLK[0]: %7uMhz %10uMhz\n",
+			size += snprintf(buf + size, PAGE_SIZE - size, "VDDC_CURVE_SCLK[0]: %7uMhz %10uMhz\n",
 					od8_settings->od8_settings_array[OD8_SETTING_GFXCLK_FREQ1].min_value,
 					od8_settings->od8_settings_array[OD8_SETTING_GFXCLK_FREQ1].max_value);
-			size += sprintf(buf + size, "VDDC_CURVE_VOLT[0]: %7dmV %11dmV\n",
+			size += snprintf(buf + size, PAGE_SIZE - size, "VDDC_CURVE_VOLT[0]: %7dmV %11dmV\n",
 					od8_settings->od8_settings_array[OD8_SETTING_GFXCLK_VOLTAGE1].min_value,
 					od8_settings->od8_settings_array[OD8_SETTING_GFXCLK_VOLTAGE1].max_value);
-			size += sprintf(buf + size, "VDDC_CURVE_SCLK[1]: %7uMhz %10uMhz\n",
+			size += snprintf(buf + size, PAGE_SIZE - size, "VDDC_CURVE_SCLK[1]: %7uMhz %10uMhz\n",
 					od8_settings->od8_settings_array[OD8_SETTING_GFXCLK_FREQ2].min_value,
 					od8_settings->od8_settings_array[OD8_SETTING_GFXCLK_FREQ2].max_value);
-			size += sprintf(buf + size, "VDDC_CURVE_VOLT[1]: %7dmV %11dmV\n",
+			size += snprintf(buf + size, PAGE_SIZE - size, "VDDC_CURVE_VOLT[1]: %7dmV %11dmV\n",
 					od8_settings->od8_settings_array[OD8_SETTING_GFXCLK_VOLTAGE2].min_value,
 					od8_settings->od8_settings_array[OD8_SETTING_GFXCLK_VOLTAGE2].max_value);
-			size += sprintf(buf + size, "VDDC_CURVE_SCLK[2]: %7uMhz %10uMhz\n",
+			size += snprintf(buf + size, PAGE_SIZE - size, "VDDC_CURVE_SCLK[2]: %7uMhz %10uMhz\n",
 					od8_settings->od8_settings_array[OD8_SETTING_GFXCLK_FREQ3].min_value,
 					od8_settings->od8_settings_array[OD8_SETTING_GFXCLK_FREQ3].max_value);
-			size += sprintf(buf + size, "VDDC_CURVE_VOLT[2]: %7dmV %11dmV\n",
+			size += snprintf(buf + size, PAGE_SIZE - size, "VDDC_CURVE_VOLT[2]: %7dmV %11dmV\n",
 					od8_settings->od8_settings_array[OD8_SETTING_GFXCLK_VOLTAGE3].min_value,
 					od8_settings->od8_settings_array[OD8_SETTING_GFXCLK_VOLTAGE3].max_value);
 		}
@@ -1799,7 +1799,7 @@ static int vega20_get_power_profile_mode(struct smu_context *smu, char *buf)
 	if (!smu->pm_enabled || !buf)
 		return -EINVAL;
 
-	size += sprintf(buf + size, "%16s %s %s %s %s %s %s %s %s %s %s\n",
+	size += snprintf(buf + size, PAGE_SIZE - size, "%16s %s %s %s %s %s %s %s %s %s %s\n",
 			title[0], title[1], title[2], title[3], title[4], title[5],
 			title[6], title[7], title[8], title[9], title[10]);
 
@@ -1817,10 +1817,10 @@ static int vega20_get_power_profile_mode(struct smu_context *smu, char *buf)
 			return result;
 		}
 
-		size += sprintf(buf + size, "%2d %14s%s:\n",
+		size += snprintf(buf + size, PAGE_SIZE - size, "%2d %14s%s:\n",
 			i, profile_name[i], (i == smu->power_profile_mode) ? "*" : " ");
 
-		size += sprintf(buf + size, "%19s %d(%13s) %7d %7d %7d %7d %7d %7d %7d %7d %7d\n",
+		size += snprintf(buf + size, PAGE_SIZE - size, "%19s %d(%13s) %7d %7d %7d %7d %7d %7d %7d %7d %7d\n",
 			" ",
 			0,
 			"GFXCLK",
@@ -1834,7 +1834,7 @@ static int vega20_get_power_profile_mode(struct smu_context *smu, char *buf)
 			activity_monitor.Gfx_PD_Data_error_coeff,
 			activity_monitor.Gfx_PD_Data_error_rate_coeff);
 
-		size += sprintf(buf + size, "%19s %d(%13s) %7d %7d %7d %7d %7d %7d %7d %7d %7d\n",
+		size += snprintf(buf + size, PAGE_SIZE - size, "%19s %d(%13s) %7d %7d %7d %7d %7d %7d %7d %7d %7d\n",
 			" ",
 			1,
 			"SOCCLK",
@@ -1848,7 +1848,7 @@ static int vega20_get_power_profile_mode(struct smu_context *smu, char *buf)
 			activity_monitor.Soc_PD_Data_error_coeff,
 			activity_monitor.Soc_PD_Data_error_rate_coeff);
 
-		size += sprintf(buf + size, "%19s %d(%13s) %7d %7d %7d %7d %7d %7d %7d %7d %7d\n",
+		size += snprintf(buf + size, PAGE_SIZE - size, "%19s %d(%13s) %7d %7d %7d %7d %7d %7d %7d %7d %7d\n",
 			" ",
 			2,
 			"UCLK",
@@ -1862,7 +1862,7 @@ static int vega20_get_power_profile_mode(struct smu_context *smu, char *buf)
 			activity_monitor.Mem_PD_Data_error_coeff,
 			activity_monitor.Mem_PD_Data_error_rate_coeff);
 
-		size += sprintf(buf + size, "%19s %d(%13s) %7d %7d %7d %7d %7d %7d %7d %7d %7d\n",
+		size += snprintf(buf + size, PAGE_SIZE - size, "%19s %d(%13s) %7d %7d %7d %7d %7d %7d %7d %7d %7d\n",
 			" ",
 			3,
 			"FCLK",
