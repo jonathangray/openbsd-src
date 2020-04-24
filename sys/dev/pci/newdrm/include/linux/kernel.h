@@ -115,6 +115,18 @@ kvasprintf(int flags, const char *fmt, va_list ap)
 }
 
 static inline int
+vscnprintf(char *buf, size_t size, const char *fmt, va_list ap)
+{
+	int nc;
+
+	nc = vsnprintf(buf, size, fmt, ap);
+	if (nc > (size - 1))
+		return (size - 1);
+	else
+		return nc;
+}
+
+static inline int
 _in_dbg_master(void)
 {
 #ifdef DDB
