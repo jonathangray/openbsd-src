@@ -692,10 +692,12 @@ static void amdgpu_dm_audio_component_unbind(struct device *kdev,
 	adev->dm.audio_component = NULL;
 }
 
+#ifdef notyet
 static const struct component_ops amdgpu_dm_audio_component_bind_ops = {
 	.bind	= amdgpu_dm_audio_component_bind,
 	.unbind	= amdgpu_dm_audio_component_unbind,
 };
+#endif
 
 static int amdgpu_dm_audio_init(struct amdgpu_device *adev)
 {
@@ -704,6 +706,9 @@ static int amdgpu_dm_audio_init(struct amdgpu_device *adev)
 	if (!amdgpu_audio)
 		return 0;
 
+	STUB();
+	return 0;
+#ifdef notyet
 	adev->mode_info.audio.enabled = true;
 
 	adev->mode_info.audio.num_pins = adev->dm.dc->res_pool->audio_count;
@@ -727,6 +732,7 @@ static int amdgpu_dm_audio_init(struct amdgpu_device *adev)
 	adev->dm.audio_registered = true;
 
 	return 0;
+#endif
 }
 
 static void amdgpu_dm_audio_fini(struct amdgpu_device *adev)
@@ -734,6 +740,8 @@ static void amdgpu_dm_audio_fini(struct amdgpu_device *adev)
 	if (!amdgpu_audio)
 		return;
 
+	STUB();
+#ifdef notyet
 	if (!adev->mode_info.audio.enabled)
 		return;
 
@@ -745,6 +753,7 @@ static void amdgpu_dm_audio_fini(struct amdgpu_device *adev)
 	/* TODO: Disable audio? */
 
 	adev->mode_info.audio.enabled = false;
+#endif
 }
 
 void amdgpu_dm_audio_eld_notify(struct amdgpu_device *adev, int pin)
@@ -4058,9 +4067,15 @@ static void fill_audio_info(struct audio_info *audio_info,
 
 	cea_revision = drm_connector->display_info.cea_rev;
 
+#ifdef __linux__
 	strscpy(audio_info->display_name,
 		edid_caps->display_name,
 		AUDIO_INFO_DISPLAY_NAME_SIZE_IN_CHARS);
+#else
+	strncpy(audio_info->display_name,
+		edid_caps->display_name,
+		AUDIO_INFO_DISPLAY_NAME_SIZE_IN_CHARS - 1);
+#endif
 
 	if (cea_revision >= 3) {
 		audio_info->mode_count = edid_caps->audio_mode_count;
@@ -5755,7 +5770,11 @@ amdgpu_dm_create_common_mode(struct drm_encoder *encoder,
 	mode->hdisplay = hdisplay;
 	mode->vdisplay = vdisplay;
 	mode->type &= ~DRM_MODE_TYPE_PREFERRED;
+#ifdef __linux__
 	strscpy(mode->name, name, DRM_DISPLAY_MODE_LEN);
+#else
+	strncpy(mode->name, name, DRM_DISPLAY_MODE_LEN);
+#endif
 
 	return mode;
 
@@ -6015,9 +6034,11 @@ create_i2c(struct ddc_service *ddc_service,
 	i2c = kzalloc(sizeof(struct amdgpu_i2c_adapter), GFP_KERNEL);
 	if (!i2c)
 		return NULL;
+#ifdef notyet
 	i2c->base.owner = THIS_MODULE;
 	i2c->base.class = I2C_CLASS_DDC;
 	i2c->base.dev.parent = &adev->pdev->dev;
+#endif
 	i2c->base.algo = &amdgpu_dm_i2c_algo;
 	snprintf(i2c->base.name, sizeof(i2c->base.name), "AMDGPU DM i2c hw bus %d", link_index);
 	i2c_set_adapdata(&i2c->base, i2c);
