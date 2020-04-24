@@ -57,6 +57,27 @@ wait_for_completion_timeout(struct completion *x, u_long timo)
 }
 
 static inline u_long
+wait_for_completion(struct completion *x)
+{
+	int ret;
+
+	KASSERT(!cold);
+
+	mtx_enter(&x->wait.lock);
+	while (x->done == 0) {
+		ret = msleep_nsec(x, &x->wait.lock, 0, "wfci", INFSLP);
+		if (ret) {
+			mtx_leave(&x->wait.lock);
+			return (ret == EWOULDBLOCK) ? 0 : -ret;
+		}
+	}
+	x->done--;
+	mtx_leave(&x->wait.lock);
+
+	return 0;
+}
+
+static inline u_long
 wait_for_completion_interruptible(struct completion *x)
 {
 	int ret;
