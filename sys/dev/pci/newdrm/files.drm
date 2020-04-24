@@ -555,9 +555,9 @@ file	dev/pci/newdrm/amd/powerplay/vega20_ppt.c			powerplay
 define	amddal
 file	dev/pci/newdrm/amd/display/amdgpu_dm/amdgpu_dm.c			amddal
 file	dev/pci/newdrm/amd/display/amdgpu_dm/amdgpu_dm_color.c		amddal
-file	dev/pci/newdrm/amd/display/amdgpu_dm/amdgpu_dm_crc.c		amddal
-file	dev/pci/newdrm/amd/display/amdgpu_dm/amdgpu_dm_debugfs.c		amddal
-file	dev/pci/newdrm/amd/display/amdgpu_dm/amdgpu_dm_hdcp.c		amddal
+#file	dev/pci/newdrm/amd/display/amdgpu_dm/amdgpu_dm_crc.c		amddal
+#file	dev/pci/newdrm/amd/display/amdgpu_dm/amdgpu_dm_debugfs.c		amddal
+#file	dev/pci/newdrm/amd/display/amdgpu_dm/amdgpu_dm_hdcp.c		amddal
 file	dev/pci/newdrm/amd/display/amdgpu_dm/amdgpu_dm_helpers.c		amddal
 file	dev/pci/newdrm/amd/display/amdgpu_dm/amdgpu_dm_irq.c		amddal
 file	dev/pci/newdrm/amd/display/amdgpu_dm/amdgpu_dm_mst_types.c		amddal
