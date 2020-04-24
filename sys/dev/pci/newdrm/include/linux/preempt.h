@@ -3,6 +3,8 @@
 #ifndef _LINUX_PREEMPT_H
 #define _LINUX_PREEMPT_H
 
+#include <asm/preempt.h>
+
 #define preempt_enable()
 #define preempt_disable()
 
