@@ -126,6 +126,16 @@ wait_for_completion_interruptible_timeout(struct completion *x, u_long timo)
 }
 
 static inline void
+complete(struct completion *x)
+{
+	mtx_enter(&x->wait.lock);
+	if (x->done != UINT_MAX)
+		x->done++;
+	mtx_leave(&x->wait.lock);
+	wakeup(x);
+}
+
+static inline void
 complete_all(struct completion *x)
 {
 	mtx_enter(&x->wait.lock);
