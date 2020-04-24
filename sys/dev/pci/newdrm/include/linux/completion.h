@@ -35,6 +35,12 @@ init_completion(struct completion *x)
 	mtx_init(&x->wait.lock, IPL_TTY);
 }
 
+static inline void
+reinit_completion(struct completion *x)
+{
+	x->done = 0;
+}
+
 static inline u_long
 wait_for_completion_timeout(struct completion *x, u_long timo)
 {
