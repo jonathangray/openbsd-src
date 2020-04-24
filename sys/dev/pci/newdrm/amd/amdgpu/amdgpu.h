@@ -49,6 +49,10 @@
 #include <drm/drm_ioctl.h>
 #include <drm/gpu_scheduler.h>
 
+#include <dev/wscons/wsconsio.h>
+#include <dev/wscons/wsdisplayvar.h>
+#include <dev/rasops/rasops.h>
+
 #include <kgd_kfd_interface.h>
 #include "dm_pp_interface.h"
 #include "kgd_pp_interface.h"
@@ -710,6 +714,7 @@ struct amd_powerplay {
 #define AMDGPU_RESET_MAGIC_NUM 64
 #define AMDGPU_MAX_DF_PERFMONS 4
 struct amdgpu_device {
+	struct device			self;
 	struct device			*dev;
 	struct drm_device		*ddev;
 	struct pci_dev			*pdev;
@@ -717,6 +722,28 @@ struct amdgpu_device {
 #ifdef CONFIG_DRM_AMD_ACP
 	struct amdgpu_acp		acp;
 #endif
+
+	pci_chipset_tag_t		pc;
+	pcitag_t			pa_tag;
+	pci_intr_handle_t		intrh;
+	bus_space_tag_t			iot;
+	bus_space_tag_t			memt;
+	bus_dma_tag_t			dmat;
+	void				*irqh;
+
+	void				(*switchcb)(void *, int, int);
+	void				*switchcbarg;
+	void				*switchcookie;
+	struct task			switchtask;
+	struct rasops_info		ro;
+	int				console;
+	int				primary;
+
+	struct task			burner_task;
+	int				burner_fblank;
+
+	unsigned long			fb_aper_offset;
+	unsigned long			fb_aper_size;
 
 	/* ASIC */
 	enum amd_asic_type		asic_type;
@@ -758,7 +785,11 @@ struct amdgpu_device {
 	/* Register/doorbell mmio */
 	resource_size_t			rmmio_base;
 	resource_size_t			rmmio_size;
+#ifdef __linux__
 	void __iomem			*rmmio;
+#endif
+	bus_space_tag_t			rmmio_bst;
+	bus_space_handle_t		rmmio_bsh;
 	/* protects concurrent MM_INDEX/DATA based register access */
 	spinlock_t mmio_idx_lock;
 	struct amdgpu_mmio_remap        rmmio_remap;
@@ -794,7 +825,11 @@ struct amdgpu_device {
 	spinlock_t audio_endpt_idx_lock;
 	amdgpu_block_rreg_t		audio_endpt_rreg;
 	amdgpu_block_wreg_t		audio_endpt_wreg;
-	void __iomem                    *rio_mem;
+#ifdef notyet
+	void __iomem			*rio_mem;
+#endif
+	bus_space_tag_t			rio_mem_bst;
+	bus_space_handle_t		rio_mem_bsh;
 	resource_size_t			rio_mem_size;
 	struct amdgpu_doorbell		doorbell;
 
