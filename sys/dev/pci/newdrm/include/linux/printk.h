@@ -36,10 +36,12 @@
 
 #ifdef DRMDEBUG
 #define pr_info(fmt, arg...)	printf(pr_fmt(fmt), ## arg)
+#define pr_info_ratelimited(fmt, arg...)	printf(pr_fmt(fmt), ## arg)
 #define pr_info_once(fmt, arg...)	printk_once(pr_fmt(fmt), ## arg)
 #define pr_debug(fmt, arg...)	printf(pr_fmt(fmt), ## arg)
 #else
 #define pr_info(fmt, arg...)	do { } while(0)
+#define pr_info_ratelimited(fmt, arg...)	do { } while(0)
 #define pr_info_once(fmt, arg...)	do { } while(0)
 #define pr_debug(fmt, arg...)	do { } while(0)
 #endif
