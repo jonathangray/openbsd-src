@@ -12,6 +12,7 @@
 #include <uvm/uvm_extern.h>
 #include <linux/fs.h>
 #include <linux/shrinker.h>
+#include <linux/overflow.h>
 #include <asm/pgtable.h>
 
 #define PageHighMem(x)	0
