@@ -29,23 +29,34 @@
 
 #include <drm/gpu_scheduler.h>
 
-static struct kmem_cache *sched_fence_slab;
+#include <sys/pool.h>
 
-static int __init drm_sched_fence_slab_init(void)
+static struct pool sched_fence_slab;
+
+int __init drm_sched_fence_slab_init(void)
 {
+#ifdef __linux__
 	sched_fence_slab = kmem_cache_create(
 		"drm_sched_fence", sizeof(struct drm_sched_fence), 0,
 		SLAB_HWCACHE_ALIGN, NULL);
 	if (!sched_fence_slab)
 		return -ENOMEM;
+#else
+	pool_init(&sched_fence_slab, sizeof(struct drm_sched_fence),
+	    0, IPL_NONE, 0, "drm_sched_fence", NULL);
+#endif
 
 	return 0;
 }
 
-static void __exit drm_sched_fence_slab_fini(void)
+void __exit drm_sched_fence_slab_fini(void)
 {
 	rcu_barrier();
+#ifdef __linux__
 	kmem_cache_destroy(sched_fence_slab);
+#else
+	pool_destroy(&sched_fence_slab);
+#endif
 }
 
 void drm_sched_fence_scheduled(struct drm_sched_fence *fence)
@@ -95,7 +106,11 @@ static void drm_sched_fence_free(struct rcu_head *rcu)
 	struct dma_fence *f = container_of(rcu, struct dma_fence, rcu);
 	struct drm_sched_fence *fence = to_drm_sched_fence(f);
 
+#ifdef __linux__
 	kmem_cache_free(sched_fence_slab, fence);
+#else
+	pool_put(&sched_fence_slab, fence);
+#endif
 }
 
 /**
@@ -158,7 +173,11 @@ struct drm_sched_fence *drm_sched_fence_create(struct drm_sched_entity *entity,
 	struct drm_sched_fence *fence = NULL;
 	unsigned seq;
 
+#ifdef __linux__
 	fence = kmem_cache_zalloc(sched_fence_slab, GFP_KERNEL);
+#else
+	fence = pool_get(&sched_fence_slab, PR_WAITOK | PR_ZERO);
+#endif
 	if (fence == NULL)
 		return NULL;
 
