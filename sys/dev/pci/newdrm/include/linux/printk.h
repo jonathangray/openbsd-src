@@ -33,6 +33,7 @@
 #define pr_notice(fmt, arg...)	printf(pr_fmt(fmt), ## arg)
 #define pr_crit(fmt, arg...)	printf(pr_fmt(fmt), ## arg)
 #define pr_err(fmt, arg...)	printf(pr_fmt(fmt), ## arg)
+#define pr_err_once(fmt, arg...)	printk_once(pr_fmt(fmt), ## arg)
 #define pr_cont(fmt, arg...)	printf(pr_fmt(fmt), ## arg)
 
 #ifdef DRMDEBUG
