@@ -48,7 +48,9 @@
 #include <linux/wait.h>
 #include <linux/sched.h>
 #include <linux/completion.h>
+#ifdef __linux__
 #include <uapi/linux/sched/types.h>
+#endif
 
 #include <drm/drm_print.h>
 #include <drm/gpu_scheduler.h>
@@ -227,6 +229,9 @@ EXPORT_SYMBOL(drm_sched_fault);
  */
 unsigned long drm_sched_suspend_timeout(struct drm_gpu_scheduler *sched)
 {
+	STUB();
+	return 0;
+#ifdef notyet
 	unsigned long sched_timeout, now = jiffies;
 
 	sched_timeout = sched->work_tdr.timer.expires;
@@ -240,6 +245,7 @@ unsigned long drm_sched_suspend_timeout(struct drm_gpu_scheduler *sched)
 		return sched_timeout - now;
 	else
 		return sched->timeout;
+#endif
 }
 EXPORT_SYMBOL(drm_sched_suspend_timeout);
 
@@ -668,6 +674,9 @@ static void drm_sched_process_job(struct dma_fence *f, struct dma_fence_cb *cb)
 static struct drm_sched_job *
 drm_sched_get_cleanup_job(struct drm_gpu_scheduler *sched)
 {
+	STUB();
+	return NULL;
+#ifdef notyet
 	struct drm_sched_job *job;
 
 	/*
@@ -696,6 +705,7 @@ drm_sched_get_cleanup_job(struct drm_gpu_scheduler *sched)
 	spin_unlock(&sched->job_list_lock);
 
 	return job;
+#endif
 }
 
 /**
@@ -760,11 +770,15 @@ static bool drm_sched_blocked(struct drm_gpu_scheduler *sched)
  */
 static int drm_sched_main(void *param)
 {
+#ifdef __linux__
 	struct sched_param sparam = {.sched_priority = 1};
+#endif
 	struct drm_gpu_scheduler *sched = (struct drm_gpu_scheduler *)param;
 	int r;
 
+#ifdef __linux__
 	sched_setscheduler(current, SCHED_FIFO, &sparam);
+#endif
 
 	while (!kthread_should_stop()) {
 		struct drm_sched_entity *entity = NULL;
