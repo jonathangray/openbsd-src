@@ -20,6 +20,7 @@
 #define __deprecated
 #define __always_inline inline
 #define noinline __attribute__((noinline))
+#define fallthrough	do {} while (0)
 
 #ifndef __user
 #define __user
