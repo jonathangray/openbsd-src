@@ -784,7 +784,7 @@ file	dev/pci/newdrm/amd/amdgpu/amdgpu_vce_v2_0.c	amdgpu_cik
 
 device	amdgpu: drmbase, ttm, wsemuldisplaydev, rasops8, rasops32, i2cbus, i2c_bitbang, drm_sched, powerplay, amddal
 attach	amdgpu at pci
-file	dev/pci/newdrm/amd/amdgpu/amdgpu_acp.c		amdgpu
+#file	dev/pci/newdrm/amd/amdgpu/amdgpu_acp.c		amdgpu
 file	dev/pci/newdrm/amd/amdgpu/amdgpu_acpi.c		amdgpu & acpi
 file	dev/pci/newdrm/amd/amdgpu/amdgpu_afmt.c		amdgpu
 file	dev/pci/newdrm/amd/amdgpu/amdgpu_amdkfd.c		amdgpu
