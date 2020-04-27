@@ -831,7 +831,7 @@ file	dev/pci/newdrm/amd/amdgpu/amdgpu_job.c		amdgpu
 file	dev/pci/newdrm/amd/amdgpu/amdgpu_jpeg.c		amdgpu
 file	dev/pci/newdrm/amd/amdgpu/amdgpu_kms.c		amdgpu
 file	dev/pci/newdrm/amd/amdgpu/amdgpu_mmhub.c		amdgpu
-file	dev/pci/newdrm/amd/amdgpu/amdgpu_mn.c		amdgpu
+#file	dev/pci/newdrm/amd/amdgpu/amdgpu_mn.c		amdgpu
 file	dev/pci/newdrm/amd/amdgpu/amdgpu_nbio.c		amdgpu
 file	dev/pci/newdrm/amd/amdgpu/amdgpu_object.c		amdgpu
 file	dev/pci/newdrm/amd/amdgpu/amdgpu_pll.c		amdgpu
