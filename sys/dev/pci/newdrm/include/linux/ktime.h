@@ -101,6 +101,12 @@ ktime_add(struct timeval a, struct timeval b)
 }
 
 static inline struct timeval
+ktime_add_us(struct timeval tv, int64_t us)
+{
+	return ns_to_timeval(timeval_to_ns(&tv) + (us * NSEC_PER_USEC));
+}
+
+static inline struct timeval
 ktime_add_ns(struct timeval tv, int64_t ns)
 {
 	return ns_to_timeval(timeval_to_ns(&tv) + ns);
