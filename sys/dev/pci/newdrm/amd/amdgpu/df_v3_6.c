@@ -33,6 +33,7 @@
 static u32 df_v3_6_channel_number[] = {1, 2, 0, 4, 0, 8, 0,
 				       16, 32, 0, 0, 0, 2, 4, 8};
 
+#ifdef __linux__
 /* init df format attrs */
 AMDGPU_PMU_ATTR(event,		"config:0-7");
 AMDGPU_PMU_ATTR(instance,	"config:8-15");
@@ -95,6 +96,8 @@ const struct attribute_group *df_v3_6_attr_groups[] = {
 		&df_v3_6_event_attr_group,
 		NULL
 };
+
+#endif /* __linux__ */
 
 static uint64_t df_v3_6_get_fica(struct amdgpu_device *adev,
 				 uint32_t ficaa_val)
