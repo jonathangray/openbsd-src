@@ -687,6 +687,8 @@ static int dce_virtual_pageflip(struct amdgpu_device *adev,
 	return 0;
 }
 
+#ifdef __linux__
+
 static enum hrtimer_restart dce_virtual_vblank_timer_handle(struct hrtimer *vblank_timer)
 {
 	struct amdgpu_crtc *amdgpu_crtc = container_of(vblank_timer,
@@ -702,6 +704,24 @@ static enum hrtimer_restart dce_virtual_vblank_timer_handle(struct hrtimer *vbla
 	return HRTIMER_NORESTART;
 }
 
+#else
+
+static void dce_virtual_vblank_timer_handle(void *arg)
+{
+	struct timeout *vblank_timer = arg;
+	struct amdgpu_crtc *amdgpu_crtc = container_of(vblank_timer,
+						       struct amdgpu_crtc, vblank_timer);
+	struct drm_device *ddev = amdgpu_crtc->base.dev;
+	struct amdgpu_device *adev = ddev->dev_private;
+
+	drm_handle_vblank(ddev, amdgpu_crtc->crtc_id);
+	dce_virtual_pageflip(adev, amdgpu_crtc->crtc_id);
+	timeout_add_nsec(vblank_timer, DCE_VIRTUAL_VBLANK_PERIOD);
+
+}
+
+#endif
+
 static void dce_virtual_set_crtc_vblank_interrupt_state(struct amdgpu_device *adev,
 							int crtc,
 							enum amdgpu_interrupt_state state)
@@ -713,6 +733,7 @@ static void dce_virtual_set_crtc_vblank_interrupt_state(struct amdgpu_device *ad
 
 	if (state && !adev->mode_info.crtcs[crtc]->vsync_timer_enabled) {
 		DRM_DEBUG("Enable software vsync timer\n");
+#ifdef __linux__
 		hrtimer_init(&adev->mode_info.crtcs[crtc]->vblank_timer,
 			     CLOCK_MONOTONIC, HRTIMER_MODE_REL);
 		hrtimer_set_expires(&adev->mode_info.crtcs[crtc]->vblank_timer,
@@ -721,6 +742,13 @@ static void dce_virtual_set_crtc_vblank_interrupt_state(struct amdgpu_device *ad
 			dce_virtual_vblank_timer_handle;
 		hrtimer_start(&adev->mode_info.crtcs[crtc]->vblank_timer,
 			      DCE_VIRTUAL_VBLANK_PERIOD, HRTIMER_MODE_REL);
+#else
+	timeout_set(&adev->mode_info.crtcs[crtc]->vblank_timer,
+	    dce_virtual_vblank_timer_handle,
+	    &adev->mode_info.crtcs[crtc]->vblank_timer);
+	timeout_add_nsec(&adev->mode_info.crtcs[crtc]->vblank_timer,
+	    DCE_VIRTUAL_VBLANK_PERIOD);
+#endif
 	} else if (!state && adev->mode_info.crtcs[crtc]->vsync_timer_enabled) {
 		DRM_DEBUG("Disable software vsync timer\n");
 		hrtimer_cancel(&adev->mode_info.crtcs[crtc]->vblank_timer);
