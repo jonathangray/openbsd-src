@@ -788,13 +788,13 @@ attach	amdgpu at pci
 file	dev/pci/newdrm/amd/amdgpu/amdgpu_acpi.c		amdgpu & acpi
 file	dev/pci/newdrm/amd/amdgpu/amdgpu_afmt.c		amdgpu
 file	dev/pci/newdrm/amd/amdgpu/amdgpu_amdkfd.c		amdgpu
-file	dev/pci/newdrm/amd/amdgpu/amdgpu_amdkfd_arcturus.c	amdgpu
-file	dev/pci/newdrm/amd/amdgpu/amdgpu_amdkfd_fence.c	amdgpu
-file	dev/pci/newdrm/amd/amdgpu/amdgpu_amdkfd_gfx_v10.c	amdgpu
-file	dev/pci/newdrm/amd/amdgpu/amdgpu_amdkfd_gfx_v7.c	amdgpu
-file	dev/pci/newdrm/amd/amdgpu/amdgpu_amdkfd_gfx_v8.c	amdgpu
-file	dev/pci/newdrm/amd/amdgpu/amdgpu_amdkfd_gfx_v9.c	amdgpu
-file	dev/pci/newdrm/amd/amdgpu/amdgpu_amdkfd_gpuvm.c	amdgpu
+#file	dev/pci/newdrm/amd/amdgpu/amdgpu_amdkfd_arcturus.c	amdgpu
+#file	dev/pci/newdrm/amd/amdgpu/amdgpu_amdkfd_fence.c	amdgpu
+#file	dev/pci/newdrm/amd/amdgpu/amdgpu_amdkfd_gfx_v10.c	amdgpu
+#file	dev/pci/newdrm/amd/amdgpu/amdgpu_amdkfd_gfx_v7.c	amdgpu
+#file	dev/pci/newdrm/amd/amdgpu/amdgpu_amdkfd_gfx_v8.c	amdgpu
+#file	dev/pci/newdrm/amd/amdgpu/amdgpu_amdkfd_gfx_v9.c	amdgpu
+#file	dev/pci/newdrm/amd/amdgpu/amdgpu_amdkfd_gpuvm.c	amdgpu
 file	dev/pci/newdrm/amd/amdgpu/amdgpu_atombios.c	amdgpu
 file	dev/pci/newdrm/amd/amdgpu/amdgpu_atomfirmware.c	amdgpu
 file	dev/pci/newdrm/amd/amdgpu/amdgpu_atpx_handler.c	amdgpu
