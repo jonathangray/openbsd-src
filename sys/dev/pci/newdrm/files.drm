@@ -593,7 +593,7 @@ file	dev/pci/newdrm/amd/display/dc/clk_mgr/dce110/dce110_clk_mgr.c	amddal
 file	dev/pci/newdrm/amd/display/dc/clk_mgr/dce112/dce112_clk_mgr.c	amddal
 file	dev/pci/newdrm/amd/display/dc/clk_mgr/dce120/dce120_clk_mgr.c	amddal
 file	dev/pci/newdrm/amd/display/dc/clk_mgr/dcn10/rv1_clk_mgr.c		amddal & bios
-file	dev/pci/newdrm/amd/display/dc/clk_mgr/dcn10/rv1_clk_mgr_clk.c	amddal & bios
+#file	dev/pci/newdrm/amd/display/dc/clk_mgr/dcn10/rv1_clk_mgr_clk.c	amddal & bios
 file	dev/pci/newdrm/amd/display/dc/clk_mgr/dcn10/rv1_clk_mgr_vbios_smu.c	amddal & bios
 file	dev/pci/newdrm/amd/display/dc/clk_mgr/dcn10/rv2_clk_mgr.c		amddal & bios
 file	dev/pci/newdrm/amd/display/dc/clk_mgr/dcn20/dcn20_clk_mgr.c	amddal
