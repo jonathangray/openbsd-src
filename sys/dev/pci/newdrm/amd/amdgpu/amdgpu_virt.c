@@ -275,7 +275,8 @@ void amdgpu_virt_init_data_exchange(struct amdgpu_device *adev)
 					strcpy(str, THIS_MODULE->version);
 				else
 #endif
-					strcpy(str, "N/A");
+					strlcpy(str, "N/A",
+					    sizeof(((struct amdgim_vf2pf_info_v1 *)0)->driver_version));
 				AMDGPU_FW_VRAM_VF2PF_WRITE(adev, driver_cert,
 					0);
 				AMDGPU_FW_VRAM_VF2PF_WRITE(adev, checksum,
