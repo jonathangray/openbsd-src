@@ -677,8 +677,8 @@ static void gmc_v10_0_vram_gtt_location(struct amdgpu_device *adev,
 static int gmc_v10_0_mc_init(struct amdgpu_device *adev)
 {
 	/* Could aper size report 0 ? */
-	adev->gmc.aper_base = pci_resource_start(adev->pdev, 0);
-	adev->gmc.aper_size = pci_resource_len(adev->pdev, 0);
+	adev->gmc.aper_base = adev->fb_aper_offset;
+	adev->gmc.aper_size = adev->fb_aper_size;
 
 	/* size in MB on si */
 	adev->gmc.mc_vram_size =
