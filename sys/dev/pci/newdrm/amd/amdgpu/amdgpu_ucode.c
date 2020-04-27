@@ -377,6 +377,8 @@ amdgpu_ucode_get_load_type(struct amdgpu_device *adev, int load_type)
 	return AMDGPU_FW_LOAD_DIRECT;
 }
 
+#ifdef __linux__
+
 #define FW_VERSION_ATTR(name, mode, field)				\
 static ssize_t show_##name(struct device *dev,				\
 			  struct device_attribute *attr,		\
@@ -429,6 +431,8 @@ static const struct attribute_group fw_attr_group = {
 	.name = "fw_version",
 	.attrs = fw_attrs
 };
+
+#endif /* __linux__ */
 
 int amdgpu_ucode_sysfs_init(struct amdgpu_device *adev)
 {
