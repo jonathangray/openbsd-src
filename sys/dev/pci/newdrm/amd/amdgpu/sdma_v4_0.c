@@ -1846,7 +1846,7 @@ static int sdma_v4_0_sw_init(void *handle)
 		/* doorbell size is 2 dwords, get DWORD offset */
 		ring->doorbell_index = adev->doorbell_index.sdma_engine[i] << 1;
 
-		sprintf(ring->name, "sdma%d", i);
+		snprintf(ring->name, sizeof(ring->name), "sdma%d", i);
 		r = amdgpu_ring_init(adev, ring, 1024, &adev->sdma.trap_irq,
 				     AMDGPU_SDMA_IRQ_INSTANCE0 + i);
 		if (r)
@@ -1863,7 +1863,7 @@ static int sdma_v4_0_sw_init(void *handle)
 			ring->doorbell_index = adev->doorbell_index.sdma_engine[i] << 1;
 			ring->doorbell_index += 0x400;
 
-			sprintf(ring->name, "page%d", i);
+			snprintf(ring->name, sizeof(ring->name), "page%d", i);
 			r = amdgpu_ring_init(adev, ring, 1024,
 					     &adev->sdma.trap_irq,
 					     AMDGPU_SDMA_IRQ_INSTANCE0 + i);

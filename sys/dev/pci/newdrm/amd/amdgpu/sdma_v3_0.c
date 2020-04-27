@@ -1153,7 +1153,7 @@ static int sdma_v3_0_sw_init(void *handle)
 			ring->use_pollmem = true;
 		}
 
-		sprintf(ring->name, "sdma%d", i);
+		snprintf(ring->name, sizeof(ring->name), "sdma%d", i);
 		r = amdgpu_ring_init(adev, ring, 1024,
 				     &adev->sdma.trap_irq,
 				     (i == 0) ?
