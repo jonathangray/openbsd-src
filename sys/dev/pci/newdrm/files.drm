@@ -825,7 +825,7 @@ file	dev/pci/newdrm/amd/amdgpu/amdgpu_i2c.c		amdgpu
 file	dev/pci/newdrm/amd/amdgpu/amdgpu_ib.c		amdgpu
 file	dev/pci/newdrm/amd/amdgpu/amdgpu_ids.c		amdgpu
 file	dev/pci/newdrm/amd/amdgpu/amdgpu_ih.c		amdgpu
-file	dev/pci/newdrm/amd/amdgpu/amdgpu_ioc32.c		amdgpu
+#file	dev/pci/newdrm/amd/amdgpu/amdgpu_ioc32.c		amdgpu
 file	dev/pci/newdrm/amd/amdgpu/amdgpu_irq.c		amdgpu
 file	dev/pci/newdrm/amd/amdgpu/amdgpu_job.c		amdgpu
 file	dev/pci/newdrm/amd/amdgpu/amdgpu_jpeg.c		amdgpu
