@@ -152,6 +152,7 @@ void amdgpu_gfx_parse_disable_cu(unsigned *mask, unsigned max_se, unsigned max_s
 	if (!amdgpu_disable_cu || !*amdgpu_disable_cu)
 		return;
 
+#ifdef notyet
 	p = amdgpu_disable_cu;
 	for (;;) {
 		char *next;
@@ -174,6 +175,7 @@ void amdgpu_gfx_parse_disable_cu(unsigned *mask, unsigned max_se, unsigned max_s
 			break;
 		p = next + 1;
 	}
+#endif
 }
 
 static bool amdgpu_gfx_is_multipipe_capable(struct amdgpu_device *adev)
@@ -318,7 +320,7 @@ int amdgpu_gfx_kiq_init_ring(struct amdgpu_device *adev,
 		return r;
 
 	ring->eop_gpu_addr = kiq->eop_gpu_addr;
-	sprintf(ring->name, "kiq_%d.%d.%d", ring->me, ring->pipe, ring->queue);
+	snprintf(ring->name, sizeof(ring->name), "kiq_%d.%d.%d", ring->me, ring->pipe, ring->queue);
 	r = amdgpu_ring_init(adev, ring, 1024,
 			     irq, AMDGPU_CP_KIQ_IRQ_DRIVER0);
 	if (r)
@@ -585,7 +587,7 @@ int amdgpu_gfx_ras_late_init(struct amdgpu_device *adev)
 		adev->gfx.ras_if->block = AMDGPU_RAS_BLOCK__GFX;
 		adev->gfx.ras_if->type = AMDGPU_RAS_ERROR__MULTI_UNCORRECTABLE;
 		adev->gfx.ras_if->sub_block_index = 0;
-		strcpy(adev->gfx.ras_if->name, "gfx");
+		strlcpy(adev->gfx.ras_if->name, "gfx", sizeof(adev->gfx.ras_if->name));
 	}
 	fs_info.head = ih_info.head = *adev->gfx.ras_if;
 
