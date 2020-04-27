@@ -38,6 +38,7 @@ INCLUDES=	-nostdinc -I$S -I${.OBJDIR} -I$S/arch \
 		-I$S/dev/pci/newdrm/amd/display/dc/inc/hw \
 		-I$S/dev/pci/newdrm/amd/display/dc/clk_mgr \
 		-I$S/dev/pci/newdrm/amd/display/modules/inc \
+		-I$S/dev/pci/newdrm/amd/display/modules/hdcp \
 		-I$S/dev/pci/newdrm/amd/display/dmub/inc
 CPPFLAGS=	${INCLUDES} ${IDENT} ${PARAM} -D_KERNEL -MD -MP
 CWARNFLAGS=	-Werror -Wall -Wimplicit-function-declaration \
