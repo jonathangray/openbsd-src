@@ -22,21 +22,21 @@ _machdir?=	$S/arch/${_mach}
 _archdir?=	$S/arch/${_arch}
 
 INCLUDES=	-nostdinc -I$S -I${.OBJDIR} -I$S/arch \
-		-I$S/dev/pci/drm/include \
-		-I$S/dev/pci/drm/include/uapi \
-		-I$S/dev/pci/drm/amd/include/asic_reg \
-		-I$S/dev/pci/drm/amd/include \
-		-I$S/dev/pci/drm/amd/amdgpu \
-		-I$S/dev/pci/drm/amd/display \
-		-I$S/dev/pci/drm/amd/display/include \
-		-I$S/dev/pci/drm/amd/display/dc \
-		-I$S/dev/pci/drm/amd/display/amdgpu_dm \
-		-I$S/dev/pci/drm/amd/powerplay/inc \
-		-I$S/dev/pci/drm/amd/powerplay/smumgr \
-		-I$S/dev/pci/drm/amd/powerplay/hwmgr \
-		-I$S/dev/pci/drm/amd/display/dc/inc \
-		-I$S/dev/pci/drm/amd/display/dc/inc/hw \
-		-I$S/dev/pci/drm/amd/display/modules/inc
+		-I$S/dev/pci/newdrm/include \
+		-I$S/dev/pci/newdrm/include/uapi \
+		-I$S/dev/pci/newdrm/amd/include/asic_reg \
+		-I$S/dev/pci/newdrm/amd/include \
+		-I$S/dev/pci/newdrm/amd/amdgpu \
+		-I$S/dev/pci/newdrm/amd/display \
+		-I$S/dev/pci/newdrm/amd/display/include \
+		-I$S/dev/pci/newdrm/amd/display/dc \
+		-I$S/dev/pci/newdrm/amd/display/amdgpu_dm \
+		-I$S/dev/pci/newdrm/amd/powerplay/inc \
+		-I$S/dev/pci/newdrm/amd/powerplay/smumgr \
+		-I$S/dev/pci/newdrm/amd/powerplay/hwmgr \
+		-I$S/dev/pci/newdrm/amd/display/dc/inc \
+		-I$S/dev/pci/newdrm/amd/display/dc/inc/hw \
+		-I$S/dev/pci/newdrm/amd/display/modules/inc
 CPPFLAGS=	${INCLUDES} ${IDENT} ${PARAM} -D_KERNEL -D__${_mach}__ -MD -MP
 CWARNFLAGS=	-Werror -Wall -Wimplicit-function-declaration \
 		-Wno-uninitialized -Wno-pointer-sign \
