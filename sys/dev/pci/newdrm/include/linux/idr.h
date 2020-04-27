@@ -18,6 +18,7 @@
 #ifndef _LINUX_IDR_H
 #define _LINUX_IDR_H
 
+#include <sys/types.h>
 #include <sys/tree.h>
 
 struct idr_entry {
