@@ -674,9 +674,6 @@ static void drm_sched_process_job(struct dma_fence *f, struct dma_fence_cb *cb)
 static struct drm_sched_job *
 drm_sched_get_cleanup_job(struct drm_gpu_scheduler *sched)
 {
-	STUB();
-	return NULL;
-#ifdef notyet
 	struct drm_sched_job *job;
 
 	/*
@@ -705,7 +702,6 @@ drm_sched_get_cleanup_job(struct drm_gpu_scheduler *sched)
 	spin_unlock(&sched->job_list_lock);
 
 	return job;
-#endif
 }
 
 /**
