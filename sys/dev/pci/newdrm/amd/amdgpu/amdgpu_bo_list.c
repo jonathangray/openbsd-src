@@ -104,6 +104,7 @@ int amdgpu_bo_list_create(struct amdgpu_device *adev, struct drm_file *filp,
 		bo = amdgpu_bo_ref(gem_to_amdgpu_bo(gobj));
 		drm_gem_object_put_unlocked(gobj);
 
+#ifdef notyet
 		usermm = amdgpu_ttm_tt_get_usermm(bo->tbo.ttm);
 		if (usermm) {
 			if (usermm != current->mm) {
@@ -115,6 +116,9 @@ int amdgpu_bo_list_create(struct amdgpu_device *adev, struct drm_file *filp,
 		} else {
 			entry = &array[last_entry++];
 		}
+#else
+			entry = &array[last_entry++];
+#endif
 
 		entry->priority = min(info[i].bo_priority,
 				      AMDGPU_BO_LIST_MAX_PRIORITY);
