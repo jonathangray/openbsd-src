@@ -109,7 +109,13 @@ static int vcn_v1_0_sw_init(void *handle)
 		return r;
 
 	/* Override the work func */
+#ifdef __linux__
 	adev->vcn.idle_work.work.func = vcn_v1_0_idle_work_handler;
+#else
+	task_set(&adev->vcn.idle_work.work.task,
+	    (void (*)(void *))vcn_v1_0_idle_work_handler,
+	    &adev->vcn.idle_work.work);
+#endif
 
 	if (adev->firmware.load_type == AMDGPU_FW_LOAD_PSP) {
 		const struct common_firmware_header *hdr;
@@ -126,7 +132,7 @@ static int vcn_v1_0_sw_init(void *handle)
 		return r;
 
 	ring = &adev->vcn.inst->ring_dec;
-	sprintf(ring->name, "vcn_dec");
+	snprintf(ring->name, sizeof(ring->name), "vcn_dec");
 	r = amdgpu_ring_init(adev, ring, 512, &adev->vcn.inst->irq, 0);
 	if (r)
 		return r;
@@ -144,7 +150,7 @@ static int vcn_v1_0_sw_init(void *handle)
 
 	for (i = 0; i < adev->vcn.num_enc_rings; ++i) {
 		ring = &adev->vcn.inst->ring_enc[i];
-		sprintf(ring->name, "vcn_enc%d", i);
+		snprintf(ring->name, sizeof(ring->name), "vcn_enc%d", i);
 		r = amdgpu_ring_init(adev, ring, 512, &adev->vcn.inst->irq, 0);
 		if (r)
 			return r;
