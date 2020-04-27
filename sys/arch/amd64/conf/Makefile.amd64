@@ -205,6 +205,10 @@ display_rq_dlg_helpers.o: $S/dev/pci/newdrm/amd/display/dc/dml/display_rq_dlg_he
 	${NORMAL_C} ${HARDFLOAT_CFLAGS}
 dml_common_defs.o: $S/dev/pci/newdrm/amd/display/dc/dml/dml_common_defs.c
 	${NORMAL_C} ${HARDFLOAT_CFLAGS}
+dcn20_resource.o: $S/dev/pci/newdrm/amd/display/dc/dcn20/dcn20_resource.c
+	${NORMAL_C} ${HARDFLOAT_CFLAGS}
+dcn21_resource.o: $S/dev/pci/newdrm/amd/display/dc/dcn21/dcn21_resource.c
+	${NORMAL_C} ${HARDFLOAT_CFLAGS}
 
 clean:
 	rm -f *bsd *bsd.gdb *.[dio] [a-z]*.s assym.* \
