@@ -19,6 +19,7 @@
 #define _LINUX_HASHTABLE_H
 
 #include <linux/list.h>
+#include <linux/hash.h>
 
 #define DECLARE_HASHTABLE(name, bits) struct hlist_head name[1 << (bits)]
 
