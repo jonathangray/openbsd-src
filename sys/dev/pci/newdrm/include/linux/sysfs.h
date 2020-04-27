@@ -12,5 +12,6 @@ struct bin_attribute {
 #define sysfs_remove_link(x, y)
 #define sysfs_create_group(x, y)	0
 #define sysfs_remove_group(x, y)
+#define sysfs_remove_file(x, y)
 
 #endif

@@ -189,6 +189,9 @@ static ssize_t amdgpu_xgmi_show_hive_id(struct device *dev,
 static int amdgpu_xgmi_sysfs_create(struct amdgpu_device *adev,
 				    struct amdgpu_hive_info *hive)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	int ret = 0;
 
 	if (WARN_ON(hive->kobj))
@@ -218,6 +221,7 @@ static int amdgpu_xgmi_sysfs_create(struct amdgpu_device *adev,
 	}
 
 	return ret;
+#endif
 }
 
 static void amdgpu_xgmi_sysfs_destroy(struct amdgpu_device *adev,
@@ -301,7 +305,7 @@ static int amdgpu_xgmi_sysfs_add_dev_info(struct amdgpu_device *adev,
 		}
 	}
 
-	sprintf(node, "node%d", hive->number_devices);
+	snprintf(node, sizeof(node), "node%d", hive->number_devices);
 	/* Create sysfs link form the hive folder to yourself */
 	ret = sysfs_create_link(hive->kobj, &adev->dev->kobj, node);
 	if (ret) {
@@ -611,7 +615,7 @@ int amdgpu_xgmi_ras_late_init(struct amdgpu_device *adev)
 		adev->gmc.xgmi.ras_if->block = AMDGPU_RAS_BLOCK__XGMI_WAFL;
 		adev->gmc.xgmi.ras_if->type = AMDGPU_RAS_ERROR__MULTI_UNCORRECTABLE;
 		adev->gmc.xgmi.ras_if->sub_block_index = 0;
-		strcpy(adev->gmc.xgmi.ras_if->name, "xgmi_wafl");
+		strlcpy(adev->gmc.xgmi.ras_if->name, "xgmi_wafl", sizeof(adev->gmc.xgmi.ras_if->name));
 	}
 	ih_info.head = fs_info.head = *adev->gmc.xgmi.ras_if;
 	r = amdgpu_ras_late_init(adev, adev->gmc.xgmi.ras_if,
