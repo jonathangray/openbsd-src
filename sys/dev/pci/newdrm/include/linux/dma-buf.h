@@ -21,6 +21,7 @@
 #include <sys/types.h>
 #include <sys/systm.h>
 #include <linux/dma-resv.h>
+#include <linux/list.h>
 
 struct dma_buf_ops;
 
@@ -29,6 +30,7 @@ struct dma_buf {
 	void *priv;
 	size_t size;
 	struct file *file;
+	struct list_head attachments;
 };
 
 struct dma_buf_attachment;

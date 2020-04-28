@@ -1608,6 +1608,7 @@ dma_buf_export(const struct dma_buf_export_info *info)
 	dmabuf->size = info->size;
 	dmabuf->file = fp;
 	fp->f_data = dmabuf;
+	INIT_LIST_HEAD(&dmabuf->attachments);
 	return dmabuf;
 }
 
