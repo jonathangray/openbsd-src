@@ -60,8 +60,69 @@
 #define START(node) ((node)->start)
 #define LAST(node) ((node)->last)
 
+#ifdef __linux__
 INTERVAL_TREE_DEFINE(struct amdgpu_bo_va_mapping, rb, uint64_t, __subtree_last,
 		     START, LAST, static, amdgpu_vm_it)
+#else
+static struct amdgpu_bo_va_mapping *
+amdgpu_vm_it_iter_first(struct rb_root_cached *root, uint64_t start,
+    uint64_t last)
+{
+	struct amdgpu_bo_va_mapping *node;
+	struct rb_node *rb;
+
+	for (rb = rb_first_cached(root); rb; rb = rb_next(rb)) {
+		node = rb_entry(rb, typeof(*node), rb);
+		if (LAST(node) >= start && START(node) <= last)
+			return node;
+	}
+	return NULL;
+}
+
+static struct amdgpu_bo_va_mapping *
+amdgpu_vm_it_iter_next(struct amdgpu_bo_va_mapping *node, uint64_t start,
+    uint64_t last)
+{
+	STUB();
+	struct rb_node *rb = &node->rb;
+
+	for (rb = rb_next(rb); rb; rb = rb_next(rb)) {
+		node = rb_entry(rb, typeof(*node), rb);
+		if (LAST(node) >= start && START(node) <= last)
+			return node;
+	}
+	return NULL;
+}
+
+static void
+amdgpu_vm_it_remove(struct amdgpu_bo_va_mapping *node,
+    struct rb_root_cached *root) 
+{
+	rb_erase_cached(&node->rb, root);
+}
+
+static void
+amdgpu_vm_it_insert(struct amdgpu_bo_va_mapping *node,
+    struct rb_root_cached *root)
+{
+	struct rb_node **iter = &root->rb_root.rb_node;
+	struct rb_node *parent = NULL;
+	struct amdgpu_bo_va_mapping *iter_node;
+
+	while (*iter) {
+		parent = *iter;
+		iter_node = rb_entry(*iter, struct amdgpu_bo_va_mapping, rb);
+
+		if (node->start < iter_node->start)
+			iter = &(*iter)->rb_left;
+		else
+			iter = &(*iter)->rb_right;
+	}
+
+	rb_link_node(&node->rb, parent, iter);
+	rb_insert_color_cached(&node->rb, root, false);
+}
+#endif
 
 #undef START
 #undef LAST
@@ -90,13 +151,17 @@ struct amdgpu_prt_cb {
 static inline void amdgpu_vm_eviction_lock(struct amdgpu_vm *vm)
 {
 	mutex_lock(&vm->eviction_lock);
+#ifdef notyet
 	vm->saved_flags = memalloc_nofs_save();
+#endif
 }
 
 static inline int amdgpu_vm_eviction_trylock(struct amdgpu_vm *vm)
 {
 	if (mutex_trylock(&vm->eviction_lock)) {
+#ifdef notyet
 		vm->saved_flags = memalloc_nofs_save();
+#endif
 		return 1;
 	}
 	return 0;
@@ -104,7 +169,9 @@ static inline int amdgpu_vm_eviction_trylock(struct amdgpu_vm *vm)
 
 static inline void amdgpu_vm_eviction_unlock(struct amdgpu_vm *vm)
 {
+#ifdef notyet
 	memalloc_nofs_restore(vm->saved_flags);
+#endif
 	mutex_unlock(&vm->eviction_lock);
 }
 
@@ -2682,7 +2749,9 @@ void amdgpu_vm_adjust_size(struct amdgpu_device *adev, uint32_t min_vm_size,
 			vm_size = max_size;
 		}
 	} else {
+#ifdef __linux__
 		struct sysinfo si;
+#endif
 		unsigned int phys_ram_gb;
 
 		/* Optimal VM size depends on the amount of physical
@@ -2700,9 +2769,14 @@ void amdgpu_vm_adjust_size(struct amdgpu_device *adev, uint32_t min_vm_size,
 		 * Round up to power of two to maximize the available
 		 * VM size with the given page table size.
 		 */
+#ifdef __linux__
 		si_meminfo(&si);
 		phys_ram_gb = ((uint64_t)si.totalram * si.mem_unit +
 			       (1 << 30) - 1) >> 30;
+#else
+		phys_ram_gb = ((uint64_t)ptoa(physmem) +
+			       (1 << 30) - 1) >> 30;
+#endif
 		vm_size = roundup_pow_of_two(
 			min(max(phys_ram_gb * 3, min_vm_size), max_size));
 	}
@@ -2834,7 +2908,12 @@ int amdgpu_vm_init(struct amdgpu_device *adev, struct amdgpu_vm *vm,
 	else
 		vm->update_funcs = &amdgpu_vm_sdma_funcs;
 	vm->last_update = NULL;
+#ifdef notyet
 	vm->last_direct = dma_fence_get_stub();
+#else
+	vm->last_direct = NULL;
+	STUB();
+#endif
 
 	rw_init(&vm->eviction_lock, "avmev");
 	vm->evicting = false;
@@ -2875,7 +2954,11 @@ int amdgpu_vm_init(struct amdgpu_device *adev, struct amdgpu_vm *vm,
 		vm->pasid = pasid;
 	}
 
+#ifdef __linux__
 	INIT_KFIFO(vm->faults);
+#else
+	SIMPLEQ_INIT(&vm->faults);
+#endif
 
 	return 0;
 
@@ -3269,6 +3352,7 @@ void amdgpu_vm_set_task_info(struct amdgpu_vm *vm)
 	if (vm->task_info.pid)
 		return;
 
+#ifdef __linux__
 	vm->task_info.pid = current->pid;
 	get_task_comm(vm->task_info.task_name, current);
 
@@ -3277,6 +3361,11 @@ void amdgpu_vm_set_task_info(struct amdgpu_vm *vm)
 
 	vm->task_info.tgid = current->group_leader->pid;
 	get_task_comm(vm->task_info.process_name, current->group_leader);
+#else
+	vm->task_info.pid = curproc->p_p->ps_pid;
+	strlcpy(vm->task_info.task_name, curproc->p_p->ps_comm,
+	    sizeof(vm->task_info.task_name));
+#endif
 }
 
 /**
