@@ -1836,6 +1836,9 @@ int amdgpu_ttm_init(struct amdgpu_device *adev)
 		DRM_ERROR("failed initializing buffer object driver(%d).\n", r);
 		return r;
 	}
+	adev->mman.bdev.iot = adev->iot;
+	adev->mman.bdev.memt = adev->memt;
+	adev->mman.bdev.dmat = adev->dmat;
 	adev->mman.initialized = true;
 
 	/* We opt to avoid OOM on system pages allocations */
