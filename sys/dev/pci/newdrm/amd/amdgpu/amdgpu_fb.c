@@ -69,6 +69,7 @@ amdgpufb_release(struct fb_info *info, int user)
 	return 0;
 }
 
+#ifdef __linux__
 static const struct fb_ops amdgpufb_ops = {
 	.owner = THIS_MODULE,
 	DRM_FB_HELPER_DEFAULT_OPS,
@@ -78,7 +79,9 @@ static const struct fb_ops amdgpufb_ops = {
 	.fb_copyarea = drm_fb_helper_cfb_copyarea,
 	.fb_imageblit = drm_fb_helper_cfb_imageblit,
 };
+#endif
 
+void amdgpu_burner_cb(void *);
 
 int amdgpu_align_pitch(struct amdgpu_device *adev, int width, int cpp, bool tiled)
 {
@@ -201,6 +204,7 @@ static int amdgpufb_create(struct drm_fb_helper *helper,
 	struct amdgpu_fbdev *rfbdev = (struct amdgpu_fbdev *)helper;
 	struct amdgpu_device *adev = rfbdev->adev;
 	struct fb_info *info;
+	struct rasops_info *ri = &adev->ro;
 	struct drm_framebuffer *fb = NULL;
 	struct drm_mode_fb_cmd2 mode_cmd;
 	struct drm_gem_object *gobj = NULL;
@@ -244,9 +248,12 @@ static int amdgpufb_create(struct drm_fb_helper *helper,
 	/* setup helper */
 	rfbdev->helper.fb = fb;
 
+#ifdef __linux__
 	info->fbops = &amdgpufb_ops;
+#endif
 
 	tmp = amdgpu_bo_gpu_offset(abo) - adev->gmc.vram_start;
+#ifdef __linux__
 	info->fix.smem_start = adev->gmc.aper_base + tmp;
 	info->fix.smem_len = amdgpu_bo_size(abo);
 	info->screen_base = amdgpu_bo_kptr(abo);
@@ -257,19 +264,47 @@ static int amdgpufb_create(struct drm_fb_helper *helper,
 	/* setup aperture base/size for vesafb takeover */
 	info->apertures->ranges[0].base = adev->ddev->mode_config.fb_base;
 	info->apertures->ranges[0].size = adev->gmc.aper_size;
+#endif
 
 	/* Use default scratch pixmap (info->pixmap.flags = FB_PIXMAP_SYSTEM) */
 
+#ifdef __linux__
 	if (info->screen_base == NULL) {
 		ret = -ENOSPC;
 		goto out;
 	}
 
 	DRM_INFO("fb mappable at 0x%lX\n",  info->fix.smem_start);
+#endif
 	DRM_INFO("vram apper at 0x%lX\n",  (unsigned long)adev->gmc.aper_base);
 	DRM_INFO("size %lu\n", (unsigned long)amdgpu_bo_size(abo));
 	DRM_INFO("fb depth is %d\n", fb->format->depth);
 	DRM_INFO("   pitch is %d\n", fb->pitches[0]);
+
+	ri->ri_bits = amdgpu_bo_kptr(abo);
+	ri->ri_depth = fb->format->cpp[0] * 8;
+	ri->ri_stride = fb->pitches[0];
+	ri->ri_width = sizes->fb_width;
+	ri->ri_height = sizes->fb_height;
+
+	switch (fb->format->format) {
+	case DRM_FORMAT_XRGB8888:
+		ri->ri_rnum = 8;
+		ri->ri_rpos = 16;
+		ri->ri_gnum = 8;
+		ri->ri_gpos = 8;
+		ri->ri_bnum = 8;
+		ri->ri_bpos = 0;
+		break;
+	case DRM_FORMAT_RGB565:
+		ri->ri_rnum = 5;
+		ri->ri_rpos = 11;
+		ri->ri_gnum = 6;
+		ri->ri_gpos = 5;
+		ri->ri_bnum = 5;
+		ri->ri_bpos = 0;
+		break;
+	}
 
 	vga_switcheroo_client_fb_set(adev->ddev->pdev, info);
 	return 0;
@@ -342,6 +377,8 @@ int amdgpu_fbdev_init(struct amdgpu_device *adev)
 		return ret;
 	}
 
+	task_set(&adev->burner_task, amdgpu_burner_cb, adev);
+
 	/* disable all the possible outputs/crtcs before entering KMS mode */
 	if (!amdgpu_device_has_dc_support(adev))
 		drm_helper_disable_unused_functions(adev->ddev);
@@ -354,6 +391,8 @@ void amdgpu_fbdev_fini(struct amdgpu_device *adev)
 {
 	if (!adev->mode_info.rfbdev)
 		return;
+
+	task_del(systq, &adev->burner_task);
 
 	amdgpu_fbdev_destroy(adev->ddev, adev->mode_info.rfbdev);
 	kfree(adev->mode_info.rfbdev);
@@ -387,4 +426,37 @@ bool amdgpu_fbdev_robj_is_fb(struct amdgpu_device *adev, struct amdgpu_bo *robj)
 	if (robj == gem_to_amdgpu_bo(adev->mode_info.rfbdev->rfb.base.obj[0]))
 		return true;
 	return false;
+}
+
+void
+amdgpu_burner(void *v, u_int on, u_int flags)
+{
+	struct rasops_info *ri = v;
+	struct amdgpu_device *adev = ri->ri_hw;
+
+	task_del(systq, &adev->burner_task);
+
+	if (on)
+		adev->burner_fblank = FB_BLANK_UNBLANK;
+	else {
+		if (flags & WSDISPLAY_BURN_VBLANK)
+			adev->burner_fblank = FB_BLANK_VSYNC_SUSPEND;
+		else
+			adev->burner_fblank = FB_BLANK_NORMAL;
+	}
+
+	/*
+	 * Setting the DPMS mode may sleep while waiting for vblank so
+	 * hand things off to a taskq.
+	 */
+	task_add(systq, &adev->burner_task);
+}
+
+void
+amdgpu_burner_cb(void *arg1)
+{
+	struct amdgpu_device *adev = arg1;
+	struct drm_fb_helper *helper = &adev->mode_info.rfbdev->helper;
+
+	drm_fb_helper_blank(adev->burner_fblank, helper->fbdev);
 }
