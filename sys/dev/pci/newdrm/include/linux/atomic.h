@@ -39,6 +39,8 @@
 #include <linux/types.h>
 #include <linux/compiler.h>	/* via x86/include/asm/atomic.h */
 
+#define ATOMIC_INIT(x)		(x)
+
 #define atomic_set(p, v)	(*(p) = (v))
 #define atomic_read(p)		(*(p))
 #define atomic_inc(p)		__sync_fetch_and_add(p, 1)
