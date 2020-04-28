@@ -80,6 +80,8 @@ atomic_t amdgpu_ras_in_intr = ATOMIC_INIT(0);
 static bool amdgpu_ras_check_bad_page(struct amdgpu_device *adev,
 				uint64_t addr);
 
+#ifdef __linux__
+
 static ssize_t amdgpu_ras_debugfs_read(struct file *f, char __user *buf,
 					size_t size, loff_t *pos)
 {
@@ -411,6 +413,8 @@ static ssize_t amdgpu_ras_sysfs_read(struct device *dev,
 			"ce", info.ce_count);
 }
 
+#endif /* __linux__ */
+
 /* obj begin */
 
 #define get_obj(obj) do { (obj)->use++; } while (0)
@@ -672,7 +676,7 @@ static int amdgpu_ras_enable_all_features(struct amdgpu_device *adev,
 			.type = default_ras_type,
 			.sub_block_index = 0,
 		};
-		strcpy(head.name, ras_block_str(i));
+		strlcpy(head.name, ras_block_str(i), sizeof(head.name));
 		if (bypass) {
 			/*
 			 * bypass psp. vbios enable ras for us.
@@ -840,6 +844,7 @@ unsigned long amdgpu_ras_query_error_count(struct amdgpu_device *adev,
 }
 /* query/inject/cure end */
 
+#ifdef __linux__
 
 /* sysfs begin */
 
@@ -1175,19 +1180,25 @@ static void amdgpu_ras_debugfs_remove_all(struct amdgpu_device *adev)
 }
 /* debugfs end */
 
+#endif /* __linux__ */
+
 /* ras fs */
 
 static int amdgpu_ras_fs_init(struct amdgpu_device *adev)
 {
+#ifdef __linux__
 	amdgpu_ras_sysfs_create_feature_node(adev);
+#endif
 
 	return 0;
 }
 
 static int amdgpu_ras_fs_fini(struct amdgpu_device *adev)
 {
+#ifdef __linux__
 	amdgpu_ras_debugfs_remove_all(adev);
 	amdgpu_ras_sysfs_remove_all(adev);
+#endif
 	return 0;
 }
 /* ras fs end */
