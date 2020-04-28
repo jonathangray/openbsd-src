@@ -23,6 +23,8 @@
 
 #include <linux/dma-mapping.h>
 
+#include <drm/drm_legacy.h>
+
 #include "amdgpu.h"
 #include "amdgpu_ih.h"
 
@@ -43,6 +45,8 @@ int amdgpu_ih_ring_init(struct amdgpu_device *adev, struct amdgpu_ih_ring *ih,
 {
 	u32 rb_bufsz;
 	int r;
+	struct drm_dmamem *dmah;
+	int flags = 0;
 
 	/* Align ring size */
 	rb_bufsz = order_base_2(ring_size / 4);
@@ -61,10 +65,22 @@ int amdgpu_ih_ring_init(struct amdgpu_device *adev, struct amdgpu_ih_ring *ih,
 		/* add 8 bytes for the rptr/wptr shadows and
 		 * add them to the end of the ring allocation.
 		 */
+#ifdef __linux__
 		ih->ring = dma_alloc_coherent(adev->dev, ih->ring_size + 8,
 					      &dma_addr, GFP_KERNEL);
 		if (ih->ring == NULL)
 			return -ENOMEM;
+#else
+		dmah = drm_dmamem_alloc(adev->dmat,
+		    ih->ring_size + 8,
+		    PAGE_SIZE, 1,
+		    ih->ring_size + 8, flags, 0);
+		if (dmah == NULL)
+			return -ENOMEM;
+		ih->dmah = dmah;
+		dma_addr = dmah->map->dm_segs[0].ds_addr;
+		ih->ring = (volatile uint32_t *)dmah->kva;
+#endif
 
 		ih->gpu_addr = dma_addr;
 		ih->wptr_addr = dma_addr + ih->ring_size;
@@ -120,8 +136,12 @@ void amdgpu_ih_ring_fini(struct amdgpu_device *adev, struct amdgpu_ih_ring *ih)
 		/* add 8 bytes for the rptr/wptr shadows and
 		 * add them to the end of the ring allocation.
 		 */
+#ifdef __linux__
 		dma_free_coherent(adev->dev, ih->ring_size + 8,
 				  (void *)ih->ring, ih->gpu_addr);
+#else
+		drm_dmamem_free(adev->dmat, ih->dmah);
+#endif
 		ih->ring = NULL;
 	} else {
 		amdgpu_bo_free_kernel(&ih->ring_obj, &ih->gpu_addr,

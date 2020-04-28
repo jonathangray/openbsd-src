@@ -42,6 +42,7 @@ struct amdgpu_ih_ring {
 
 	struct amdgpu_bo	*ring_obj;
 	volatile uint32_t	*ring;
+	struct drm_dmamem	*dmah;
 	uint64_t		gpu_addr;
 
 	uint64_t		wptr_addr;
