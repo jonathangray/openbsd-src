@@ -2843,9 +2843,6 @@ fail:
 
 static int amdgpu_device_get_job_timeout_settings(struct amdgpu_device *adev)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
 	char *input = amdgpu_lockup_timeout;
 	char *timeout_setting = NULL;
 	int index = 0;
@@ -2865,6 +2862,7 @@ static int amdgpu_device_get_job_timeout_settings(struct amdgpu_device *adev)
 	else
 		adev->compute_timeout = MAX_SCHEDULE_TIMEOUT;
 
+#ifdef notyet
 	if (strnlen(input, AMDGPU_MAX_TIMEOUT_PARAM_LENGTH)) {
 		while ((timeout_setting = strsep(&input, ",")) &&
 				strnlen(timeout_setting, AMDGPU_MAX_TIMEOUT_PARAM_LENGTH)) {
@@ -2908,9 +2906,9 @@ static int amdgpu_device_get_job_timeout_settings(struct amdgpu_device *adev)
 				adev->compute_timeout = adev->gfx_timeout;
 		}
 	}
+#endif
 
 	return ret;
-#endif
 }
 
 /**
