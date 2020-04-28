@@ -153,6 +153,7 @@ done_free:
 	kfree(adev);
 	dev->dev_private = NULL;
 }
+#endif /* __linux__ */
 
 void amdgpu_register_gpu_instance(struct amdgpu_device *adev)
 {
@@ -179,6 +180,7 @@ void amdgpu_register_gpu_instance(struct amdgpu_device *adev)
 	mutex_unlock(&mgpu_info.mutex);
 }
 
+#ifdef __linux__
 /**
  * amdgpu_driver_load_kms - Main load function for KMS.
  *
