@@ -728,19 +728,23 @@ static const u32 GFX_RLC_SRM_INDEX_CNTL_DATA_OFFSETS[] =
 
 void gfx_v9_0_rlcg_wreg(struct amdgpu_device *adev, u32 offset, u32 v)
 {
+#ifdef __linux__
 	static void *scratch_reg0;
 	static void *scratch_reg1;
 	static void *scratch_reg2;
 	static void *scratch_reg3;
 	static void *spare_int;
+#endif
 	static uint32_t grbm_cntl;
 	static uint32_t grbm_idx;
 
+#ifdef __linux__
 	scratch_reg0 = adev->rmmio + (adev->reg_offset[GC_HWIP][0][mmSCRATCH_REG0_BASE_IDX] + mmSCRATCH_REG0)*4;
 	scratch_reg1 = adev->rmmio + (adev->reg_offset[GC_HWIP][0][mmSCRATCH_REG1_BASE_IDX] + mmSCRATCH_REG1)*4;
 	scratch_reg2 = adev->rmmio + (adev->reg_offset[GC_HWIP][0][mmSCRATCH_REG1_BASE_IDX] + mmSCRATCH_REG2)*4;
 	scratch_reg3 = adev->rmmio + (adev->reg_offset[GC_HWIP][0][mmSCRATCH_REG1_BASE_IDX] + mmSCRATCH_REG3)*4;
 	spare_int = adev->rmmio + (adev->reg_offset[GC_HWIP][0][mmRLC_SPARE_INT_BASE_IDX] + mmRLC_SPARE_INT)*4;
+#endif
 
 	grbm_cntl = adev->reg_offset[GC_HWIP][0][mmGRBM_GFX_CNTL_BASE_IDX] + mmGRBM_GFX_CNTL;
 	grbm_idx = adev->reg_offset[GC_HWIP][0][mmGRBM_GFX_INDEX_BASE_IDX] + mmGRBM_GFX_INDEX;
@@ -752,22 +756,32 @@ void gfx_v9_0_rlcg_wreg(struct amdgpu_device *adev, u32 offset, u32 v)
 
 	if (offset == grbm_cntl || offset == grbm_idx) {
 		if (offset  == grbm_cntl)
-			writel(v, scratch_reg2);
+			bus_space_write_4(adev->rmmio_bst, adev->rmmio_bsh,
+			    (adev->reg_offset[GC_HWIP][0][mmSCRATCH_REG1_BASE_IDX] + mmSCRATCH_REG2)*4, v);
 		else if (offset == grbm_idx)
-			writel(v, scratch_reg3);
+			bus_space_write_4(adev->rmmio_bst, adev->rmmio_bsh,
+			    (adev->reg_offset[GC_HWIP][0][mmSCRATCH_REG1_BASE_IDX] + mmSCRATCH_REG3)*4, v);
 
-		writel(v, ((void __iomem *)adev->rmmio) + (offset * 4));
+		bus_space_write_4(adev->rmmio_bst, adev->rmmio_bsh,
+		    offset * 4, v);
+		
 	} else {
 		uint32_t i = 0;
 		uint32_t retries = 50000;
 
-		writel(v, scratch_reg0);
-		writel(offset | 0x80000000, scratch_reg1);
-		writel(1, spare_int);
+		bus_space_write_4(adev->rmmio_bst, adev->rmmio_bsh,
+		    (adev->reg_offset[GC_HWIP][0][mmSCRATCH_REG0_BASE_IDX] + mmSCRATCH_REG0)*4, v);
+		bus_space_write_4(adev->rmmio_bst, adev->rmmio_bsh,
+		    (adev->reg_offset[GC_HWIP][0][mmSCRATCH_REG1_BASE_IDX] + mmSCRATCH_REG1)*4,
+		    offset | 0x80000000);
+		bus_space_write_4(adev->rmmio_bst, adev->rmmio_bsh,
+		    (adev->reg_offset[GC_HWIP][0][mmRLC_SPARE_INT_BASE_IDX] + mmRLC_SPARE_INT)*4,
+		    1);
 		for (i = 0; i < retries; i++) {
 			u32 tmp;
 
-			tmp = readl(scratch_reg1);
+			tmp = bus_space_read_4(adev->rmmio_bst, adev->rmmio_bsh,
+			    (adev->reg_offset[GC_HWIP][0][mmSCRATCH_REG1_BASE_IDX] + mmSCRATCH_REG1)*4);
 			if (!(tmp & 0x80000000))
 				break;
 
