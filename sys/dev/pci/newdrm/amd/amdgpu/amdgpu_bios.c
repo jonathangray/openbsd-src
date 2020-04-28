@@ -32,6 +32,12 @@
 #include <linux/pci.h>
 #include <linux/slab.h>
 #include <linux/acpi.h>
+
+#if defined(__amd64__) || defined(__i386__)
+#include <dev/isa/isareg.h>
+#include <dev/isa/isavar.h>
+#endif
+
 /*
  * BIOS.
  */
@@ -87,6 +93,7 @@ static bool check_atom_bios(uint8_t *bios, size_t size)
  * copy of the igp rom at the start of vram if a discrete card is
  * present.
  */
+#ifdef __linux__
 static bool igp_read_bios_from_vram(struct amdgpu_device *adev)
 {
 	uint8_t __iomem *bios;
@@ -120,7 +127,48 @@ static bool igp_read_bios_from_vram(struct amdgpu_device *adev)
 
 	return true;
 }
+#else
+static bool igp_read_bios_from_vram(struct amdgpu_device *adev)
+{
+	uint8_t __iomem *bios;
+	resource_size_t size = 256 * 1024; /* ??? */
+	bus_space_handle_t bsh;
+	bus_space_tag_t bst = adev->memt;
 
+	if (!(adev->flags & AMD_IS_APU))
+		if (amdgpu_device_need_post(adev))
+			return false;
+
+	adev->bios = NULL;
+
+	if (bus_space_map(bst, adev->fb_aper_offset, size, BUS_SPACE_MAP_LINEAR, &bsh) != 0)
+		return false;
+
+	bios = bus_space_vaddr(adev->memt, bsh);
+	if (bios == NULL) {
+		bus_space_unmap(bst, bsh, size);
+		return false;
+	}
+
+	adev->bios = kmalloc(size, GFP_KERNEL);
+	if (!adev->bios) {
+		bus_space_unmap(bst, bsh, size);
+		return false;
+	}
+	adev->bios_size = size;
+	memcpy_fromio(adev->bios, bios, size);
+	bus_space_unmap(bst, bsh, size);
+
+	if (!check_atom_bios(adev->bios, size)) {
+		kfree(adev->bios);
+		return false;
+	}
+
+	return true;
+}
+#endif
+
+#ifdef __linux__
 bool amdgpu_read_bios(struct amdgpu_device *adev)
 {
 	uint8_t __iomem *bios;
@@ -149,6 +197,56 @@ bool amdgpu_read_bios(struct amdgpu_device *adev)
 
 	return true;
 }
+#else
+bool amdgpu_read_bios(struct amdgpu_device *adev)
+{
+	uint8_t __iomem *bios;
+	size_t size;
+	pcireg_t address, mask;
+	bus_space_handle_t romh;
+	int rc;
+
+	adev->bios = NULL;
+	/* XXX: some cards may return 0 for rom size? ddx has a workaround */
+
+	address = pci_conf_read(adev->pc, adev->pa_tag, PCI_ROM_REG);
+	pci_conf_write(adev->pc, adev->pa_tag, PCI_ROM_REG, ~PCI_ROM_ENABLE);
+	mask = pci_conf_read(adev->pc, adev->pa_tag, PCI_ROM_REG);
+	address |= PCI_ROM_ENABLE;
+	pci_conf_write(adev->pc, adev->pa_tag, PCI_ROM_REG, address);
+
+	size = PCI_ROM_SIZE(mask);
+	if (size == 0)
+		return false;
+	rc = bus_space_map(adev->memt, PCI_ROM_ADDR(address), size,
+	    BUS_SPACE_MAP_LINEAR, &romh);
+	if (rc != 0) {
+		printf(": can't map PCI ROM (%d)\n", rc);
+		return false;
+	}
+	bios = (uint8_t *)bus_space_vaddr(adev->memt, romh);
+	if (!bios) {
+		printf(": bus_space_vaddr failed\n");
+		return false;
+	}
+
+	adev->bios = kzalloc(size, GFP_KERNEL);
+	if (adev->bios == NULL) {
+		bus_space_unmap(adev->memt, romh, size);
+		return false;
+	}
+	adev->bios_size = size;
+	memcpy_fromio(adev->bios, bios, size);
+	bus_space_unmap(adev->memt, romh, size);
+
+	if (!check_atom_bios(adev->bios, size)) {
+		kfree(adev->bios);
+		return false;
+	}
+
+	return true;
+}
+#endif
 
 static bool amdgpu_read_bios_from_rom(struct amdgpu_device *adev)
 {
@@ -190,6 +288,7 @@ static bool amdgpu_read_bios_from_rom(struct amdgpu_device *adev)
 	return true;
 }
 
+#ifdef __linux__
 static bool amdgpu_read_platform_bios(struct amdgpu_device *adev)
 {
 	phys_addr_t rom = adev->pdev->rom;
@@ -222,6 +321,35 @@ free_bios:
 	kfree(adev->bios);
 	return false;
 }
+#else
+static bool amdgpu_read_platform_bios(struct amdgpu_device *adev)
+{
+#if defined(__amd64__) || defined(__i386__)
+	uint8_t __iomem *bios;
+	bus_size_t size = 256 * 1024; /* ??? */
+
+	adev->bios = NULL;
+
+	bios = (u8 *)ISA_HOLE_VADDR(0xc0000);
+
+	adev->bios = kzalloc(size, GFP_KERNEL);
+	if (adev->bios == NULL)
+		return false;
+
+	memcpy_fromio(adev->bios, bios, size);
+
+	if (!check_atom_bios(adev->bios, size)) {
+		kfree(adev->bios);
+		return false;
+	}
+
+	adev->bios_size = size;
+
+	return true;
+#endif
+	return false;
+}
+#endif
 
 #ifdef CONFIG_ACPI
 /* ATRM is used to get the BIOS on the discrete cards in
