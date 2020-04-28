@@ -353,6 +353,17 @@ pci_domain_nr(struct pci_bus *pbus)
 }
 
 static inline int
+pci_irq_vector(struct pci_dev *pdev, unsigned int num)
+{
+	return pdev->irq;
+}
+
+static inline void
+pci_free_irq_vectors(struct pci_dev *pdev)
+{
+}
+
+static inline int
 pci_set_power_state(struct pci_dev *dev, int state)
 {
 	return 0;
