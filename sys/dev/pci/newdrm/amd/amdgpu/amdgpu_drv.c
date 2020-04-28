@@ -1443,7 +1443,9 @@ struct drm_driver amdgpu_kms_driver = {
 #endif
 	.postclose = amdgpu_driver_postclose_kms,
 	.lastclose = amdgpu_driver_lastclose_kms,
+#ifdef notyet
 	.irq_handler = amdgpu_irq_handler,
+#endif
 	.ioctls = amdgpu_ioctls_kms,
 	.gem_free_object_unlocked = amdgpu_gem_object_free,
 	.gem_open_object = amdgpu_gem_object_open,
