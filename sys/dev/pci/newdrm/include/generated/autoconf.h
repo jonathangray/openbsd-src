@@ -15,7 +15,6 @@
 #define CONFIG_DRM_I915_SW_FENCE_CHECK_DAG	0
 #define CONFIG_PM				0
 #define CONFIG_DRM_AMD_DC			1
-#define CONFIG_DRM_AMD_DC_HDCP			1
 #if defined(__amd64__) || defined(__i386__)
 #define CONFIG_DRM_AMD_DC_DCN			1
 #endif
