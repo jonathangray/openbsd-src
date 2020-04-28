@@ -148,11 +148,14 @@ void amdgpu_irq_disable_all(struct amdgpu_device *adev)
  * Returns:
  * result of handling the IRQ, as defined by &irqreturn_t
  */
-irqreturn_t amdgpu_irq_handler(int irq, void *arg)
+irqreturn_t amdgpu_irq_handler(void *arg)
 {
 	struct drm_device *dev = (struct drm_device *) arg;
 	struct amdgpu_device *adev = dev->dev_private;
 	irqreturn_t ret;
+
+	if (!adev->irq.installed)
+		return 0;
 
 	ret = amdgpu_ih_process(adev, &adev->irq.ih);
 	if (ret == IRQ_HANDLED)
@@ -217,7 +220,7 @@ static void amdgpu_irq_handle_ih2(struct work_struct *work)
  * Returns:
  * *true* if MSIs are allowed to be enabled or *false* otherwise
  */
-static bool amdgpu_msi_ok(struct amdgpu_device *adev)
+bool amdgpu_msi_ok(struct amdgpu_device *adev)
 {
 	if (amdgpu_msi == 1)
 		return true;
@@ -244,6 +247,7 @@ int amdgpu_irq_init(struct amdgpu_device *adev)
 
 	mtx_init(&adev->irq.lock, IPL_TTY);
 
+#ifdef notyet
 	/* Enable MSI if not disabled by module parameter */
 	adev->irq.msi_enabled = false;
 
@@ -263,6 +267,7 @@ int amdgpu_irq_init(struct amdgpu_device *adev)
 			dev_dbg(adev->dev, "amdgpu: using MSI/MSI-X.\n");
 		}
 	}
+#endif
 
 	if (!amdgpu_device_has_dc_support(adev)) {
 		if (!adev->enable_virtual_display)
@@ -428,7 +433,10 @@ void amdgpu_irq_dispatch(struct amdgpu_device *adev,
 		DRM_DEBUG("Invalid src_id in IV: %d\n", src_id);
 
 	} else if (adev->irq.virq[src_id]) {
+		STUB();
+#ifdef notyet
 		generic_handle_irq(irq_find_mapping(adev->irq.domain, src_id));
+#endif
 
 	} else if (!adev->irq.client[client_id].sources) {
 		DRM_DEBUG("Unregistered interrupt client_id: %d src_id: %d\n",
@@ -595,6 +603,7 @@ bool amdgpu_irq_enabled(struct amdgpu_device *adev, struct amdgpu_irq_src *src,
 	return !!atomic_read(&src->enabled_types[type]);
 }
 
+#ifdef __linux__
 /* XXX: Generic IRQ handling */
 static void amdgpu_irq_mask(struct irq_data *irqd)
 {
@@ -612,7 +621,9 @@ static struct irq_chip amdgpu_irq_chip = {
 	.irq_mask = amdgpu_irq_mask,
 	.irq_unmask = amdgpu_irq_unmask,
 };
+#endif
 
+#ifdef __linux__
 /**
  * amdgpu_irqdomain_map - create mapping between virtual and hardware IRQ numbers
  *
@@ -641,6 +652,7 @@ static int amdgpu_irqdomain_map(struct irq_domain *d,
 static const struct irq_domain_ops amdgpu_hw_irqdomain_ops = {
 	.map = amdgpu_irqdomain_map,
 };
+#endif
 
 /**
  * amdgpu_irq_add_domain - create a linear IRQ domain
@@ -655,6 +667,9 @@ static const struct irq_domain_ops amdgpu_hw_irqdomain_ops = {
  */
 int amdgpu_irq_add_domain(struct amdgpu_device *adev)
 {
+	STUB();
+	return 0;
+#if 0
 	adev->irq.domain = irq_domain_add_linear(NULL, AMDGPU_MAX_IRQ_SRC_ID,
 						 &amdgpu_hw_irqdomain_ops, adev);
 	if (!adev->irq.domain) {
@@ -663,6 +678,7 @@ int amdgpu_irq_add_domain(struct amdgpu_device *adev)
 	}
 
 	return 0;
+#endif
 }
 
 /**
@@ -675,10 +691,13 @@ int amdgpu_irq_add_domain(struct amdgpu_device *adev)
  */
 void amdgpu_irq_remove_domain(struct amdgpu_device *adev)
 {
+	STUB();
+#if 0
 	if (adev->irq.domain) {
 		irq_domain_remove(adev->irq.domain);
 		adev->irq.domain = NULL;
 	}
+#endif
 }
 
 /**
@@ -696,7 +715,11 @@ void amdgpu_irq_remove_domain(struct amdgpu_device *adev)
  */
 unsigned amdgpu_irq_create_mapping(struct amdgpu_device *adev, unsigned src_id)
 {
+	STUB();
+	return 0;
+#if 0
 	adev->irq.virq[src_id] = irq_create_mapping(adev->irq.domain, src_id);
 
 	return adev->irq.virq[src_id];
+#endif
 }
