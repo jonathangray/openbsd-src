@@ -120,6 +120,8 @@ int amdgpu_dpm_read_sensor(struct amdgpu_device *adev, enum amd_pp_sensors senso
 	return ret;
 }
 
+#ifdef __linux__
+
 /**
  * DOC: power_dpm_state
  *
@@ -2931,6 +2933,8 @@ static const struct attribute_group *hwmon_groups[] = {
 	NULL
 };
 
+#endif /* __linux__ */
+
 void amdgpu_dpm_thermal_work_handler(struct work_struct *work)
 {
 	struct amdgpu_device *adev =
@@ -3238,6 +3242,8 @@ int amdgpu_pm_load_smu_firmware(struct amdgpu_device *adev, uint32_t *smu_versio
 
 int amdgpu_pm_sysfs_init(struct amdgpu_device *adev)
 {
+	return 0;
+#ifdef __linux__
 	struct pp_hwmgr *hwmgr = adev->powerplay.pp_handle;
 	int ret;
 
@@ -3415,10 +3421,12 @@ int amdgpu_pm_sysfs_init(struct amdgpu_device *adev)
 	adev->pm.sysfs_initialized = true;
 
 	return 0;
+#endif
 }
 
 void amdgpu_pm_sysfs_fini(struct amdgpu_device *adev)
 {
+#ifdef __linux__
 	struct pp_hwmgr *hwmgr = adev->powerplay.pp_handle;
 
 	if (adev->pm.dpm_enabled == 0)
@@ -3464,6 +3472,7 @@ void amdgpu_pm_sysfs_fini(struct amdgpu_device *adev)
 	if ((adev->asic_type >= CHIP_VEGA10) &&
 	    !(adev->flags & AMD_IS_APU))
 		device_remove_file(adev->dev, &dev_attr_pp_features);
+#endif
 }
 
 void amdgpu_pm_compute_clocks(struct amdgpu_device *adev)
