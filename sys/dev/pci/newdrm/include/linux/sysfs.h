@@ -13,5 +13,6 @@ struct bin_attribute {
 #define sysfs_create_group(x, y)	0
 #define sysfs_remove_group(x, y)
 #define sysfs_remove_file(x, y)
+#define sysfs_remove_file_from_group(x, y, z)
 
 #endif

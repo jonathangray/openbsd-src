@@ -998,6 +998,8 @@ static int amdgpu_ras_sysfs_remove_feature_node(struct amdgpu_device *adev)
 	return 0;
 }
 
+#endif /* __linux__ */
+
 int amdgpu_ras_sysfs_create(struct amdgpu_device *adev,
 		struct ras_fs_if *head)
 {
@@ -1006,6 +1008,9 @@ int amdgpu_ras_sysfs_create(struct amdgpu_device *adev,
 	if (!obj || obj->attr_inuse)
 		return -EINVAL;
 
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	get_obj(obj);
 
 	memcpy(obj->fs_data.sysfs_name,
@@ -1031,6 +1036,7 @@ int amdgpu_ras_sysfs_create(struct amdgpu_device *adev,
 	obj->attr_inuse = 1;
 
 	return 0;
+#endif
 }
 
 int amdgpu_ras_sysfs_remove(struct amdgpu_device *adev,
@@ -1049,6 +1055,8 @@ int amdgpu_ras_sysfs_remove(struct amdgpu_device *adev,
 
 	return 0;
 }
+
+#ifdef __linux__
 
 static int amdgpu_ras_sysfs_remove_all(struct amdgpu_device *adev)
 {
