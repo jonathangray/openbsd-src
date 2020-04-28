@@ -4403,8 +4403,6 @@ skip_sched_resume:
  */
 static void amdgpu_device_get_pcie_info(struct amdgpu_device *adev)
 {
-	STUB();
-#ifdef notyet
 	struct pci_dev *pdev;
 	enum pci_bus_speed speed_cap, platform_speed_cap;
 	enum pcie_link_width platform_link_width;
@@ -4528,7 +4526,6 @@ static void amdgpu_device_get_pcie_info(struct amdgpu_device *adev)
 			}
 		}
 	}
-#endif
 }
 
 int amdgpu_device_baco_enter(struct drm_device *dev)
