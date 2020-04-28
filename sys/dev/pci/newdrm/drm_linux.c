@@ -910,10 +910,20 @@ fail:
 int
 i2c_transfer(struct i2c_adapter *adap, struct i2c_msg *msgs, int num)
 {
-	if (adap->algo)
-		return adap->algo->master_xfer(adap, msgs, num);
+	int ret;
 
-	return i2c_master_xfer(adap, msgs, num);
+	if (adap->lock_ops)
+		adap->lock_ops->lock_bus(adap, 0);
+
+	if (adap->algo)
+		ret = adap->algo->master_xfer(adap, msgs, num);
+	else
+		ret = i2c_master_xfer(adap, msgs, num);
+
+	if (adap->lock_ops)
+		adap->lock_ops->unlock_bus(adap, 0);
+
+	return ret;
 }
 
 int
