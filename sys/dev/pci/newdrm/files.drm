@@ -797,7 +797,7 @@ file	dev/pci/newdrm/amd/amdgpu/amdgpu_amdkfd.c		amdgpu
 #file	dev/pci/newdrm/amd/amdgpu/amdgpu_amdkfd_gpuvm.c	amdgpu
 file	dev/pci/newdrm/amd/amdgpu/amdgpu_atombios.c	amdgpu
 file	dev/pci/newdrm/amd/amdgpu/amdgpu_atomfirmware.c	amdgpu
-file	dev/pci/newdrm/amd/amdgpu/amdgpu_atpx_handler.c	amdgpu
+#file	dev/pci/newdrm/amd/amdgpu/amdgpu_atpx_handler.c	amdgpu
 file	dev/pci/newdrm/amd/amdgpu/amdgpu_benchmark.c	amdgpu
 file	dev/pci/newdrm/amd/amdgpu/amdgpu_bios.c		amdgpu
 file	dev/pci/newdrm/amd/amdgpu/amdgpu_bo_list.c		amdgpu
