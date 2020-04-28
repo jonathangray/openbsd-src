@@ -75,6 +75,8 @@ void amdgpu_gem_prime_vunmap(struct drm_gem_object *obj, void *vaddr)
 	ttm_bo_kunmap(&bo->dma_buf_vmap);
 }
 
+#ifdef notyet
+
 /**
  * amdgpu_gem_prime_mmap - &drm_driver.gem_prime_mmap implementation
  * @obj: GEM BO
@@ -363,19 +365,27 @@ static int amdgpu_dma_buf_begin_cpu_access(struct dma_buf *dma_buf,
 	return ret;
 }
 
+#endif /* notyet */
+
 const struct dma_buf_ops amdgpu_dmabuf_ops = {
+#ifdef notyet
 	.attach = amdgpu_dma_buf_attach,
 	.detach = amdgpu_dma_buf_detach,
 	.pin = amdgpu_dma_buf_pin,
 	.unpin = amdgpu_dma_buf_unpin,
 	.map_dma_buf = amdgpu_dma_buf_map,
 	.unmap_dma_buf = amdgpu_dma_buf_unmap,
+#endif
 	.release = drm_gem_dmabuf_release,
+#ifdef notyet
 	.begin_cpu_access = amdgpu_dma_buf_begin_cpu_access,
 	.mmap = drm_gem_dmabuf_mmap,
 	.vmap = drm_gem_dmabuf_vmap,
 	.vunmap = drm_gem_dmabuf_vunmap,
+#endif
 };
+
+#ifdef notyet
 
 /**
  * amdgpu_gem_prime_export - &drm_driver.gem_prime_export implementation
@@ -560,3 +570,5 @@ struct drm_gem_object *amdgpu_gem_prime_import(struct drm_device *dev,
 	obj->import_attach = attach;
 	return obj;
 }
+
+#endif
