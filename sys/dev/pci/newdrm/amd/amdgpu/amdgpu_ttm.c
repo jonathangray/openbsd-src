@@ -62,6 +62,8 @@
 
 #define AMDGPU_TTM_VRAM_MAX_DW_READ	(size_t)128
 
+#define DRM_FILE_PAGE_OFFSET (0x100000000ULL >> PAGE_SHIFT)
+
 static int amdgpu_map_buffer(struct ttm_buffer_object *bo,
 			     struct ttm_mem_reg *mem, unsigned num_pages,
 			     uint64_t offset, unsigned window,
@@ -225,8 +227,7 @@ static int amdgpu_verify_access(struct ttm_buffer_object *bo, struct file *filp)
 
 	if (amdgpu_ttm_tt_get_usermm(bo->ttm))
 		return -EPERM;
-	return drm_vma_node_verify_access(&abo->tbo.base.vma_node,
-					  filp->private_data);
+	return drm_vma_node_verify_access(&abo->tbo.base.vma_node, filp);
 }
 
 /**
@@ -948,6 +949,9 @@ void amdgpu_ttm_tt_set_user_pages(struct ttm_tt *ttm, struct vm_page **pages)
  **/
 static int amdgpu_ttm_tt_pin_userptr(struct ttm_tt *ttm)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct amdgpu_device *adev = amdgpu_ttm_adev(ttm->bdev);
 	struct amdgpu_ttm_tt *gtt = (void *)ttm;
 	unsigned nents;
@@ -979,6 +983,7 @@ static int amdgpu_ttm_tt_pin_userptr(struct ttm_tt *ttm)
 release_sg:
 	kfree(ttm->sg);
 	return r;
+#endif
 }
 
 /**
@@ -986,6 +991,8 @@ release_sg:
  */
 static void amdgpu_ttm_tt_unpin_userptr(struct ttm_tt *ttm)
 {
+	STUB();
+#ifdef notyet
 	struct amdgpu_device *adev = amdgpu_ttm_adev(ttm->bdev);
 	struct amdgpu_ttm_tt *gtt = (void *)ttm;
 
@@ -1015,6 +1022,7 @@ static void amdgpu_ttm_tt_unpin_userptr(struct ttm_tt *ttm)
 
 		WARN((i == ttm->num_pages), "Missing get_user_page_done\n");
 	}
+#endif
 #endif
 }
 
@@ -1221,8 +1229,10 @@ static void amdgpu_ttm_backend_destroy(struct ttm_tt *ttm)
 {
 	struct amdgpu_ttm_tt *gtt = (void *)ttm;
 
+#ifdef notyet
 	if (gtt->usertask)
 		put_task_struct(gtt->usertask);
+#endif
 
 	ttm_dma_tt_fini(&gtt->ttm);
 	kfree(gtt);
@@ -1290,9 +1300,14 @@ static int amdgpu_ttm_tt_populate(struct ttm_tt *ttm,
 			struct sg_table *sgt;
 
 			attach = gtt->gobj->import_attach;
+#ifdef notyet
 			sgt = dma_buf_map_attachment(attach, DMA_BIDIRECTIONAL);
 			if (IS_ERR(sgt))
 				return PTR_ERR(sgt);
+#else
+			STUB();
+			return -ENOSYS;
+#endif
 
 			ttm->sg = sgt;
 		}
@@ -1337,7 +1352,11 @@ static void amdgpu_ttm_tt_unpopulate(struct ttm_tt *ttm)
 		struct dma_buf_attachment *attach;
 
 		attach = gtt->gobj->import_attach;
+#ifdef notyet
 		dma_buf_unmap_attachment(attach, ttm->sg, DMA_BIDIRECTIONAL);
+#else
+		STUB();
+#endif
 		ttm->sg = NULL;
 		return;
 	}
@@ -1380,10 +1399,12 @@ int amdgpu_ttm_tt_set_userptr(struct ttm_tt *ttm, uint64_t addr,
 	gtt->userptr = addr;
 	gtt->userflags = flags;
 
+#ifdef notyet
 	if (gtt->usertask)
 		put_task_struct(gtt->usertask);
 	gtt->usertask = current->group_leader;
 	get_task_struct(gtt->usertask);
+#endif
 
 	return 0;
 }
@@ -1401,7 +1422,12 @@ struct mm_struct *amdgpu_ttm_tt_get_usermm(struct ttm_tt *ttm)
 	if (gtt->usertask == NULL)
 		return NULL;
 
+#ifdef notyet
 	return gtt->usertask->mm;
+#else
+	STUB();
+	return NULL;
+#endif
 }
 
 /**
@@ -1532,8 +1558,10 @@ static bool amdgpu_ttm_bo_eviction_valuable(struct ttm_buffer_object *bo,
 		for (i = 0; i < flist->shared_count; ++i) {
 			f = rcu_dereference_protected(flist->shared[i],
 				dma_resv_held(bo->base.resv));
+#ifdef notyet
 			if (amdkfd_fence_check_mm(f, current->mm))
 				return false;
+#endif
 		}
 	}
 
@@ -1791,11 +1819,19 @@ int amdgpu_ttm_init(struct amdgpu_device *adev)
 	rw_init(&adev->mman.gtt_window_lock, "gttwin");
 
 	/* No others user of address space so set it to 0 */
+#ifdef notyet
 	r = ttm_bo_device_init(&adev->mman.bdev,
 			       &amdgpu_bo_driver,
 			       adev->ddev->anon_inode->i_mapping,
 			       adev->ddev->vma_offset_manager,
 			       dma_addressing_limited(adev->dev));
+#else
+	r = ttm_bo_device_init(&adev->mman.bdev,
+			       &amdgpu_bo_driver,
+			       /*adev->ddev->anon_inode->i_mapping*/ NULL,
+			       adev->ddev->vma_offset_manager,
+			       dma_addressing_limited(adev->dev));
+#endif
 	if (r) {
 		DRM_ERROR("failed initializing buffer object driver(%d).\n", r);
 		return r;
@@ -1875,12 +1911,18 @@ int amdgpu_ttm_init(struct amdgpu_device *adev)
 	/* Compute GTT size, either bsaed on 3/4th the size of RAM size
 	 * or whatever the user passed on module init */
 	if (amdgpu_gtt_size == -1) {
+#ifdef __linux__
 		struct sysinfo si;
 
 		si_meminfo(&si);
 		gtt_size = min(max((AMDGPU_DEFAULT_GTT_SIZE_MB << 20),
 			       adev->gmc.mc_vram_size),
 			       ((uint64_t)si.totalram * si.mem_unit * 3/4));
+#else
+		gtt_size = min(max((AMDGPU_DEFAULT_GTT_SIZE_MB << 20),
+			       adev->gmc.mc_vram_size),
+			       ((uint64_t)ptoa(physmem) * 3/4));
+#endif
 	}
 	else
 		gtt_size = (uint64_t)amdgpu_gtt_size << 20;
@@ -1942,8 +1984,10 @@ void amdgpu_ttm_fini(struct amdgpu_device *adev)
 	amdgpu_bo_free_kernel(&adev->discovery_memory, NULL, NULL);
 	amdgpu_ttm_fw_reserve_vram_fini(adev);
 
+#ifdef notyet
 	if (adev->mman.aper_base_kaddr)
 		iounmap(adev->mman.aper_base_kaddr);
+#endif
 	adev->mman.aper_base_kaddr = NULL;
 
 	ttm_bo_clean_mm(&adev->mman.bdev, TTM_PL_VRAM);
@@ -2004,6 +2048,8 @@ void amdgpu_ttm_set_buffer_funcs_status(struct amdgpu_device *adev, bool enable)
 	adev->mman.buffer_funcs_enabled = enable;
 }
 
+#ifdef __linux__
+
 int amdgpu_mmap(struct file *filp, struct vm_area_struct *vma)
 {
 	struct drm_file *file_priv = filp->private_data;
@@ -2014,6 +2060,21 @@ int amdgpu_mmap(struct file *filp, struct vm_area_struct *vma)
 
 	return ttm_bo_mmap(filp, vma, &adev->mman.bdev);
 }
+
+#else
+
+struct uvm_object *
+amdgpu_mmap(struct drm_device *dev, voff_t off, vsize_t size)
+{
+	struct amdgpu_device *adev = dev->dev_private;
+
+	if (unlikely(off < DRM_FILE_PAGE_OFFSET))
+		return NULL;
+
+	return ttm_bo_mmap(off, size, &adev->mman.bdev);
+}
+
+#endif
 
 static int amdgpu_map_buffer(struct ttm_buffer_object *bo,
 			     struct ttm_mem_reg *mem, unsigned num_pages,
