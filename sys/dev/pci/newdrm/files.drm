@@ -616,7 +616,7 @@ file	dev/pci/newdrm/amd/display/dc/dc_helper.c				amddal
 file	dev/pci/newdrm/amd/display/dc/dce/dce_abm.c			amddal
 file	dev/pci/newdrm/amd/display/dc/dce/dce_audio.c			amddal
 file	dev/pci/newdrm/amd/display/dc/dce/dce_aux.c			amddal
-file	dev/pci/newdrm/amd/display/dc/dce/dce_clk_mgr.c			amddal
+#file	dev/pci/newdrm/amd/display/dc/dce/dce_clk_mgr.c			amddal
 file	dev/pci/newdrm/amd/display/dc/dce/dce_clock_source.c		amddal
 file	dev/pci/newdrm/amd/display/dc/dce/dce_dmcu.c			amddal
 file	dev/pci/newdrm/amd/display/dc/dce/dce_hwseq.c			amddal
