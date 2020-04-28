@@ -340,6 +340,20 @@ enum pci_bus_speed pcie_get_speed_cap(struct pci_dev *);
 enum pcie_link_width pcie_get_width_cap(struct pci_dev *);
 int pci_resize_resource(struct pci_dev *, int, int);
 
+static inline void
+pcie_bandwidth_available(struct pci_dev *pdev, struct pci_dev **ldev,
+    enum pci_bus_speed *speed, enum pcie_link_width *width)
+{
+	struct pci_dev *bdev = pdev->bus->self;
+	if (bdev == NULL)
+		return;
+
+	if (speed)
+		*speed = pcie_get_speed_cap(bdev);
+	if (width)
+		*width = pcie_get_width_cap(bdev);
+}
+
 #define pci_save_state(x)
 #define pci_enable_device(x)		0
 #define pci_disable_device(x)
