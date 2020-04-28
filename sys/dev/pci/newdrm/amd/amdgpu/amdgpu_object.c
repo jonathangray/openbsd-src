@@ -95,7 +95,7 @@ static void amdgpu_bo_destroy(struct ttm_buffer_object *tbo)
 	amdgpu_bo_unref(&bo->parent);
 
 	kfree(bo->metadata);
-	kfree(bo);
+	pool_put(&bo->adev->ddev->objpl, bo);
 }
 
 /**
@@ -549,10 +549,11 @@ static int amdgpu_bo_do_create(struct amdgpu_device *adev,
 	acc_size = ttm_bo_dma_acc_size(&adev->mman.bdev, size,
 				       sizeof(struct amdgpu_bo));
 
-	bo = kzalloc(sizeof(struct amdgpu_bo), GFP_KERNEL);
+	bo = pool_get(&adev->ddev->objpl, PR_WAITOK | PR_ZERO);
 	if (bo == NULL)
 		return -ENOMEM;
 	drm_gem_private_object_init(adev->ddev, &bo->tbo.base, size);
+	bo->adev = adev;
 	INIT_LIST_HEAD(&bo->shadow_list);
 	bo->vm_bo = NULL;
 	bo->preferred_domains = bp->preferred_domain ? bp->preferred_domain :
@@ -926,8 +927,10 @@ int amdgpu_bo_pin_restricted(struct amdgpu_bo *bo, u32 domain,
 		return 0;
 	}
 
+#ifdef notyet
 	if (bo->tbo.base.import_attach)
 		dma_buf_pin(bo->tbo.base.import_attach);
+#endif
 
 	bo->flags |= AMDGPU_GEM_CREATE_VRAM_CONTIGUOUS;
 	/* force to pin into visible video ram */
@@ -1012,8 +1015,10 @@ int amdgpu_bo_unpin(struct amdgpu_bo *bo)
 
 	amdgpu_bo_subtract_pin_size(bo);
 
+#ifdef notyet
 	if (bo->tbo.base.import_attach)
 		dma_buf_unpin(bo->tbo.base.import_attach);
+#endif
 
 	for (i = 0; i < bo->placement.num_placement; i++) {
 		bo->placements[i].lpfn = 0;
@@ -1072,6 +1077,9 @@ static const char *amdgpu_vram_names[] = {
  */
 int amdgpu_bo_init(struct amdgpu_device *adev)
 {
+	paddr_t start, end;
+
+#ifdef __linux__
 	/* reserve PAT memory space to WC for VRAM */
 	arch_io_reserve_memtype_wc(adev->gmc.aper_base,
 				   adev->gmc.aper_size);
@@ -1079,6 +1087,13 @@ int amdgpu_bo_init(struct amdgpu_device *adev)
 	/* Add an MTRR for the VRAM */
 	adev->gmc.vram_mtrr = arch_phys_wc_add(adev->gmc.aper_base,
 					      adev->gmc.aper_size);
+#else
+	drm_mtrr_add(adev->gmc.aper_base, adev->gmc.aper_size, DRM_MTRR_WC);
+
+	start = atop(bus_space_mmap(adev->memt, adev->gmc.aper_base, 0, 0, 0));
+	end = start + atop(adev->gmc.aper_size);
+	uvm_page_physload(start, end, start, end, PHYSLOAD_DEVICE);
+#endif
 	DRM_INFO("Detected VRAM RAM=%lluM, BAR=%lluM\n",
 		 adev->gmc.mc_vram_size >> 20,
 		 (unsigned long long)adev->gmc.aper_size >> 20);
@@ -1113,10 +1128,15 @@ int amdgpu_bo_late_init(struct amdgpu_device *adev)
 void amdgpu_bo_fini(struct amdgpu_device *adev)
 {
 	amdgpu_ttm_fini(adev);
+#ifdef __linux__
 	arch_phys_wc_del(adev->gmc.vram_mtrr);
 	arch_io_free_memtype_wc(adev->gmc.aper_base, adev->gmc.aper_size);
+#else
+	drm_mtrr_del(0, adev->gmc.aper_base, adev->gmc.aper_size, DRM_MTRR_WC);
+#endif
 }
 
+#ifdef notyet
 /**
  * amdgpu_bo_fbdev_mmap - mmap fbdev memory
  * @bo: &amdgpu_bo buffer object
@@ -1135,6 +1155,7 @@ int amdgpu_bo_fbdev_mmap(struct amdgpu_bo *bo,
 
 	return ttm_bo_mmap_obj(vma, &bo->tbo);
 }
+#endif
 
 /**
  * amdgpu_bo_set_tiling_flags - set tiling flags
@@ -1281,9 +1302,11 @@ void amdgpu_bo_move_notify(struct ttm_buffer_object *bo,
 
 	amdgpu_bo_kunmap(abo);
 
+#ifdef notyet
 	if (abo->tbo.base.dma_buf && !abo->tbo.base.import_attach &&
 	    bo->mem.mem_type != TTM_PL_SYSTEM)
 		dma_buf_move_notify(abo->tbo.base.dma_buf);
+#endif
 
 	/* remember the eviction */
 	if (evict)

@@ -98,6 +98,7 @@ struct amdgpu_bo {
 	/* per VM structure for page tables and with virtual addresses */
 	struct amdgpu_vm_bo_base	*vm_bo;
 	/* Constant after initialization */
+	struct amdgpu_device		*adev;
 	struct amdgpu_bo		*parent;
 	struct amdgpu_bo		*shadow;
 
