@@ -31,9 +31,16 @@ struct dma_buf {
 	size_t size;
 	struct file *file;
 	struct list_head attachments;
+	struct dma_resv *resv;
 };
 
-struct dma_buf_attachment;
+struct dma_buf_attachment {
+	void *importer_priv;
+};
+
+struct dma_buf_attach_ops {
+	void (*move_notify)(struct dma_buf_attachment *);
+};
 
 void	get_dma_buf(struct dma_buf *);
 struct dma_buf *dma_buf_get(int);

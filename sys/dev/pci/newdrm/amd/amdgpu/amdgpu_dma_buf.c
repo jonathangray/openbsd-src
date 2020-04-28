@@ -385,8 +385,6 @@ const struct dma_buf_ops amdgpu_dmabuf_ops = {
 #endif
 };
 
-#ifdef notyet
-
 /**
  * amdgpu_gem_prime_export - &drm_driver.gem_prime_export implementation
  * @gobj: GEM BO
@@ -540,6 +538,9 @@ static const struct dma_buf_attach_ops amdgpu_dma_buf_attach_ops = {
 struct drm_gem_object *amdgpu_gem_prime_import(struct drm_device *dev,
 					       struct dma_buf *dma_buf)
 {
+	STUB();
+	return ERR_PTR(-ENOSYS);
+#ifdef notyet
 	struct dma_buf_attachment *attach;
 	struct drm_gem_object *obj;
 
@@ -569,6 +570,5 @@ struct drm_gem_object *amdgpu_gem_prime_import(struct drm_device *dev,
 	get_dma_buf(dma_buf);
 	obj->import_attach = attach;
 	return obj;
-}
-
 #endif
+}
