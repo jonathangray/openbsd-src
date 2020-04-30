@@ -288,4 +288,6 @@ dma_fence_set_error(struct dma_fence *fence, int error)
 long dma_fence_wait_any_timeout(struct dma_fence **, uint32_t, bool, long,
     uint32_t *);
 
+struct dma_fence *dma_fence_get_stub(void);
+
 #endif
