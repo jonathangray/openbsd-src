@@ -2908,12 +2908,7 @@ int amdgpu_vm_init(struct amdgpu_device *adev, struct amdgpu_vm *vm,
 	else
 		vm->update_funcs = &amdgpu_vm_sdma_funcs;
 	vm->last_update = NULL;
-#ifdef notyet
 	vm->last_direct = dma_fence_get_stub();
-#else
-	vm->last_direct = NULL;
-	STUB();
-#endif
 
 	rw_init(&vm->eviction_lock, "avmev");
 	vm->evicting = false;
