@@ -229,12 +229,13 @@ EXPORT_SYMBOL(drm_sched_fault);
  */
 unsigned long drm_sched_suspend_timeout(struct drm_gpu_scheduler *sched)
 {
-	STUB();
-	return 0;
-#ifdef notyet
 	unsigned long sched_timeout, now = jiffies;
 
+#ifdef __linux__
 	sched_timeout = sched->work_tdr.timer.expires;
+#else
+	sched_timeout = sched->work_tdr.to.to_time * hz;
+#endif
 
 	/*
 	 * Modify the timeout to an arbitrarily large value. This also prevents
@@ -245,7 +246,6 @@ unsigned long drm_sched_suspend_timeout(struct drm_gpu_scheduler *sched)
 		return sched_timeout - now;
 	else
 		return sched->timeout;
-#endif
 }
 EXPORT_SYMBOL(drm_sched_suspend_timeout);
 
