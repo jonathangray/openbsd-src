@@ -1424,9 +1424,6 @@ static struct dma_fence *amdgpu_cs_get_fence(struct amdgpu_device *adev,
 int amdgpu_cs_fence_to_handle_ioctl(struct drm_device *dev, void *data,
 				    struct drm_file *filp)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
 	struct amdgpu_device *adev = dev->dev_private;
 	union drm_amdgpu_fence_to_handle *info = data;
 	struct dma_fence *fence;
@@ -1481,7 +1478,6 @@ int amdgpu_cs_fence_to_handle_ioctl(struct drm_device *dev, void *data,
 	default:
 		return -EINVAL;
 	}
-#endif
 }
 
 /**
