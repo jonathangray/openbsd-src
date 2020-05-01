@@ -2,6 +2,8 @@
 #ifndef _I915_TRACE_H_
 #define _I915_TRACE_H_
 
+#include "i915_drv.h"
+
 #define trace_g4x_wm(a, b)
 #define trace_i915_gem_evict(a, b, c, d)
 #define trace_i915_gem_evict_node(a, b, c)
