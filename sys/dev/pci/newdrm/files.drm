@@ -303,7 +303,7 @@ file	dev/pci/newdrm/i915/i915_gem_gtt.c			inteldrm
 file	dev/pci/newdrm/i915/i915_getparam.c		inteldrm
 file	dev/pci/newdrm/i915/i915_globals.c			inteldrm
 file	dev/pci/newdrm/i915/i915_gpu_error.c		inteldrm
-file	dev/pci/newdrm/i915/i915_ioc32.c			inteldrm
+#file	dev/pci/newdrm/i915/i915_ioc32.c			inteldrm
 file	dev/pci/newdrm/i915/i915_irq.c			inteldrm
 file	dev/pci/newdrm/i915/i915_memcpy.c			inteldrm
 file	dev/pci/newdrm/i915/i915_mm.c			inteldrm
