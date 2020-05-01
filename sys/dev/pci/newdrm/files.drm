@@ -125,7 +125,7 @@ file	dev/pci/newdrm/i915/display/intel_crt.c		inteldrm
 file	dev/pci/newdrm/i915/display/intel_csr.c		inteldrm
 file	dev/pci/newdrm/i915/display/intel_ddi.c		inteldrm
 file	dev/pci/newdrm/i915/display/intel_display.c	inteldrm
-file	dev/pci/newdrm/i915/display/intel_display_debugfs.c	inteldrm
+#file	dev/pci/newdrm/i915/display/intel_display_debugfs.c	inteldrm
 file	dev/pci/newdrm/i915/display/intel_display_power.c	inteldrm
 file	dev/pci/newdrm/i915/display/intel_dp.c		inteldrm
 file	dev/pci/newdrm/i915/display/intel_dp_aux_backlight.c	inteldrm
@@ -293,8 +293,8 @@ file	dev/pci/newdrm/i915/gt/uc/intel_uc_fw.c		inteldrm
 file	dev/pci/newdrm/i915/i915_active.c			inteldrm
 file	dev/pci/newdrm/i915/i915_buddy.c			inteldrm
 file	dev/pci/newdrm/i915/i915_cmd_parser.c		inteldrm
-file	dev/pci/newdrm/i915/i915_debugfs.c			inteldrm
-file	dev/pci/newdrm/i915/i915_debugfs_params.c		inteldrm
+#file	dev/pci/newdrm/i915/i915_debugfs.c			inteldrm
+#file	dev/pci/newdrm/i915/i915_debugfs_params.c		inteldrm
 file	dev/pci/newdrm/i915/i915_drv.c			inteldrm
 file	dev/pci/newdrm/i915/i915_gem.c			inteldrm
 file	dev/pci/newdrm/i915/i915_gem_evict.c		inteldrm
