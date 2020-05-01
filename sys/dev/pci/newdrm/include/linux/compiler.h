@@ -10,6 +10,8 @@
 #define likely(x)	__builtin_expect(!!(x), 1)
 
 #define __force
+#define __acquires(x)
+#define __releases(x)
 #define __always_unused __unused
 #define __maybe_unused
 #define __read_mostly
