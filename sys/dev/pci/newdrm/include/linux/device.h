@@ -71,4 +71,10 @@ struct device_attribute {
 	    do { } while(0)
 #endif
 
+static inline const char *
+dev_driver_string(struct device *dev)
+{
+	return dev->dv_xname;
+}
+
 #endif
