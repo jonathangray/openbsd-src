@@ -107,6 +107,7 @@ static inline unsigned int i915_sg_page_sizes(struct scatterlist *sg)
 	return page_sizes;
 }
 
+#ifdef __linux__
 static inline unsigned int i915_sg_segment_size(void)
 {
 	unsigned int size = swiotlb_max_segment();
@@ -121,6 +122,12 @@ static inline unsigned int i915_sg_segment_size(void)
 
 	return size;
 }
+#else
+static inline unsigned int i915_sg_segment_size(void)
+{
+	return PAGE_SIZE;
+}
+#endif
 
 bool i915_sg_trim(struct sg_table *orig_st);
 

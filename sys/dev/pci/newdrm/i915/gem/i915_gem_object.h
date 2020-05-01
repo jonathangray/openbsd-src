@@ -298,12 +298,16 @@ enum i915_mm_subclass { /* lockdep subclass for obj->mm.lock/struct_mutex */
 static inline int __must_check
 i915_gem_object_pin_pages(struct drm_i915_gem_object *obj)
 {
+	STUB();
+	return 0;
+#ifdef notyet
 	might_lock_nested(&obj->mm.lock, I915_MM_GET_PAGES);
 
 	if (atomic_inc_not_zero(&obj->mm.pages_pin_count))
 		return 0;
 
 	return __i915_gem_object_get_pages(obj);
+#endif
 }
 
 static inline bool

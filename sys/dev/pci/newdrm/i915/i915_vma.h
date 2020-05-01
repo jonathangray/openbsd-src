@@ -58,7 +58,11 @@ int __must_check i915_vma_move_to_active(struct i915_vma *vma,
 					 struct i915_request *rq,
 					 unsigned int flags);
 
+#ifdef __linux__
 #define __i915_vma_flags(v) ((unsigned long *)&(v)->flags.counter)
+#else
+#define __i915_vma_flags(v) ((unsigned long *)&(v)->flags)
+#endif
 
 static inline bool i915_vma_is_ggtt(const struct i915_vma *vma)
 {

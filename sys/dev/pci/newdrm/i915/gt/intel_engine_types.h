@@ -122,7 +122,9 @@ enum intel_engine_id {
 };
 
 /* A simple estimator for the round-trip latency of an engine */
+#ifdef notyet
 DECLARE_EWMA(_engine_latency, 6, 4)
+#endif
 
 struct st_preempt_hang {
 	struct completion completion;
@@ -144,12 +146,12 @@ struct intel_engine_execlists {
 	/**
 	 * @timer: kick the current context if its timeslice expires
 	 */
-	struct timer_list timer;
+	struct timeout timer;
 
 	/**
 	 * @preempt: reset the current context if it fails to give way
 	 */
-	struct timer_list preempt;
+	struct timeout preempt;
 
 	/**
 	 * @default_priolist: priority list for I915_PRIORITY_NORMAL
@@ -336,7 +338,9 @@ struct intel_engine_cs {
 	 * engine to keep an estimate of the how the fast the engine is
 	 * under ideal conditions.
 	 */
+#ifdef notyet
 	struct ewma__engine_latency latency;
+#endif
 
 	/* Rather than have every client wait upon all user interrupts,
 	 * with the herd waking after every interrupt and each doing the
@@ -477,7 +481,9 @@ struct intel_engine_cs {
 	struct work_struct retire_work;
 
 	/* status_notifier: list of callbacks for context-switch changes */
+#ifdef notyet
 	struct atomic_notifier_head context_status_notifier;
+#endif
 
 #define I915_ENGINE_USING_CMD_PARSER BIT(0)
 #define I915_ENGINE_SUPPORTS_STATS   BIT(1)

@@ -59,6 +59,11 @@
 #include <drm/drm_connector.h>
 #include <drm/i915_mei_hdcp_interface.h>
 
+#include "vga.h"
+
+struct inteldrm_softc;
+#define drm_i915_private inteldrm_softc
+
 #include "i915_params.h"
 #include "i915_reg.h"
 #include "i915_utils.h"
@@ -103,6 +108,20 @@
 #include "i915_irq.h"
 
 #include "intel_region_lmem.h"
+
+#include "drm.h"
+#include "vga.h"
+
+#include <dev/ic/mc6845reg.h>
+#include <dev/ic/pcdisplayvar.h>
+#include <dev/ic/vgareg.h>
+#include <dev/ic/vgavar.h>
+
+#include <sys/task.h>
+#include <dev/pci/vga_pcivar.h>
+#include <dev/wscons/wsconsio.h>
+#include <dev/wscons/wsdisplayvar.h>
+#include <dev/rasops/rasops.h>
 
 /* General customization:
  */
@@ -207,8 +226,10 @@ struct drm_i915_file_private {
 		struct list_head request_list;
 	} mm;
 
+#ifdef notyet
 	struct xarray context_xa;
 	struct xarray vm_xa;
+#endif
 
 	unsigned int bsd_engine;
 
@@ -851,6 +872,33 @@ struct drm_i915_private {
 	 */
 	resource_size_t stolen_usable_size;	/* Total size minus reserved ranges */
 
+#ifdef __OpenBSD__
+	pci_chipset_tag_t pc;
+	pcitag_t tag;
+	struct extent *memex;
+	pci_intr_handle_t ih;
+	void *irqh;
+
+	struct vga_pci_bar bar;
+	struct vga_pci_bar *vga_regs;
+
+	struct drm_pcidev *id;
+
+	int console;
+	int primary;
+	int nscreens;
+	void (*switchcb)(void *, int, int);
+	void *switchcbarg;
+	void *switchcookie;
+	struct task switchtask;
+	struct rasops_info ro;
+
+	struct task burner_task;
+	int burner_fblank;
+
+	struct backlight_device *backlight;
+#endif
+
 	struct intel_uncore uncore;
 	struct intel_uncore_mmio_debug mmio_debug;
 
@@ -1226,7 +1274,11 @@ static inline struct drm_i915_private *kdev_to_i915(struct device *kdev)
 
 static inline struct drm_i915_private *pdev_to_i915(struct pci_dev *pdev)
 {
+	STUB();
+	return NULL;
+#ifdef notyet
 	return pci_get_drvdata(pdev);
+#endif
 }
 
 /* Simple iterator over all initialised engines */
@@ -1345,7 +1397,9 @@ IS_PLATFORM(const struct drm_i915_private *i915, enum intel_platform p)
 	const unsigned int pi = __platform_mask_index(info, p);
 	const unsigned int pb = __platform_mask_bit(info, p);
 
+#ifdef notyet
 	BUILD_BUG_ON(!__builtin_constant_p(p));
+#endif
 
 	return info->platform_mask[pi] & BIT(pb);
 }
@@ -1360,9 +1414,11 @@ IS_SUBPLATFORM(const struct drm_i915_private *i915,
 	const unsigned int msb = BITS_PER_TYPE(info->platform_mask[0]) - 1;
 	const u32 mask = info->platform_mask[pi];
 
+#ifdef notyet
 	BUILD_BUG_ON(!__builtin_constant_p(p));
 	BUILD_BUG_ON(!__builtin_constant_p(s));
 	BUILD_BUG_ON((s) >= INTEL_SUBPLATFORM_BITS);
+#endif
 
 	/* Shift and test on the MSB position so sign flag can be used. */
 	return ((mask << (msb - pb)) & (mask << (msb - s))) & BIT(msb);
@@ -1783,7 +1839,11 @@ struct dma_buf *i915_gem_prime_export(struct drm_gem_object *gem_obj, int flags)
 static inline struct i915_gem_context *
 __i915_gem_context_lookup_rcu(struct drm_i915_file_private *file_priv, u32 id)
 {
+	STUB();
+	return NULL;
+#ifdef notyet
 	return xa_load(&file_priv->context_xa, id);
+#endif
 }
 
 static inline struct i915_gem_context *
@@ -1892,12 +1952,14 @@ int i915_reg_read_ioctl(struct drm_device *dev, void *data,
 #define I915_WRITE_FW(reg__, val__) __I915_REG_OP(write_fw, dev_priv, (reg__), (val__))
 
 /* i915_mm.c */
+#ifdef notyet
 int remap_io_mapping(struct vm_area_struct *vma,
 		     unsigned long addr, unsigned long pfn, unsigned long size,
 		     struct io_mapping *iomap);
 int remap_io_sg(struct vm_area_struct *vma,
 		unsigned long addr, unsigned long size,
 		struct scatterlist *sgl, resource_size_t iobase);
+#endif
 
 static inline int intel_hws_csb_write_index(struct drm_i915_private *i915)
 {

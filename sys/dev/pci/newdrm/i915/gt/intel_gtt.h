@@ -219,7 +219,9 @@ void stash_init(struct pagestash *stash);
 
 struct i915_address_space {
 	struct kref ref;
+#ifdef notyet
 	struct rcu_work rcu;
+#endif
 
 	struct drm_mm mm;
 	struct intel_gt *gt;
@@ -310,7 +312,9 @@ struct i915_address_space {
 struct i915_ggtt {
 	struct i915_address_space vm;
 
+#ifdef notyet
 	struct io_mapping iomap;	/* Mapping to our CPU mappable region */
+#endif
 	struct resource gmadr;          /* GMADR resource */
 	resource_size_t mappable_end;	/* End offset that we can CPU map */
 

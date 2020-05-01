@@ -50,7 +50,9 @@ struct intel_reset {
 	 */
 	wait_queue_head_t queue;
 
+#ifdef notyet
 	struct srcu_struct backoff_srcu;
+#endif
 };
 
 #endif /* _INTEL_RESET_TYPES_H_ */

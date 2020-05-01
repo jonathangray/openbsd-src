@@ -43,7 +43,7 @@
 #include <dev/pci/pcidevs.h>
 #include <dev/pci/agpvar.h>
 #include <dev/pci/agpreg.h>
-#include <dev/pci/drm/i915/i915_drv.h>
+#include <dev/pci/newdrm/i915/i915_drv.h>
 
 #include <machine/bus.h>
 

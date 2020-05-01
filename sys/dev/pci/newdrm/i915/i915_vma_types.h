@@ -130,8 +130,10 @@ static inline void assert_i915_gem_gtt_types(void)
 	/* Check that rotation/remapped shares offsets for simplicity */
 	BUILD_BUG_ON(offsetof(struct intel_remapped_info, plane[0]) !=
 		     offsetof(struct intel_rotation_info, plane[0]));
+#ifdef notyet
 	BUILD_BUG_ON(offsetofend(struct intel_remapped_info, plane[1]) !=
 		     offsetofend(struct intel_rotation_info, plane[1]));
+#endif
 
 	/* As we encode the size of each branch inside the union into its type,
 	 * we have to be careful that each branch has a unique size.

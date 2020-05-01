@@ -8,6 +8,9 @@
 struct bin_attribute {
 };
 
+struct attribute_group {
+};
+
 #define sysfs_create_link(x, y, z)	0
 #define sysfs_remove_link(x, y)
 #define sysfs_create_group(x, y)	0

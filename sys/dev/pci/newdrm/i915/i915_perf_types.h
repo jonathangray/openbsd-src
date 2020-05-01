@@ -82,9 +82,11 @@ struct i915_perf_stream_ops {
 	 * @poll_wait: Call poll_wait, passing a wait queue that will be woken
 	 * once there is something ready to read() for the stream
 	 */
+#ifdef notyet
 	void (*poll_wait)(struct i915_perf_stream *stream,
 			  struct file *file,
 			  poll_table *wait);
+#endif
 
 	/**
 	 * @wait_unlocked: For handling a blocking read, wait until there is
@@ -411,7 +413,9 @@ struct i915_perf {
 	 * For rate limiting any notifications of spurious
 	 * invalid OA reports
 	 */
+#ifdef notyet
 	struct ratelimit_state spurious_report_rs;
+#endif
 
 	struct i915_oa_config test_config;
 
