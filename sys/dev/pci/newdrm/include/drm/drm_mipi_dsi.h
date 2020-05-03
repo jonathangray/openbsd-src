@@ -65,6 +65,9 @@ ssize_t mipi_dsi_dcs_write_buffer(struct mipi_dsi_device *, const void *,
     size_t);
 ssize_t mipi_dsi_dcs_read(struct mipi_dsi_device *, u8, void *, size_t);
 ssize_t mipi_dsi_dcs_write(struct mipi_dsi_device *, u8, const void *, size_t);
+int mipi_dsi_dcs_nop(struct mipi_dsi_device *);
+int mipi_dsi_set_maximum_return_packet_size(struct mipi_dsi_device *, u16);
+bool mipi_dsi_packet_format_is_long(u8);
 
 static inline int
 mipi_dsi_pixel_format_to_bpp(enum mipi_dsi_pixel_format fmt)
