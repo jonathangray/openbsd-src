@@ -1086,6 +1086,8 @@ static int i915_audio_component_get_eld(struct device *kdev, int port,
 	return ret;
 }
 
+#ifdef notyet
+
 static const struct drm_audio_component_ops i915_audio_component_ops = {
 	.owner		= THIS_MODULE,
 	.get_power	= i915_audio_component_get_power,
@@ -1143,6 +1145,8 @@ static const struct component_ops i915_audio_component_bind_ops = {
 	.unbind	= i915_audio_component_unbind,
 };
 
+#endif /* notyet */
+
 /**
  * i915_audio_component_init - initialize and register the audio component
  * @dev_priv: i915 device instance
@@ -1161,6 +1165,7 @@ static const struct component_ops i915_audio_component_bind_ops = {
  */
 static void i915_audio_component_init(struct drm_i915_private *dev_priv)
 {
+#ifdef notyet
 	int ret;
 
 	ret = component_add_typed(dev_priv->drm.dev,
@@ -1182,6 +1187,7 @@ static void i915_audio_component_init(struct drm_i915_private *dev_priv)
 	}
 
 	dev_priv->audio_component_registered = true;
+#endif
 }
 
 /**
@@ -1193,11 +1199,14 @@ static void i915_audio_component_init(struct drm_i915_private *dev_priv)
  */
 static void i915_audio_component_cleanup(struct drm_i915_private *dev_priv)
 {
+	STUB();
+#ifdef notyet
 	if (!dev_priv->audio_component_registered)
 		return;
 
 	component_del(dev_priv->drm.dev, &i915_audio_component_bind_ops);
 	dev_priv->audio_component_registered = false;
+#endif
 }
 
 /**
