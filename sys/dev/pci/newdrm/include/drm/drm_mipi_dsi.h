@@ -33,7 +33,7 @@ struct mipi_dsi_msg {
 	uint8_t channel;
 	uint16_t flags;
 #define MIPI_DSI_MSG_USE_LPM	(1 << 0)
-	const uint8_t *tx_buf;
+	const void *tx_buf;
 	size_t tx_len;
 	uint8_t *rx_buf;
 	size_t rx_len;
