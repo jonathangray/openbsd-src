@@ -25,6 +25,7 @@
 
 #define CONFIG_DRM_I915_PREEMPT_TIMEOUT		640	/* milliseconds */
 #define CONFIG_DRM_I915_TIMESLICE_DURATION	1	/* milliseconds */
+#define CONFIG_DRM_I915_FORCE_PROBE		""
 
 #ifdef __HAVE_ACPI
 #include "acpi.h"
