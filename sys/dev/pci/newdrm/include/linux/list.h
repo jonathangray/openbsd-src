@@ -36,6 +36,7 @@
 #include <sys/param.h>
 #include <linux/kernel.h>
 #include <linux/types.h>
+#include <linux/poison.h>
 
 #define list_entry(ptr, type, member) container_of(ptr, type, member)
 
