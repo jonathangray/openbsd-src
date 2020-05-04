@@ -92,4 +92,21 @@ kref_put_mutex(struct kref *kref, void (*release)(struct kref *kref),
 	return 0;
 }
 
+static inline int
+kref_put_lock(struct kref *kref, void (*release)(struct kref *kref),
+    struct mutex *lock)
+{
+	if (!atomic_add_unless(&kref->refcount, -1, 1)) {
+		mtx_enter(lock);
+		if (likely(atomic_dec_and_test(&kref->refcount))) {
+			release(kref);
+			return 1;
+		}
+		mtx_leave(lock);
+		return 0;
+	}
+
+	return 0;
+}
+
 #endif
