@@ -27,6 +27,7 @@
 #define NSEC_PER_SEC	1000000000L
 
 #define USEC_PER_MSEC	1000L
+#define USEC_PER_SEC	1000000L
 
 extern struct timespec ns_to_timespec(const int64_t);
 extern int64_t timeval_to_ms(const struct timeval *);
