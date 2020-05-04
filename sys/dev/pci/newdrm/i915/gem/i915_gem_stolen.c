@@ -70,7 +70,9 @@ static int i915_adjust_stolen(struct drm_i915_private *i915,
 {
 	struct i915_ggtt *ggtt = &i915->ggtt;
 	struct intel_uncore *uncore = ggtt->vm.gt->uncore;
+#ifdef notyet
 	struct resource *r;
+#endif
 
 	if (dsm->start == 0 || dsm->end <= dsm->start)
 		return -EINVAL;
@@ -119,6 +121,7 @@ static int i915_adjust_stolen(struct drm_i915_private *i915,
 		}
 	}
 
+#ifdef __linux__
 	/*
 	 * Verify that nothing else uses this physical address. Stolen
 	 * memory should be reserved by the BIOS and hidden from the
@@ -153,6 +156,7 @@ static int i915_adjust_stolen(struct drm_i915_private *i915,
 			return -EBUSY;
 		}
 	}
+#endif
 
 	return 0;
 }
@@ -470,12 +474,14 @@ static int i915_gem_init_stolen(struct drm_i915_private *i915)
 	i915->dsm_reserved =
 		(struct resource)DEFINE_RES_MEM(reserved_base, reserved_size);
 
+#ifdef notyet
 	if (!resource_contains(&i915->dsm, &i915->dsm_reserved)) {
 		drm_err(&i915->drm,
 			"Stolen reserved area %pR outside stolen memory %pR\n",
 			&i915->dsm_reserved, &i915->dsm);
 		return 0;
 	}
+#endif
 
 	/* It is possible for the reserved area to end before the end of stolen
 	 * memory, so just consider the start. */
