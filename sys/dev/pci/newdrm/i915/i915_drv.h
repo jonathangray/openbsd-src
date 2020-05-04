@@ -908,6 +908,18 @@ struct inteldrm_softc {
 	int burner_fblank;
 
 	struct backlight_device *backlight;
+
+	union flush {
+		struct {
+			bus_space_tag_t		bst;
+			bus_space_handle_t	bsh;
+		} i9xx;
+		struct {
+			bus_dma_segment_t	seg;
+			caddr_t			kva;
+		} i8xx;
+	}			 ifp;
+	struct vm_page *pgs;
 #endif
 
 	struct intel_uncore uncore;

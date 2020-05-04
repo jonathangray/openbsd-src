@@ -179,6 +179,7 @@ struct i915_vma {
 
 	struct sg_table *pages;
 	void __iomem *iomap;
+	bus_space_handle_t bsh;
 	void *private; /* owned by creator */
 
 	struct i915_fence_reg *fence;
