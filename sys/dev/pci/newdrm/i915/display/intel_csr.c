@@ -633,7 +633,11 @@ static void csr_load_work_fn(struct work_struct *work)
 	dev_priv = container_of(work, typeof(*dev_priv), csr.work);
 	csr = &dev_priv->csr;
 
+#ifdef __linux__
 	request_firmware(&fw, dev_priv->csr.fw_path, &dev_priv->drm.pdev->dev);
+#else
+	request_firmware(&fw, dev_priv->csr.fw_path, NULL);
+#endif
 	parse_csr_fw(dev_priv, fw);
 
 	if (dev_priv->csr.dmc_payload) {
