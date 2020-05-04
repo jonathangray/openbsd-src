@@ -20,6 +20,7 @@
 
 #include <sys/time.h>
 #include <linux/math64.h>
+#include <linux/seqlock.h>
 
 #define NSEC_PER_USEC	1000L
 #define NSEC_PER_MSEC	1000000L
