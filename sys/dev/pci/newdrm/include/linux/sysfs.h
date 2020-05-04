@@ -5,10 +5,18 @@
 
 #include <linux/kernfs.h>
 
+struct attribute {
+	const char *name;
+	int mode;
+};
+
 struct bin_attribute {
 };
 
 struct attribute_group {
+	const char *name;
+	struct attribute **attrs;
+	struct bin_attribute **bin_attrs;
 };
 
 #define sysfs_create_link(x, y, z)	0

@@ -22,6 +22,8 @@ struct device_driver {
 };
 
 struct device_attribute {
+	struct attribute attr;
+	ssize_t (*show)(struct device *, struct device_attribute *, char *);
 };
 
 #define DEVICE_ATTR(_name, _mode, _show, _store) \
