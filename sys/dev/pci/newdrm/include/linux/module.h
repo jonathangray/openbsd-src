@@ -5,6 +5,7 @@
 
 #include <linux/export.h>
 #include <linux/moduleparam.h>
+#include <linux/kobject.h>
 
 struct module;
 
