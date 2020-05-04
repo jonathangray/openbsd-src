@@ -4,6 +4,7 @@
 #define _ASM_BYTEORDER_H
 
 #include <sys/endian.h>
+#include <linux/types.h>
 
 #define le16_to_cpu(x) letoh16(x)
 #define le32_to_cpu(x) letoh32(x)
