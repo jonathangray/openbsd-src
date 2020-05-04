@@ -14,6 +14,7 @@
 #include "i915_scatterlist.h"
 #include "i915_utils.h"
 
+#undef QUIET
 #define QUIET (__GFP_NORETRY | __GFP_NOWARN)
 #define MAYFAIL (__GFP_RETRY_MAYFAIL | __GFP_NOWARN)
 
