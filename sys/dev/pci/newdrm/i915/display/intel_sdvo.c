@@ -3226,10 +3226,14 @@ intel_sdvo_init_ddc_proxy(struct intel_sdvo *sdvo,
 {
 	struct pci_dev *pdev = dev_priv->drm.pdev;
 
+#ifdef __linux__
 	sdvo->ddc.owner = THIS_MODULE;
 	sdvo->ddc.class = I2C_CLASS_DDC;
+#endif
 	snprintf(sdvo->ddc.name, I2C_NAME_SIZE, "SDVO DDC proxy");
+#ifdef __linux__
 	sdvo->ddc.dev.parent = &pdev->dev;
+#endif
 	sdvo->ddc.algo_data = sdvo;
 	sdvo->ddc.algo = &intel_sdvo_ddc_proxy;
 	sdvo->ddc.lock_ops = &proxy_lock_ops;
