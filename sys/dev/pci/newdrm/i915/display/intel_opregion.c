@@ -427,11 +427,13 @@ static u32 asle_set_backlight(struct drm_i915_private *dev_priv, u32 bclp)
 
 	drm_dbg(&dev_priv->drm, "bclp = 0x%08x\n", bclp);
 
+#ifdef __linux__
 	if (acpi_video_get_backlight_type() == acpi_backlight_native) {
 		drm_dbg_kms(&dev_priv->drm,
 			    "opregion backlight request ignored\n");
 		return 0;
 	}
+#endif
 
 	if (!(bclp & ASLE_BCLP_VALID))
 		return ASLC_BACKLIGHT_FAILED;
@@ -603,6 +605,8 @@ void intel_opregion_asle_intr(struct drm_i915_private *dev_priv)
 #define ACPI_EV_LID            (1<<1)
 #define ACPI_EV_DOCK           (1<<2)
 
+#ifdef notyet
+
 /*
  * The only video events relevant to opregion are 0x80. These indicate either a
  * docking event, lid switch or display switch request. In Linux, these are
@@ -719,6 +723,8 @@ static void intel_setup_cadls(struct drm_i915_private *dev_priv)
 		opregion->acpi->cadl[i] = 0;
 }
 
+#endif
+
 static void swsci_setup(struct drm_i915_private *dev_priv)
 {
 	struct intel_opregion *opregion = &dev_priv->opregion;
@@ -807,7 +813,11 @@ static int intel_load_vbt_firmware(struct drm_i915_private *dev_priv)
 	if (!name || !*name)
 		return -ENOENT;
 
+#ifdef __linux__
 	ret = request_firmware(&fw, name, &dev_priv->drm.pdev->dev);
+#else
+	ret = request_firmware(&fw, name, NULL);
+#endif
 	if (ret) {
 		drm_err(&dev_priv->drm,
 			"Requesting VBT firmware \"%s\" failed (%d)\n",
@@ -864,9 +874,16 @@ int intel_opregion_setup(struct drm_i915_private *dev_priv)
 
 	INIT_WORK(&opregion->asle_work, asle_work);
 
+#ifdef __linux__
 	base = memremap(asls, OPREGION_SIZE, MEMREMAP_WB);
 	if (!base)
 		return -ENOMEM;
+#else
+	if (bus_space_map(dev_priv->bst, asls, OPREGION_SIZE,
+	    BUS_SPACE_MAP_LINEAR, &dev_priv->opregion_ioh))
+		return -ENOMEM;
+	base = bus_space_vaddr(dev_priv->bst, dev_priv->opregion_ioh);
+#endif
 
 	memcpy(buf, base, sizeof(buf));
 
@@ -935,8 +952,18 @@ int intel_opregion_setup(struct drm_i915_private *dev_priv)
 			rvda += asls;
 		}
 
+#ifdef __linux__
 		opregion->rvda = memremap(rvda, opregion->asle->rvds,
 					  MEMREMAP_WB);
+#else
+		if (bus_space_map(dev_priv->bst, opregion->asle->rvda,
+		    opregion->asle->rvds, BUS_SPACE_MAP_LINEAR,
+		    &dev_priv->opregion_rvda_ioh))
+			return -ENOMEM;
+		opregion->rvda = bus_space_vaddr(dev_priv->bst,
+		    dev_priv->opregion_rvda_ioh);
+		dev_priv->opregion_rvda_size = opregion->asle->rvds;
+#endif
 
 		vbt = opregion->rvda;
 		vbt_size = opregion->asle->rvds;
@@ -949,7 +976,12 @@ int intel_opregion_setup(struct drm_i915_private *dev_priv)
 		} else {
 			drm_dbg_kms(&dev_priv->drm,
 				    "Invalid VBT in ACPI OpRegion (RVDA)\n");
+#ifdef __linux__
 			memunmap(opregion->rvda);
+#else
+			bus_space_unmap(dev_priv->bst, dev_priv->opregion_rvda_ioh,
+			    dev_priv->opregion_rvda_size);
+#endif
 			opregion->rvda = NULL;
 		}
 	}
@@ -979,7 +1011,11 @@ out:
 	return 0;
 
 err_out:
+#ifdef __linux__
 	memunmap(base);
+#else
+	bus_space_unmap(dev_priv->bst, dev_priv->opregion_ioh, OPREGION_SIZE);
+#endif
 	return err;
 }
 
@@ -1049,9 +1085,11 @@ void intel_opregion_register(struct drm_i915_private *i915)
 		return;
 
 	if (opregion->acpi) {
+#ifdef notyet
 		opregion->acpi_notifier.notifier_call =
 			intel_opregion_video_event;
 		register_acpi_notifier(&opregion->acpi_notifier);
+#endif
 	}
 
 	intel_opregion_resume(i915);
@@ -1065,8 +1103,10 @@ void intel_opregion_resume(struct drm_i915_private *i915)
 		return;
 
 	if (opregion->acpi) {
+#ifdef notyet
 		intel_didl_outputs(i915);
 		intel_setup_cadls(i915);
+#endif
 
 		/*
 		 * Notify BIOS we are ready to handle ACPI video ext notifs.
@@ -1118,11 +1158,20 @@ void intel_opregion_unregister(struct drm_i915_private *i915)
 	}
 
 	/* just clear all opregion memory pointers now */
+#ifdef __linux__
 	memunmap(opregion->header);
 	if (opregion->rvda) {
 		memunmap(opregion->rvda);
 		opregion->rvda = NULL;
 	}
+#else
+	bus_space_unmap(i915->bst, i915->opregion_ioh, OPREGION_SIZE);
+	if (opregion->rvda) {
+		bus_space_unmap(i915->bst, i915->opregion_rvda_ioh,
+		    i915->opregion_rvda_size);
+		opregion->rvda = NULL;
+	}
+#endif
 	if (opregion->vbt_firmware) {
 		kfree(opregion->vbt_firmware);
 		opregion->vbt_firmware = NULL;
