@@ -87,7 +87,7 @@ static const struct i915_oa_reg mux_config_render_basic[] = {
 static ssize_t
 show_render_basic_id(struct device *kdev, struct device_attribute *attr, char *buf)
 {
-	return sprintf(buf, "1\n");
+	return snprintf(buf, PAGE_SIZE, "1\n");
 }
 
 void

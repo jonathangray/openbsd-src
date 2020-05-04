@@ -67,7 +67,7 @@ static const struct i915_oa_reg mux_config_test_oa[] = {
 static ssize_t
 show_test_oa_id(struct device *kdev, struct device_attribute *attr, char *buf)
 {
-	return sprintf(buf, "1\n");
+	return snprintf(buf, PAGE_SIZE, "1\n");
 }
 
 void
