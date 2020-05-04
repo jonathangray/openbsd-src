@@ -84,9 +84,18 @@ intel_atomic_get_global_obj_state(struct intel_atomic_state *state,
 
 	num_objs = state->num_global_objs + 1;
 	size = sizeof(*state->global_objs) * num_objs;
+#ifdef __linux__
 	arr = krealloc(state->global_objs, size, GFP_KERNEL);
 	if (!arr)
 		return ERR_PTR(-ENOMEM);
+#else
+	arr = kmalloc(size, GFP_KERNEL);
+	if (!arr)
+		return ERR_PTR(-ENOMEM);
+	memcpy(arr, state->global_objs,
+	    sizeof(*state->global_objs) * state->num_global_objs);
+	kfree(state->global_objs);
+#endif
 
 	state->global_objs = arr;
 	index = state->num_global_objs;
