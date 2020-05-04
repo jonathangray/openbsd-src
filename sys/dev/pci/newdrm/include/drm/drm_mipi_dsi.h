@@ -10,6 +10,7 @@
 struct mipi_dsi_host;
 struct mipi_dsi_device;
 struct mipi_dsi_msg;
+struct drm_dsc_picture_parameter_set;
 
 struct mipi_dsi_host_ops {
 	int (*attach)(struct mipi_dsi_host *, struct mipi_dsi_device *);
@@ -68,6 +69,9 @@ ssize_t mipi_dsi_dcs_write(struct mipi_dsi_device *, u8, const void *, size_t);
 int mipi_dsi_dcs_nop(struct mipi_dsi_device *);
 int mipi_dsi_set_maximum_return_packet_size(struct mipi_dsi_device *, u16);
 bool mipi_dsi_packet_format_is_long(u8);
+ssize_t mipi_dsi_compression_mode(struct mipi_dsi_device *, bool);
+ssize_t mipi_dsi_picture_parameter_set(struct mipi_dsi_device *,
+    const struct drm_dsc_picture_parameter_set *);
 
 static inline int
 mipi_dsi_pixel_format_to_bpp(enum mipi_dsi_pixel_format fmt)
