@@ -61,6 +61,7 @@
  */
 void intel_vgpu_detect(struct drm_i915_private *dev_priv)
 {
+#ifdef notyet
 	struct pci_dev *pdev = dev_priv->drm.pdev;
 	u64 magic;
 	u16 version_major;
@@ -102,6 +103,7 @@ void intel_vgpu_detect(struct drm_i915_private *dev_priv)
 
 out:
 	pci_iounmap(pdev, shared_area);
+#endif
 }
 
 void intel_vgpu_register(struct drm_i915_private *i915)
