@@ -70,9 +70,9 @@ copy_from_user(void *to, const void *from, unsigned len)
 #define VERIFY_READ     0x1
 #define VERIFY_WRITE    0x2
 static inline int
-access_ok(int type, const void *addr, unsigned long size)
+access_ok(const void *addr, unsigned long size)
 {
-	return true;
+	return 1;
 }
 
 #if defined(__i386__) || defined(__amd64__)
