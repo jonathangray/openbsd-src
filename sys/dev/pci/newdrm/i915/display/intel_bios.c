@@ -1976,6 +1976,12 @@ static const struct bdb_header *get_bdb_header(const struct vbt_header *vbt)
 	return _vbt + vbt->bdb_offset;
 }
 
+#include <dev/isa/isareg.h>
+#include <dev/isa/isavar.h>
+
+#define VGA_BIOS_ADDR	0xc0000
+#define VGA_BIOS_LEN	0x10000
+
 /**
  * intel_bios_is_valid_vbt - does the given buffer contain a valid VBT
  * @buf:	pointer to a buffer to validate
@@ -2027,15 +2033,22 @@ bool intel_bios_is_valid_vbt(const void *buf, size_t size)
 
 static struct vbt_header *oprom_get_vbt(struct drm_i915_private *dev_priv)
 {
+#ifdef __linux__
 	struct pci_dev *pdev = dev_priv->drm.pdev;
+#endif
 	void __iomem *p = NULL, *oprom;
 	struct vbt_header *vbt;
 	u16 vbt_size;
 	size_t i, size;
 
+#ifdef __linux__
 	oprom = pci_map_rom(pdev, &size);
 	if (!oprom)
 		return NULL;
+#else
+	oprom = (u8 *)ISA_HOLE_VADDR(VGA_BIOS_ADDR);
+	size = VGA_BIOS_LEN;
+#endif
 
 	/* Scour memory looking for the VBT signature. */
 	for (i = 0; i + 4 < size; i += 4) {
@@ -2072,14 +2085,18 @@ static struct vbt_header *oprom_get_vbt(struct drm_i915_private *dev_priv)
 	if (!intel_bios_is_valid_vbt(vbt, vbt_size))
 		goto err_free_vbt;
 
+#ifdef __linux__
 	pci_unmap_rom(pdev, oprom);
+#endif
 
 	return vbt;
 
 err_free_vbt:
 	kfree(vbt);
 err_unmap_oprom:
+#ifdef __linux__
 	pci_unmap_rom(pdev, oprom);
+#endif
 
 	return NULL;
 }
