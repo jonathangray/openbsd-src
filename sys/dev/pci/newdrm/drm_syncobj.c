@@ -241,11 +241,11 @@ struct drm_syncobj *drm_syncobj_find(struct drm_file *file_private,
 }
 EXPORT_SYMBOL(drm_syncobj_find);
 
+#ifdef notyet
+
 static void drm_syncobj_fence_add_wait(struct drm_syncobj *syncobj,
 				       struct syncobj_wait_entry *wait)
 {
-	STUB();
-#ifdef notyet
 	struct dma_fence *fence;
 
 	if (wait->fence)
@@ -266,7 +266,6 @@ static void drm_syncobj_fence_add_wait(struct drm_syncobj *syncobj,
 		wait->fence = fence;
 	}
 	spin_unlock(&syncobj->lock);
-#endif
 }
 
 static void drm_syncobj_remove_wait(struct drm_syncobj *syncobj,
@@ -279,6 +278,8 @@ static void drm_syncobj_remove_wait(struct drm_syncobj *syncobj,
 	list_del_init(&wait->node);
 	spin_unlock(&syncobj->lock);
 }
+
+#endif /* notyet */
 
 /**
  * drm_syncobj_add_point - add new timeline point to the syncobj
@@ -924,6 +925,7 @@ drm_syncobj_transfer_ioctl(struct drm_device *dev, void *data,
 	return ret;
 }
 
+#ifdef notyet
 static void syncobj_wait_fence_func(struct dma_fence *fence,
 				    struct dma_fence_cb *cb)
 {
@@ -932,6 +934,7 @@ static void syncobj_wait_fence_func(struct dma_fence *fence,
 
 	wake_up_process(wait->task);
 }
+#endif
 
 static void syncobj_wait_syncobj_func(struct drm_syncobj *syncobj,
 				      struct syncobj_wait_entry *wait)
