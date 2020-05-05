@@ -51,7 +51,7 @@ struct fb_info {
 #define FB_ROTATE_CCW		3
 
 static inline struct fb_info *
-framebuffer_alloc(size_t size, struct device *dev)
+framebuffer_alloc(size_t size, void *dev)
 {
 	return kzalloc(sizeof(struct fb_info) + size, GFP_KERNEL);
 }
