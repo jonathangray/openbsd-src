@@ -19,12 +19,13 @@
 #define _LINUX_PCI_H
 
 #include <sys/types.h>
-#include <dev/pci/pcireg.h>
-#include <dev/pci/pcivar.h>
-#include <dev/pci/pcidevs.h>
 /* sparc64 cpu.h needs time.h and siginfo.h (indirect via param.h) */
 #include <sys/param.h>
 #include <machine/cpu.h>
+
+#include <dev/pci/pcireg.h>
+#include <dev/pci/pcivar.h>
+#include <dev/pci/pcidevs.h>
 #include <uvm/uvm_extern.h>
 
 #include <linux/io.h>
