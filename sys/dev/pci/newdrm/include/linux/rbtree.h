@@ -157,7 +157,11 @@ rb_replace_node(struct rb_node *victim, struct rb_node *new,
 
 #undef RB_ROOT
 #define RB_ROOT		(struct rb_root) { NULL }
+#ifdef __clang__
 #define RB_ROOT_CACHED	(struct rb_root_cached) { NULL }
+#else
+#define RB_ROOT_CACHED	(struct rb_root_cached) { { NULL } }
+#endif
 
 struct interval_tree_node {
 	struct rb_node rb;
