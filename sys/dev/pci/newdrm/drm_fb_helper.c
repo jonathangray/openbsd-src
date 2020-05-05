@@ -195,7 +195,9 @@ int drm_fb_helper_debug_leave(struct fb_info *info)
 {
 	struct drm_fb_helper *helper = info->par;
 	struct drm_client_dev *client = &helper->client;
+#ifdef notyet
 	struct drm_device *dev = helper->dev;
+#endif
 	struct drm_crtc *crtc;
 	const struct drm_crtc_helper_funcs *funcs;
 	struct drm_mode_set *mode_set;
@@ -508,7 +510,9 @@ struct fb_info *drm_fb_helper_alloc_fbi(struct drm_fb_helper *fb_helper)
 {
 	struct device *dev = fb_helper->dev->dev;
 	struct fb_info *info;
+#ifdef __linux__
 	int ret;
+#endif
 
 	info = framebuffer_alloc(0, dev);
 	if (!info)
@@ -602,6 +606,8 @@ void drm_fb_helper_fini(struct drm_fb_helper *fb_helper)
 }
 EXPORT_SYMBOL(drm_fb_helper_fini);
 
+#ifdef __linux__
+
 static bool drm_fbdev_use_shadow_fb(struct drm_fb_helper *fb_helper)
 {
 	struct drm_device *dev = fb_helper->dev;
@@ -632,7 +638,6 @@ static void drm_fb_helper_dirty(struct fb_info *info, u32 x, u32 y,
 	schedule_work(&helper->dirty_work);
 }
 
-#ifdef __linux__
 /**
  * drm_fb_helper_deferred_io() - fbdev deferred_io callback function
  * @info: fb_info struct pointer
@@ -1345,6 +1350,7 @@ int drm_fb_helper_set_par(struct fb_info *info)
 }
 EXPORT_SYMBOL(drm_fb_helper_set_par);
 
+#ifdef notyet
 static void pan_set(struct drm_fb_helper *fb_helper, int x, int y)
 {
 	struct drm_mode_set *mode_set;
@@ -1356,6 +1362,7 @@ static void pan_set(struct drm_fb_helper *fb_helper, int x, int y)
 	}
 	mutex_unlock(&fb_helper->client.modeset_mutex);
 }
+#endif
 
 static int pan_display_atomic(struct fb_var_screeninfo *var,
 			      struct fb_info *info)

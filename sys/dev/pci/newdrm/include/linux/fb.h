@@ -50,10 +50,16 @@ struct fb_info {
 #define FB_ROTATE_UD		2
 #define FB_ROTATE_CCW		3
 
-#define framebuffer_alloc(flags, device) \
-	kzalloc(sizeof(struct fb_info), GFP_KERNEL)
+static inline struct fb_info *
+framebuffer_alloc(size_t size, struct device *dev)
+{
+	return kzalloc(sizeof(struct fb_info) + size, GFP_KERNEL);
+}
 
-#define fb_set_suspend(x, y)
+static inline void
+fb_set_suspend(struct fb_info *fbi, int s)
+{
+}
 
 static inline void
 framebuffer_release(struct fb_info *fbi)
