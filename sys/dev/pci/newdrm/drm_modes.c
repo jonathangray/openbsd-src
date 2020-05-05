@@ -1416,11 +1416,11 @@ void drm_connector_list_update(struct drm_connector *connector)
 }
 EXPORT_SYMBOL(drm_connector_list_update);
 
+#ifdef __linux__
+
 static int drm_mode_parse_cmdline_bpp(const char *str, char **end_ptr,
 				      struct drm_cmdline_mode *mode)
 {
-	STUB();
-#ifdef notyet
 	unsigned int bpp;
 
 	if (str[0] != '-')
@@ -1435,16 +1435,11 @@ static int drm_mode_parse_cmdline_bpp(const char *str, char **end_ptr,
 	mode->bpp_specified = true;
 
 	return 0;
-#else
-	return -EINVAL;
-#endif
 }
 
 static int drm_mode_parse_cmdline_refresh(const char *str, char **end_ptr,
 					  struct drm_cmdline_mode *mode)
 {
-	STUB();
-#ifdef notyet
 	unsigned int refresh;
 
 	if (str[0] != '@')
@@ -1459,9 +1454,6 @@ static int drm_mode_parse_cmdline_refresh(const char *str, char **end_ptr,
 	mode->refresh_specified = true;
 
 	return 0;
-#else
-	return -EINVAL;
-#endif
 }
 
 static int drm_mode_parse_cmdline_extra(const char *str, int length,
@@ -1520,8 +1512,6 @@ static int drm_mode_parse_cmdline_res_mode(const char *str, unsigned int length,
 					   const struct drm_connector *connector,
 					   struct drm_cmdline_mode *mode)
 {
-	STUB();
-#ifdef notyet
 	const char *str_start = str;
 	bool rb = false, cvt = false;
 	int xres = 0, yres = 0;
@@ -1579,15 +1569,10 @@ static int drm_mode_parse_cmdline_res_mode(const char *str, unsigned int length,
 	mode->rb = rb;
 
 	return 0;
-#else
-	return -EINVAL;
-#endif
 }
 
 static int drm_mode_parse_cmdline_int(const char *delim, unsigned int *int_ret)
 {
-	STUB();
-#ifdef notyet
 	const char *value;
 	char *endp;
 
@@ -1607,9 +1592,6 @@ static int drm_mode_parse_cmdline_int(const char *delim, unsigned int *int_ret)
 		return -EINVAL;
 
 	return 0;
-#else
-	return -EINVAL;
-#endif
 }
 
 static int drm_mode_parse_panel_orientation(const char *delim,
@@ -1729,6 +1711,8 @@ static int drm_mode_parse_cmdline_options(const char *str,
 
 	return 0;
 }
+
+#endif /* __linux__ */
 
 static const char * const drm_named_modes_whitelist[] = {
 	"NTSC",
