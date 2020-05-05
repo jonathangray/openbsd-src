@@ -400,15 +400,12 @@ int radeon_fbdev_init(struct radeon_device *rdev)
 #ifdef __sparc64__
 {
 	struct drm_fb_helper *fb_helper = &rfbdev->helper;
-	struct drm_fb_helper_connector *fb_helper_conn;
-	int i;
+	struct drm_connector_list_iter conn_iter;
+	struct drm_connector *connector;
+	struct drm_cmdline_mode *mode;
 
-	for (i = 0; i < fb_helper->connector_count; i++) {
-		struct drm_cmdline_mode *mode;
-		struct drm_connector *connector;
-
-		fb_helper_conn = fb_helper->connector_info[i];
-		connector = fb_helper_conn->connector;
+	drm_connector_list_iter_begin(fb_helper->dev, &conn_iter);
+	drm_client_for_each_connector_iter(connector, &conn_iter) {
 		mode = &connector->cmdline_mode;
 
 		mode->specified = true;
@@ -417,6 +414,7 @@ int radeon_fbdev_init(struct radeon_device *rdev)
 		mode->bpp_specified = true;
 		mode->bpp = rdev->sf.sf_depth;
 	}
+	drm_connector_list_iter_end(&conn_iter);
 }
 #endif
 
