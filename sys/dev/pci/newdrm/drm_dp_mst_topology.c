@@ -5511,7 +5511,11 @@ struct drm_dp_aux *drm_dp_mst_dsc_aux_for_port(struct drm_dp_mst_port *port)
 {
 	struct drm_dp_mst_port *immediate_upstream_port;
 	struct drm_dp_mst_port *fec_port;
+#ifdef __clang__
 	struct drm_dp_desc desc = { 0 };
+#else
+	struct drm_dp_desc desc = { { { 0 } } };
+#endif
 	u8 endpoint_fec;
 	u8 endpoint_dsc;
 
