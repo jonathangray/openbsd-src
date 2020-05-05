@@ -893,7 +893,9 @@ struct drm_gem_object *drm_gem_prime_import_dev(struct drm_device *dev,
 					    struct device *attach_dev)
 {
 	struct dma_buf_attachment *attach;
+#ifdef notyet
 	struct sg_table *sgt;
+#endif
 	struct drm_gem_object *obj;
 	int ret;
 
