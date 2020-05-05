@@ -295,22 +295,36 @@ radeondrm_doswitch(void *v)
 {
 	struct rasops_info *ri = v;
 	struct radeon_device *rdev = ri->ri_hw;
-	struct radeon_crtc *radeon_crtc;
-	int i, crtc;
+#ifndef __sparc64__
+	struct drm_device *dev = rdev->ddev;
+	struct drm_crtc *crtc;
+	uint16_t *r_base, *g_base, *b_base;
+	int i, ret = 0;
+#endif
 
 	rasops_show_screen(ri, rdev->switchcookie, 0, NULL, NULL);
-#if 0
-	for (crtc = 0; crtc < rdev->num_crtc; crtc++) {
-		for (i = 0; i < 256; i++) {
-			radeon_crtc = rdev->mode_info.crtcs[crtc];
-			radeon_crtc->lut_r[i] = rasops_cmap[3 * i] << 2;
-			radeon_crtc->lut_g[i] = rasops_cmap[(3 * i) + 1] << 2;
-			radeon_crtc->lut_b[i] = rasops_cmap[(3 * i) + 2] << 2;
-		}
-	}
-#endif
 #ifdef __sparc64__
 	fbwscons_setcolormap(&rdev->sf, radeondrm_setcolor);
+#else
+	for (i = 0; i < rdev->num_crtc; i++) {
+		struct drm_modeset_acquire_ctx ctx;
+		crtc = &rdev->mode_info.crtcs[i]->base;
+
+		r_base = crtc->gamma_store;
+		g_base = r_base + crtc->gamma_size;
+		b_base = g_base + crtc->gamma_size;
+
+		DRM_MODESET_LOCK_ALL_BEGIN(dev, ctx, 0, ret);
+
+		*r_base = rasops_cmap[3 * i] << 2;
+		*g_base = rasops_cmap[(3 * i) + 1] << 2;
+		*b_base = rasops_cmap[(3 * i) + 2] << 2;
+
+		crtc->funcs->gamma_set(crtc, r_base, g_base, b_base,
+		    crtc->gamma_size, &ctx);
+
+		DRM_MODESET_LOCK_ALL_END(ctx, ret);
+	}
 #endif
 	drm_fb_helper_restore_fbdev_mode_unlocked((void *)rdev->mode_info.rfbdev);
 
@@ -338,20 +352,34 @@ radeondrm_setcolor(void *v, u_int index, u_int8_t r, u_int8_t g, u_int8_t b)
 {
 	struct sunfb *sf = v;
 	struct radeon_device *rdev = sf->sf_ro.ri_hw;
-	u_int16_t red, green, blue;
-	struct radeon_crtc *radeon_crtc;
-	int crtc;
+	struct drm_device *dev = rdev->ddev;
+	uint16_t red, green, blue;
+	uint16_t *r_base, *g_base, *b_base;
+	struct drm_crtc *crtc;
+	int i, ret = 0;
 
-	for (crtc = 0; crtc < rdev->num_crtc; crtc++) {
-		radeon_crtc = rdev->mode_info.crtcs[crtc];
+	for (i = 0; i < rdev->num_crtc; i++) {
+		struct drm_modeset_acquire_ctx ctx;
+		crtc = &rdev->mode_info.crtcs[i]->base;
 
 		red = (r << 8) | r;
 		green = (g << 8) | g;
 		blue = (b << 8) | b;
 
-		radeon_crtc->lut_r[index] = red >> 6;
-		radeon_crtc->lut_g[index] = green >> 6;
-		radeon_crtc->lut_b[index] = blue >> 6;
+		DRM_MODESET_LOCK_ALL_BEGIN(dev, ctx, 0, ret);
+
+		r_base = crtc->gamma_store;
+		g_base = r_base + crtc->gamma_size;
+		b_base = g_base + crtc->gamma_size;
+
+		*r_base = red >> 6;
+		*g_base = green >> 6;
+		*b_base = blue >> 6;
+
+		crtc->funcs->gamma_set(crtc, r_base, g_base, b_base,
+		    crtc->gamma_size, &ctx);
+
+		DRM_MODESET_LOCK_ALL_END(ctx, ret);
 	}
 }
 #endif
