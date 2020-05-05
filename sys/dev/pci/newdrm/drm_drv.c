@@ -240,7 +240,9 @@ static int drm_minor_register(struct drm_device *dev, unsigned int type)
 {
 	struct drm_minor *minor;
 	unsigned long flags;
+#ifdef __linux__
 	int ret;
+#endif
 
 	DRM_DEBUG("\n");
 
@@ -258,6 +260,8 @@ static int drm_minor_register(struct drm_device *dev, unsigned int type)
 	ret = device_add(minor->kdev);
 	if (ret)
 		goto err_debugfs;
+#else
+	drm_debugfs_root = NULL;
 #endif
 
 	/* replace NULL with @minor so lookups will succeed from now on */
@@ -814,10 +818,12 @@ err_free:
 }
 EXPORT_SYMBOL(drm_dev_init);
 
+#ifdef notyet
 static void devm_drm_dev_init_release(void *data)
 {
 	drm_dev_put(data);
 }
+#endif
 
 /**
  * devm_drm_dev_init - Resource managed drm_dev_init()
@@ -1246,7 +1252,9 @@ static void drm_core_exit(void)
 
 static int __init drm_core_init(void)
 {
+#ifdef __linux__
 	int ret;
+#endif
 
 	drm_connector_ida_init();
 	idr_init(&drm_minors_idr);
