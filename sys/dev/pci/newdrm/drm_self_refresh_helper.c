@@ -68,6 +68,7 @@ struct drm_self_refresh_data {
 #endif
 };
 
+#ifdef notyet
 static void drm_self_refresh_helper_entry_work(struct work_struct *work)
 {
 	struct drm_self_refresh_data *sr_data = container_of(
@@ -132,6 +133,7 @@ out_drop_locks:
 	drm_modeset_drop_locks(&ctx);
 	drm_modeset_acquire_fini(&ctx);
 }
+#endif
 
 /**
  * drm_self_refresh_helper_update_avg_times - Updates a crtc's SR time averages
