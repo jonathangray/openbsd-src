@@ -311,6 +311,7 @@ void drm_file_free(struct drm_file *file)
 }
 
 #ifdef __linux__
+
 static void drm_close_helper(struct file *filp)
 {
 	struct drm_file *file_priv = filp->private_data;
@@ -322,7 +323,6 @@ static void drm_close_helper(struct file *filp)
 
 	drm_file_free(file_priv);
 }
-#endif
 
 /*
  * Check whether DRI will run on this CPU.
@@ -336,6 +336,8 @@ static int drm_cpu_valid(void)
 #endif
 	return 1;
 }
+
+#endif /* __linux__ */
 
 /*
  * Called whenever a process opens a drm node
