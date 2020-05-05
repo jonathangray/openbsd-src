@@ -32,6 +32,7 @@
 struct workqueue_struct;
 
 extern struct workqueue_struct *system_wq;
+extern struct workqueue_struct *system_highpri_wq;
 extern struct workqueue_struct *system_unbound_wq;
 extern struct workqueue_struct *system_long_wq;
 

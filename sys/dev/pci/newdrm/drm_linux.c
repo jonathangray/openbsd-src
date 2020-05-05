@@ -1861,6 +1861,7 @@ wake_up_bit(void *word, int bit)
 }
 
 struct workqueue_struct *system_wq;
+struct workqueue_struct *system_highpri_wq;
 struct workqueue_struct *system_unbound_wq;
 struct workqueue_struct *system_long_wq;
 struct taskq *taskletq;
@@ -1871,6 +1872,10 @@ drm_linux_init(void)
 	if (system_wq == NULL) {
 		system_wq = (struct workqueue_struct *)
 		    taskq_create("drmwq", 4, IPL_HIGH, 0);
+	}
+	if (system_highpri_wq == NULL) {
+		system_highpri_wq = (struct workqueue_struct *)
+		    taskq_create("drmhpwq", 4, IPL_HIGH, 0);
 	}
 	if (system_unbound_wq == NULL) {
 		system_unbound_wq = (struct workqueue_struct *)
