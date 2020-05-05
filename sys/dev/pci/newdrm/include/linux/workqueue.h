@@ -40,6 +40,8 @@ extern struct workqueue_struct *system_long_wq;
 #define WQ_FREEZABLE	2
 #define WQ_UNBOUND	4
 
+#define WQ_UNBOUND_MAX_ACTIVE	4	/* matches nthreads in drm_linux.c */
+
 static inline struct workqueue_struct *
 alloc_workqueue(const char *name, int flags, int max_active)
 {
