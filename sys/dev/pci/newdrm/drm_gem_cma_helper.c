@@ -28,6 +28,7 @@
 
 #include <sys/param.h>
 
+#include <drm/drm_device.h>
 #include <drm/drm_gem_cma_helper.h>
 
 #include <uvm/uvm.h>
@@ -151,7 +152,7 @@ drm_gem_cma_dumb_create(struct drm_file *file_priv, struct drm_device *ddev,
 		return -ENOMEM;
 
 	error = drm_gem_handle_create(file_priv, &obj->base, &handle);
-	drm_gem_object_unreference_unlocked(&obj->base);
+	drm_gem_object_put_unlocked(&obj->base);
 	if (error) {
 		drm_gem_cma_obj_free(obj);
 		return error;
@@ -187,7 +188,7 @@ drm_gem_cma_dumb_map_offset(struct drm_file *file_priv, struct drm_device *ddev,
 	*offset = drm_vma_node_offset_addr(&obj->base.vma_node);
 
 done:
-	drm_gem_object_unreference_unlocked(&obj->base);
+	drm_gem_object_put_unlocked(&obj->base);
 
 	return error;
 }
