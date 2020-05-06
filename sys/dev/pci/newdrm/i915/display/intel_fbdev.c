@@ -99,6 +99,7 @@ static int intel_fbdev_pan_display(struct fb_var_screeninfo *var,
 	return ret;
 }
 
+#ifdef notyet
 static const struct fb_ops intelfb_ops = {
 	.owner = THIS_MODULE,
 	DRM_FB_HELPER_DEFAULT_OPS,
@@ -109,6 +110,7 @@ static const struct fb_ops intelfb_ops = {
 	.fb_pan_display = intel_fbdev_pan_display,
 	.fb_blank = intel_fbdev_blank,
 };
+#endif
 
 static int intelfb_alloc(struct drm_fb_helper *helper,
 			 struct drm_fb_helper_surface_size *sizes)
@@ -227,6 +229,7 @@ static int intelfb_create(struct drm_fb_helper *helper,
 
 	ifbdev->helper.fb = &ifbdev->fb->base;
 
+#ifdef __linux__
 	info->fbops = &intelfb_ops;
 
 	/* setup aperture base/size for vesafb takeover */
@@ -257,6 +260,48 @@ static int intelfb_create(struct drm_fb_helper *helper,
 		memset_io(info->screen_base, 0, info->screen_size);
 
 	/* Use default scratch pixmap (info->pixmap.flags = FB_PIXMAP_SYSTEM) */
+#else
+{
+	struct drm_framebuffer *fb = ifbdev->helper.fb;
+	struct rasops_info *ri = &dev_priv->ro;
+	bus_space_handle_t bsh;
+	int err;
+
+	vaddr = i915_vma_pin_iomap(vma);
+	if (IS_ERR(vaddr)) {
+		DRM_ERROR("Failed to remap framebuffer into virtual memory\n");
+		ret = PTR_ERR(vaddr);
+		goto out_unpin;
+	}
+
+	ri->ri_bits = vaddr;
+	ri->ri_depth = fb->format->cpp[0] * 8;
+	ri->ri_stride = fb->pitches[0];
+	ri->ri_width = sizes->fb_width;
+	ri->ri_height = sizes->fb_height;
+
+	switch (fb->format->format) {
+	case DRM_FORMAT_XRGB8888:
+		ri->ri_rnum = 8;
+		ri->ri_rpos = 16;
+		ri->ri_gnum = 8;
+		ri->ri_gpos = 8;
+		ri->ri_bnum = 8;
+		ri->ri_bpos = 0;
+		break;
+	case DRM_FORMAT_RGB565:
+		ri->ri_rnum = 5;
+		ri->ri_rpos = 11;
+		ri->ri_gnum = 6;
+		ri->ri_gpos = 5;
+		ri->ri_bnum = 5;
+		ri->ri_bpos = 0;
+		break;
+	}
+
+	memset(ri->ri_bits, 0, vma->node.size);
+}
+#endif
 
 	DRM_DEBUG_KMS("allocated %dx%d fb: 0x%08x\n",
 		      ifbdev->fb->base.width, ifbdev->fb->base.height,
@@ -486,12 +531,14 @@ void intel_fbdev_initial_config_async(struct drm_device *dev)
 
 static void intel_fbdev_sync(struct intel_fbdev *ifbdev)
 {
+#ifdef __linux__
 	if (!ifbdev->cookie)
 		return;
 
 	/* Only serialises with all preceding async calls, hence +1 */
 	async_synchronize_cookie(ifbdev->cookie + 1);
 	ifbdev->cookie = 0;
+#endif
 }
 
 void intel_fbdev_unregister(struct drm_i915_private *dev_priv)
@@ -502,10 +549,12 @@ void intel_fbdev_unregister(struct drm_i915_private *dev_priv)
 		return;
 
 	cancel_work_sync(&dev_priv->fbdev_suspend_work);
+#ifdef __linux__
 	if (!current_is_async())
 		intel_fbdev_sync(ifbdev);
 
 	drm_fb_helper_unregister_fbi(&ifbdev->helper);
+#endif
 }
 
 void intel_fbdev_fini(struct drm_i915_private *dev_priv)
@@ -540,6 +589,7 @@ static void intel_fbdev_hpd_set_suspend(struct intel_fbdev *ifbdev, int state)
 
 void intel_fbdev_set_suspend(struct drm_device *dev, int state, bool synchronous)
 {
+#ifdef __linux__
 	struct drm_i915_private *dev_priv = to_i915(dev);
 	struct intel_fbdev *ifbdev = dev_priv->fbdev;
 	struct fb_info *info;
@@ -589,6 +639,7 @@ void intel_fbdev_set_suspend(struct drm_device *dev, int state, bool synchronous
 	console_unlock();
 
 	intel_fbdev_hpd_set_suspend(ifbdev, state);
+#endif
 }
 
 void intel_fbdev_output_poll_changed(struct drm_device *dev)
