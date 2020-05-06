@@ -29,8 +29,6 @@
 
 #include <sys/param.h>
 
-#include <drm/drmP.h>
-
 #include <dev/ic/dwhdmi.h>
 
 #define	HDMI_IH_PHY_STAT0                       0x0104

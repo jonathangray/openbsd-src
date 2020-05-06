@@ -29,7 +29,7 @@
 #ifndef _DEV_IC_ANXDP_H
 #define _DEV_IC_ANXDP_H
 
-#include <drm/drmP.h>
+#include <drm/drm_bridge.h>
 #include <drm/drm_dp_helper.h>
 #include <drm/drm_panel.h>
 

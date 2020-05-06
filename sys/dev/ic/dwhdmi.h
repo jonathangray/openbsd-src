@@ -36,7 +36,8 @@
 #include <dev/audio/audio_dai.h>
 #endif
 
-#include <drm/drmP.h>
+#include <drm/drm_connector.h>
+#include <drm/drm_bridge.h>
 
 struct dwhdmi_softc;
 

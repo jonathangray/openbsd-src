@@ -40,7 +40,6 @@
 #include <dev/audio/audio_dai.h>
 #endif
 
-#include <drm/drmP.h>
 #include <drm/drm_crtc.h>
 #include <drm/drm_crtc_helper.h>
 #include <drm/drm_edid.h>
