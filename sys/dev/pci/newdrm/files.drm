@@ -670,44 +670,44 @@ file	dev/pci/newdrm/amd/display/dc/dcn10/dcn10_opp.c			amddal & bios
 file	dev/pci/newdrm/amd/display/dc/dcn10/dcn10_optc.c			amddal & bios
 file	dev/pci/newdrm/amd/display/dc/dcn10/dcn10_resource.c		amddal & bios
 file	dev/pci/newdrm/amd/display/dc/dcn10/dcn10_stream_encoder.c		amddal & bios
-file	dev/pci/newdrm/amd/display/dc/dcn20/dcn20_dccg.c			amddal
-file	dev/pci/newdrm/amd/display/dc/dcn20/dcn20_dpp.c			amddal
-file	dev/pci/newdrm/amd/display/dc/dcn20/dcn20_dpp_cm.c			amddal
-file	dev/pci/newdrm/amd/display/dc/dcn20/dcn20_dsc.c			amddal
-file	dev/pci/newdrm/amd/display/dc/dcn20/dcn20_dwb.c			amddal
-file	dev/pci/newdrm/amd/display/dc/dcn20/dcn20_dwb_scl.c		amddal
-file	dev/pci/newdrm/amd/display/dc/dcn20/dcn20_hubbub.c			amddal
-file	dev/pci/newdrm/amd/display/dc/dcn20/dcn20_hubp.c			amddal
-file	dev/pci/newdrm/amd/display/dc/dcn20/dcn20_hwseq.c			amddal
-file	dev/pci/newdrm/amd/display/dc/dcn20/dcn20_init.c			amddal
-file	dev/pci/newdrm/amd/display/dc/dcn20/dcn20_link_encoder.c		amddal
-file	dev/pci/newdrm/amd/display/dc/dcn20/dcn20_mmhubbub.c		amddal
-file	dev/pci/newdrm/amd/display/dc/dcn20/dcn20_mpc.c			amddal
-file	dev/pci/newdrm/amd/display/dc/dcn20/dcn20_opp.c			amddal
-file	dev/pci/newdrm/amd/display/dc/dcn20/dcn20_optc.c			amddal
-file	dev/pci/newdrm/amd/display/dc/dcn20/dcn20_resource.c		amddal
-file	dev/pci/newdrm/amd/display/dc/dcn20/dcn20_stream_encoder.c		amddal
-file	dev/pci/newdrm/amd/display/dc/dcn20/dcn20_vmid.c			amddal
+file	dev/pci/newdrm/amd/display/dc/dcn20/dcn20_dccg.c			amddal & bios
+file	dev/pci/newdrm/amd/display/dc/dcn20/dcn20_dpp.c			amddal & bios
+file	dev/pci/newdrm/amd/display/dc/dcn20/dcn20_dpp_cm.c			amddal & bios
+file	dev/pci/newdrm/amd/display/dc/dcn20/dcn20_dsc.c			amddal & bios
+file	dev/pci/newdrm/amd/display/dc/dcn20/dcn20_dwb.c			amddal & bios
+file	dev/pci/newdrm/amd/display/dc/dcn20/dcn20_dwb_scl.c		amddal & bios
+file	dev/pci/newdrm/amd/display/dc/dcn20/dcn20_hubbub.c			amddal & bios
+file	dev/pci/newdrm/amd/display/dc/dcn20/dcn20_hubp.c			amddal & bios
+file	dev/pci/newdrm/amd/display/dc/dcn20/dcn20_hwseq.c			amddal & bios
+file	dev/pci/newdrm/amd/display/dc/dcn20/dcn20_init.c			amddal & bios
+file	dev/pci/newdrm/amd/display/dc/dcn20/dcn20_link_encoder.c		amddal & bios
+file	dev/pci/newdrm/amd/display/dc/dcn20/dcn20_mmhubbub.c		amddal & bios
+file	dev/pci/newdrm/amd/display/dc/dcn20/dcn20_mpc.c			amddal & bios
+file	dev/pci/newdrm/amd/display/dc/dcn20/dcn20_opp.c			amddal & bios
+file	dev/pci/newdrm/amd/display/dc/dcn20/dcn20_optc.c			amddal & bios
+file	dev/pci/newdrm/amd/display/dc/dcn20/dcn20_resource.c		amddal & bios
+file	dev/pci/newdrm/amd/display/dc/dcn20/dcn20_stream_encoder.c		amddal & bios
+file	dev/pci/newdrm/amd/display/dc/dcn20/dcn20_vmid.c			amddal & bios
 file	dev/pci/newdrm/amd/display/dc/dcn21/dcn21_hubbub.c			amddal & bios
 file	dev/pci/newdrm/amd/display/dc/dcn21/dcn21_hubp.c			amddal & bios
 file	dev/pci/newdrm/amd/display/dc/dcn21/dcn21_hwseq.c			amddal & bios
 file	dev/pci/newdrm/amd/display/dc/dcn21/dcn21_init.c			amddal & bios
 file	dev/pci/newdrm/amd/display/dc/dcn21/dcn21_link_encoder.c		amddal & bios
 file	dev/pci/newdrm/amd/display/dc/dcn21/dcn21_resource.c		amddal & bios
-file	dev/pci/newdrm/amd/display/dc/dml/dcn20/display_mode_vba_20.c	amddal
-file	dev/pci/newdrm/amd/display/dc/dml/dcn20/display_mode_vba_20v2.c	amddal
-file	dev/pci/newdrm/amd/display/dc/dml/dcn20/display_rq_dlg_calc_20.c	amddal
-file	dev/pci/newdrm/amd/display/dc/dml/dcn20/display_rq_dlg_calc_20v2.c	amddal
+file	dev/pci/newdrm/amd/display/dc/dml/dcn20/display_mode_vba_20.c	amddal & bios
+file	dev/pci/newdrm/amd/display/dc/dml/dcn20/display_mode_vba_20v2.c	amddal & bios
+file	dev/pci/newdrm/amd/display/dc/dml/dcn20/display_rq_dlg_calc_20.c	amddal & bios
+file	dev/pci/newdrm/amd/display/dc/dml/dcn20/display_rq_dlg_calc_20v2.c	amddal & bios
 file	dev/pci/newdrm/amd/display/dc/dml/dcn21/display_mode_vba_21.c	amddal & bios
 file	dev/pci/newdrm/amd/display/dc/dml/dcn21/display_rq_dlg_calc_21.c	amddal & bios
-file	dev/pci/newdrm/amd/display/dc/dml/display_mode_lib.c		amddal
-file	dev/pci/newdrm/amd/display/dc/dml/display_mode_vba.c		amddal
-file	dev/pci/newdrm/amd/display/dc/dml/display_rq_dlg_helpers.c		amddal
-file	dev/pci/newdrm/amd/display/dc/dml/dml1_display_rq_dlg_calc.c	amddal
-file	dev/pci/newdrm/amd/display/dc/dml/dml_common_defs.c		amddal
-file	dev/pci/newdrm/amd/display/dc/dsc/dc_dsc.c				amddal
-file	dev/pci/newdrm/amd/display/dc/dsc/rc_calc.c			amddal
-file	dev/pci/newdrm/amd/display/dc/dsc/rc_calc_dpi.c			amddal
+file	dev/pci/newdrm/amd/display/dc/dml/display_mode_lib.c		amddal & bios
+file	dev/pci/newdrm/amd/display/dc/dml/display_mode_vba.c		amddal & bios
+file	dev/pci/newdrm/amd/display/dc/dml/display_rq_dlg_helpers.c		amddal & bios
+file	dev/pci/newdrm/amd/display/dc/dml/dml1_display_rq_dlg_calc.c	amddal & bios
+file	dev/pci/newdrm/amd/display/dc/dml/dml_common_defs.c		amddal & bios
+file	dev/pci/newdrm/amd/display/dc/dsc/dc_dsc.c				amddal & bios
+file	dev/pci/newdrm/amd/display/dc/dsc/rc_calc.c			amddal & bios
+file	dev/pci/newdrm/amd/display/dc/dsc/rc_calc_dpi.c			amddal & bios
 file	dev/pci/newdrm/amd/display/dc/gpio/dce110/hw_factory_dce110.c	amddal
 file	dev/pci/newdrm/amd/display/dc/gpio/dce110/hw_translate_dce110.c	amddal
 file	dev/pci/newdrm/amd/display/dc/gpio/dce120/hw_factory_dce120.c	amddal
