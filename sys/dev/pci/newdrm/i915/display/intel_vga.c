@@ -123,6 +123,9 @@ intel_vga_set_state(struct drm_i915_private *i915, bool enable_decode)
 static unsigned int
 intel_vga_set_decode(void *cookie, bool enable_decode)
 {
+	STUB();
+	return 0;
+#ifdef notyet
 	struct drm_i915_private *i915 = cookie;
 
 	intel_vga_set_state(i915, enable_decode);
@@ -132,6 +135,7 @@ intel_vga_set_decode(void *cookie, bool enable_decode)
 		       VGA_RSRC_NORMAL_IO | VGA_RSRC_NORMAL_MEM;
 	else
 		return VGA_RSRC_NORMAL_IO | VGA_RSRC_NORMAL_MEM;
+#endif
 }
 
 int intel_vga_register(struct drm_i915_private *i915)
