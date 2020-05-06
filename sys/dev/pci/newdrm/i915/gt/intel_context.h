@@ -243,10 +243,14 @@ static inline u64 intel_context_get_total_runtime_ns(struct intel_context *ce)
 
 static inline u64 intel_context_get_avg_runtime_ns(struct intel_context *ce)
 {
+	STUB();
+	return 0;
+#ifdef notyet
 	const u32 period =
 		RUNTIME_INFO(ce->engine->i915)->cs_timestamp_period_ns;
 
 	return mul_u32_u32(ewma_runtime_read(&ce->runtime.avg), period);
+#endif
 }
 
 #endif /* __INTEL_CONTEXT_H__ */
