@@ -39,6 +39,7 @@
 #include <dev/ofw/ofw_misc.h>
 #include <dev/ofw/fdt.h>
 
+#include <drm/drm_fourcc.h>
 #include <drm/drm_crtc.h>
 #include <drm/drm_crtc_helper.h>
 #include <drm/drm_plane_helper.h>
@@ -277,7 +278,7 @@ rkvop_mode_do_set_base(struct drm_crtc *crtc, struct drm_framebuffer *fb,
 	uint64_t paddr = (uint64_t)sfb->obj->dmamap->dm_segs[0].ds_addr;
 
 	paddr += y * sfb->base.pitches[0];
-	paddr += x * drm_format_plane_cpp(sfb->base.format->format, 0);
+	paddr += x * sfb->base.format->cpp[0];
 
 	KASSERT((paddr & ~0xffffffff) == 0);
 
