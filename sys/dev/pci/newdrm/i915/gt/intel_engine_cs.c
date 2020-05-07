@@ -274,6 +274,9 @@ static void intel_engine_sanitize_mmio(struct intel_engine_cs *engine)
 
 static int intel_engine_setup(struct intel_gt *gt, enum intel_engine_id id)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	const struct engine_info *info = &intel_engines[id];
 	struct drm_i915_private *i915 = gt->i915;
 	struct intel_engine_cs *engine;
@@ -350,6 +353,7 @@ static int intel_engine_setup(struct intel_gt *gt, enum intel_engine_id id)
 	i915->engine[id] = engine;
 
 	return 0;
+#endif
 }
 
 static void __setup_engine_capabilities(struct intel_engine_cs *engine)
@@ -1111,6 +1115,9 @@ void intel_engine_flush_submission(struct intel_engine_cs *engine)
  */
 bool intel_engine_is_idle(struct intel_engine_cs *engine)
 {
+	STUB();
+	return true;
+#ifdef notyet
 	/* More white lies, if wedged, hw state is inconsistent */
 	if (intel_gt_is_wedged(engine->gt))
 		return true;
@@ -1134,6 +1141,7 @@ bool intel_engine_is_idle(struct intel_engine_cs *engine)
 
 	/* Ring stopped? */
 	return ring_is_idle(engine);
+#endif
 }
 
 bool intel_engines_are_idle(struct intel_gt *gt)
@@ -1227,6 +1235,8 @@ static void print_request(struct drm_printer *m,
 
 static void hexdump(struct drm_printer *m, const void *buf, size_t len)
 {
+	STUB();
+#ifdef notyet
 	const size_t rowsize = 8 * sizeof(u32);
 	const void *prev = NULL;
 	bool skip = false;
@@ -1252,6 +1262,7 @@ static void hexdump(struct drm_printer *m, const void *buf, size_t len)
 		prev = buf + pos;
 		skip = false;
 	}
+#endif
 }
 
 static struct intel_timeline *get_timeline(struct i915_request *rq)
@@ -1275,9 +1286,9 @@ static struct intel_timeline *get_timeline(struct i915_request *rq)
 	return tl;
 }
 
-static const char *repr_timer(const struct timer_list *t)
+static const char *repr_timer(const struct timeout *t)
 {
-	if (!READ_ONCE(t->expires))
+	if (!READ_ONCE(t->to_time))
 		return "inactive";
 
 	if (timer_pending(t))
@@ -1481,6 +1492,8 @@ void intel_engine_dump(struct intel_engine_cs *engine,
 		       struct drm_printer *m,
 		       const char *header, ...)
 {
+	STUB();
+#ifdef notyet
 	struct i915_gpu_error * const error = &engine->i915->gpu_error;
 	struct i915_request *rq;
 	intel_wakeref_t wakeref;
@@ -1566,6 +1579,7 @@ void intel_engine_dump(struct intel_engine_cs *engine,
 	drm_printf(m, "Idle? %s\n", yesno(intel_engine_is_idle(engine)));
 
 	intel_engine_print_breadcrumbs(engine, m);
+#endif
 }
 
 /**
