@@ -1825,6 +1825,7 @@ static void intel_hdcp_check_work(struct work_struct *work)
 				      DRM_HDCP_CHECK_PERIOD_MS);
 }
 
+#ifdef notyet
 static int i915_hdcp_component_bind(struct device *i915_kdev,
 				    struct device *mei_kdev, void *data)
 {
@@ -1878,10 +1879,14 @@ enum mei_fw_tc intel_get_mei_fw_tc(enum transcoder cpu_transcoder)
 		return MEI_INVALID_TRANSCODER;
 	}
 }
+#endif /* notyet */
 
 static inline int initialize_hdcp_port_data(struct intel_connector *connector,
 					    const struct intel_hdcp_shim *shim)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct drm_i915_private *dev_priv = to_i915(connector->base.dev);
 	struct intel_hdcp *hdcp = &connector->hdcp;
 	struct hdcp_port_data *data = &hdcp->port_data;
@@ -1920,6 +1925,7 @@ static inline int initialize_hdcp_port_data(struct intel_connector *connector,
 	data->streams[0].stream_type = hdcp->content_type;
 
 	return 0;
+#endif
 }
 
 static bool is_hdcp2_supported(struct drm_i915_private *dev_priv)
@@ -1938,6 +1944,8 @@ void intel_hdcp_component_init(struct drm_i915_private *dev_priv)
 	if (!is_hdcp2_supported(dev_priv))
 		return;
 
+	STUB();
+#ifdef notyet
 	mutex_lock(&dev_priv->hdcp_comp_mutex);
 	drm_WARN_ON(&dev_priv->drm, dev_priv->hdcp_comp_added);
 
@@ -1953,6 +1961,7 @@ void intel_hdcp_component_init(struct drm_i915_private *dev_priv)
 		mutex_unlock(&dev_priv->hdcp_comp_mutex);
 		return;
 	}
+#endif
 }
 
 static void intel_hdcp2_init(struct intel_connector *connector,
@@ -2005,6 +2014,9 @@ int intel_hdcp_init(struct intel_connector *connector,
 int intel_hdcp_enable(struct intel_connector *connector,
 		      enum transcoder cpu_transcoder, u8 content_type)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct drm_i915_private *dev_priv = to_i915(connector->base.dev);
 	struct intel_hdcp *hdcp = &connector->hdcp;
 	unsigned long check_link_interval = DRM_HDCP_CHECK_PERIOD_MS;
@@ -2050,6 +2062,7 @@ int intel_hdcp_enable(struct intel_connector *connector,
 
 	mutex_unlock(&hdcp->mutex);
 	return ret;
+#endif
 }
 
 int intel_hdcp_disable(struct intel_connector *connector)
@@ -2117,6 +2130,8 @@ void intel_hdcp_update_pipe(struct intel_encoder *encoder,
 
 void intel_hdcp_component_fini(struct drm_i915_private *dev_priv)
 {
+	STUB();
+#ifdef notyet
 	mutex_lock(&dev_priv->hdcp_comp_mutex);
 	if (!dev_priv->hdcp_comp_added) {
 		mutex_unlock(&dev_priv->hdcp_comp_mutex);
@@ -2127,6 +2142,7 @@ void intel_hdcp_component_fini(struct drm_i915_private *dev_priv)
 	mutex_unlock(&dev_priv->hdcp_comp_mutex);
 
 	component_del(dev_priv->drm.dev, &i915_hdcp_component_ops);
+#endif
 }
 
 void intel_hdcp_cleanup(struct intel_connector *connector)
