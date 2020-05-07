@@ -97,6 +97,9 @@ static void batch_add(struct batch_chunk *bc, const u32 d)
 
 static u32 *batch_alloc_items(struct batch_chunk *bc, u32 align, u32 items)
 {
+	STUB();
+	return NULL;
+#ifdef notyet
 	u32 *map;
 
 	if (align) {
@@ -110,6 +113,7 @@ static u32 *batch_alloc_items(struct batch_chunk *bc, u32 align, u32 items)
 	bc->end += items;
 
 	return map;
+#endif
 }
 
 static u32 *batch_alloc_bytes(struct batch_chunk *bc, u32 align, u32 bytes)
