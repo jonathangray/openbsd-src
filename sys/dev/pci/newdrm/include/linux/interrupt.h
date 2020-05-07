@@ -20,6 +20,8 @@
 #define request_irq(irq, hdlr, flags, name, dev)	(0)
 #define free_irq(irq, dev)
 
+typedef irqreturn_t (*irq_handler_t)(int, void *);
+
 struct tasklet_struct {
 	void (*func)(unsigned long);
 	unsigned long data;
