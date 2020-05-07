@@ -83,17 +83,29 @@
 
 static struct i915_global_gem_context {
 	struct i915_global base;
+#ifdef __linux__
 	struct kmem_cache *slab_luts;
+#else
+	struct pool slab_luts;
+#endif
 } global;
 
 struct i915_lut_handle *i915_lut_handle_alloc(void)
 {
+#ifdef __linux__
 	return kmem_cache_alloc(global.slab_luts, GFP_KERNEL);
+#else
+	return pool_get(&global.slab_luts, PR_WAITOK);
+#endif
 }
 
 void i915_lut_handle_free(struct i915_lut_handle *lut)
 {
+#ifdef __linux__
 	return kmem_cache_free(global.slab_luts, lut);
+#else
+	pool_put(&global.slab_luts, lut);
+#endif
 }
 
 static void lut_close(struct i915_gem_context *ctx)
@@ -264,6 +276,9 @@ static void free_engines_rcu(struct rcu_head *rcu)
 static int __i915_sw_fence_call
 engines_notify(struct i915_sw_fence *fence, enum i915_sw_fence_notify state)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct i915_gem_engines *engines =
 		container_of(fence, typeof(*engines), fence);
 
@@ -287,6 +302,7 @@ engines_notify(struct i915_sw_fence *fence, enum i915_sw_fence_notify state)
 	}
 
 	return NOTIFY_DONE;
+#endif
 }
 
 static struct i915_gem_engines *alloc_engines(unsigned int count)
@@ -395,6 +411,9 @@ __context_engines_static(const struct i915_gem_context *ctx)
 
 static bool __reset_engine(struct intel_engine_cs *engine)
 {
+	STUB();
+	return false;
+#ifdef notyet
 	struct intel_gt *gt = engine->gt;
 	bool success = false;
 
@@ -409,6 +428,7 @@ static bool __reset_engine(struct intel_engine_cs *engine)
 	}
 
 	return success;
+#endif
 }
 
 static void __reset_context(struct i915_gem_context *ctx,
@@ -530,6 +550,8 @@ static void kill_engines(struct i915_gem_engines *engines)
 
 static void kill_stale_engines(struct i915_gem_context *ctx)
 {
+	STUB();
+#ifdef notyet
 	struct i915_gem_engines *pos, *next;
 
 	spin_lock_irq(&ctx->stale.lock);
@@ -552,6 +574,7 @@ static void kill_stale_engines(struct i915_gem_context *ctx)
 		i915_sw_fence_complete(&pos->fence);
 	}
 	spin_unlock_irq(&ctx->stale.lock);
+#endif
 }
 
 static void kill_context(struct i915_gem_context *ctx)
@@ -621,6 +644,8 @@ static void set_closed_name(struct i915_gem_context *ctx)
 
 static void context_close(struct i915_gem_context *ctx)
 {
+	STUB();
+#ifdef notyet
 	struct i915_address_space *vm;
 
 	/* Flush any concurrent set_engines() */
@@ -660,6 +685,7 @@ static void context_close(struct i915_gem_context *ctx)
 		kill_context(ctx);
 
 	i915_gem_context_put(ctx);
+#endif
 }
 
 static int __context_set_persistence(struct i915_gem_context *ctx, bool state)
@@ -910,6 +936,9 @@ static int gem_context_register(struct i915_gem_context *ctx,
 				struct drm_i915_file_private *fpriv,
 				u32 *id)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct i915_address_space *vm;
 	int ret;
 
@@ -921,7 +950,11 @@ static int gem_context_register(struct i915_gem_context *ctx,
 		WRITE_ONCE(vm->file, fpriv); /* XXX */
 	mutex_unlock(&ctx->mutex);
 
+#ifdef __linux__
 	ctx->pid = get_task_pid(current, PIDTYPE_PID);
+#else
+	ctx->pid = curproc->p_p->ps_pid;
+#endif
 	snprintf(ctx->name, sizeof(ctx->name), "%s[%d]",
 		 current->comm, pid_nr(ctx->pid));
 
@@ -931,11 +964,15 @@ static int gem_context_register(struct i915_gem_context *ctx,
 		put_pid(fetch_and_zero(&ctx->pid));
 
 	return ret;
+#endif
 }
 
 int i915_gem_context_open(struct drm_i915_private *i915,
 			  struct drm_file *file)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct drm_i915_file_private *file_priv = file->driver_priv;
 	struct i915_gem_context *ctx;
 	int err;
@@ -965,10 +1002,13 @@ err:
 	xa_destroy(&file_priv->vm_xa);
 	xa_destroy(&file_priv->context_xa);
 	return err;
+#endif
 }
 
 void i915_gem_context_close(struct drm_file *file)
 {
+	STUB();
+#ifdef notyet
 	struct drm_i915_file_private *file_priv = file->driver_priv;
 	struct drm_i915_private *i915 = file_priv->dev_priv;
 	struct i915_address_space *vm;
@@ -984,11 +1024,15 @@ void i915_gem_context_close(struct drm_file *file)
 	xa_destroy(&file_priv->vm_xa);
 
 	contexts_flush_free(&i915->gem.contexts);
+#endif
 }
 
 int i915_gem_vm_create_ioctl(struct drm_device *dev, void *data,
 			     struct drm_file *file)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct drm_i915_private *i915 = to_i915(dev);
 	struct drm_i915_gem_vm_control *args = data;
 	struct drm_i915_file_private *file_priv = file->driver_priv;
@@ -1028,11 +1072,15 @@ int i915_gem_vm_create_ioctl(struct drm_device *dev, void *data,
 err_put:
 	i915_vm_put(&ppgtt->vm);
 	return err;
+#endif
 }
 
 int i915_gem_vm_destroy_ioctl(struct drm_device *dev, void *data,
 			      struct drm_file *file)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct drm_i915_file_private *file_priv = file->driver_priv;
 	struct drm_i915_gem_vm_control *args = data;
 	struct i915_address_space *vm;
@@ -1049,6 +1097,7 @@ int i915_gem_vm_destroy_ioctl(struct drm_device *dev, void *data,
 
 	i915_vm_put(vm);
 	return 0;
+#endif
 }
 
 struct context_barrier_task {
@@ -1171,6 +1220,9 @@ static int get_ppgtt(struct drm_i915_file_private *file_priv,
 		     struct i915_gem_context *ctx,
 		     struct drm_i915_gem_context_param *args)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct i915_address_space *vm;
 	int err;
 	u32 id;
@@ -1197,6 +1249,7 @@ static int get_ppgtt(struct drm_i915_file_private *file_priv,
 err_put:
 	i915_vm_put(vm);
 	return err;
+#endif
 }
 
 static void set_ppgtt_barrier(void *data)
@@ -1285,6 +1338,8 @@ static int set_ppgtt(struct drm_i915_file_private *file_priv,
 		     struct i915_gem_context *ctx,
 		     struct drm_i915_gem_context_param *args)
 {
+	return -ENOSYS;
+#ifdef notyet
 	struct i915_address_space *vm, *old;
 	int err;
 
@@ -1342,6 +1397,7 @@ unlock:
 out:
 	i915_vm_put(vm);
 	return err;
+#endif
 }
 
 static int __apply_ringsize(struct intel_context *ce, void *sz)
@@ -1752,6 +1808,9 @@ static int
 set_engines(struct i915_gem_context *ctx,
 	    const struct drm_i915_gem_context_param *args)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct drm_i915_private *i915 = ctx->i915;
 	struct i915_context_param_engines __user *user =
 		u64_to_user_ptr(args->value);
@@ -1856,6 +1915,7 @@ replace:
 	engines_idle_release(ctx, set.engines);
 
 	return 0;
+#endif
 }
 
 static struct i915_gem_engines *
@@ -1883,6 +1943,9 @@ static int
 get_engines(struct i915_gem_context *ctx,
 	    struct drm_i915_gem_context_param *args)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct i915_context_param_engines __user *user;
 	struct i915_gem_engines *e;
 	size_t n, count, size;
@@ -1956,6 +2019,7 @@ get_engines(struct i915_gem_context *ctx,
 err_free:
 	free_engines(e);
 	return err;
+#endif
 }
 
 static int
@@ -1998,8 +2062,12 @@ static int set_priority(struct i915_gem_context *ctx,
 	    priority < I915_CONTEXT_MIN_USER_PRIORITY)
 		return -EINVAL;
 
+#ifdef notyet
 	if (priority > I915_CONTEXT_DEFAULT_PRIORITY &&
 	    !capable(CAP_SYS_NICE))
+#else
+	if (priority > I915_CONTEXT_DEFAULT_PRIORITY)
+#endif
 		return -EPERM;
 
 	ctx->sched.priority = I915_USER_PRIORITY(priority);
@@ -2120,6 +2188,9 @@ static int copy_ring_size(struct intel_context *dst,
 static int clone_engines(struct i915_gem_context *dst,
 			 struct i915_gem_context *src)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct i915_gem_engines *e = i915_gem_context_lock_engines(src);
 	struct i915_gem_engines *clone;
 	bool user_engines;
@@ -2181,6 +2252,7 @@ static int clone_engines(struct i915_gem_context *dst,
 err_unlock:
 	i915_gem_context_unlock_engines(src);
 	return -ENOMEM;
+#endif
 }
 
 static int clone_flags(struct i915_gem_context *dst,
@@ -2271,6 +2343,9 @@ static int clone_vm(struct i915_gem_context *dst,
 
 static int create_clone(struct i915_user_extension __user *ext, void *data)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	static int (* const fn[])(struct i915_gem_context *dst,
 				  struct i915_gem_context *src) = {
 #define MAP(x, y) [ilog2(I915_CONTEXT_CLONE_##x)] = y
@@ -2318,6 +2393,7 @@ static int create_clone(struct i915_user_extension __user *ext, void *data)
 	}
 
 	return 0;
+#endif
 }
 
 static const i915_user_extension_fn create_extensions[] = {
@@ -2351,9 +2427,15 @@ int i915_gem_context_create_ioctl(struct drm_device *dev, void *data,
 
 	ext_data.fpriv = file->driver_priv;
 	if (client_is_banned(ext_data.fpriv)) {
+#ifdef __linux__
 		drm_dbg(&i915->drm,
 			"client %s[%d] banned from creating ctx\n",
 			current->comm, task_pid_nr(current));
+#else
+		drm_dbg(&i915->drm,
+			"client %s[%d] banned from creating ctx\n",
+			curproc->p_p->ps_comm, curproc->p_p->ps_pid);
+#endif
 		return -EIO;
 	}
 
@@ -2387,6 +2469,9 @@ err_ctx:
 int i915_gem_context_destroy_ioctl(struct drm_device *dev, void *data,
 				   struct drm_file *file)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct drm_i915_gem_context_destroy *args = data;
 	struct drm_i915_file_private *file_priv = file->driver_priv;
 	struct i915_gem_context *ctx;
@@ -2403,6 +2488,7 @@ int i915_gem_context_destroy_ioctl(struct drm_device *dev, void *data,
 
 	context_close(ctx);
 	return 0;
+#endif
 }
 
 static int get_sseu(struct i915_gem_context *ctx,
@@ -2622,12 +2708,18 @@ i915_gem_engines_iter_next(struct i915_gem_engines_iter *it)
 
 static void i915_global_gem_context_shrink(void)
 {
+#ifdef notyet
 	kmem_cache_shrink(global.slab_luts);
+#endif
 }
 
 static void i915_global_gem_context_exit(void)
 {
+#ifdef __linux__
 	kmem_cache_destroy(global.slab_luts);
+#else
+	pool_destroy(&global.slab_luts);
+#endif
 }
 
 static struct i915_global_gem_context global = { {
@@ -2637,9 +2729,14 @@ static struct i915_global_gem_context global = { {
 
 int __init i915_global_gem_context_init(void)
 {
+#ifdef __linux__
 	global.slab_luts = KMEM_CACHE(i915_lut_handle, 0);
 	if (!global.slab_luts)
 		return -ENOMEM;
+#else
+	pool_init(&global.slab_luts , sizeof(struct i915_lut_handle),
+	    0, IPL_NONE, 0, "drmlut", NULL);
+#endif
 
 	i915_global_register(&global.base);
 	return 0;
