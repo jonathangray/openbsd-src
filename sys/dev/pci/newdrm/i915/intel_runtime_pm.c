@@ -606,6 +606,8 @@ void intel_runtime_pm_driver_release(struct intel_runtime_pm *rpm)
 
 void intel_runtime_pm_init_early(struct intel_runtime_pm *rpm)
 {
+	STUB();
+#ifdef notyet
 	struct drm_i915_private *i915 =
 			container_of(rpm, struct drm_i915_private, runtime_pm);
 	struct pci_dev *pdev = i915->drm.pdev;
@@ -615,4 +617,5 @@ void intel_runtime_pm_init_early(struct intel_runtime_pm *rpm)
 	rpm->available = HAS_RUNTIME_PM(i915);
 
 	init_intel_runtime_pm_wakeref(rpm);
+#endif
 }
