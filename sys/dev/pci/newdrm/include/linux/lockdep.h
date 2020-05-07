@@ -13,5 +13,6 @@ struct lock_class_key {
 #define lock_release(lock, a)
 #define lock_acquire_shared_recursive(lock, a, b, c, d)
 #define lockdep_set_subclass(a, b)
+#define lockdep_unpin_lock(a, b)
 
 #endif

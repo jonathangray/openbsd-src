@@ -11,6 +11,9 @@
 
 #include <drm/drm_syncobj.h>
 
+#include <dev/pci/pcivar.h>
+#include <dev/pci/agpvar.h>
+
 #include "display/intel_frontbuffer.h"
 
 #include "gem/i915_gem_ioctls.h"
@@ -26,6 +29,8 @@
 #include "i915_gem_ioctls.h"
 #include "i915_sw_fence_work.h"
 #include "i915_trace.h"
+
+#define clflushopt(x) clflush((uintptr_t)(x))
 
 struct eb_vma {
 	struct i915_vma *vma;
@@ -267,6 +272,10 @@ struct i915_execbuffer {
 		struct i915_request *rq;
 		u32 *rq_cmd;
 		unsigned int rq_size;
+
+		struct agp_map *map;
+		bus_space_tag_t iot;
+		bus_space_handle_t ioh;
 	} reloc_cache;
 
 	u64 invalid_flags; /** Set of execobj.flags that are invalid */
@@ -870,9 +879,18 @@ static void reloc_cache_init(struct reloc_cache *cache,
 	cache->use_64bit_reloc = HAS_64BIT_RELOC(i915);
 	cache->has_fence = cache->gen < 4;
 	cache->needs_unfenced = INTEL_INFO(i915)->unfenced_needs_alignment;
+#ifdef notyet
 	cache->node.flags = 0;
+#else
+	cache->node.hole_follows = 0;
+	cache->node.allocated = 0;
+	cache->node.scanned_block = 0;
+#endif
 	cache->rq = NULL;
 	cache->rq_size = 0;
+
+	cache->map = i915->agph;
+	cache->iot = i915->bst;
 }
 
 static inline void *unmask_page(unsigned long p)
@@ -931,7 +949,11 @@ static void reloc_cache_reset(struct reloc_cache *cache)
 		struct i915_ggtt *ggtt = cache_to_ggtt(cache);
 
 		intel_gt_flush_ggtt_writes(ggtt->vm.gt);
+#ifdef __linux__
 		io_mapping_unmap_atomic((void __iomem *)vaddr);
+#else
+		agp_unmap_atomic(cache->map, cache->ioh);
+#endif
 
 		if (drm_mm_node_allocated(&cache->node)) {
 			ggtt->vm.clear_range(&ggtt->vm,
@@ -991,7 +1013,11 @@ static void *reloc_iomap(struct drm_i915_gem_object *obj,
 
 	if (cache->vaddr) {
 		intel_gt_flush_ggtt_writes(ggtt->vm.gt);
+#ifdef __linux__
 		io_mapping_unmap_atomic((void __force __iomem *) unmask_page(cache->vaddr));
+#else
+		agp_unmap_atomic(cache->map, cache->ioh);
+#endif
 	} else {
 		struct i915_vma *vma;
 		int err;
@@ -1038,8 +1064,13 @@ static void *reloc_iomap(struct drm_i915_gem_object *obj,
 		offset += page << PAGE_SHIFT;
 	}
 
+#ifdef __linux__
 	vaddr = (void __force *)io_mapping_map_atomic_wc(&ggtt->iomap,
 							 offset);
+#else
+	agp_map_atomic(cache->map, offset, &cache->ioh);
+	vaddr = bus_space_vaddr(cache->iot, cache->ioh);
+#endif
 	cache->page = page;
 	cache->vaddr = (unsigned long)vaddr;
 
@@ -2008,6 +2039,9 @@ static struct i915_request *eb_throttle(struct intel_context *ce)
 
 static int __eb_pin_engine(struct i915_execbuffer *eb, struct intel_context *ce)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct intel_timeline *tl;
 	struct i915_request *rq;
 	int err;
@@ -2081,6 +2115,7 @@ err_exit:
 err_unpin:
 	intel_context_unpin(ce);
 	return err;
+#endif
 }
 
 static void eb_unpin_engine(struct i915_execbuffer *eb)
@@ -2221,8 +2256,10 @@ get_fence_array(struct drm_i915_gem_execbuffer2 *args,
 			goto err;
 		}
 
+#ifdef notyet
 		BUILD_BUG_ON(~(ARCH_KMALLOC_MINALIGN - 1) &
 			     ~__I915_EXEC_FENCE_UNKNOWN_FLAGS);
+#endif
 
 		fences[n] = ptr_pack_bits(syncobj, fence.flags, 2);
 	}
@@ -2366,6 +2403,9 @@ i915_gem_do_execbuffer(struct drm_device *dev,
 		       struct drm_i915_gem_exec_object2 *exec,
 		       struct drm_syncobj **fences)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct drm_i915_private *i915 = to_i915(dev);
 	struct i915_execbuffer eb;
 	struct dma_fence *in_fence = NULL;
@@ -2611,6 +2651,7 @@ err_exec_fence:
 err_in_fence:
 	dma_fence_put(in_fence);
 	return err;
+#endif
 }
 
 static size_t eb_element_size(void)

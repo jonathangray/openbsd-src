@@ -22,9 +22,6 @@
 #include <sys/systm.h>
 #include <linux/sched.h>
 
-#define user_access_begin()
-#define user_access_end()
-
 static inline unsigned long
 __copy_to_user(void *to, const void *from, unsigned len)
 {
@@ -74,6 +71,9 @@ access_ok(const void *addr, unsigned long size)
 {
 	return 1;
 }
+
+#define user_access_begin(addr, size)	access_ok(addr, size)
+#define user_access_end()
 
 #if defined(__i386__) || defined(__amd64__)
 
