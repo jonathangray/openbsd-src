@@ -36,24 +36,40 @@
 
 static struct i915_global_object {
 	struct i915_global base;
+#ifdef __linux__
 	struct kmem_cache *slab_objects;
+#else
+	struct pool slab_objects;
+#endif
 } global;
 
 struct drm_i915_gem_object *i915_gem_object_alloc(void)
 {
+#ifdef __linux__
 	return kmem_cache_zalloc(global.slab_objects, GFP_KERNEL);
+#else
+	return pool_get(&global.slab_objects, PR_WAITOK | PR_ZERO);
+#endif
 }
 
 void i915_gem_object_free(struct drm_i915_gem_object *obj)
 {
+#ifdef __linux__
 	return kmem_cache_free(global.slab_objects, obj);
+#else
+	pool_put(&global.slab_objects, obj);
+#endif
 }
 
 void i915_gem_object_init(struct drm_i915_gem_object *obj,
 			  const struct drm_i915_gem_object_ops *ops,
 			  struct lock_class_key *key)
 {
+#ifdef __linux__
 	__mutex_init(&obj->mm.lock, "obj->mm.lock", key);
+#else
+	rw_init(&obj->mm.lock, "objmm");
+#endif
 
 	mtx_init(&obj->vma.lock, IPL_TTY);
 	INIT_LIST_HEAD(&obj->vma.list);
@@ -118,7 +134,7 @@ void i915_gem_close_object(struct drm_gem_object *gem, struct drm_file *file)
 
 	spin_lock(&obj->mmo.lock);
 	rbtree_postorder_for_each_entry_safe(mmo, mn, &obj->mmo.offsets, offset)
-		drm_vma_node_revoke(&mmo->vma_node, file);
+		drm_vma_node_revoke(&mmo->vma_node, file->filp);
 	spin_unlock(&obj->mmo.lock);
 
 	list_for_each_entry_safe(lut, ln, &close, obj_link) {
@@ -163,6 +179,8 @@ static void __i915_gem_free_object_rcu(struct rcu_head *head)
 static void __i915_gem_free_objects(struct drm_i915_private *i915,
 				    struct llist_node *freed)
 {
+	STUB();
+#ifdef notyet
 	struct drm_i915_gem_object *obj, *on;
 	intel_wakeref_t wakeref;
 
@@ -228,6 +246,7 @@ static void __i915_gem_free_objects(struct drm_i915_private *i915,
 		cond_resched();
 	}
 	intel_runtime_pm_put(&i915->runtime_pm, wakeref);
+#endif
 }
 
 void i915_gem_flush_free_objects(struct drm_i915_private *i915)
@@ -361,12 +380,18 @@ void i915_gem_init__objects(struct drm_i915_private *i915)
 
 static void i915_global_objects_shrink(void)
 {
+#ifdef notyet
 	kmem_cache_shrink(global.slab_objects);
+#endif
 }
 
 static void i915_global_objects_exit(void)
 {
+#ifdef __linux__
 	kmem_cache_destroy(global.slab_objects);
+#else
+	pool_destroy(&global.slab_objects);
+#endif
 }
 
 static struct i915_global_object global = { {
@@ -376,10 +401,15 @@ static struct i915_global_object global = { {
 
 int __init i915_global_objects_init(void)
 {
+#ifdef __linux__
 	global.slab_objects =
 		KMEM_CACHE(drm_i915_gem_object, SLAB_HWCACHE_ALIGN);
 	if (!global.slab_objects)
 		return -ENOMEM;
+#else
+	pool_init(&global.slab_objects, sizeof(struct drm_i915_gem_object),
+	    0, IPL_NONE, 0, "drmobj", NULL);
+#endif
 
 	i915_global_register(&global.base);
 	return 0;
