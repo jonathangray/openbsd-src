@@ -220,6 +220,9 @@ int
 i915_gem_object_set_tiling(struct drm_i915_gem_object *obj,
 			   unsigned int tiling, unsigned int stride)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct drm_i915_private *i915 = to_i915(obj->base.dev);
 	struct i915_vma *vma;
 	int err;
@@ -313,6 +316,7 @@ i915_gem_object_set_tiling(struct drm_i915_gem_object *obj,
 	}
 
 	return 0;
+#endif
 }
 
 /**
