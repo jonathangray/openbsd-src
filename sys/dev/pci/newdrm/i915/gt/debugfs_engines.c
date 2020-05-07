@@ -11,6 +11,7 @@
 #include "i915_drv.h" /* for_each_engine! */
 #include "intel_engine.h"
 
+#ifdef notyet
 static int engines_show(struct seq_file *m, void *data)
 {
 	struct intel_gt *gt = m->private;
@@ -25,12 +26,16 @@ static int engines_show(struct seq_file *m, void *data)
 	return 0;
 }
 DEFINE_GT_DEBUGFS_ATTRIBUTE(engines);
+#endif
 
 void debugfs_engines_register(struct intel_gt *gt, struct dentry *root)
 {
+	STUB();
+#ifdef notyet
 	static const struct debugfs_gt_file files[] = {
 		{ "engines", &engines_fops },
 	};
 
 	debugfs_gt_register_files(gt, root, files, ARRAY_SIZE(files));
+#endif
 }
