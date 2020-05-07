@@ -17,17 +17,29 @@
 
 static struct i915_global_context {
 	struct i915_global base;
+#ifdef __linux__
 	struct kmem_cache *slab_ce;
+#else
+	struct pool slab_ce;
+#endif
 } global;
 
 static struct intel_context *intel_context_alloc(void)
 {
+#ifdef __linux__
 	return kmem_cache_zalloc(global.slab_ce, GFP_KERNEL);
+#else
+	return pool_get(&global.slab_ce, PR_WAITOK | PR_ZERO);
+#endif
 }
 
 void intel_context_free(struct intel_context *ce)
 {
+#ifdef __linux__
 	kmem_cache_free(global.slab_ce, ce);
+#else
+	pool_put(&global.slab_ce, ce);
+#endif
 }
 
 struct intel_context *
@@ -280,6 +292,8 @@ void
 intel_context_init(struct intel_context *ce,
 		   struct intel_engine_cs *engine)
 {
+	STUB();
+#ifdef notyet
 	GEM_BUG_ON(!engine->cops);
 	GEM_BUG_ON(!engine->gt->vm);
 
@@ -301,6 +315,7 @@ intel_context_init(struct intel_context *ce,
 
 	i915_active_init(&ce->active,
 			 __intel_context_active, __intel_context_retire);
+#endif
 }
 
 void intel_context_fini(struct intel_context *ce)
@@ -315,12 +330,18 @@ void intel_context_fini(struct intel_context *ce)
 
 static void i915_global_context_shrink(void)
 {
+#ifdef notyet
 	kmem_cache_shrink(global.slab_ce);
+#endif
 }
 
 static void i915_global_context_exit(void)
 {
+#ifdef __linux__
 	kmem_cache_destroy(global.slab_ce);
+#else
+	pool_destroy(&global.slab_ce);
+#endif
 }
 
 static struct i915_global_context global = { {
@@ -330,9 +351,14 @@ static struct i915_global_context global = { {
 
 int __init i915_global_context_init(void)
 {
+#ifdef __linux__
 	global.slab_ce = KMEM_CACHE(intel_context, SLAB_HWCACHE_ALIGN);
 	if (!global.slab_ce)
 		return -ENOMEM;
+#else
+	pool_init(&global.slab_ce, sizeof(struct intel_context),
+	    0, IPL_TTY, 0, "ictx", NULL);
+#endif
 
 	i915_global_register(&global.base);
 	return 0;
