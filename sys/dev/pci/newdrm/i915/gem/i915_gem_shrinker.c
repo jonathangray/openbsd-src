@@ -402,26 +402,31 @@ void i915_gem_driver_register__shrinker(struct drm_i915_private *i915)
 	i915->mm.shrinker.batch = 4096;
 	drm_WARN_ON(&i915->drm, register_shrinker(&i915->mm.shrinker));
 
+#ifdef notyet
 	i915->mm.oom_notifier.notifier_call = i915_gem_shrinker_oom;
 	drm_WARN_ON(&i915->drm, register_oom_notifier(&i915->mm.oom_notifier));
 
 	i915->mm.vmap_notifier.notifier_call = i915_gem_shrinker_vmap;
 	drm_WARN_ON(&i915->drm,
 		    register_vmap_purge_notifier(&i915->mm.vmap_notifier));
+#endif
 }
 
 void i915_gem_driver_unregister__shrinker(struct drm_i915_private *i915)
 {
+#ifdef notyet
 	drm_WARN_ON(&i915->drm,
 		    unregister_vmap_purge_notifier(&i915->mm.vmap_notifier));
 	drm_WARN_ON(&i915->drm,
 		    unregister_oom_notifier(&i915->mm.oom_notifier));
+#endif
 	unregister_shrinker(&i915->mm.shrinker);
 }
 
 void i915_gem_shrinker_taints_mutex(struct drm_i915_private *i915,
 				    struct rwlock *mutex)
 {
+#ifdef notyet
 	bool unlock = false;
 
 	if (!IS_ENABLED(CONFIG_LOCKDEP))
@@ -442,6 +447,7 @@ void i915_gem_shrinker_taints_mutex(struct drm_i915_private *i915,
 
 	if (unlock)
 		mutex_release(&i915->drm.struct_mutex.dep_map, _RET_IP_);
+#endif
 }
 
 #define obj_to_i915(obj__) to_i915((obj__)->base.dev)
