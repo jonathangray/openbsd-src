@@ -9,6 +9,7 @@
 
 #include <linux/types.h>
 #include <linux/compiler.h>
+#include <linux/vmalloc.h>
 
 #define memcpy_toio(d, s, n)	memcpy(d, s, n)
 #define memcpy_fromio(d, s, n)	memcpy(d, s, n)
