@@ -107,6 +107,9 @@ int ____i915_gem_object_get_pages(struct drm_i915_gem_object *obj)
  */
 int __i915_gem_object_get_pages(struct drm_i915_gem_object *obj)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	int err;
 
 	err = mutex_lock_interruptible_nested(&obj->mm.lock, I915_MM_GET_PAGES);
@@ -127,6 +130,7 @@ int __i915_gem_object_get_pages(struct drm_i915_gem_object *obj)
 unlock:
 	mutex_unlock(&obj->mm.lock);
 	return err;
+#endif
 }
 
 /* Immediately discard the backing storage */
@@ -161,7 +165,7 @@ static void __i915_gem_object_reset_page_iter(struct drm_i915_gem_object *obj)
 static void unmap_object(struct drm_i915_gem_object *obj, void *ptr)
 {
 	if (is_vmalloc_addr(ptr))
-		vunmap(ptr);
+		vunmap(ptr, obj->base.size);
 	else
 		kunmap(kmap_to_page(ptr));
 }
@@ -236,17 +240,22 @@ unlock:
 	return err;
 }
 
+#ifdef notyet
 static inline pte_t iomap_pte(resource_size_t base,
 			      dma_addr_t offset,
 			      pgprot_t prot)
 {
 	return pte_mkspecial(pfn_pte((base + offset) >> PAGE_SHIFT, prot));
 }
+#endif
 
 /* The 'mapping' part of i915_gem_object_pin_map() below */
 static void *i915_gem_object_map(struct drm_i915_gem_object *obj,
 				 enum i915_map_type type)
 {
+	STUB();
+	return NULL;
+#ifdef notyet
 	unsigned long n_pte = obj->base.size >> PAGE_SHIFT;
 	struct sg_table *sgt = obj->mm.pages;
 	pte_t *stack[32], **mem;
@@ -311,12 +320,16 @@ static void *i915_gem_object_map(struct drm_i915_gem_object *obj,
 		kvfree(mem);
 
 	return area->addr;
+#endif
 }
 
 /* get, pin, and map the pages of the object into kernel space */
 void *i915_gem_object_pin_map(struct drm_i915_gem_object *obj,
 			      enum i915_map_type type)
 {
+	STUB();
+	return ERR_PTR(-ENOSYS);
+#ifdef notyet
 	enum i915_map_type has_type;
 	unsigned int flags;
 	bool pinned;
@@ -380,6 +393,7 @@ err_unpin:
 err_unlock:
 	ptr = ERR_PTR(err);
 	goto out_unlock;
+#endif
 }
 
 void __i915_gem_object_flush_map(struct drm_i915_gem_object *obj,
@@ -414,6 +428,9 @@ i915_gem_object_get_sg(struct drm_i915_gem_object *obj,
 		       unsigned int n,
 		       unsigned int *offset)
 {
+	STUB();
+	return NULL;
+#ifdef notyet
 	struct i915_gem_object_page_iter *iter = &obj->mm.get_page;
 	struct scatterlist *sg;
 	unsigned int idx, count;
@@ -520,6 +537,7 @@ lookup:
 	rcu_read_unlock();
 
 	return sg;
+#endif
 }
 
 struct vm_page *
