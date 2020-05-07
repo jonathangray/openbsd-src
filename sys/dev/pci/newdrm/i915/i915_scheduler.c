@@ -13,8 +13,13 @@
 
 static struct i915_global_scheduler {
 	struct i915_global base;
+#ifdef __linux__
 	struct kmem_cache *slab_dependencies;
 	struct kmem_cache *slab_priorities;
+#else
+	struct pool slab_dependencies;
+	struct pool slab_priorities;
+#endif
 } global;
 
 static DEFINE_SPINLOCK(schedule_lock);
@@ -106,7 +111,11 @@ find_priolist:
 	if (prio == I915_PRIORITY_NORMAL) {
 		p = &execlists->default_priolist;
 	} else {
+#ifdef __linux__
 		p = kmem_cache_alloc(global.slab_priorities, GFP_ATOMIC);
+#else
+		p = pool_get(&global.slab_priorities, PR_NOWAIT);
+#endif
 		/* Convert an allocation failure to a priority bump */
 		if (unlikely(!p)) {
 			prio = I915_PRIORITY_NORMAL; /* recurses just once */
@@ -138,7 +147,11 @@ out:
 
 void __i915_priolist_free(struct i915_priolist *p)
 {
+#ifdef __linux__
 	kmem_cache_free(global.slab_priorities, p);
+#else
+	pool_put(&global.slab_priorities, p);
+#endif
 }
 
 struct sched_cache {
@@ -404,13 +417,21 @@ void i915_sched_node_reinit(struct i915_sched_node *node)
 static struct i915_dependency *
 i915_dependency_alloc(void)
 {
+#ifdef __linux__
 	return kmem_cache_alloc(global.slab_dependencies, GFP_KERNEL);
+#else
+	return pool_get(&global.slab_dependencies, PR_WAITOK);
+#endif
 }
 
 static void
 i915_dependency_free(struct i915_dependency *dep)
 {
+#ifdef __linux__
 	kmem_cache_free(global.slab_dependencies, dep);
+#else
+	pool_put(&global.slab_dependencies, dep);
+#endif
 }
 
 bool __i915_sched_node_add_dependency(struct i915_sched_node *node,
@@ -509,14 +530,21 @@ void i915_sched_node_fini(struct i915_sched_node *node)
 
 static void i915_global_scheduler_shrink(void)
 {
+#ifdef notyet
 	kmem_cache_shrink(global.slab_dependencies);
 	kmem_cache_shrink(global.slab_priorities);
+#endif
 }
 
 static void i915_global_scheduler_exit(void)
 {
+#ifdef __linux__
 	kmem_cache_destroy(global.slab_dependencies);
 	kmem_cache_destroy(global.slab_priorities);
+#else
+	pool_destroy(&global.slab_dependencies);
+	pool_destroy(&global.slab_priorities);
+#endif
 }
 
 static struct i915_global_scheduler global = { {
@@ -526,6 +554,7 @@ static struct i915_global_scheduler global = { {
 
 int __init i915_global_scheduler_init(void)
 {
+#ifdef __linux__
 	global.slab_dependencies = KMEM_CACHE(i915_dependency,
 					      SLAB_HWCACHE_ALIGN |
 					      SLAB_TYPESAFE_BY_RCU);
@@ -543,4 +572,13 @@ int __init i915_global_scheduler_init(void)
 err_priorities:
 	kmem_cache_destroy(global.slab_priorities);
 	return -ENOMEM;
+#else
+	pool_init(&global.slab_dependencies, sizeof(struct i915_dependency),
+	    0, IPL_TTY, 0, "gsdep", NULL);
+	pool_init(&global.slab_priorities, sizeof(struct i915_priolist),
+	    0, IPL_TTY, 0, "gspri", NULL);
+
+	i915_global_register(&global.base);
+	return 0;
+#endif
 }
