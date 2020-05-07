@@ -21,7 +21,12 @@
 
 static int i915_gem_object_get_pages_phys(struct drm_i915_gem_object *obj)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
+#ifdef __linux__
 	struct address_space *mapping = obj->base.filp->f_mapping;
+#endif
 	struct scatterlist *sg;
 	struct sg_table *st;
 	dma_addr_t dma;
@@ -63,16 +68,28 @@ static int i915_gem_object_get_pages_phys(struct drm_i915_gem_object *obj)
 		struct vm_page *page;
 		void *src;
 
+#ifdef  __linux__
 		page = shmem_read_mapping_page(mapping, i);
 		if (IS_ERR(page))
 			goto err_st;
+#else
+		struct pglist plist;
+		TAILQ_INIT(&plist);
+		if (uvm_objwire(obj->base.uao, i * PAGE_SIZE, (i + 1) * PAGE_SIZE, &plist))
+			goto err_st;
+		page = TAILQ_FIRST(&plist);
+#endif
 
 		src = kmap_atomic(page);
 		memcpy(dst, src, PAGE_SIZE);
 		drm_clflush_virt_range(dst, PAGE_SIZE);
 		kunmap_atomic(src);
 
+#ifdef __linux__
 		put_page(page);
+#else
+		uvm_objunwire(obj->base.uao, i * PAGE_SIZE, (i + 1) * PAGE_SIZE);
+#endif
 		dst += PAGE_SIZE;
 	}
 
@@ -89,19 +106,24 @@ err_pci:
 			  roundup_pow_of_two(obj->base.size),
 			  vaddr, dma);
 	return -ENOMEM;
+#endif
 }
 
 static void
 i915_gem_object_put_pages_phys(struct drm_i915_gem_object *obj,
 			       struct sg_table *pages)
 {
+	STUB();
+#ifdef notyet
 	dma_addr_t dma = sg_dma_address(pages->sgl);
 	void *vaddr = sg_page(pages->sgl);
 
 	__i915_gem_object_release_shmem(obj, pages, false);
 
 	if (obj->mm.dirty) {
+#ifdef __linux__
 		struct address_space *mapping = obj->base.filp->f_mapping;
+#endif
 		void *src = vaddr;
 		int i;
 
@@ -109,9 +131,17 @@ i915_gem_object_put_pages_phys(struct drm_i915_gem_object *obj,
 			struct vm_page *page;
 			char *dst;
 
+#ifdef __linux__
 			page = shmem_read_mapping_page(mapping, i);
 			if (IS_ERR(page))
 				continue;
+#else
+			struct pglist plist;
+			TAILQ_INIT(&plist);
+			if (uvm_objwire(obj->base.uao, i * PAGE_SIZE, (i + 1) * PAGE_SIZE, &plist))
+				continue;
+			page = TAILQ_FIRST(&plist);
+#endif
 
 			dst = kmap_atomic(page);
 			drm_clflush_virt_range(src, PAGE_SIZE);
@@ -119,9 +149,13 @@ i915_gem_object_put_pages_phys(struct drm_i915_gem_object *obj,
 			kunmap_atomic(dst);
 
 			set_page_dirty(page);
+#ifdef __linux__
 			if (obj->mm.madv == I915_MADV_WILLNEED)
 				mark_page_accessed(page);
 			put_page(page);
+#else
+			uvm_objunwire(obj->base.uao, i * PAGE_SIZE, (i + 1) * PAGE_SIZE);
+#endif
 
 			src += PAGE_SIZE;
 		}
@@ -134,11 +168,15 @@ i915_gem_object_put_pages_phys(struct drm_i915_gem_object *obj,
 	dma_free_coherent(&obj->base.dev->pdev->dev,
 			  roundup_pow_of_two(obj->base.size),
 			  vaddr, dma);
+#endif
 }
 
 static void phys_release(struct drm_i915_gem_object *obj)
 {
+	STUB();
+#ifdef notyet
 	fput(obj->base.filp);
+#endif
 }
 
 static const struct drm_i915_gem_object_ops i915_gem_phys_ops = {
