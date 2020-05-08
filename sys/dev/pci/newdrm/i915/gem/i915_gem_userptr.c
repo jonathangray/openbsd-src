@@ -316,6 +316,9 @@ __i915_mm_struct_find(struct drm_i915_private *dev_priv, struct mm_struct *real)
 static int
 i915_gem_userptr_init__mm_struct(struct drm_i915_gem_object *obj)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct drm_i915_private *dev_priv = to_i915(obj->base.dev);
 	struct i915_mm_struct *mm;
 	int ret = 0;
@@ -357,15 +360,19 @@ i915_gem_userptr_init__mm_struct(struct drm_i915_gem_object *obj)
 out:
 	mutex_unlock(&dev_priv->mm_lock);
 	return ret;
+#endif
 }
 
 static void
 __i915_mm_struct_free__worker(struct work_struct *work)
 {
+	STUB();
+#ifdef notyet
 	struct i915_mm_struct *mm = container_of(work, typeof(*mm), work);
 	i915_mmu_notifier_free(mm->mn, mm->mm);
 	mmdrop(mm->mm);
 	kfree(mm);
+#endif
 }
 
 static void
@@ -403,6 +410,9 @@ static struct sg_table *
 __i915_gem_userptr_alloc_pages(struct drm_i915_gem_object *obj,
 			       struct vm_page **pvec, unsigned long num_pages)
 {
+	STUB();
+	return ERR_PTR(-ENOSYS);
+#ifdef notyet
 	unsigned int max_segment = i915_sg_segment_size();
 	struct sg_table *st;
 	unsigned int sg_page_sizes;
@@ -440,11 +450,14 @@ alloc_table:
 	__i915_gem_object_set_pages(obj, st, sg_page_sizes);
 
 	return st;
+#endif
 }
 
 static void
 __i915_gem_userptr_get_pages_worker(struct work_struct *_work)
 {
+	STUB();
+#ifdef notyet
 	struct get_pages_work *work = container_of(_work, typeof(*work), work);
 	struct drm_i915_gem_object *obj = work->obj;
 	const unsigned long npages = obj->base.size >> PAGE_SHIFT;
@@ -513,11 +526,15 @@ __i915_gem_userptr_get_pages_worker(struct work_struct *_work)
 	i915_gem_object_put(obj);
 	put_task_struct(work->task);
 	kfree(work);
+#endif
 }
 
 static struct sg_table *
 __i915_gem_userptr_get_pages_schedule(struct drm_i915_gem_object *obj)
 {
+	STUB();
+	return ERR_PTR(-ENOSYS);
+#ifdef notyet
 	struct get_pages_work *work;
 
 	/* Spawn a worker so that we can acquire the
@@ -554,10 +571,14 @@ __i915_gem_userptr_get_pages_schedule(struct drm_i915_gem_object *obj)
 	queue_work(to_i915(obj->base.dev)->mm.userptr_wq, &work->work);
 
 	return ERR_PTR(-EAGAIN);
+#endif
 }
 
 static int i915_gem_userptr_get_pages(struct drm_i915_gem_object *obj)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	const unsigned long num_pages = obj->base.size >> PAGE_SHIFT;
 	struct mm_struct *mm = obj->userptr.mm->mm;
 	struct vm_page **pvec;
@@ -624,12 +645,15 @@ static int i915_gem_userptr_get_pages(struct drm_i915_gem_object *obj)
 	kvfree(pvec);
 
 	return PTR_ERR_OR_ZERO(pages);
+#endif
 }
 
 static void
 i915_gem_userptr_put_pages(struct drm_i915_gem_object *obj,
 			   struct sg_table *pages)
 {
+	STUB();
+#ifdef notyet
 	struct sgt_iter sgt_iter;
 	struct vm_page *page;
 
@@ -681,6 +705,7 @@ i915_gem_userptr_put_pages(struct drm_i915_gem_object *obj,
 
 	sg_free_table(pages);
 	kfree(pages);
+#endif
 }
 
 static void
