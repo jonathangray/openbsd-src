@@ -98,11 +98,14 @@ static inline void __timeline_mark_unlock(struct intel_context *ce,
 
 static void duration(struct dma_fence *fence, struct dma_fence_cb *cb)
 {
+	STUB();
+#ifdef notyet
 	struct i915_request *rq = to_request(fence);
 
 	ewma__engine_latency_add(&rq->engine->latency,
 				 ktime_us_delta(rq->fence.timestamp,
 						rq->duration.emitted));
+#endif
 }
 
 static void
