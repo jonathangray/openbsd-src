@@ -17,6 +17,9 @@
 
 #include "intel_gtt.h"
 
+#include <dev/pci/pcivar.h>
+#include <dev/pci/agpvar.h>
+
 static int
 i915_get_ggtt_vma_pages(struct i915_vma *vma);
 
@@ -42,6 +45,7 @@ static void i915_ggtt_color_adjust(const struct drm_mm_node *node,
 static int ggtt_init_hw(struct i915_ggtt *ggtt)
 {
 	struct drm_i915_private *i915 = ggtt->vm.i915;
+	int i;
 
 	i915_address_space_init(&ggtt->vm, VM_CLASS_GGTT);
 
@@ -54,6 +58,7 @@ static int ggtt_init_hw(struct i915_ggtt *ggtt)
 		ggtt->vm.mm.color_adjust = i915_ggtt_color_adjust;
 
 	if (ggtt->mappable_end) {
+#ifdef __linux__
 		if (!io_mapping_init_wc(&ggtt->iomap,
 					ggtt->gmadr.start,
 					ggtt->mappable_end)) {
@@ -63,6 +68,30 @@ static int ggtt_init_hw(struct i915_ggtt *ggtt)
 
 		ggtt->mtrr = arch_phys_wc_add(ggtt->gmadr.start,
 					      ggtt->mappable_end);
+#else
+		/* XXX would be a lot nicer to get agp info before now */
+		uvm_page_physload(atop(i915->ggtt.gmadr.start),
+		    atop(i915->ggtt.gmadr.start + i915->ggtt.mappable_end),
+		    atop(i915->ggtt.gmadr.start),
+		    atop(i915->ggtt.gmadr.start + i915->ggtt.mappable_end),
+		    PHYSLOAD_DEVICE);
+		/* array of vm pages that physload introduced. */
+		i915->pgs = PHYS_TO_VM_PAGE(i915->ggtt.gmadr.start);
+		KASSERT(i915->pgs != NULL);
+		/*
+		 * XXX mark all pages write combining so user mmaps get the
+		 * right bits. We really need a proper MI api for doing this,
+		 * but for now this allows us to use PAT where available.
+		 */
+		for (i = 0; i < atop(i915->ggtt.mappable_end); i++)
+			atomic_setbits_int(&(i915->pgs[i].pg_flags),
+			    PG_PMAP_WC);
+		if (agp_init_map(i915->bst, i915->ggtt.gmadr.start,
+		    i915->ggtt.mappable_end,
+		    BUS_SPACE_MAP_LINEAR | BUS_SPACE_MAP_PREFETCHABLE,
+		    &i915->agph))
+			panic("can't map aperture");
+#endif
 	}
 
 	i915_ggtt_init_fences(ggtt);
@@ -703,10 +732,12 @@ static void ggtt_cleanup_hw(struct i915_ggtt *ggtt)
 	mutex_unlock(&ggtt->vm.mutex);
 	i915_address_space_fini(&ggtt->vm);
 
+#ifdef notyet
 	arch_phys_wc_del(ggtt->mtrr);
 
 	if (ggtt->iomap.size)
 		io_mapping_fini(&ggtt->iomap);
+#endif
 }
 
 /**
@@ -762,6 +793,8 @@ static unsigned int chv_get_total_gtt_size(u16 gmch_ctrl)
 	return 0;
 }
 
+#ifdef __linux__
+
 static int ggtt_probe_common(struct i915_ggtt *ggtt, u64 size)
 {
 	struct drm_i915_private *i915 = ggtt->vm.i915;
@@ -803,6 +836,67 @@ static int ggtt_probe_common(struct i915_ggtt *ggtt, u64 size)
 	return 0;
 }
 
+#else
+
+static int ggtt_probe_common(struct i915_ggtt *ggtt, u64 size)
+{
+	struct drm_i915_private *i915 = ggtt->vm.i915;
+	struct pci_dev *pdev = i915->drm.pdev;
+	phys_addr_t phys_addr;
+	bus_addr_t addr;
+	bus_size_t len;
+	pcireg_t type;
+	int flags;
+	int ret;
+
+	/* For Modern GENs the PTEs and register space are split in the BAR */
+	type = pci_mapreg_type(i915->pc, i915->tag, 0x10);
+	ret = -pci_mapreg_info(i915->pc, i915->tag, 0x10, type,
+	    &addr, &len, NULL);
+	if (ret)
+		return ret;
+
+	/*
+	 * On BXT+/CNL+ writes larger than 64 bit to the GTT pagetable range
+	 * will be dropped. For WC mappings in general we have 64 byte burst
+	 * writes when the WC buffer is flushed, so we can't use it, but have to
+	 * resort to an uncached mapping. The WC issue is easily caught by the
+	 * readback check when writing GTT PTE entries.
+	 */
+	if (IS_GEN9_LP(i915) || INTEL_GEN(i915) >= 10)
+		flags = 0;
+	else
+		flags = BUS_SPACE_MAP_PREFETCHABLE;
+	ret = -bus_space_map(i915->bst, addr + len / 2, size,
+	    flags | BUS_SPACE_MAP_LINEAR, &ggtt->gsm_bsh);
+	if (ret) {
+		DRM_ERROR("Failed to map the ggtt page table\n");
+		return ret;
+	}
+	ggtt->gsm = bus_space_vaddr(i915->bst, ggtt->gsm_bsh);
+	ggtt->gsm_size = size;
+	if (!ggtt->gsm) {
+		DRM_ERROR("Failed to map the ggtt page table\n");
+		return -ENOMEM;
+	}
+
+	ret = setup_scratch_page(&ggtt->vm, GFP_DMA32);
+	if (ret) {
+		DRM_ERROR("Scratch setup failed\n");
+		/* iounmap will also get called at remove, but meh */
+		bus_space_unmap(i915->bst, ggtt->gsm_bsh, size);
+		return ret;
+	}
+
+	ggtt->vm.scratch[0].encode =
+		ggtt->vm.pte_encode(px_dma(&ggtt->vm.scratch[0]),
+				    I915_CACHE_NONE, 0);
+
+	return 0;
+}
+
+#endif
+
 int ggtt_set_pages(struct i915_vma *vma)
 {
 	int ret;
@@ -822,15 +916,21 @@ static void gen6_gmch_remove(struct i915_address_space *vm)
 {
 	struct i915_ggtt *ggtt = i915_vm_to_ggtt(vm);
 
+#ifdef __linux__
 	iounmap(ggtt->gsm);
+#else
+	bus_space_unmap(vm->i915->bst, ggtt->gsm_bsh, ggtt->gsm_size);
+#endif
 	cleanup_scratch_page(vm);
 }
 
+#ifdef __linux__
 static struct resource pci_resource(struct pci_dev *pdev, int bar)
 {
 	return (struct resource)DEFINE_RES_MEM(pci_resource_start(pdev, bar),
 					       pci_resource_len(pdev, bar));
 }
+#endif
 
 static int gen8_gmch_probe(struct i915_ggtt *ggtt)
 {
@@ -842,8 +942,22 @@ static int gen8_gmch_probe(struct i915_ggtt *ggtt)
 
 	/* TODO: We're not aware of mappable constraints on gen8 yet */
 	if (!IS_DGFX(i915)) {
+#ifdef __linux__
 		ggtt->gmadr = pci_resource(pdev, 2);
 		ggtt->mappable_end = resource_size(&ggtt->gmadr);
+#else
+		bus_addr_t base;
+		bus_size_t sz;
+		pcireg_t type;
+
+		type = pci_mapreg_type(i915->pc, i915->tag, 0x18);
+		err = -pci_mapreg_info(i915->pc, i915->tag, 0x18, type,
+		    &base, &sz, NULL);
+		if (err)
+			return err;
+		ggtt->gmadr.start = base;
+		ggtt->mappable_end = sz;
+#endif
 	}
 
 	err = pci_set_dma_mask(pdev, DMA_BIT_MASK(39));
@@ -989,8 +1103,24 @@ static int gen6_gmch_probe(struct i915_ggtt *ggtt)
 	u16 snb_gmch_ctl;
 	int err;
 
+#ifdef __linux__
 	ggtt->gmadr = pci_resource(pdev, 2);
 	ggtt->mappable_end = resource_size(&ggtt->gmadr);
+#else
+{
+	bus_addr_t base;
+	bus_size_t sz;
+	pcireg_t type;
+
+	type = pci_mapreg_type(i915->pc, i915->tag, 0x18);
+	err = -pci_mapreg_info(i915->pc, i915->tag, 0x18, type,
+	    &base, &sz, NULL);
+	if (err)
+		return err;
+	ggtt->gmadr.start = base;
+	ggtt->mappable_end = sz;
+}
+#endif
 
 	/*
 	 * 64/512MB is the current min/max we actually know of, but this is
@@ -1088,7 +1218,9 @@ static int ggtt_probe_hw(struct i915_ggtt *ggtt, struct intel_gt *gt)
 
 	ggtt->vm.gt = gt;
 	ggtt->vm.i915 = i915;
+#ifdef notyet
 	ggtt->vm.dma = &i915->drm.pdev->dev;
+#endif
 
 	if (INTEL_GEN(i915) <= 5)
 		ret = i915_gmch_probe(ggtt);

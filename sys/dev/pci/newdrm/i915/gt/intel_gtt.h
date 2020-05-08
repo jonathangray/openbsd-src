@@ -320,6 +320,8 @@ struct i915_ggtt {
 
 	/** "Graphics Stolen Memory" holds the global PTEs */
 	void __iomem *gsm;
+	bus_space_handle_t gsm_bsh;
+	bus_size_t gsm_size;
 	void (*invalidate)(struct i915_ggtt *ggtt);
 
 	/** PPGTT used for aliasing the PPGTT with the GTT */

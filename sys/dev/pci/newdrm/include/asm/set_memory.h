@@ -19,6 +19,9 @@
 #define _ASM_SET_MEMORY_H
 
 #include <sys/atomic.h>
+
+#include <uvm/uvm_extern.h>
+
 #include <machine/pmap.h>
 
 #if defined(__amd64__) || defined(__i386__)
