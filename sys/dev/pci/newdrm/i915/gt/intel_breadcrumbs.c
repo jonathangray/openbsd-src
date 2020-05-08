@@ -24,7 +24,9 @@
 
 #include <linux/kthread.h>
 #include <trace/events/dma_fence.h>
+#ifdef notyet
 #include <uapi/linux/sched/types.h>
+#endif
 
 #include "i915_drv.h"
 #include "i915_trace.h"

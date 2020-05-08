@@ -24,10 +24,12 @@ struct dma_fence {
 	struct list_head cb_list;
 	int error;
 	struct rcu_head rcu;
+	ktime_t timestamp;
 };
 
 enum dma_fence_flag_bits {
 	DMA_FENCE_FLAG_SIGNALED_BIT,
+	DMA_FENCE_FLAG_TIMESTAMP_BIT,
 	DMA_FENCE_FLAG_ENABLE_SIGNAL_BIT,
 	DMA_FENCE_FLAG_USER_BITS,
 };
@@ -129,6 +131,7 @@ static inline int
 dma_fence_signal_locked(struct dma_fence *fence)
 {
 	struct dma_fence_cb *cur, *tmp;
+	struct list_head cb_list;
 
 	if (fence == NULL)
 		return -EINVAL;
@@ -136,7 +139,12 @@ dma_fence_signal_locked(struct dma_fence *fence)
 	if (test_and_set_bit(DMA_FENCE_FLAG_SIGNALED_BIT, &fence->flags))
 		return -EINVAL;
 
-	list_for_each_entry_safe(cur, tmp, &fence->cb_list, node) {
+	list_replace(&fence->cb_list, &cb_list);
+
+	fence->timestamp = ktime_get();
+	set_bit(DMA_FENCE_FLAG_TIMESTAMP_BIT, &fence->flags);
+
+	list_for_each_entry_safe(cur, tmp, &cb_list, node) {
 		list_del_init(&cur->node);
 		cur->func(fence, cur);
 	}
