@@ -4,6 +4,7 @@
 #define _LINUX_DMA_MAPPING_H
 
 #include <linux/sizes.h>
+#include <linux/scatterlist.h>
 
 #define DMA_BIT_MASK(n)	(((n) == 64) ? ~0ULL : (1ULL<<(n)) -1)
 
