@@ -61,6 +61,12 @@ llist_empty(struct llist_head *head)
 	return (head->first == NULL);
 }
 
+#define llist_for_each_safe(pos, n, node)				\
+	for ((pos) = (node);						\
+	    (pos) != NULL &&						\
+	    ((n) = (pos)->next, pos);					\
+	    (pos) = (n))
+
 #define llist_for_each_entry_safe(pos, n, node, member) 		\
 	for (pos = llist_entry((node), __typeof(*pos), member); 	\
 	    pos != NULL &&						\
