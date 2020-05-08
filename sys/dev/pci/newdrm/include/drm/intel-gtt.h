@@ -4,6 +4,9 @@
 #define _DRM_INTEL_GTT_H
 
 #include <linux/agp_backend.h>
+#include <linux/kernel.h>
+
+struct pci_dev;
 
 int intel_enable_gtt(void);
 void intel_gtt_chipset_flush(void);
