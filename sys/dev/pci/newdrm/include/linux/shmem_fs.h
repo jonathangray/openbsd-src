@@ -4,5 +4,6 @@
 #define _LINUX_SHMEM_FS_H
 
 #include <linux/mempolicy.h>
+#include <linux/swap.h>
 
 #endif
