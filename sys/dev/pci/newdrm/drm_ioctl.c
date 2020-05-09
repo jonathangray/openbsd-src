@@ -348,13 +348,15 @@ drm_setclientcap(struct drm_device *dev, void *data, struct drm_file *file_priv)
 	case DRM_CLIENT_CAP_ATOMIC:
 		if (!drm_core_check_feature(dev, DRIVER_ATOMIC))
 			return -EOPNOTSUPP;
-#ifdef notyet
 		/* The modesetting DDX has a totally broken idea of atomic. */
+#ifdef __linux__
 		if (current->comm[0] == 'X' && req->value == 1) {
+#else
+		if (curproc->p_p->ps_comm[0] == 'X' && req->value == 1) {
+#endif
 			pr_info("broken atomic modeset userspace detected, disabling atomic\n");
 			return -EOPNOTSUPP;
 		}
-#endif
 		if (req->value > 2)
 			return -EINVAL;
 		file_priv->atomic = req->value;
