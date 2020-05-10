@@ -567,6 +567,12 @@ struct drm_driver {
 	 */
 	const struct vm_operations_struct *gem_vm_ops;
 
+#ifdef __OpenBSD__
+	int (*gem_fault)(struct drm_gem_object *,
+			 struct uvm_faultinfo *, off_t, vaddr_t,
+			 vm_page_t *, int, int, vm_prot_t, int);
+#endif
+
 	/** @major: driver major number */
 	int major;
 	/** @minor: driver minor number */

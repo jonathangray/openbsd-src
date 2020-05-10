@@ -89,9 +89,6 @@ drm_fault(struct uvm_faultinfo *ufi, vaddr_t vaddr, vm_page_t *pps,
     int npages, int centeridx, vm_fault_t fault_type,
     vm_prot_t access_type, int flags)
 {
-	STUB();
-	return -1;
-#ifdef notyet
 	struct vm_map_entry *entry = ufi->entry;
 	struct uvm_object *uobj = entry->object.uvm_obj;
 	struct drm_gem_object *obj =
@@ -143,7 +140,6 @@ drm_fault(struct uvm_faultinfo *ufi, vaddr_t vaddr, vm_page_t *pps,
 	mtx_leave(&dev->quiesce_mtx);
 
 	return (ret);
-#endif
 }
 
 boolean_t	
@@ -294,21 +290,14 @@ EXPORT_SYMBOL(drm_gem_object_init);
 int drm_gem_object_init(struct drm_device *dev,
 			struct drm_gem_object *obj, size_t size)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
 	drm_gem_private_object_init(dev, obj, size);
 	
 	obj->uao = uao_create(size, 0);
 	uvm_objinit(&obj->uobj, &drm_pgops, 1);
 	
-	atomic_inc(&dev->obj_count);
-	atomic_add(obj->size, &dev->obj_memory);
-
 	obj->filp = (void *)obj->uao;
 
 	return 0;
-#endif
 }
 
 #endif
