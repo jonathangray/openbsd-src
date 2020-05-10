@@ -34,6 +34,7 @@
 #include <dev/rasops/rasops.h>
 
 #include <drm/drm_fb_helper.h>
+#include <drm/drm_fourcc.h>
 #include <drm/drm_gem_cma_helper.h>
 
 #define DRIVER_AUTHOR		"Jared McNeill"

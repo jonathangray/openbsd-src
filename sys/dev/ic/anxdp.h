@@ -54,6 +54,8 @@ struct anxdp_softc {
 	uint8_t			sc_dpcd[DP_RECEIVER_CAP_SIZE];
 
 	struct drm_display_mode	sc_curmode;
+	int			sc_link_rate;
+	int			sc_num_lanes;
 };
 
 #define	to_anxdp_connector(x)	container_of(x, struct anxdp_connector, base)
