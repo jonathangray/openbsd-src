@@ -741,7 +741,7 @@ file	dev/pci/newdrm/amd/display/dc/irq/irq_service.c			amddal
 file	dev/pci/newdrm/amd/display/dc/virtual/virtual_link_encoder.c	amddal
 file	dev/pci/newdrm/amd/display/dc/virtual/virtual_stream_encoder.c	amddal
 file	dev/pci/newdrm/amd/display/dmub/src/dmub_dcn20.c			amddal
-file	dev/pci/newdrm/amd/display/dmub/src/dmub_dcn21.c			amddal & bios
+file	dev/pci/newdrm/amd/display/dmub/src/dmub_dcn21.c			amddal
 file	dev/pci/newdrm/amd/display/dmub/src/dmub_reg.c			amddal
 file	dev/pci/newdrm/amd/display/dmub/src/dmub_srv.c			amddal
 file	dev/pci/newdrm/amd/display/modules/color/color_gamma.c		amddal
