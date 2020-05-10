@@ -731,4 +731,19 @@ int drm_dev_set_unique(struct drm_device *dev, const char *name);
 struct drm_file *drm_find_file_by_minor(struct drm_device *, int);
 struct drm_device *drm_get_device_from_kdev(dev_t);
 
+#ifdef __OpenBSD__
+
+void drm_attach_platform(struct drm_driver *, bus_space_tag_t, bus_dma_tag_t,
+    struct device *, struct drm_device *);
+struct drm_device *drm_attach_pci(struct drm_driver *,
+    struct pci_attach_args *, int, int, struct device *, struct drm_device *);
+
+int drm_pciprobe(struct pci_attach_args *, const struct pci_device_id * );
+const struct pci_device_id *drm_find_description(int, int,
+    const struct pci_device_id *);
+
+int drm_getpciinfo(struct drm_device *, void *, struct drm_file *);
+
+#endif
+
 #endif

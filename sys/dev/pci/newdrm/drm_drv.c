@@ -1289,12 +1289,23 @@ module_init(drm_core_init);
 module_exit(drm_core_exit);
 #endif
 
-/*
- * attach drm to a pci-based driver.
- *
- * This function does all the pci-specific calculations for the 
- * drm_attach_args.
- */
+void
+drm_attach_platform(struct drm_driver *driver, bus_space_tag_t iot,
+    bus_dma_tag_t dmat, struct device *dev, struct drm_device *drm)
+{
+	struct drm_attach_args arg;
+
+	memset(&arg, 0, sizeof(arg));
+	arg.driver = driver;
+	arg.bst = iot;
+	arg.dmat = dmat;
+	arg.drm = drm;
+
+	arg.busid = dev->dv_xname;
+	arg.busid_len = strlen(dev->dv_xname) + 1;
+	config_found_sm(dev, &arg, drmprint, drmsubmatch);
+}
+
 struct drm_device *
 drm_attach_pci(struct drm_driver *driver, struct pci_attach_args *pa,
     int is_agp, int primary, struct device *dev, struct drm_device *drm)
