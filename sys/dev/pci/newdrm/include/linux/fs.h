@@ -13,6 +13,7 @@
 #include <linux/radix-tree.h>
 #include <linux/wait_bit.h>
 #include <linux/err.h>
+#include <linux/sched/signal.h>	/* via percpu-rwsem.h -> rcuwait.h */
 
 struct address_space;
 
