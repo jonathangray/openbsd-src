@@ -1,4 +1,4 @@
-#	$OpenBSD: files.fdt,v 1.122 2020/04/19 16:00:00 kettenis Exp $
+#	$OpenBSD: files.fdt,v 1.131 2020/04/27 21:30:52 patrick Exp $
 #
 # Config file and device description for machine-independent FDT code.
 # Included by ports that need it.
@@ -81,13 +81,25 @@ device	bcmaux
 attach	bcmaux at fdt
 file	dev/fdt/bcm2835_aux.c		bcmaux
 
-device bcmclock
-attach bcmclock at fdt
+device	bcmbsc: i2cbus
+attach	bcmbsc at fdt
+file	dev/fdt/bcm2835_bsc.c		bcmbsc
+
+device	bcmclock
+attach	bcmclock at fdt
 file	dev/fdt/bcm2835_clock.c		bcmclock
+
+device	bcmdmac
+attach	bcmdmac at fdt
+file	dev/fdt/bcm2835_dmac.c		bcmdmac
 
 device	bcmdog
 attach	bcmdog at fdt
 file	dev/fdt/bcm2835_dog.c		bcmdog
+
+device	bcmgpio: gpiobus
+attach	bcmgpio at fdt
+file	dev/fdt/bcm2835_gpio.c		bcmgpio
 
 device	bcmirng
 attach	bcmirng at fdt
@@ -104,6 +116,10 @@ file	dev/fdt/bcm2711_pcie.c		bcmpcie
 device	bcmrng
 attach	bcmrng at fdt
 file	dev/fdt/bcm2835_rng.c		bcmrng
+
+device	bcmsdhost: sdmmcbus
+attach	bcmsdhost at fdt
+file	dev/fdt/bcm2835_sdhost.c	bcmsdhost
 
 device	bcmtemp
 attach	bcmtemp at fdt
@@ -398,6 +414,10 @@ device	imxccm
 attach	imxccm at fdt
 file	dev/fdt/imxccm.c		imxccm
 
+device	imxehci: usbus
+attach	imxehci at fdt
+file	dev/fdt/imxehci.c		imxehci
+
 device	imxesdhc: sdmmcbus
 attach	imxesdhc at fdt
 file	dev/fdt/imxesdhc.c		imxesdhc
@@ -417,6 +437,10 @@ file	dev/fdt/imxiic.c		imxiic
 device	imxiomuxc
 attach	imxiomuxc at fdt
 file	dev/fdt/imxiomuxc.c		imxiomuxc
+
+device	imxpciephy
+attach	imxpciephy at fdt
+file	dev/fdt/imxpciephy.c		imxpciephy
 
 device	imxpwm
 attach	imxpwm at fdt
@@ -472,3 +496,7 @@ file	dev/fdt/sfp.c			sfp
 device	bdpmic
 attach	bdpmic at i2c
 file	dev/fdt/bd718x7.c		bdpmic
+
+device	tcpci
+attach	tcpci at i2c
+file	dev/fdt/tcpci.c			tcpci

@@ -1,4 +1,4 @@
-/* $OpenBSD: imxccm.c,v 1.18 2020/03/21 12:53:24 patrick Exp $ */
+/* $OpenBSD: imxccm.c,v 1.21 2020/04/28 19:26:45 patrick Exp $ */
 /*
  * Copyright (c) 2012-2013 Patrick Wildt <patrick@blueri.se>
  *
@@ -254,6 +254,7 @@ uint32_t imxccm_imx8mq_pwm(struct imxccm_softc *sc, uint32_t);
 uint32_t imxccm_imx8mq_uart(struct imxccm_softc *sc, uint32_t);
 uint32_t imxccm_imx8mq_usdhc(struct imxccm_softc *sc, uint32_t);
 uint32_t imxccm_imx8mq_usb(struct imxccm_softc *sc, uint32_t);
+int imxccm_imx8m_set_div(struct imxccm_softc *, uint32_t, uint64_t, uint64_t);
 void imxccm_enable(void *, uint32_t *, int);
 uint32_t imxccm_get_frequency(void *, uint32_t *);
 int imxccm_set_frequency(void *, uint32_t *, uint32_t);
@@ -1155,6 +1156,34 @@ imxccm_imx8mq_set_pll(struct imxccm_softc *sc, uint32_t idx, uint64_t freq)
 	return 0;
 }
 
+int
+imxccm_imx8m_set_div(struct imxccm_softc *sc, uint32_t idx, uint64_t freq,
+    uint64_t parent_freq)
+{
+	uint64_t div;
+	uint32_t reg;
+
+	if (parent_freq < freq) {
+		printf("%s: parent frequency too low (0x%08x)\n",
+		    __func__, idx);
+		return -1;
+	}
+
+	/* divisor can only be changed if enabled */
+	imxccm_enable(sc, &idx, 1);
+
+	div = 0;
+	while (parent_freq / (div + 1) > freq)
+		div++;
+	reg = HREAD4(sc, sc->sc_divs[idx].reg);
+	reg &= ~(sc->sc_divs[idx].mask << sc->sc_divs[idx].shift);
+	reg |= (div << sc->sc_divs[idx].shift);
+	HWRITE4(sc, sc->sc_divs[idx].reg, reg);
+	HCLR4(sc, sc->sc_predivs[idx].reg,
+	    sc->sc_predivs[idx].mask << sc->sc_predivs[idx].shift);
+	return 0;
+}
+
 void
 imxccm_enable_parent(struct imxccm_softc *sc, uint32_t parent, int on)
 {
@@ -1175,7 +1204,22 @@ imxccm_enable(void *cookie, uint32_t *cells, int on)
 	if (idx == 0)
 		return;
 
-	if (sc->sc_gates == imx8mq_gates) {
+	if (sc->sc_gates == imx8mm_gates) {
+		switch (idx) {
+		case IMX8MM_CLK_PCIE1_CTRL:
+		case IMX8MM_CLK_PCIE2_CTRL:
+			pcells[0] = sc->sc_phandle;
+			pcells[1] = IMX8MM_SYS_PLL2_250M;
+			imxccm_set_parent(cookie, &idx, pcells);
+			break;
+		case IMX8MM_CLK_PCIE1_PHY:
+		case IMX8MM_CLK_PCIE2_PHY:
+			pcells[0] = sc->sc_phandle;
+			pcells[1] = IMX8MM_SYS_PLL2_100M;
+			imxccm_set_parent(cookie, &idx, pcells);
+			break;
+		}
+	} else if (sc->sc_gates == imx8mq_gates) {
 		switch (idx) {
 		case IMX8MQ_CLK_32K:
 			/* always on */
@@ -1529,12 +1573,8 @@ imxccm_set_frequency(void *cookie, uint32_t *cells, uint32_t freq)
 		case IMX8MM_CLK_USDHC1:
 		case IMX8MM_CLK_USDHC2:
 		case IMX8MM_CLK_USDHC3:
-			imxccm_enable(cookie, &idx, 1);
-			HCLR4(sc, sc->sc_divs[idx].reg,
-			    sc->sc_divs[idx].mask << sc->sc_divs[idx].shift);
-			HCLR4(sc, sc->sc_predivs[idx].reg,
-			    sc->sc_predivs[idx].mask << sc->sc_predivs[idx].shift);
-			return 0;
+			parent_freq = imxccm_imx8mm_usdhc(sc, idx);
+			return imxccm_imx8m_set_div(sc, idx, freq, parent_freq);
 		}
 	} else if (sc->sc_divs == imx8mq_divs) {
 		switch (idx) {
@@ -1559,12 +1599,9 @@ imxccm_set_frequency(void *cookie, uint32_t *cells, uint32_t freq)
 				break;
 			return 0;
 		case IMX8MQ_CLK_USDHC1:
-			imxccm_enable(cookie, &idx, 1);
-			HCLR4(sc, sc->sc_divs[idx].reg,
-			    sc->sc_divs[idx].mask << sc->sc_divs[idx].shift);
-			HCLR4(sc, sc->sc_predivs[idx].reg,
-			    sc->sc_predivs[idx].mask << sc->sc_predivs[idx].shift);
-			return 0;
+		case IMX8MQ_CLK_USDHC2:
+			parent_freq = imxccm_imx8mq_usdhc(sc, idx);
+			return imxccm_imx8m_set_div(sc, idx, freq, parent_freq);
 		}
 	} else if (sc->sc_divs == imx7d_divs) {
 		switch (idx) {
@@ -1620,6 +1657,41 @@ imxccm_set_parent(void *cookie, uint32_t *cells, uint32_t *pcells)
 				mux |= (0x1 << sc->sc_muxs[idx].shift);
 			if (pidx == IMX8MM_SYS_PLL1_800M)
 				mux |= (0x4 << sc->sc_muxs[idx].shift);
+			HWRITE4(sc, sc->sc_muxs[idx].reg, mux);
+			return 0;
+		case IMX8MM_CLK_USB_BUS:
+			if (pidx != IMX8MM_SYS_PLL2_500M)
+				break;
+			mux = HREAD4(sc, sc->sc_muxs[idx].reg);
+			mux &= ~(sc->sc_muxs[idx].mask << sc->sc_muxs[idx].shift);
+			mux |= (0x1 << sc->sc_muxs[idx].shift);
+			HWRITE4(sc, sc->sc_muxs[idx].reg, mux);
+			return 0;
+		case IMX8MM_CLK_USB_CORE_REF:
+		case IMX8MM_CLK_USB_PHY_REF:
+			if (pidx != IMX8MM_SYS_PLL1_100M)
+				break;
+			mux = HREAD4(sc, sc->sc_muxs[idx].reg);
+			mux &= ~(sc->sc_muxs[idx].mask << sc->sc_muxs[idx].shift);
+			mux |= (0x1 << sc->sc_muxs[idx].shift);
+			HWRITE4(sc, sc->sc_muxs[idx].reg, mux);
+			return 0;
+		case IMX8MM_CLK_PCIE1_CTRL:
+		case IMX8MM_CLK_PCIE2_CTRL:
+			if (pidx != IMX8MM_SYS_PLL2_250M)
+				break;
+			mux = HREAD4(sc, sc->sc_muxs[idx].reg);
+			mux &= ~(sc->sc_muxs[idx].mask << sc->sc_muxs[idx].shift);
+			mux |= (0x1 << sc->sc_muxs[idx].shift);
+			HWRITE4(sc, sc->sc_muxs[idx].reg, mux);
+			return 0;
+		case IMX8MM_CLK_PCIE1_PHY:
+		case IMX8MM_CLK_PCIE2_PHY:
+			if (pidx != IMX8MM_SYS_PLL2_100M)
+				break;
+			mux = HREAD4(sc, sc->sc_muxs[idx].reg);
+			mux &= ~(sc->sc_muxs[idx].mask << sc->sc_muxs[idx].shift);
+			mux |= (0x1 << sc->sc_muxs[idx].shift);
 			HWRITE4(sc, sc->sc_muxs[idx].reg, mux);
 			return 0;
 		}

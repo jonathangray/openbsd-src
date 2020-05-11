@@ -1,4 +1,4 @@
-.\" $OpenBSD: audioctl.1,v 1.30 2016/06/21 07:55:21 jmc Exp $
+.\" $OpenBSD: audioctl.8,v 1.4 2020/04/23 00:16:59 schwarze Exp $
 .\" $NetBSD: audioctl.1,v 1.7 1998/04/27 16:55:23 augustss Exp $
 .\" Copyright (c) 1997 The NetBSD Foundation, Inc.
 .\" All rights reserved.
@@ -26,8 +26,8 @@
 .\" ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 .\" POSSIBILITY OF SUCH DAMAGE.
 .\"
-.Dd $Mdocdate: June 21 2016 $
-.Dt AUDIOCTL 1
+.Dd $Mdocdate: April 23 2020 $
+.Dt AUDIOCTL 8
 .Os
 .Sh NAME
 .Nm audioctl
@@ -133,12 +133,12 @@ audio devices
 Display the number of bytes of silence inserted during play buffer
 underruns since device started:
 .Bd -literal -offset indent
-$ audioctl play.errors
+# audioctl play.errors
 .Ed
 .Pp
 Use signed 24-bit samples and 44100Hz sample rate:
 .Bd -literal -offset indent
-$ audioctl -f /dev/audio0 encoding=s24 rate=44100
+# audioctl -f /dev/audio0 encoding=s24 rate=44100
 .Ed
 .Pp
 Note the use of
@@ -149,8 +149,8 @@ hardware, then supported ones will be selected instead.
 .Sh SEE ALSO
 .Xr aucat 1 ,
 .Xr cdio 1 ,
-.Xr mixerctl 1 ,
 .Xr audio 4 ,
+.Xr mixerctl 8 ,
 .Xr sysctl 8
 .Sh HISTORY
 The

@@ -1,4 +1,4 @@
-/*	$OpenBSD: output.c,v 1.10 2020/04/11 15:23:23 benno Exp $ */
+/*	$OpenBSD: output.c,v 1.15 2020/05/03 20:24:02 deraadt Exp $ */
 /*
  * Copyright (c) 2019 Theo de Raadt <deraadt@openbsd.org>
  *
@@ -19,10 +19,13 @@
 
 #include <err.h>
 #include <fcntl.h>
+#include <unistd.h>
+#include <netdb.h>
 #include <signal.h>
 #include <string.h>
 #include <limits.h>
 #include <unistd.h>
+#include <time.h>
 
 #include <openssl/x509v3.h>
 
@@ -37,7 +40,7 @@ static char	 output_name[PATH_MAX];
 static const struct outputs {
 	int	 format;
 	char	*name;
-	int	(*fn)(FILE *, struct vrp_tree *);
+	int	(*fn)(FILE *, struct vrp_tree *, struct stats *);
 } outputs[] = {
 	{ FORMAT_OPENBGPD, "openbgpd", output_bgpd },
 	{ FORMAT_BIRD, "bird1v4", output_bird1v4 },
@@ -55,7 +58,7 @@ static void	 sig_handler(int);
 static void	 set_signal_handler(void);
 
 int
-outputfiles(struct vrp_tree *v)
+outputfiles(struct vrp_tree *v, struct stats *st)
 {
 	int i, rc = 0;
 
@@ -74,7 +77,7 @@ outputfiles(struct vrp_tree *v)
 			rc = 1;
 			continue;
 		}
-		if ((*outputs[i].fn)(fout, v) != 0) {
+		if ((*outputs[i].fn)(fout, v, st) != 0) {
 			warn("output for %s format failed", outputs[i].name);
 			fclose(fout);
 			output_cleantmp();
@@ -166,4 +169,41 @@ set_signal_handler(void)
 			continue;
 		}
 	}
+}
+
+int
+outputheader(FILE *out, struct stats *st)
+{
+	char		hn[NI_MAXHOST], tbuf[80];
+	struct tm	*tp;
+	time_t		t;
+
+	time(&t);
+	setenv("TZ", "UTC", 1);
+	tp = localtime(&t);
+	strftime(tbuf, sizeof tbuf, "%a %b %e %H:%M:%S %Z %Y", tp);
+
+	gethostname(hn, sizeof hn);
+
+	if (fprintf(out,
+	    "# Generated on host %s at %s\n"
+	    "# Processing time %lld seconds (%lld seconds user, %lld seconds system)\n"
+	    "# Route Origin Authorizations: %zu (%zu failed parse, %zu invalid)\n"
+	    "# Certificates: %zu (%zu failed parse, %zu invalid)\n"
+	    "# Trust Anchor Locators: %zu (%s)\n"
+	    "# Manifests: %zu (%zu failed parse, %zu stale)\n"
+	    "# Certificate revocation lists: %zu\n"
+	    "# Repositories: %zu\n"
+	    "# VRP Entries: %zu (%zu unique)\n",
+	    hn, tbuf, (long long)st->elapsed_time.tv_sec,
+	    (long long)st->user_time.tv_sec, (long long)st->system_time.tv_sec,
+            st->roas, st->roas_fail, st->roas_invalid,
+            st->certs, st->certs_fail, st->certs_invalid,
+	    st->tals, st->talnames,
+	    st->mfts, st->mfts_fail, st->mfts_stale,
+	    st->crls,
+	    st->repos,
+	    st->vrps, st->uniqs) < 0)
+		return -1;
+	return 0;
 }

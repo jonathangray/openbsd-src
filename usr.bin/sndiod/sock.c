@@ -1,4 +1,4 @@
-/*	$OpenBSD: sock.c,v 1.33 2020/03/08 14:52:20 ratchov Exp $	*/
+/*	$OpenBSD: sock.c,v 1.35 2020/04/26 14:13:22 ratchov Exp $	*/
 /*
  * Copyright (c) 2008-2012 Alexandre Ratchov <alex@caoua.org>
  *
@@ -15,6 +15,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 #include <sys/types.h>
+#include <sys/socket.h>
 #include <netinet/in.h>
 #include <errno.h>
 #include <poll.h>
@@ -129,7 +130,9 @@ sock_log(struct sock *f)
 void
 sock_close(struct sock *f)
 {
+	struct dev *d;
 	struct sock **pf;
+	unsigned int tags, i;
 
 	for (pf = &sock_list; *pf != f; pf = &(*pf)->next) {
 #ifdef DEBUG
@@ -148,12 +151,17 @@ sock_close(struct sock *f)
 	}
 #endif
 	if (f->pstate > SOCK_AUTH)
-		sock_sesrefs--;
+		sock_sesrefs -= f->sesrefs;
 	if (f->slot) {
 		slot_del(f->slot);
 		f->slot = NULL;
 	}
 	if (f->midi) {
+		tags = midi_tags(f->midi);
+		for (i = 0; i < DEV_NMAX; i++) {
+			if ((tags & (1 << i)) && (d = dev_bynum(i)) != NULL)
+				dev_unref(d);
+		}
 		midi_del(f->midi);
 		f->midi = NULL;
 	}
@@ -780,15 +788,27 @@ int
 sock_auth(struct sock *f)
 {
 	struct amsg_auth *p = &f->rmsg.u.auth;
+	uid_t euid;
+	gid_t egid;
+
+	/*
+	 * root bypasses any authenication checks and has no session
+	 */
+	if (getpeereid(f->fd, &euid, &egid) == 0 && euid == 0) {
+		f->pstate = SOCK_HELLO;
+		f->sesrefs = 0;
+		return 1;
+	}
 
 	if (sock_sesrefs == 0) {
 		/* start a new session */
 		memcpy(sock_sescookie, p->cookie, AMSG_COOKIELEN);
+		f->sesrefs = 1;
 	} else if (memcmp(sock_sescookie, p->cookie, AMSG_COOKIELEN) != 0) {
 		/* another session is active, drop connection */
 		return 0;
 	}
-	sock_sesrefs++;
+	sock_sesrefs += f->sesrefs;
 	f->pstate = SOCK_HELLO;
 	return 1;
 }
@@ -859,6 +879,8 @@ sock_hello(struct sock *f)
 		if (p->devnum < 16) {
 			d = dev_bynum(p->devnum);
 			if (d == NULL)
+				return 0;
+			if (!dev_ref(d))
 				return 0;
 			midi_tag(f->midi, p->devnum);
 		} else if (p->devnum < 32) {

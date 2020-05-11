@@ -1,4 +1,4 @@
-/*	$OpenBSD: btrace.c,v 1.14 2020/04/15 16:59:04 mpi Exp $ */
+/*	$OpenBSD: btrace.c,v 1.18 2020/04/24 14:56:43 mpi Exp $ */
 
 /*
  * Copyright (c) 2019 - 2020 Martin Pieuchot <mpi@openbsd.org>
@@ -85,10 +85,8 @@ void			 stmt_store(struct bt_stmt *, struct dt_evt *);
 void			 stmt_time(struct bt_stmt *, struct dt_evt *);
 void			 stmt_zero(struct bt_stmt *);
 struct bt_arg		*ba_read(struct bt_arg *);
-int			 ba2dtflag(struct bt_arg *);
-
-/* FIXME: use a real hash. */
-#define ba2hash(_b, _e)	ba2str((_b), (_e))
+const char		*ba2hash(struct bt_arg *, struct dt_evt *);
+int			 ba2dtflags(struct bt_arg *);
 
 /*
  * Debug routines.
@@ -413,8 +411,10 @@ rules_setup(int fd)
 		bp = r->br_probe;
 		dtpi_cache(fd);
 		dtpi = dtpi_get_by_value(bp->bp_prov, bp->bp_func, bp->bp_name);
-		if (dtpi == NULL)
-			errx(1, "probe not found");
+		if (dtpi == NULL) {
+			errx(1, "probe '%s:%s:%s' not found", bp->bp_prov,
+			    bp->bp_func, bp->bp_name);
+		}
 
 		dtrq = calloc(1, sizeof(*dtrq));
 		if (dtrq == NULL)
@@ -435,7 +435,7 @@ rules_setup(int fd)
 			struct bt_arg *ba;
 
 			SLIST_FOREACH(ba, &bs->bs_args, ba_next)
-				dtrq->dtrq_evtflags |= ba2dtflag(ba);
+				dtrq->dtrq_evtflags |= ba2dtflags(ba);
 		}
 
 		if (dtrq->dtrq_evtflags & DTEVT_KSTACK)
@@ -669,15 +669,17 @@ stmt_delete(struct bt_stmt *bs, struct dt_evt *dtev)
 {
 	struct bt_arg *bkey, *bmap = SLIST_FIRST(&bs->bs_args);
 	struct bt_var *bv = bmap->ba_value;
+	const char *hash;
 
 	assert(bmap->ba_type == B_AT_MAP);
 	assert(bs->bs_var == NULL);
 
 	bkey = bmap->ba_key;
+	hash = ba2hash(bkey, dtev);
 	debug("map=%p '%s' delete key=%p '%s'\n", bv->bv_value, bv_name(bv),
-	    bkey, ba2hash(bkey, dtev));
+	    bkey, hash);
 
-	map_delete((struct map *)bv->bv_value, ba2hash(bkey, dtev));
+	map_delete((struct map *)bv->bv_value, hash);
 }
 
 /*
@@ -692,16 +694,18 @@ stmt_insert(struct bt_stmt *bs, struct dt_evt *dtev)
 	struct bt_arg *bkey, *bmap = SLIST_FIRST(&bs->bs_args);
 	struct bt_arg *bval = (struct bt_arg *)bs->bs_var;
 	struct bt_var *bv = bmap->ba_value;
+	const char *hash;
 
 	assert(bmap->ba_type == B_AT_MAP);
 	assert(SLIST_NEXT(bval, ba_next) == NULL);
 
 	bkey = bmap->ba_key;
+	hash = ba2hash(bkey, dtev);
 	debug("map=%p '%s' insert key=%p '%s' bval=%p\n", bv->bv_value,
-	    bv_name(bv), bkey, ba2hash(bkey, dtev), bval);
+	    bv_name(bv), bkey, hash, bval);
 
 	bv->bv_value = (struct bt_arg *)map_insert((struct map *)bv->bv_value,
-	    ba2hash(bkey, dtev), bval);
+	    hash, bval);
 }
 
 /*
@@ -726,10 +730,9 @@ stmt_print(struct bt_stmt *bs, struct dt_evt *dtev)
 		assert(SLIST_NEXT(btop, ba_next) == NULL);
 		top = ba2long(btop, dtev);
 	}
+	debug("map=%p '%s' print (top=%d)\n", bv->bv_value, bv_name(bv), top);
 
 	map_print((struct map *)bv->bv_value, top, bv_name(bv));
-
-	debug("map=%p '%s' print (top=%d)\n", bv->bv_value, bv_name(bv), top);
 }
 
 /*
@@ -816,6 +819,34 @@ ba_read(struct bt_arg *ba)
 	return bv->bv_value;
 }
 
+const char *
+ba2hash(struct bt_arg *ba, struct dt_evt *dtev)
+{
+	static char buf[256];
+	char *hash;
+	int l, len;
+
+	l = snprintf(buf, sizeof(buf), "%s", ba2str(ba, dtev));
+	if (l < 0 || (size_t)l > sizeof(buf)) {
+		warn("string too long %d > %lu", l, sizeof(buf));
+		return buf;
+	}
+
+	len = 0;
+	while ((ba = SLIST_NEXT(ba, ba_next)) != NULL) {
+		len += l;
+		hash = buf + len;
+
+		l = snprintf(hash, sizeof(buf) - len, ", %s", ba2str(ba, dtev));
+		if (l < 0 || (size_t)l > (sizeof(buf) - len)) {
+			warn("hash too long %d > %lu", l + len, sizeof(buf));
+			break;
+		}
+	}
+
+	return buf;
+}
+
 /*
  * Helper to evaluate the operation encoded in `ba' and return its
  * result.
@@ -888,8 +919,6 @@ ba2long(struct bt_arg *ba, struct dt_evt *dtev)
 		xabort("no long conversion for type %d", ba->ba_type);
 	}
 
-	debug("ba=%p long='%ld'\n", ba, val);
-
 	return  val;
 }
 
@@ -919,6 +948,10 @@ ba2str(struct bt_arg *ba, struct dt_evt *dtev)
 		break;
 	case B_AT_BI_COMM:
 		str = dtev->dtev_comm;
+		break;
+	case B_AT_BI_CPU:
+		snprintf(buf, sizeof(buf) - 1, "%u", dtev->dtev_cpu);
+		str = buf;
 		break;
 	case B_AT_BI_PID:
 		snprintf(buf, sizeof(buf) - 1, "%d", dtev->dtev_pid);
@@ -961,58 +994,59 @@ ba2str(struct bt_arg *ba, struct dt_evt *dtev)
 		xabort("no string conversion for type %d", ba->ba_type);
 	}
 
-	debug("ba=%p str='%s'\n", ba, str);
-
 	return str;
 }
 
 /*
- * Return dt(4) flag indicating which data should be recorded by the
+ * Return dt(4) flags indicating which data should be recorded by the
  * kernel, if any, for a given `ba'.
  */
 int
-ba2dtflag(struct bt_arg *ba)
+ba2dtflags(struct bt_arg *ba)
 {
-	int flag = 0;
+	int flags = 0;
 
 	if (ba->ba_type == B_AT_MAP)
 		ba = ba->ba_key;
 
-	switch (ba->ba_type) {
-	case B_AT_STR:
-	case B_AT_LONG:
-	case B_AT_VAR:
-		break;
-	case B_AT_BI_KSTACK:
-		flag = DTEVT_KSTACK;
-		break;
-	case B_AT_BI_USTACK:
-		flag = DTEVT_USTACK;
-		break;
-	case B_AT_BI_COMM:
-		flag = DTEVT_EXECNAME;
-		break;
-	case B_AT_BI_PID:
-	case B_AT_BI_TID:
-	case B_AT_BI_NSECS:
-		break;
-	case B_AT_BI_ARG0 ... B_AT_BI_ARG9:
-		flag = DTEVT_FUNCARGS;
-		break;
-	case B_AT_BI_RETVAL:
-		flag = DTEVT_RETVAL;
-		break;
-	case B_AT_MF_COUNT:
-	case B_AT_MF_MAX:
-	case B_AT_MF_MIN:
-	case B_AT_MF_SUM:
-	case B_AT_OP_ADD ... B_AT_OP_DIVIDE:
-		break;
-	default:
-		xabort("invalid argument type %d", ba->ba_type);
-	}
+	do {
+		switch (ba->ba_type) {
+		case B_AT_STR:
+		case B_AT_LONG:
+		case B_AT_VAR:
+			break;
+		case B_AT_BI_KSTACK:
+			flags |= DTEVT_KSTACK;
+			break;
+		case B_AT_BI_USTACK:
+			flags |= DTEVT_USTACK;
+			break;
+		case B_AT_BI_COMM:
+			flags |= DTEVT_EXECNAME;
+			break;
+		case B_AT_BI_CPU:
+		case B_AT_BI_PID:
+		case B_AT_BI_TID:
+		case B_AT_BI_NSECS:
+			break;
+		case B_AT_BI_ARG0 ... B_AT_BI_ARG9:
+			flags |= DTEVT_FUNCARGS;
+			break;
+		case B_AT_BI_RETVAL:
+			flags |= DTEVT_RETVAL;
+			break;
+		case B_AT_MF_COUNT:
+		case B_AT_MF_MAX:
+		case B_AT_MF_MIN:
+		case B_AT_MF_SUM:
+		case B_AT_OP_ADD ... B_AT_OP_DIVIDE:
+			break;
+		default:
+			xabort("invalid argument type %d", ba->ba_type);
+		}
+	} while ((ba = SLIST_NEXT(ba, ba_next)) != NULL);
 
-	return flag;
+	return flags;
 }
 
 long

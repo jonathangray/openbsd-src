@@ -1,4 +1,4 @@
-/*	$OpenBSD: dwpcie.c,v 1.15 2019/08/26 11:24:03 patrick Exp $	*/
+/*	$OpenBSD: dwpcie.c,v 1.20 2020/04/27 12:17:29 patrick Exp $	*/
 /*
  * Copyright (c) 2018 Mark Kettenis <kettenis@openbsd.org>
  *
@@ -119,6 +119,24 @@
 #define  IMX8MQ_GPR_PCIE_REF_USE_PAD			(1 << 9)
 #define  IMX8MQ_GPR_PCIE_CLK_REQ_OVERRIDE_EN		(1 << 10)
 #define  IMX8MQ_GPR_PCIE_CLK_REQ_OVERRIDE		(1 << 11)
+#define  IMX8MM_GPR_PCIE_SSC_EN				(1 << 16)
+#define  IMX8MM_GPR_PCIE_POWER_OFF			(1 << 17)
+#define  IMX8MM_GPR_PCIE_CMN_RST			(1 << 18)
+#define  IMX8MM_GPR_PCIE_AUX_EN				(1 << 19)
+#define  IMX8MM_GPR_PCIE_REF_CLK_MASK			(0x3 << 24)
+#define  IMX8MM_GPR_PCIE_REF_CLK_PLL			(0x3 << 24)
+#define  IMX8MM_GPR_PCIE_REF_CLK_EXT			(0x2 << 24)
+
+#define IMX8MM_PCIE_PHY_CMN_REG62			0x188
+#define  IMX8MM_PCIE_PHY_CMN_REG62_PLL_CLK_OUT			0x08
+#define IMX8MM_PCIE_PHY_CMN_REG64			0x190
+#define  IMX8MM_PCIE_PHY_CMN_REG64_AUX_RX_TX_TERM		0x8c
+#define IMX8MM_PCIE_PHY_CMN_REG75			0x1d4
+#define  IMX8MM_PCIE_PHY_CMN_REG75_PLL_DONE			0x3
+#define IMX8MM_PCIE_PHY_TRSV_REG5			0x414
+#define  IMX8MM_PCIE_PHY_TRSV_REG5_GEN1_DEEMP			0x2d
+#define IMX8MM_PCIE_PHY_TRSV_REG6			0x418
+#define  IMX8MM_PCIE_PHY_TRSV_REG6_GEN2_DEEMP			0xf
 
 #define ANATOP_PLLOUT_CTL			0x74
 #define  ANATOP_PLLOUT_CTL_CKE				(1 << 4)
@@ -199,6 +217,7 @@ dwpcie_match(struct device *parent, void *match, void *aux)
 	struct fdt_attach_args *faa = aux;
 
 	return (OF_is_compatible(faa->fa_node, "marvell,armada8k-pcie") ||
+	    OF_is_compatible(faa->fa_node, "fsl,imx8mm-pcie") ||
 	    OF_is_compatible(faa->fa_node, "fsl,imx8mq-pcie"));
 }
 
@@ -207,11 +226,11 @@ void	dwpcie_atu_config(struct dwpcie_softc *, int, int,
 void	dwpcie_link_config(struct dwpcie_softc *);
 int	dwpcie_link_up(struct dwpcie_softc *);
 
-void	dwpcie_armada8k_init(struct dwpcie_softc *);
+int	dwpcie_armada8k_init(struct dwpcie_softc *);
 int	dwpcie_armada8k_link_up(struct dwpcie_softc *);
 int	dwpcie_armada8k_intr(void *);
 
-void	dwpcie_imx8mq_init(struct dwpcie_softc *);
+int	dwpcie_imx8mq_init(struct dwpcie_softc *);
 int	dwpcie_imx8mq_intr(void *);
 
 void	dwpcie_attach_hook(struct device *, struct device *,
@@ -249,6 +268,7 @@ dwpcie_attach(struct device *parent, struct device *self, void *aux)
 	uint32_t *ranges;
 	int i, j, nranges, rangeslen;
 	pcireg_t bir, blr, csr;
+	int error = 0;
 
 	if (faa->fa_nreg < 2) {
 		printf(": no registers\n");
@@ -306,6 +326,8 @@ dwpcie_attach(struct device *parent, struct device *self, void *aux)
 
 	if (bus_space_map(sc->sc_iot, faa->fa_reg[0].addr,
 	    faa->fa_reg[0].size, 0, &sc->sc_ioh)) {
+		free(sc->sc_ranges, M_TEMP, sc->sc_nranges *
+		    sizeof(struct dwpcie_range));
 		printf(": can't map ctrl registers\n");
 		return;
 	}
@@ -318,6 +340,8 @@ dwpcie_attach(struct device *parent, struct device *self, void *aux)
 	if (bus_space_map(sc->sc_iot, sc->sc_cfg0_base,
 	    sc->sc_cfg1_size, 0, &sc->sc_cfg0_ioh)) {
 		bus_space_unmap(sc->sc_iot, sc->sc_ioh, faa->fa_reg[0].size);
+		free(sc->sc_ranges, M_TEMP, sc->sc_nranges *
+		    sizeof(struct dwpcie_range));
 		printf(": can't map config registers\n");
 		return;
 	}
@@ -326,6 +350,8 @@ dwpcie_attach(struct device *parent, struct device *self, void *aux)
 	    sc->sc_cfg1_size, 0, &sc->sc_cfg1_ioh)) {
 		bus_space_unmap(sc->sc_iot, sc->sc_cfg0_ioh, sc->sc_cfg0_size);
 		bus_space_unmap(sc->sc_iot, sc->sc_ioh, faa->fa_reg[0].size);
+		free(sc->sc_ranges, M_TEMP, sc->sc_nranges *
+		    sizeof(struct dwpcie_range));
 		printf(": can't map config registers\n");
 		return;
 	}
@@ -339,9 +365,20 @@ dwpcie_attach(struct device *parent, struct device *self, void *aux)
 	clock_set_assigned(sc->sc_node);
 
 	if (OF_is_compatible(sc->sc_node, "marvell,armada8k-pcie"))
-		dwpcie_armada8k_init(sc);
-	if (OF_is_compatible(sc->sc_node, "fsl,imx8mq-pcie"))
-		dwpcie_imx8mq_init(sc);
+		error = dwpcie_armada8k_init(sc);
+	if (OF_is_compatible(sc->sc_node, "fsl,imx8mm-pcie") ||
+	    OF_is_compatible(sc->sc_node, "fsl,imx8mq-pcie"))
+		error = dwpcie_imx8mq_init(sc);
+	if (error != 0) {
+		bus_space_unmap(sc->sc_iot, sc->sc_cfg1_ioh, sc->sc_cfg1_size);
+		bus_space_unmap(sc->sc_iot, sc->sc_cfg0_ioh, sc->sc_cfg0_size);
+		bus_space_unmap(sc->sc_iot, sc->sc_ioh, faa->fa_reg[0].size);
+		free(sc->sc_ranges, M_TEMP, sc->sc_nranges *
+		    sizeof(struct dwpcie_range));
+		printf("%s: can't initialize hardware\n",
+		    sc->sc_dev.dv_xname);
+		return;
+	}
 
 	if (HREAD4(sc, IATU_VIEWPORT) == 0xffffffff) {
 		sc->sc_atu_base = 0x300000;
@@ -515,7 +552,7 @@ dwpcie_link_config(struct dwpcie_softc *sc)
 	HWRITE4(sc, PCIE_LINK_WIDTH_SPEED_CTRL, reg);
 }
 
-void
+int
 dwpcie_armada8k_init(struct dwpcie_softc *sc)
 {
 	uint32_t reg;
@@ -559,6 +596,8 @@ dwpcie_armada8k_init(struct dwpcie_softc *sc)
 			break;
 		delay(1000);
 	}
+	if (timo == 0)
+		return ETIMEDOUT;
 
 	sc->sc_ih = fdt_intr_establish(sc->sc_node, IPL_AUDIO | IPL_MPSAFE,
 	    dwpcie_armada8k_intr, sc, sc->sc_dev.dv_xname);
@@ -567,6 +606,8 @@ dwpcie_armada8k_init(struct dwpcie_softc *sc)
 	HWRITE4(sc, PCIE_GLOBAL_INT_MASK,
 	    PCIE_GLOBAL_INT_MASK_INT_A | PCIE_GLOBAL_INT_MASK_INT_B |
 	    PCIE_GLOBAL_INT_MASK_INT_C | PCIE_GLOBAL_INT_MASK_INT_D);
+
+	return 0;
 }
 
 int
@@ -594,17 +635,24 @@ dwpcie_armada8k_intr(void *arg)
 	return 0;
 }
 
-void
+int
 dwpcie_imx8mq_init(struct dwpcie_softc *sc)
 {
 	uint32_t *clkreq_gpio, *disable_gpio, *reset_gpio;
 	ssize_t clkreq_gpiolen, disable_gpiolen, reset_gpiolen;
-	struct regmap *anatop, *gpr;
+	struct regmap *anatop, *gpr, *phy;
 	uint32_t off, reg;
-	int timo;
+	int error, timo;
 
-	anatop = regmap_bycompatible("fsl,imx8mq-anatop");
-	gpr = regmap_bycompatible("fsl,imx8mq-iomuxc-gpr");
+	if (OF_is_compatible(sc->sc_node, "fsl,imx8mm-pcie")) {
+		anatop = regmap_bycompatible("fsl,imx8mm-anatop");
+		gpr = regmap_bycompatible("fsl,imx8mm-iomuxc-gpr");
+		phy = regmap_bycompatible("fsl,imx7d-pcie-phy");
+		KASSERT(phy != NULL);
+	} else {
+		anatop = regmap_bycompatible("fsl,imx8mq-anatop");
+		gpr = regmap_bycompatible("fsl,imx8mq-iomuxc-gpr");
+	}
 	KASSERT(anatop != NULL);
 	KASSERT(gpr != NULL);
 
@@ -652,24 +700,68 @@ dwpcie_imx8mq_init(struct dwpcie_softc *sc)
 	}
 	regmap_write_4(gpr, IOMUXC_GPR12, reg);
 
-	if (OF_getproplen(sc->sc_node, "ext_osc") == 0) {
-		reg = regmap_read_4(gpr, off);
-		reg |= IMX8MQ_GPR_PCIE_REF_USE_PAD;
-		regmap_write_4(gpr, off, reg);
+	if (OF_is_compatible(sc->sc_node, "fsl,imx8mm-pcie")) {
+		if (OF_getproplen(sc->sc_node, "ext_osc") == 0 ||
+		    OF_getpropint(sc->sc_node, "ext_osc", 0)) {
+			reg = regmap_read_4(gpr, off);
+			reg &= ~(IMX8MQ_GPR_PCIE_REF_USE_PAD |
+			    IMX8MM_GPR_PCIE_SSC_EN |
+			    IMX8MM_GPR_PCIE_POWER_OFF |
+			    IMX8MM_GPR_PCIE_REF_CLK_MASK);
+			reg |= (IMX8MM_GPR_PCIE_AUX_EN |
+			    IMX8MM_GPR_PCIE_REF_CLK_EXT);
+			regmap_write_4(gpr, off, reg);
+			delay(100);
+			reg = regmap_read_4(gpr, off);
+			reg |= IMX8MM_GPR_PCIE_CMN_RST;
+			regmap_write_4(gpr, off, reg);
+			delay(200);
+		} else {
+			reg = regmap_read_4(gpr, off);
+			reg &= ~(IMX8MQ_GPR_PCIE_REF_USE_PAD |
+			    IMX8MM_GPR_PCIE_SSC_EN |
+			    IMX8MM_GPR_PCIE_POWER_OFF |
+			    IMX8MM_GPR_PCIE_REF_CLK_MASK);
+			reg |= (IMX8MM_GPR_PCIE_AUX_EN |
+			    IMX8MM_GPR_PCIE_REF_CLK_PLL);
+			regmap_write_4(gpr, off, reg);
+			delay(100);
+			regmap_write_4(phy, IMX8MM_PCIE_PHY_CMN_REG62,
+			    IMX8MM_PCIE_PHY_CMN_REG62_PLL_CLK_OUT);
+			regmap_write_4(phy, IMX8MM_PCIE_PHY_CMN_REG64,
+			    IMX8MM_PCIE_PHY_CMN_REG64_AUX_RX_TX_TERM);
+			reg = regmap_read_4(gpr, off);
+			reg |= IMX8MM_GPR_PCIE_CMN_RST;
+			regmap_write_4(gpr, off, reg);
+			delay(200);
+			regmap_write_4(phy, IMX8MM_PCIE_PHY_TRSV_REG5,
+			    IMX8MM_PCIE_PHY_TRSV_REG5_GEN1_DEEMP);
+			regmap_write_4(phy, IMX8MM_PCIE_PHY_TRSV_REG6,
+			    IMX8MM_PCIE_PHY_TRSV_REG6_GEN2_DEEMP);
+		}
 	} else {
-		reg = regmap_read_4(gpr, off);
-		reg &= ~IMX8MQ_GPR_PCIE_REF_USE_PAD;
-		regmap_write_4(gpr, off, reg);
+		if (OF_getproplen(sc->sc_node, "ext_osc") == 0 ||
+		    OF_getpropint(sc->sc_node, "ext_osc", 0)) {
+			reg = regmap_read_4(gpr, off);
+			reg |= IMX8MQ_GPR_PCIE_REF_USE_PAD;
+			regmap_write_4(gpr, off, reg);
+		} else {
+			reg = regmap_read_4(gpr, off);
+			reg &= ~IMX8MQ_GPR_PCIE_REF_USE_PAD;
+			regmap_write_4(gpr, off, reg);
 
-		regmap_write_4(anatop, ANATOP_PLLOUT_CTL,
-		    ANATOP_PLLOUT_CTL_CKE | ANATOP_PLLOUT_CTL_SEL_SYSPLL1);
-		regmap_write_4(anatop, ANATOP_PLLOUT_DIV,
-		    ANATOP_PLLOUT_DIV_SYSPLL1);
+			regmap_write_4(anatop, ANATOP_PLLOUT_CTL,
+			    ANATOP_PLLOUT_CTL_CKE |
+			    ANATOP_PLLOUT_CTL_SEL_SYSPLL1);
+			regmap_write_4(anatop, ANATOP_PLLOUT_DIV,
+			    ANATOP_PLLOUT_DIV_SYSPLL1);
+		}
 	}
 
 	clock_enable(sc->sc_node, "pcie_phy");
 	clock_enable(sc->sc_node, "pcie_bus");
 	clock_enable(sc->sc_node, "pcie");
+	clock_enable(sc->sc_node, "pcie_aux");
 
 	/* Allow clocks to stabilize. */
 	delay(200);
@@ -682,6 +774,19 @@ dwpcie_imx8mq_init(struct dwpcie_softc *sc)
 	}
 
 	reset_deassert(sc->sc_node, "pciephy");
+
+	if (OF_is_compatible(sc->sc_node, "fsl,imx8mm-pcie")) {
+		for (timo = 2000; timo > 0; timo--) {
+			if (regmap_read_4(phy, IMX8MM_PCIE_PHY_CMN_REG75) ==
+			    IMX8MM_PCIE_PHY_CMN_REG75_PLL_DONE)
+				break;
+			delay(10);
+		}
+		if (timo == 0) {
+			error = ETIMEDOUT;
+			goto err;
+		}
+	}
 
 	reg = HREAD4(sc, 0x100000 + PCIE_RC_LCR);
 	reg &= ~PCIE_RC_LCR_L1EL_MASK;
@@ -702,8 +807,10 @@ dwpcie_imx8mq_init(struct dwpcie_softc *sc)
 			break;
 		delay(10);
 	}
-	if (timo == 0)
-		printf("%s:%d: timeout\n", __func__, __LINE__);
+	if (timo == 0) {
+		error = ETIMEDOUT;
+		goto err;
+	}
 
 	if (OF_getpropint(sc->sc_node, "fsl,max-link-speed", 1) >= 2) {
 		reg = HREAD4(sc, PCIE_RC_LCR);
@@ -720,8 +827,10 @@ dwpcie_imx8mq_init(struct dwpcie_softc *sc)
 				break;
 			delay(10);
 		}
-		if (timo == 0)
-			printf("%s:%d: timeout\n", __func__, __LINE__);
+		if (timo == 0) {
+			error = ETIMEDOUT;
+			goto err;
+		}
 	}
 
 	sc->sc_ih = fdt_intr_establish(sc->sc_node, IPL_AUDIO | IPL_MPSAFE,
@@ -732,12 +841,15 @@ dwpcie_imx8mq_init(struct dwpcie_softc *sc)
 	    PCIE_GLOBAL_INT_MASK_INT_A | PCIE_GLOBAL_INT_MASK_INT_B |
 	    PCIE_GLOBAL_INT_MASK_INT_C | PCIE_GLOBAL_INT_MASK_INT_D);
 
+	error = 0;
+err:
 	if (clkreq_gpiolen > 0)
 		free(clkreq_gpio, M_TEMP, clkreq_gpiolen);
 	if (disable_gpiolen > 0)
 		free(disable_gpio, M_TEMP, disable_gpiolen);
 	if (reset_gpiolen > 0)
 		free(reset_gpio, M_TEMP, reset_gpiolen);
+	return error;
 }
 
 int

@@ -1,4 +1,4 @@
-.\" $OpenBSD: bgpd.conf.5,v 1.201 2020/02/16 22:10:47 kn Exp $
+.\" $OpenBSD: bgpd.conf.5,v 1.204 2020/04/23 21:28:09 jmc Exp $
 .\"
 .\" Copyright (c) 2004 Claudio Jeker <claudio@openbsd.org>
 .\" Copyright (c) 2003, 2004 Henning Brauer <henning@openbsd.org>
@@ -16,7 +16,7 @@
 .\" ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 .\" OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: February 16 2020 $
+.Dd $Mdocdate: April 23 2020 $
 .Dt BGPD.CONF 5
 .Os
 .Sh NAME
@@ -285,7 +285,7 @@ where the metric is only compared between peers belonging to the same AS.
 .It Xo
 .Ic rde
 .Ic rib Ar name
-.Op Ic no Ic evaluate
+.Op Ic no evaluate
 .Xc
 .It Xo
 .Ic rde
@@ -297,7 +297,7 @@ Create an additional RIB named
 The degree to which its routes may be utilized is configurable.
 They may be excluded from the decision process that selects usable routes
 with the
-.Ic no Ic evaluate
+.Ic no evaluate
 flag, and this precludes their export to any kernel routing table.
 By default its routes will be evaluated, but not exported to the kernel.
 They may be both evaluated and exported if associated with a given
@@ -603,8 +603,8 @@ up
 The VPN properties are as follows:
 .Pp
 .Bl -tag -width Ds -compact
-.It Ic export-target Ar subtype Ar as-number : Ns Ar local
-.It Ic export-target Ar subtype Ar IP : Ns Ar local
+.It Ic export-target Ar subtype as-number : Ns Ar local
+.It Ic export-target Ar subtype IP : Ns Ar local
 Classify announced networks by tagging them with an
 .Em extended community
 of the given arguments.
@@ -632,8 +632,8 @@ routing table.
 The default is
 .Ic yes .
 .Pp
-.It Ic import-target Ar subtype Ar as-number : Ns Ar local
-.It Ic import-target Ar subtype Ar IP : Ns Ar local
+.It Ic import-target Ar subtype as-number : Ns Ar local
+.It Ic import-target Ar subtype IP : Ns Ar local
 The rdomain imports only those prefixes tagged with an
 .Em extended community
 matching an
@@ -1018,6 +1018,7 @@ daemons on both sides, the session should be established.
 After changing settings a session needs to be reset to use the new keys.
 .Pp
 .It Ic local-address Ar address
+.It Ic no local-address
 When
 .Xr bgpd 8
 initiates the TCP connection to the neighbor system, it normally does not
@@ -1027,6 +1028,8 @@ If a
 is given,
 .Xr bgpd 8
 binds to this address first.
+.Ic no local-address
+reverts back to the default.
 .Pp
 .It Ic local-as Ar as-number Op Ar as-number
 Set the AS number sent to the remote system.
@@ -1355,15 +1358,15 @@ which is expanded to the locally assigned AS number.
 .Pp
 .It Xo
 .Ic ext-community
-.Ar subtype Ar as-number : Ns Ar local
+.Ar subtype as-number : Ns Ar local
 .Xc
 .It Xo
 .Ic ext-community
-.Ar subtype Ar IP : Ns Ar local
+.Ar subtype IP : Ns Ar local
 .Xc
 .It Xo
 .Ic ext-community
-.Ar subtype Ar numvalue
+.Ar subtype numvalue
 .Xc
 .It Xo
 .Ic ext-community
@@ -1556,13 +1559,13 @@ prefix 10.0.0.0/8 prefixlen > 16
 .Ic or-longer
 is a shorthand for:
 .Bd -literal -offset indent
-.Ic prefix Ar address Ns Li / Ns Ar len Ic prefixlen Ic >= Ar len
+.Ic prefix Ar address Ns Li / Ns Ar len Ic prefixlen >= Ar len
 .Ed
 .Pp
 .Ic maxlen Ar mlen
 is a shorthand for:
 .Bd -literal -offset indent
-.Ic prefix Ar address Ns Li / Ns Ar len Ic prefixlen Ic <= Ar mlen
+.Ic prefix Ar address Ns Li / Ns Ar len Ic prefixlen <= Ar mlen
 .Ed
 .Pp
 .It Ic prefix-set Ar name Op Ic or-longer
@@ -1576,7 +1579,7 @@ the
 .Em UPDATES
 will match any prefix in the prefix-set where
 .Bd -literal -offset indent
-.Ic address Ns Li / Ns Ar len Ic prefixlen Ic >= Ar len
+.Ic address Ns Li / Ns Ar len Ic prefixlen >= Ar len
 .Ed
 .Pp
 .It Ic quick
@@ -1685,15 +1688,15 @@ to do wildcard matching.
 .Pp
 .It Xo
 .Ic ext-community Op Ar delete
-.Ar subtype Ar as-number : Ns Ar local
+.Ar subtype as-number : Ns Ar local
 .Xc
 .It Xo
 .Ic ext-community Op Ar delete
-.Ar subtype Ar IP : Ns Ar local
+.Ar subtype IP : Ns Ar local
 .Xc
 .It Xo
 .Ic ext-community Op Ar delete
-.Ar subtype Ar numvalue
+.Ar subtype numvalue
 .Xc
 .It Xo
 .Ic ext-community Op Ar delete

@@ -1,4 +1,4 @@
-.\" $OpenBSD: mixerctl.1,v 1.36 2020/04/04 08:43:08 ratchov Exp $
+.\" $OpenBSD: mixerctl.8,v 1.7 2020/04/23 14:47:20 ratchov Exp $
 .\" $NetBSD: mixerctl.1,v 1.8 1998/05/09 12:41:16 augustss Exp $
 .\"
 .\" Copyright (c) 1997 The NetBSD Foundation, Inc.
@@ -27,12 +27,12 @@
 .\" ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 .\" POSSIBILITY OF SUCH DAMAGE.
 .\"
-.Dd $Mdocdate: April 4 2020 $
-.Dt MIXERCTL 1
+.Dd $Mdocdate: April 23 2020 $
+.Dt MIXERCTL 8
 .Os
 .Sh NAME
 .Nm mixerctl
-.Nd control audio mixing
+.Nd manipulate controls for audio hardware
 .Sh SYNOPSIS
 .Nm mixerctl
 .Op Fl anv
@@ -52,48 +52,61 @@
 .Sh DESCRIPTION
 The
 .Nm
-command displays or sets various audio system mixing variables.
-If a list of variables is present on the command line,
-.Nm
-prints the current value of those variables for the specified device.
-Variables can also be set at system startup using the configuration file
+command displays or sets various controls for audio hardware,
+such as microphone reference voltage or output level.
+Where hardware defaults are not the desired ones,
+controls can be set at system startup using the configuration file
 .Xr mixerctl.conf 5 .
+.Pp
+.Nm
+itself can only be run by the superuser.
+Common controls should be adjusted at runtime using
+.Xr sndioctl 1 ,
+which is intended for every day use and requires no superuser privileges.
+Manual use of
+.Nm
+is intended for controls which cannot be set using
+.Xr sndioctl 1 .
+.Pp
+If a list of control names is present on the command line,
+.Nm
+prints the current value of those controls for the specified device.
 .Pp
 The options are as follows:
 .Bl -tag -width "-f file"
 .It Fl a
-Print all device variables and their current values.
+Print all device controls and their current values.
 This is the default, if no parameters are given to
 .Nm .
 .It Fl f Ar file
-Specify an alternative audio mixing device.
+Specify an alternative audio control device.
 The default is
 .Pa /dev/audioctl0 .
 .It Fl n
-Suppress printing of the variable name.
+Suppress printing of the control name.
 .It Fl q
-Suppress all printing when setting a variable.
+Suppress all printing when setting a control.
 .It Fl t
 Toggle.
 Attempt to select the next possible value
 of an enum
 (see below).
 .It Fl v
-Show all possible values of variables.
+Show all possible values of controls.
 Enum values are shown in
 .Sq []
 and values belonging to a set are shown in
 .Sq {}
 (see below).
 .It Ar name Ns = Ns Ar value
-Attempt to set the specified variable
+Attempt to set the control with given
 .Ar name
 to
 .Ar value .
 .El
 .Pp
 The exact set of controls that can be manipulated depends on
-the mixer.
+the device.
 The general format (in both getting and setting a value) is:
 .Pp
 .D1 class.name=value
@@ -105,17 +118,17 @@ can have values like
 or
 .Dq outputs ,
 indicating that the control affects the input or output, respectively,
-to the mixer.
+to the device.
 The
 .Ar name
-indicates what part of the mixer the control affects.
-Continuous mixer values, e.g. volume,
+indicates what part of the device the control affects.
+Continuous values, e.g. volume,
 have numeric values in the range 0\-255.
 If
 .Ar value
 can be set for each channel independently,
 the values are printed separated by commas.
-Discrete mixer values, e.g. the recording source,
+Discrete values, e.g. the recording source,
 have symbolic names.
 .Pp
 Variables may take one of three types,
@@ -149,21 +162,21 @@ to denote an increase or decrease, respectively.
 .Sh ENVIRONMENT
 .Bl -tag -width "MIXERDEVICEXXX"
 .It Ev MIXERDEVICE
-The audio mixer device to use.
+The audio control device to use.
 .El
 .Sh FILES
 .Bl -tag -width "/etc/mixerctl.confXXX" -compact
 .It Pa /dev/audioctl0
-Default mixer audio device.
+Default audio control device.
 .It Pa /etc/mixerctl.conf
 .Nm
 configuration file.
 .El
 .Sh EXAMPLES
-Show possible values for all mixer variables,
+Show possible values for all controls,
 and their current settings:
 .Bd -literal -offset indent
-$ mixerctl -av
+# mixerctl -av
 inputs.mic=0,0 volume
 inputs.mic.mute=off  [ off on ]
 inputs.cd=220,220 volume
@@ -177,17 +190,17 @@ monitor.monitor=0 volume
 .Pp
 Toggle inputs.dac.mute:
 .Bd -literal -offset indent
-$ mixerctl -t inputs.dac.mute
-inputs.dac.mute: off -\*(Gt on
-$ mixerctl inputs.dac.mute=toggle
-inputs.dac.mute: on -\*(Gt off
+# mixerctl -t inputs.dac.mute
+inputs.dac.mute: off -> on
+# mixerctl inputs.dac.mute=toggle
+inputs.dac.mute: on -> off
 .Ed
 .Sh SEE ALSO
 .Xr aucat 1 ,
-.Xr audioctl 1 ,
 .Xr cdio 1 ,
 .Xr audio 4 ,
 .Xr mixerctl.conf 5 ,
+.Xr audioctl 8 ,
 .Xr sysctl 8
 .Sh HISTORY
 The

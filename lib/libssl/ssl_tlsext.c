@@ -1,4 +1,4 @@
-/* $OpenBSD: ssl_tlsext.c,v 1.62 2020/02/18 16:12:14 tb Exp $ */
+/* $OpenBSD: ssl_tlsext.c,v 1.67 2020/05/10 14:17:48 jsing Exp $ */
 /*
  * Copyright (c) 2016, 2017, 2019 Joel Sing <jsing@openbsd.org>
  * Copyright (c) 2017 Doug Hogan <doug@openbsd.org>
@@ -221,6 +221,31 @@ tlsext_supportedgroups_server_parse(SSL *s, CBS *cbs, int *alert)
 	if (!s->internal->hit) {
 		uint16_t *groups;
 		int i;
+
+		if (SSI(s)->tlsext_supportedgroups != NULL) {
+			/*
+			 * We should only end up here in the case of a TLSv1.3
+			 * HelloRetryRequest... and the client cannot change
+			 * supported groups.
+			 */
+			/* XXX - we should know this is a HRR. */
+			if (groups_len != SSI(s)->tlsext_supportedgroups_length) {
+				*alert = SSL_AD_ILLEGAL_PARAMETER;
+				return 0;
+			}
+			for (i = 0; i < groups_len; i++) {
+				uint16_t group;
+
+				if (!CBS_get_u16(&grouplist, &group))
+					goto err;
+				if (SSI(s)->tlsext_supportedgroups[i] != group) {
+					*alert = SSL_AD_ILLEGAL_PARAMETER;
+					return 0;
+				}
+			}
+
+			return 1;
+		}
 
 		if (SSI(s)->tlsext_supportedgroups != NULL)
 			goto err;
@@ -672,7 +697,7 @@ tlsext_sni_server_parse(SSL *s, CBS *cbs, int *alert)
 		return 0;
 	}
 
-	if (s->internal->hit) {
+	if (s->internal->hit || S3I(s)->hs_tls13.hrr) {
 		if (s->session->tlsext_hostname == NULL) {
 			*alert = TLS1_AD_UNRECOGNIZED_NAME;
 			return 0;
@@ -896,12 +921,40 @@ tlsext_ocsp_server_build(SSL *s, CBB *cbb)
 int
 tlsext_ocsp_client_parse(SSL *s, CBS *cbs, int *alert)
 {
-	if (s->tlsext_status_type == -1) {
-		*alert = TLS1_AD_UNSUPPORTED_EXTENSION;
-		return 0;
+	CBS response;
+	uint16_t version = TLS1_get_client_version(s);
+	uint8_t status_type;
+
+	if (version >= TLS1_3_VERSION) {
+		if (!CBS_get_u8(cbs, &status_type)) {
+			SSLerror(s, SSL_R_LENGTH_MISMATCH);
+			return 0;
+		}
+		if (status_type != TLSEXT_STATUSTYPE_ocsp) {
+			SSLerror(s, SSL_R_UNSUPPORTED_STATUS_TYPE);
+			return 0;
+		}
+		if (!CBS_get_u24_length_prefixed(cbs, &response)) {
+			SSLerror(s, SSL_R_LENGTH_MISMATCH);
+			return 0;
+		}
+		if (CBS_len(&response) > 65536) {
+			SSLerror(s, SSL_R_DATA_LENGTH_TOO_LONG);
+			return 0;
+		}
+		if (!CBS_stow(&response, &s->internal->tlsext_ocsp_resp,
+		    &s->internal->tlsext_ocsp_resp_len)) {
+			*alert = SSL_AD_INTERNAL_ERROR;
+			return 0;
+		}
+	} else {
+		if (s->tlsext_status_type == -1) {
+			*alert = TLS1_AD_UNSUPPORTED_EXTENSION;
+			return 0;
+		}
+		/* Set flag to expect CertificateStatus message */
+		s->internal->tlsext_status_expected = 1;
 	}
-	/* Set flag to expect CertificateStatus message */
-	s->internal->tlsext_status_expected = 1;
 	return 1;
 }
 
@@ -1288,13 +1341,27 @@ tlsext_keyshare_server_parse(SSL *s, CBS *cbs, int *alert)
 			return 0;
 
 		/*
-		 * XXX support other groups later.
-		 * XXX enforce group can only appear once.
+		 * XXX - check key exchange against supported groups from client.
+		 * XXX - check that groups only appear once.
 		 */
-		if (S3I(s)->hs_tls13.key_share == NULL ||
-		    tls13_key_share_group(S3I(s)->hs_tls13.key_share) != group)
+
+		/*
+		 * Ignore this client share if we're using earlier than TLSv1.3
+		 * or we've already selected a key share.
+		 */
+		if (S3I(s)->hs_tls13.max_version < TLS1_3_VERSION)
+			continue;
+		if (S3I(s)->hs_tls13.key_share != NULL)
 			continue;
 
+		/* XXX - consider implementing server preference. */
+		if (!tls1_check_curve(s, group))
+			continue;
+
+		/* Decode and store the selected key share. */
+		S3I(s)->hs_tls13.key_share = tls13_key_share_new(group);
+		if (S3I(s)->hs_tls13.key_share == NULL)
+			goto err;
 		if (!tls13_key_share_peer_public(S3I(s)->hs_tls13.key_share,
 		    group, &key_exchange))
 			goto err;
@@ -1319,6 +1386,11 @@ tlsext_keyshare_server_needs(SSL *s)
 int
 tlsext_keyshare_server_build(SSL *s, CBB *cbb)
 {
+	/* In the case of a HRR, we only send the server selected group. */
+	/* XXX - we should know this is a HRR. */
+	if (S3I(s)->hs_tls13.server_group != 0)
+		return CBB_add_u16(cbb, S3I(s)->hs_tls13.server_group);
+
 	if (S3I(s)->hs_tls13.key_share == NULL)
 		return 0;
 
@@ -1986,8 +2058,9 @@ tlsext_server_build(SSL *s, CBB *cbb, uint16_t msg_type)
 int
 tlsext_server_parse(SSL *s, CBS *cbs, int *alert, uint16_t msg_type)
 {
-	/* XXX - this possibly should be done by the caller... */
-	tlsext_server_reset_state(s);
+	/* XXX - this should be done by the caller... */
+	if (msg_type == SSL_TLSEXT_MSG_CH)
+		tlsext_server_reset_state(s);
 
 	return tlsext_parse(s, cbs, alert, 1, msg_type);
 }
@@ -2009,8 +2082,9 @@ tlsext_client_build(SSL *s, CBB *cbb, uint16_t msg_type)
 int
 tlsext_client_parse(SSL *s, CBS *cbs, int *alert, uint16_t msg_type)
 {
-	/* XXX - this possibly should be done by the caller... */
-	tlsext_client_reset_state(s);
+	/* XXX - this should be done by the caller... */
+	if (msg_type == SSL_TLSEXT_MSG_SH)
+		tlsext_client_reset_state(s);
 
 	return tlsext_parse(s, cbs, alert, 0, msg_type);
 }

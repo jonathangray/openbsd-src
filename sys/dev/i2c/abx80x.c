@@ -1,4 +1,4 @@
-/*	$OpenBSD: abx80x.c,v 1.1 2019/01/02 21:15:47 patrick Exp $	*/
+/*	$OpenBSD: abx80x.c,v 1.6 2020/04/29 19:18:31 patrick Exp $	*/
 /*
  * Copyright (c) 2018 Mark Kettenis <kettenis@openbsd.org>
  * Copyright (c) 2018 Patrick Wildt <patrick@blueri.se>
@@ -24,6 +24,10 @@
 
 #include <dev/clock_subr.h>
 
+#if defined(__HAVE_FDT)
+#include <dev/ofw/openfirm.h>
+#endif
+
 extern todr_chip_handle_t todr_handle;
 
 #define ABX8XX_HTH		0x00
@@ -43,6 +47,17 @@ extern todr_chip_handle_t todr_handle;
 #define ABX8XX_OSS		0x1d
 #define ABX8XX_OSS_OF			(1 << 1)
 #define ABX8XX_OSS_OMODE		(1 << 4)
+#define ABX8XX_CFG_KEY		0x1f
+#define  ABX8XX_CFG_KEY_OSC		0xa1
+#define  ABX8XX_CFG_KEY_MISC		0x9d
+#define ABX8XX_TRICKLE		0x20
+#define  ABX8XX_TRICKLE_RESISTOR_0	(0 << 0)
+#define  ABX8XX_TRICKLE_RESISTOR_3	(1 << 0)
+#define  ABX8XX_TRICKLE_RESISTOR_6	(2 << 0)
+#define  ABX8XX_TRICKLE_RESISTOR_11	(3 << 0)
+#define  ABX8XX_TRICKLE_DIODE_SCHOTTKY	(1 << 2)
+#define  ABX8XX_TRICKLE_DIODE_STANDARD	(2 << 2)
+#define  ABX8XX_TRICKLE_ENABLE		(0xa << 4)
 
 #define ABX8XX_NRTC_REGS	8
 
@@ -72,6 +87,10 @@ int	abcrtc_clock_write(struct abcrtc_softc *, struct clock_ymdhms *);
 int	abcrtc_gettime(struct todr_chip_handle *, struct timeval *);
 int	abcrtc_settime(struct todr_chip_handle *, struct timeval *);
 
+#if defined(__HAVE_FDT)
+void	abcrtc_trickle_charger(struct abcrtc_softc *, int);
+#endif
+
 int
 abcrtc_match(struct device *parent, void *match, void *aux)
 {
@@ -89,6 +108,9 @@ abcrtc_attach(struct device *parent, struct device *self, void *aux)
 	struct abcrtc_softc *sc = (struct abcrtc_softc *)self;
 	struct i2c_attach_args *ia = aux;
 	uint8_t reg;
+#if defined(__HAVE_FDT)
+	int node = *(int *)ia->ia_cookie;
+#endif
 
 	sc->sc_tag = ia->ia_tag;
 	sc->sc_addr = ia->ia_addr;
@@ -97,6 +119,10 @@ abcrtc_attach(struct device *parent, struct device *self, void *aux)
 	reg &= ~(ABX8XX_CTRL_ARST | ABX8XX_CTRL_12_24);
 	reg |= ABX8XX_CTRL_WRITE;
 	abcrtc_reg_write(sc, ABX8XX_CTRL, reg);
+
+#if defined(__HAVE_FDT)
+	abcrtc_trickle_charger(sc, node);
+#endif
 
 	abcrtc_reg_write(sc, ABX8XX_CD_TIMER_CTL, ABX8XX_CD_TIMER_CTL_EN);
 
@@ -170,7 +196,7 @@ abcrtc_reg_write(struct abcrtc_softc *sc, int reg, uint8_t data)
 	int error;
 
 	val[0] = 1;
-	val[1] = reg;
+	val[1] = data;
 
 	iic_acquire_bus(sc->sc_tag, I2C_F_POLL);
 	error = iic_exec(sc->sc_tag, I2C_OP_WRITE_WITH_STOP, sc->sc_addr,
@@ -186,7 +212,7 @@ abcrtc_reg_write(struct abcrtc_softc *sc, int reg, uint8_t data)
 int
 abcrtc_clock_read(struct abcrtc_softc *sc, struct clock_ymdhms *dt)
 {
-	uint8_t regs[ABX8XX_NRTC_REGS+1];
+	uint8_t regs[ABX8XX_NRTC_REGS];
 	uint8_t cmd = ABX8XX_HTH;
 	int error;
 
@@ -208,13 +234,13 @@ abcrtc_clock_read(struct abcrtc_softc *sc, struct clock_ymdhms *dt)
 	/*
 	 * Convert the ABX8XX's register values into something useable.
 	 */
-	dt->dt_sec = FROMBCD(regs[2] & 0x7f);
-	dt->dt_min = FROMBCD(regs[3] & 0x7f);
-	dt->dt_hour = FROMBCD(regs[4] & 0x3f);
-	dt->dt_day = FROMBCD(regs[5] & 0x3f);
-	dt->dt_mon = FROMBCD(regs[6] & 0x1f);
-	dt->dt_year = FROMBCD(regs[7]) + 2000;
-	dt->dt_wday = regs[8] & 0x7;
+	dt->dt_sec = FROMBCD(regs[1] & 0x7f);
+	dt->dt_min = FROMBCD(regs[2] & 0x7f);
+	dt->dt_hour = FROMBCD(regs[3] & 0x3f);
+	dt->dt_day = FROMBCD(regs[4] & 0x3f);
+	dt->dt_mon = FROMBCD(regs[5] & 0x1f);
+	dt->dt_year = FROMBCD(regs[6]) + 2000;
+	dt->dt_wday = regs[7] & 0x7;
 
 	return 0;
 }
@@ -222,7 +248,7 @@ abcrtc_clock_read(struct abcrtc_softc *sc, struct clock_ymdhms *dt)
 int
 abcrtc_clock_write(struct abcrtc_softc *sc, struct clock_ymdhms *dt)
 {
-	uint8_t regs[ABX8XX_NRTC_REGS+1];
+	uint8_t regs[ABX8XX_NRTC_REGS];
 	uint8_t cmd = ABX8XX_HTH;
 	uint8_t reg;
 	int error;
@@ -231,15 +257,14 @@ abcrtc_clock_write(struct abcrtc_softc *sc, struct clock_ymdhms *dt)
 	 * Convert our time representation into something the ABX8XX
 	 * can understand.
 	 */
-	regs[0] = ABX8XX_NRTC_REGS;
-	regs[1] = 0;
-	regs[2] = TOBCD(dt->dt_sec);
-	regs[3] = TOBCD(dt->dt_min);
-	regs[4] = TOBCD(dt->dt_hour);
-	regs[5] = TOBCD(dt->dt_day);
-	regs[6] = TOBCD(dt->dt_mon);
-	regs[7] = TOBCD(dt->dt_year - 2000);
-	regs[8] = dt->dt_wday;
+	regs[0] = 0;
+	regs[1] = TOBCD(dt->dt_sec);
+	regs[2] = TOBCD(dt->dt_min);
+	regs[3] = TOBCD(dt->dt_hour);
+	regs[4] = TOBCD(dt->dt_day);
+	regs[5] = TOBCD(dt->dt_mon);
+	regs[6] = TOBCD(dt->dt_year - 2000);
+	regs[7] = dt->dt_wday;
 
 	iic_acquire_bus(sc->sc_tag, I2C_F_POLL);
 	error = iic_exec(sc->sc_tag, I2C_OP_WRITE_WITH_STOP, sc->sc_addr,
@@ -258,3 +283,40 @@ abcrtc_clock_write(struct abcrtc_softc *sc, struct clock_ymdhms *dt)
 
 	return 0;
 }
+
+#if defined(__HAVE_FDT)
+void
+abcrtc_trickle_charger(struct abcrtc_softc *sc, int node)
+{
+	char diode[16] = { 0 };
+	uint8_t reg = ABX8XX_TRICKLE_ENABLE;
+
+	OF_getprop(node, "abracon,tc-diode", diode, sizeof(diode));
+	if (!strcmp(diode, "standard"))
+		reg |= ABX8XX_TRICKLE_DIODE_STANDARD;
+	else if (!strcmp(diode, "schottky"))
+		reg |= ABX8XX_TRICKLE_DIODE_SCHOTTKY;
+	else
+		return;
+
+	switch (OF_getpropint(node, "abracon,tc-resistor", -1)) {
+	case 0:
+		reg |= ABX8XX_TRICKLE_RESISTOR_0;
+		break;
+	case 3:
+		reg |= ABX8XX_TRICKLE_RESISTOR_3;
+		break;
+	case 6:
+		reg |= ABX8XX_TRICKLE_RESISTOR_6;
+		break;
+	case 11:
+		reg |= ABX8XX_TRICKLE_RESISTOR_11;
+		break;
+	default:
+		return;
+	}
+
+	abcrtc_reg_write(sc, ABX8XX_CFG_KEY, ABX8XX_CFG_KEY_MISC);
+	abcrtc_reg_write(sc, ABX8XX_TRICKLE, reg);
+}
+#endif

@@ -1,4 +1,4 @@
-/*	$OpenBSD: output-json.c,v 1.6 2019/12/04 23:03:05 benno Exp $ */
+/*	$OpenBSD: output-json.c,v 1.12 2020/05/03 20:24:02 deraadt Exp $ */
 /*
  * Copyright (c) 2019 Claudio Jeker <claudio@openbsd.org>
  *
@@ -16,18 +16,74 @@
  */
 
 #include <stdlib.h>
+#include <unistd.h>
+#include <time.h>
+#include <netdb.h>
 #include <openssl/ssl.h>
 
 #include "extern.h"
 
+static int
+outputheader_json(FILE *out, struct stats *st)
+{
+	char		hn[NI_MAXHOST], tbuf[26];
+	struct tm	*tp;
+	time_t		t;
+
+	time(&t);
+	setenv("TZ", "UTC", 1);
+	tp = localtime(&t);
+	strftime(tbuf, sizeof tbuf, "%FT%TZ", tp);
+
+	gethostname(hn, sizeof hn);
+
+	if (fprintf(out,
+	    "{\n\t\"metadata\": {\n"
+	    "\t\t\"buildmachine\": \"%s\",\n"
+	    "\t\t\"buildtime\": \"%s\",\n"
+	    "\t\t\"elapsedtime\": \"%lld\",\n"
+	    "\t\t\"usertime\": \"%lld\",\n"
+	    "\t\t\"systemtime\": \"%lld\",\n"
+	    "\t\t\"roas\": %zu,\n"
+	    "\t\t\"failedroas\": %zu,\n"
+	    "\t\t\"invalidroas\": %zu,\n"
+	    "\t\t\"certificates\": %zu,\n"
+	    "\t\t\"failcertificates\": %zu,\n"
+	    "\t\t\"invalidcertificates\": %zu,\n"
+	    "\t\t\"tals\": %zu,\n"
+	    "\t\t\"talfiles\": \"%s\",\n"
+	    "\t\t\"manifests\": %zu,\n"
+	    "\t\t\"failedmanifests\": %zu,\n"
+	    "\t\t\"stalemanifests\": %zu,\n"
+	    "\t\t\"crls\": %zu,\n"
+	    "\t\t\"repositories\": %zu,\n"
+	    "\t\t\"vrps\": %zu,\n"
+	    "\t\t\"uniquevrps\": %zu\n"
+	    "\t},\n\n",
+	    hn, tbuf, (long long)st->elapsed_time.tv_sec,
+	    (long long)st->user_time.tv_sec, (long long)st->system_time.tv_sec,
+	    st->roas, st->roas_fail, st->roas_invalid,
+	    st->certs, st->certs_fail, st->certs_invalid,
+	    st->tals, st->talnames,
+	    st->mfts, st->mfts_fail, st->mfts_stale,
+	    st->crls,
+	    st->repos,
+	    st->vrps, st->uniqs) < 0)
+		return -1;
+	return 0;
+}
+
 int
-output_json(FILE *out, struct vrp_tree *vrps)
+output_json(FILE *out, struct vrp_tree *vrps, struct stats *st)
 {
 	char		 buf[64];
 	struct vrp	*v;
 	int		 first = 1;
 
-	if (fprintf(out, "{\n\t\"roas\": [\n") < 0)
+	if (outputheader_json(out, st) < 0)
+		return -1;
+
+	if (fprintf(out, "\t\"roas\": [\n") < 0)
 		return -1;
 
 	RB_FOREACH(v, vrp_tree, vrps) {

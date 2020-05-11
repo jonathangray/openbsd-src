@@ -1,4 +1,4 @@
-/*	$OpenBSD: isl1208.c,v 1.1 2018/04/07 18:16:35 kettenis Exp $	*/
+/*	$OpenBSD: isl1208.c,v 1.3 2020/04/24 22:42:31 kettenis Exp $	*/
 /*
  * Copyright (c) 2018 Mark Kettenis <kettenis@openbsd.org>
  *
@@ -18,7 +18,6 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/device.h>
-#include <sys/malloc.h>
 
 #include <dev/i2c/i2cvar.h>
 
@@ -40,12 +39,6 @@ extern todr_chip_handle_t todr_handle;
 #define  ISL1208_SR_WRTC	(1 << 4)
 
 #define ISL1208_NRTC_REGS	7
-
-struct islrtc_regdata {
-	const char *name;
-	uint8_t reg, mask;
-	uint32_t base, delta;
-};
 
 struct islrtc_softc {
 	struct device sc_dev;

@@ -1,4 +1,4 @@
-/*	$OpenBSD: if_mcx.c,v 1.39 2020/04/06 11:27:23 jmatthew Exp $ */
+/*	$OpenBSD: if_mcx.c,v 1.44 2020/04/24 07:28:37 mestre Exp $ */
 
 /*
  * Copyright (c) 2017 David Gwynne <dlg@openbsd.org>
@@ -71,7 +71,7 @@
 
 /* queue sizes */
 #define MCX_LOG_EQ_SIZE		 6		/* one page */
-#define MCX_LOG_CQ_SIZE		 11
+#define MCX_LOG_CQ_SIZE		 12
 #define MCX_LOG_RQ_SIZE		 10
 #define MCX_LOG_SQ_SIZE		 11
 
@@ -2152,6 +2152,12 @@ static const struct mcx_eth_proto_capability mcx_eth_cap_map[] = {
 };
 
 static int
+mcx_get_id(uint32_t val)
+{
+	return betoh32(val) & 0x00ffffff;
+}
+
+static int
 mcx_match(struct device *parent, void *match, void *aux)
 {
 	return (pci_matchbyid(aux, mcx_devices, nitems(mcx_devices)));
@@ -2450,11 +2456,8 @@ mcx_cmdq_poll(struct mcx_softc *sc, struct mcx_cmdq_entry *cqe,
 		    0, MCX_DMA_LEN(&sc->sc_cmdq_mem), BUS_DMASYNC_POSTRW);
 
 		if ((cqe->cq_status & MCX_CQ_STATUS_OWN_MASK) ==
-		    MCX_CQ_STATUS_OWN_SW) {
-			if (sc->sc_eqn != 0)
-				mcx_intr(sc);
+		    MCX_CQ_STATUS_OWN_SW)
 			return (0);
-		}
 
 		delay(1000);
 	}
@@ -2779,13 +2782,13 @@ mcx_cmdq_mboxes_pas(struct mcx_dmamem *mxm, int offset, int npages,
 	pas += (offset / sizeof(*pas));
 	mbox_pages = (MCX_CMDQ_MAILBOX_DATASIZE - offset) / sizeof(*pas);
 	for (i = 0; i < npages; i++) {
-		*pas = htobe64(MCX_DMA_DVA(buf) + (i * MCX_PAGE_SIZE));
-		pas++;
 		if (i == mbox_pages) {
 			mbox++;
 			pas = mcx_cq_mbox_data(mcx_cq_mbox(mxm, mbox));
 			mbox_pages += MCX_CMDQ_MAILBOX_DATASIZE / sizeof(*pas);
 		}
+		*pas = htobe64(MCX_DMA_DVA(buf) + (i * MCX_PAGE_SIZE));
+		pas++;
 	}
 }
 
@@ -3567,7 +3570,7 @@ mcx_alloc_uar(struct mcx_softc *sc)
 		return (-1);
 	}
 
-	sc->sc_uar = betoh32(out->cmd_uar);
+	sc->sc_uar = mcx_get_id(out->cmd_uar);
 
 	return (0);
 }
@@ -3648,7 +3651,7 @@ mcx_create_eq(struct mcx_softc *sc)
 		goto free;
 	}
 
-	sc->sc_eqn = betoh32(out->cmd_eqn);
+	sc->sc_eqn = mcx_get_id(out->cmd_eqn);
 	mcx_arm_eq(sc);
 free:
 	mcx_dmamem_free(sc, &mxm);
@@ -3688,7 +3691,7 @@ mcx_alloc_pd(struct mcx_softc *sc)
 		return (-1);
 	}
 
-	sc->sc_pd = betoh32(out->cmd_pd);
+	sc->sc_pd = mcx_get_id(out->cmd_pd);
 	return (0);
 }
 
@@ -3726,7 +3729,7 @@ mcx_alloc_tdomain(struct mcx_softc *sc)
 		return (-1);
 	}
 
-	sc->sc_tdomain = betoh32(out->cmd_tdomain);
+	sc->sc_tdomain = mcx_get_id(out->cmd_tdomain);
 	return (0);
 }
 
@@ -3936,7 +3939,7 @@ mcx_create_cq(struct mcx_softc *sc, int eqn)
 		goto free;
 	}
 
-	cq->cq_n = betoh32(out->cmd_cqn);
+	cq->cq_n = mcx_get_id(out->cmd_cqn);
 	cq->cq_cons = 0;
 	cq->cq_count = 0;
 	cq->cq_doorbell = MCX_DMA_KVA(&sc->sc_doorbell_mem) +
@@ -4064,7 +4067,7 @@ mcx_create_rq(struct mcx_softc *sc, int cqn)
 		goto free;
 	}
 
-	sc->sc_rqn = betoh32(out->cmd_rqn);
+	sc->sc_rqn = mcx_get_id(out->cmd_rqn);
 
 	doorbell = MCX_DMA_KVA(&sc->sc_doorbell_mem);
 	sc->sc_rx_doorbell = (uint32_t *)(doorbell + MCX_RQ_DOORBELL_OFFSET);
@@ -4215,7 +4218,7 @@ mcx_create_tir(struct mcx_softc *sc)
 		goto free;
 	}
 
-	sc->sc_tirn = betoh32(out->cmd_tirn);
+	sc->sc_tirn = mcx_get_id(out->cmd_tirn);
 free:
 	mcx_dmamem_free(sc, &mxm);
 	return (error);
@@ -4336,7 +4339,7 @@ mcx_create_sq(struct mcx_softc *sc, int cqn)
 		goto free;
 	}
 
-	sc->sc_sqn = betoh32(out->cmd_sqn);
+	sc->sc_sqn = mcx_get_id(out->cmd_sqn);
 
 	doorbell = MCX_DMA_KVA(&sc->sc_doorbell_mem);
 	sc->sc_tx_doorbell = (uint32_t *)(doorbell + MCX_SQ_DOORBELL_OFFSET + 4);
@@ -4485,7 +4488,7 @@ mcx_create_tis(struct mcx_softc *sc)
 		goto free;
 	}
 
-	sc->sc_tisn = betoh32(out->cmd_tisn);
+	sc->sc_tisn = mcx_get_id(out->cmd_tisn);
 free:
 	mcx_dmamem_free(sc, &mxm);
 	return (error);
@@ -4621,7 +4624,7 @@ mcx_create_flow_table(struct mcx_softc *sc, int log_size)
 		goto free;
 	}
 
-	sc->sc_flow_table_id = betoh32(out->cmd_table_id);
+	sc->sc_flow_table_id = mcx_get_id(out->cmd_table_id);
 free:
 	mcx_dmamem_free(sc, &mxm);
 	return (error);
@@ -4792,7 +4795,7 @@ mcx_create_flow_group(struct mcx_softc *sc, int group, int start, int size,
 		goto free;
 	}
 
-	sc->sc_flow_group_id[group] = betoh32(out->cmd_group_id);
+	sc->sc_flow_group_id[group] = mcx_get_id(out->cmd_group_id);
 	sc->sc_flow_group_size[group] = size;
 	sc->sc_flow_group_start[group] = start;
 
@@ -6020,7 +6023,7 @@ mcx_up(struct mcx_softc *sc)
 	return ENETRESET;
 destroy_tx_slots:
 	mcx_free_slots(sc, sc->sc_tx_slots, i, (1 << MCX_LOG_SQ_SIZE));
-	sc->sc_rx_slots = NULL;
+	sc->sc_tx_slots = NULL;
 
 	i = (1 << MCX_LOG_RQ_SIZE);
 destroy_rx_slots:

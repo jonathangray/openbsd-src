@@ -1,4 +1,4 @@
-/*	$OpenBSD: bgpd.h,v 1.401 2020/02/14 13:54:31 claudio Exp $ */
+/*	$OpenBSD: bgpd.h,v 1.403 2020/05/10 13:38:46 deraadt Exp $ */
 
 /*
  * Copyright (c) 2003, 2004 Henning Brauer <henning@openbsd.org>
@@ -38,7 +38,7 @@
 #define	CONFFILE			"/etc/bgpd.conf"
 #define	BGPD_USER			"_bgpd"
 #define	PEER_DESCR_LEN			32
-#define	SHUT_COMM_LEN			256	/* includes NUL terminator */
+#define	REASON_LEN			256	/* includes NUL terminator */
 #define	PFTABLE_LEN			32
 #define	TCP_MD5_KEY_LEN			80
 #define	IPSEC_ENC_KEY_LEN		32
@@ -365,12 +365,13 @@ struct capabilities {
 
 struct peer_config {
 	struct bgpd_addr	 remote_addr;
-	struct bgpd_addr	 local_addr;
+	struct bgpd_addr	 local_addr_v4;
+	struct bgpd_addr	 local_addr_v6;
 	struct peer_auth	 auth;
 	struct capabilities	 capabilities;
 	char			 group[PEER_DESCR_LEN];
 	char			 descr[PEER_DESCR_LEN];
-	char			 shutcomm[SHUT_COMM_LEN];
+	char			 reason[REASON_LEN];
 	char			 rib[PEER_DESCR_LEN];
 	char			 if_depend[IFNAMSIZ];
 	char			 demote_group[IFNAMSIZ];
@@ -698,7 +699,7 @@ struct ctl_show_nexthop {
 struct ctl_neighbor {
 	struct bgpd_addr	addr;
 	char			descr[PEER_DESCR_LEN];
-	char			shutcomm[SHUT_COMM_LEN];
+	char			reason[REASON_LEN];
 	int			show_timers;
 	int			is_group;
 };
@@ -1304,7 +1305,7 @@ const char	*log_sockaddr(struct sockaddr *, socklen_t);
 const char	*log_as(u_int32_t);
 const char	*log_rd(u_int64_t);
 const char	*log_ext_subtype(short, u_int8_t);
-const char	*log_shutcomm(const char *);
+const char	*log_reason(const char *);
 int		 aspath_snprint(char *, size_t, void *, u_int16_t);
 int		 aspath_asprint(char **, void *, u_int16_t);
 size_t		 aspath_strlen(void *, u_int16_t);

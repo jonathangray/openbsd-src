@@ -1,4 +1,4 @@
-/*	$OpenBSD: util.c,v 1.52 2020/02/12 10:33:56 claudio Exp $ */
+/*	$OpenBSD: util.c,v 1.54 2020/05/10 13:38:46 deraadt Exp $ */
 
 /*
  * Copyright (c) 2006 Claudio Jeker <claudio@openbsd.org>
@@ -163,8 +163,8 @@ log_ext_subtype(short type, u_int8_t subtype)
 }
 
 const char *
-log_shutcomm(const char *communication) {
-	static char buf[(SHUT_COMM_LEN - 1) * 4 + 1];
+log_reason(const char *communication) {
+	static char buf[(REASON_LEN - 1) * 4 + 1];
 
 	strnvis(buf, communication, sizeof(buf), VIS_NL | VIS_OCTAL);
 
@@ -844,7 +844,7 @@ addr2sa(struct bgpd_addr *addr, u_int16_t port, socklen_t *len)
 	struct sockaddr_in		*sa_in = (struct sockaddr_in *)&ss;
 	struct sockaddr_in6		*sa_in6 = (struct sockaddr_in6 *)&ss;
 
-	if (addr->aid == AID_UNSPEC)
+	if (addr == NULL || addr->aid == AID_UNSPEC)
 		return (NULL);
 
 	bzero(&ss, sizeof(ss));

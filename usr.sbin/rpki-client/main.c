@@ -1,4 +1,4 @@
-/*	$OpenBSD: main.c,v 1.64 2020/04/18 00:00:58 deraadt Exp $ */
+/*	$OpenBSD: main.c,v 1.69 2020/05/06 12:15:50 claudio Exp $ */
 /*
  * Copyright (c) 2019 Kristaps Dzonsons <kristaps@bsd.lv>
  *
@@ -44,6 +44,7 @@
 
 #include <sys/queue.h>
 #include <sys/socket.h>
+#include <sys/resource.h>
 #include <sys/stat.h>
 #include <sys/tree.h>
 #include <sys/types.h>
@@ -75,26 +76,6 @@
  * Maximum number of TAL files we'll load.
  */
 #define	TALSZ_MAX	8
-
-/*
- * Statistics collected during run-time.
- */
-struct	stats {
-	size_t	 tals; /* total number of locators */
-	size_t	 mfts; /* total number of manifests */
-	size_t	 mfts_fail; /* failing syntactic parse */
-	size_t	 mfts_stale; /* stale manifests */
-	size_t	 certs; /* certificates */
-	size_t	 certs_fail; /* failing syntactic parse */
-	size_t	 certs_invalid; /* invalid resources */
-	size_t	 roas; /* route origin authorizations */
-	size_t	 roas_fail; /* failing syntactic parse */
-	size_t	 roas_invalid; /* invalid resources */
-	size_t	 repos; /* repositories */
-	size_t	 crls; /* revocation lists */
-	size_t	 vrps; /* total number of vrps */
-	size_t	 uniqs; /* number of unique vrps */
-};
 
 /*
  * An rsync repository.
@@ -159,6 +140,8 @@ static void	build_crls(const struct auth *, struct crl_tree *,
 const char	*bird_tablename = "ROAS";
 
 int	 verbose;
+
+struct stats	 stats;
 
 /*
  * Log a message to stderr if and only if "verbose" is non-zero.
@@ -268,7 +251,7 @@ repo_lookup(int fd, struct repotab *rt, const char *uri)
 
 	i = rt->reposz - 1;
 
-	logx("%s/%s: loading", rp->host, rp->module);
+	logx("%s/%s: pulling from network", rp->host, rp->module);
 	io_simple_write(fd, &i, sizeof(size_t));
 	io_str_write(fd, rp->host);
 	io_str_write(fd, rp->module);
@@ -490,6 +473,16 @@ queue_add_tal(int fd, struct entityq *q, const char *file, size_t *eid)
 	if ((nfile = strdup(file)) == NULL)
 		err(1, "strdup");
 	buf = tal_read_file(file);
+
+	/* Record tal for later reporting */
+	if (stats.talnames == NULL)
+		stats.talnames = strdup(file);
+	else {
+		char *tmp;
+		asprintf(&tmp, "%s %s", stats.talnames, file);
+		free(stats.talnames);
+		stats.talnames = tmp;
+	}
 
 	/* Not in a repository, so directly add to queue. */
 	entityq_add(fd, q, nfile, RTYPE_TAL, NULL, NULL, NULL, 0, buf, eid);
@@ -729,7 +722,7 @@ proc_rsync(char *prog, char *bind_addr, int fd, int noop)
 				err(1, "pledge");
 			i = 0;
 			args[i++] = (char *)prog;
-			args[i++] = "-rlt";
+			args[i++] = "-rt";
 			args[i++] = "--delete";
 			if (bind_addr != NULL) {
 				args[i++] = "--address";
@@ -1384,13 +1377,16 @@ main(int argc, char *argv[])
 	struct entity	*ent;
 	struct pollfd	 pfd[2];
 	struct repotab	 rt;
-	struct stats	 stats;
 	struct roa	**out = NULL;
 	char		*rsync_prog = "openrsync";
 	char		*bind_addr = NULL;
 	const char	*cachedir = NULL;
 	const char	*tals[TALSZ_MAX];
 	struct vrp_tree	 v = RB_INITIALIZER(&v);
+	struct rusage	ru;
+	struct timeval	start_time, now_time;
+
+	gettimeofday(&start_time, NULL);
 
 	/* If started as root, priv-drop to _rpki-client */
 	if (getuid() == 0) {
@@ -1404,9 +1400,9 @@ main(int argc, char *argv[])
 		    setresuid(pw->pw_uid, pw->pw_uid, pw->pw_uid) == -1)
 			err(1, "unable to revoke privs");
 
-		cachedir = RPKI_PATH_BASE_DIR;
-		outputdir = RPKI_PATH_OUT_DIR;
 	}
+	cachedir = RPKI_PATH_BASE_DIR;
+	outputdir = RPKI_PATH_OUT_DIR;
 
 	if (pledge("stdio rpath wpath cpath fattr proc exec unveil", NULL) == -1)
 		err(1, "pledge");
@@ -1481,7 +1477,6 @@ main(int argc, char *argv[])
 		err(1, "no TAL files found in %s", "/etc/rpki");
 
 	memset(&rt, 0, sizeof(struct repotab));
-	memset(&stats, 0, sizeof(struct stats));
 	TAILQ_INIT(&q);
 
 	/*
@@ -1609,7 +1604,7 @@ main(int argc, char *argv[])
 			assert(i < rt.reposz);
 			assert(!rt.repos[i].loaded);
 			rt.repos[i].loaded = 1;
-			logx("%s/%s: loaded", rt.repos[i].host,
+			logx("%s/%s: loaded from cache", rt.repos[i].host,
 			    rt.repos[i].module);
 			stats.repos++;
 			entityq_flush(proc, &q, &rt.repos[i]);
@@ -1656,7 +1651,18 @@ main(int argc, char *argv[])
 		rc = 1;
 	}
 
-	if (outputfiles(&v))
+	gettimeofday(&now_time, NULL);
+	timersub(&now_time, &start_time, &stats.elapsed_time);
+	if (getrusage(RUSAGE_SELF, &ru) == 0) {
+		stats.user_time = ru.ru_utime;
+		stats.system_time = ru.ru_stime;
+	}
+	if (getrusage(RUSAGE_CHILDREN, &ru) == 0) {
+		timeradd(&stats.user_time, &ru.ru_utime, &stats.user_time);
+		timeradd(&stats.system_time, &ru.ru_stime, &stats.system_time);
+	}
+
+	if (outputfiles(&v, &stats))
 		rc = 1;
 
 	logx("Route Origin Authorizations: %zu (%zu failed parse, %zu invalid)",

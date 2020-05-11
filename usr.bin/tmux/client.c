@@ -1,4 +1,4 @@
-/* $OpenBSD: client.c,v 1.141 2020/04/13 08:26:27 nicm Exp $ */
+/* $OpenBSD: client.c,v 1.144 2020/05/08 14:15:11 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -18,6 +18,7 @@
 
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <sys/uio.h>
 #include <sys/un.h>
 #include <sys/wait.h>
 
@@ -57,7 +58,7 @@ static struct client_files client_files = RB_INITIALIZER(&client_files);
 static __dead void	 client_exec(const char *,const char *);
 static int		 client_get_lock(char *);
 static int		 client_connect(struct event_base *, const char *, int);
-static void		 client_send_identify(const char *, const char *);
+static void		 client_send_identify(const char *, const char *, int);
 static void		 client_signal(int);
 static void		 client_dispatch(struct imsg *, void *);
 static void		 client_dispatch_attached(struct imsg *);
@@ -233,7 +234,7 @@ client_exit(void)
 
 /* Client main loop. */
 int
-client_main(struct event_base *base, int argc, char **argv, int flags)
+client_main(struct event_base *base, int argc, char **argv, int flags, int feat)
 {
 	struct cmd_parse_result	*pr;
 	struct msg_command	*data;
@@ -340,7 +341,7 @@ client_main(struct event_base *base, int argc, char **argv, int flags)
 	}
 
 	/* Send identify messages. */
-	client_send_identify(ttynam, cwd);
+	client_send_identify(ttynam, cwd, feat);
 
 	/* Send first command. */
 	if (msg == MSG_COMMAND) {
@@ -406,7 +407,7 @@ client_main(struct event_base *base, int argc, char **argv, int flags)
 
 /* Send identify messages to server. */
 static void
-client_send_identify(const char *ttynam, const char *cwd)
+client_send_identify(const char *ttynam, const char *cwd, int feat)
 {
 	const char	 *s;
 	char		**ss;
@@ -419,6 +420,7 @@ client_send_identify(const char *ttynam, const char *cwd)
 	if ((s = getenv("TERM")) == NULL)
 		s = "";
 	proc_send(client_peer, MSG_IDENTIFY_TERM, -1, s, strlen(s) + 1);
+	proc_send(client_peer, MSG_IDENTIFY_FEATURES, -1, &feat, sizeof feat);
 
 	proc_send(client_peer, MSG_IDENTIFY_TTYNAME, -1, ttynam,
 	    strlen(ttynam) + 1);
@@ -517,7 +519,7 @@ client_write_open(void *data, size_t datalen)
 			errno = EBADF;
 		else {
 			cf->fd = dup(msg->fd);
-			if (client_flags & CLIENT_CONTROL)
+			if (~client_flags & CLIENT_CONTROL)
 				close(msg->fd); /* can only be used once */
 		}
 	}
@@ -672,7 +674,8 @@ client_read_open(void *data, size_t datalen)
 			errno = EBADF;
 		else {
 			cf->fd = dup(msg->fd);
-			close(msg->fd); /* can only be used once */
+			if (~client_flags & CLIENT_CONTROL)
+				close(msg->fd); /* can only be used once */
 		}
 	}
 	if (cf->fd == -1) {

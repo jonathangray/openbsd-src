@@ -1,4 +1,4 @@
-/* $OpenBSD: screen-write.c,v 1.172 2020/04/18 17:20:25 nicm Exp $ */
+/* $OpenBSD: screen-write.c,v 1.175 2020/04/21 13:48:56 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -118,8 +118,9 @@ screen_write_initctx(struct screen_write_ctx *ctx, struct tty_ctx *ttyctx,
 	ttyctx->orlower = s->rlower;
 	ttyctx->orupper = s->rupper;
 
-	if (sync && !ctx->sync && ttyctx->wp != NULL) {
-		log_debug("%s: starting sync", __func__);
+	if (ctx->wp != NULL &&
+	    !ctx->sync &&
+	    (sync || ctx->wp != ctx->wp->window->active)) {
 		tty_write(tty_cmd_syncstart, ttyctx);
 		ctx->sync = 1;
 	}
@@ -184,8 +185,6 @@ screen_write_start(struct screen_write_ctx *ctx, struct window_pane *wp,
 void
 screen_write_stop(struct screen_write_ctx *ctx)
 {
-	struct tty_ctx	ttyctx;
-
 	screen_write_collect_end(ctx);
 	screen_write_collect_flush(ctx, 0, __func__);
 
@@ -194,12 +193,6 @@ screen_write_stop(struct screen_write_ctx *ctx)
 	if (ctx->wp != NULL) {
 		ctx->wp->written += ctx->written;
 		ctx->wp->skipped += ctx->skipped;
-	}
-
-	if (ctx->sync) {
-		screen_write_initctx(ctx, &ttyctx, 0);
-		tty_write(tty_cmd_syncend, &ttyctx);
-		log_debug("%s: ending sync", __func__);
 	}
 
 	free(ctx->item);
@@ -1379,10 +1372,11 @@ screen_write_collect_scroll(struct screen_write_ctx *ctx)
 	for (y = s->rupper; y < s->rlower; y++) {
 		cl = &ctx->s->write_list[y + 1];
 		TAILQ_CONCAT(&ctx->s->write_list[y].items, &cl->items, entry);
+		ctx->s->write_list[y].bg = cl->bg;
 		ctx->s->write_list[y].data = cl->data;
 	}
-	ctx->s->write_list[s->rlower].data = saved;
 	ctx->s->write_list[s->rlower].bg = 1 + 8;
+	ctx->s->write_list[s->rlower].data = saved;
 }
 
 /* Flush collected lines. */

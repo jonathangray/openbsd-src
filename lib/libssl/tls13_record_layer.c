@@ -1,4 +1,4 @@
-/* $OpenBSD: tls13_record_layer.c,v 1.30 2020/03/16 15:11:35 tb Exp $ */
+/* $OpenBSD: tls13_record_layer.c,v 1.37 2020/05/10 16:56:11 jsing Exp $ */
 /*
  * Copyright (c) 2018, 2019 Joel Sing <jsing@openbsd.org>
  *
@@ -30,6 +30,7 @@ struct tls13_record_layer {
 
 	int ccs_allowed;
 	int ccs_seen;
+	int ccs_sent;
 	int handshake_completed;
 	int legacy_alerts_allowed;
 	int phh;
@@ -166,7 +167,7 @@ tls13_record_layer_rbuf(struct tls13_record_layer *rl, CBS *cbs)
 	CBS_dup(&rl->rbuf_cbs, cbs);
 }
 
-uint8_t tls13_max_seq_num[TLS13_RECORD_SEQ_NUM_LEN] = {
+static const uint8_t tls13_max_seq_num[TLS13_RECORD_SEQ_NUM_LEN] = {
 	0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
 };
 
@@ -267,13 +268,13 @@ tls13_record_layer_process_alert(struct tls13_record_layer *rl)
 		return TLS13_IO_FAILURE;
 
 	if (!CBS_get_u8(&rl->rbuf_cbs, &alert_level))
-		return tls13_send_alert(rl, TLS1_AD_DECODE_ERROR);
+		return tls13_send_alert(rl, TLS13_ALERT_DECODE_ERROR);
 
 	if (!CBS_get_u8(&rl->rbuf_cbs, &alert_desc))
-		return tls13_send_alert(rl, TLS1_AD_DECODE_ERROR);
+		return tls13_send_alert(rl, TLS13_ALERT_DECODE_ERROR);
 
 	if (CBS_len(&rl->rbuf_cbs) != 0)
-		return tls13_send_alert(rl, TLS1_AD_DECODE_ERROR);
+		return tls13_send_alert(rl, TLS13_ALERT_DECODE_ERROR);
 
 	tls13_record_layer_rbuf_free(rl);
 
@@ -282,21 +283,22 @@ tls13_record_layer_process_alert(struct tls13_record_layer *rl)
 	 * however for error alerts (RFC 8446 section 6.2), the alert level
 	 * must be specified as fatal.
 	 */
-	if (alert_desc == SSL_AD_CLOSE_NOTIFY) {
+	if (alert_desc == TLS13_ALERT_CLOSE_NOTIFY) {
 		rl->read_closed = 1;
 		ret = TLS13_IO_EOF;
-	} else if (alert_desc == SSL_AD_USER_CANCELLED) {
+	} else if (alert_desc == TLS13_ALERT_USER_CANCELED) {
 		/* Ignored at the record layer. */
 		ret = TLS13_IO_WANT_RETRY;
-	} else if (alert_level == SSL3_AL_FATAL) {
+	} else if (alert_level == TLS13_ALERT_LEVEL_FATAL) {
 		rl->read_closed = 1;
 		rl->write_closed = 1;
 		ret = TLS13_IO_ALERT;
-	} else if (rl->legacy_alerts_allowed && alert_level == SSL3_AL_WARNING) {
+	} else if (rl->legacy_alerts_allowed &&
+	    alert_level == TLS13_ALERT_LEVEL_WARNING) {
 		/* Ignored and not passed to the callback. */
 		return TLS13_IO_WANT_RETRY;
 	} else {
-		return tls13_send_alert(rl, SSL_AD_ILLEGAL_PARAMETER);
+		return tls13_send_alert(rl, TLS13_ALERT_ILLEGAL_PARAMETER);
 	}
 
 	rl->alert_cb(alert_desc, rl->cb_arg);
@@ -321,10 +323,10 @@ tls13_record_layer_send_alert(struct tls13_record_layer *rl)
 	rl->alert_data = NULL;
 	rl->alert_len = 0;
 
-	if (rl->alert_desc == SSL_AD_CLOSE_NOTIFY) {
+	if (rl->alert_desc == TLS13_ALERT_CLOSE_NOTIFY) {
 		rl->write_closed = 1;
 		ret = TLS13_IO_SUCCESS;
-	} else if (rl->alert_desc == SSL_AD_USER_CANCELLED) {
+	} else if (rl->alert_desc == TLS13_ALERT_USER_CANCELED) {
 		/* Ignored at the record layer. */
 		ret = TLS13_IO_SUCCESS;
 	} else {
@@ -343,7 +345,7 @@ tls13_record_layer_send_phh(struct tls13_record_layer *rl)
 
 	/* Push out pending post-handshake handshake messages. */
 	if ((ret = tls13_record_layer_write_chunk(rl, SSL3_RT_HANDSHAKE,
-	    CBS_data(&rl->phh_cbs), CBS_len(&rl->phh_cbs))) < 0)
+	    CBS_data(&rl->phh_cbs), CBS_len(&rl->phh_cbs))) <= 0)
 		return ret;
 	if (!CBS_skip(&rl->phh_cbs, ret))
 		return TLS13_IO_FAILURE;
@@ -603,7 +605,14 @@ tls13_record_layer_seal_record_plaintext(struct tls13_record_layer *rl,
 	size_t data_len = 0;
 	CBB cbb, body;
 
-	if (rl->aead != NULL)
+	/*
+	 * Allow dummy CCS messages to be sent in plaintext even when
+	 * record protection has been engaged, as long as the handshake
+	 * has not yet completed.
+	 */
+	if (rl->handshake_completed)
+		return 0;
+	if (rl->aead != NULL && content_type != SSL3_RT_CHANGE_CIPHER_SPEC)
 		return 0;
 
 	/*
@@ -752,7 +761,7 @@ tls13_record_layer_seal_record(struct tls13_record_layer *rl,
 	if ((rl->wrec = tls13_record_new()) == NULL)
 		return 0;
 
-	if (rl->aead == NULL)
+	if (rl->aead == NULL || content_type == SSL3_RT_CHANGE_CIPHER_SPEC)
 		return tls13_record_layer_seal_record_plaintext(rl,
 		    content_type, content, content_len);
 
@@ -787,15 +796,15 @@ tls13_record_layer_read_record(struct tls13_record_layer *rl)
 	 * ignored.
 	 */
 	if (content_type == SSL3_RT_CHANGE_CIPHER_SPEC) {
-		if (!rl->ccs_allowed || rl->ccs_seen)
-			return tls13_send_alert(rl, SSL_AD_UNEXPECTED_MESSAGE);
+		if (!rl->ccs_allowed || rl->ccs_seen >= 2)
+			return tls13_send_alert(rl, TLS13_ALERT_UNEXPECTED_MESSAGE);
 		if (!tls13_record_content(rl->rrec, &cbs))
-			return tls13_send_alert(rl, TLS1_AD_DECODE_ERROR);
+			return tls13_send_alert(rl, TLS13_ALERT_DECODE_ERROR);
 		if (!CBS_get_u8(&cbs, &ccs))
-			return tls13_send_alert(rl, TLS1_AD_DECODE_ERROR);
+			return tls13_send_alert(rl, TLS13_ALERT_DECODE_ERROR);
 		if (ccs != 1)
-			return tls13_send_alert(rl, SSL_AD_ILLEGAL_PARAMETER);
-		rl->ccs_seen = 1;
+			return tls13_send_alert(rl, TLS13_ALERT_ILLEGAL_PARAMETER);
+		rl->ccs_seen++;
 		tls13_record_layer_rrec_free(rl);
 		return TLS13_IO_WANT_RETRY;
 	}
@@ -806,12 +815,22 @@ tls13_record_layer_read_record(struct tls13_record_layer *rl)
 	 * dummy ChangeCipherSpec messages, handled above).
 	 */
 	if (rl->aead != NULL && content_type != SSL3_RT_APPLICATION_DATA)
-		return tls13_send_alert(rl, SSL3_AD_UNEXPECTED_MESSAGE);
+		return tls13_send_alert(rl, TLS13_ALERT_UNEXPECTED_MESSAGE);
 
 	if (!tls13_record_layer_open_record(rl))
 		goto err;
 
 	tls13_record_layer_rrec_free(rl);
+
+	/*
+	 * On receiving a handshake or alert record with empty inner plaintext,
+	 * we must terminate the connection with an unexpected_message alert.
+	 * See RFC 8446 section 5.4.
+	 */
+	if (CBS_len(&rl->rbuf_cbs) == 0 &&
+	    (rl->rbuf_content_type == SSL3_RT_ALERT ||
+	     rl->rbuf_content_type == SSL3_RT_HANDSHAKE))
+		return tls13_send_alert(rl, TLS13_ALERT_UNEXPECTED_MESSAGE);
 
 	switch (rl->rbuf_content_type) {
 	case SSL3_RT_ALERT:
@@ -822,11 +841,11 @@ tls13_record_layer_read_record(struct tls13_record_layer *rl)
 
 	case SSL3_RT_APPLICATION_DATA:
 		if (!rl->handshake_completed)
-			return tls13_send_alert(rl, SSL3_AD_UNEXPECTED_MESSAGE);
+			return tls13_send_alert(rl, TLS13_ALERT_UNEXPECTED_MESSAGE);
 		break;
 
 	default:
-		return tls13_send_alert(rl, SSL3_AD_UNEXPECTED_MESSAGE);
+		return tls13_send_alert(rl, TLS13_ALERT_UNEXPECTED_MESSAGE);
 	}
 
 	return TLS13_IO_SUCCESS;
@@ -835,7 +854,7 @@ tls13_record_layer_read_record(struct tls13_record_layer *rl)
 	return TLS13_IO_FAILURE;
 }
 
-ssize_t
+static ssize_t
 tls13_record_layer_pending(struct tls13_record_layer *rl, uint8_t content_type)
 {
 	if (rl->rbuf_content_type != content_type)
@@ -869,7 +888,7 @@ tls13_record_layer_read_internal(struct tls13_record_layer *rl,
 	 * any record type that isn't a handshake until we are done.
 	 */
 	if (rl->phh && rl->rbuf_content_type != SSL3_RT_HANDSHAKE)
-		return tls13_send_alert(rl, SSL3_AD_UNEXPECTED_MESSAGE);
+		return tls13_send_alert(rl, TLS13_ALERT_UNEXPECTED_MESSAGE);
 
 	if (rl->rbuf_content_type != content_type) {
 		/*
@@ -923,7 +942,7 @@ tls13_record_layer_read_internal(struct tls13_record_layer *rl,
 			}
 		}
 
-		return tls13_send_alert(rl, SSL3_AD_UNEXPECTED_MESSAGE);
+		return tls13_send_alert(rl, TLS13_ALERT_UNEXPECTED_MESSAGE);
 	}
 
 	if (n > CBS_len(&rl->rbuf_cbs))
@@ -946,7 +965,7 @@ tls13_record_layer_read_internal(struct tls13_record_layer *rl,
 	return TLS13_IO_FAILURE;
 }
 
-ssize_t
+static ssize_t
 tls13_record_layer_peek(struct tls13_record_layer *rl, uint8_t content_type,
     uint8_t *buf, size_t n)
 {
@@ -959,7 +978,7 @@ tls13_record_layer_peek(struct tls13_record_layer *rl, uint8_t content_type,
 	return ret;
 }
 
-ssize_t
+static ssize_t
 tls13_record_layer_read(struct tls13_record_layer *rl, uint8_t content_type,
     uint8_t *buf, size_t n)
 {
@@ -1061,6 +1080,25 @@ tls13_record_layer_write(struct tls13_record_layer *rl, uint8_t content_type,
 	return ret;
 }
 
+static const uint8_t tls13_dummy_ccs[] = { 0x01 };
+
+ssize_t
+tls13_send_dummy_ccs(struct tls13_record_layer *rl)
+{
+	ssize_t ret;
+
+	if (rl->ccs_sent)
+		return TLS13_IO_FAILURE;
+
+	if ((ret = tls13_record_layer_write(rl, SSL3_RT_CHANGE_CIPHER_SPEC,
+	    tls13_dummy_ccs, sizeof(tls13_dummy_ccs))) <= 0)
+		return ret;
+
+	rl->ccs_sent = 1;
+
+	return TLS13_IO_SUCCESS;
+}
+
 ssize_t
 tls13_read_handshake_data(struct tls13_record_layer *rl, uint8_t *buf, size_t n)
 {
@@ -1114,12 +1152,12 @@ tls13_write_application_data(struct tls13_record_layer *rl, const uint8_t *buf,
 ssize_t
 tls13_send_alert(struct tls13_record_layer *rl, uint8_t alert_desc)
 {
-	uint8_t alert_level = SSL3_AL_FATAL;
+	uint8_t alert_level = TLS13_ALERT_LEVEL_FATAL;
 	ssize_t ret;
 
-	if (alert_desc == SSL_AD_CLOSE_NOTIFY ||
-	    alert_desc == SSL_AD_USER_CANCELLED)
-		alert_level = SSL3_AL_WARNING;
+	if (alert_desc == TLS13_ALERT_CLOSE_NOTIFY ||
+	    alert_desc == TLS13_ALERT_USER_CANCELED)
+		alert_level = TLS13_ALERT_LEVEL_WARNING;
 
 	do {
 		ret = tls13_record_layer_alert(rl, alert_level, alert_desc);

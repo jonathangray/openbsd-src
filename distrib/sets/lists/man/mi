@@ -20,7 +20,6 @@
 ./usr/share/man/man1/atq.1
 ./usr/share/man/man1/atrm.1
 ./usr/share/man/man1/aucat.1
-./usr/share/man/man1/audioctl.1
 ./usr/share/man/man1/awk.1
 ./usr/share/man/man1/banner.1
 ./usr/share/man/man1/basename.1
@@ -167,7 +166,6 @@
 ./usr/share/man/man1/mesg.1
 ./usr/share/man/man1/mg.1
 ./usr/share/man/man1/midicat.1
-./usr/share/man/man1/mixerctl.1
 ./usr/share/man/man1/mkdep.1
 ./usr/share/man/man1/mkdir.1
 ./usr/share/man/man1/mkfifo.1
@@ -1282,12 +1280,16 @@
 ./usr/share/man/man4/azalia.4
 ./usr/share/man/man4/bce.4
 ./usr/share/man/man4/bcmaux.4
+./usr/share/man/man4/bcmbsc.4
 ./usr/share/man/man4/bcmclock.4
+./usr/share/man/man4/bcmdmac.4
 ./usr/share/man/man4/bcmdog.4
+./usr/share/man/man4/bcmgpio.4
 ./usr/share/man/man4/bcmirng.4
 ./usr/share/man/man4/bcmmbox.4
 ./usr/share/man/man4/bcmpcie.4
 ./usr/share/man/man4/bcmrng.4
+./usr/share/man/man4/bcmsdhost.4
 ./usr/share/man/man4/bcmtemp.4
 ./usr/share/man/man4/bdpmic.4
 ./usr/share/man/man4/berkwdt.4
@@ -1335,6 +1337,7 @@
 ./usr/share/man/man4/diskmap.4
 ./usr/share/man/man4/divert.4
 ./usr/share/man/man4/drm.4
+./usr/share/man/man4/dsxrtc.4
 ./usr/share/man/man4/dt.4
 ./usr/share/man/man4/dwctwo.4
 ./usr/share/man/man4/dwdog.4
@@ -1487,6 +1490,7 @@
 ./usr/share/man/man4/imxgpc.4
 ./usr/share/man/man4/imxgpio.4
 ./usr/share/man/man4/imxiic.4
+./usr/share/man/man4/imxpciephy.4
 ./usr/share/man/man4/imxpwm.4
 ./usr/share/man/man4/imxrtc.4
 ./usr/share/man/man4/imxspi.4
@@ -1937,6 +1941,7 @@
 ./usr/share/man/man4/tap.4
 ./usr/share/man/man4/tcic.4
 ./usr/share/man/man4/tcp.4
+./usr/share/man/man4/tcpci.4
 ./usr/share/man/man4/termios.4
 ./usr/share/man/man4/thmc.4
 ./usr/share/man/man4/tht.4
@@ -2270,6 +2275,7 @@
 ./usr/share/man/man8/armv7/gpioctl.8
 ./usr/share/man/man8/arp.8
 ./usr/share/man/man8/atactl.8
+./usr/share/man/man8/audioctl.8
 ./usr/share/man/man8/authpf.8
 ./usr/share/man/man8/autoinstall.8
 ./usr/share/man/man8/badsect.8
@@ -2405,6 +2411,7 @@
 ./usr/share/man/man8/makemap.8
 ./usr/share/man/man8/makewhatis.8
 ./usr/share/man/man8/map-mbone.8
+./usr/share/man/man8/mixerctl.8
 ./usr/share/man/man8/mkalias.8
 ./usr/share/man/man8/mkhybrid.8
 ./usr/share/man/man8/mknetid.8

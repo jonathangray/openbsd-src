@@ -1,4 +1,4 @@
-/*	$OpenBSD: efiboot.c,v 1.27 2020/03/22 14:59:11 kettenis Exp $	*/
+/*	$OpenBSD: efiboot.c,v 1.29 2020/05/10 11:55:42 kettenis Exp $	*/
 
 /*
  * Copyright (c) 2015 YASUOKA Masahiko <yasuoka@yasuoka.net>
@@ -457,6 +457,24 @@ efi_console(void)
 	fdt_node_add_property(node, "stdout-path", path, strlen(path) + 1);
 }
 
+uint64_t dma_constraint[2] = { 0, -1 };
+
+void
+efi_dma_constraint(void)
+{
+	void *node;
+
+	/* Raspberry Pi 4 is "special". */
+	node = fdt_find_node("/");
+	if (fdt_node_is_compatible(node, "brcm,bcm2711"))
+		dma_constraint[1] = htobe64(0x3bffffff);
+
+	/* Pass DMA constraint. */
+	node = fdt_find_node("/chosen");
+	fdt_node_add_property(node, "openbsd,dma-constraint",
+	    dma_constraint, sizeof(dma_constraint));
+}
+
 int acpi = 0;
 void *fdt = NULL;
 char *bootmac = NULL;
@@ -465,12 +483,13 @@ static EFI_GUID fdt_guid = FDT_TABLE_GUID;
 #define	efi_guidcmp(_a, _b)	memcmp((_a), (_b), sizeof(EFI_GUID))
 
 void *
-efi_makebootargs(char *bootargs)
+efi_makebootargs(char *bootargs, int howto)
 {
 	struct sr_boot_volume *bv;
 	u_char bootduid[8];
 	u_char zero[8] = { 0 };
 	uint64_t uefi_system_table = htobe64((uintptr_t)ST);
+	uint32_t boothowto = htobe32(howto);
 	void *node;
 	size_t len;
 	int i;
@@ -495,6 +514,8 @@ efi_makebootargs(char *bootargs)
 
 	len = strlen(bootargs) + 1;
 	fdt_node_add_property(node, "bootargs", bootargs, len);
+	fdt_node_add_property(node, "openbsd,boothowto",
+	    &boothowto, sizeof(boothowto));
 
 	/* Pass DUID of the boot disk. */
 	if (bootdev_dip) {
@@ -534,6 +555,7 @@ efi_makebootargs(char *bootargs)
 
 	efi_framebuffer();
 	efi_console();
+	efi_dma_constraint();
 
 	fdt_finalize();
 

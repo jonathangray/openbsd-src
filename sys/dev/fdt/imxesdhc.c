@@ -1,4 +1,4 @@
-/*	$OpenBSD: imxesdhc.c,v 1.14 2020/03/20 09:16:42 patrick Exp $	*/
+/*	$OpenBSD: imxesdhc.c,v 1.16 2020/04/28 17:22:53 patrick Exp $	*/
 /*
  * Copyright (c) 2009 Dale Rahn <drahn@openbsd.org>
  * Copyright (c) 2006 Uwe Stuehler <uwe@openbsd.org>
@@ -315,6 +315,7 @@ imxesdhc_attach(struct device *parent, struct device *self, void *aux)
 	pinctrl_byname(faa->fa_node, "default");
 
 	clock_set_assigned(faa->fa_node);
+	clock_enable_all(faa->fa_node);
 
 	sc->sc_ih = fdt_intr_establish(faa->fa_node, IPL_SDMMC,
 	   imxesdhc_intr, sc, sc->sc_dev.dv_xname);
@@ -871,10 +872,9 @@ imxesdhc_start_command(struct imxesdhc_softc *sc, struct sdmmc_command *cmd)
 	int seg;
 	int s;
 
-	DPRINTF(1,("%s: start cmd %u arg=%#x data=%p dlen=%d flags=%#x "
-	    "proc=\"%s\"\n", HDEVNAME(sc), cmd->c_opcode, cmd->c_arg,
-	    cmd->c_data, cmd->c_datalen, cmd->c_flags, curproc ?
-	    curproc->p_p->ps_comm : ""));
+	DPRINTF(1,("%s: start cmd %u arg=%#x data=%p dlen=%d flags=%#x\n",
+	    HDEVNAME(sc), cmd->c_opcode, cmd->c_arg, cmd->c_data,
+	    cmd->c_datalen, cmd->c_flags));
 
 	/*
 	 * The maximum block length for commands should be the minimum

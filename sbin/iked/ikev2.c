@@ -1,4 +1,4 @@
-/*	$OpenBSD: ikev2.c,v 1.216 2020/04/15 18:41:45 tobhe Exp $	*/
+/*	$OpenBSD: ikev2.c,v 1.224 2020/05/09 19:23:17 tobhe Exp $	*/
 
 /*
  * Copyright (c) 2019 Tobias Heider <tobias.heider@stusta.de>
@@ -29,6 +29,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <syslog.h>
 #include <unistd.h>
 #include <string.h>
 #include <signal.h>
@@ -112,7 +113,7 @@ int	 ikev2_sa_initiator(struct iked *, struct iked_sa *,
 int	 ikev2_sa_responder(struct iked *, struct iked_sa *, struct iked_sa *,
 	    struct iked_message *);
 int	 ikev2_sa_initiator_dh(struct iked_sa *, struct iked_message *,
-	    unsigned int);
+	    unsigned int, struct iked_sa *);
 int	 ikev2_sa_responder_dh(struct iked_kex *, struct iked_proposals *,
 	    struct iked_message *, unsigned int);
 void	 ikev2_sa_cleanup_dh(struct iked_sa *);
@@ -507,10 +508,9 @@ ikev2_getimsgdata(struct iked *env, struct imsg *imsg, struct iked_sahdr *sh,
 static time_t
 gettime(void)
 {
-	struct timespec ts;
-	if (clock_gettime(CLOCK_MONOTONIC, &ts) == -1)
-		return (-1);
-	return ts.tv_sec;
+	struct timeval tv;
+	gettimeofday(&tv, NULL);
+	return tv.tv_sec;
 }
 
 void
@@ -536,7 +536,9 @@ ikev2_recv(struct iked *env, struct iked_message *msg)
 	if (policy_lookup(env, msg, NULL) != 0)
 		return;
 
-	log_info("%srecv %s %s %u peer %s local %s, %ld bytes, policy '%s'",
+	logit(hdr->ike_exchange == IKEV2_EXCHANGE_INFORMATIONAL ?
+	    LOG_DEBUG : LOG_INFO,
+	    "%srecv %s %s %u peer %s local %s, %ld bytes, policy '%s'",
 	    SPI_IH(hdr),
 	    print_map(hdr->ike_exchange, ikev2_exchange_map),
 	    msg->msg_response ? "res" : "req",
@@ -815,7 +817,8 @@ ikev2_ike_auth_recv(struct iked *env, struct iked_sa *sa,
 		ibuf_release(authmsg);
 
 		if (ret != 0) {
-			log_debug("%s: ikev2_msg_authverify failed", __func__);
+			log_info("%s: ikev2_msg_authverify failed",
+			    SPI_SA(sa, __func__));
 			ikev2_send_auth_failed(env, sa);
 			return (-1);
 		}
@@ -1026,7 +1029,7 @@ ikev2_init_ike_sa(struct iked *env, void *arg)
 			continue;
 		}
 
-		log_debug("%s: initiating \"%s\"", __func__, pol->pol_name);
+		log_info("%s: initiating \"%s\"", __func__, pol->pol_name);
 
 		if (ikev2_init_ike_sa_peer(env, pol, &pol->pol_peer, NULL))
 			log_debug("%s: failed to initiate with peer %s",
@@ -2596,6 +2599,8 @@ ikev2_handle_notifies(struct iked *env, struct iked_message *msg)
 
 	if (msg->msg_flags & IKED_MSG_FLAGS_AUTHENTICATION_FAILED) {
 		log_debug("%s: AUTHENTICATION_FAILED, closing SA", __func__);
+		ikev2_log_cert_info(SPI_SA(sa, __func__),
+		    sa->sa_hdr.sh_initiator ? &sa->sa_rcert : &sa->sa_icert);
 		ikev2_ike_sa_setreason(sa,
 		    "authentication failed notification from peer");
 		sa_state(env, sa, IKEV2_STATE_CLOSED);
@@ -3419,7 +3424,7 @@ ikev2_send_create_child_sa(struct iked *env, struct iked_sa *sa,
 	    protoid)) {
 		log_debug("%s: enable PFS", __func__);
 		ikev2_sa_cleanup_dh(sa);
-		if (ikev2_sa_initiator_dh(sa, NULL, protoid) < 0) {
+		if (ikev2_sa_initiator_dh(sa, NULL, protoid, NULL) < 0) {
 			log_debug("%s: failed to setup DH", __func__);
 			goto done;
 		}
@@ -3513,6 +3518,7 @@ ikev2_ike_sa_rekey(struct iked *env, void *arg)
 		 * We cannot initiate multiple concurrent CREATE_CHILD_SA
 		 * exchanges, so retry in one minute.
 		 */
+		log_info("%s: busy, delaying rekey", SPI_SA(sa, __func__));
 		timer_add(env, &sa->sa_rekey, 60);
 		return;
 	}
@@ -3739,7 +3745,7 @@ ikev2_init_create_child_sa(struct iked *env, struct iked_message *msg)
 	/* check KE payload for PFS */
 	if (ibuf_length(msg->msg_ke)) {
 		log_debug("%s: using PFS", __func__);
-		if (ikev2_sa_initiator_dh(sa, msg, prop->prop_protoid) < 0) {
+		if (ikev2_sa_initiator_dh(sa, msg, prop->prop_protoid, NULL) < 0) {
 			log_debug("%s: failed to setup DH", __func__);
 			return (ret);
 		}
@@ -3892,6 +3898,10 @@ ikev2_ikesa_enable(struct iked *env, struct iked_sa *sa, struct iked_sa *nsa)
 	}
 
 	/* Preserve ID information */
+	ibuf_release(nsa->sa_iid.id_buf);
+	ibuf_release(nsa->sa_rid.id_buf);
+	ibuf_release(nsa->sa_icert.id_buf);
+	ibuf_release(nsa->sa_rcert.id_buf);
 	if (sa->sa_hdr.sh_initiator == nsa->sa_hdr.sh_initiator) {
 		nsa->sa_iid = sa->sa_iid;
 		nsa->sa_rid = sa->sa_rid;
@@ -4444,6 +4454,8 @@ ikev2_send_informational(struct iked *env, struct iked_message *msg)
 		    print_map(msg->msg_error, ikev2_n_map));
 		goto done;
 	}
+	log_info("%s: %s", SPI_SA(sa, __func__),
+	    print_map(msg->msg_error, ikev2_n_map));
 
 	if (ikev2_next_payload(pld, sizeof(*n), IKEV2_PAYLOAD_NONE) == -1)
 		goto done;
@@ -4538,13 +4550,16 @@ ikev2_psk(struct iked_sa *sa, uint8_t *data, size_t length,
 
 int
 ikev2_sa_initiator_dh(struct iked_sa *sa, struct iked_message *msg,
-    unsigned int proto)
+    unsigned int proto, struct iked_sa *osa)
 {
 	struct iked_policy	*pol = sa->sa_policy;
 	struct iked_transform	*xform;
+	struct iked_proposals	*proposals;
+
+	proposals = osa ? &osa->sa_proposals : &pol->pol_proposals;
 
 	if (sa->sa_dhgroup == NULL) {
-		if ((xform = config_findtransform(&pol->pol_proposals,
+		if ((xform = config_findtransform(proposals,
 		    IKEV2_XFORMTYPE_DH, proto)) == NULL) {
 			log_debug("%s: did not find dh transform", __func__);
 			return (-1);
@@ -4602,7 +4617,7 @@ ikev2_sa_initiator(struct iked *env, struct iked_sa *sa,
 {
 	struct iked_transform	*xform;
 
-	if (ikev2_sa_initiator_dh(sa, msg, 0) < 0)
+	if (ikev2_sa_initiator_dh(sa, msg, 0, osa) < 0)
 		return (-1);
 
 	if (!ibuf_length(sa->sa_inonce)) {
@@ -5411,6 +5426,7 @@ ikev2_childsa_negotiate(struct iked *env, struct iked_sa *sa,
 			flowa->flow_dir = IPSP_DIRECTION_OUT;
 			flowa->flow_saproto = ic ? IKEV2_SAPROTO_IPCOMP :
 			    prop->prop_protoid;
+			flowa->flow_rdomain = sa->sa_policy->pol_rdomain;
 			flowa->flow_local = &sa->sa_local;
 			flowa->flow_peer = &sa->sa_peer;
 			flowa->flow_ikesa = sa;
@@ -6480,7 +6496,7 @@ ikev2_info_flow(struct iked *env, int dolog, const char *msg, struct iked_flow *
 	int		buflen;
 
 	buflen = asprintf(&buf,
-	    "%s: %p %s %s %s/%d -> %s/%d [%u] (%s) @%p\n", msg, flow,
+	    "%s: %p %s %s %s/%d -> %s/%d [%u]@%d (%s) @%p\n", msg, flow,
 	    print_map(flow->flow_saproto, ikev2_saproto_map),
 	    flow->flow_dir == IPSP_DIRECTION_IN ? "in" : "out",
 	    print_host((struct sockaddr *)&flow->flow_src.addr, NULL, 0),
@@ -6488,6 +6504,7 @@ ikev2_info_flow(struct iked *env, int dolog, const char *msg, struct iked_flow *
 	    print_host((struct sockaddr *)&flow->flow_dst.addr, NULL, 0),
 	    flow->flow_dst.addr_mask,
 	    flow->flow_ipproto,
+	    flow->flow_rdomain,
 	    flow->flow_loaded ? "L" : "",
 	    flow->flow_ikesa);
 
