@@ -75,7 +75,10 @@ static void engine_retire(struct work_struct *work)
 static bool add_retire(struct intel_engine_cs *engine,
 		       struct intel_timeline *tl)
 {
-#define STUB ((struct intel_timeline *)1)
+	STUB();
+	return false;
+#ifdef notyet
+#define RSTUB ((struct intel_timeline *)1)
 	struct intel_timeline *first;
 
 	/*
@@ -84,7 +87,7 @@ static bool add_retire(struct intel_engine_cs *engine,
 	 * retirement queue: either this engine or another.
 	 */
 
-	if (cmpxchg(&tl->retire, NULL, STUB)) /* already queued */
+	if (cmpxchg(&tl->retire, NULL, RSTUB)) /* already queued */
 		return false;
 
 	intel_timeline_get(tl);
@@ -94,6 +97,7 @@ static bool add_retire(struct intel_engine_cs *engine,
 	while (!try_cmpxchg(&engine->retire, &first, tl));
 
 	return !first;
+#endif
 }
 
 void intel_engine_add_retire(struct intel_engine_cs *engine,
