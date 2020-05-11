@@ -21,6 +21,9 @@
 #include "i915_user_extensions.h"
 #include "i915_vma.h"
 
+#define DRM_FILE_PAGE_OFFSET (0x100000000ULL >> PAGE_SHIFT)
+
+#ifdef __linux__
 static inline bool
 __vma_matches(struct vm_area_struct *vma, struct file *filp,
 	      unsigned long addr, unsigned long size)
@@ -31,6 +34,7 @@ __vma_matches(struct vm_area_struct *vma, struct file *filp,
 	return vma->vm_start == addr &&
 	       (vma->vm_end - vma->vm_start) == PAGE_ALIGN(size);
 }
+#endif
 
 /**
  * i915_gem_mmap_ioctl - Maps the contents of an object, returning the address
@@ -58,7 +62,17 @@ i915_gem_mmap_ioctl(struct drm_device *dev, void *data,
 {
 	struct drm_i915_gem_mmap *args = data;
 	struct drm_i915_gem_object *obj;
-	unsigned long addr;
+	vaddr_t addr;
+	vsize_t size;
+	int ret;
+
+#ifdef __OpenBSD__
+	if (args->size == 0 || args->offset & PAGE_MASK)
+		return -EINVAL;
+	size = round_page(args->size);
+	if (args->offset + size < args->offset)
+		return -EINVAL;
+#endif
 
 	if (args->flags & ~(I915_MMAP_WC))
 		return -EINVAL;
@@ -83,6 +97,7 @@ i915_gem_mmap_ioctl(struct drm_device *dev, void *data,
 		goto err;
 	}
 
+#ifdef __linux__
 	addr = vm_mmap(obj->base.filp, 0, args->size,
 		       PROT_READ | PROT_WRITE, MAP_SHARED,
 		       args->offset);
@@ -108,6 +123,18 @@ i915_gem_mmap_ioctl(struct drm_device *dev, void *data,
 			goto err;
 	}
 	i915_gem_object_put(obj);
+#else
+	addr = 0;
+	ret = -uvm_map(&curproc->p_vmspace->vm_map, &addr, size,
+	    obj->base.uao, args->offset, 0, UVM_MAPFLAG(PROT_READ | PROT_WRITE,
+	    PROT_READ | PROT_WRITE, MAP_INHERIT_SHARE, MADV_RANDOM,
+	    (args->flags & I915_MMAP_WC) ? UVM_FLAG_WC : 0));
+	if (ret == 0)
+		uao_reference(obj->base.uao);
+	i915_gem_object_put(obj);
+	if (ret)
+		return ret;
+#endif
 
 	args->addr_ptr = (u64)addr;
 	return 0;
@@ -203,6 +230,8 @@ compute_partial_view(const struct drm_i915_gem_object *obj,
 
 	return view;
 }
+
+#ifdef notyet
 
 static vm_fault_t i915_error_to_vmf_fault(int err)
 {
@@ -396,6 +425,8 @@ err:
 	return i915_error_to_vmf_fault(ret);
 }
 
+#endif /* notyet */
+
 void __i915_gem_object_release_mmap_gtt(struct drm_i915_gem_object *obj)
 {
 	struct i915_vma *vma;
@@ -468,8 +499,23 @@ void i915_gem_object_release_mmap_offset(struct drm_i915_gem_object *obj)
 			continue;
 
 		spin_unlock(&obj->mmo.lock);
+#ifdef __linux__
 		drm_vma_node_unmap(&mmo->vma_node,
 				   obj->base.dev->anon_inode->i_mapping);
+#else
+		if (drm_vma_node_has_offset(&mmo->vma_node)) {
+			struct drm_i915_private *dev_priv = obj->base.dev->dev_private;
+			struct i915_vma *vma;
+			struct vm_page *pg;
+
+			for_each_ggtt_vma(vma, obj) {
+				for (pg = &dev_priv->pgs[atop(vma->node.start)];
+				     pg != &dev_priv->pgs[atop(vma->node.start + vma->size)];
+				     pg++)
+					pmap_page_protect(pg, PROT_NONE);
+			}
+		}
+#endif
 		spin_lock(&obj->mmo.lock);
 	}
 	spin_unlock(&obj->mmo.lock);
@@ -591,7 +637,7 @@ insert:
 	GEM_BUG_ON(lookup_mmo(obj, mmap_type) != mmo);
 out:
 	if (file)
-		drm_vma_node_allow(&mmo->vma_node, file);
+		drm_vma_node_allow(&mmo->vma_node, file->filp);
 	return mmo;
 
 err:
@@ -724,6 +770,8 @@ i915_gem_mmap_offset_ioctl(struct drm_device *dev, void *data,
 
 	return __assign_mmap_offset(file, args->handle, type, &args->offset);
 }
+
+#ifdef __linux__
 
 static void vm_open(struct vm_area_struct *vma)
 {
@@ -888,6 +936,110 @@ int i915_gem_mmap(struct file *filp, struct vm_area_struct *vma)
 
 	return 0;
 }
+
+#else /* !__linux__ */
+
+/*
+ * This overcomes the limitation in drm_gem_mmap's assignment of a
+ * drm_gem_object as the vma->vm_private_data. Since we need to
+ * be able to resolve multiple mmap offsets which could be tied
+ * to a single gem object.
+ */
+struct uvm_object *
+i915_gem_mmap(struct drm_device *dev, voff_t off, vsize_t size)
+{
+	STUB();
+	return NULL;
+#ifdef notyet
+	struct drm_vma_offset_node *node;
+	struct drm_i915_gem_object *obj = NULL;
+	struct i915_mmap_offset *mmo = NULL;
+	struct file *anon;
+
+	if (unlikely(off < DRM_FILE_PAGE_OFFSET))
+		return NULL;
+
+	if (drm_dev_is_unplugged(dev))
+		return NULL;
+
+	rcu_read_lock();
+	drm_vma_offset_lock_lookup(dev->vma_offset_manager);
+	node = drm_vma_offset_exact_lookup_locked(dev->vma_offset_manager,
+						  vma->vm_pgoff,
+						  vma_pages(vma));
+	if (node && drm_vma_node_is_allowed(node, priv)) {
+		/*
+		 * Skip 0-refcnted objects as it is in the process of being
+		 * destroyed and will be invalid when the vma manager lock
+		 * is released.
+		 */
+		mmo = container_of(node, struct i915_mmap_offset, vma_node);
+		obj = i915_gem_object_get_rcu(mmo->obj);
+	}
+	drm_vma_offset_unlock_lookup(dev->vma_offset_manager);
+	rcu_read_unlock();
+	if (!obj)
+		return NULL;
+
+	if (i915_gem_object_is_readonly(obj)) {
+		if (vma->vm_flags & VM_WRITE) {
+			i915_gem_object_put(obj);
+			return NULL;
+		}
+		vma->vm_flags &= ~VM_MAYWRITE;
+	}
+
+	anon = mmap_singleton(to_i915(dev));
+	if (IS_ERR(anon)) {
+		i915_gem_object_put(obj);
+		return NULL;
+	}
+
+	vma->vm_flags |= VM_PFNMAP | VM_DONTEXPAND | VM_DONTDUMP;
+	vma->vm_private_data = mmo;
+
+	/*
+	 * We keep the ref on mmo->obj, not vm_file, but we require
+	 * vma->vm_file->f_mapping, see vma_link(), for later revocation.
+	 * Our userspace is accustomed to having per-file resource cleanup
+	 * (i.e. contexts, objects and requests) on their close(fd), which
+	 * requires avoiding extraneous references to their filp, hence why
+	 * we prefer to use an anonymous file for their mmaps.
+	 */
+	fput(vma->vm_file);
+	vma->vm_file = anon;
+
+	switch (mmo->mmap_type) {
+	case I915_MMAP_TYPE_WC:
+		vma->vm_page_prot =
+			pgprot_writecombine(vm_get_page_prot(vma->vm_flags));
+		vma->vm_ops = &vm_ops_cpu;
+		break;
+
+	case I915_MMAP_TYPE_WB:
+		vma->vm_page_prot = vm_get_page_prot(vma->vm_flags);
+		vma->vm_ops = &vm_ops_cpu;
+		break;
+
+	case I915_MMAP_TYPE_UC:
+		vma->vm_page_prot =
+			pgprot_noncached(vm_get_page_prot(vma->vm_flags));
+		vma->vm_ops = &vm_ops_cpu;
+		break;
+
+	case I915_MMAP_TYPE_GTT:
+		vma->vm_page_prot =
+			pgprot_writecombine(vm_get_page_prot(vma->vm_flags));
+		vma->vm_ops = &vm_ops_gtt;
+		break;
+	}
+	vma->vm_page_prot = pgprot_decrypted(vma->vm_page_prot);
+
+	return 0;
+#endif
+}
+
+#endif /* !__linux__ */
 
 #if IS_ENABLED(CONFIG_DRM_I915_SELFTEST)
 #include "selftests/i915_gem_mman.c"
