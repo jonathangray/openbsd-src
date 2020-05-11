@@ -87,7 +87,7 @@ struct pixel_clk_params {
 /*> DP reference clock - calculated only for DP signal for specific cases*/
 	struct graphics_object_id encoder_object_id;
 /*> Encoder object Id - needed by VBIOS Exec table*/
-	enum signal_type signal_type;
+	enum amd_signal_type signal_type;
 /*> signalType -> Encoder Mode - needed by VBIOS Exec table*/
 	enum controller_id controller_id;
 /*> ControllerId - which controller using this PLL*/

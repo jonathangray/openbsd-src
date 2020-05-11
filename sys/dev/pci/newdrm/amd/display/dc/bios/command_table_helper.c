@@ -140,7 +140,7 @@ uint8_t dal_cmd_table_helper_transmitter_bp_to_atom(
 }
 
 uint32_t dal_cmd_table_helper_encoder_mode_bp_to_atom(
-	enum signal_type s,
+	enum amd_signal_type s,
 	bool enable_dp_audio)
 {
 	switch (s) {

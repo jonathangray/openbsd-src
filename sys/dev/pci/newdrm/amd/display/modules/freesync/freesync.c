@@ -551,7 +551,7 @@ static void build_vrr_infopacket_fs2_data(enum color_transfer_func app_tf,
 	}
 }
 
-static void build_vrr_infopacket_header_v1(enum signal_type signal,
+static void build_vrr_infopacket_header_v1(enum amd_signal_type signal,
 		struct dc_info_packet *infopacket,
 		unsigned int *payload_size)
 {
@@ -600,7 +600,7 @@ static void build_vrr_infopacket_header_v1(enum signal_type signal,
 	}
 }
 
-static void build_vrr_infopacket_header_v2(enum signal_type signal,
+static void build_vrr_infopacket_header_v2(enum amd_signal_type signal,
 		struct dc_info_packet *infopacket,
 		unsigned int *payload_size)
 {
@@ -670,7 +670,7 @@ static void build_vrr_infopacket_checksum(unsigned int *payload_size,
 	infopacket->valid = true;
 }
 
-static void build_vrr_infopacket_v1(enum signal_type signal,
+static void build_vrr_infopacket_v1(enum amd_signal_type signal,
 		const struct mod_vrr_params *vrr,
 		struct dc_info_packet *infopacket)
 {
@@ -684,7 +684,7 @@ static void build_vrr_infopacket_v1(enum signal_type signal,
 	infopacket->valid = true;
 }
 
-static void build_vrr_infopacket_v2(enum signal_type signal,
+static void build_vrr_infopacket_v2(enum amd_signal_type signal,
 		const struct mod_vrr_params *vrr,
 		enum color_transfer_func app_tf,
 		struct dc_info_packet *infopacket)

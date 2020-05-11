@@ -1452,7 +1452,7 @@ static void power_down_encoders(struct dc *dc)
 	}
 
 	for (i = 0; i < dc->link_count; i++) {
-		enum signal_type signal = dc->links[i]->connector_signal;
+		enum amd_signal_type signal = dc->links[i]->connector_signal;
 
 		if ((signal == SIGNAL_TYPE_EDP) ||
 			(signal == SIGNAL_TYPE_DISPLAY_PORT))

@@ -297,5 +297,5 @@ char *mod_hdcp_state_id_to_str(int32_t id);
 
 /* called to convert signal type to operation mode */
 enum mod_hdcp_operation_mode mod_hdcp_signal_type_to_operation_mode(
-		enum signal_type signal);
+		enum amd_signal_type signal);
 #endif /* MOD_HDCP_H_ */

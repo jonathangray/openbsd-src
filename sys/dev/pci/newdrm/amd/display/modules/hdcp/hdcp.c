@@ -473,7 +473,7 @@ enum mod_hdcp_status mod_hdcp_process_event(struct mod_hdcp *hdcp,
 }
 
 enum mod_hdcp_operation_mode mod_hdcp_signal_type_to_operation_mode(
-		enum signal_type signal)
+		enum amd_signal_type signal)
 {
 	enum mod_hdcp_operation_mode mode = MOD_HDCP_MODE_OFF;
 

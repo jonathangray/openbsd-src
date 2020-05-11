@@ -267,7 +267,7 @@ static void check_audio_bandwidth_dpmst(
 static void check_audio_bandwidth(
 	const struct audio_crtc_info *crtc_info,
 	uint32_t channel_count,
-	enum signal_type signal,
+	enum amd_signal_type signal,
 	union audio_sample_rates *sample_rates)
 {
 	switch (signal) {
@@ -398,7 +398,7 @@ void dce_aud_az_disable(struct audio *audio)
 
 void dce_aud_az_configure(
 	struct audio *audio,
-	enum signal_type signal,
+	enum amd_signal_type signal,
 	const struct audio_crtc_info *crtc_info,
 	const struct audio_info *audio_info)
 {
@@ -776,7 +776,7 @@ static void get_azalia_clock_info_dp(
 
 void dce_aud_wall_dto_setup(
 	struct audio *audio,
-	enum signal_type signal,
+	enum amd_signal_type signal,
 	const struct audio_crtc_info *crtc_info,
 	const struct audio_pll_info *pll_info)
 {

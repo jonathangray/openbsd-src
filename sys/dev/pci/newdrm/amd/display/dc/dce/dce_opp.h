@@ -296,7 +296,7 @@ void dce110_opp_set_dyn_expansion(
 	struct output_pixel_processor *opp,
 	enum dc_color_space color_sp,
 	enum dc_color_depth color_dpth,
-	enum signal_type signal);
+	enum amd_signal_type signal);
 
 void dce110_opp_program_fmt(
 	struct output_pixel_processor *opp,

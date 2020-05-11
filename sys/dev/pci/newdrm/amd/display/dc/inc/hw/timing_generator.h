@@ -142,7 +142,7 @@ struct timing_generator_funcs {
 							int vstartup_start,
 							int vupdate_offset,
 							int vupdate_width,
-							const enum signal_type signal,
+							const enum amd_signal_type signal,
 							bool use_vbios
 	);
 	void (*setup_vertical_interrupt0)(

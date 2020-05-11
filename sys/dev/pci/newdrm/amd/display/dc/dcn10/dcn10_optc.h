@@ -510,7 +510,7 @@ struct optc {
 	int vupdate_offset;
 	int vupdate_width;
 	int vready_offset;
-	enum signal_type signal;
+	enum amd_signal_type signal;
 };
 
 void dcn10_timing_generator_init(struct optc *optc);
@@ -554,7 +554,7 @@ void optc1_program_timing(
 	int vstartup_start,
 	int vupdate_offset,
 	int vupdate_width,
-	const enum signal_type signal,
+	const enum amd_signal_type signal,
 	bool use_vbios);
 
 void optc1_setup_vertical_interrupt0(
