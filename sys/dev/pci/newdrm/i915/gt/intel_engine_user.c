@@ -90,6 +90,8 @@ static void sort_engines(struct drm_i915_private *i915,
 
 static void set_scheduler_caps(struct drm_i915_private *i915)
 {
+	STUB();
+#ifdef notyet
 	static const struct {
 		u8 engine;
 		u8 sched;
@@ -126,6 +128,7 @@ static void set_scheduler_caps(struct drm_i915_private *i915)
 	i915->caps.scheduler = enabled & ~disabled;
 	if (!(i915->caps.scheduler & I915_SCHEDULER_CAP_ENABLED))
 		i915->caps.scheduler = 0;
+#endif
 }
 
 const char *intel_engine_class_repr(u8 class)
