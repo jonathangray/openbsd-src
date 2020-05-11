@@ -153,6 +153,9 @@ list_del_init(struct list_head *entry) {
 #define list_prev_entry(pos, member)				\
 	list_entry(((pos)->member.prev), typeof(*(pos)), member)
 
+#define list_safe_reset_next(pos, n, member)			\
+	n = list_next_entry(pos, member)
+
 #define list_for_each(entry, head)				\
     for (entry = (head)->next; entry != head; entry = (entry)->next)
 
