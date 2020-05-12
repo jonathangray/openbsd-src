@@ -14,17 +14,27 @@
 
 static struct i915_global_block {
 	struct i915_global base;
+#ifdef __linux__
 	struct kmem_cache *slab_blocks;
+#else
+	struct pool slab_blocks;
+#endif
 } global;
 
 static void i915_global_buddy_shrink(void)
 {
+#ifdef notyet
 	kmem_cache_shrink(global.slab_blocks);
+#endif
 }
 
 static void i915_global_buddy_exit(void)
 {
+#ifdef __linux__
 	kmem_cache_destroy(global.slab_blocks);
+#else
+	pool_destroy(&global.slab_blocks);
+#endif
 }
 
 static struct i915_global_block global = { {
@@ -34,9 +44,14 @@ static struct i915_global_block global = { {
 
 int __init i915_global_buddy_init(void)
 {
+#ifdef __linux__
 	global.slab_blocks = KMEM_CACHE(i915_buddy_block, SLAB_HWCACHE_ALIGN);
 	if (!global.slab_blocks)
 		return -ENOMEM;
+#else
+	pool_init(&global.slab_blocks, sizeof(struct i915_buddy_block),
+	    0, IPL_NONE, 0, "i915bb", NULL);
+#endif
 
 	i915_global_register(&global.base);
 	return 0;
@@ -48,7 +63,11 @@ static struct i915_buddy_block *i915_block_alloc(struct i915_buddy_block *parent
 {
 	struct i915_buddy_block *block;
 
+#ifdef __linux__
 	block = kmem_cache_zalloc(global.slab_blocks, GFP_KERNEL);
+#else
+	block = pool_get(&global.slab_blocks, PR_WAITOK | PR_ZERO);
+#endif
 	if (!block)
 		return NULL;
 
@@ -61,7 +80,11 @@ static struct i915_buddy_block *i915_block_alloc(struct i915_buddy_block *parent
 
 static void i915_block_free(struct i915_buddy_block *block)
 {
+#ifdef __linux__
 	kmem_cache_free(global.slab_blocks, block);
+#else
+	pool_put(&global.slab_blocks, block);
+#endif
 }
 
 static void mark_allocated(struct i915_buddy_block *block)
