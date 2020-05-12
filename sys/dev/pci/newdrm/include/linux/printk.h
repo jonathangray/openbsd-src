@@ -7,6 +7,8 @@
 #include <sys/systm.h>
 #include <sys/stdarg.h>
 
+#include <linux/init.h>
+
 #define KERN_INFO	""
 #define KERN_WARNING	""
 #define KERN_NOTICE	""

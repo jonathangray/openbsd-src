@@ -19,6 +19,7 @@ struct rcu_head {
 #define rcu_read_unlock()
 #define rcu_pointer_handoff(p)	(p)
 #define init_rcu_head(h)
+#define destroy_rcu_head(h)
 
 #define kfree_rcu(objp, name)	do { free((void *)objp, M_DRM, 0); } while(0)
 
