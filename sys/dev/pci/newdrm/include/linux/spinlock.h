@@ -24,6 +24,12 @@
 		mtx_leave(_mtxp);				\
 	} while (0)
 
+#define spin_trylock_irqsave(_mtxp, _flags)			\
+({								\
+	(void)(_flags);						\
+	mtx_enter_try(_mtxp) ? 1 : 0;				\
+})
+
 #define spin_lock(mtxp)			mtx_enter(mtxp)
 #define spin_lock_nested(mtxp, l)	mtx_enter(mtxp)
 #define spin_unlock(mtxp)		mtx_leave(mtxp)
