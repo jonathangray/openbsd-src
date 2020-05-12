@@ -910,6 +910,7 @@ static const struct pci_device_id pciidlist[] = {
 };
 MODULE_DEVICE_TABLE(pci, pciidlist);
 
+#ifdef __linux__
 static void i915_pci_remove(struct pci_dev *pdev)
 {
 	struct drm_i915_private *i915;
@@ -1067,6 +1068,7 @@ static void __exit i915_exit(void)
 	pci_unregister_driver(&i915_pci_driver);
 	i915_globals_exit();
 }
+#endif
 
 module_init(i915_init);
 module_exit(i915_exit);
