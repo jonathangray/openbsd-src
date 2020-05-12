@@ -59,6 +59,9 @@ struct device_attribute {
 #define dev_warn_ratelimited(dev, fmt, arg...)				\
 	printf("drm:pid%d:%s *WARNING* " fmt, curproc->p_p->ps_pid,	\
 	    __func__ , ## arg)
+#define dev_notice_ratelimited(dev, fmt, arg...)			\
+	printf("drm:pid%d:%s *NOTICE* " fmt, curproc->p_p->ps_pid,	\
+	    __func__ , ## arg)
 
 #ifdef DRMDEBUG
 #define dev_info(dev, fmt, arg...)				\
