@@ -1032,8 +1032,10 @@ execlists_context_status_change(struct i915_request *rq, unsigned long status)
 	if (!IS_ENABLED(CONFIG_DRM_I915_GVT))
 		return;
 
+#ifdef notyet
 	atomic_notifier_call_chain(&rq->engine->context_status_notifier,
 				   status, rq);
+#endif
 }
 
 static void intel_engine_context_in(struct intel_engine_cs *engine)
@@ -1216,6 +1218,8 @@ static void st_update_runtime_underflow(struct intel_context *ce, s32 dt)
 
 static void intel_context_update_runtime(struct intel_context *ce)
 {
+	STUB();
+#ifdef notyet
 	u32 old;
 	s32 dt;
 
@@ -1235,6 +1239,7 @@ static void intel_context_update_runtime(struct intel_context *ce)
 
 	ewma_runtime_add(&ce->runtime.avg, dt);
 	ce->runtime.total += dt;
+#endif
 }
 
 static inline struct intel_engine_cs *
@@ -1260,7 +1265,9 @@ __execlists_schedule_in(struct i915_request *rq)
 		ce->lrc_desc |=
 			(u64)(++engine->context_tag % NUM_CONTEXT_TAG) <<
 			GEN11_SW_CTX_ID_SHIFT;
+#ifdef notyet
 		BUILD_BUG_ON(NUM_CONTEXT_TAG > GEN12_MAX_CONTEXT_HW_ID);
+#endif
 	}
 
 	__intel_gt_pm_get(engine->gt);
@@ -1273,6 +1280,9 @@ __execlists_schedule_in(struct i915_request *rq)
 static inline struct i915_request *
 execlists_schedule_in(struct i915_request *rq, int idx)
 {
+	STUB();
+	return NULL;
+#ifdef notyet
 	struct intel_context * const ce = rq->context;
 	struct intel_engine_cs *old;
 
@@ -1289,6 +1299,7 @@ execlists_schedule_in(struct i915_request *rq, int idx)
 
 	GEM_BUG_ON(intel_context_inflight(ce) != rq->engine);
 	return i915_request_get(rq);
+#endif
 }
 
 static void kick_siblings(struct i915_request *rq, struct intel_context *ce)
@@ -1343,6 +1354,8 @@ __execlists_schedule_out(struct i915_request *rq,
 static inline void
 execlists_schedule_out(struct i915_request *rq)
 {
+	STUB();
+#ifdef notyet
 	struct intel_context * const ce = rq->context;
 	struct intel_engine_cs *cur, *old;
 
@@ -1356,6 +1369,7 @@ execlists_schedule_out(struct i915_request *rq)
 		__execlists_schedule_out(rq, old);
 
 	i915_request_put(rq);
+#endif
 }
 
 static u64 execlists_update_context(struct i915_request *rq)
@@ -2242,8 +2256,8 @@ cancel_port_requests(struct intel_engine_execlists * const execlists)
 static inline void
 invalidate_csb_entries(const u32 *first, const u32 *last)
 {
-	clflush((void *)first);
-	clflush((void *)last);
+	clflush((vaddr_t)first);
+	clflush((vaddr_t)last);
 }
 
 /*
@@ -2799,6 +2813,8 @@ err_free:
 
 static void execlists_reset(struct intel_engine_cs *engine, const char *msg)
 {
+	STUB();
+#ifdef notyet
 	const unsigned int bit = I915_RESET_ENGINE + engine->id;
 	unsigned long *lock = &engine->gt->reset.flags;
 
@@ -2821,11 +2837,12 @@ static void execlists_reset(struct intel_engine_cs *engine, const char *msg)
 
 	tasklet_enable(&engine->execlists.tasklet);
 	clear_and_wake_up_bit(bit, lock);
+#endif
 }
 
 static bool preempt_timeout(const struct intel_engine_cs *const engine)
 {
-	const struct timer_list *t = &engine->execlists.preempt;
+	const struct timeout *t = &engine->execlists.preempt;
 
 	if (!CONFIG_DRM_I915_PREEMPT_TIMEOUT)
 		return false;
@@ -2875,6 +2892,8 @@ static void __execlists_kick(struct intel_engine_execlists *execlists)
 #define execlists_kick(t, member) \
 	__execlists_kick(container_of(t, struct intel_engine_execlists, member))
 
+#ifdef __linux__
+
 static void execlists_timeslice(struct timer_list *timer)
 {
 	execlists_kick(timer, timer);
@@ -2884,6 +2903,22 @@ static void execlists_preempt(struct timer_list *timer)
 {
 	execlists_kick(timer, preempt);
 }
+
+#else
+
+static void execlists_timeslice(void *arg)
+{
+	struct timeout *timer = arg;
+	execlists_kick(timer, timer);
+}
+
+static void execlists_preempt(void *arg)
+{
+	struct timeout *timer = arg;
+	execlists_kick(timer, preempt);
+}
+
+#endif
 
 static void queue_request(struct intel_engine_cs *engine,
 			  struct i915_request *rq)
@@ -3671,7 +3706,7 @@ static void __execlists_reset(struct intel_engine_cs *engine, bool stalled)
 	u32 head;
 
 	mb(); /* paranoia: read the CSB pointers from after the reset */
-	clflush(execlists->csb_write);
+	clflush((vaddr_t)execlists->csb_write);
 	mb();
 
 	process_csb(engine); /* drain preemption events */
@@ -4478,8 +4513,15 @@ int intel_execlists_submission_setup(struct intel_engine_cs *engine)
 
 	tasklet_init(&engine->execlists.tasklet,
 		     execlists_submission_tasklet, (unsigned long)engine);
+#ifdef __linux__
 	timer_setup(&engine->execlists.timer, execlists_timeslice, 0);
 	timer_setup(&engine->execlists.preempt, execlists_preempt, 0);
+#else
+	timeout_set(&engine->execlists.timer, execlists_timeslice,
+	    &engine->execlists.timer);
+	timeout_set(&engine->execlists.preempt, execlists_preempt,
+	    &engine->execlists.preempt);
+#endif
 
 	logical_ring_default_vfuncs(engine);
 	logical_ring_default_irqs(engine);
@@ -5060,6 +5102,8 @@ virtual_find_bond(struct virtual_engine *ve,
 static void
 virtual_bond_execute(struct i915_request *rq, struct dma_fence *signal)
 {
+	STUB();
+#ifdef notyet
 	struct virtual_engine *ve = to_virtual_engine(rq->engine);
 	intel_engine_mask_t allowed, exec;
 	struct ve_bond *bond;
@@ -5077,6 +5121,7 @@ virtual_bond_execute(struct i915_request *rq, struct dma_fence *signal)
 
 	/* Prevent the master from being re-run on the bonded engines */
 	to_request(signal)->execution_mask &= ~allowed;
+#endif
 }
 
 struct intel_context *
@@ -5264,11 +5309,21 @@ int intel_virtual_engine_attach_bond(struct intel_engine_cs *engine,
 		return 0;
 	}
 
+#ifdef __linux__
 	bond = krealloc(ve->bonds,
 			sizeof(*bond) * (ve->num_bonds + 1),
 			GFP_KERNEL);
 	if (!bond)
 		return -ENOMEM;
+#else
+	bond = kmalloc(sizeof(*bond) * (ve->num_bonds + 1),
+			GFP_KERNEL);
+	if (!bond)
+		return -ENOMEM;
+
+	memcpy(bond, ve->bonds, sizeof(*bond) * (ve->num_bonds + 1));
+	kfree(ve->bonds);
+#endif
 
 	bond[ve->num_bonds].master = master;
 	bond[ve->num_bonds].sibling_mask = sibling->mask;
