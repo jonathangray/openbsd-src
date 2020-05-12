@@ -104,7 +104,11 @@ struct i915_gem_context {
 	 * that should only affect the default context, all contexts created
 	 * explicitly by the client are expected to be isolated.
 	 */
+#ifdef __linux__
 	struct pid *pid;
+#else
+	pid_t pid;
+#endif
 
 	/** link: place with &drm_i915_private.context_list */
 	struct list_head link;
