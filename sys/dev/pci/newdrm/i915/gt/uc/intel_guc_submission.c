@@ -194,8 +194,10 @@ static void guc_wq_item_append(struct intel_guc *guc,
 
 	/* Free space is guaranteed. */
 	wq_off = READ_ONCE(desc->tail);
+#ifdef notyet
 	GEM_BUG_ON(CIRC_SPACE(wq_off, READ_ONCE(desc->head),
 			      GUC_WQ_SIZE) < wqi_size);
+#endif
 	GEM_BUG_ON(wq_off & (wqi_size - 1));
 
 	wqi = guc->workqueue_vaddr + wq_off;

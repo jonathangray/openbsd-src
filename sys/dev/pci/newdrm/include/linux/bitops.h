@@ -34,6 +34,8 @@
 #define BITS_PER_TYPE(x)	(8 * sizeof(x))
 #define BITS_TO_LONGS(x)	howmany((x), 8 * sizeof(long))
 
+#define __ffs(x)		__builtin_ffsl(x)
+
 static inline uint8_t
 hweight8(uint32_t x)
 {
