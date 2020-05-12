@@ -53,22 +53,17 @@
 
 #define SELF_REFRESH_AVG_SEED_MS 200
 
-#ifdef notyet
 DECLARE_EWMA(psr_time, 4, 4)
-#endif
 
 struct drm_self_refresh_data {
 	struct drm_crtc *crtc;
 	struct delayed_work entry_work;
 
 	struct rwlock avg_mutex;
-#ifdef notyet
 	struct ewma_psr_time entry_avg_ms;
 	struct ewma_psr_time exit_avg_ms;
-#endif
 };
 
-#ifdef notyet
 static void drm_self_refresh_helper_entry_work(struct work_struct *work)
 {
 	struct drm_self_refresh_data *sr_data = container_of(
@@ -133,7 +128,6 @@ out_drop_locks:
 	drm_modeset_drop_locks(&ctx);
 	drm_modeset_acquire_fini(&ctx);
 }
-#endif
 
 /**
  * drm_self_refresh_helper_update_avg_times - Updates a crtc's SR time averages
@@ -152,8 +146,6 @@ drm_self_refresh_helper_update_avg_times(struct drm_atomic_state *state,
 					 unsigned int commit_time_ms,
 					 unsigned int new_self_refresh_mask)
 {
-	STUB();
-#ifdef notyet
 	struct drm_crtc *crtc;
 	struct drm_crtc_state *old_crtc_state;
 	int i;
@@ -176,7 +168,6 @@ drm_self_refresh_helper_update_avg_times(struct drm_atomic_state *state,
 		ewma_psr_time_add(time, commit_time_ms);
 		mutex_unlock(&sr_data->avg_mutex);
 	}
-#endif
 }
 EXPORT_SYMBOL(drm_self_refresh_helper_update_avg_times);
 
@@ -195,8 +186,6 @@ EXPORT_SYMBOL(drm_self_refresh_helper_update_avg_times);
  */
 void drm_self_refresh_helper_alter_state(struct drm_atomic_state *state)
 {
-	STUB();
-#ifdef notyet
 	struct drm_crtc *crtc;
 	struct drm_crtc_state *crtc_state;
 	int i;
@@ -231,7 +220,6 @@ void drm_self_refresh_helper_alter_state(struct drm_atomic_state *state)
 		mod_delayed_work(system_wq, &sr_data->entry_work,
 				 msecs_to_jiffies(delay));
 	}
-#endif
 }
 EXPORT_SYMBOL(drm_self_refresh_helper_alter_state);
 
@@ -243,9 +231,6 @@ EXPORT_SYMBOL(drm_self_refresh_helper_alter_state);
  */
 int drm_self_refresh_helper_init(struct drm_crtc *crtc)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
 	struct drm_self_refresh_data *sr_data = crtc->self_refresh_data;
 
 	/* Helper is already initialized */
@@ -273,7 +258,6 @@ int drm_self_refresh_helper_init(struct drm_crtc *crtc)
 
 	crtc->self_refresh_data = sr_data;
 	return 0;
-#endif
 }
 EXPORT_SYMBOL(drm_self_refresh_helper_init);
 
