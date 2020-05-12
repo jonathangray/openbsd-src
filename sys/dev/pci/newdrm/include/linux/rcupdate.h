@@ -33,5 +33,6 @@ call_rcu(struct rcu_head *head, void (*fn)(struct rcu_head *))
 }
 
 #define synchronize_rcu()
+#define synchronize_rcu_expedited()
 
 #endif

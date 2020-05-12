@@ -709,10 +709,22 @@ static void revoke_mmaps(struct intel_gt *gt)
 		node = &vma->mmo->vma_node;
 		vma_offset = vma->ggtt_view.partial.offset << PAGE_SHIFT;
 
+#ifdef __linux__
 		unmap_mapping_range(gt->i915->drm.anon_inode->i_mapping,
 				    drm_vma_node_offset_addr(node) + vma_offset,
 				    vma->size,
 				    1);
+#else
+{
+		struct drm_i915_private *dev_priv = vma->obj->base.dev->dev_private;
+		struct vm_page *pg;
+
+		for (pg = &dev_priv->pgs[atop(vma->node.start)];
+		     pg != &dev_priv->pgs[atop(vma->node.start + vma->size)];
+		     pg++)
+			pmap_page_protect(pg, PROT_NONE);
+}
+#endif
 	}
 }
 
@@ -1176,10 +1188,12 @@ static void intel_gt_reset_global(struct intel_gt *gt,
 				  u32 engine_mask,
 				  const char *reason)
 {
+#ifdef notyet
 	struct kobject *kobj = &gt->i915->drm.primary->kdev->kobj;
 	char *error_event[] = { I915_ERROR_UEVENT "=1", NULL };
 	char *reset_event[] = { I915_RESET_UEVENT "=1", NULL };
 	char *reset_done_event[] = { I915_ERROR_UEVENT "=0", NULL };
+#endif
 	struct intel_wedge_me w;
 
 	kobject_uevent_env(kobj, KOBJ_CHANGE, error_event);
@@ -1221,6 +1235,8 @@ void intel_gt_handle_error(struct intel_gt *gt,
 			   unsigned long flags,
 			   const char *fmt, ...)
 {
+	STUB();
+#ifdef notyet
 	struct intel_engine_cs *engine;
 	intel_wakeref_t wakeref;
 	intel_engine_mask_t tmp;
@@ -1305,6 +1321,7 @@ void intel_gt_handle_error(struct intel_gt *gt,
 
 out:
 	intel_runtime_pm_put(gt->uncore->rpm, wakeref);
+#endif
 }
 
 int intel_gt_reset_trylock(struct intel_gt *gt, int *srcu)

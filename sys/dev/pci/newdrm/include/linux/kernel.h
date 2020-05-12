@@ -147,6 +147,8 @@ _in_dbg_master(void)
 
 #define u64_to_user_ptr(x)	((void *)(uintptr_t)(x))
 
+#define _RET_IP_		__builtin_return_address(0)
+
 #define STUB() do { printf("%s: stub\n", __func__); } while(0)
 
 #endif
