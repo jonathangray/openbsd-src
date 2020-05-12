@@ -19,7 +19,7 @@ struct dma_fence {
 	const struct dma_fence_ops *ops;
 	unsigned long flags;
 	unsigned int context;
-	unsigned int seqno;
+	uint64_t seqno;
 	struct mutex *lock;
 	struct list_head cb_list;
 	int error;
