@@ -139,7 +139,7 @@ struct intel_uncore {
 		enum forcewake_domains mask;
 		unsigned int wake_count;
 		bool active;
-		struct hrtimer timer;
+		struct timeout timer;
 		u32 __iomem *reg_set;
 		u32 __iomem *reg_ack;
 	} *fw_domain[FW_DOMAIN_ID_COUNT];
