@@ -1174,8 +1174,13 @@ static u32 *copy_batch(struct drm_i915_gem_object *dst_obj,
 		 * validate up to the end of the batch.
 		 */
 		if (!(dst_obj->cache_coherent & I915_BO_CACHE_COHERENT_FOR_READ))
+#ifdef __linux__
 			length = round_up(length,
 					  boot_cpu_data.x86_clflush_size);
+#else
+			length = round_up(length,
+					  curcpu()->ci_cflushsz);
+#endif
 
 		ptr = dst;
 		x = offset_in_page(offset);
@@ -1363,6 +1368,9 @@ static int check_bbstart(u32 *cmd, u32 offset, u32 length,
 
 static unsigned long *alloc_whitelist(u32 batch_length)
 {
+	STUB();
+	return ERR_PTR(-ENOSYS);
+#ifdef notyet
 	unsigned long *jmp;
 
 	/*
@@ -1378,6 +1386,7 @@ static unsigned long *alloc_whitelist(u32 batch_length)
 		return ERR_PTR(-ENOMEM);
 
 	return jmp;
+#endif
 }
 
 #define LENGTH_BIAS 2
