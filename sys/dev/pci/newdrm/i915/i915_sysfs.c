@@ -39,6 +39,8 @@
 #include "intel_pm.h"
 #include "intel_sideband.h"
 
+#ifdef __linux__
+
 static inline struct drm_i915_private *kdev_minor_to_i915(struct device *kdev)
 {
 	struct drm_minor *minor = dev_get_drvdata(kdev);
@@ -555,8 +557,11 @@ static void i915_setup_error_capture(struct device *kdev) {}
 static void i915_teardown_error_capture(struct device *kdev) {}
 #endif
 
+#endif /* __linux__ */
+
 void i915_setup_sysfs(struct drm_i915_private *dev_priv)
 {
+#ifdef __linux__
 	struct device *kdev = dev_priv->drm.primary->kdev;
 	int ret;
 
@@ -609,10 +614,12 @@ void i915_setup_sysfs(struct drm_i915_private *dev_priv)
 	i915_setup_error_capture(kdev);
 
 	intel_engines_add_sysfs(dev_priv);
+#endif /* __linux__ */
 }
 
 void i915_teardown_sysfs(struct drm_i915_private *dev_priv)
 {
+#ifdef __linux__
 	struct device *kdev = dev_priv->drm.primary->kdev;
 
 	i915_teardown_error_capture(kdev);
@@ -627,4 +634,5 @@ void i915_teardown_sysfs(struct drm_i915_private *dev_priv)
 	sysfs_unmerge_group(&kdev->kobj, &rc6_attr_group);
 	sysfs_unmerge_group(&kdev->kobj, &rc6p_attr_group);
 #endif
+#endif /* __linux__ */
 }
