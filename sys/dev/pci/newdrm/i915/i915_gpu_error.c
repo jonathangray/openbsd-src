@@ -1278,9 +1278,6 @@ static void engine_record_execlists(struct intel_engine_coredump *ee)
 static bool record_context(struct i915_gem_context_coredump *e,
 			   const struct i915_request *rq)
 {
-	STUB();
-	return false;
-#ifdef notyet
 	struct i915_gem_context *ctx;
 	struct task_struct *task;
 	bool simulated;
@@ -1293,6 +1290,7 @@ static bool record_context(struct i915_gem_context_coredump *e,
 	if (!ctx)
 		return true;
 
+#ifdef __linux__
 	rcu_read_lock();
 	task = pid_task(ctx->pid, PIDTYPE_PID);
 	if (task) {
@@ -1300,6 +1298,7 @@ static bool record_context(struct i915_gem_context_coredump *e,
 		e->pid = task->pid;
 	}
 	rcu_read_unlock();
+#endif
 
 	e->sched_attr = ctx->sched;
 	e->guilty = atomic_read(&ctx->guilty_count);
@@ -1312,7 +1311,6 @@ static bool record_context(struct i915_gem_context_coredump *e,
 
 	i915_gem_context_put(ctx);
 	return simulated;
-#endif
 }
 
 struct intel_engine_capture_vma {

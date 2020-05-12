@@ -122,9 +122,7 @@ enum intel_engine_id {
 };
 
 /* A simple estimator for the round-trip latency of an engine */
-#ifdef notyet
 DECLARE_EWMA(_engine_latency, 6, 4)
-#endif
 
 struct st_preempt_hang {
 	struct completion completion;
@@ -338,9 +336,7 @@ struct intel_engine_cs {
 	 * engine to keep an estimate of the how the fast the engine is
 	 * under ideal conditions.
 	 */
-#ifdef notyet
 	struct ewma__engine_latency latency;
-#endif
 
 	/* Rather than have every client wait upon all user interrupts,
 	 * with the herd waking after every interrupt and each doing the

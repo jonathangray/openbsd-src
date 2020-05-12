@@ -274,9 +274,6 @@ static void intel_engine_sanitize_mmio(struct intel_engine_cs *engine)
 
 static int intel_engine_setup(struct intel_gt *gt, enum intel_engine_id id)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
 	const struct engine_info *info = &intel_engines[id];
 	struct drm_i915_private *i915 = gt->i915;
 	struct intel_engine_cs *engine;
@@ -340,7 +337,7 @@ static int intel_engine_setup(struct intel_gt *gt, enum intel_engine_id id)
 	engine->schedule = NULL;
 
 	ewma__engine_latency_init(&engine->latency);
-	seqlock_init(&engine->stats.lock);
+	seqlock_init(&engine->stats.lock, IPL_TTY);
 
 	ATOMIC_INIT_NOTIFIER_HEAD(&engine->context_status_notifier);
 
@@ -353,7 +350,6 @@ static int intel_engine_setup(struct intel_gt *gt, enum intel_engine_id id)
 	i915->engine[id] = engine;
 
 	return 0;
-#endif
 }
 
 static void __setup_engine_capabilities(struct intel_engine_cs *engine)
@@ -1492,8 +1488,6 @@ void intel_engine_dump(struct intel_engine_cs *engine,
 		       struct drm_printer *m,
 		       const char *header, ...)
 {
-	STUB();
-#ifdef notyet
 	struct i915_gpu_error * const error = &engine->i915->gpu_error;
 	struct i915_request *rq;
 	intel_wakeref_t wakeref;
@@ -1579,7 +1573,6 @@ void intel_engine_dump(struct intel_engine_cs *engine,
 	drm_printf(m, "Idle? %s\n", yesno(intel_engine_is_idle(engine)));
 
 	intel_engine_print_breadcrumbs(engine, m);
-#endif
 }
 
 /**

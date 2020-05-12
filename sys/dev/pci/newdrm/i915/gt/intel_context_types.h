@@ -20,9 +20,7 @@
 
 #define CONTEXT_REDZONE POISON_INUSE
 
-#ifdef notyet
 DECLARE_EWMA(runtime, 3, 8);
-#endif
 
 struct i915_gem_context;
 struct i915_vma;
@@ -76,9 +74,7 @@ struct intel_context {
 
 	/* Time on GPU as tracked by the hw. */
 	struct {
-#ifdef notyet
 		struct ewma_runtime avg;
-#endif
 		u64 total;
 		u32 last;
 		I915_SELFTEST_DECLARE(u32 num_underflow);

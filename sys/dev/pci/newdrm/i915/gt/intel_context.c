@@ -292,8 +292,6 @@ void
 intel_context_init(struct intel_context *ce,
 		   struct intel_engine_cs *engine)
 {
-	STUB();
-#ifdef notyet
 	GEM_BUG_ON(!engine->cops);
 	GEM_BUG_ON(!engine->gt->vm);
 
@@ -315,7 +313,6 @@ intel_context_init(struct intel_context *ce,
 
 	i915_active_init(&ce->active,
 			 __intel_context_active, __intel_context_retire);
-#endif
 }
 
 void intel_context_fini(struct intel_context *ce)

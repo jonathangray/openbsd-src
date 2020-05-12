@@ -1218,8 +1218,6 @@ static void st_update_runtime_underflow(struct intel_context *ce, s32 dt)
 
 static void intel_context_update_runtime(struct intel_context *ce)
 {
-	STUB();
-#ifdef notyet
 	u32 old;
 	s32 dt;
 
@@ -1239,7 +1237,6 @@ static void intel_context_update_runtime(struct intel_context *ce)
 
 	ewma_runtime_add(&ce->runtime.avg, dt);
 	ce->runtime.total += dt;
-#endif
 }
 
 static inline struct intel_engine_cs *
