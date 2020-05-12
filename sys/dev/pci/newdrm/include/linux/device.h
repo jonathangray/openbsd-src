@@ -63,6 +63,10 @@ struct device_attribute {
 	printf("drm:pid%d:%s *NOTICE* " fmt, curproc->p_p->ps_pid,	\
 	    __func__ , ## arg)
 
+#define dev_err_once(dev, fmt, arg...)				\
+	printf("drm:pid%d:%s *ERROR* " fmt, curproc->p_p->ps_pid,	\
+	    __func__ , ## arg)
+
 #ifdef DRMDEBUG
 #define dev_info(dev, fmt, arg...)				\
 	printf("drm: " fmt, ## arg)
