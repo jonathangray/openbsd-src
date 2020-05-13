@@ -35,5 +35,7 @@ call_rcu(struct rcu_head *head, void (*fn)(struct rcu_head *))
 
 #define synchronize_rcu()
 #define synchronize_rcu_expedited()
+#define cond_synchronize_rcu(x)
+#define get_state_synchronize_rcu()	0
 
 #endif

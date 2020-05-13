@@ -50,8 +50,13 @@ struct execute_cb {
 
 static struct i915_global_request {
 	struct i915_global base;
+#ifdef __linux__
 	struct kmem_cache *slab_requests;
 	struct kmem_cache *slab_execute_cbs;
+#else
+	struct pool slab_requests;
+	struct pool slab_execute_cbs;
+#endif
 } global;
 
 static const char *i915_fence_get_driver_name(struct dma_fence *fence)
@@ -115,7 +120,11 @@ static void i915_fence_release(struct dma_fence *fence)
 	i915_sw_fence_fini(&rq->submit);
 	i915_sw_fence_fini(&rq->semaphore);
 
+#ifdef __linux__
 	kmem_cache_free(global.slab_requests, rq);
+#else
+	pool_put(&global.slab_requests, rq);
+#endif
 }
 
 const struct dma_fence_ops i915_fence_ops = {
@@ -132,7 +141,11 @@ static void irq_execute_cb(struct irq_work *wrk)
 	struct execute_cb *cb = container_of(wrk, typeof(*cb), work);
 
 	i915_sw_fence_complete(cb->fence);
+#ifdef __linux__
 	kmem_cache_free(global.slab_execute_cbs, cb);
+#else
+	pool_put(&global.slab_execute_cbs, cb);
+#endif
 }
 
 static void irq_execute_cb_hook(struct irq_work *wrk)
@@ -331,7 +344,11 @@ __await_execution(struct i915_request *rq,
 		return 0;
 	}
 
+#ifdef __linux__
 	cb = kmem_cache_alloc(global.slab_execute_cbs, gfp);
+#else
+	cb = pool_get(&global.slab_execute_cbs, PR_WAITOK);
+#endif
 	if (!cb)
 		return -ENOMEM;
 
@@ -342,7 +359,11 @@ __await_execution(struct i915_request *rq,
 	if (hook) {
 		cb->hook = hook;
 		cb->signal = i915_request_get(signal);
+#ifdef __linux__
 		cb->work.func = irq_execute_cb_hook;
+#else
+		init_irq_work(&cb->work, irq_execute_cb_hook);
+#endif
 	}
 
 	spin_lock_irq(&signal->lock);
@@ -352,7 +373,11 @@ __await_execution(struct i915_request *rq,
 			i915_request_put(signal);
 		}
 		i915_sw_fence_complete(cb->fence);
+#ifdef __linux__
 		kmem_cache_free(global.slab_execute_cbs, cb);
+#else
+		pool_put(&global.slab_execute_cbs, cb);
+#endif
 	} else {
 		list_add_tail(&cb->link, &signal->execute_cb);
 	}
@@ -393,6 +418,8 @@ void __i915_request_skip(struct i915_request *rq)
 
 void i915_request_set_error_once(struct i915_request *rq, int error)
 {
+	STUB();
+#ifdef notyet
 	int old;
 
 	GEM_BUG_ON(!IS_ERR_VALUE((long)error));
@@ -405,6 +432,7 @@ void i915_request_set_error_once(struct i915_request *rq, int error)
 		if (fatal_error(old))
 			return;
 	} while (!try_cmpxchg(&rq->fence.error, &old, error));
+#endif
 }
 
 bool __i915_request_submit(struct i915_request *request)
@@ -643,8 +671,12 @@ request_alloc_slow(struct intel_timeline *tl, gfp_t gfp)
 	rq = list_first_entry(&tl->requests, typeof(*rq), link);
 	i915_request_retire(rq);
 
+#ifdef __linux__
 	rq = kmem_cache_alloc(global.slab_requests,
 			      gfp | __GFP_RETRY_MAYFAIL | __GFP_NOWARN);
+#else
+	rq = pool_get(&global.slab_requests, PR_WAITOK);
+#endif
 	if (rq)
 		return rq;
 
@@ -656,7 +688,11 @@ request_alloc_slow(struct intel_timeline *tl, gfp_t gfp)
 	retire_requests(tl);
 
 out:
+#ifdef __linux__
 	return kmem_cache_alloc(global.slab_requests, gfp);
+#else
+	return pool_get(&global.slab_requests, PR_NOWAIT);
+#endif
 }
 
 static void __i915_request_ctor(void *arg)
@@ -718,8 +754,12 @@ __i915_request_create(struct intel_context *ce, gfp_t gfp)
 	 *
 	 * Do not use kmem_cache_zalloc() here!
 	 */
+#ifdef __linux__
 	rq = kmem_cache_alloc(global.slab_requests,
 			      gfp | __GFP_RETRY_MAYFAIL | __GFP_NOWARN);
+#else
+	rq = pool_get(&global.slab_requests, PR_WAITOK);
+#endif
 	if (unlikely(!rq)) {
 		rq = request_alloc_slow(tl, gfp);
 		if (!rq) {
@@ -807,7 +847,11 @@ err_unwind:
 	GEM_BUG_ON(!list_empty(&rq->sched.waiters_list));
 
 err_free:
+#ifdef __linux__
 	kmem_cache_free(global.slab_requests, rq);
+#else
+	pool_put(&global.slab_requests, rq);
+#endif
 err_unreserve:
 	intel_context_unpin(ce);
 	return ERR_PTR(ret);
@@ -1534,7 +1578,11 @@ static bool __i915_spin_request(const struct i915_request * const rq, int state)
 
 struct request_wait {
 	struct dma_fence_cb cb;
+#ifdef __linux__
 	struct task_struct *tsk;
+#else
+	struct proc *tsk;
+#endif
 };
 
 static void request_wait_wake(struct dma_fence *fence, struct dma_fence_cb *cb)
@@ -1633,7 +1681,11 @@ long i915_request_wait(struct i915_request *rq,
 		i915_schedule_bump_priority(rq, I915_PRIORITY_WAIT);
 	}
 
+#ifdef __linux__
 	wait.tsk = current;
+#else
+	wait.tsk = curproc;
+#endif
 	if (dma_fence_add_callback(&rq->fence, &wait.cb, request_wait_wake))
 		goto out;
 
@@ -1676,14 +1728,21 @@ out:
 
 static void i915_global_request_shrink(void)
 {
+#ifdef notyet
 	kmem_cache_shrink(global.slab_execute_cbs);
 	kmem_cache_shrink(global.slab_requests);
+#endif
 }
 
 static void i915_global_request_exit(void)
 {
+#ifdef __linux__
 	kmem_cache_destroy(global.slab_execute_cbs);
 	kmem_cache_destroy(global.slab_requests);
+#else
+	pool_destroy(&global.slab_execute_cbs);
+	pool_destroy(&global.slab_requests);
+#endif
 }
 
 static struct i915_global_request global = { {
@@ -1693,6 +1752,7 @@ static struct i915_global_request global = { {
 
 int __init i915_global_request_init(void)
 {
+#ifdef __linux__
 	global.slab_requests =
 		kmem_cache_create("i915_request",
 				  sizeof(struct i915_request),
@@ -1710,11 +1770,19 @@ int __init i915_global_request_init(void)
 					     SLAB_TYPESAFE_BY_RCU);
 	if (!global.slab_execute_cbs)
 		goto err_requests;
+#else
+	pool_init(&global.slab_requests, sizeof(struct i915_request),
+	    0, IPL_TTY, 0, "i915_request", NULL);
+	pool_init(&global.slab_execute_cbs, sizeof(struct execute_cb),
+	    0, IPL_TTY, 0, "i915_exec", NULL);
+#endif
 
 	i915_global_register(&global.base);
 	return 0;
 
+#ifdef __linux__
 err_requests:
 	kmem_cache_destroy(global.slab_requests);
 	return -ENOMEM;
+#endif
 }
