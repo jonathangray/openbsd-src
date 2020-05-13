@@ -334,6 +334,7 @@ file	dev/pci/newdrm/i915/intel_pm.c			inteldrm
 file	dev/pci/newdrm/i915/intel_region_lmem.c		inteldrm
 file	dev/pci/newdrm/i915/intel_runtime_pm.c		inteldrm
 file	dev/pci/newdrm/i915/intel_sideband.c		inteldrm
+file	dev/pci/newdrm/i915/intel_stolen.c		inteldrm
 file	dev/pci/newdrm/i915/intel_uncore.c			inteldrm
 file	dev/pci/newdrm/i915/intel_wakeref.c		inteldrm
 file	dev/pci/newdrm/i915/intel_wopcm.c			inteldrm
