@@ -24,7 +24,11 @@
  */
 static struct i915_global_active {
 	struct i915_global base;
+#ifdef __linux__
 	struct kmem_cache *slab_cache;
+#else
+	struct pool slab_cache;
+#endif
 } global;
 
 struct active_node {
@@ -128,6 +132,8 @@ static inline void debug_active_assert(struct i915_active *ref) { }
 static void
 __active_retire(struct i915_active *ref)
 {
+	STUB();
+#ifdef notyet
 	struct active_node *it, *n;
 	struct rb_root root;
 	unsigned long flags;
@@ -156,8 +162,13 @@ __active_retire(struct i915_active *ref)
 
 	rbtree_postorder_for_each_entry_safe(it, n, &root, node) {
 		GEM_BUG_ON(i915_active_fence_isset(&it->base));
+#ifdef __linux__
 		kmem_cache_free(global.slab_cache, it);
+#else
+		pool_put(&global.slab_cache, it);
+#endif
 	}
+#endif
 }
 
 static void
@@ -235,7 +246,11 @@ active_instance(struct i915_active *ref, struct intel_timeline *tl)
 		return &node->base;
 
 	/* Preallocate a replacement, just in case */
+#ifdef __linux__
 	prealloc = kmem_cache_alloc(global.slab_cache, GFP_KERNEL);
+#else
+	prealloc = pool_get(&global.slab_cache, PR_WAITOK);
+#endif
 	if (!prealloc)
 		return NULL;
 
@@ -249,7 +264,11 @@ active_instance(struct i915_active *ref, struct intel_timeline *tl)
 
 		node = rb_entry(parent, struct active_node, node);
 		if (node->timeline == idx) {
+#ifdef __linux__
 			kmem_cache_free(global.slab_cache, prealloc);
+#else
+			pool_put(&global.slab_cache, prealloc);
+#endif
 			goto out;
 		}
 
@@ -297,7 +316,11 @@ void __i915_active_init(struct i915_active *ref,
 
 	init_llist_head(&ref->preallocated_barriers);
 	atomic_set(&ref->count, 0);
+#ifdef __linux__
 	__mutex_init(&ref->mutex, "i915_active", mkey);
+#else
+	rw_init(&ref->mutex, "i915_active");
+#endif
 	__i915_active_fence_init(&ref->excl, NULL, excl_retire);
 	INIT_WORK(&ref->work, active_work);
 #if IS_ENABLED(CONFIG_LOCKDEP)
@@ -310,6 +333,9 @@ static bool ____active_del_barrier(struct i915_active *ref,
 				   struct intel_engine_cs *engine)
 
 {
+	STUB();
+	return false;
+#ifdef notyet
 	struct llist_node *head = NULL, *tail = NULL;
 	struct llist_node *pos, *next;
 
@@ -345,6 +371,7 @@ static bool ____active_del_barrier(struct i915_active *ref,
 		llist_add_batch(head, tail, &engine->barrier_tasks);
 
 	return !node;
+#endif
 }
 
 static bool
@@ -498,6 +525,9 @@ static int flush_lazy_signals(struct i915_active *ref)
 
 int i915_active_wait(struct i915_active *ref)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	int err;
 
 	might_sleep();
@@ -516,6 +546,7 @@ int i915_active_wait(struct i915_active *ref)
 
 	flush_work(&ref->work);
 	return 0;
+#endif
 }
 
 static int __await_active(struct i915_active_fence *active,
@@ -699,6 +730,9 @@ match:
 int i915_active_acquire_preallocate_barrier(struct i915_active *ref,
 					    struct intel_engine_cs *engine)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	intel_engine_mask_t tmp, mask = engine->mask;
 	struct llist_node *first = NULL, *last = NULL;
 	struct intel_gt *gt = engine->gt;
@@ -724,7 +758,11 @@ int i915_active_acquire_preallocate_barrier(struct i915_active *ref,
 
 		node = reuse_idle_barrier(ref, idx);
 		if (!node) {
+#ifdef __linux__
 			node = kmem_cache_alloc(global.slab_cache, GFP_KERNEL);
+#else
+			node = pool_get(&global.slab_cache, PR_WAITOK);
+#endif
 			if (!node) {
 				err = ENOMEM;
 				goto unwind;
@@ -774,9 +812,14 @@ unwind:
 		atomic_dec(&ref->count);
 		intel_engine_pm_put(barrier_to_engine(node));
 
+#ifdef __linux__
 		kmem_cache_free(global.slab_cache, node);
+#else
+		pool_put(&global.slab_cache, node);
+#endif
 	}
 	return err;
+#endif
 }
 
 void i915_active_acquire_barrier(struct i915_active *ref)
@@ -943,12 +986,18 @@ void i915_active_noop(struct dma_fence *fence, struct dma_fence_cb *cb)
 
 static void i915_global_active_shrink(void)
 {
+#ifdef notyet
 	kmem_cache_shrink(global.slab_cache);
+#endif
 }
 
 static void i915_global_active_exit(void)
 {
+#ifdef __linux__
 	kmem_cache_destroy(global.slab_cache);
+#else
+	pool_destroy(&global.slab_cache);
+#endif
 }
 
 static struct i915_global_active global = { {
@@ -958,9 +1007,14 @@ static struct i915_global_active global = { {
 
 int __init i915_global_active_init(void)
 {
+#ifdef __linux__
 	global.slab_cache = KMEM_CACHE(active_node, SLAB_HWCACHE_ALIGN);
 	if (!global.slab_cache)
 		return -ENOMEM;
+#else
+	pool_init(&global.slab_cache, sizeof(struct active_node),
+	    0, IPL_TTY, 0, "drmsc", NULL);
+#endif
 
 	i915_global_register(&global.base);
 	return 0;

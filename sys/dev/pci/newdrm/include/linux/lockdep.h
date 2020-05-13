@@ -16,4 +16,6 @@ struct lock_class_key {
 #define lockdep_unpin_lock(a, b)
 #define lockdep_set_class(a, b)
 
+#define SINGLE_DEPTH_NESTING		0
+
 #endif
