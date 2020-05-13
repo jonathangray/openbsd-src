@@ -1973,3 +1973,15 @@ drmbackoff(long npages)
 		shrinker = TAILQ_NEXT(shrinker, next);
 	}
 }
+
+void *
+bitmap_zalloc(u_int n, gfp_t flags)
+{
+	return kcalloc(BITS_TO_LONGS(n), sizeof(long), flags);
+}
+
+void
+bitmap_free(void *p)
+{
+	kfree(p);
+}
