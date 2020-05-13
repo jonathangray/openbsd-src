@@ -88,6 +88,7 @@
 
 static struct drm_driver driver;
 
+#ifdef __linux__
 static int i915_get_bridge_dev(struct drm_i915_private *dev_priv)
 {
 	int domain = pci_domain_nr(dev_priv->drm.pdev->bus);
@@ -100,6 +101,18 @@ static int i915_get_bridge_dev(struct drm_i915_private *dev_priv)
 	}
 	return 0;
 }
+#else
+int i915_get_bridge_dev(struct drm_i915_private *dev_priv)
+{
+	struct drm_device *dev = &dev_priv->drm;
+
+	dev_priv->bridge_dev = malloc(sizeof(*dev_priv->bridge_dev),
+				      M_DEVBUF, M_WAITOK);
+	dev_priv->bridge_dev->pc = dev->pdev->pc;
+	dev_priv->bridge_dev->tag = pci_make_tag(dev->pdev->pc, 0, 0, 0);
+	return 0;
+}
+#endif
 
 /* Allocate space for the MCH regs if needed, return nonzero on error */
 static int
@@ -122,6 +135,7 @@ intel_alloc_mchbar_resource(struct drm_i915_private *dev_priv)
 		return 0;
 #endif
 
+#ifdef __linux__
 	/* Get some space for it */
 	dev_priv->mch_res.name = "i915 MCHBAR";
 	dev_priv->mch_res.flags = IORESOURCE_MEM;
@@ -136,6 +150,12 @@ intel_alloc_mchbar_resource(struct drm_i915_private *dev_priv)
 		dev_priv->mch_res.start = 0;
 		return ret;
 	}
+#else
+	if (dev_priv->memex == NULL || extent_alloc(dev_priv->memex,
+	    MCHBAR_SIZE, MCHBAR_SIZE, 0, 0, 0, &dev_priv->mch_res.start)) {
+		return -ENOMEM;
+	}
+#endif
 
 	if (INTEL_GEN(dev_priv) >= 4)
 		pci_write_config_dword(dev_priv->bridge_dev, reg + 4,
@@ -212,7 +232,12 @@ intel_teardown_mchbar(struct drm_i915_private *dev_priv)
 	}
 
 	if (dev_priv->mch_res.start)
+#ifdef __linux__
 		release_resource(&dev_priv->mch_res);
+#else
+		extent_free(dev_priv->memex, dev_priv->mch_res.start,
+			    MCHBAR_SIZE, 0);
+#endif
 }
 
 /* part #1: call before irq install */
@@ -872,6 +897,9 @@ static void i915_welcome_messages(struct drm_i915_private *dev_priv)
 static struct drm_i915_private *
 i915_driver_create(struct pci_dev *pdev, const struct pci_device_id *ent)
 {
+	STUB();
+	return ERR_PTR(-ENOSYS);
+#ifdef notyet
 	const struct intel_device_info *match_info =
 		(struct intel_device_info *)ent->driver_data;
 	struct intel_device_info *device_info;
@@ -899,6 +927,7 @@ i915_driver_create(struct pci_dev *pdev, const struct pci_device_id *ent)
 	BUG_ON(device_info->gen > BITS_PER_TYPE(device_info->gen_mask));
 
 	return i915;
+#endif
 }
 
 static void i915_driver_destroy(struct drm_i915_private *i915)
@@ -1254,6 +1283,7 @@ out:
 	return ret;
 }
 
+#ifdef __linux__
 int i915_suspend_switcheroo(struct drm_i915_private *i915, pm_message_t state)
 {
 	int error;
@@ -1271,6 +1301,7 @@ int i915_suspend_switcheroo(struct drm_i915_private *i915, pm_message_t state)
 
 	return i915_drm_suspend_late(&i915->drm, false);
 }
+#endif
 
 static int i915_drm_resume(struct drm_device *dev)
 {
@@ -1567,6 +1598,8 @@ static int i915_pm_restore(struct device *kdev)
 	return i915_pm_resume(kdev);
 }
 
+#ifdef __linux__
+
 static int intel_runtime_suspend(struct device *kdev)
 {
 	struct drm_i915_private *dev_priv = kdev_to_i915(kdev);
@@ -1760,6 +1793,8 @@ static const struct file_operations i915_driver_fops = {
 	.llseek = noop_llseek,
 };
 
+#endif /* __linux__ */
+
 static int
 i915_gem_reject_pin_ioctl(struct drm_device *dev, void *data,
 			  struct drm_file *file)
@@ -1853,7 +1888,9 @@ static struct drm_driver driver = {
 
 	.ioctls = i915_ioctls,
 	.num_ioctls = ARRAY_SIZE(i915_ioctls),
+#ifdef __linux__
 	.fops = &i915_driver_fops,
+#endif
 	.name = DRIVER_NAME,
 	.desc = DRIVER_DESC,
 	.date = DRIVER_DATE,
