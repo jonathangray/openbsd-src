@@ -20,6 +20,7 @@
 
 #include <linux/bitops.h>
 #include <linux/string.h>
+#include <linux/slab.h>		/* for kcalloc() */
 
 #define bitmap_empty(p, n)	(find_first_bit(p, n) == n)
 
@@ -107,6 +108,18 @@ bitmap_weight(void *p, u_int n)
 	for (b = 0; b < n; b += 32)
 		sum += hweight32(ptr[b >> 5]);
 	return sum;
+}
+
+static inline void *
+bitmap_zalloc(u_int n, gfp_t flags)
+{
+	return kcalloc(BITS_TO_LONGS(n), sizeof(long), flags);
+}
+
+static inline void
+bitmap_free(void *p)
+{
+	kfree(p);
 }
 
 #endif
