@@ -1447,6 +1447,11 @@ struct drm_connector {
 	/** @tile_v_size: vertical size of this tile. */
 	uint16_t tile_h_size, tile_v_size;
 
+#ifdef __OpenBSD__
+	struct backlight_device *backlight_device;
+	struct drm_property *backlight_property;
+#endif
+
 	/**
 	 * @free_node:
 	 *

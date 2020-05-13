@@ -2162,6 +2162,12 @@ int drm_connector_set_obj_prop(struct drm_mode_object *obj,
 	/* Do DPMS ourselves */
 	if (property == connector->dev->mode_config.dpms_property) {
 		ret = (*connector->funcs->dpms)(connector, (int)value);
+#ifdef __OpenBSD__
+	} else if (property == connector->backlight_property) {
+		connector->backlight_device->props.brightness = value;
+		backlight_schedule_update_status(connector->backlight_device);
+		ret = 0;
+#endif
 	} else if (connector->funcs->set_property)
 		ret = connector->funcs->set_property(connector, property, value);
 
