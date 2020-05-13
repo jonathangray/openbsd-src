@@ -893,7 +893,7 @@ struct inteldrm_softc {
 	struct vga_pci_bar bar;
 	struct vga_pci_bar *vga_regs;
 
-	struct drm_pcidev *id;
+	struct pci_device_id *id;
 
 	int console;
 	int primary;
@@ -1752,7 +1752,9 @@ intel_ggtt_update_needs_vtd_wa(struct drm_i915_private *dev_priv)
 /* i915_drv.c */
 extern const struct dev_pm_ops i915_pm_ops;
 
+#ifdef __linux__
 int i915_driver_probe(struct pci_dev *pdev, const struct pci_device_id *ent);
+#endif
 void i915_driver_remove(struct drm_i915_private *i915);
 
 int i915_resume_switcheroo(struct drm_i915_private *i915);
