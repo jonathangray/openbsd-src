@@ -198,4 +198,21 @@ bool flush_delayed_work(struct delayed_work *);
 #define destroy_work_on_stack(x)
 #define destroy_delayed_work_on_stack(x)
 
+struct rcu_work {
+	struct work_struct work;
+	struct rcu_head rcu;
+};
+
+static inline void
+INIT_RCU_WORK(struct rcu_work *work, work_func_t func)
+{
+	INIT_WORK(&work->work, func);
+}
+
+static inline bool
+queue_rcu_work(struct workqueue_struct *wq, struct rcu_work *work)
+{
+	return queue_work(wq, &work->work);
+}
+
 #endif
