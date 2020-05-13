@@ -20,6 +20,7 @@
 
 #include <sys/atomic.h>
 
+#include <sys/param.h>		/* for PAGE_SIZE on i386 */
 #include <uvm/uvm_extern.h>
 
 #include <machine/pmap.h>
