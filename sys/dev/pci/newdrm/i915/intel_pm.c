@@ -45,7 +45,9 @@
 #include "i915_trace.h"
 #include "intel_pm.h"
 #include "intel_sideband.h"
+#ifdef __linux__
 #include "../../../platform/x86/intel_ips.h"
+#endif
 
 /* Stores plane specific WM parameters */
 struct skl_wm_params {
