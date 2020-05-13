@@ -202,6 +202,7 @@ file	dev/pci/newdrm/i915/gem/i915_gemfs.c		inteldrm
 #file	dev/pci/newdrm/i915/gem/selftests/igt_gem_utils.c	inteldrm
 #file	dev/pci/newdrm/i915/gem/selftests/mock_context.c	inteldrm
 #file	dev/pci/newdrm/i915/gem/selftests/mock_dmabuf.c	inteldrm
+file	dev/pci/newdrm/i915/gt/agp_intel_gtt.c		inteldrm
 file	dev/pci/newdrm/i915/gt/debugfs_engines.c		inteldrm
 file	dev/pci/newdrm/i915/gt/debugfs_gt.c		inteldrm
 file	dev/pci/newdrm/i915/gt/debugfs_gt_pm.c		inteldrm
