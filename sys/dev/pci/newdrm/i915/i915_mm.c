@@ -38,6 +38,7 @@ struct remap_pfn {
 	resource_size_t iobase;
 };
 
+#ifdef notyet
 static int remap_pfn(pte_t *pte, unsigned long addr, void *data)
 {
 	struct remap_pfn *r = data;
@@ -48,6 +49,7 @@ static int remap_pfn(pte_t *pte, unsigned long addr, void *data)
 
 	return 0;
 }
+#endif
 
 #define use_dma(io) ((io) != -1)
 
@@ -58,6 +60,8 @@ static inline unsigned long sgt_pfn(const struct remap_pfn *r)
 	else
 		return r->sgt.pfn + (r->sgt.curr >> PAGE_SHIFT);
 }
+
+#ifdef notyet
 
 static int remap_sg(pte_t *pte, unsigned long addr, void *data)
 {
@@ -149,3 +153,5 @@ int remap_io_sg(struct vm_area_struct *vma,
 
 	return 0;
 }
+
+#endif /* notyet */
