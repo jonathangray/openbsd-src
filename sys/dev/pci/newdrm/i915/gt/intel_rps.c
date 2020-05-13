@@ -12,7 +12,9 @@
 #include "intel_gt_pm_irq.h"
 #include "intel_rps.h"
 #include "intel_sideband.h"
+#ifdef __linux__
 #include "../../../platform/x86/intel_ips.h"
+#endif
 
 /*
  * Lock protecting IPS related data structures
@@ -1439,7 +1441,11 @@ static u32 vlv_wa_c0_ei(struct intel_rps *rps, u32 pm_iir)
 
 	vlv_c0_read(uncore, &now);
 
+#ifdef __linux__
 	if (prev->ktime) {
+#else
+	if (ktime_to_ns(prev->ktime)) {
+#endif
 		u64 time, c0;
 		u32 render, media;
 
@@ -1755,6 +1761,7 @@ static struct drm_i915_private __rcu *ips_mchdev;
 static void
 ips_ping_for_i915_load(void)
 {
+#ifdef __linux__
 	void (*link)(void);
 
 	link = symbol_get(ips_link_to_i915_driver);
@@ -1762,6 +1769,7 @@ ips_ping_for_i915_load(void)
 		link();
 		symbol_put(ips_link_to_i915_driver);
 	}
+#endif
 }
 
 void intel_rps_driver_register(struct intel_rps *rps)
