@@ -179,8 +179,6 @@ static void __i915_gem_free_object_rcu(struct rcu_head *head)
 static void __i915_gem_free_objects(struct drm_i915_private *i915,
 				    struct llist_node *freed)
 {
-	STUB();
-#ifdef notyet
 	struct drm_i915_gem_object *obj, *on;
 	intel_wakeref_t wakeref;
 
@@ -246,7 +244,6 @@ static void __i915_gem_free_objects(struct drm_i915_private *i915,
 		cond_resched();
 	}
 	intel_runtime_pm_put(&i915->runtime_pm, wakeref);
-#endif
 }
 
 void i915_gem_flush_free_objects(struct drm_i915_private *i915)

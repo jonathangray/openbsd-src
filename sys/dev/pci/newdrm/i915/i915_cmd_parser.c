@@ -1368,9 +1368,6 @@ static int check_bbstart(u32 *cmd, u32 offset, u32 length,
 
 static unsigned long *alloc_whitelist(u32 batch_length)
 {
-	STUB();
-	return ERR_PTR(-ENOSYS);
-#ifdef notyet
 	unsigned long *jmp;
 
 	/*
@@ -1386,7 +1383,6 @@ static unsigned long *alloc_whitelist(u32 batch_length)
 		return ERR_PTR(-ENOMEM);
 
 	return jmp;
-#endif
 }
 
 #define LENGTH_BIAS 2
