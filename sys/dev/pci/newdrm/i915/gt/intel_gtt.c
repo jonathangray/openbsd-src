@@ -6,6 +6,7 @@
 #include <linux/slab.h> /* fault-inject.h is not standalone! */
 
 #include <linux/fault-inject.h>
+#include <asm/set_memory.h>
 
 #include "i915_trace.h"
 #include "intel_gt.h"
@@ -169,6 +170,8 @@ static void vm_free_page(struct i915_address_space *vm, struct vm_page *page)
 
 void __i915_vm_close(struct i915_address_space *vm)
 {
+	STUB();
+#ifdef notyet
 	struct i915_vma *vma, *vn;
 
 	if (!atomic_dec_and_mutex_lock(&vm->open, &vm->mutex))
@@ -190,6 +193,7 @@ void __i915_vm_close(struct i915_address_space *vm)
 	GEM_BUG_ON(!list_empty(&vm->bound_list));
 
 	mutex_unlock(&vm->mutex);
+#endif
 }
 
 void i915_address_space_fini(struct i915_address_space *vm)
@@ -264,6 +268,7 @@ void clear_pages(struct i915_vma *vma)
 	memset(&vma->page_sizes, 0, sizeof(vma->page_sizes));
 }
 
+#ifdef __linux__
 static int __setup_page_dma(struct i915_address_space *vm,
 			    struct i915_page_dma *p,
 			    gfp_t gfp)
@@ -284,6 +289,20 @@ static int __setup_page_dma(struct i915_address_space *vm,
 
 	return 0;
 }
+#else
+static int __setup_page_dma(struct i915_address_space *vm,
+			    struct i915_page_dma *p,
+			    gfp_t gfp)
+{
+	p->page = vm_alloc_page(vm, gfp | I915_GFP_ALLOW_FAIL);
+	if (unlikely(!p->page))
+		return -ENOMEM;
+
+	p->daddr = VM_PAGE_TO_PHYS(p->page);
+
+	return 0;
+}
+#endif
 
 int setup_page_dma(struct i915_address_space *vm, struct i915_page_dma *p)
 {
@@ -292,7 +311,9 @@ int setup_page_dma(struct i915_address_space *vm, struct i915_page_dma *p)
 
 void cleanup_page_dma(struct i915_address_space *vm, struct i915_page_dma *p)
 {
+#ifdef __linux__
 	dma_unmap_page(vm->dma, p->daddr, PAGE_SIZE, PCI_DMA_BIDIRECTIONAL);
+#endif
 	vm_free_page(vm, p->page);
 }
 
@@ -313,7 +334,11 @@ static void poison_scratch_page(struct vm_page *page, unsigned long size)
 		void *vaddr;
 
 		vaddr = kmap(page);
+#ifdef __linux__
 		memset(vaddr, POISON_FREE, PAGE_SIZE);
+#else
+		poison_mem(vaddr, PAGE_SIZE);
+#endif
 		kunmap(page);
 
 		page = pfn_to_page(page_to_pfn(page) + 1);
@@ -364,6 +389,7 @@ int setup_scratch_page(struct i915_address_space *vm, gfp_t gfp)
 		 */
 		poison_scratch_page(page, size);
 
+#ifdef __linux__
 		addr = dma_map_page_attrs(vm->dma,
 					  page, 0, size,
 					  PCI_DMA_BIDIRECTIONAL,
@@ -371,6 +397,9 @@ int setup_scratch_page(struct i915_address_space *vm, gfp_t gfp)
 					  DMA_ATTR_NO_WARN);
 		if (unlikely(dma_mapping_error(vm->dma, addr)))
 			goto free_page;
+#else
+		addr = VM_PAGE_TO_PHYS(page);
+#endif
 
 		if (unlikely(!IS_ALIGNED(addr, size)))
 			goto unmap_page;
@@ -381,8 +410,10 @@ int setup_scratch_page(struct i915_address_space *vm, gfp_t gfp)
 		return 0;
 
 unmap_page:
+#ifdef __linux__
 		dma_unmap_page(vm->dma, addr, size, PCI_DMA_BIDIRECTIONAL);
 free_page:
+#endif
 		__free_pages(page, order);
 skip:
 		if (size == I915_GTT_PAGE_SIZE_4K)
@@ -398,8 +429,10 @@ void cleanup_scratch_page(struct i915_address_space *vm)
 	struct i915_page_dma *p = px_base(&vm->scratch[0]);
 	unsigned int order = vm->scratch_order;
 
+#ifdef __linux__
 	dma_unmap_page(vm->dma, p->daddr, BIT(order) << PAGE_SHIFT,
 		       PCI_DMA_BIDIRECTIONAL);
+#endif
 	__free_pages(p->page, order);
 }
 

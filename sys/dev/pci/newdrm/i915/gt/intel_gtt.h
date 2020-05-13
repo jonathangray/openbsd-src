@@ -219,9 +219,7 @@ void stash_init(struct pagestash *stash);
 
 struct i915_address_space {
 	struct kref ref;
-#ifdef notyet
 	struct rcu_work rcu;
-#endif
 
 	struct drm_mm mm;
 	struct intel_gt *gt;
