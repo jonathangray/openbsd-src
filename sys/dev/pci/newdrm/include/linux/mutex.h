@@ -11,6 +11,8 @@
 #define DEFINE_MUTEX(x)		struct rwlock x
 
 #define mutex_lock_interruptible(rwl)	-rw_enter(rwl, RW_WRITE | RW_INTR)
+#define mutex_lock_interruptible_nested(rwl, subc) \
+					-rw_enter(rwl, RW_WRITE | RW_INTR)
 #define mutex_lock(rwl)			rw_enter_write(rwl)
 #define mutex_lock_nest_lock(rwl, sub)	rw_enter_write(rwl)
 #define mutex_lock_nested(rwl, sub)	rw_enter_write(rwl)
