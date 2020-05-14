@@ -10,6 +10,7 @@ struct pin_cookie {
 };
 
 #define might_lock(lock)
+#define might_lock_nested(lock, subc)
 #define lockdep_assert_held(lock)	do { (void)(lock); } while(0)
 #define lockdep_assert_held_once(lock)	do { (void)(lock); } while(0)
 #define lock_acquire(lock, a, b, c, d, e, f)
