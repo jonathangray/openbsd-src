@@ -2005,6 +2005,8 @@ static struct drm_driver driver = {
 #include <drm/drm_agpsupport.h>
 #include <drm/drm_utils.h>
 
+#include "i915_globals.h"
+
 #ifdef __amd64__
 #include "efifb.h"
 #include <machine/biosvar.h>
@@ -2019,6 +2021,12 @@ static struct drm_driver driver = {
 #if NINTAGP > 0
 int	intagpsubmatch(struct device *, void *, void *);
 int	intagp_print(void *, const char *);
+
+/*
+ * some functions are only called once on init regardless of how many times
+ * inteldrm attaches in linux this is handled via module_init()/module_exit()
+ */
+int inteldrm_refcnt;
 
 int
 intagpsubmatch(struct device *parent, void *match, void *aux)
@@ -2499,6 +2507,13 @@ inteldrm_attachhook(struct device *self)
 	const struct pci_device_id *id = dev_priv->id;
 	struct drm_device *dev = &dev_priv->drm;
 	int orientation_quirk;
+
+	if (inteldrm_refcnt == 0) {
+		/* from i915_init() in i915_pci.c */
+		if (i915_globals_init() != 0)
+			goto fail;
+	}
+	inteldrm_refcnt++;
 
 	if (i915_driver_probe(dev_priv, id))
 		goto fail;
