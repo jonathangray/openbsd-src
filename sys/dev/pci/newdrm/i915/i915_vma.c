@@ -1272,9 +1272,6 @@ int i915_vma_move_to_active(struct i915_vma *vma,
 
 int __i915_vma_unbind(struct i915_vma *vma)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
 	int ret;
 
 	lockdep_assert_held(&vma->vm->mutex);
@@ -1353,7 +1350,6 @@ int __i915_vma_unbind(struct i915_vma *vma)
 
 	drm_mm_remove_node(&vma->node); /* pairs with i915_vma_release() */
 	return 0;
-#endif
 }
 
 int i915_vma_unbind(struct i915_vma *vma)
