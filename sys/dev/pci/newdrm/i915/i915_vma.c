@@ -1102,8 +1102,6 @@ void i915_vma_reopen(struct i915_vma *vma)
 
 void i915_vma_release(struct kref *ref)
 {
-	STUB();
-#ifdef notyet
 	struct i915_vma *vma = container_of(ref, typeof(*vma), ref);
 
 	if (drm_mm_node_allocated(&vma->node)) {
@@ -1129,7 +1127,6 @@ void i915_vma_release(struct kref *ref)
 
 	i915_active_fini(&vma->active);
 	i915_vma_free(vma);
-#endif
 }
 
 void i915_vma_parked(struct intel_gt *gt)
