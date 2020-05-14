@@ -2130,8 +2130,6 @@ void intel_hdcp_update_pipe(struct intel_encoder *encoder,
 
 void intel_hdcp_component_fini(struct drm_i915_private *dev_priv)
 {
-	STUB();
-#ifdef notyet
 	mutex_lock(&dev_priv->hdcp_comp_mutex);
 	if (!dev_priv->hdcp_comp_added) {
 		mutex_unlock(&dev_priv->hdcp_comp_mutex);
@@ -2142,7 +2140,6 @@ void intel_hdcp_component_fini(struct drm_i915_private *dev_priv)
 	mutex_unlock(&dev_priv->hdcp_comp_mutex);
 
 	component_del(dev_priv->drm.dev, &i915_hdcp_component_ops);
-#endif
 }
 
 void intel_hdcp_cleanup(struct intel_connector *connector)
