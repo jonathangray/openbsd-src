@@ -1199,14 +1199,11 @@ static void i915_audio_component_init(struct drm_i915_private *dev_priv)
  */
 static void i915_audio_component_cleanup(struct drm_i915_private *dev_priv)
 {
-	STUB();
-#ifdef notyet
 	if (!dev_priv->audio_component_registered)
 		return;
 
 	component_del(dev_priv->drm.dev, &i915_audio_component_bind_ops);
 	dev_priv->audio_component_registered = false;
-#endif
 }
 
 /**
