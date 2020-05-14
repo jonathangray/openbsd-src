@@ -538,9 +538,6 @@ static const struct dma_buf_attach_ops amdgpu_dma_buf_attach_ops = {
 struct drm_gem_object *amdgpu_gem_prime_import(struct drm_device *dev,
 					       struct dma_buf *dma_buf)
 {
-	STUB();
-	return ERR_PTR(-ENOSYS);
-#ifdef notyet
 	struct dma_buf_attachment *attach;
 	struct drm_gem_object *obj;
 
@@ -560,15 +557,19 @@ struct drm_gem_object *amdgpu_gem_prime_import(struct drm_device *dev,
 	if (IS_ERR(obj))
 		return obj;
 
+	STUB();
+#ifdef notyet
 	attach = dma_buf_dynamic_attach(dma_buf, dev->dev,
 					&amdgpu_dma_buf_attach_ops, obj);
 	if (IS_ERR(attach)) {
 		drm_gem_object_put(obj);
 		return ERR_CAST(attach);
 	}
+#else
+	attach = NULL;
+#endif
 
 	get_dma_buf(dma_buf);
 	obj->import_attach = attach;
 	return obj;
-#endif
 }
