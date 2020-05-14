@@ -107,9 +107,6 @@ int ____i915_gem_object_get_pages(struct drm_i915_gem_object *obj)
  */
 int __i915_gem_object_get_pages(struct drm_i915_gem_object *obj)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
 	int err;
 
 	err = mutex_lock_interruptible_nested(&obj->mm.lock, I915_MM_GET_PAGES);
@@ -130,7 +127,6 @@ int __i915_gem_object_get_pages(struct drm_i915_gem_object *obj)
 unlock:
 	mutex_unlock(&obj->mm.lock);
 	return err;
-#endif
 }
 
 /* Immediately discard the backing storage */
