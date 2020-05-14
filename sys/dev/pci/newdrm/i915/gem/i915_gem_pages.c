@@ -323,9 +323,6 @@ static void *i915_gem_object_map(struct drm_i915_gem_object *obj,
 void *i915_gem_object_pin_map(struct drm_i915_gem_object *obj,
 			      enum i915_map_type type)
 {
-	STUB();
-	return ERR_PTR(-ENOSYS);
-#ifdef notyet
 	enum i915_map_type has_type;
 	unsigned int flags;
 	bool pinned;
@@ -389,7 +386,6 @@ err_unpin:
 err_unlock:
 	ptr = ERR_PTR(err);
 	goto out_unlock;
-#endif
 }
 
 void __i915_gem_object_flush_map(struct drm_i915_gem_object *obj,
