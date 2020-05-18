@@ -54,8 +54,6 @@ int __intel_wakeref_get_first(struct intel_wakeref *wf)
 
 static void ____intel_wakeref_put_last(struct intel_wakeref *wf)
 {
-	STUB();
-#ifdef notyet
 	INTEL_WAKEREF_BUG_ON(atomic_read(&wf->count) <= 0);
 	if (unlikely(!atomic_dec_and_test(&wf->count)))
 		goto unlock;
@@ -68,7 +66,6 @@ static void ____intel_wakeref_put_last(struct intel_wakeref *wf)
 
 unlock:
 	mutex_unlock(&wf->mutex);
-#endif
 }
 
 void __intel_wakeref_put_last(struct intel_wakeref *wf, unsigned long flags)
