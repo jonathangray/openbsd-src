@@ -522,9 +522,6 @@ static int flush_lazy_signals(struct i915_active *ref)
 
 int i915_active_wait(struct i915_active *ref)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
 	int err;
 
 	might_sleep();
@@ -543,7 +540,6 @@ int i915_active_wait(struct i915_active *ref)
 
 	flush_work(&ref->work);
 	return 0;
-#endif
 }
 
 static int __await_active(struct i915_active_fence *active,
