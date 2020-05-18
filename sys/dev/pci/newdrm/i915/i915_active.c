@@ -132,8 +132,6 @@ static inline void debug_active_assert(struct i915_active *ref) { }
 static void
 __active_retire(struct i915_active *ref)
 {
-	STUB();
-#ifdef notyet
 	struct active_node *it, *n;
 	struct rb_root root;
 	unsigned long flags;
@@ -168,7 +166,6 @@ __active_retire(struct i915_active *ref)
 		pool_put(&global.slab_cache, it);
 #endif
 	}
-#endif
 }
 
 static void
