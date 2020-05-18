@@ -15464,8 +15464,6 @@ static void intel_atomic_helper_free_state_worker(struct work_struct *work)
 
 static void intel_atomic_commit_fence_wait(struct intel_atomic_state *intel_state)
 {
-	STUB();
-#ifdef notyet
 	struct wait_queue_entry wait_fence, wait_reset;
 	struct drm_i915_private *dev_priv = to_i915(intel_state->base.dev);
 
@@ -15489,7 +15487,6 @@ static void intel_atomic_commit_fence_wait(struct intel_atomic_state *intel_stat
 	finish_wait(bit_waitqueue(&dev_priv->gt.reset.flags,
 				  I915_RESET_MODESET),
 		    &wait_reset);
-#endif
 }
 
 static void intel_atomic_cleanup_work(struct work_struct *work)
