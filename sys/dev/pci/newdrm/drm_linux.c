@@ -1810,6 +1810,7 @@ autoremove_wake_function(struct wait_queue_entry *wqe, unsigned int mode,
 }
 
 static wait_queue_head_t bit_waitq;
+wait_queue_head_t var_waitq;
 struct mutex wait_bit_mtx = MUTEX_INITIALIZER(IPL_TTY);
 
 int
@@ -1861,14 +1862,6 @@ wake_up_bit(void *word, int bit)
 	mtx_leave(&wait_bit_mtx);
 }
 
-void
-wake_up_var(void *p)
-{
-	mtx_enter(&wait_bit_mtx);
-	wakeup(p);
-	mtx_leave(&wait_bit_mtx);
-}
-
 wait_queue_head_t *
 bit_waitqueue(void *word, int bit)
 {
@@ -1906,6 +1899,7 @@ drm_linux_init(void)
 		taskletq = taskq_create("drmtskl", 1, IPL_HIGH, 0);
 
 	init_waitqueue_head(&bit_waitq);
+	init_waitqueue_head(&var_waitq);
 }
 
 #define PCIE_ECAP_RESIZE_BAR	0x15
