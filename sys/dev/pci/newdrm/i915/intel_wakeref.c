@@ -114,9 +114,6 @@ void __intel_wakeref_init(struct intel_wakeref *wf,
 
 int intel_wakeref_wait_for_idle(struct intel_wakeref *wf)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
 	int err;
 
 	might_sleep();
@@ -128,7 +125,6 @@ int intel_wakeref_wait_for_idle(struct intel_wakeref *wf)
 
 	intel_wakeref_unlock_wait(wf);
 	return 0;
-#endif
 }
 
 #ifdef __linux__
