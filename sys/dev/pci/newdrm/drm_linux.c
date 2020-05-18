@@ -1861,6 +1861,14 @@ wake_up_bit(void *word, int bit)
 	mtx_leave(&wait_bit_mtx);
 }
 
+void
+wake_up_var(void *p)
+{
+	mtx_enter(&wait_bit_mtx);
+	wakeup(p);
+	mtx_leave(&wait_bit_mtx);
+}
+
 wait_queue_head_t *
 bit_waitqueue(void *word, int bit)
 {
