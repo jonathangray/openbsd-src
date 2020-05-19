@@ -213,9 +213,6 @@ void i915_sw_fence_complete(struct i915_sw_fence *fence)
 
 bool i915_sw_fence_await(struct i915_sw_fence *fence)
 {
-	STUB();
-	return false;
-#ifdef notyet
 	int pending;
 
 	/*
@@ -229,7 +226,6 @@ bool i915_sw_fence_await(struct i915_sw_fence *fence)
 	} while (!atomic_try_cmpxchg(&fence->pending, &pending, pending + 1));
 
 	return true;
-#endif
 }
 
 void __i915_sw_fence_init(struct i915_sw_fence *fence,
