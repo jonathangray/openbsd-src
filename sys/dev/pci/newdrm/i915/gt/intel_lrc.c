@@ -1266,9 +1266,6 @@ __execlists_schedule_in(struct i915_request *rq)
 static inline struct i915_request *
 execlists_schedule_in(struct i915_request *rq, int idx)
 {
-	STUB();
-	return NULL;
-#ifdef notyet
 	struct intel_context * const ce = rq->context;
 	struct intel_engine_cs *old;
 
@@ -1285,7 +1282,6 @@ execlists_schedule_in(struct i915_request *rq, int idx)
 
 	GEM_BUG_ON(intel_context_inflight(ce) != rq->engine);
 	return i915_request_get(rq);
-#endif
 }
 
 static void kick_siblings(struct i915_request *rq, struct intel_context *ce)
@@ -1349,8 +1345,6 @@ __execlists_schedule_out(struct i915_request *rq,
 static inline void
 execlists_schedule_out(struct i915_request *rq)
 {
-	STUB();
-#ifdef notyet
 	struct intel_context * const ce = rq->context;
 	struct intel_engine_cs *cur, *old;
 	u32 ccid;
@@ -1366,7 +1360,6 @@ execlists_schedule_out(struct i915_request *rq)
 		__execlists_schedule_out(rq, old, ccid);
 
 	i915_request_put(rq);
-#endif
 }
 
 static u64 execlists_update_context(struct i915_request *rq)
@@ -5139,8 +5132,6 @@ virtual_find_bond(struct virtual_engine *ve,
 static void
 virtual_bond_execute(struct i915_request *rq, struct dma_fence *signal)
 {
-	STUB();
-#ifdef notyet
 	struct virtual_engine *ve = to_virtual_engine(rq->engine);
 	intel_engine_mask_t allowed, exec;
 	struct ve_bond *bond;
@@ -5158,7 +5149,6 @@ virtual_bond_execute(struct i915_request *rq, struct dma_fence *signal)
 
 	/* Prevent the master from being re-run on the bonded engines */
 	to_request(signal)->execution_mask &= ~allowed;
-#endif
 }
 
 struct intel_context *
