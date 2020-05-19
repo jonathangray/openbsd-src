@@ -802,9 +802,6 @@ i915_vma_detach(struct i915_vma *vma)
 
 static bool try_qad_pin(struct i915_vma *vma, unsigned int flags)
 {
-	return false;
-	STUB();
-#ifdef notyet
 	unsigned int bound;
 	bool pinned = true;
 
@@ -844,7 +841,6 @@ unpinned:
 	mutex_unlock(&vma->vm->mutex);
 
 	return pinned;
-#endif
 }
 
 static int vma_get_pages(struct i915_vma *vma)
