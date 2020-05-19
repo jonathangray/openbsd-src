@@ -246,12 +246,10 @@ static inline pte_t iomap_pte(resource_size_t base,
 #endif
 
 /* The 'mapping' part of i915_gem_object_pin_map() below */
+#ifdef __linux__
 static void *i915_gem_object_map(struct drm_i915_gem_object *obj,
 				 enum i915_map_type type)
 {
-	STUB();
-	return NULL;
-#ifdef notyet
 	unsigned long n_pte = obj->base.size >> PAGE_SHIFT;
 	struct sg_table *sgt = obj->mm.pages;
 	pte_t *stack[32], **mem;
@@ -316,8 +314,77 @@ static void *i915_gem_object_map(struct drm_i915_gem_object *obj,
 		kvfree(mem);
 
 	return area->addr;
-#endif
 }
+#else
+static void *i915_gem_object_map(struct drm_i915_gem_object *obj,
+				 enum i915_map_type type)
+{
+	unsigned long n_pages = obj->base.size >> PAGE_SHIFT;
+	struct sg_table *sgt = obj->mm.pages;
+	struct vm_page *stack_pages[32];
+	struct vm_page **pages = stack_pages;
+	struct vm_struct *area;
+	pgprot_t pgprot;
+	void *addr;
+
+	if (!i915_gem_object_has_struct_page(obj) && type != I915_MAP_WC)
+		return NULL;
+
+#if 0
+	/* A single page can always be kmapped */
+	if (n_pages == 1 && type == I915_MAP_WB)
+		return kmap(sg_page(sgt->sgl));
+#endif
+
+	if (n_pages > ARRAY_SIZE(stack_pages)) {
+		/* Too big for stack -- allocate temporary array instead */
+		pages = kvmalloc_array(n_pages, sizeof(*pages), GFP_KERNEL);
+		if (!pages)
+			return NULL;
+	}
+
+	switch (type) {
+	default:
+		MISSING_CASE(type);
+		/* fallthrough - to use PAGE_KERNEL anyway */
+	case I915_MAP_WB:
+		pgprot = PAGE_KERNEL;
+		break;
+	case I915_MAP_WC:
+		pgprot = pgprot_writecombine(PAGE_KERNEL_IO);
+		break;
+	}
+
+	if (i915_gem_object_has_struct_page(obj)) {
+		struct sgt_iter iter;
+		struct vm_page *page;
+		unsigned long i = 0;
+
+		for_each_sgt_page(page, iter, sgt)
+			pages[i++] = page;
+	} else {
+		STUB();
+#ifdef notyet
+		resource_size_t iomap;
+		struct sgt_iter iter;
+		pte_t **ptes = mem;
+		dma_addr_t addr;
+
+		iomap = obj->mm.region->iomap.base;
+		iomap -= obj->mm.region->region.start;
+
+		for_each_sgt_daddr(addr, iter, sgt)
+			**ptes++ = iomap_pte(iomap, addr, pgprot);
+#endif
+	}
+	addr = vmap(pages, n_pages, 0, pgprot);
+
+	if (pages != stack_pages)
+		kvfree(pages);
+
+	return addr;
+}
+#endif
 
 /* get, pin, and map the pages of the object into kernel space */
 void *i915_gem_object_pin_map(struct drm_i915_gem_object *obj,
