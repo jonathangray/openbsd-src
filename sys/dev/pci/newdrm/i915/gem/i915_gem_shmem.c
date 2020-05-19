@@ -341,8 +341,6 @@ __i915_gem_object_release_shmem(struct drm_i915_gem_object *obj,
 static void
 shmem_put_pages(struct drm_i915_gem_object *obj, struct sg_table *pages)
 {
-	STUB();
-#ifdef notyet
 	struct sgt_iter sgt_iter;
 	struct pagevec pvec;
 	struct vm_page *page;
@@ -354,26 +352,32 @@ shmem_put_pages(struct drm_i915_gem_object *obj, struct sg_table *pages)
 	if (i915_gem_object_needs_bit17_swizzle(obj))
 		i915_gem_object_save_bit_17_swizzle(obj, pages);
 
+#ifdef __linux__
 	mapping_clear_unevictable(file_inode(obj->base.filp)->i_mapping);
+#endif
 
 	pagevec_init(&pvec);
 	for_each_sgt_page(page, sgt_iter, pages) {
 		if (obj->mm.dirty)
 			set_page_dirty(page);
 
+#ifdef __linux__
 		if (obj->mm.madv == I915_MADV_WILLNEED)
 			mark_page_accessed(page);
+#endif
 
 		if (!pagevec_add(&pvec, page))
 			check_release_pagevec(&pvec);
 	}
 	if (pagevec_count(&pvec))
 		check_release_pagevec(&pvec);
+#ifdef __OpenBSD__
+	uvm_objunwire(obj->base.uao, 0, obj->base.size);
+#endif
 	obj->mm.dirty = false;
 
 	sg_free_table(pages);
 	kfree(pages);
-#endif
 }
 
 static int
