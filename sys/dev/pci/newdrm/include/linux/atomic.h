@@ -59,6 +59,16 @@
 #define cmpxchg(p, o, n)	__sync_val_compare_and_swap(p, o, n)
 #define atomic_set_release(p, v)	atomic_set((p), (v))
 
+#define try_cmpxchg(p, op, n)						\
+({									\
+	__typeof(p) __op = (__typeof((p)))(op);				\
+	__typeof(*(p)) __o = *__op;					\
+	__typeof(*(p)) __p = __sync_val_compare_and_swap((p), (__o), (n)); \
+	if (__p != __o)							\
+		*__op = __p;						\
+	(__p == __o);							\
+})
+
 static inline int
 atomic_xchg(volatile int *v, int n)
 {
