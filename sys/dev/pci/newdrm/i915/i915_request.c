@@ -418,8 +418,6 @@ void __i915_request_skip(struct i915_request *rq)
 
 void i915_request_set_error_once(struct i915_request *rq, int error)
 {
-	STUB();
-#ifdef notyet
 	int old;
 
 	GEM_BUG_ON(!IS_ERR_VALUE((long)error));
@@ -432,7 +430,6 @@ void i915_request_set_error_once(struct i915_request *rq, int error)
 		if (fatal_error(old))
 			return;
 	} while (!try_cmpxchg(&rq->fence.error, &old, error));
-#endif
 }
 
 bool __i915_request_submit(struct i915_request *request)
