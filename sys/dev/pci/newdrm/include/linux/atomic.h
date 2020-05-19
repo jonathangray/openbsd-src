@@ -69,6 +69,12 @@
 	(__p == __o);							\
 })
 
+static inline bool
+atomic_try_cmpxchg(volatile int *p, int *op, int n)
+{
+	return try_cmpxchg(p, op, n);
+}
+
 static inline int
 atomic_xchg(volatile int *v, int n)
 {
