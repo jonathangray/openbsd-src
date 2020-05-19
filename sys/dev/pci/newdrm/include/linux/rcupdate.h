@@ -21,6 +21,13 @@ struct rcu_head {
 #define init_rcu_head(h)
 #define destroy_rcu_head(h)
 
+#define rcu_replace_pointer(rp, p, c)		\
+({						\
+	__typeof(rp) __r = rp;			\
+	rp = p;					\
+	__r;					\
+})
+
 #define kfree_rcu(objp, name)	do { free((void *)objp, M_DRM, 0); } while(0)
 
 #define rcu_barrier()		__asm __volatile("" : : : "memory")
