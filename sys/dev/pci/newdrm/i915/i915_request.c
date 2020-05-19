@@ -656,6 +656,8 @@ static void retire_requests(struct intel_timeline *tl)
 			break;
 }
 
+static void __i915_request_ctor(void *);
+
 static noinline struct i915_request *
 request_alloc_slow(struct intel_timeline *tl, gfp_t gfp)
 {
@@ -676,6 +678,8 @@ request_alloc_slow(struct intel_timeline *tl, gfp_t gfp)
 			      gfp | __GFP_RETRY_MAYFAIL | __GFP_NOWARN);
 #else
 	rq = pool_get(&global.slab_requests, PR_WAITOK);
+	if (rq)
+		__i915_request_ctor(rq);
 #endif
 	if (rq)
 		return rq;
@@ -691,7 +695,10 @@ out:
 #ifdef __linux__
 	return kmem_cache_alloc(global.slab_requests, gfp);
 #else
-	return pool_get(&global.slab_requests, PR_NOWAIT);
+	rq = pool_get(&global.slab_requests, PR_NOWAIT);
+	if (rq)
+		__i915_request_ctor(rq);
+	return rq;
 #endif
 }
 
@@ -759,6 +766,8 @@ __i915_request_create(struct intel_context *ce, gfp_t gfp)
 			      gfp | __GFP_RETRY_MAYFAIL | __GFP_NOWARN);
 #else
 	rq = pool_get(&global.slab_requests, PR_WAITOK);
+	if (rq)
+		__i915_request_ctor(rq);
 #endif
 	if (unlikely(!rq)) {
 		rq = request_alloc_slow(tl, gfp);
