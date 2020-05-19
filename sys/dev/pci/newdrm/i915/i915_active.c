@@ -330,9 +330,6 @@ static bool ____active_del_barrier(struct i915_active *ref,
 				   struct intel_engine_cs *engine)
 
 {
-	STUB();
-	return false;
-#ifdef notyet
 	struct llist_node *head = NULL, *tail = NULL;
 	struct llist_node *pos, *next;
 
@@ -368,7 +365,6 @@ static bool ____active_del_barrier(struct i915_active *ref,
 		llist_add_batch(head, tail, &engine->barrier_tasks);
 
 	return !node;
-#endif
 }
 
 static bool
@@ -723,9 +719,6 @@ match:
 int i915_active_acquire_preallocate_barrier(struct i915_active *ref,
 					    struct intel_engine_cs *engine)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
 	intel_engine_mask_t tmp, mask = engine->mask;
 	struct llist_node *first = NULL, *last = NULL;
 	struct intel_gt *gt = engine->gt;
@@ -812,7 +805,6 @@ unwind:
 #endif
 	}
 	return err;
-#endif
 }
 
 void i915_active_acquire_barrier(struct i915_active *ref)
