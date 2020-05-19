@@ -1111,9 +1111,6 @@ void intel_engine_flush_submission(struct intel_engine_cs *engine)
  */
 bool intel_engine_is_idle(struct intel_engine_cs *engine)
 {
-	STUB();
-	return true;
-#ifdef notyet
 	/* More white lies, if wedged, hw state is inconsistent */
 	if (intel_gt_is_wedged(engine->gt))
 		return true;
@@ -1123,7 +1120,11 @@ bool intel_engine_is_idle(struct intel_engine_cs *engine)
 
 	/* Waiting to drain ELSP? */
 	if (execlists_active(&engine->execlists)) {
+#ifdef notyet
 		synchronize_hardirq(engine->i915->drm.pdev->irq);
+#else
+		STUB();
+#endif
 
 		intel_engine_flush_submission(engine);
 
@@ -1137,7 +1138,6 @@ bool intel_engine_is_idle(struct intel_engine_cs *engine)
 
 	/* Ring stopped? */
 	return ring_is_idle(engine);
-#endif
 }
 
 bool intel_engines_are_idle(struct intel_gt *gt)
