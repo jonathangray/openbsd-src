@@ -276,9 +276,6 @@ static void free_engines_rcu(struct rcu_head *rcu)
 static int __i915_sw_fence_call
 engines_notify(struct i915_sw_fence *fence, enum i915_sw_fence_notify state)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
 	struct i915_gem_engines *engines =
 		container_of(fence, typeof(*engines), fence);
 
@@ -302,7 +299,6 @@ engines_notify(struct i915_sw_fence *fence, enum i915_sw_fence_notify state)
 	}
 
 	return NOTIFY_DONE;
-#endif
 }
 
 static struct i915_gem_engines *alloc_engines(unsigned int count)
@@ -550,8 +546,6 @@ static void kill_engines(struct i915_gem_engines *engines)
 
 static void kill_stale_engines(struct i915_gem_context *ctx)
 {
-	STUB();
-#ifdef notyet
 	struct i915_gem_engines *pos, *next;
 
 	spin_lock_irq(&ctx->stale.lock);
@@ -574,7 +568,6 @@ static void kill_stale_engines(struct i915_gem_context *ctx)
 		i915_sw_fence_complete(&pos->fence);
 	}
 	spin_unlock_irq(&ctx->stale.lock);
-#endif
 }
 
 static void kill_context(struct i915_gem_context *ctx)
@@ -644,8 +637,6 @@ static void set_closed_name(struct i915_gem_context *ctx)
 
 static void context_close(struct i915_gem_context *ctx)
 {
-	STUB();
-#ifdef notyet
 	struct i915_address_space *vm;
 
 	/* Flush any concurrent set_engines() */
@@ -685,7 +676,6 @@ static void context_close(struct i915_gem_context *ctx)
 		kill_context(ctx);
 
 	i915_gem_context_put(ctx);
-#endif
 }
 
 static int __context_set_persistence(struct i915_gem_context *ctx, bool state)
@@ -1808,9 +1798,6 @@ static int
 set_engines(struct i915_gem_context *ctx,
 	    const struct drm_i915_gem_context_param *args)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
 	struct drm_i915_private *i915 = ctx->i915;
 	struct i915_context_param_engines __user *user =
 		u64_to_user_ptr(args->value);
@@ -1915,7 +1902,6 @@ replace:
 	engines_idle_release(ctx, set.engines);
 
 	return 0;
-#endif
 }
 
 static struct i915_gem_engines *
@@ -2188,9 +2174,6 @@ static int copy_ring_size(struct intel_context *dst,
 static int clone_engines(struct i915_gem_context *dst,
 			 struct i915_gem_context *src)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
 	struct i915_gem_engines *e = i915_gem_context_lock_engines(src);
 	struct i915_gem_engines *clone;
 	bool user_engines;
@@ -2252,7 +2235,6 @@ static int clone_engines(struct i915_gem_context *dst,
 err_unlock:
 	i915_gem_context_unlock_engines(src);
 	return -ENOMEM;
-#endif
 }
 
 static int clone_flags(struct i915_gem_context *dst,
