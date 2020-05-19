@@ -49,6 +49,19 @@ llist_add(struct llist_node *new, struct llist_head *head)
 	return (first == NULL);
 }
 
+static inline bool
+llist_add_batch(struct llist_node *new_first, struct llist_node *new_last,
+    struct llist_head *head)
+{
+	struct llist_node *first;
+
+	do {
+		new_last->next = first = head->first;
+	} while (atomic_cas_ptr(&head->first, first, new_first) != first);
+
+	return (first == NULL);
+}
+
 static inline void
 init_llist_head(struct llist_head *head)
 {
