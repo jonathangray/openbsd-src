@@ -1398,7 +1398,6 @@ void i915_vma_make_purgeable(struct i915_vma *vma)
 
 static void i915_global_vma_shrink(void)
 {
-	STUB();
 #ifdef notyet
 	kmem_cache_shrink(global.slab_vmas);
 #endif
@@ -1406,9 +1405,10 @@ static void i915_global_vma_shrink(void)
 
 static void i915_global_vma_exit(void)
 {
-	STUB();
-#ifdef notyet
+#ifdef __linux__
 	kmem_cache_destroy(global.slab_vmas);
+#else
+	pool_destroy(&global.slab_vmas);
 #endif
 }
 
