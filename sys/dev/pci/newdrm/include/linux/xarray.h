@@ -5,6 +5,24 @@
 
 #include <linux/gfp.h>
 
+#define XA_FLAGS_ALLOC		1
+#define XA_FLAGS_ALLOC1		2
+
+struct xarray {
+};
+
+static inline void
+xa_init_flags(struct xarray *xa, gfp_t flags)
+{
+	STUB();
+}
+
+static inline void
+xa_destroy(struct xarray *xa)
+{
+	STUB();
+}
+
 static inline void *
 xa_mk_value(unsigned long v)
 {
