@@ -487,9 +487,6 @@ i915_gem_object_get_sg(struct drm_i915_gem_object *obj,
 		       unsigned int n,
 		       unsigned int *offset)
 {
-	STUB();
-	return NULL;
-#ifdef notyet
 	struct i915_gem_object_page_iter *iter = &obj->mm.get_page;
 	struct scatterlist *sg;
 	unsigned int idx, count;
@@ -596,7 +593,6 @@ lookup:
 	rcu_read_unlock();
 
 	return sg;
-#endif
 }
 
 struct vm_page *
