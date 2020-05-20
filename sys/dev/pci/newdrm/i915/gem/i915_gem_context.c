@@ -960,9 +960,6 @@ static int gem_context_register(struct i915_gem_context *ctx,
 int i915_gem_context_open(struct drm_i915_private *i915,
 			  struct drm_file *file)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
 	struct drm_i915_file_private *file_priv = file->driver_priv;
 	struct i915_gem_context *ctx;
 	int err;
@@ -992,7 +989,6 @@ err:
 	xa_destroy(&file_priv->vm_xa);
 	xa_destroy(&file_priv->context_xa);
 	return err;
-#endif
 }
 
 void i915_gem_context_close(struct drm_file *file)

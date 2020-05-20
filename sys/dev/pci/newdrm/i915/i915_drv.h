@@ -226,10 +226,8 @@ struct drm_i915_file_private {
 		struct list_head request_list;
 	} mm;
 
-#ifdef notyet
 	struct xarray context_xa;
 	struct xarray vm_xa;
-#endif
 
 	unsigned int bsd_engine;
 
