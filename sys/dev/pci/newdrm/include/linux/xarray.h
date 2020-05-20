@@ -23,6 +23,16 @@ xa_destroy(struct xarray *xa)
 	STUB();
 }
 
+#define xa_limit_32b	0
+
+static inline int
+xa_alloc(struct xarray *xa, u32 *id, void *entry, int limit, gfp_t gfp)
+{
+	STUB();
+	*id = 0;
+	return 0;
+}
+
 static inline void *
 xa_mk_value(unsigned long v)
 {

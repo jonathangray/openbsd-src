@@ -926,9 +926,6 @@ static int gem_context_register(struct i915_gem_context *ctx,
 				struct drm_i915_file_private *fpriv,
 				u32 *id)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
 	struct i915_address_space *vm;
 	int ret;
 
@@ -942,11 +939,13 @@ static int gem_context_register(struct i915_gem_context *ctx,
 
 #ifdef __linux__
 	ctx->pid = get_task_pid(current, PIDTYPE_PID);
-#else
-	ctx->pid = curproc->p_p->ps_pid;
-#endif
 	snprintf(ctx->name, sizeof(ctx->name), "%s[%d]",
 		 current->comm, pid_nr(ctx->pid));
+#else
+	ctx->pid = curproc->p_p->ps_pid;
+	snprintf(ctx->name, sizeof(ctx->name), "%s[%d]",
+		 curproc->p_p->ps_comm, ctx->pid);
+#endif
 
 	/* And finally expose ourselves to userspace via the idr */
 	ret = xa_alloc(&fpriv->context_xa, id, ctx, xa_limit_32b, GFP_KERNEL);
@@ -954,7 +953,6 @@ static int gem_context_register(struct i915_gem_context *ctx,
 		put_pid(fetch_and_zero(&ctx->pid));
 
 	return ret;
-#endif
 }
 
 int i915_gem_context_open(struct drm_i915_private *i915,
