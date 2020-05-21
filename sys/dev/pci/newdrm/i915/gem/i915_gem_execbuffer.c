@@ -2039,9 +2039,6 @@ static struct i915_request *eb_throttle(struct intel_context *ce)
 
 static int __eb_pin_engine(struct i915_execbuffer *eb, struct intel_context *ce)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
 	struct intel_timeline *tl;
 	struct i915_request *rq;
 	int err;
@@ -2086,7 +2083,11 @@ static int __eb_pin_engine(struct i915_execbuffer *eb, struct intel_context *ce)
 	intel_context_timeline_unlock(tl);
 
 	if (rq) {
+#ifdef __linux__
 		bool nonblock = eb->file->filp->f_flags & O_NONBLOCK;
+#else
+		bool nonblock = eb->file->filp->f_flag & FNONBLOCK;
+#endif
 		long timeout;
 
 		timeout = MAX_SCHEDULE_TIMEOUT;
@@ -2115,7 +2116,6 @@ err_exit:
 err_unpin:
 	intel_context_unpin(ce);
 	return err;
-#endif
 }
 
 static void eb_unpin_engine(struct i915_execbuffer *eb)
