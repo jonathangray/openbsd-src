@@ -36,11 +36,17 @@ __i915_printk(struct drm_i915_private *dev_priv, const char *level,
 	vaf.fmt = fmt;
 	vaf.va = &args;
 
+#ifdef __linux__
 	if (is_error)
 		dev_printk(level, kdev, "%pV", &vaf);
 	else
 		dev_printk(level, kdev, "[" DRM_NAME ":%ps] %pV",
 			   __builtin_return_address(0), &vaf);
+#else
+	if (!is_error)
+		printf("%s" "[" DRM_NAME "] ", level);
+	vprintf(fmt, args);
+#endif
 
 	va_end(args);
 
