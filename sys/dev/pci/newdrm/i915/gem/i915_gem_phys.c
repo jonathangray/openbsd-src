@@ -173,10 +173,7 @@ i915_gem_object_put_pages_phys(struct drm_i915_gem_object *obj,
 
 static void phys_release(struct drm_i915_gem_object *obj)
 {
-	STUB();
-#ifdef notyet
 	fput(obj->base.filp);
-#endif
 }
 
 static const struct drm_i915_gem_object_ops i915_gem_phys_ops = {
