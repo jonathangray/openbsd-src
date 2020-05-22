@@ -900,6 +900,22 @@ xa_alloc(struct xarray *xa, u32 *id, void *entry, int limit, gfp_t gfp)
 }
 
 void *
+xa_erase(struct xarray *xa, unsigned long index)
+{
+	struct xarray_entry find, *res;
+	void *ptr = NULL;
+
+	find.id = index;
+	res = SPLAY_FIND(xarray_tree, &xa->xa_tree, &find);
+	if (res) {
+		SPLAY_REMOVE(xarray_tree, &xa->xa_tree, res);
+		ptr = res->ptr;
+		pool_put(&xa_pool, res);
+	}
+	return ptr;
+}
+
+void *
 xa_load(struct xarray *xa, unsigned long index)
 {
 	struct xarray_entry find, *res;

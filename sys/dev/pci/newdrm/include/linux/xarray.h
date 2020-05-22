@@ -26,6 +26,7 @@ void xa_init_flags(struct xarray *, gfp_t);
 void xa_destroy(struct xarray *);
 int xa_alloc(struct xarray *, u32 *, void *, int, gfp_t);
 void *xa_load(struct xarray *, unsigned long);
+void *xa_erase(struct xarray *, unsigned long);
 
 #define xa_limit_32b	0
 
