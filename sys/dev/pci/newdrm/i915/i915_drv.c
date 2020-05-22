@@ -2714,10 +2714,9 @@ int
 inteldrm_intr(void *arg)
 {
 	struct inteldrm_softc *dev_priv = arg;
-	struct drm_device *dev = &dev_priv->drm;
 
-	if (dev->driver->irq_handler)
-		return dev->driver->irq_handler(0, dev);
+	if (dev_priv->irq_handler)
+		return dev_priv->irq_handler(0, dev_priv);
 
 	return 0;
 }

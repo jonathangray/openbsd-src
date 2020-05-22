@@ -886,6 +886,7 @@ struct inteldrm_softc {
 	pcitag_t tag;
 	struct extent *memex;
 	pci_intr_handle_t ih;
+	irqreturn_t(*irq_handler) (int, void *);
 	void *irqh;
 
 	struct vga_pci_bar bar;
