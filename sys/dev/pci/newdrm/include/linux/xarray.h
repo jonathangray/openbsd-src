@@ -5,33 +5,29 @@
 
 #include <linux/gfp.h>
 
+#include <sys/tree.h>
+#include <sys/pool.h>
+
 #define XA_FLAGS_ALLOC		1
 #define XA_FLAGS_ALLOC1		2
 
-struct xarray {
+struct xarray_entry {
+	SPLAY_ENTRY(xarray_entry) entry;
+	int id;
+	void *ptr;
 };
 
-static inline void
-xa_init_flags(struct xarray *xa, gfp_t flags)
-{
-	STUB();
-}
+struct xarray {
+	gfp_t		xa_flags;
+	SPLAY_HEAD(xarray_tree, xarray_entry) xa_tree;
+};
 
-static inline void
-xa_destroy(struct xarray *xa)
-{
-	STUB();
-}
+void xa_init_flags(struct xarray *, gfp_t);
+void xa_destroy(struct xarray *);
+int xa_alloc(struct xarray *, u32 *, void *, int, gfp_t);
+void *xa_load(struct xarray *, unsigned long);
 
 #define xa_limit_32b	0
-
-static inline int
-xa_alloc(struct xarray *xa, u32 *id, void *entry, int limit, gfp_t gfp)
-{
-	STUB();
-	*id = 0;
-	return 0;
-}
 
 static inline void *
 xa_mk_value(unsigned long v)

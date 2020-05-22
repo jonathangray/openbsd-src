@@ -44,6 +44,7 @@
 #include <linux/backlight.h>
 #include <linux/shrinker.h>
 #include <linux/fb.h>
+#include <linux/xarray.h>
 
 #include <drm/drm_device.h>
 #include <drm/drm_print.h>
@@ -832,6 +833,82 @@ ida_simple_get(struct ida *ida, unsigned int start, unsigned int end,
 void
 ida_simple_remove(struct ida *ida, int id)
 {
+}
+
+int
+xarray_cmp(struct xarray_entry *a, struct xarray_entry *b)
+{
+	return (a->id < b->id ? -1 : a->id > b->id);
+}
+
+SPLAY_PROTOTYPE(xarray_tree, xarray_entry, entry, xarray_cmp);
+struct pool xa_pool;
+SPLAY_GENERATE(xarray_tree, xarray_entry, entry, xarray_cmp);
+
+void
+xa_init_flags(struct xarray *xa, gfp_t flags)
+{
+	static int initialized;
+
+	if (!initialized) {
+		pool_init(&xa_pool, sizeof(struct xarray_entry), 0, IPL_TTY, 0,
+		    "xapl", NULL);
+		initialized = 1;
+	}
+	SPLAY_INIT(&xa->xa_tree);
+}
+
+void
+xa_destroy(struct xarray *xa)
+{
+	struct xarray_entry *id;
+
+	while ((id = SPLAY_MIN(xarray_tree, &xa->xa_tree))) {
+		SPLAY_REMOVE(xarray_tree, &xa->xa_tree, id);
+		pool_put(&xa_pool, id);
+	}
+}
+
+int
+xa_alloc(struct xarray *xa, u32 *id, void *entry, int limit, gfp_t gfp)
+{
+	struct xarray_entry *xid;
+	int flags = (gfp & GFP_NOWAIT) ? PR_NOWAIT : PR_WAITOK;
+	int start = (xa->xa_flags & XA_FLAGS_ALLOC1) ? 1 : 0;
+	int begin;
+
+	xid = pool_get(&xa_pool, flags);
+	if (xid == NULL)
+		return -ENOMEM;
+
+	if (limit <= 0)
+		limit = INT_MAX;
+
+	xid->id = begin = start;
+
+	while (SPLAY_INSERT(xarray_tree, &xa->xa_tree, xid)) {
+		if (++xid->id == limit)
+			xid->id = start;
+		if (xid->id == begin) {
+			pool_put(&xa_pool, xid);
+			return -EBUSY;
+		}
+	}
+	xid->ptr = entry;
+	*id = xid->id;
+	return 0;
+}
+
+void *
+xa_load(struct xarray *xa, unsigned long index)
+{
+	struct xarray_entry find, *res;
+
+	find.id = index;
+	res = SPLAY_FIND(xarray_tree, &xa->xa_tree, &find);
+	if (res == NULL)
+		return NULL;
+	return res->ptr;
 }
 
 int
