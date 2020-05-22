@@ -1863,11 +1863,7 @@ struct dma_buf *i915_gem_prime_export(struct drm_gem_object *gem_obj, int flags)
 static inline struct i915_gem_context *
 __i915_gem_context_lookup_rcu(struct drm_i915_file_private *file_priv, u32 id)
 {
-	STUB();
-	return NULL;
-#ifdef notyet
 	return xa_load(&file_priv->context_xa, id);
-#endif
 }
 
 static inline struct i915_gem_context *
