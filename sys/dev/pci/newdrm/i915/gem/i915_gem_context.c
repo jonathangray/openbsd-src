@@ -1058,9 +1058,6 @@ err_put:
 int i915_gem_vm_destroy_ioctl(struct drm_device *dev, void *data,
 			      struct drm_file *file)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
 	struct drm_i915_file_private *file_priv = file->driver_priv;
 	struct drm_i915_gem_vm_control *args = data;
 	struct i915_address_space *vm;
@@ -1077,7 +1074,6 @@ int i915_gem_vm_destroy_ioctl(struct drm_device *dev, void *data,
 
 	i915_vm_put(vm);
 	return 0;
-#endif
 }
 
 struct context_barrier_task {
@@ -2434,9 +2430,6 @@ err_ctx:
 int i915_gem_context_destroy_ioctl(struct drm_device *dev, void *data,
 				   struct drm_file *file)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
 	struct drm_i915_gem_context_destroy *args = data;
 	struct drm_i915_file_private *file_priv = file->driver_priv;
 	struct i915_gem_context *ctx;
@@ -2453,7 +2446,6 @@ int i915_gem_context_destroy_ioctl(struct drm_device *dev, void *data,
 
 	context_close(ctx);
 	return 0;
-#endif
 }
 
 static int get_sseu(struct i915_gem_context *ctx,
