@@ -1014,9 +1014,6 @@ void i915_gem_context_close(struct drm_file *file)
 int i915_gem_vm_create_ioctl(struct drm_device *dev, void *data,
 			     struct drm_file *file)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
 	struct drm_i915_private *i915 = to_i915(dev);
 	struct drm_i915_gem_vm_control *args = data;
 	struct drm_i915_file_private *file_priv = file->driver_priv;
@@ -1056,7 +1053,6 @@ int i915_gem_vm_create_ioctl(struct drm_device *dev, void *data,
 err_put:
 	i915_vm_put(&ppgtt->vm);
 	return err;
-#endif
 }
 
 int i915_gem_vm_destroy_ioctl(struct drm_device *dev, void *data,
@@ -1204,9 +1200,6 @@ static int get_ppgtt(struct drm_i915_file_private *file_priv,
 		     struct i915_gem_context *ctx,
 		     struct drm_i915_gem_context_param *args)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
 	struct i915_address_space *vm;
 	int err;
 	u32 id;
@@ -1233,7 +1226,6 @@ static int get_ppgtt(struct drm_i915_file_private *file_priv,
 err_put:
 	i915_vm_put(vm);
 	return err;
-#endif
 }
 
 static void set_ppgtt_barrier(void *data)
@@ -1322,8 +1314,6 @@ static int set_ppgtt(struct drm_i915_file_private *file_priv,
 		     struct i915_gem_context *ctx,
 		     struct drm_i915_gem_context_param *args)
 {
-	return -ENOSYS;
-#ifdef notyet
 	struct i915_address_space *vm, *old;
 	int err;
 
@@ -1381,7 +1371,6 @@ unlock:
 out:
 	i915_vm_put(vm);
 	return err;
-#endif
 }
 
 static int __apply_ringsize(struct intel_context *ce, void *sz)
