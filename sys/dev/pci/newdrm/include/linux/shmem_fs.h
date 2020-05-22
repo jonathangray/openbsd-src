@@ -5,5 +5,6 @@
 
 #include <linux/mempolicy.h>
 #include <linux/swap.h>
+#include <linux/file.h>
 
 #endif
