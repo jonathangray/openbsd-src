@@ -164,7 +164,7 @@ udv_attach_drm(dev_t device, vm_prot_t accessprot, voff_t off, vsize_t size)
 		return NULL;
 
 	if (dev->driver->mmap)
-		return dev->driver->mmap(dev, off, size);
+		return dev->driver->mmap(dev, accessprot, off, size);
 
 	mutex_lock(&dev->filelist_mutex);
 	priv = drm_find_file_by_minor(dev, minor(device));
@@ -175,22 +175,42 @@ udv_attach_drm(dev_t device, vm_prot_t accessprot, voff_t off, vsize_t size)
 	filp = priv->filp;
 	mutex_unlock(&dev->filelist_mutex);
 
-	mutex_lock(&dev->struct_mutex);
-	node = drm_vma_offset_exact_lookup(dev->vma_offset_manager,
-					   off >> PAGE_SHIFT,
-					   atop(round_page(size)));
-	if (!node) {
-		mutex_unlock(&dev->struct_mutex);
+	drm_vma_offset_lock_lookup(dev->vma_offset_manager);
+	node = drm_vma_offset_exact_lookup_locked(dev->vma_offset_manager,
+						  off >> PAGE_SHIFT,
+						  atop(round_page(size)));
+	if (likely(node)) {
+		obj = container_of(node, struct drm_gem_object, vma_node);
+		/*
+		 * When the object is being freed, after it hits 0-refcnt it
+		 * proceeds to tear down the object. In the process it will
+		 * attempt to remove the VMA offset and so acquire this
+		 * mgr->vm_lock.  Therefore if we find an object with a 0-refcnt
+		 * that matches our range, we know it is in the process of being
+		 * destroyed and will be freed as soon as we release the lock -
+		 * so we have to check for the 0-refcnted object and treat it as
+		 * invalid.
+		 */
+		if (!kref_get_unless_zero(&obj->refcount))
+			obj = NULL;
+	}
+	drm_vma_offset_unlock_lookup(dev->vma_offset_manager);
+
+	if (!obj)
 		return NULL;
-	} else if (!drm_vma_node_is_allowed(node, filp)) {
-		mutex_unlock(&dev->struct_mutex);
+
+	if (!drm_vma_node_is_allowed(node, filp)) {
+		drm_gem_object_put_unlocked(obj);
 		return NULL;
 	}
 
-	obj = container_of(node, struct drm_gem_object, vma_node);
-	drm_gem_object_get(obj);
+	if (node->readonly) {
+		if (accessprot & PROT_WRITE) {
+			drm_gem_object_put_unlocked(obj);
+			return NULL;
+		}
+	}
 
-	mutex_unlock(&dev->struct_mutex);
 	return &obj->uobj;
 }
 

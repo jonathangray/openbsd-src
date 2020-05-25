@@ -992,7 +992,8 @@ radeon_ttm_fault(struct uvm_faultinfo *ufi, vaddr_t vaddr, vm_page_t *pps,
 }
 
 struct uvm_object *
-radeon_mmap(struct drm_device *dev, voff_t off, vsize_t size)
+radeon_mmap(struct drm_device *dev, vm_prot_t accessprot, voff_t off,
+	    vsize_t size)
 {
 	struct radeon_device *rdev = dev->dev_private;
 	struct uvm_object *uobj;

@@ -2067,7 +2067,8 @@ int amdgpu_mmap(struct file *filp, struct vm_area_struct *vma)
 #else
 
 struct uvm_object *
-amdgpu_mmap(struct drm_device *dev, voff_t off, vsize_t size)
+amdgpu_mmap(struct drm_device *dev, vm_prot_t accessprot, voff_t off,
+	    vsize_t size)
 {
 	struct amdgpu_device *adev = dev->dev_private;
 

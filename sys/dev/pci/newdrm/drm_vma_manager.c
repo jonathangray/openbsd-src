@@ -112,36 +112,6 @@ void drm_vma_offset_manager_destroy(struct drm_vma_offset_manager *mgr)
 EXPORT_SYMBOL(drm_vma_offset_manager_destroy);
 
 /**
- * drm_vma_offset_lookup() - Find node in offset space
- * @mgr: Manager object
- * @start: Start address for object (page-based)
- * @pages: Size of object (page-based)
- *
- * Find a node given a start address and object size. This returns the _best_
- * match for the given node. That is, @start may point somewhere into a valid
- * region and the given node will be returned, as long as the node spans the
- * whole requested area (given the size in number of pages as @pages).
- *
- * RETURNS:
- * Returns NULL if no suitable node can be found. Otherwise, the best match
- * is returned. It's the caller's responsibility to make sure the node doesn't
- * get destroyed before the caller can access it.
- */
-struct drm_vma_offset_node *drm_vma_offset_lookup(struct drm_vma_offset_manager *mgr,
-						  unsigned long start,
-						  unsigned long pages)
-{
-	struct drm_vma_offset_node *node;
-
-	read_lock(&mgr->vm_lock);
-	node = drm_vma_offset_lookup_locked(mgr, start, pages);
-	read_unlock(&mgr->vm_lock);
-
-	return node;
-}
-EXPORT_SYMBOL(drm_vma_offset_lookup);
-
-/**
  * drm_vma_offset_lookup_locked() - Find node in offset space
  * @mgr: Manager object
  * @start: Start address for object (page-based)

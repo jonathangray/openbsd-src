@@ -503,7 +503,7 @@ void i915_gem_object_release_mmap_offset(struct drm_i915_gem_object *obj)
 		drm_vma_node_unmap(&mmo->vma_node,
 				   obj->base.dev->anon_inode->i_mapping);
 #else
-		if (drm_vma_node_has_offset(&mmo->vma_node)) {
+		if (drm_mm_node_allocated(&mmo->vma_node.vm_node)) {
 			struct drm_i915_private *dev_priv = obj->base.dev->dev_private;
 			struct i915_vma *vma;
 			struct vm_page *pg;
@@ -946,7 +946,8 @@ int i915_gem_mmap(struct file *filp, struct vm_area_struct *vma)
  * to a single gem object.
  */
 struct uvm_object *
-i915_gem_mmap(struct drm_device *dev, voff_t off, vsize_t size)
+i915_gem_mmap(struct drm_device *dev, vm_prot_t accessprot, voff_t off,
+	      vsize_t size)
 {
 	STUB();
 	return NULL;

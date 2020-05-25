@@ -491,7 +491,8 @@ struct drm_driver {
 #endif
 
 #ifdef __OpenBSD__
-	struct uvm_object *(*mmap)(struct drm_device *, voff_t, vsize_t);
+	struct uvm_object *(*mmap)(struct drm_device *, vm_prot_t, voff_t,
+				   vsize_t);
 	size_t gem_size;
 	size_t buf_priv_size;
 	size_t file_priv_size;
