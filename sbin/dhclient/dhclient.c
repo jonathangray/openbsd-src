@@ -1,4 +1,4 @@
-/*	$OpenBSD: dhclient.c,v 1.666 2020/05/08 19:00:19 krw Exp $	*/
+/*	$OpenBSD: dhclient.c,v 1.673 2020/05/20 19:13:34 krw Exp $	*/
 
 /*
  * Copyright 2004 Henning Brauer <henning@openbsd.org>
@@ -1221,7 +1221,7 @@ packet_to_lease(struct interface_info *ifi, struct option_data *options)
 			options[i].data = strdup(pretty);
 			if (options[i].data == NULL)
 				fatal("RFC1035 string");
-			options[i].len = strlen(options[i].data) + 1;
+			options[i].len = strlen(options[i].data);
 		} else
 			pretty = pretty_print_option(i, &options[i], 0);
 		if (strlen(pretty) == 0)
@@ -1977,83 +1977,79 @@ lease_as_unwind_info(struct client_lease *lease)
 struct proposal *
 lease_as_proposal(struct client_lease *lease)
 {
-	struct proposal		*proposal;
+	uint8_t			 defroute[5];	/* 1 + sizeof(in_addr_t) */
+	struct option_data	 fake;
 	struct option_data	*opt;
+	struct proposal		*proposal;
+	uint8_t			*ns, *p, *routes, *domains;
+	unsigned int		 routes_len = 0, domains_len = 0, ns_len = 0;
+	uint16_t		 mtu;
 
-	proposal = calloc(1, sizeof(*proposal));
-	if (proposal == NULL)
-		fatal("proposal");
-
-	proposal->ifa = lease->address;
-
-	opt = &lease->options[DHO_INTERFACE_MTU];
-	if (opt->len == sizeof(uint16_t)) {
-		memcpy(&proposal->mtu, opt->data, sizeof(proposal->mtu));
-		proposal->mtu = ntohs(proposal->mtu);
-	}
-
-	opt = &lease->options[DHO_SUBNET_MASK];
-	if (opt->len == sizeof(proposal->netmask)) {
-		proposal->netmask.s_addr =
-		    ((struct in_addr *)opt->data)->s_addr;
-	}
-
+	/* Determine sizes of variable length data. */
+	opt = NULL;
 	if (lease->options[DHO_CLASSLESS_STATIC_ROUTES].len != 0) {
 		opt = &lease->options[DHO_CLASSLESS_STATIC_ROUTES];
-		if (opt->len < sizeof(proposal->rtstatic)) {
-			proposal->rtstatic_len = opt->len;
-			memcpy(&proposal->rtstatic, opt->data, opt->len);
-		} else
-			log_warnx("%s: CLASSLESS_STATIC_ROUTES too long",
-			    log_procname);
 	} else if (lease->options[DHO_CLASSLESS_MS_STATIC_ROUTES].len != 0) {
 		opt = &lease->options[DHO_CLASSLESS_MS_STATIC_ROUTES];
-		if (opt->len < sizeof(proposal->rtstatic)) {
-			proposal->rtstatic_len = opt->len;
-			memcpy(&proposal->rtstatic[1], opt->data, opt->len);
-		} else
-			log_warnx("%s: MS_CLASSLESS_STATIC_ROUTES too long",
-			    log_procname);
 	} else if (lease->options[DHO_ROUTERS].len != 0) {
+		/* Fake a classless static default route. */
 		opt = &lease->options[DHO_ROUTERS];
-		if (opt->len >= sizeof(in_addr_t) &&
-		    (1 + sizeof(in_addr_t)) < sizeof(proposal->rtstatic)) {
-			proposal->rtstatic_len = 1 + sizeof(in_addr_t);
-			proposal->rtstatic[0] = 0;
-			memcpy(&proposal->rtstatic[1], opt->data,
-			    sizeof(in_addr_t));
-		} else
-			log_warnx("%s: DHO_ROUTERS invalid", log_procname);
+		fake.len = sizeof(defroute);
+		fake.data = defroute;
+		fake.data[0] = 0;
+		memcpy(&fake.data[1], opt->data, sizeof(defroute) - 1);
+		opt = &fake;
+	}
+	if (opt != NULL) {
+		routes_len = opt->len;
+		routes = opt->data;
 	}
 
-	if (lease->options[DHO_DOMAIN_SEARCH].len != 0) {
+	opt = NULL;
+	if (lease->options[DHO_DOMAIN_SEARCH].len != 0)
 		opt = &lease->options[DHO_DOMAIN_SEARCH];
-		if (opt->len < sizeof(proposal->rtsearch)) {
-			proposal->rtsearch_len = strlen(opt->data);
-			memcpy(proposal->rtsearch, opt->data,
-			    proposal->rtsearch_len);
-		} else
-			log_warnx("%s: DOMAIN_SEARCH too long", log_procname);
-	} else if (lease->options[DHO_DOMAIN_NAME].len != 0) {
+	else if (lease->options[DHO_DOMAIN_NAME].len != 0)
 		opt = &lease->options[DHO_DOMAIN_NAME];
-		if (opt->len < sizeof(proposal->rtsearch)) {
-			proposal->rtsearch_len = opt->len;
-			memcpy(proposal->rtsearch, opt->data, opt->len);
-		} else
-			log_warnx("%s: DOMAIN_NAME too long", log_procname);
+	if (opt != NULL) {
+		domains_len = opt->len;
+		domains = opt->data;
 	}
 
 	if (lease->options[DHO_DOMAIN_NAME_SERVERS].len != 0) {
-		int servers;
 		opt = &lease->options[DHO_DOMAIN_NAME_SERVERS];
-		servers = opt->len / sizeof(in_addr_t);
-		if (servers > MAXNS)
-			servers = MAXNS;
-		if (servers > 0) {
-			proposal->rtdns_len = servers * sizeof(in_addr_t);
-			memcpy(proposal->rtdns, opt->data, proposal->rtdns_len);
-		}
+		ns_len = opt->len;
+		ns = opt->data;
 	}
+
+	/* Allocate proposal. */
+	proposal = calloc(1, sizeof(*proposal) + routes_len + domains_len +
+	    ns_len);
+	if (proposal == NULL)
+		fatal("proposal");
+
+	/* Fill in proposal. */
+	proposal->ifa = lease->address;
+
+	opt = &lease->options[DHO_INTERFACE_MTU];
+	if (opt->len == sizeof(mtu)) {
+		memcpy(&mtu, opt->data, sizeof(mtu));
+		proposal->mtu = ntohs(mtu);
+	}
+
+	opt = &lease->options[DHO_SUBNET_MASK];
+	if (opt->len == sizeof(proposal->netmask))
+		memcpy(&proposal->netmask, opt->data, opt->len);
+
+	/* Append variable length uint8_t data. */
+	p = (uint8_t *)proposal + sizeof(struct proposal);
+	memcpy(p, routes, routes_len);
+	p += routes_len;
+	proposal->routes_len = routes_len;
+	memcpy(p, domains, domains_len);
+	p += domains_len;
+	proposal->domains_len = domains_len;
+	memcpy(p, ns, ns_len);
+	proposal->ns_len = ns_len;
 
 	return proposal;
 }
@@ -2405,6 +2401,7 @@ apply_defaults(struct client_lease *lease)
 {
 	struct option_data	 emptyopt = {0, NULL};
 	struct client_lease	*newlease;
+	char			*fmt;
 	int			 i;
 
 	newlease = clone_lease(lease);
@@ -2425,31 +2422,31 @@ apply_defaults(struct client_lease *lease)
 		newlease->next_server.s_addr = config->next_server.s_addr;
 
 	for (i = 0; i < DHO_COUNT; i++) {
+		fmt = code_to_format(i);
 		switch (config->default_actions[i]) {
 		case ACTION_IGNORE:
-			free(newlease->options[i].data);
-			newlease->options[i].data = NULL;
-			newlease->options[i].len = 0;
+			merge_option_data(fmt, &emptyopt, &emptyopt,
+			    &newlease->options[i]);
 			break;
 
 		case ACTION_SUPERSEDE:
-			merge_option_data(&config->defaults[i], &emptyopt,
+			merge_option_data(fmt, &config->defaults[i], &emptyopt,
 			    &newlease->options[i]);
 			break;
 
 		case ACTION_PREPEND:
-			merge_option_data(&config->defaults[i],
+			merge_option_data(fmt, &config->defaults[i],
 			    &lease->options[i], &newlease->options[i]);
 			break;
 
 		case ACTION_APPEND:
-			merge_option_data(&lease->options[i],
+			merge_option_data(fmt, &lease->options[i],
 			    &config->defaults[i], &newlease->options[i]);
 			break;
 
 		case ACTION_DEFAULT:
 			if (newlease->options[i].len == 0)
-				merge_option_data(&config->defaults[i],
+				merge_option_data(fmt, &config->defaults[i],
 				    &emptyopt, &newlease->options[i]);
 			break;
 

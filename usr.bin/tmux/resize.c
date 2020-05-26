@@ -1,4 +1,4 @@
-/* $OpenBSD: resize.c,v 1.38 2020/01/28 13:23:24 nicm Exp $ */
+/* $OpenBSD: resize.c,v 1.40 2020/05/16 16:50:55 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -61,6 +61,7 @@ resize_window(struct window *w, u_int sx, u_int sy, int xpixel, int ypixel)
 	tty_update_window_offset(w);
 	server_redraw_window(w);
 	notify_window("window-layout-changed", w);
+	w->flags &= ~WINDOW_RESIZE;
 }
 
 static int
@@ -72,17 +73,17 @@ ignore_client_size(struct client *c)
 		return (1);
 	if (c->flags & CLIENT_NOSIZEFLAGS)
 		return (1);
-	if (c->flags & CLIENT_READONLY) {
+	if (c->flags & CLIENT_IGNORESIZE) {
 		/*
-		 * Ignore readonly clients if there are any attached clients
-		 * that aren't readonly.
+		 * Ignore flagged clients if there are any attached clients
+		 * that aren't flagged.
 		 */
 		TAILQ_FOREACH (loop, &clients, entry) {
 			if (loop->session == NULL)
 				continue;
 			if (loop->flags & CLIENT_NOSIZEFLAGS)
 				continue;
-			if (~loop->flags & CLIENT_READONLY)
+			if (~loop->flags & CLIENT_IGNORESIZE)
 				return (1);
 		}
 	}
@@ -346,16 +347,30 @@ recalculate_size(struct window *w)
 		changed = 0;
 		break;
 	}
-	if (changed && w->sx == sx && w->sy == sy)
-		changed = 0;
+	if (w->flags & WINDOW_RESIZE) {
+		if (changed && w->new_sx == sx && w->new_sy == sy)
+			changed = 0;
+	} else {
+		if (changed && w->sx == sx && w->sy == sy)
+			changed = 0;
+	}
 
 	if (!changed) {
 		tty_update_window_offset(w);
 		return;
 	}
-	log_debug("%s: @%u changed to %u,%u (%ux%u)", __func__, w->id, sx, sy,
-	    xpixel, ypixel);
-	resize_window(w, sx, sy, xpixel, ypixel);
+	log_debug("%s: @%u new size %u,%u", __func__, w->id, sx, sy);
+	if (type == WINDOW_SIZE_MANUAL)
+		resize_window(w, sx, sy, xpixel, ypixel);
+	else {
+		w->new_sx = sx;
+		w->new_sy = sy;
+		w->new_xpixel = xpixel;
+		w->new_ypixel = ypixel;
+
+		w->flags |= WINDOW_RESIZE;
+		tty_update_window_offset(w);
+	}
 }
 
 void

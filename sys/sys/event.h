@@ -1,4 +1,4 @@
-/*	$OpenBSD: event.h,v 1.36 2020/05/10 00:56:06 guenther Exp $	*/
+/*	$OpenBSD: event.h,v 1.38 2020/05/25 15:54:10 visa Exp $	*/
 
 /*-
  * Copyright (c) 1999,2000,2001 Jonathan Lemon <jlemon@FreeBSD.org>

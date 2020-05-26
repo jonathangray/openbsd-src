@@ -1,6 +1,6 @@
-#	$OpenBSD: Makefile,v 1.34 2019/11/15 03:10:21 deraadt Exp $
+#	$OpenBSD: Makefile,v 1.36 2020/05/18 06:20:43 otto Exp $
 
-FS=		install${OSrev}.fs
+FS=		install${OSrev}.img
 FSSIZE=		929792
 FSTYPE=		install360
 CDROM=		install${OSrev}.iso
@@ -40,7 +40,7 @@ ${FS}: ${BASE} ${XBASE} bsd.gz
 .else
 	disklabel -w `cat vnd` ${FSTYPE}
 .endif
-	newfs -m 0 -o space -i 524288 -c ${FSSIZE} /dev/r`cat vnd`a
+	newfs -O 1 -m 0 -o space -i 524288 -c ${FSSIZE} /dev/r`cat vnd`a
 	mount /dev/`cat vnd`a ${MOUNT_POINT}
 	cp ${DESTDIR}/usr/mdec/boot ${MOUNT_POINT}/boot
 	strip ${MOUNT_POINT}/boot

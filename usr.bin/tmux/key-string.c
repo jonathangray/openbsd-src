@@ -1,4 +1,4 @@
-/* $OpenBSD: key-string.c,v 1.56 2020/04/09 13:52:31 nicm Exp $ */
+/* $OpenBSD: key-string.c,v 1.61 2020/05/25 18:57:25 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -62,28 +62,28 @@ static const struct {
 	{ "Escape",	'\033' },
 
 	/* Arrow keys. */
-	{ "Up",		KEYC_UP },
-	{ "Down",	KEYC_DOWN },
-	{ "Left",	KEYC_LEFT },
-	{ "Right",	KEYC_RIGHT },
+	{ "Up",		KEYC_UP|KEYC_CURSOR },
+	{ "Down",	KEYC_DOWN|KEYC_CURSOR },
+	{ "Left",	KEYC_LEFT|KEYC_CURSOR },
+	{ "Right",	KEYC_RIGHT|KEYC_CURSOR },
 
 	/* Numeric keypad. */
-	{ "KP/", 	KEYC_KP_SLASH },
-	{ "KP*",	KEYC_KP_STAR },
-	{ "KP-",	KEYC_KP_MINUS },
-	{ "KP7",	KEYC_KP_SEVEN },
-	{ "KP8",	KEYC_KP_EIGHT },
-	{ "KP9",	KEYC_KP_NINE },
-	{ "KP+",	KEYC_KP_PLUS },
-	{ "KP4",	KEYC_KP_FOUR },
-	{ "KP5",	KEYC_KP_FIVE },
-	{ "KP6",	KEYC_KP_SIX },
-	{ "KP1",	KEYC_KP_ONE },
-	{ "KP2",	KEYC_KP_TWO },
-	{ "KP3",	KEYC_KP_THREE },
-	{ "KPEnter",	KEYC_KP_ENTER },
-	{ "KP0",	KEYC_KP_ZERO },
-	{ "KP.",	KEYC_KP_PERIOD },
+	{ "KP/", 	KEYC_KP_SLASH|KEYC_KEYPAD },
+	{ "KP*",	KEYC_KP_STAR|KEYC_KEYPAD },
+	{ "KP-",	KEYC_KP_MINUS|KEYC_KEYPAD },
+	{ "KP7",	KEYC_KP_SEVEN|KEYC_KEYPAD },
+	{ "KP8",	KEYC_KP_EIGHT|KEYC_KEYPAD },
+	{ "KP9",	KEYC_KP_NINE|KEYC_KEYPAD },
+	{ "KP+",	KEYC_KP_PLUS|KEYC_KEYPAD },
+	{ "KP4",	KEYC_KP_FOUR|KEYC_KEYPAD },
+	{ "KP5",	KEYC_KP_FIVE|KEYC_KEYPAD },
+	{ "KP6",	KEYC_KP_SIX|KEYC_KEYPAD },
+	{ "KP1",	KEYC_KP_ONE|KEYC_KEYPAD },
+	{ "KP2",	KEYC_KP_TWO|KEYC_KEYPAD },
+	{ "KP3",	KEYC_KP_THREE|KEYC_KEYPAD },
+	{ "KPEnter",	KEYC_KP_ENTER|KEYC_KEYPAD },
+	{ "KP0",	KEYC_KP_ZERO|KEYC_KEYPAD },
+	{ "KP.",	KEYC_KP_PERIOD|KEYC_KEYPAD },
 
 	/* Mouse keys. */
 	KEYC_MOUSE_STRING(MOUSEDOWN1, MouseDown1),
@@ -143,7 +143,7 @@ key_string_get_modifiers(const char **string)
 			break;
 		case 'M':
 		case 'm':
-			modifiers |= KEYC_ESCAPE;
+			modifiers |= KEYC_META;
 			break;
 		case 'S':
 		case 's':
@@ -169,7 +169,7 @@ key_string_lookup_string(const char *string)
 	struct utf8_data	 ud;
 	u_int			 i;
 	enum utf8_state		 more;
-	wchar_t			 wc;
+	utf8_char		 uc;
 
 	/* Is this no key or any key? */
 	if (strcasecmp(string, "None") == 0)
@@ -210,9 +210,9 @@ key_string_lookup_string(const char *string)
 				more = utf8_append(&ud, (u_char)string[i]);
 			if (more != UTF8_DONE)
 				return (KEYC_UNKNOWN);
-			if (utf8_combine(&ud, &wc) != UTF8_DONE)
+			if (utf8_from_data(&ud, &uc) != UTF8_DONE)
 				return (KEYC_UNKNOWN);
-			return (wc | modifiers);
+			return (uc|modifiers);
 		}
 
 		/* Otherwise look the key up in the table. */
@@ -236,14 +236,15 @@ key_string_lookup_string(const char *string)
 		modifiers &= ~KEYC_CTRL;
 	}
 
-	return (key | modifiers);
+	return (key|modifiers);
 }
 
 /* Convert a key code into string format, with prefix if necessary. */
 const char *
-key_string_lookup_key(key_code key)
+key_string_lookup_key(key_code key, int with_flags)
 {
-	static char		 out[32];
+	key_code		 saved = key;
+	static char		 out[64];
 	char			 tmp[8];
 	const char		*s;
 	u_int			 i;
@@ -255,25 +256,27 @@ key_string_lookup_key(key_code key)
 	/* Literal keys are themselves. */
 	if (key & KEYC_LITERAL) {
 		snprintf(out, sizeof out, "%c", (int)(key & 0xff));
-		return (out);
+		goto out;
 	}
 
 	/* Display C-@ as C-Space. */
-	if ((key & KEYC_MASK_KEY) == 0)
-		key = ' ' | KEYC_CTRL | (key & KEYC_MASK_MOD);
+	if ((key & (KEYC_MASK_KEY|KEYC_MASK_MODIFIERS)) == 0)
+		key = ' '|KEYC_CTRL;
 
 	/* Fill in the modifiers. */
 	if (key & KEYC_CTRL)
 		strlcat(out, "C-", sizeof out);
-	if (key & KEYC_ESCAPE)
+	if (key & KEYC_META)
 		strlcat(out, "M-", sizeof out);
 	if (key & KEYC_SHIFT)
 		strlcat(out, "S-", sizeof out);
 	key &= KEYC_MASK_KEY;
 
 	/* Handle no key. */
-	if (key == KEYC_NONE)
-		return ("None");
+	if (key == KEYC_NONE) {
+		s = "None";
+		goto append;
+	}
 
 	/* Handle special keys. */
 	if (key == KEYC_UNKNOWN) {
@@ -331,33 +334,32 @@ key_string_lookup_key(key_code key)
 	if (key >= KEYC_USER && key < KEYC_USER + KEYC_NUSER) {
 		snprintf(tmp, sizeof tmp, "User%u", (u_int)(key - KEYC_USER));
 		strlcat(out, tmp, sizeof out);
-		return (out);
+		goto out;
 	}
 
 	/* Try the key against the string table. */
 	for (i = 0; i < nitems(key_string_table); i++) {
-		if (key == key_string_table[i].key)
+		if (key == (key_string_table[i].key & KEYC_MASK_KEY))
 			break;
 	}
 	if (i != nitems(key_string_table)) {
 		strlcat(out, key_string_table[i].string, sizeof out);
-		return (out);
+		goto out;
 	}
 
 	/* Is this a UTF-8 key? */
 	if (key > 127 && key < KEYC_BASE) {
-		if (utf8_split(key, &ud) == UTF8_DONE) {
-			off = strlen(out);
-			memcpy(out + off, ud.data, ud.size);
-			out[off + ud.size] = '\0';
-			return (out);
-		}
+		utf8_to_data(key, &ud);
+		off = strlen(out);
+		memcpy(out + off, ud.data, ud.size);
+		out[off + ud.size] = '\0';
+		goto out;
 	}
 
 	/* Invalid keys are errors. */
 	if (key > 255) {
-		snprintf(out, sizeof out, "Invalid#%llx", key);
-		return (out);
+		snprintf(out, sizeof out, "Invalid#%llx", saved);
+		goto out;
 	}
 
 	/* Check for standard or control key. */
@@ -375,9 +377,25 @@ key_string_lookup_key(key_code key)
 		xsnprintf(tmp, sizeof tmp, "\\%llo", key);
 
 	strlcat(out, tmp, sizeof out);
-	return (out);
+	goto out;
 
 append:
 	strlcat(out, s, sizeof out);
+
+out:
+	if (with_flags && (saved & KEYC_MASK_FLAGS) != 0) {
+		strlcat(out, "[", sizeof out);
+		if (saved & KEYC_LITERAL)
+			strlcat(out, "L", sizeof out);
+		if (saved & KEYC_KEYPAD)
+			strlcat(out, "K", sizeof out);
+		if (saved & KEYC_CURSOR)
+			strlcat(out, "C", sizeof out);
+		if (saved & KEYC_IMPLIED_META)
+			strlcat(out, "I", sizeof out);
+		if (saved & KEYC_BUILD_MODIFIERS)
+			strlcat(out, "B", sizeof out);
+		strlcat(out, "]", sizeof out);
+	}
 	return (out);
 }

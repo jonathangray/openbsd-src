@@ -1,6 +1,6 @@
 #!/bin/ksh
 #
-# $OpenBSD: syspatch.sh,v 1.159 2019/12/10 17:11:06 ajacoutot Exp $
+# $OpenBSD: syspatch.sh,v 1.161 2020/05/24 16:47:43 tb Exp $
 #
 # Copyright (c) 2016, 2017 Antoine Jacoutot <ajacoutot@openbsd.org>
 #
@@ -43,7 +43,8 @@ apply_patch()
 	echo "Installing patch ${_patch##${_OSrev}-}"
 	install -d ${_edir} ${_PDIR}/${_patch}
 
-	${_BSDMP} && _s="-s @usr/share/relink/kernel/GENERIC/.*@@g" ||
+	(($(sysctl -n hw.ncpufound) > 1)) &&
+		_s="-s @usr/share/relink/kernel/GENERIC/.*@@g" ||
 		_s="-s @usr/share/relink/kernel/GENERIC.MP/.*@@g"
 	_files="$(tar -xvzphf ${_TMP}/syspatch${_patch}.tgz -C ${_edir} \
 		${_s})" || { rm -r ${_PDIR}/${_patch}; return 1; }
@@ -154,7 +155,7 @@ install_file()
 ls_installed()
 {
 	local _p
-	for _p in ${_PDIR}/${_OSrev}-+([[:digit:]])_+([[:alnum:]_]); do
+	for _p in ${_PDIR}/${_OSrev}-+([[:digit:]])_+([[:alnum:]_-]); do
 		[[ -f ${_p}/rollback.tgz ]] && echo ${_p##*/${_OSrev}-}
 	done | sort -V
 }
@@ -171,7 +172,7 @@ ls_missing()
 
 	# if no earlier version of all files contained in the syspatch exists
 	# on the system, it means a missing set so skip it
-	grep -Eo "syspatch${_OSrev}-[[:digit:]]{3}_[[:alnum:]_]+" ${_sha} |
+	grep -Eo "syspatch${_OSrev}-[[:digit:]]{3}_[[:alnum:]_-]+" ${_sha} |
 		while read _c; do _c=${_c##syspatch${_OSrev}-} &&
 		[[ -n ${_l} ]] && echo ${_c} | grep -qw -- "${_l}" || echo ${_c}
 	done | while read _p; do
@@ -284,13 +285,12 @@ _MIRROR=$(while read _line; do _line=${_line%%#*}; [[ -n ${_line} ]] &&
 	_MIRROR=https://cdn.openbsd.org/pub/OpenBSD
 _MIRROR="${_MIRROR}/syspatch/${_KERNV[0]}/$(machine)"
 
-(($(sysctl -n hw.ncpufound) > 1)) && _BSDMP=true || _BSDMP=false
 _PATCH_APPLIED=false
 _PDIR="/var/syspatch"
 _TMP=$(mktemp -d -p ${TMPDIR:-/tmp} syspatch.XXXXXXXXXX)
 _KARL=false
 
-readonly _BSDMP _KERNV _MIRROR _OSrev _PDIR _TMP
+readonly _KERNV _MIRROR _OSrev _PDIR _TMP
 
 trap 'trap_handler' EXIT
 trap exit HUP INT TERM
@@ -312,7 +312,7 @@ if ((OPTIND == 1)); then
 	# remove non matching release /var/syspatch/ content
 	for _D in ${_PDIR}/{.[!.],}*; do
 		[[ -e ${_D} ]] || continue
-		[[ ${_D##*/} == ${_OSrev}-+([[:digit:]])_+([[:alnum:]]|_) ]] &&
+		[[ ${_D##*/} == ${_OSrev}-+([[:digit:]])_+([[:alnum:]_-]) ]] &&
 			[[ -f ${_D}/rollback.tgz ]] || rm -r ${_D}
 	done
 	_PATCHES=$(ls_missing)

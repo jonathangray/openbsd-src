@@ -1,4 +1,4 @@
-/* $OpenBSD: control.c,v 1.30 2020/04/13 18:59:41 nicm Exp $ */
+/* $OpenBSD: control.c,v 1.33 2020/05/24 09:40:17 nicm Exp $ */
 
 /*
  * Copyright (c) 2012 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -26,6 +26,122 @@
 
 #include "tmux.h"
 
+/* Control offsets. */
+struct control_offset {
+	u_int				pane;
+
+	struct window_pane_offset	offset;
+	int				flags;
+#define CONTROL_OFFSET_OFF 0x1
+
+	RB_ENTRY(control_offset)		entry;
+};
+RB_HEAD(control_offsets, control_offset);
+
+/* Control state. */
+struct control_state {
+	struct control_offsets	offsets;
+};
+
+/* Compare client offsets. */
+static int
+control_offset_cmp(struct control_offset *co1, struct control_offset *co2)
+{
+	if (co1->pane < co2->pane)
+		return (-1);
+	if (co1->pane > co2->pane)
+		return (1);
+	return (0);
+}
+RB_GENERATE_STATIC(control_offsets, control_offset, entry, control_offset_cmp);
+
+/* Get pane offsets for this client. */
+static struct control_offset *
+control_get_offset(struct client *c, struct window_pane *wp)
+{
+	struct control_state	*cs = c->control_state;
+	struct control_offset	 co = { .pane = wp->id };
+
+	return (RB_FIND(control_offsets, &cs->offsets, &co));
+}
+
+/* Add pane offsets for this client. */
+static struct control_offset *
+control_add_offset(struct client *c, struct window_pane *wp)
+{
+	struct control_state	*cs = c->control_state;
+	struct control_offset	*co;
+
+	co = control_get_offset(c, wp);
+	if (co != NULL)
+		return (co);
+
+	co = xcalloc(1, sizeof *co);
+	co->pane = wp->id;
+	RB_INSERT(control_offsets, &cs->offsets, co);
+	memcpy(&co->offset, &wp->offset, sizeof co->offset);
+	return (co);
+}
+
+/* Free control offsets. */
+void
+control_free_offsets(struct client *c)
+{
+	struct control_state	*cs = c->control_state;
+	struct control_offset	*co, *co1;
+
+	RB_FOREACH_SAFE(co, control_offsets, &cs->offsets, co1) {
+		RB_REMOVE(control_offsets, &cs->offsets, co);
+		free(co);
+	}
+}
+
+/* Get offsets for client. */
+struct window_pane_offset *
+control_pane_offset(struct client *c, struct window_pane *wp, int *off)
+{
+	struct control_offset	*co;
+
+	if (c->flags & CLIENT_CONTROL_NOOUTPUT) {
+		*off = 0;
+		return (NULL);
+	}
+
+	co = control_get_offset(c, wp);
+	if (co == NULL) {
+		*off = 0;
+		return (NULL);
+	}
+	if (co->flags & CONTROL_OFFSET_OFF) {
+		*off = 1;
+		return (NULL);
+	}
+	return (&co->offset);
+}
+
+/* Set pane as on. */
+void
+control_set_pane_on(struct client *c, struct window_pane *wp)
+{
+	struct control_offset	*co;
+
+	co = control_get_offset(c, wp);
+	if (co != NULL) {
+		co->flags &= ~CONTROL_OFFSET_OFF;
+		memcpy(&co->offset, &wp->offset, sizeof co->offset);
+	}
+}
+
+/* Set pane as off. */
+void
+control_set_pane_off(struct client *c, struct window_pane *wp)
+{
+	struct control_offset	*co;
+
+	co = control_add_offset(c, wp);
+	co->flags |= CONTROL_OFFSET_OFF;
+}
+
 /* Write a line. */
 void
 control_write(struct client *c, const char *fmt, ...)
@@ -36,6 +152,53 @@ control_write(struct client *c, const char *fmt, ...)
 	file_vprint(c, fmt, ap);
 	file_print(c, "\n");
 	va_end(ap);
+}
+
+/* Write output from a pane. */
+void
+control_write_output(struct client *c, struct window_pane *wp)
+{
+	struct control_offset	*co;
+	struct evbuffer		*message;
+	u_char			*new_data;
+	size_t			 new_size, i;
+
+	if (c->flags & CLIENT_CONTROL_NOOUTPUT)
+		return;
+
+	/*
+	 * Only write input if the window pane is linked to a window belonging
+	 * to the client's session.
+	 */
+	if (winlink_find_by_window(&c->session->windows, wp->window) == NULL)
+		return;
+
+	co = control_add_offset(c, wp);
+	if (co->flags & CONTROL_OFFSET_OFF) {
+		window_pane_update_used_data(wp, &co->offset, SIZE_MAX, 1);
+		return;
+	}
+	new_data = window_pane_get_new_data(wp, &co->offset, &new_size);
+	if (new_size == 0)
+		return;
+
+	message = evbuffer_new();
+	if (message == NULL)
+		fatalx("out of memory");
+	evbuffer_add_printf(message, "%%output %%%u ", wp->id);
+
+	for (i = 0; i < new_size; i++) {
+		if (new_data[i] < ' ' || new_data[i] == '\\')
+			evbuffer_add_printf(message, "\\%03o", new_data[i]);
+		else
+			evbuffer_add_printf(message, "%c", new_data[i]);
+	}
+	evbuffer_add(message, "", 1);
+
+	control_write(c, "%s", EVBUFFER_DATA(message));
+	evbuffer_free(message);
+
+	window_pane_update_used_data(wp, &co->offset, new_size, 1);
 }
 
 /* Control error callback. */
@@ -86,11 +249,27 @@ control_callback(__unused struct client *c, __unused const char *path,
 	}
 }
 
+/* Initialize for control mode. */
 void
 control_start(struct client *c)
 {
+	struct control_state	*cs;
+
+	cs = c->control_state = xcalloc(1, sizeof *cs);
+	RB_INIT(&cs->offsets);
+
 	file_read(c, "-", control_callback, c);
 
 	if (c->flags & CLIENT_CONTROLCONTROL)
 		file_print(c, "\033P1000p");
+}
+
+/* Stop control mode. */
+void
+control_stop(struct client *c)
+{
+	struct control_state	*cs = c->control_state;
+
+	control_free_offsets(c);
+	free(cs);
 }

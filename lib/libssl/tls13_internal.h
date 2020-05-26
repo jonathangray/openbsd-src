@@ -1,4 +1,4 @@
-/* $OpenBSD: tls13_internal.h,v 1.75 2020/05/10 17:13:30 tb Exp $ */
+/* $OpenBSD: tls13_internal.h,v 1.82 2020/05/23 11:57:41 jsing Exp $ */
 /*
  * Copyright (c) 2018 Bob Beck <beck@openbsd.org>
  * Copyright (c) 2018 Theo Buehler <tb@openbsd.org>
@@ -27,23 +27,26 @@
 
 __BEGIN_HIDDEN_DECLS
 
-#define TLS13_HS_CLIENT		1
-#define TLS13_HS_SERVER		2
+#define TLS13_HS_CLIENT			1
+#define TLS13_HS_SERVER			2
 
-#define TLS13_IO_SUCCESS	 1
-#define TLS13_IO_EOF		 0
-#define TLS13_IO_FAILURE	-1
-#define TLS13_IO_ALERT		-2
-#define TLS13_IO_WANT_POLLIN	-3
-#define TLS13_IO_WANT_POLLOUT	-4
-#define TLS13_IO_WANT_RETRY	-5 /* Retry the previous call immediately. */
-#define TLS13_IO_USE_LEGACY	-6
+#define TLS13_IO_SUCCESS		 1
+#define TLS13_IO_EOF			 0
+#define TLS13_IO_FAILURE		-1
+#define TLS13_IO_ALERT			-2
+#define TLS13_IO_WANT_POLLIN		-3
+#define TLS13_IO_WANT_POLLOUT		-4
+#define TLS13_IO_WANT_RETRY		-5 /* Retry the previous call immediately. */
+#define TLS13_IO_USE_LEGACY		-6
+#define TLS13_IO_RECORD_VERSION		-7
+#define TLS13_IO_RECORD_OVERFLOW	-8
 
 #define TLS13_ERR_VERIFY_FAILED		16
 #define TLS13_ERR_HRR_FAILED		17
 #define TLS13_ERR_TRAILING_DATA		18
 #define TLS13_ERR_NO_SHARED_CIPHER	19
-#define TLS13_ERR_NO_PEER_CERTIFICATE	20
+#define TLS13_ERR_NO_CERTIFICATE	20
+#define TLS13_ERR_NO_PEER_CERTIFICATE	21
 
 #define TLS13_ALERT_LEVEL_WARNING			1
 #define TLS13_ALERT_LEVEL_FATAL				2
@@ -174,10 +177,17 @@ int tls13_key_share_derive(struct tls13_key_share *ks, uint8_t **shared_key,
  */
 struct tls13_record_layer;
 
-struct tls13_record_layer *tls13_record_layer_new(tls13_read_cb wire_read,
-    tls13_write_cb wire_write, tls13_alert_cb alert_cb,
-    tls13_phh_recv_cb phh_recv_cb,
-    tls13_phh_sent_cb phh_sent_cb, void *cb_arg);
+struct tls13_record_layer_callbacks {
+	tls13_read_cb wire_read;
+	tls13_write_cb wire_write;
+	tls13_alert_cb alert_recv;
+	tls13_alert_cb alert_sent;
+	tls13_phh_recv_cb phh_recv;
+	tls13_phh_sent_cb phh_sent;
+};
+
+struct tls13_record_layer *tls13_record_layer_new(
+    const struct tls13_record_layer_callbacks *callbacks, void *cb_arg);
 void tls13_record_layer_free(struct tls13_record_layer *rl);
 void tls13_record_layer_allow_ccs(struct tls13_record_layer *rl, int allow);
 void tls13_record_layer_allow_legacy_alerts(struct tls13_record_layer *rl, int allow);
@@ -188,6 +198,7 @@ void tls13_record_layer_set_hash(struct tls13_record_layer *rl,
     const EVP_MD *hash);
 void tls13_record_layer_set_legacy_version(struct tls13_record_layer *rl,
     uint16_t version);
+void tls13_record_layer_set_retry_after_phh(struct tls13_record_layer *rl, int retry);
 void tls13_record_layer_handshake_completed(struct tls13_record_layer *rl);
 int tls13_record_layer_set_read_traffic_key(struct tls13_record_layer *rl,
     struct tls13_secret *read_key);
@@ -370,8 +381,9 @@ int tls13_server_finished_send(struct tls13_ctx *ctx, CBB *cbb);
 int tls13_server_finished_sent(struct tls13_ctx *ctx);
 
 void tls13_error_clear(struct tls13_error *error);
+int tls13_cert_add(struct tls13_ctx *ctx, CBB *cbb, X509 *cert,
+    int(*build_extensions)(SSL *s, CBB *cbb, uint16_t msg_type));
 
-int tls13_cert_add(CBB *cbb, X509 *cert);
 int tls13_synthetic_handshake_message(struct tls13_ctx *ctx);
 
 int tls13_error_set(struct tls13_error *error, int code, int subcode,

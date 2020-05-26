@@ -1,4 +1,4 @@
-/* $OpenBSD: tls13_server.c,v 1.43 2020/05/10 17:13:30 tb Exp $ */
+/* $OpenBSD: tls13_server.c,v 1.53 2020/05/23 11:58:46 jsing Exp $ */
 /*
  * Copyright (c) 2019, 2020 Joel Sing <jsing@openbsd.org>
  * Copyright (c) 2020 Bob Beck <beck@openbsd.org>
@@ -34,10 +34,15 @@ tls13_server_init(struct tls13_ctx *ctx)
 	}
 	s->version = ctx->hs->max_version;
 
-	if (!tls1_transcript_init(s))
+	tls13_record_layer_set_retry_after_phh(ctx->rl,
+	    (s->internal->mode & SSL_MODE_AUTO_RETRY) != 0);
+
+	if (!ssl_get_new_session(s, 0)) /* XXX */
 		return 0;
 
-	if ((s->session = SSL_SESSION_new()) == NULL)
+	tls13_record_layer_set_legacy_version(ctx->rl, TLS1_VERSION);
+
+	if (!tls1_transcript_init(s))
 		return 0;
 
 	arc4random_buf(s->s3->server_random, SSL3_RANDOM_SIZE);
@@ -113,7 +118,7 @@ tls13_client_hello_process(struct tls13_ctx *ctx, CBS *cbs)
 	if (!CBS_get_u8_length_prefixed(cbs, &compression_methods))
 		goto err;
 
-	if (tls13_client_hello_is_legacy(cbs)) {
+	if (tls13_client_hello_is_legacy(cbs) || s->version < TLS1_3_VERSION) {
 		if (!CBS_skip(cbs, CBS_len(cbs)))
 			goto err;
 		return tls13_use_legacy_server(ctx);
@@ -182,6 +187,8 @@ tls13_client_hello_recv(struct tls13_ctx *ctx, CBS *cbs)
 	/* See if we switched back to the legacy client method. */
 	if (s->method->internal->version < TLS1_3_VERSION)
 		return 1;
+
+	tls13_record_layer_set_legacy_version(ctx->rl, TLS1_2_VERSION);
 
 	/*
 	 * If a matching key share was provided, we do not need to send a
@@ -262,7 +269,6 @@ tls13_server_engage_record_protection(struct tls13_ctx *ctx)
 		goto err;
 
 	s->session->cipher = S3I(s)->hs.new_cipher;
-	s->session->ssl_version = ctx->hs->server_version;
 
 	if ((ctx->aead = tls13_cipher_aead(S3I(s)->hs.new_cipher)) == NULL)
 		goto err;
@@ -318,6 +324,8 @@ tls13_server_hello_retry_request_send(struct tls13_ctx *ctx, CBB *cbb)
 {
 	int nid;
 
+	ctx->hs->hrr = 1;
+
 	if (!tls13_synthetic_handshake_message(ctx))
 		return 0;
 
@@ -359,6 +367,8 @@ tls13_client_hello_retry_recv(struct tls13_ctx *ctx, CBS *cbs)
 	/* XXX - need further checks. */
 	if (s->method->internal->version < TLS1_3_VERSION)
 		return 0;
+
+	ctx->hs->hrr = 0;
 
 	return 1;
 }
@@ -434,7 +444,14 @@ tls13_server_certificate_send(struct tls13_ctx *ctx, CBB *cbb)
 	int i, ret = 0;
 
 	/* XXX - Need to revisit certificate selection. */
-	cpk = &s->cert->pkeys[SSL_PKEY_RSA_ENC];
+	cpk = &s->cert->pkeys[SSL_PKEY_RSA];
+	if (cpk->x509 == NULL) {
+		/* A server must always provide a certificate. */
+		ctx->alert = TLS13_ALERT_HANDSHAKE_FAILURE;
+		tls13_set_errorx(ctx, TLS13_ERR_NO_CERTIFICATE, 0,
+		    "no server certificate", NULL);
+		goto err;
+	}
 
 	if ((chain = cpk->chain) == NULL)
 		chain = s->ctx->extra_certs;
@@ -444,19 +461,20 @@ tls13_server_certificate_send(struct tls13_ctx *ctx, CBB *cbb)
 	if (!CBB_add_u24_length_prefixed(cbb, &cert_list))
 		goto err;
 
-	if (cpk->x509 == NULL)
-		goto done;
-
-	if (!tls13_cert_add(&cert_list, cpk->x509))
+	if (!tls13_cert_add(ctx, &cert_list, cpk->x509, tlsext_server_build))
 		goto err;
 
 	for (i = 0; i < sk_X509_num(chain); i++) {
 		cert = sk_X509_value(chain, i);
-		if (!tls13_cert_add(&cert_list, cert))
+		/*
+		 * XXX we don't send extensions with chain certs to avoid sending
+		 * a leaf ocsp stape with the chain certs.  This needs to get
+		 * fixed
+		 */
+		if (!tls13_cert_add(ctx, &cert_list, cert, NULL))
 			goto err;
 	}
 
- done:
 	if (!CBB_flush(cbb))
 		goto err;
 
@@ -483,7 +501,7 @@ tls13_server_certificate_verify_send(struct tls13_ctx *ctx, CBB *cbb)
 	memset(&sig_cbb, 0, sizeof(sig_cbb));
 
 	/* XXX - Need to revisit certificate selection. */
-	cpk = &s->cert->pkeys[SSL_PKEY_RSA_ENC];
+	cpk = &s->cert->pkeys[SSL_PKEY_RSA];
 	pkey = cpk->privatekey;
 
 	if ((sigalg = ssl_sigalg_select(s, pkey)) == NULL) {

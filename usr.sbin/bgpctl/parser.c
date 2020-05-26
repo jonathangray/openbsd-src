@@ -1,4 +1,4 @@
-/*	$OpenBSD: parser.c,v 1.102 2020/05/10 13:38:46 deraadt Exp $ */
+/*	$OpenBSD: parser.c,v 1.104 2020/05/12 13:26:02 claudio Exp $ */
 
 /*
  * Copyright (c) 2003, 2004 Henning Brauer <henning@openbsd.org>
@@ -61,8 +61,7 @@ enum token_type {
 	RD,
 	FAMILY,
 	RTABLE,
-	FILENAME,
-	BULK
+	FILENAME
 };
 
 struct token {
@@ -582,29 +581,28 @@ match_token(int *argc, char **argv[], const struct token table[])
 				t = &table[i];
 				res.aid = AID_VPN_IPv4;
 			}
+			if (!strcasecmp(word, "VPNv6")) {
+				match++;
+				t = &table[i];
+				res.aid = AID_VPN_IPv6;
+			}
 			break;
 		case ADDRESS:
 			if (parse_addr(word, &res.addr)) {
 				match++;
 				t = &table[i];
-				if (t->value)
-					res.action = t->value;
 			}
 			break;
 		case PEERADDRESS:
 			if (parse_addr(word, &res.peeraddr)) {
 				match++;
 				t = &table[i];
-				if (t->value)
-					res.action = t->value;
 			}
 			break;
 		case PREFIX:
 			if (parse_prefix(word, wordlen, &res.addr, &res.prefixlen)) {
 				match++;
 				t = &table[i];
-				if (t->value)
-					res.action = t->value;
 			}
 			break;
 		case ASTYPE:
@@ -792,10 +790,6 @@ match_token(int *argc, char **argv[], const struct token table[])
 				t = &table[i];
 			}
 			break;
-		case BULK:
-			match++;
-			t = &table[i];
-			break;
 		case ENDTOKEN:
 			break;
 		}
@@ -879,12 +873,12 @@ show_valid_args(const struct token table[])
 			fprintf(stderr, "  <pftable>\n");
 			break;
 		case FAMILY:
-			fprintf(stderr, "  [ inet | inet6 | IPv4 | IPv6 | VPNv4 ]\n");
+			fprintf(stderr, "  [ inet | inet6 | IPv4 | IPv6 | "
+			    "VPNv4 | VPNv6 ]\n");
 			break;
 		case FILENAME:
 			fprintf(stderr, "  <filename>\n");
 			break;
-		case BULK:
 		case ENDTOKEN:
 			break;
 		}

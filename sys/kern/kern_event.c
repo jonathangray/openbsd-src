@@ -1,4 +1,4 @@
-/*	$OpenBSD: kern_event.c,v 1.131 2020/04/07 13:27:51 visa Exp $	*/
+/*	$OpenBSD: kern_event.c,v 1.133 2020/05/25 15:54:10 visa Exp $	*/
 
 /*-
  * Copyright (c) 1999,2000,2001 Jonathan Lemon <jlemon@FreeBSD.org>

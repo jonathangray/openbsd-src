@@ -1,4 +1,4 @@
-/*	$OpenBSD: machdep.c,v 1.130 2020/01/04 03:17:56 aoyama Exp $	*/
+/*	$OpenBSD: machdep.c,v 1.132 2020/05/16 14:44:44 kettenis Exp $	*/
 /*
  * Copyright (c) 1998, 1999, 2000, 2001 Steve Murphree, Jr.
  * Copyright (c) 1996 Nivas Madhur

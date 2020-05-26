@@ -1,4 +1,4 @@
-/* $OpenBSD: server-client.c,v 1.332 2020/04/21 06:34:13 nicm Exp $ */
+/* $OpenBSD: server-client.c,v 1.350 2020/05/24 14:45:00 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -33,8 +33,10 @@
 #include "tmux.h"
 
 static void	server_client_free(int, short, void *);
-static void	server_client_check_focus(struct window_pane *);
-static void	server_client_check_resize(struct window_pane *);
+static void	server_client_check_pane_focus(struct window_pane *);
+static void	server_client_check_pane_resize(struct window_pane *);
+static void	server_client_check_pane_buffer(struct window_pane *);
+static void	server_client_check_window_resize(struct window *);
 static key_code	server_client_check_mouse(struct client *, struct key_event *);
 static void	server_client_repeat_timer(int, short, void *);
 static void	server_client_click_timer(int, short, void *);
@@ -55,6 +57,19 @@ static void	server_client_dispatch_read_data(struct client *,
 		    struct imsg *);
 static void	server_client_dispatch_read_done(struct client *,
 		    struct imsg *);
+
+/* Compare client windows. */
+static int
+server_client_window_cmp(struct client_window *cw1,
+    struct client_window *cw2)
+{
+	if (cw1->window < cw2->window)
+		return (-1);
+	if (cw1->window > cw2->window)
+		return (1);
+	return (0);
+}
+RB_GENERATE(client_windows, client_window, entry, server_client_window_cmp);
 
 /* Number of attached clients. */
 u_int
@@ -211,27 +226,13 @@ server_client_create(int fd)
 	c->cwd = NULL;
 
 	c->queue = cmdq_new();
-
-	c->tty.fd = -1;
-	c->title = NULL;
-
-	c->session = NULL;
-	c->last_session = NULL;
+	RB_INIT(&c->windows);
+	RB_INIT(&c->files);
 
 	c->tty.sx = 80;
 	c->tty.sy = 24;
 
 	status_init(c);
-
-	c->message_string = NULL;
-	TAILQ_INIT(&c->message_log);
-
-	c->prompt_string = NULL;
-	c->prompt_buffer = NULL;
-	c->prompt_index = 0;
-
-	RB_INIT(&c->files);
-
 	c->flags |= CLIENT_FOCUSED;
 
 	c->keytable = key_bindings_get_table("root", 1);
@@ -249,11 +250,22 @@ server_client_create(int fd)
 int
 server_client_open(struct client *c, char **cause)
 {
+	const char	*ttynam = _PATH_TTY;
+
 	if (c->flags & CLIENT_CONTROL)
 		return (0);
 
-	if (strcmp(c->ttyname, "/dev/tty") == 0) {
-		*cause = xstrdup("can't use /dev/tty");
+	if (strcmp(c->ttyname, ttynam) == 0||
+	    ((isatty(STDIN_FILENO) &&
+	    (ttynam = ttyname(STDIN_FILENO)) != NULL &&
+	    strcmp(c->ttyname, ttynam) == 0) ||
+	    (isatty(STDOUT_FILENO) &&
+	    (ttynam = ttyname(STDOUT_FILENO)) != NULL &&
+	    strcmp(c->ttyname, ttynam) == 0) ||
+	    (isatty(STDERR_FILENO) &&
+	    (ttynam = ttyname(STDERR_FILENO)) != NULL &&
+	    strcmp(c->ttyname, ttynam) == 0))) {
+		xasprintf(cause, "can't use %s", c->ttyname);
 		return (-1);
 	}
 
@@ -272,8 +284,8 @@ server_client_open(struct client *c, char **cause)
 void
 server_client_lost(struct client *c)
 {
-	struct message_entry	*msg, *msg1;
-	struct client_file	*cf;
+	struct client_file	*cf, *cf1;
+	struct client_window	*cw, *cw1;
 
 	c->flags |= CLIENT_DEAD;
 
@@ -281,22 +293,26 @@ server_client_lost(struct client *c)
 	status_prompt_clear(c);
 	status_message_clear(c);
 
-	RB_FOREACH(cf, client_files, &c->files) {
+	RB_FOREACH_SAFE(cf, client_files, &c->files, cf1) {
 		cf->error = EINTR;
 		file_fire_done(cf);
+	}
+	RB_FOREACH_SAFE(cw, client_windows, &c->windows, cw1) {
+		RB_REMOVE(client_windows, &c->windows, cw);
+		free(cw);
 	}
 
 	TAILQ_REMOVE(&clients, c, entry);
 	log_debug("lost client %p", c);
 
-	/*
-	 * If CLIENT_TERMINAL hasn't been set, then tty_init hasn't been called
-	 * and tty_free might close an unrelated fd.
-	 */
+	if (c->flags & CLIENT_CONTROL)
+		control_stop(c);
 	if (c->flags & CLIENT_TERMINAL)
 		tty_free(&c->tty);
 	free(c->ttyname);
+
 	free(c->term_name);
+	free(c->term_type);
 
 	status_free(c);
 
@@ -311,11 +327,6 @@ server_client_lost(struct client *c)
 	free(c->message_string);
 	if (event_initialized(&c->message_timer))
 		evtimer_del(&c->message_timer);
-	TAILQ_FOREACH_SAFE(msg, &c->message_log, entry, msg1) {
-		free(msg->msg);
-		TAILQ_REMOVE(&c->message_log, msg, entry);
-		free(msg);
-	}
 
 	free(c->prompt_saved);
 	free(c->prompt_string);
@@ -327,6 +338,10 @@ server_client_lost(struct client *c)
 	proc_remove_peer(c->peer);
 	c->peer = NULL;
 
+	if (c->fd != -1) {
+		close(c->fd);
+		c->fd = -1;
+	}
 	server_client_unref(c);
 
 	server_add_accept(0); /* may be more file descriptors now */
@@ -1021,14 +1036,14 @@ have_event:
 out:
 	/* Apply modifiers if any. */
 	if (b & MOUSE_MASK_META)
-		key |= KEYC_ESCAPE;
+		key |= KEYC_META;
 	if (b & MOUSE_MASK_CTRL)
 		key |= KEYC_CTRL;
 	if (b & MOUSE_MASK_SHIFT)
 		key |= KEYC_SHIFT;
 
 	if (log_get_level() != 0)
-		log_debug("mouse key is %s", key_string_lookup_key (key));
+		log_debug("mouse key is %s", key_string_lookup_key (key, 1));
 	return (key);
 }
 
@@ -1126,11 +1141,12 @@ server_client_key_callback(struct cmdq_item *item, void *data)
 			c->tty.mouse_drag_update(c, m);
 			goto out;
 		}
+		event->key = key;
 	}
 
 	/* Find affected pane. */
 	if (!KEYC_IS_MOUSE(key) || cmd_find_from_mouse(&fs, m, 0) != 0)
-		cmd_find_from_session(&fs, s, 0);
+		cmd_find_from_client(&fs, c, 0);
 	wp = fs.wp;
 
 	/* Forward mouse keys if disabled. */
@@ -1159,7 +1175,7 @@ table_changed:
 	 * The prefix always takes precedence and forces a switch to the prefix
 	 * table, unless we are already there.
 	 */
-	key0 = (key & ~KEYC_XTERM);
+	key0 = (key & (KEYC_MASK_KEY|KEYC_MASK_MODIFIERS));
 	if ((key0 == (key_code)options_get_number(s->options, "prefix") ||
 	    key0 == (key_code)options_get_number(s->options, "prefix2")) &&
 	    strcmp(table->name, "prefix") != 0) {
@@ -1270,7 +1286,7 @@ forward_key:
 		window_pane_key(wp, c, s, wl, key, m);
 
 out:
-	if (s != NULL)
+	if (s != NULL && key != KEYC_FOCUS_OUT)
 		server_client_update_latest(c);
 	free(event);
 	return (CMD_RETURN_NORMAL);
@@ -1294,10 +1310,6 @@ server_client_handle_key(struct client *c, struct key_event *event)
 	 */
 	if (~c->flags & CLIENT_READONLY) {
 		status_message_clear(c);
-		if (c->prompt_string != NULL) {
-			if (status_prompt_key(c, event->key) == 0)
-				return (0);
-		}
 		if (c->overlay_key != NULL) {
 			switch (c->overlay_key(c, event)) {
 			case 0:
@@ -1308,6 +1320,10 @@ server_client_handle_key(struct client *c, struct key_event *event)
 			}
 		}
 		server_client_clear_overlay(c);
+		if (c->prompt_string != NULL) {
+			if (status_prompt_key(c, event->key) == 0)
+				return (0);
+		}
 	}
 
 	/*
@@ -1326,10 +1342,13 @@ server_client_loop(void)
 	struct client		*c;
 	struct window		*w;
 	struct window_pane	*wp;
-	struct winlink		*wl;
-	struct session		*s;
-	int			 focus, attached, resize;
+	int			 focus;
 
+	/* Check for window resize. This is done before redrawing. */
+	RB_FOREACH(w, windows, &windows)
+		server_client_check_window_resize(w);
+
+	/* Check clients. */
 	TAILQ_FOREACH(c, &clients, entry) {
 		server_client_check_exit(c);
 		if (c->session != NULL) {
@@ -1341,39 +1360,40 @@ server_client_loop(void)
 	/*
 	 * Any windows will have been redrawn as part of clients, so clear
 	 * their flags now. Also check pane focus and resize.
-	 *
-	 * As an optimization, panes in windows that are in an attached session
-	 * but not the current window are not resized (this reduces the amount
-	 * of work needed when, for example, resizing an X terminal a
-	 * lot). Windows in no attached session are resized immediately since
-	 * that is likely to have come from a command like split-window and be
-	 * what the user wanted.
 	 */
 	focus = options_get_number(global_options, "focus-events");
 	RB_FOREACH(w, windows, &windows) {
-		attached = resize = 0;
-		TAILQ_FOREACH(wl, &w->winlinks, wentry) {
-			s = wl->session;
-			if (s->attached != 0)
-				attached = 1;
-			if (s->attached != 0 && s->curw == wl) {
-				resize = 1;
-				break;
-			}
-		}
-		if (!attached)
-			resize = 1;
 		TAILQ_FOREACH(wp, &w->panes, entry) {
 			if (wp->fd != -1) {
 				if (focus)
-					server_client_check_focus(wp);
-				if (resize)
-					server_client_check_resize(wp);
+					server_client_check_pane_focus(wp);
+				server_client_check_pane_resize(wp);
+				server_client_check_pane_buffer(wp);
 			}
 			wp->flags &= ~PANE_REDRAW;
 		}
 		check_window_name(w);
 	}
+}
+
+/* Check if window needs to be resized. */
+static void
+server_client_check_window_resize(struct window *w)
+{
+	struct winlink	*wl;
+
+	if (~w->flags & WINDOW_RESIZE)
+		return;
+
+	TAILQ_FOREACH(wl, &w->winlinks, wentry) {
+		if (wl->session->attached != 0 && wl->session->curw == wl)
+			break;
+	}
+	if (wl == NULL)
+		return;
+
+	log_debug("%s: resizing window @%u", __func__, w->id);
+	resize_window(w, w->new_sx, w->new_sy, w->new_xpixel, w->new_ypixel);
 }
 
 /* Check if we need to force a resize. */
@@ -1457,7 +1477,7 @@ server_client_resize_event(__unused int fd, __unused short events, void *data)
 
 /* Check if pane should be resized. */
 static void
-server_client_check_resize(struct window_pane *wp)
+server_client_check_pane_resize(struct window_pane *wp)
 {
 	if (~wp->flags & PANE_RESIZE)
 		return;
@@ -1473,9 +1493,100 @@ server_client_check_resize(struct window_pane *wp)
 		log_debug("%s: %%%u timer running", __func__, wp->id);
 }
 
+/* Check pane buffer size. */
+static void
+server_client_check_pane_buffer(struct window_pane *wp)
+{
+	struct evbuffer			*evb = wp->event->input;
+	size_t				 minimum;
+	struct client			*c;
+	struct window_pane_offset	*wpo;
+	int				 off = 1, flag;
+	u_int				 attached_clients = 0;
+
+	/*
+	 * Work out the minimum acknowledged size. This is the most that can be
+	 * removed from the buffer.
+	 */
+	minimum = wp->offset.acknowledged;
+	if (wp->pipe_fd != -1 && wp->pipe_offset.acknowledged < minimum)
+		minimum = wp->pipe_offset.acknowledged;
+	TAILQ_FOREACH(c, &clients, entry) {
+		if (c->session == NULL)
+			continue;
+		attached_clients++;
+
+		if (~c->flags & CLIENT_CONTROL) {
+			off = 0;
+			continue;
+		}
+		wpo = control_pane_offset(c, wp, &flag);
+		if (wpo == NULL) {
+			off = 0;
+			continue;
+		}
+		if (!flag)
+			off = 0;
+
+		log_debug("%s: %s has %zu bytes used, %zu bytes acknowledged "
+		    "for %%%u", __func__, c->name, wpo->used, wpo->acknowledged,
+		    wp->id);
+		if (wpo->acknowledged < minimum)
+			minimum = wpo->acknowledged;
+	}
+	if (attached_clients == 0)
+		off = 0;
+	minimum -= wp->base_offset;
+	if (minimum == 0)
+		goto out;
+
+	/* Drain the buffer. */
+	log_debug("%s: %%%u has %zu minimum (of %zu) bytes acknowledged",
+	    __func__, wp->id, minimum, EVBUFFER_LENGTH(evb));
+	evbuffer_drain(evb, minimum);
+
+	/*
+	 * Adjust the base offset. If it would roll over, all the offsets into
+	 * the buffer need to be adjusted.
+	 */
+	if (wp->base_offset > SIZE_MAX - minimum) {
+		log_debug("%s: %%%u base offset has wrapped", __func__, wp->id);
+		wp->offset.acknowledged -= wp->base_offset;
+		wp->offset.used -= wp->base_offset;
+		if (wp->pipe_fd != -1) {
+			wp->pipe_offset.acknowledged -= wp->base_offset;
+			wp->pipe_offset.used -= wp->base_offset;
+		}
+		TAILQ_FOREACH(c, &clients, entry) {
+			if (c->session == NULL || (~c->flags & CLIENT_CONTROL))
+				continue;
+			wpo = control_pane_offset(c, wp, &flag);
+			if (wpo != NULL && !flag) {
+				wpo->acknowledged -= wp->base_offset;
+				wpo->used -= wp->base_offset;
+			}
+		}
+		wp->base_offset = minimum;
+	} else
+		wp->base_offset += minimum;
+
+out:
+	/*
+	 * If there is data remaining, and there are no clients able to consume
+	 * it, do not read any more. This is true when 1) there are attached
+	 * clients 2) all the clients are control clients 3) all of them have
+	 * either the OFF flag set, or are otherwise not able to accept any
+	 * more data for this pane.
+	 */
+	if (off)
+		bufferevent_disable(wp->event, EV_READ);
+	else
+		bufferevent_enable(wp->event, EV_READ);
+}
+
 /* Check whether pane should be focused. */
 static void
-server_client_check_focus(struct window_pane *wp)
+server_client_check_pane_focus(struct window_pane *wp)
 {
 	struct client	*c;
 	int		 push;
@@ -1539,10 +1650,10 @@ server_client_reset_state(struct client *c)
 {
 	struct tty		*tty = &c->tty;
 	struct window		*w = c->session->curw->window;
-	struct window_pane	*wp = w->active, *loop;
-	struct screen		*s;
+	struct window_pane	*wp = server_client_get_pane(c), *loop;
+	struct screen		*s = NULL;
 	struct options		*oo = c->session->options;
-	int			 mode, cursor, flags;
+	int			 mode = 0, cursor, flags;
 	u_int			 cx = 0, cy = 0, ox, oy, sx, sy;
 
 	if (c->flags & (CLIENT_CONTROL|CLIENT_SUSPENDED))
@@ -1554,15 +1665,14 @@ server_client_reset_state(struct client *c)
 
 	/* Get mode from overlay if any, else from screen. */
 	if (c->overlay_draw != NULL) {
-		s = NULL;
-		if (c->overlay_mode == NULL)
-			mode = 0;
-		else
-			mode = c->overlay_mode(c, &cx, &cy);
-	} else {
+		if (c->overlay_mode != NULL)
+			s = c->overlay_mode(c, &cx, &cy);
+	} else
 		s = wp->screen;
+	if (s != NULL)
 		mode = s->mode;
-	}
+	if (c->prompt_string != NULL || c->message_string != NULL)
+		mode &= ~MODE_CURSOR;
 	log_debug("%s: client %s mode %x", __func__, c->name, mode);
 
 	/* Reset region and margin. */
@@ -1780,7 +1890,6 @@ server_client_check_redraw(struct client *c)
 			if (!redraw)
 				continue;
 			log_debug("%s: redrawing pane %%%u", __func__, wp->id);
-			tty_update_mode(tty, mode, NULL);
 			screen_redraw_pane(c, wp);
 		}
 		c->redraw_panes = 0;
@@ -1788,7 +1897,6 @@ server_client_check_redraw(struct client *c)
 	}
 
 	if (c->flags & CLIENT_ALLREDRAWFLAGS) {
-		tty_update_mode(tty, mode, NULL);
 		if (options_get_number(s->options, "set-titles"))
 			server_client_set_title(c);
 		screen_redraw_screen(c);
@@ -1900,7 +2008,7 @@ server_client_dispatch(struct imsg *imsg, void *arg)
 			break;
 		c->flags &= ~CLIENT_SUSPENDED;
 
-		if (c->tty.fd == -1) /* exited in the meantime */
+		if (c->fd == -1) /* exited in the meantime */
 			break;
 		s = c->session;
 
@@ -2102,11 +2210,9 @@ server_client_dispatch_identify(struct client *c, struct imsg *imsg)
 	if (c->flags & CLIENT_CONTROL) {
 		close(c->fd);
 		c->fd = -1;
-
 		control_start(c);
-		c->tty.fd = -1;
 	} else if (c->fd != -1) {
-		if (tty_init(&c->tty, c, c->fd) != 0) {
+		if (tty_init(&c->tty, c) != 0) {
 			close(c->fd);
 			c->fd = -1;
 		} else {
@@ -2205,37 +2311,6 @@ server_client_dispatch_read_done(struct client *c, struct imsg *imsg)
 	file_fire_done(cf);
 }
 
-/* Add to client message log. */
-void
-server_client_add_message(struct client *c, const char *fmt, ...)
-{
-	struct message_entry	*msg, *msg1;
-	char			*s;
-	va_list			 ap;
-	u_int			 limit;
-
-	va_start(ap, fmt);
-	xvasprintf(&s, fmt, ap);
-	va_end(ap);
-
-	log_debug("message %s (client %p)", s, c);
-
-	msg = xcalloc(1, sizeof *msg);
-	msg->msg_time = time(NULL);
-	msg->msg_num = c->message_next++;
-	msg->msg = s;
-	TAILQ_INSERT_TAIL(&c->message_log, msg, entry);
-
-	limit = options_get_number(global_options, "message-limit");
-	TAILQ_FOREACH_SAFE(msg, &c->message_log, entry, msg1) {
-		if (msg->msg_num + limit >= c->message_next)
-			break;
-		free(msg->msg);
-		TAILQ_REMOVE(&c->message_log, msg, entry);
-		free(msg);
-	}
-}
-
 /* Get client working directory. */
 const char *
 server_client_get_cwd(struct client *c, struct session *s)
@@ -2253,4 +2328,134 @@ server_client_get_cwd(struct client *c, struct session *s)
 	if ((home = find_home()) != NULL)
 		return (home);
 	return ("/");
+}
+
+/* Set client flags. */
+void
+server_client_set_flags(struct client *c, const char *flags)
+{
+	char	*s, *copy, *next;
+	int	 flag, not;
+
+	s = copy = xstrdup (flags);
+	while ((next = strsep(&s, ",")) != NULL) {
+		not = (*next == '!');
+		if (not)
+			next++;
+
+		flag = 0;
+		if (c->flags & CLIENT_CONTROL) {
+			if (strcmp(next, "no-output") == 0)
+				flag = CLIENT_CONTROL_NOOUTPUT;
+		}
+		if (strcmp(next, "read-only") == 0)
+			flag = CLIENT_READONLY;
+		else if (strcmp(next, "ignore-size") == 0)
+			flag = CLIENT_IGNORESIZE;
+		else if (strcmp(next, "active-pane") == 0)
+			flag = CLIENT_ACTIVEPANE;
+		if (flag == 0)
+			continue;
+
+		log_debug("client %s set flag %s", c->name, next);
+		if (not)
+			c->flags &= ~flag;
+		else
+			c->flags |= flag;
+		if (flag == CLIENT_CONTROL_NOOUTPUT)
+			control_free_offsets(c);
+	}
+	free(copy);
+}
+
+/* Get client flags. This is only flags useful to show to users. */
+const char *
+server_client_get_flags(struct client *c)
+{
+	static char s[256];
+
+	*s = '\0';
+	if (c->flags & CLIENT_ATTACHED)
+		strlcat(s, "attached,", sizeof s);
+	if (c->flags & CLIENT_CONTROL)
+		strlcat(s, "control-mode,", sizeof s);
+	if (c->flags & CLIENT_IGNORESIZE)
+		strlcat(s, "ignore-size,", sizeof s);
+	if (c->flags & CLIENT_CONTROL_NOOUTPUT)
+		strlcat(s, "no-output,", sizeof s);
+	if (c->flags & CLIENT_READONLY)
+		strlcat(s, "read-only,", sizeof s);
+	if (c->flags & CLIENT_ACTIVEPANE)
+		strlcat(s, "active-pane,", sizeof s);
+	if (c->flags & CLIENT_SUSPENDED)
+		strlcat(s, "suspended,", sizeof s);
+	if (c->flags & CLIENT_UTF8)
+		strlcat(s, "UTF-8,", sizeof s);
+	if (*s != '\0')
+		s[strlen(s) - 1] = '\0';
+	return (s);
+}
+
+/* Get client window. */
+static struct client_window *
+server_client_get_client_window(struct client *c, u_int id)
+{
+	struct client_window	cw = { .window = id };
+
+	return (RB_FIND(client_windows, &c->windows, &cw));
+}
+
+/* Get client active pane. */
+struct window_pane *
+server_client_get_pane(struct client *c)
+{
+	struct session		*s = c->session;
+	struct client_window	*cw;
+
+	if (s == NULL)
+		return (NULL);
+
+	if (~c->flags & CLIENT_ACTIVEPANE)
+		return (s->curw->window->active);
+	cw = server_client_get_client_window(c, s->curw->window->id);
+	if (cw == NULL)
+		return (s->curw->window->active);
+	return (cw->pane);
+}
+
+/* Set client active pane. */
+void
+server_client_set_pane(struct client *c, struct window_pane *wp)
+{
+	struct session		*s = c->session;
+	struct client_window	*cw;
+
+	if (s == NULL)
+		return;
+
+	cw = server_client_get_client_window(c, s->curw->window->id);
+	if (cw == NULL) {
+		cw = xcalloc(1, sizeof *cw);
+		cw->window = s->curw->window->id;
+		RB_INSERT(client_windows, &c->windows, cw);
+	}
+	cw->pane = wp;
+	log_debug("%s pane now %%%u", c->name, wp->id);
+}
+
+/* Remove pane from client lists. */
+void
+server_client_remove_pane(struct window_pane *wp)
+{
+	struct client		*c;
+	struct window		*w = wp->window;
+	struct client_window	*cw;
+
+	TAILQ_FOREACH(c, &clients, entry) {
+		cw = server_client_get_client_window(c, w->id);
+		if (cw != NULL && cw->pane == wp) {
+			RB_REMOVE(client_windows, &c->windows, cw);
+			free(cw);
+		}
+	}
 }

@@ -1,4 +1,4 @@
-/* $OpenBSD: ssh-keygen.c,v 1.409 2020/05/02 07:19:43 djm Exp $ */
+/* $OpenBSD: ssh-keygen.c,v 1.411 2020/05/18 04:29:35 djm Exp $ */
 /*
  * Author: Tatu Ylonen <ylo@cs.hut.fi>
  * Copyright (c) 1994 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
@@ -1270,6 +1270,7 @@ do_known_hosts(struct passwd *pw, const char *name, int find_host,
 	int r, fd, oerrno, inplace = 0;
 	struct known_hosts_ctx ctx;
 	u_int foreach_options;
+	struct stat sb;
 
 	if (!have_identity) {
 		cp = tilde_expand_filename(_PATH_SSH_USER_HOSTFILE, pw->pw_uid);
@@ -1279,6 +1280,8 @@ do_known_hosts(struct passwd *pw, const char *name, int find_host,
 		free(cp);
 		have_identity = 1;
 	}
+	if (stat(identity_file, &sb) != 0)
+		fatal("Cannot stat %s: %s", identity_file, strerror(errno));
 
 	memset(&ctx, 0, sizeof(ctx));
 	ctx.out = stdout;
@@ -1305,6 +1308,7 @@ do_known_hosts(struct passwd *pw, const char *name, int find_host,
 			unlink(tmp);
 			fatal("fdopen: %s", strerror(oerrno));
 		}
+		fchmod(fd, sb.st_mode & 0644);
 		inplace = 1;
 	}
 	/* XXX support identity_file == "-" for stdin */
@@ -2928,14 +2932,16 @@ do_download_sk(const char *skprovider, const char *device)
 		    &keys, &nkeys)) != 0) {
 			if (i == 0 && r == SSH_ERR_KEY_WRONG_PASSPHRASE)
 				continue;
-			freezero(pin, strlen(pin));
+			if (pin != NULL)
+				freezero(pin, strlen(pin));
 			error("Unable to load resident keys: %s", ssh_err(r));
 			return -1;
 		}
 	}
 	if (nkeys == 0)
 		logit("No keys to download");
-	freezero(pin, strlen(pin));
+	if (pin != NULL)
+		freezero(pin, strlen(pin));
 
 	for (i = 0; i < nkeys; i++) {
 		if (keys[i]->type != KEY_ECDSA_SK &&

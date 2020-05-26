@@ -1,4 +1,4 @@
-/*	$OpenBSD: tls13_legacy.c,v 1.5 2020/05/10 16:59:51 jsing Exp $ */
+/*	$OpenBSD: tls13_legacy.c,v 1.7 2020/05/16 14:42:35 jsing Exp $ */
 /*
  * Copyright (c) 2018, 2019 Joel Sing <jsing@openbsd.org>
  *
@@ -118,6 +118,9 @@ tls13_legacy_error(SSL *ssl)
 		break;
 	case TLS13_ERR_NO_SHARED_CIPHER:
 		reason = SSL_R_NO_SHARED_CIPHER;
+		break;
+	case TLS13_ERR_NO_CERTIFICATE:
+		reason = SSL_R_MISSING_RSA_CERTIFICATE; /* XXX */
 		break;
 	case TLS13_ERR_NO_PEER_CERTIFICATE:
 		reason = SSL_R_PEER_DID_NOT_RETURN_A_CERTIFICATE;
@@ -487,8 +490,8 @@ tls13_legacy_shutdown(SSL *ssl)
 	}
 
 	/* Send close notify. */
-	if (!ctx->close_notify_sent) {
-		ctx->close_notify_sent = 1;
+	if (!(ssl->internal->shutdown & SSL_SENT_SHUTDOWN)) {
+		ssl->internal->shutdown |= SSL_SENT_SHUTDOWN;
 		if ((ret = tls13_send_alert(ctx->rl, TLS13_ALERT_CLOSE_NOTIFY)) < 0)
 			return tls13_legacy_return_code(ssl, ret);
 	}
