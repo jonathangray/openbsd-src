@@ -164,36 +164,6 @@ drm_gem_cma_dumb_create(struct drm_file *file_priv, struct drm_device *ddev,
 }
 
 int
-drm_gem_cma_dumb_map_offset(struct drm_file *file_priv, struct drm_device *ddev,
-    uint32_t handle, uint64_t *offset)
-{
-	struct drm_gem_object *gem_obj;
-	struct drm_gem_cma_object *obj;
-	int error;
-
-	gem_obj = drm_gem_object_lookup(file_priv, handle);
-	if (gem_obj == NULL)
-		return -ENOENT;
-
-	obj = to_drm_gem_cma_obj(gem_obj);
-
-	if (drm_vma_node_has_offset(&obj->base.vma_node) == 0) {
-		error = drm_gem_create_mmap_offset(&obj->base);
-		if (error)
-			goto done;
-	} else {
-		error = 0;
-	}
-
-	*offset = drm_vma_node_offset_addr(&obj->base.vma_node);
-
-done:
-	drm_gem_object_put_unlocked(&obj->base);
-
-	return error;
-}
-
-int
 drm_gem_cma_fault(struct drm_gem_object *gem_obj, struct uvm_faultinfo *ufi,
     off_t offset, vaddr_t vaddr, vm_page_t *pps, int npages, int centeridx,
     vm_prot_t access_type, int flags)

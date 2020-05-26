@@ -78,7 +78,7 @@ struct drm_driver rkdrm_driver = {
 	.driver_features = DRIVER_ATOMIC | DRIVER_MODESET | DRIVER_GEM,
 
 	.dumb_create = drm_gem_cma_dumb_create,
-	.dumb_map_offset = drm_gem_cma_dumb_map_offset,
+	.dumb_map_offset = drm_gem_dumb_map_offset,
 
 	.gem_free_object_unlocked = drm_gem_cma_free_object,
 	.gem_fault = drm_gem_cma_fault,
