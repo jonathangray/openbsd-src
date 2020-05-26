@@ -1695,15 +1695,11 @@ filt_drmread(struct knote *kn, long hint)
 	struct drm_file		*file_priv = kn->kn_hook;
 	int			 val = 0;
 
-#if notyet
 	if ((hint & NOTE_SUBMIT) == 0)
 		mtx_enter(&file_priv->minor->dev->event_lock);
-#endif
 	val = !list_empty(&file_priv->event_list);
-#if notyet
 	if ((hint & NOTE_SUBMIT) == 0)
 		mtx_leave(&file_priv->minor->dev->event_lock);
-#endif
 	return (val);
 }
 
