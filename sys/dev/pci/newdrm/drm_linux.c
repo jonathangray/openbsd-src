@@ -927,6 +927,21 @@ xa_load(struct xarray *xa, unsigned long index)
 	return res->ptr;
 }
 
+void *
+xa_get_next(struct xarray *xa, unsigned long *index)
+{
+	struct xarray_entry *res;
+
+	SPLAY_FOREACH(res, xarray_tree, &xa->xa_tree) {
+		if (res->id >= *index) {
+			*index = res->id;
+			return res->ptr;
+		}
+	}
+
+	return NULL;
+}
+
 int
 sg_alloc_table(struct sg_table *table, unsigned int nents, gfp_t gfp_mask)
 {
