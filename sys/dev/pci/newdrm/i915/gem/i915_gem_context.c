@@ -991,8 +991,6 @@ err:
 
 void i915_gem_context_close(struct drm_file *file)
 {
-	STUB();
-#ifdef notyet
 	struct drm_i915_file_private *file_priv = file->driver_priv;
 	struct drm_i915_private *i915 = file_priv->dev_priv;
 	struct i915_address_space *vm;
@@ -1008,7 +1006,6 @@ void i915_gem_context_close(struct drm_file *file)
 	xa_destroy(&file_priv->vm_xa);
 
 	contexts_flush_free(&i915->gem.contexts);
-#endif
 }
 
 int i915_gem_vm_create_ioctl(struct drm_device *dev, void *data,
