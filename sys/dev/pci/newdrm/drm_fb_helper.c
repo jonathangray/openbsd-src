@@ -1678,6 +1678,8 @@ static void drm_fb_helper_fill_var(struct fb_info *info,
 	info->var.yres = fb_height;
 }
 
+#endif /* __linux__ */
+
 /**
  * drm_fb_helper_fill_info - initializes fbdev information
  * @info: fbdev instance to set up
@@ -1695,20 +1697,22 @@ void drm_fb_helper_fill_info(struct fb_info *info,
 			     struct drm_fb_helper *fb_helper,
 			     struct drm_fb_helper_surface_size *sizes)
 {
+#ifdef __linux__
 	struct drm_framebuffer *fb = fb_helper->fb;
 
 	drm_fb_helper_fill_fix(info, fb->pitches[0], fb->format->depth);
 	drm_fb_helper_fill_var(info, fb_helper,
 			       sizes->fb_width, sizes->fb_height);
+#endif
 
 	info->par = fb_helper;
+#ifdef __linux__
 	snprintf(info->fix.id, sizeof(info->fix.id), "%sdrmfb",
 		 fb_helper->dev->driver->name);
+#endif
 
 }
 EXPORT_SYMBOL(drm_fb_helper_fill_info);
-
-#endif /* __linux__ */
 
 /*
  * This is a continuation of drm_setup_crtcs() that sets up anything related

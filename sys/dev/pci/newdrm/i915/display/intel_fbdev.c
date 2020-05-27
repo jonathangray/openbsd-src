@@ -274,6 +274,8 @@ static int intelfb_create(struct drm_fb_helper *helper,
 		goto out_unpin;
 	}
 
+	drm_fb_helper_fill_info(info, &ifbdev->helper, sizes);
+
 	ri->ri_bits = vaddr;
 	ri->ri_depth = fb->format->cpp[0] * 8;
 	ri->ri_stride = fb->pitches[0];

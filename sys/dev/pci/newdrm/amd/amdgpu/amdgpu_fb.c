@@ -257,9 +257,11 @@ static int amdgpufb_create(struct drm_fb_helper *helper,
 	info->fix.smem_len = amdgpu_bo_size(abo);
 	info->screen_base = amdgpu_bo_kptr(abo);
 	info->screen_size = amdgpu_bo_size(abo);
+#endif
 
 	drm_fb_helper_fill_info(info, &rfbdev->helper, sizes);
 
+#ifdef __linux__
 	/* setup aperture base/size for vesafb takeover */
 	info->apertures->ranges[0].base = adev->ddev->mode_config.fb_base;
 	info->apertures->ranges[0].size = adev->gmc.aper_size;

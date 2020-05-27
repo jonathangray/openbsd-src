@@ -277,9 +277,11 @@ static int radeonfb_create(struct drm_fb_helper *helper,
 	info->fix.smem_len = radeon_bo_size(rbo);
 	info->screen_base = rbo->kptr;
 	info->screen_size = radeon_bo_size(rbo);
+#endif
 
 	drm_fb_helper_fill_info(info, &rfbdev->helper, sizes);
 
+#ifdef __linux__
 	/* setup aperture base/size for vesafb takeover */
 	info->apertures->ranges[0].base = rdev->ddev->mode_config.fb_base;
 	info->apertures->ranges[0].size = rdev->mc.aper_size;
