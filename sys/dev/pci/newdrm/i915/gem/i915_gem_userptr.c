@@ -15,6 +15,8 @@
 #include "i915_gem_object.h"
 #include "i915_scatterlist.h"
 
+#ifdef __linux__
+
 struct i915_mm_struct {
 	struct mm_struct *mm;
 	struct drm_i915_private *i915;
@@ -163,7 +165,7 @@ i915_mmu_notifier_create(struct i915_mm_struct *mm)
 	if (mn == NULL)
 		return ERR_PTR(-ENOMEM);
 
-	mtx_init(&mn->lock, IPL_TTY);
+	spin_lock_init(&mn->lock);
 	mn->mn.ops = &i915_gem_userptr_notifier;
 	mn->objects = RB_ROOT_CACHED;
 	mn->mm = mm;
@@ -316,9 +318,6 @@ __i915_mm_struct_find(struct drm_i915_private *dev_priv, struct mm_struct *real)
 static int
 i915_gem_userptr_init__mm_struct(struct drm_i915_gem_object *obj)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
 	struct drm_i915_private *dev_priv = to_i915(obj->base.dev);
 	struct i915_mm_struct *mm;
 	int ret = 0;
@@ -360,19 +359,15 @@ i915_gem_userptr_init__mm_struct(struct drm_i915_gem_object *obj)
 out:
 	mutex_unlock(&dev_priv->mm_lock);
 	return ret;
-#endif
 }
 
 static void
 __i915_mm_struct_free__worker(struct work_struct *work)
 {
-	STUB();
-#ifdef notyet
 	struct i915_mm_struct *mm = container_of(work, typeof(*mm), work);
 	i915_mmu_notifier_free(mm->mn, mm->mm);
 	mmdrop(mm->mm);
 	kfree(mm);
-#endif
 }
 
 static void
@@ -408,11 +403,8 @@ struct get_pages_work {
 
 static struct sg_table *
 __i915_gem_userptr_alloc_pages(struct drm_i915_gem_object *obj,
-			       struct vm_page **pvec, unsigned long num_pages)
+			       struct page **pvec, unsigned long num_pages)
 {
-	STUB();
-	return ERR_PTR(-ENOSYS);
-#ifdef notyet
 	unsigned int max_segment = i915_sg_segment_size();
 	struct sg_table *st;
 	unsigned int sg_page_sizes;
@@ -450,25 +442,22 @@ alloc_table:
 	__i915_gem_object_set_pages(obj, st, sg_page_sizes);
 
 	return st;
-#endif
 }
 
 static void
 __i915_gem_userptr_get_pages_worker(struct work_struct *_work)
 {
-	STUB();
-#ifdef notyet
 	struct get_pages_work *work = container_of(_work, typeof(*work), work);
 	struct drm_i915_gem_object *obj = work->obj;
 	const unsigned long npages = obj->base.size >> PAGE_SHIFT;
 	unsigned long pinned;
-	struct vm_page **pvec;
+	struct page **pvec;
 	int ret;
 
 	ret = -ENOMEM;
 	pinned = 0;
 
-	pvec = kvmalloc_array(npages, sizeof(struct vm_page *), GFP_KERNEL);
+	pvec = kvmalloc_array(npages, sizeof(struct page *), GFP_KERNEL);
 	if (pvec != NULL) {
 		struct mm_struct *mm = obj->userptr.mm->mm;
 		unsigned int flags = 0;
@@ -526,15 +515,11 @@ __i915_gem_userptr_get_pages_worker(struct work_struct *_work)
 	i915_gem_object_put(obj);
 	put_task_struct(work->task);
 	kfree(work);
-#endif
 }
 
 static struct sg_table *
 __i915_gem_userptr_get_pages_schedule(struct drm_i915_gem_object *obj)
 {
-	STUB();
-	return ERR_PTR(-ENOSYS);
-#ifdef notyet
 	struct get_pages_work *work;
 
 	/* Spawn a worker so that we can acquire the
@@ -571,17 +556,13 @@ __i915_gem_userptr_get_pages_schedule(struct drm_i915_gem_object *obj)
 	queue_work(to_i915(obj->base.dev)->mm.userptr_wq, &work->work);
 
 	return ERR_PTR(-EAGAIN);
-#endif
 }
 
 static int i915_gem_userptr_get_pages(struct drm_i915_gem_object *obj)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
 	const unsigned long num_pages = obj->base.size >> PAGE_SHIFT;
 	struct mm_struct *mm = obj->userptr.mm->mm;
-	struct vm_page **pvec;
+	struct page **pvec;
 	struct sg_table *pages;
 	bool active;
 	int pinned;
@@ -615,7 +596,7 @@ static int i915_gem_userptr_get_pages(struct drm_i915_gem_object *obj)
 	pinned = 0;
 
 	if (mm == current->mm) {
-		pvec = kvmalloc_array(num_pages, sizeof(struct vm_page *),
+		pvec = kvmalloc_array(num_pages, sizeof(struct page *),
 				      GFP_KERNEL |
 				      __GFP_NORETRY |
 				      __GFP_NOWARN);
@@ -645,17 +626,14 @@ static int i915_gem_userptr_get_pages(struct drm_i915_gem_object *obj)
 	kvfree(pvec);
 
 	return PTR_ERR_OR_ZERO(pages);
-#endif
 }
 
 static void
 i915_gem_userptr_put_pages(struct drm_i915_gem_object *obj,
 			   struct sg_table *pages)
 {
-	STUB();
-#ifdef notyet
 	struct sgt_iter sgt_iter;
-	struct vm_page *page;
+	struct page *page;
 
 	/* Cancel any inflight work and force them to restart their gup */
 	obj->userptr.work = NULL;
@@ -705,7 +683,6 @@ i915_gem_userptr_put_pages(struct drm_i915_gem_object *obj,
 
 	sg_free_table(pages);
 	kfree(pages);
-#endif
 }
 
 static void
@@ -861,9 +838,19 @@ i915_gem_userptr_ioctl(struct drm_device *dev,
 	return 0;
 }
 
+#else
+
+int
+i915_gem_userptr_ioctl(struct drm_device *dev, void *data, struct drm_file *file)
+{
+	return -ENODEV;
+}
+
+#endif
+
 int i915_gem_init_userptr(struct drm_i915_private *dev_priv)
 {
-	rw_init(&dev_priv->mm_lock, "usrptr");
+	rw_init(&dev_priv->mm_lock, "userptr");
 	hash_init(dev_priv->mm_structs);
 
 	dev_priv->mm.userptr_wq =
