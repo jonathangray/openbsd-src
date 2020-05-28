@@ -540,7 +540,7 @@ EXPORT_SYMBOL(drm_put_dev);
 bool drm_dev_enter(struct drm_device *dev, int *idx)
 {
 	STUB();
-	return false;
+	return true;
 #ifdef notyet
 	*idx = srcu_read_lock(&drm_unplug_srcu);
 
