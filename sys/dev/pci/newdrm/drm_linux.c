@@ -1364,7 +1364,7 @@ drm_sysfs_hotplug_event(struct drm_device *dev)
 	KNOTE(&dev->note, NOTE_CHANGE);
 }
 
-uint64_t drm_fence_count;
+static uint64_t drm_fence_count = 1;
 
 uint64_t
 dma_fence_context_alloc(unsigned int num)
