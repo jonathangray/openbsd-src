@@ -163,8 +163,9 @@ rebuild_st:
 
 	TAILQ_INIT(&plist);
 	if (uvm_objwire(obj->base.uao, 0, obj->base.size, &plist)) {
-		ret = -ENOMEM;
-		goto err_pages;
+		sg_free_table(st);
+		kfree(st);
+		return -ENOMEM;
 	}
 
 	i = 0;
@@ -222,12 +223,8 @@ rebuild_st:
 #ifdef __linux__
 err_sg:
 	sg_mark_end(sg);
-#endif
 err_pages:
-	STUB();
-#ifdef notyet
 	mapping_clear_unevictable(mapping);
-#endif
 	pagevec_init(&pvec);
 	for_each_sgt_page(page, sgt_iter, st) {
 		if (!pagevec_add(&pvec, page))
@@ -235,6 +232,10 @@ err_pages:
 	}
 	if (pagevec_count(&pvec))
 		check_release_pagevec(&pvec);
+#else
+err_pages:
+	uvm_objunwire(obj->base.uao, 0, obj->base.size);
+#endif
 	sg_free_table(st);
 	kfree(st);
 
