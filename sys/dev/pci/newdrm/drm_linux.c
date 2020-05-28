@@ -2105,3 +2105,16 @@ bitmap_free(void *p)
 {
 	kfree(p);
 }
+
+int
+atomic_dec_and_mutex_lock(volatile int *v, struct rwlock *lock)
+{
+	if (atomic_add_unless(v, -1, 1))
+		return 0;
+
+	rw_enter_write(lock);
+	if (atomic_dec_return(v) == 0)
+		return 1;
+	rw_exit_write(lock);
+	return 0;
+}

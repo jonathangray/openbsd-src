@@ -37,4 +37,6 @@ mutex_trylock_recursive(struct rwlock *rwl)
 	return MUTEX_TRYLOCK_FAILED;
 }
 
+int atomic_dec_and_mutex_lock(volatile int *, struct rwlock *);
+
 #endif
