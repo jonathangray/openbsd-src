@@ -18,7 +18,7 @@ struct dma_fence {
 	struct kref refcount;
 	const struct dma_fence_ops *ops;
 	unsigned long flags;
-	unsigned int context;
+	uint64_t context;
 	uint64_t seqno;
 	struct mutex *lock;
 	struct list_head cb_list;
@@ -51,7 +51,7 @@ struct dma_fence_cb {
 	dma_fence_func_t func;
 };
 
-unsigned int dma_fence_context_alloc(unsigned int);
+uint64_t dma_fence_context_alloc(unsigned int);
 
 static inline struct dma_fence *
 dma_fence_get(struct dma_fence *fence)
@@ -221,7 +221,7 @@ dma_fence_enable_sw_signaling(struct dma_fence *fence)
 
 static inline void
 dma_fence_init(struct dma_fence *fence, const struct dma_fence_ops *ops,
-    struct mutex *lock, unsigned context, unsigned seqno)
+    struct mutex *lock, uint64_t context, uint64_t seqno)
 {
 	fence->ops = ops;
 	fence->lock = lock;
