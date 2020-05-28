@@ -170,8 +170,6 @@ static void vm_free_page(struct i915_address_space *vm, struct vm_page *page)
 
 void __i915_vm_close(struct i915_address_space *vm)
 {
-	STUB();
-#ifdef notyet
 	struct i915_vma *vma, *vn;
 
 	if (!atomic_dec_and_mutex_lock(&vm->open, &vm->mutex))
@@ -193,7 +191,6 @@ void __i915_vm_close(struct i915_address_space *vm)
 	GEM_BUG_ON(!list_empty(&vm->bound_list));
 
 	mutex_unlock(&vm->mutex);
-#endif
 }
 
 void i915_address_space_fini(struct i915_address_space *vm)
