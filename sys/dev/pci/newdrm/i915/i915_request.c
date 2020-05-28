@@ -347,7 +347,8 @@ __await_execution(struct i915_request *rq,
 #ifdef __linux__
 	cb = kmem_cache_alloc(global.slab_execute_cbs, gfp);
 #else
-	cb = pool_get(&global.slab_execute_cbs, PR_WAITOK);
+	cb = pool_get(&global.slab_execute_cbs,
+	    (gfp & GFP_NOWAIT) ? PR_NOWAIT : PR_WAITOK);
 #endif
 	if (!cb)
 		return -ENOMEM;
@@ -674,7 +675,8 @@ request_alloc_slow(struct intel_timeline *tl, gfp_t gfp)
 	rq = kmem_cache_alloc(global.slab_requests,
 			      gfp | __GFP_RETRY_MAYFAIL | __GFP_NOWARN);
 #else
-	rq = pool_get(&global.slab_requests, PR_WAITOK);
+	rq = pool_get(&global.slab_requests,
+	    (gfp & GFP_NOWAIT) ? PR_NOWAIT : PR_WAITOK);
 	if (rq)
 		__i915_request_ctor(rq);
 #endif
@@ -692,7 +694,8 @@ out:
 #ifdef __linux__
 	return kmem_cache_alloc(global.slab_requests, gfp);
 #else
-	rq = pool_get(&global.slab_requests, PR_NOWAIT);
+	rq = pool_get(&global.slab_requests,
+	    (gfp & GFP_NOWAIT) ? PR_NOWAIT : PR_WAITOK);
 	if (rq)
 		__i915_request_ctor(rq);
 	return rq;
@@ -762,7 +765,8 @@ __i915_request_create(struct intel_context *ce, gfp_t gfp)
 	rq = kmem_cache_alloc(global.slab_requests,
 			      gfp | __GFP_RETRY_MAYFAIL | __GFP_NOWARN);
 #else
-	rq = pool_get(&global.slab_requests, PR_WAITOK);
+	rq = pool_get(&global.slab_requests,
+	    (gfp & GFP_NOWAIT) ? PR_NOWAIT : PR_WAITOK);
 	if (rq)
 		__i915_request_ctor(rq);
 #endif
