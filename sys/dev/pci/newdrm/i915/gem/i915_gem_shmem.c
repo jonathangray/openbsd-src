@@ -364,14 +364,15 @@ shmem_put_pages(struct drm_i915_gem_object *obj, struct sg_table *pages)
 #ifdef __linux__
 		if (obj->mm.madv == I915_MADV_WILLNEED)
 			mark_page_accessed(page);
-#endif
 
 		if (!pagevec_add(&pvec, page))
 			check_release_pagevec(&pvec);
+#endif
 	}
+#ifdef __linux__
 	if (pagevec_count(&pvec))
 		check_release_pagevec(&pvec);
-#ifdef __OpenBSD__
+#else
 	uvm_objunwire(obj->base.uao, 0, obj->base.size);
 #endif
 	obj->mm.dirty = false;
