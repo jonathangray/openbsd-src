@@ -145,8 +145,6 @@ static void wakeref_auto_timeout(struct timer_list *t)
 #else
 static void wakeref_auto_timeout(void *arg)
 {
-	STUB();
-#ifdef notyet
 	struct intel_wakeref_auto *wf = arg;
 	intel_wakeref_t wakeref;
 	unsigned long flags;
@@ -158,7 +156,6 @@ static void wakeref_auto_timeout(void *arg)
 	spin_unlock_irqrestore(&wf->lock, flags);
 
 	intel_runtime_pm_put(wf->rpm, wakeref);
-#endif
 }
 #endif
 
