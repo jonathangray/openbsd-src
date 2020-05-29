@@ -1957,9 +1957,6 @@ err_free:
 static struct i915_vma *
 get_oa_vma(struct i915_perf_stream *stream, struct i915_oa_config *oa_config)
 {
-	STUB();
-	return NULL;
-#ifdef notyet
 	struct i915_oa_config_bo *oa_bo;
 
 	/*
@@ -1980,7 +1977,6 @@ get_oa_vma(struct i915_perf_stream *stream, struct i915_oa_config *oa_config)
 
 out:
 	return i915_vma_get(oa_bo->vma);
-#endif
 }
 
 static struct i915_request *
