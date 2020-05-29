@@ -20,6 +20,9 @@ struct rwlock;
 int i915_gem_mmap_gtt_version(void);
 #ifdef __linux__
 int i915_gem_mmap(struct file *filp, struct vm_area_struct *vma);
+#else
+struct uvm_object *i915_gem_mmap(struct file *filp, vm_prot_t accessprot,
+				 voff_t off, vsize_t size);
 #endif
 
 int i915_gem_dumb_mmap_offset(struct drm_file *file_priv,

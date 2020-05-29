@@ -142,7 +142,7 @@ extern int radeon_max_kms_ioctl;
 #ifdef __linux__
 int radeon_mmap(struct file *filp, struct vm_area_struct *vma);
 #else
-struct uvm_object *radeon_mmap(struct drm_device *, vm_prot_t, voff_t, vsize_t);
+struct uvm_object *radeon_mmap(struct file *, vm_prot_t, voff_t, vsize_t);
 #endif
 int radeon_mode_dumb_mmap(struct drm_file *filp,
 			  struct drm_device *dev,

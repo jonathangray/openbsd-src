@@ -1987,6 +1987,11 @@ static struct drm_driver driver = {
 	.dumb_create = i915_gem_dumb_create,
 	.dumb_map_offset = i915_gem_dumb_mmap_offset,
 
+#ifdef __OpenBSD__
+	.mmap = i915_gem_mmap,
+	.gem_fault = i915_gem_fault,
+#endif
+
 	.ioctls = i915_ioctls,
 	.num_ioctls = ARRAY_SIZE(i915_ioctls),
 #ifdef __linux__

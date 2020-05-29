@@ -163,17 +163,17 @@ udv_attach_drm(dev_t device, vm_prot_t accessprot, voff_t off, vsize_t size)
 	if (dev == NULL)
 		return NULL;
 
-	if (dev->driver->mmap)
-		return dev->driver->mmap(dev, accessprot, off, size);
-
 	mutex_lock(&dev->filelist_mutex);
 	priv = drm_find_file_by_minor(dev, minor(device));
-	if (priv == 0) {
+	if (priv == NULL) {
 		mutex_unlock(&dev->filelist_mutex);
 		return NULL;
 	}
 	filp = priv->filp;
 	mutex_unlock(&dev->filelist_mutex);
+
+	if (dev->driver->mmap)
+		return dev->driver->mmap(filp, accessprot, off, size);
 
 	drm_vma_offset_lock_lookup(dev->vma_offset_manager);
 	node = drm_vma_offset_exact_lookup_locked(dev->vma_offset_manager,

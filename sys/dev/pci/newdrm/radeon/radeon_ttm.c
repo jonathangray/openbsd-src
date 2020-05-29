@@ -992,22 +992,19 @@ radeon_ttm_fault(struct uvm_faultinfo *ufi, vaddr_t vaddr, vm_page_t *pps,
 }
 
 struct uvm_object *
-radeon_mmap(struct drm_device *dev, vm_prot_t accessprot, voff_t off,
+radeon_mmap(struct file *filp, vm_prot_t accessprot, voff_t off,
 	    vsize_t size)
 {
-	struct radeon_device *rdev = dev->dev_private;
+	struct drm_file *file_priv = (void *)filp;
+	struct radeon_device *rdev = file_priv->minor->dev->dev_private;
 	struct uvm_object *uobj;
+
+	if (rdev == NULL)
+		return NULL;
 
 	if (unlikely(off < DRM_FILE_PAGE_OFFSET))
 		return NULL;
 
-#if 0
-	file_priv = filp->private_data;
-	rdev = file_priv->minor->dev->dev_private;
-	if (rdev == NULL) {
-		return -EINVAL;
-	}
-#endif
 	uobj = ttm_bo_mmap(off, size, &rdev->mman.bdev);
 	if (unlikely(uobj == NULL)) {
 		return NULL;

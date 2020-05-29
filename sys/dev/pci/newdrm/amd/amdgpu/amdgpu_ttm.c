@@ -2067,10 +2067,13 @@ int amdgpu_mmap(struct file *filp, struct vm_area_struct *vma)
 #else
 
 struct uvm_object *
-amdgpu_mmap(struct drm_device *dev, vm_prot_t accessprot, voff_t off,
-	    vsize_t size)
+amdgpu_mmap(struct file *filp, vm_prot_t accessprot, voff_t off, vsize_t size)
 {
-	struct amdgpu_device *adev = dev->dev_private;
+	struct drm_file *file_priv = (void *)filp;
+	struct amdgpu_device *adev = file_priv->minor->dev->dev_private;
+
+	if (adev == NULL)
+		return NULL;
 
 	if (unlikely(off < DRM_FILE_PAGE_OFFSET))
 		return NULL;

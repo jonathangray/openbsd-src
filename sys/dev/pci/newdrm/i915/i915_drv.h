@@ -1912,6 +1912,10 @@ u32 i915_gem_fence_alignment(struct drm_i915_private *dev_priv, u32 size,
 
 const char *i915_cache_level_str(struct drm_i915_private *i915, int type);
 
+int i915_gem_fault(struct drm_gem_object *gem_obj, struct uvm_faultinfo *ufi,
+		   off_t offset, vaddr_t vaddr, vm_page_t *pps, int npages,
+		   int centeridx, vm_prot_t access_type, int flags);
+
 /* i915_cmd_parser.c */
 int i915_cmd_parser_get_version(struct drm_i915_private *dev_priv);
 void intel_engine_init_cmd_parser(struct intel_engine_cs *engine);

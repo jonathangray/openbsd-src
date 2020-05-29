@@ -1808,7 +1808,7 @@ drmopen(dev_t kdev, int flags, int fmt, struct proc *p)
 			goto out_file_free;
 	}
 
-	file_priv->filp = (void *)&file_priv;
+	file_priv->filp = (void *)file_priv;
 	file_priv->fminor = minor(kdev);
 
 	mutex_lock(&dev->filelist_mutex);
