@@ -2326,9 +2326,6 @@ static int oa_configure_all_contexts(struct i915_perf_stream *stream,
 				     struct flex *regs,
 				     size_t num_regs)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
 	struct drm_i915_private *i915 = stream->perf->i915;
 	struct intel_engine_cs *engine;
 	struct i915_gem_context *ctx, *cn;
@@ -2390,7 +2387,6 @@ static int oa_configure_all_contexts(struct i915_perf_stream *stream,
 	}
 
 	return 0;
-#endif
 }
 
 static int gen12_configure_all_contexts(struct i915_perf_stream *stream,
