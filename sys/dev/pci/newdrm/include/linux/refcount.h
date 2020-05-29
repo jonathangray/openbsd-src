@@ -26,4 +26,18 @@ refcount_set(uint32_t *p, int v)
 	atomic_set(p, v);
 }
 
+static inline bool
+refcount_dec_and_lock_irqsave(volatile int *v, struct mutex *lock,
+    unsigned long *flags)
+{
+	if (atomic_add_unless(v, -1, 1))
+		return false;
+
+	mtx_enter(lock);
+	if (atomic_dec_return(v) == 0)
+		return true;
+	mtx_leave(lock);
+	return false;
+}
+
 #endif
