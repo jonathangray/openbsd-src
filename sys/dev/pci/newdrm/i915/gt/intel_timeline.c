@@ -48,9 +48,6 @@ static struct i915_vma *__hwsp_alloc(struct intel_gt *gt)
 static struct i915_vma *
 hwsp_alloc(struct intel_timeline *timeline, unsigned int *cacheline)
 {
-	STUB();
-	return ERR_PTR(-ENOSYS);
-#ifdef notyet
 	struct intel_gt_timelines *gt = &timeline->gt->timelines;
 	struct intel_timeline_hwsp *hwsp;
 
@@ -96,7 +93,6 @@ hwsp_alloc(struct intel_timeline *timeline, unsigned int *cacheline)
 
 	GEM_BUG_ON(hwsp->vma->private != hwsp);
 	return hwsp->vma;
-#endif
 }
 
 static void __idle_hwsp_free(struct intel_timeline_hwsp *hwsp, int cacheline)
