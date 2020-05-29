@@ -6,4 +6,6 @@
 #include <linux/workqueue.h>
 #include <linux/completion.h>
 
+#include <uvm/uvm_extern.h>
+
 #endif
