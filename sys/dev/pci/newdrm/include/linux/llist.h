@@ -86,4 +86,9 @@ llist_empty(struct llist_head *head)
 	    (n = llist_entry(pos->member.next, __typeof(*pos), member), pos); \
 	    pos = n)
 
+#define llist_for_each_entry(pos, node, member)				\
+	for ((pos) = llist_entry((node), __typeof(*(pos)), member);	\
+	    (pos) != NULL;						\
+	    (pos) = llist_entry((pos)->member.next, __typeof(*(pos)), member))
+
 #endif
