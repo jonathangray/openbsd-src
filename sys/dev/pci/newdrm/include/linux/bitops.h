@@ -34,7 +34,9 @@
 #define BITS_PER_TYPE(x)	(8 * sizeof(x))
 #define BITS_TO_LONGS(x)	howmany((x), 8 * sizeof(long))
 
+/* despite the name these are really ctz */
 #define __ffs(x)		__builtin_ctzl(x)
+#define __ffs64(x)		__builtin_ctzll(x)
 
 static inline uint8_t
 hweight8(uint32_t x)
