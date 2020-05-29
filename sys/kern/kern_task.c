@@ -225,12 +225,26 @@ taskq_barrier(struct taskq *tq)
 {
 	struct cond c = COND_INITIALIZER();
 	struct task t = TASK_INITIALIZER(taskq_barrier_task, &c);
+	int istaskq = 0;
 
 	WITNESS_CHECKORDER(&tq->tq_lock_object, LOP_NEWORDER, NULL);
 
+	if (strcmp(curproc->p_p->ps_comm, "drmwq") == 0)
+		istaskq = 1;
+
 	SET(t.t_flags, TASK_BARRIER);
 	task_add(tq, &t);
+	if (istaskq) {
+		mtx_enter(&tq->tq_mtx);
+		tq->tq_waiting++;
+		mtx_leave(&tq->tq_mtx);
+	}
 	cond_wait(&c, "tqbar");
+	if (istaskq) {
+		mtx_enter(&tq->tq_mtx);
+		tq->tq_waiting--;
+		mtx_leave(&tq->tq_mtx);
+	}
 }
 
 void
