@@ -36,8 +36,6 @@
 #define U64_C(x)	UINT64_C(x)
 #define U64_MAX		UINT64_MAX
 
-#define IS_ALIGNED(x, y)	(((x) & ((y) - 1)) == 0)
-
 #define ARRAY_SIZE nitems
 
 #define lower_32_bits(n)	((u32)(n))
@@ -76,6 +74,9 @@
 #define DIV_ROUND_DOWN_ULL(x, y)	DIV_ROUND_DOWN(x, y)
 #define DIV_ROUND_CLOSEST(x, y)	(((x) + ((y) / 2)) / (y))
 #define DIV_ROUND_CLOSEST_ULL(x, y)	DIV_ROUND_CLOSEST(x, y)
+
+#define IS_ALIGNED(x, y)	(((x) & ((y) - 1)) == 0)
+#define PTR_ALIGN(x, y)		((__typeof(x))roundup2((unsigned long)(x), (y)))
 
 static inline char *
 kasprintf(int flags, const char *fmt, ...)
