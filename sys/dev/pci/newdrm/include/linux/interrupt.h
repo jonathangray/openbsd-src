@@ -89,4 +89,18 @@ tasklet_hi_schedule(struct tasklet_struct *ts)
 	task_add(taskletq, &ts->task);
 }
 
+static inline void 
+tasklet_disable_nosync(struct tasklet_struct *ts)
+{
+	atomic_inc(&ts->count);
+	smp_mb__after_atomic();
+}
+
+static inline void
+tasklet_enable(struct tasklet_struct *ts)
+{
+	smp_mb__before_atomic();
+	atomic_dec(&ts->count);
+}
+
 #endif
