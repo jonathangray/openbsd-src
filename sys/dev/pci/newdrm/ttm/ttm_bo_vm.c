@@ -877,7 +877,8 @@ out_unref:
 EXPORT_SYMBOL(ttm_bo_mmap);
 #else
 struct uvm_object *
-ttm_bo_mmap(voff_t off, vsize_t size, struct ttm_bo_device *bdev)
+ttm_bo_mmap(struct file *filp, voff_t off, vsize_t size,
+	    struct ttm_bo_device *bdev)
 {
 	struct ttm_bo_driver *driver;
 	struct ttm_buffer_object *bo;
@@ -892,11 +893,9 @@ ttm_bo_mmap(voff_t off, vsize_t size, struct ttm_bo_device *bdev)
 		ret = -EPERM;
 		goto out_unref;
 	}
-#ifdef notyet
 	ret = driver->verify_access(bo, filp);
 	if (unlikely(ret != 0))
 		goto out_unref;
-#endif
 
 	bo->base.uobj.pgops = &ttm_bo_vm_ops;
 	bo->base.uobj.uo_refs++;

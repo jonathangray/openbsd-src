@@ -2078,7 +2078,7 @@ amdgpu_mmap(struct file *filp, vm_prot_t accessprot, voff_t off, vsize_t size)
 	if (unlikely(off < DRM_FILE_PAGE_OFFSET))
 		return NULL;
 
-	return ttm_bo_mmap(off, size, &adev->mman.bdev);
+	return ttm_bo_mmap(filp, off, size, &adev->mman.bdev);
 }
 
 #endif

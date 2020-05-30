@@ -671,6 +671,9 @@ int ttm_bo_mmap_obj(struct vm_area_struct *vma, struct ttm_buffer_object *bo);
  */
 int ttm_bo_mmap(struct file *filp, struct vm_area_struct *vma,
 		struct ttm_bo_device *bdev);
+#else
+struct uvm_object *ttm_bo_mmap(struct file *, voff_t, vsize_t,
+			       struct ttm_bo_device *);
 #endif
 
 void *ttm_kmap_atomic_prot(struct vm_page *page, pgprot_t prot);
@@ -748,7 +751,5 @@ int ttm_bo_vm_access(struct vm_area_struct *vma, unsigned long addr,
 int ttm_bo_vm_fault(struct uvm_faultinfo *, vaddr_t, vm_page_t *,
     int, int, vm_fault_t, vm_prot_t, int);
 #endif /* !__linux__ */
-
-struct uvm_object *ttm_bo_mmap(voff_t, vsize_t, struct ttm_bo_device *);
 
 #endif
