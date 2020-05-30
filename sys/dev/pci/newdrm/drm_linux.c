@@ -1970,6 +1970,13 @@ wake_up_bit(void *word, int bit)
 	mtx_leave(&wait_bit_mtx);
 }
 
+void
+clear_and_wake_up_bit(int bit, void *word)
+{
+	clear_bit(bit, word);
+	wake_up_bit(word, bit);
+}
+
 wait_queue_head_t *
 bit_waitqueue(void *word, int bit)
 {

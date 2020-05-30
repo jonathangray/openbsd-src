@@ -8,6 +8,7 @@
 int wait_on_bit(unsigned long *, int, unsigned);
 int wait_on_bit_timeout(unsigned long *, int, unsigned, int);
 void wake_up_bit(void *, int);
+void clear_and_wake_up_bit(int, void *);
 
 wait_queue_head_t *bit_waitqueue(void *, int);
 
