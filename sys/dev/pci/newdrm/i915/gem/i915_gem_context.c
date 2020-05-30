@@ -407,9 +407,6 @@ __context_engines_static(const struct i915_gem_context *ctx)
 
 static bool __reset_engine(struct intel_engine_cs *engine)
 {
-	STUB();
-	return false;
-#ifdef notyet
 	struct intel_gt *gt = engine->gt;
 	bool success = false;
 
@@ -424,7 +421,6 @@ static bool __reset_engine(struct intel_engine_cs *engine)
 	}
 
 	return success;
-#endif
 }
 
 static void __reset_context(struct i915_gem_context *ctx,
