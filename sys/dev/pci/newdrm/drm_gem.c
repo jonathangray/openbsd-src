@@ -1149,6 +1149,11 @@ drm_gem_object_release(struct drm_gem_object *obj)
 	if (obj->filp)
 		fput(obj->filp);
 
+#ifdef __OpenBSD__
+	if (obj->uao)
+		uao_detach(obj->uao);
+#endif
+
 	dma_resv_fini(&obj->_resv);
 	drm_gem_free_mmap_offset(obj);
 }

@@ -169,6 +169,11 @@ static void __i915_gem_free_object_rcu(struct rcu_head *head)
 		container_of(head, typeof(*obj), rcu);
 	struct drm_i915_private *i915 = to_i915(obj->base.dev);
 
+#ifdef __OpenBSD__
+	if (obj->base.uao)
+		uao_detach(obj->base.uao);
+#endif
+
 	dma_resv_fini(&obj->base._resv);
 	i915_gem_object_free(obj);
 
