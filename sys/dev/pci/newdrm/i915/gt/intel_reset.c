@@ -1235,8 +1235,6 @@ void intel_gt_handle_error(struct intel_gt *gt,
 			   unsigned long flags,
 			   const char *fmt, ...)
 {
-	STUB();
-#ifdef notyet
 	struct intel_engine_cs *engine;
 	intel_wakeref_t wakeref;
 	intel_engine_mask_t tmp;
@@ -1321,7 +1319,6 @@ void intel_gt_handle_error(struct intel_gt *gt,
 
 out:
 	intel_runtime_pm_put(gt->uncore->rpm, wakeref);
-#endif
 }
 
 int intel_gt_reset_trylock(struct intel_gt *gt, int *srcu)
