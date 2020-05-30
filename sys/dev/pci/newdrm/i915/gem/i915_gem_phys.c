@@ -21,11 +21,10 @@
 
 static int i915_gem_object_get_pages_phys(struct drm_i915_gem_object *obj)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
 #ifdef __linux__
 	struct address_space *mapping = obj->base.filp->f_mapping;
+#else
+	struct drm_dma_handle *phys;
 #endif
 	struct scatterlist *sg;
 	struct sg_table *st;
@@ -42,11 +41,21 @@ static int i915_gem_object_get_pages_phys(struct drm_i915_gem_object *obj)
 	 * to handle all possible callers, and given typical object sizes,
 	 * the alignment of the buddy allocation will naturally match.
 	 */
+#ifdef __linux__
 	vaddr = dma_alloc_coherent(&obj->base.dev->pdev->dev,
 				   roundup_pow_of_two(obj->base.size),
 				   &dma, GFP_KERNEL);
 	if (!vaddr)
 		return -ENOMEM;
+#else
+	phys = drm_pci_alloc(obj->base.dev,
+			     roundup_pow_of_two(obj->base.size),
+			     roundup_pow_of_two(obj->base.size));
+	if (!phys)
+		return -ENOMEM;
+	vaddr = phys->vaddr;
+	dma = phys->busaddr;
+#endif
 
 	st = kmalloc(sizeof(*st), GFP_KERNEL);
 	if (!st)
@@ -59,7 +68,11 @@ static int i915_gem_object_get_pages_phys(struct drm_i915_gem_object *obj)
 	sg->offset = 0;
 	sg->length = obj->base.size;
 
-	sg_assign_page(sg, (struct vm_page *)vaddr);
+#ifdef __linux__
+	sg_assign_page(sg, (struct page *)vaddr);
+#else
+	sg_assign_page(sg, (struct vm_page *)phys);
+#endif
 	sg_dma_address(sg) = dma;
 	sg_dma_len(sg) = obj->base.size;
 
@@ -75,7 +88,8 @@ static int i915_gem_object_get_pages_phys(struct drm_i915_gem_object *obj)
 #else
 		struct pglist plist;
 		TAILQ_INIT(&plist);
-		if (uvm_objwire(obj->base.uao, i * PAGE_SIZE, (i + 1) * PAGE_SIZE, &plist))
+		if (uvm_objwire(obj->base.uao, i * PAGE_SIZE,
+				(i + 1) * PAGE_SIZE, &plist))
 			goto err_st;
 		page = TAILQ_FIRST(&plist);
 #endif
@@ -88,7 +102,8 @@ static int i915_gem_object_get_pages_phys(struct drm_i915_gem_object *obj)
 #ifdef __linux__
 		put_page(page);
 #else
-		uvm_objunwire(obj->base.uao, i * PAGE_SIZE, (i + 1) * PAGE_SIZE);
+		uvm_objunwire(obj->base.uao, i * PAGE_SIZE,
+			      (i + 1) * PAGE_SIZE);
 #endif
 		dst += PAGE_SIZE;
 	}
@@ -102,21 +117,27 @@ static int i915_gem_object_get_pages_phys(struct drm_i915_gem_object *obj)
 err_st:
 	kfree(st);
 err_pci:
+#ifdef __linux__
 	dma_free_coherent(&obj->base.dev->pdev->dev,
 			  roundup_pow_of_two(obj->base.size),
 			  vaddr, dma);
-	return -ENOMEM;
+#else
+	drm_pci_free(obj->base.dev, phys);
 #endif
+	return -ENOMEM;
 }
 
 static void
 i915_gem_object_put_pages_phys(struct drm_i915_gem_object *obj,
 			       struct sg_table *pages)
 {
-	STUB();
-#ifdef notyet
 	dma_addr_t dma = sg_dma_address(pages->sgl);
+#ifdef __linux__
 	void *vaddr = sg_page(pages->sgl);
+#else
+	struct drm_dma_handle *phys = (void *)sg_page(pages->sgl);
+	void *vaddr = phys->vaddr;
+#endif
 
 	__i915_gem_object_release_shmem(obj, pages, false);
 
@@ -138,7 +159,8 @@ i915_gem_object_put_pages_phys(struct drm_i915_gem_object *obj,
 #else
 			struct pglist plist;
 			TAILQ_INIT(&plist);
-			if (uvm_objwire(obj->base.uao, i * PAGE_SIZE, (i + 1) * PAGE_SIZE, &plist))
+			if (uvm_objwire(obj->base.uao, i * PAGE_SIZE,
+					(i + 1) * PAGE_SIZE, &plist))
 				continue;
 			page = TAILQ_FIRST(&plist);
 #endif
@@ -154,7 +176,8 @@ i915_gem_object_put_pages_phys(struct drm_i915_gem_object *obj,
 				mark_page_accessed(page);
 			put_page(page);
 #else
-			uvm_objunwire(obj->base.uao, i * PAGE_SIZE, (i + 1) * PAGE_SIZE);
+			uvm_objunwire(obj->base.uao, i * PAGE_SIZE,
+				      (i + 1) * PAGE_SIZE);
 #endif
 
 			src += PAGE_SIZE;
@@ -165,9 +188,12 @@ i915_gem_object_put_pages_phys(struct drm_i915_gem_object *obj,
 	sg_free_table(pages);
 	kfree(pages);
 
+#ifdef __linux__
 	dma_free_coherent(&obj->base.dev->pdev->dev,
 			  roundup_pow_of_two(obj->base.size),
 			  vaddr, dma);
+#else
+	drm_pci_free(obj->base.dev, phys);
 #endif
 }
 
