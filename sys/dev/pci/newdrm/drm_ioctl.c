@@ -1011,6 +1011,7 @@ drm_do_ioctl(struct drm_device *dev, int minor, u_long cmd, caddr_t data)
 	unsigned int nr = DRM_IOCTL_NR(cmd);
 	int retcode = -EINVAL;
 	unsigned int usize, asize;
+	caddr_t adata = data;
 
 	mutex_lock(&dev->filelist_mutex);
 	file_priv = drm_find_file_by_minor(dev, minor);
@@ -1063,12 +1064,22 @@ drm_do_ioctl(struct drm_device *dev, int minor, u_long cmd, caddr_t data)
 	if (unlikely(retcode))
 		return retcode;
 
+	if (asize > usize) {
+		adata = malloc(asize, M_DRM, M_WAITOK | M_ZERO);
+		memcpy(adata, data, usize);
+	}
+
 	if (ioctl->flags & DRM_UNLOCKED)
-		retcode = func(dev, data, file_priv);
+		retcode = func(dev, adata, file_priv);
 	else {
 		mutex_lock(&drm_global_mutex);
-		retcode = func(dev, data, file_priv);
+		retcode = func(dev, adata, file_priv);
 		mutex_unlock(&drm_global_mutex);
+	}
+
+	if (asize > usize) {
+		memcpy(data, adata, usize);
+		free(adata, M_DRM, asize);
 	}
 
 	return (retcode);
