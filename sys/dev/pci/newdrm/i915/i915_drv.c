@@ -943,6 +943,8 @@ static void i915_driver_destroy(struct drm_i915_private *i915)
 	pci_set_drvdata(pdev, NULL);
 }
 
+#ifdef __linux__
+
 /**
  * i915_driver_probe - setup chip and create an initial config
  * @pdev: PCI device
@@ -954,7 +956,6 @@ static void i915_driver_destroy(struct drm_i915_private *i915)
  *   - allocate initial config memory
  *   - setup the DRM framebuffer with the allocated memory
  */
-#ifdef __linux__
 int i915_driver_probe(struct pci_dev *pdev, const struct pci_device_id *ent)
 {
 	const struct intel_device_info *match_info =
@@ -1047,7 +1048,22 @@ out_fini:
 	i915_driver_destroy(i915);
 	return ret;
 }
-#else
+
+#else /* !__linux__ */
+
+void inteldrm_init_backlight(struct inteldrm_softc *);
+
+/**
+ * i915_driver_probe - setup chip and create an initial config
+ * @pdev: PCI device
+ * @ent: matching PCI ID entry
+ *
+ * The driver probe routine has to do several things:
+ *   - drive output discovery via intel_modeset_init()
+ *   - initialize the memory manager
+ *   - allocate initial config memory
+ *   - setup the DRM framebuffer with the allocated memory
+ */
 int i915_driver_probe(struct drm_i915_private *i915, const struct pci_device_id *ent)
 {
 	const struct intel_device_info *match_info =
@@ -1116,6 +1132,10 @@ int i915_driver_probe(struct drm_i915_private *i915, const struct pci_device_id 
 	if (ret < 0)
 		goto out_cleanup_irq;
 
+#ifdef __OpenBSD__
+	inteldrm_init_backlight(i915);
+#endif
+
 	i915_driver_register(i915);
 
 	enable_rpm_wakeref_asserts(&i915->runtime_pm);
@@ -1144,7 +1164,8 @@ out_fini:
 	i915_driver_destroy(i915);
 	return ret;
 }
-#endif
+
+#endif /* !__linux__ */
 
 void i915_driver_remove(struct drm_i915_private *i915)
 {
@@ -2341,7 +2362,6 @@ struct cfdriver inteldrm_cd = {
 	0, "inteldrm", DV_DULL
 };
 
-void	inteldrm_init_backlight(struct inteldrm_softc *);
 int	inteldrm_intr(void *);
 
 /*
@@ -2530,8 +2550,6 @@ inteldrm_attachhook(struct device *self)
 	    ri->ri_width, ri->ri_height, ri->ri_depth);
 
 	intel_fbdev_restore_mode(dev);
-
-	inteldrm_init_backlight(dev_priv);
 
 	ri->ri_flg = RI_CENTER | RI_WRONLY | RI_VCONS | RI_CLEAR;
 
