@@ -25,6 +25,7 @@
 #include <linux/mm.h>
 
 struct scatterlist {
+	struct vm_page *__page;
 	dma_addr_t dma_address;
 	unsigned int offset;
 	unsigned int length;
@@ -100,13 +101,20 @@ sg_page_iter_page(struct sg_page_iter *iter)
 static inline struct vm_page *
 sg_page(struct scatterlist *sgl)
 {
-	return PHYS_TO_VM_PAGE(sgl->dma_address);
+	return sgl->__page;
+}
+
+static inline void
+sg_assign_page(struct scatterlist *sgl, struct vm_page *page)
+{
+	sgl->__page = page;
 }
 
 static inline void
 sg_set_page(struct scatterlist *sgl, struct vm_page *page,
     unsigned int length, unsigned int offset)
 {
+	sgl->__page = page;
 	sgl->dma_address = VM_PAGE_TO_PHYS(page);
 	sgl->offset = offset;
 	sgl->length = length;
