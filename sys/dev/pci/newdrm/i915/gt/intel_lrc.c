@@ -2834,8 +2834,6 @@ err_free:
 
 static void execlists_reset(struct intel_engine_cs *engine, const char *msg)
 {
-	STUB();
-#ifdef notyet
 	const unsigned int bit = I915_RESET_ENGINE + engine->id;
 	unsigned long *lock = &engine->gt->reset.flags;
 
@@ -2858,7 +2856,6 @@ static void execlists_reset(struct intel_engine_cs *engine, const char *msg)
 
 	tasklet_enable(&engine->execlists.tasklet);
 	clear_and_wake_up_bit(bit, lock);
-#endif
 }
 
 static bool preempt_timeout(const struct intel_engine_cs *const engine)
