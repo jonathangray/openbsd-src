@@ -77,3 +77,7 @@
 #define CONFIG_MIPS				1
 #define CONFIG_CPU_LOONGSON64			1
 #endif
+
+#ifdef __LP64__
+#define CONFIG_64BIT				1
+#endif
