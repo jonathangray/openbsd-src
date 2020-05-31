@@ -136,7 +136,7 @@ schedule_timeout(long timeout)
 long
 schedule_timeout_uninterruptible(long timeout)
 {
-	tsleep_nsec(curproc, PWAIT, "schtou", timeout * 1000);
+	tsleep(curproc, PWAIT, "schtou", timeout);
 	return 0;
 }
 
