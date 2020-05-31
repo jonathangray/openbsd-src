@@ -55,3 +55,25 @@
 #define CONFIG_X86_32				1
 #define CONFIG_X86_PAT				1
 #endif
+
+#ifdef __arm__
+#define CONFIG_ARM				1
+#endif
+
+#ifdef __arm64__
+#define CONFIG_ARM64				1
+#endif
+
+#ifdef __macppc__
+#define CONFIG_PPC				1
+#define CONFIG_PPC_PMAC				1
+#endif
+
+#ifdef __powerpc64__
+#define CONFIG_PPC64				1
+#endif
+
+#ifdef __loongson__
+#define CONFIG_MIPS				1
+#define CONFIG_CPU_LOONGSON64			1
+#endif
