@@ -301,8 +301,6 @@ static inline unsigned long msecs_to_jiffies_timeout(const unsigned int m)
 static inline void
 wait_remaining_ms_from_jiffies(unsigned long timestamp_jiffies, int to_wait_ms)
 {
-	STUB();
-#ifdef notyet
 	unsigned long target_jiffies, tmp_jiffies, remaining_jiffies;
 
 	/*
@@ -319,7 +317,6 @@ wait_remaining_ms_from_jiffies(unsigned long timestamp_jiffies, int to_wait_ms)
 			remaining_jiffies =
 			    schedule_timeout_uninterruptible(remaining_jiffies);
 	}
-#endif
 }
 
 /**
