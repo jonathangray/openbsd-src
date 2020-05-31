@@ -24,13 +24,4 @@
 
 #define KBUILD_MODNAME "drm"
 
-#ifdef __macppc__
-static inline int
-of_machine_is_compatible(const char *model)
-{
-	extern char *hw_prod;
-	return (strcmp(model, hw_prod) == 0);
-}
-#endif
-
 #endif
