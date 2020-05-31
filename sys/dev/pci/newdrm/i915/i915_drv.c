@@ -2373,11 +2373,21 @@ int
 inteldrm_match(struct device *parent, void *match, void *aux)
 {
 	struct pci_attach_args *pa = aux;
+	const struct pci_device_id *id;
+	struct intel_device_info *info;
 
 	if (inteldrm_fatal_error)
 		return 0;
-	if (drm_pciprobe(aux, pciidlist) && pa->pa_function == 0)
-		return 20;
+
+	id = drm_find_description(PCI_VENDOR(pa->pa_id),
+	    PCI_PRODUCT(pa->pa_id), pciidlist);
+	if (id != NULL) {
+		info = (struct intel_device_info *)id->driver_data;
+		if (info->require_force_probe == 0 &&
+		    pa->pa_function == 0)
+			return 20;
+	}
+
 	return 0;
 }
 
