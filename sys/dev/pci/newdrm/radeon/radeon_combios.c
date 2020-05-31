@@ -33,11 +33,13 @@
 #include "radeon.h"
 #include "atom.h"
 
-#ifdef CONFIG_PPC_PMAC
+#if defined(CONFIG_PPC_PMAC) && defined(__linux__)
 /* not sure which of these are needed */
 #include <asm/machdep.h>
 #include <asm/pmac_feature.h>
 #include <asm/prom.h>
+#elif defined(CONFIG_PPC_PMAC)
+#include <linux/of.h>
 #endif /* CONFIG_PPC_PMAC */
 
 /* from radeon_legacy_encoder.c */
@@ -1467,7 +1469,7 @@ bool radeon_get_legacy_connector_info_from_table(struct drm_device *dev)
 
 	rdev->mode_info.connector_table = radeon_connector_table;
 	if (rdev->mode_info.connector_table == CT_NONE) {
-#ifdef __macppc__
+#ifdef CONFIG_PPC_PMAC
 		if (of_machine_is_compatible("PowerBook3,3")) {
 			/* powerbook with VGA */
 			rdev->mode_info.connector_table = CT_POWERBOOK_VGA;
@@ -1533,7 +1535,7 @@ bool radeon_get_legacy_connector_info_from_table(struct drm_device *dev)
 			/* SAM440ep RV250 embedded board */
 			rdev->mode_info.connector_table = CT_SAM440EP;
 		} else
-#endif /* __macppc__ */
+#endif /* CONFIG_PPC_PMAC */
 #ifdef CONFIG_PPC64
 		if (ASIC_IS_RN50(rdev))
 			rdev->mode_info.connector_table = CT_RN50_POWER;
