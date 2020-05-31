@@ -44,6 +44,7 @@ void set_current_state(int);
 void __set_current_state(int);
 void schedule(void);
 long schedule_timeout(long);
+long schedule_timeout_uninterruptible(long);
 
 #define io_schedule_timeout(x)	schedule_timeout(x)
 

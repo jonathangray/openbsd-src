@@ -133,6 +133,13 @@ schedule_timeout(long timeout)
 	return timeout > 0 ? timeout : 0;
 }
 
+long
+schedule_timeout_uninterruptible(long timeout)
+{
+	tsleep_nsec(curproc, PWAIT, "schtou", timeout * 1000);
+	return 0;
+}
+
 int
 wake_up_process(struct proc *p)
 {
