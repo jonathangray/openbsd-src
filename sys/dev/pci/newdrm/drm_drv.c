@@ -539,8 +539,6 @@ EXPORT_SYMBOL(drm_put_dev);
  */
 bool drm_dev_enter(struct drm_device *dev, int *idx)
 {
-	STUB();
-	return true;
 #ifdef notyet
 	*idx = srcu_read_lock(&drm_unplug_srcu);
 
@@ -548,9 +546,9 @@ bool drm_dev_enter(struct drm_device *dev, int *idx)
 		srcu_read_unlock(&drm_unplug_srcu, *idx);
 		return false;
 	}
+#endif
 
 	return true;
-#endif
 }
 EXPORT_SYMBOL(drm_dev_enter);
 
@@ -563,7 +561,6 @@ EXPORT_SYMBOL(drm_dev_enter);
  */
 void drm_dev_exit(int idx)
 {
-	STUB();
 #ifdef notyet
 	srcu_read_unlock(&drm_unplug_srcu, idx);
 #endif
