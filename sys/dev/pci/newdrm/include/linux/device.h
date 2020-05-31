@@ -34,7 +34,6 @@ struct device_attribute {
 
 #define dev_get_drvdata(x)	NULL
 #define dev_set_drvdata(x, y)
-#define dev_name(dev)		""
 
 #define dev_pm_set_driver_flags(x, y)
 
@@ -83,7 +82,10 @@ struct device_attribute {
 static inline const char *
 dev_driver_string(struct device *dev)
 {
-	return dev->dv_xname;
+	return dev->dv_cfdata->cf_driver->cd_name;
 }
+
+/* should be bus id as string, ie 0000:00:02.0 */
+#define dev_name(dev)		""
 
 #endif
