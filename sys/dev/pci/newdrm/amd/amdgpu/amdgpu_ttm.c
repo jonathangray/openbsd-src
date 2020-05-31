@@ -1861,8 +1861,20 @@ int amdgpu_ttm_init(struct amdgpu_device *adev)
 	/* Change the size here instead of the init above so only lpfn is affected */
 	amdgpu_ttm_set_buffer_funcs_status(adev, false);
 #ifdef CONFIG_64BIT
+#ifdef __linux__
 	adev->mman.aper_base_kaddr = ioremap_wc(adev->gmc.aper_base,
 						adev->gmc.visible_vram_size);
+#else
+	if (bus_space_map(adev->memt, adev->gmc.aper_base,
+	    adev->gmc.visible_vram_size,
+	    BUS_SPACE_MAP_LINEAR | BUS_SPACE_MAP_PREFETCHABLE,
+	    &adev->mman.aper_bsh)) {
+		DRM_ERROR("Failed to remap VRAM\n");
+		return -ENOMEM;
+	}
+	adev->mman.aper_base_kaddr = bus_space_vaddr(adev->memt,
+	    adev->mman.aper_bsh);
+#endif
 #endif
 
 	/*
@@ -1987,9 +1999,13 @@ void amdgpu_ttm_fini(struct amdgpu_device *adev)
 	amdgpu_bo_free_kernel(&adev->discovery_memory, NULL, NULL);
 	amdgpu_ttm_fw_reserve_vram_fini(adev);
 
-#ifdef notyet
+#ifdef __linux__
 	if (adev->mman.aper_base_kaddr)
 		iounmap(adev->mman.aper_base_kaddr);
+#else
+	if (adev->mman.aper_base_kaddr)
+		bus_space_unmap(adev->memt, adev->mman.aper_bsh,
+		    adev->gmc.visible_vram_size);
 #endif
 	adev->mman.aper_base_kaddr = NULL;
 

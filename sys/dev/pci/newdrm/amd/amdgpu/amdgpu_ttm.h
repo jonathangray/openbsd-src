@@ -45,6 +45,7 @@ struct amdgpu_mman {
 	bool				mem_global_referenced;
 	bool				initialized;
 	void __iomem			*aper_base_kaddr;
+	bus_space_handle_t		aper_bsh;
 
 #if defined(CONFIG_DEBUG_FS)
 	struct dentry			*debugfs_entries[8];
