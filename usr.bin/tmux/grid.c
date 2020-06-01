@@ -1,4 +1,4 @@
-/* $OpenBSD: grid.c,v 1.112 2020/05/25 18:57:24 nicm Exp $ */
+/* $OpenBSD: grid.c,v 1.114 2020/05/27 06:23:23 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -496,7 +496,6 @@ grid_get_cell1(struct grid_line *gl, u_int px, struct grid_cell *gc)
 			gc->fg = gee->fg;
 			gc->bg = gee->bg;
 			gc->us = gee->us;
-			log_debug("!!! %x", gc->flags);
 			utf8_to_data(gee->data, &gc->data);
 		}
 		return;
@@ -542,7 +541,6 @@ grid_set_cell(struct grid *gd, u_int px, u_int py, const struct grid_cell *gc)
 		gl->cellused = px + 1;
 
 	gce = &gl->celldata[px];
-	if (gc->flags & GRID_FLAG_PADDING) log_debug("!!! padding %d\n", grid_need_extended_cell(gce, gc));
 	if (grid_need_extended_cell(gce, gc))
 		grid_extended_cell(gl, gce, gc);
 	else

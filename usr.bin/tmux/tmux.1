@@ -1,4 +1,4 @@
-.\" $OpenBSD: tmux.1,v 1.773 2020/05/21 07:24:13 nicm Exp $
+.\" $OpenBSD: tmux.1,v 1.775 2020/05/29 13:42:13 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
 .\"
@@ -14,7 +14,7 @@
 .\" IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 .\" OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: May 21 2020 $
+.Dd $Mdocdate: May 29 2020 $
 .Dt TMUX 1
 .Os
 .Sh NAME
@@ -2079,7 +2079,7 @@ With
 .Fl b ,
 other commands are not blocked from running until the indicator is closed.
 .It Xo Ic find-window
-.Op Fl rCNTZ
+.Op Fl iCNrTZ
 .Op Fl t Ar target-pane
 .Ar match-string
 .Xc
@@ -2098,6 +2098,8 @@ matches only visible window contents,
 matches only the window name and
 .Fl T
 matches only the window title.
+.Fl i
+makes the search ignore case.
 The default is
 .Fl CNT .
 .Fl Z
@@ -2596,8 +2598,7 @@ spreads the current pane and any panes next to it out evenly.
 .D1 (alias: Ic selectp )
 Make pane
 .Ar target-pane
-the active pane in window
-.Ar target-window .
+the active pane in its window.
 If one of
 .Fl D ,
 .Fl L ,
@@ -3057,8 +3058,8 @@ User options may have any name, so long as they are prefixed with
 and be set to any string.
 For example:
 .Bd -literal -offset indent
-$ tmux setw -q @foo "abc123"
-$ tmux showw -v @foo
+$ tmux set -wq @foo "abc123"
+$ tmux show -wv @foo
 abc123
 .Ed
 .Pp

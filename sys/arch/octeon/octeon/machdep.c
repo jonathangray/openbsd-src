@@ -1,4 +1,4 @@
-/*	$OpenBSD: machdep.c,v 1.121 2020/05/25 13:04:25 visa Exp $ */
+/*	$OpenBSD: machdep.c,v 1.123 2020/05/31 06:23:58 dlg Exp $ */
 
 /*
  * Copyright (c) 2009, 2010 Miodrag Vallat.
@@ -78,7 +78,6 @@
 #include <machine/memconf.h>
 
 #include <dev/cons.h>
-#include <dev/rndvar.h>
 #include <dev/ofw/fdt.h>
 
 #include <octeon/dev/cn30xxcorereg.h>
@@ -1248,3 +1247,12 @@ hw_cpu_hatch(struct cpu_info *ci)
 	cpu_switchto(NULL, sched_chooseproc());
 }
 #endif /* MULTIPROCESSOR */
+
+unsigned int
+cpu_rnd_messybits(void)
+{
+	struct timespec ts;
+
+	nanotime(&ts);
+	return (ts.tv_nsec ^ (ts.tv_sec << 20));
+}
