@@ -329,7 +329,7 @@ rkvop_plane_update(struct drm_plane *plane, struct drm_plane_state *old_state)
 	/* Framebuffer start address */
 	paddr = (uint64_t)rkfb->obj->dmamap->dm_segs[0].ds_addr;
 	paddr += (src->y1 >> 16) * fb->pitches[0];
-	paddr += (src->x1 >> 17) * fb->format->cpp[0];
+	paddr += (src->x1 >> 16) * fb->format->cpp[0];
 	KASSERT((paddr & ~0xffffffff) == 0);
 	HWRITE4(sc, VOP_WIN0_YRGB_MST, (uint32_t)paddr);
 }
