@@ -118,6 +118,8 @@ atomic_dec_if_positive(volatile int *v)
 #ifdef __LP64__
 typedef int64_t atomic64_t;
 
+#define ATOMIC64_INIT(x)	(x)
+
 #define atomic64_set(p, v)	(*(p) = (v))
 #define atomic64_read(p)	(*(p))
 
@@ -140,6 +142,8 @@ typedef struct {
 	volatile int64_t val;
 	struct mutex lock;
 } atomic64_t;
+
+#define ATOMIC64_INIT(x)	{ (x), .lock = MUTEX_INITIALIZER(IPL_HIGH) }
 
 static inline void
 atomic64_set(atomic64_t *v, int64_t i)
