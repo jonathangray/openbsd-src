@@ -110,16 +110,6 @@ struct drm_attach_args {
 	int				 primary;
 };
 
-/*
- * drm_debug: Enable debug output.
- * Bitmask of DRM_UT_x. See include/drm/drm_print.h for details.
- */
-#ifdef DRMDEBUG
-unsigned int drm_debug = DRM_UT_DRIVER | DRM_UT_KMS;
-#else
-unsigned int drm_debug = 0;
-#endif
-
 void	drm_linux_init(void);
 int	drm_linux_acpi_notify(struct aml_node *, int, void *);
 
