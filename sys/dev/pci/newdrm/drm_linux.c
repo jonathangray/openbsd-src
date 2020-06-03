@@ -2132,3 +2132,21 @@ atomic_dec_and_mutex_lock(volatile int *v, struct rwlock *lock)
 	rw_exit_write(lock);
 	return 0;
 }
+
+int
+printk(const char *fmt, ...)
+{
+	int ret, level = KERN_INFO[1];
+	va_list ap;
+
+	if (fmt != NULL && *fmt == '\001') {
+		level = fmt[1];
+		fmt += 2;
+	}
+
+	va_start(ap, fmt);
+	ret = vprintf(fmt, ap);
+	va_end(ap);
+
+	return ret;
+}

@@ -30,7 +30,8 @@
 
 #define printk_ratelimit()	1
 
-#define printk(fmt, arg...)	printf(fmt, ## arg)
+int printk(const char *fmt, ...);
+
 #define pr_warn(fmt, arg...)	printf(pr_fmt(fmt), ## arg)
 #define pr_warn_ratelimited(fmt, arg...)	printf(pr_fmt(fmt), ## arg)
 #define pr_warn_once(fmt, arg...)	printk_once(pr_fmt(fmt), ## arg)
