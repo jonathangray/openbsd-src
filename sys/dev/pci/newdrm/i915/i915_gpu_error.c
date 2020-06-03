@@ -762,16 +762,21 @@ static void err_print_gt(struct drm_i915_error_state_buf *m,
 static void __err_print_to_sgl(struct drm_i915_error_state_buf *m,
 			       struct i915_gpu_coredump *error)
 {
-	STUB();
-#ifdef notyet
 	const struct intel_engine_coredump *ee;
 	struct timespec64 ts;
 
 	if (*error->error_msg)
 		err_printf(m, "%s\n", error->error_msg);
+#ifdef __linux__
 	err_printf(m, "Kernel: %s %s\n",
 		   init_utsname()->release,
 		   init_utsname()->machine);
+#else
+	extern char machine[];
+	err_printf(m, "Kernel: %s %s\n",
+		   osrelease,
+		   machine);
+#endif
 	err_printf(m, "Driver: %s\n", DRIVER_DATE);
 	ts = ktime_to_timespec64(error->time);
 	err_printf(m, "Time: %lld s %ld us\n",
@@ -826,7 +831,6 @@ static void __err_print_to_sgl(struct drm_i915_error_state_buf *m,
 	err_print_capabilities(m, &error->device_info, &error->runtime_info,
 			       &error->driver_caps);
 	err_print_params(m, &error->params);
-#endif
 }
 
 static int err_print_to_sgl(struct i915_gpu_coredump *error)
