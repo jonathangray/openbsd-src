@@ -9,12 +9,12 @@
 
 #include <linux/init.h>
 
-#define KERN_INFO	""
-#define KERN_WARNING	""
-#define KERN_NOTICE	""
-#define KERN_DEBUG	""
-#define KERN_CRIT	""
-#define KERN_ERR	""
+#define KERN_CRIT	"\0012"
+#define KERN_ERR	"\0013"
+#define KERN_WARNING	"\0014"
+#define KERN_NOTICE	"\0015"
+#define KERN_INFO	"\0016"
+#define KERN_DEBUG	"\0017"
 
 #ifndef pr_fmt
 #define pr_fmt(fmt) fmt

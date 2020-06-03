@@ -18,13 +18,8 @@ __i915_printk(struct drm_i915_private *dev_priv, const char *level,
 {
 	static bool shown_bug_once;
 	struct device *kdev = dev_priv->drm.dev;
-#ifdef __linux__
 	bool is_error = level[1] <= KERN_ERR[1];
 	bool is_debug = level[1] == KERN_DEBUG[1];
-#else
-	bool is_error = level[1] <= LOG_ERR;
-	bool is_debug = level[1] == LOG_DEBUG;
-#endif
 	struct va_format vaf;
 	va_list args;
 
@@ -44,7 +39,7 @@ __i915_printk(struct drm_i915_private *dev_priv, const char *level,
 			   __builtin_return_address(0), &vaf);
 #else
 	if (!is_error)
-		printf("%s" "[" DRM_NAME "] ", level);
+		printf("[" DRM_NAME "] ");
 	vprintf(fmt, args);
 #endif
 
