@@ -256,7 +256,11 @@ int drm_fb_helper_restore_fbdev_mode_unlocked(struct drm_fb_helper *fb_helper)
 		return 0;
 
 	mutex_lock(&fb_helper->lock);
+#ifdef __linux__
 	ret = drm_client_modeset_commit(&fb_helper->client);
+#else
+	ret = drm_client_modeset_commit_locked(&fb_helper->client);
+#endif
 
 	do_delayed = fb_helper->delayed_hotplug;
 	if (do_delayed)
