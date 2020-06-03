@@ -1850,7 +1850,7 @@ amdgpu_wsioctl(void *v, u_long cmd, caddr_t data, int flag, struct proc *p)
 		case WSDISPLAYIO_PARAM_BRIGHTNESS:
 			dp->min = 0;
 			dp->max = bd->props.max_brightness;
-			dp->curval = bd->ops->get_brightness(bd);
+			dp->curval = bd->props.brightness;
 			return (dp->max > dp->min) ? 0 : -1;
 		}
 		break;
