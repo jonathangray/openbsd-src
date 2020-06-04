@@ -2142,7 +2142,7 @@ printk(const char *fmt, ...)
 	if (fmt != NULL && *fmt == '\001') {
 		level = fmt[1];
 #ifndef DRMDEBUG
-		if (level >= KERN_INFO[1])
+		if (level >= KERN_INFO[1] && level <= '9')
 			return 0;
 #endif
 		fmt += 2;
