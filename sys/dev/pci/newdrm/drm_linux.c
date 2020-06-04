@@ -2136,11 +2136,15 @@ atomic_dec_and_mutex_lock(volatile int *v, struct rwlock *lock)
 int
 printk(const char *fmt, ...)
 {
-	int ret, level = KERN_INFO[1];
+	int ret, level;
 	va_list ap;
 
 	if (fmt != NULL && *fmt == '\001') {
 		level = fmt[1];
+#ifndef DRMDEBUG
+		if (level >= KERN_INFO[1])
+			return 0;
+#endif
 		fmt += 2;
 	}
 
