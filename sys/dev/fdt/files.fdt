@@ -279,7 +279,7 @@ file	dev/fdt/rkclock.c		rkclock
 device	rkdrm: drmbase, wsemuldisplaydev, rasops15, rasops16, rasops24, rasops32
 attach	rkdrm at fdt
 file	dev/fdt/rkdrm.c				rkdrm
-file	dev/pci/newdrm/drm_gem_cma_helper.c	rkdrm
+file	dev/pci/drm/drm_gem_cma_helper.c	rkdrm
 
 device	rkdwhdmi: dwhdmi, i2cbus
 attach	rkdwhdmi at fdt
