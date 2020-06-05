@@ -15,7 +15,12 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <drm/drmP.h>
+#include <sys/types.h>
+#include <sys/param.h>
+#include <uvm/uvm_extern.h>
+
+#include <linux/highmem.h>
+#include <linux/scatterlist.h>
 
 #if defined(__i386__) || defined(__amd64__)
 static void

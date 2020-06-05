@@ -18,7 +18,10 @@
 #ifndef _LINUX_IDR_H
 #define _LINUX_IDR_H
 
+#include <sys/types.h>
 #include <sys/tree.h>
+
+#include <linux/radix-tree.h>
 
 struct idr_entry {
 	SPLAY_ENTRY(idr_entry) entry;

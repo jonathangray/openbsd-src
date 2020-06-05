@@ -19,6 +19,10 @@
 #define _ASM_SET_MEMORY_H
 
 #include <sys/atomic.h>
+
+#include <sys/param.h>		/* for PAGE_SIZE on i386 */
+#include <uvm/uvm_extern.h>
+
 #include <machine/pmap.h>
 
 #if defined(__amd64__) || defined(__i386__)

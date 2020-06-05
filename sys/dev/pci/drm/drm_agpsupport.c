@@ -33,7 +33,19 @@
  * Support code for tying the kernel AGP support to DRM drivers.
  */
 
-#include <drm/drmP.h>
+#include <linux/module.h>
+#include <linux/pci.h>
+#include <linux/slab.h>
+
+#include <asm/agp.h>
+
+#include <drm/drm_agpsupport.h>
+#include <drm/drm_device.h>
+#include <drm/drm_drv.h>
+#include <drm/drm_file.h>
+#include <drm/drm_print.h>
+
+#include "drm_legacy.h"
 
 #if IS_ENABLED(CONFIG_AGP)
 

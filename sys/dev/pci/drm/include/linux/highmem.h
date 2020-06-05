@@ -18,6 +18,7 @@
 #ifndef _LINUX_HIGHMEM_H
 #define _LINUX_HIGHMEM_H
 
+#include <sys/param.h>
 #include <uvm/uvm_extern.h>
 #include <linux/uaccess.h>
 
