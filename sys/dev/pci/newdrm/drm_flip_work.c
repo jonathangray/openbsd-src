@@ -150,7 +150,7 @@ void drm_flip_work_init(struct drm_flip_work *work,
 	work->name = name;
 	INIT_LIST_HEAD(&work->queued);
 	INIT_LIST_HEAD(&work->commited);
-	spin_lock_init(&work->lock);
+	mtx_init(&work->lock, IPL_TTY);
 	work->func = func;
 
 	INIT_WORK(&work->worker, flip_worker);

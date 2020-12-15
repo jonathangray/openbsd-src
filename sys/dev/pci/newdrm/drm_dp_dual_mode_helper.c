@@ -509,7 +509,7 @@ int drm_lspcon_set_mode(struct i2c_adapter *adapter,
 			return ret;
 		} else {
 			if (current_mode != mode) {
-				msleep(10);
+				drm_msleep(10);
 				time_out -= 10;
 			} else {
 				DRM_DEBUG_KMS("LSPCON mode changed to %s\n",

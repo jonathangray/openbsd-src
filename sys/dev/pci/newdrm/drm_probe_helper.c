@@ -719,9 +719,12 @@ out:
  */
 bool drm_kms_helper_is_poll_worker(void)
 {
+	return false;
+#ifdef __linux__
 	struct work_struct *work = current_work();
 
 	return work && work->func == output_poll_execute;
+#endif
 }
 EXPORT_SYMBOL(drm_kms_helper_is_poll_worker);
 

@@ -42,11 +42,11 @@
  * in the caller.
  */
 static void
-drm_clflush_page(struct page *page)
+drm_clflush_page(struct vm_page *page)
 {
 	uint8_t *page_virtual;
 	unsigned int i;
-	const int size = boot_cpu_data.x86_clflush_size;
+	const int size = curcpu()->ci_cflushsz;
 
 	if (unlikely(page == NULL))
 		return;
@@ -57,7 +57,7 @@ drm_clflush_page(struct page *page)
 	kunmap_atomic(page_virtual);
 }
 
-static void drm_cache_flush_clflush(struct page *pages[],
+static void drm_cache_flush_clflush(struct vm_page *pages[],
 				    unsigned long num_pages)
 {
 	unsigned long i;
@@ -78,7 +78,7 @@ static void drm_cache_flush_clflush(struct page *pages[],
  * to a page in the array.
  */
 void
-drm_clflush_pages(struct page *pages[], unsigned long num_pages)
+drm_clflush_pages(struct vm_page *pages[], unsigned long num_pages)
 {
 
 #if defined(CONFIG_X86)
@@ -90,11 +90,11 @@ drm_clflush_pages(struct page *pages[], unsigned long num_pages)
 	if (wbinvd_on_all_cpus())
 		pr_err("Timed out waiting for cache flush\n");
 
-#elif defined(__powerpc__)
+#elif defined(__powerpc__) && defined(__linux__)
 	unsigned long i;
 
 	for (i = 0; i < num_pages; i++) {
-		struct page *page = pages[i];
+		struct vm_page *page = pages[i];
 		void *page_virtual;
 
 		if (unlikely(page == NULL))
@@ -156,7 +156,7 @@ drm_clflush_virt_range(void *addr, unsigned long length)
 {
 #if defined(CONFIG_X86)
 	if (static_cpu_has(X86_FEATURE_CLFLUSH)) {
-		const int size = boot_cpu_data.x86_clflush_size;
+		const int size = curcpu()->ci_cflushsz;
 		void *end = addr + length;
 
 		addr = (void *)(((unsigned long)addr) & -size);

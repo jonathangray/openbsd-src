@@ -28,6 +28,8 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
+#include <sys/filio.h>
+
 #include <linux/export.h>
 #include <linux/nospec.h>
 #include <linux/pci.h>
@@ -40,6 +42,7 @@
 #include <drm/drm_file.h>
 #include <drm/drm_ioctl.h>
 #include <drm/drm_print.h>
+#include <drm/drm_pci.h>
 
 #include "drm_crtc_internal.h"
 #include "drm_internal.h"
@@ -150,7 +153,11 @@ static int drm_set_busid(struct drm_device *dev, struct drm_file *file_priv)
 	if (master->unique != NULL)
 		drm_unset_busid(dev, master);
 
+#ifdef __linux__
 	if (dev->dev && dev_is_pci(dev->dev)) {
+#else
+	if (1) {
+#endif
 		ret = drm_pci_set_busid(dev, master);
 		if (ret) {
 			drm_unset_busid(dev, master);
@@ -197,8 +204,13 @@ int drm_getclient(struct drm_device *dev, void *data,
 	 */
 	if (client->idx == 0) {
 		client->auth = file_priv->authenticated;
+#ifdef __linux__
 		client->pid = task_pid_vnr(current);
 		client->uid = overflowuid;
+#else
+		client->pid = curproc->p_p->ps_pid;
+		client->uid = 0xfffe;
+#endif
 		client->magic = 0;
 		client->iocs = 0;
 
@@ -337,7 +349,11 @@ drm_setclientcap(struct drm_device *dev, void *data, struct drm_file *file_priv)
 		if (!drm_core_check_feature(dev, DRIVER_ATOMIC))
 			return -EOPNOTSUPP;
 		/* The modesetting DDX has a totally broken idea of atomic. */
+#ifdef __linux__
 		if (current->comm[0] == 'X' && req->value == 1) {
+#else
+		if (curproc->p_p->ps_comm[0] == 'X' && req->value == 1) {
+#endif
 			pr_info("broken atomic modeset userspace detected, disabling atomic\n");
 			return -EOPNOTSUPP;
 		}
@@ -578,7 +594,9 @@ static const struct drm_ioctl_desc drm_ioctls[] = {
 	DRM_IOCTL_DEF(DRM_IOCTL_VERSION, drm_version, DRM_RENDER_ALLOW),
 	DRM_IOCTL_DEF(DRM_IOCTL_GET_UNIQUE, drm_getunique, 0),
 	DRM_IOCTL_DEF(DRM_IOCTL_GET_MAGIC, drm_getmagic, 0),
+#ifdef __linux__
 	DRM_IOCTL_DEF(DRM_IOCTL_IRQ_BUSID, drm_irq_by_busid, DRM_MASTER|DRM_ROOT_ONLY),
+#endif
 
 	DRM_LEGACY_IOCTL_DEF(DRM_IOCTL_GET_MAP, drm_legacy_getmap_ioctl, 0),
 
@@ -593,14 +611,24 @@ static const struct drm_ioctl_desc drm_ioctls[] = {
 	DRM_IOCTL_DEF(DRM_IOCTL_UNBLOCK, drm_noop, DRM_AUTH|DRM_MASTER|DRM_ROOT_ONLY),
 	DRM_IOCTL_DEF(DRM_IOCTL_AUTH_MAGIC, drm_authmagic, DRM_MASTER),
 
+#ifdef __linux__
 	DRM_LEGACY_IOCTL_DEF(DRM_IOCTL_ADD_MAP, drm_legacy_addmap_ioctl, DRM_AUTH|DRM_MASTER|DRM_ROOT_ONLY),
+#else
+	DRM_IOCTL_DEF(DRM_IOCTL_GET_PCIINFO, drm_getpciinfo, DRM_UNLOCKED|DRM_RENDER_ALLOW),
+#endif
 	DRM_LEGACY_IOCTL_DEF(DRM_IOCTL_RM_MAP, drm_legacy_rmmap_ioctl, DRM_AUTH),
 
 	DRM_LEGACY_IOCTL_DEF(DRM_IOCTL_SET_SAREA_CTX, drm_legacy_setsareactx, DRM_AUTH|DRM_MASTER|DRM_ROOT_ONLY),
 	DRM_LEGACY_IOCTL_DEF(DRM_IOCTL_GET_SAREA_CTX, drm_legacy_getsareactx, DRM_AUTH),
 
+#ifdef __linux__
 	DRM_IOCTL_DEF(DRM_IOCTL_SET_MASTER, drm_setmaster_ioctl, 0),
 	DRM_IOCTL_DEF(DRM_IOCTL_DROP_MASTER, drm_dropmaster_ioctl, 0),
+#else
+	/* On OpenBSD xorg privdrop has already occurred before this point */
+	DRM_IOCTL_DEF(DRM_IOCTL_SET_MASTER, drm_noop, DRM_UNLOCKED),
+	DRM_IOCTL_DEF(DRM_IOCTL_DROP_MASTER, drm_noop, DRM_UNLOCKED),
+#endif
 
 	DRM_LEGACY_IOCTL_DEF(DRM_IOCTL_ADD_CTX, drm_legacy_addctx, DRM_AUTH|DRM_ROOT_ONLY),
 	DRM_LEGACY_IOCTL_DEF(DRM_IOCTL_RM_CTX, drm_legacy_rmctx, DRM_AUTH|DRM_MASTER|DRM_ROOT_ONLY),
@@ -626,7 +654,7 @@ static const struct drm_ioctl_desc drm_ioctls[] = {
 	DRM_LEGACY_IOCTL_DEF(DRM_IOCTL_DMA, drm_legacy_dma_ioctl, DRM_AUTH),
 	DRM_LEGACY_IOCTL_DEF(DRM_IOCTL_CONTROL, drm_legacy_irq_control, DRM_AUTH|DRM_MASTER|DRM_ROOT_ONLY),
 
-#if IS_ENABLED(CONFIG_AGP)
+#if IS_ENABLED(CONFIG_AGP) && defined(__linux__)
 	DRM_IOCTL_DEF(DRM_IOCTL_AGP_ACQUIRE, drm_agp_acquire_ioctl, DRM_AUTH|DRM_MASTER|DRM_ROOT_ONLY),
 	DRM_IOCTL_DEF(DRM_IOCTL_AGP_RELEASE, drm_agp_release_ioctl, DRM_AUTH|DRM_MASTER|DRM_ROOT_ONLY),
 	DRM_IOCTL_DEF(DRM_IOCTL_AGP_ENABLE, drm_agp_enable_ioctl, DRM_AUTH|DRM_MASTER|DRM_ROOT_ONLY),
@@ -711,13 +739,54 @@ static const struct drm_ioctl_desc drm_ioctls[] = {
 		      DRM_RENDER_ALLOW),
 	DRM_IOCTL_DEF(DRM_IOCTL_CRTC_GET_SEQUENCE, drm_crtc_get_sequence_ioctl, 0),
 	DRM_IOCTL_DEF(DRM_IOCTL_CRTC_QUEUE_SEQUENCE, drm_crtc_queue_sequence_ioctl, 0),
+#ifdef __linux__
 	DRM_IOCTL_DEF(DRM_IOCTL_MODE_CREATE_LEASE, drm_mode_create_lease_ioctl, DRM_MASTER),
 	DRM_IOCTL_DEF(DRM_IOCTL_MODE_LIST_LESSEES, drm_mode_list_lessees_ioctl, DRM_MASTER),
 	DRM_IOCTL_DEF(DRM_IOCTL_MODE_GET_LEASE, drm_mode_get_lease_ioctl, DRM_MASTER),
 	DRM_IOCTL_DEF(DRM_IOCTL_MODE_REVOKE_LEASE, drm_mode_revoke_lease_ioctl, DRM_MASTER),
+#endif
 };
 
 #define DRM_CORE_IOCTL_COUNT	ARRAY_SIZE( drm_ioctls )
+
+int
+pledge_ioctl_drm(struct proc *p, long com, dev_t device)
+{
+	struct drm_device *dev = drm_get_device_from_kdev(device);
+	unsigned int nr = DRM_IOCTL_NR(com);
+	const struct drm_ioctl_desc *ioctl;
+
+	if (dev == NULL)
+		return EPERM;
+
+	if (nr < DRM_CORE_IOCTL_COUNT &&
+	    ((nr < DRM_COMMAND_BASE || nr >= DRM_COMMAND_END)))
+		ioctl = &drm_ioctls[nr];
+	else if (nr >= DRM_COMMAND_BASE && nr < DRM_COMMAND_END &&
+	    nr < DRM_COMMAND_BASE + dev->driver->num_ioctls)
+		ioctl = &dev->driver->ioctls[nr - DRM_COMMAND_BASE];
+	else
+		return EPERM;
+
+	if (ioctl->flags & DRM_RENDER_ALLOW)
+		return 0;
+
+	/*
+	 * These are dangerous, but we have to allow them until we
+	 * have prime/dma-buf support.
+	 */
+	switch (com) {
+	case DRM_IOCTL_GET_MAGIC:
+	case DRM_IOCTL_GEM_OPEN:
+		return 0;
+	}
+
+	/* for amdgpu libdrm */
+	if (com == DRM_IOCTL_GET_CLIENT)
+		return 0;
+
+	return EPERM;
+}
 
 /**
  * DOC: driver specific ioctls
@@ -770,6 +839,9 @@ static const struct drm_ioctl_desc drm_ioctls[] = {
 long drm_ioctl_kernel(struct file *file, drm_ioctl_t *func, void *kdata,
 		      u32 flags)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct drm_file *file_priv = file->private_data;
 	struct drm_device *dev = file_priv->minor->dev;
 	int retcode;
@@ -791,6 +863,7 @@ long drm_ioctl_kernel(struct file *file, drm_ioctl_t *func, void *kdata,
 		mutex_unlock(&drm_global_mutex);
 	}
 	return retcode;
+#endif
 }
 EXPORT_SYMBOL(drm_ioctl_kernel);
 
@@ -810,6 +883,9 @@ EXPORT_SYMBOL(drm_ioctl_kernel);
 long drm_ioctl(struct file *filp,
 	      unsigned int cmd, unsigned long arg)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct drm_file *file_priv = filp->private_data;
 	struct drm_device *dev;
 	const struct drm_ioctl_desc *ioctl = NULL;
@@ -901,6 +977,7 @@ long drm_ioctl(struct file *filp,
 		DRM_DEBUG("comm=\"%s\", pid=%d, ret=%d\n", current->comm,
 			  task_pid_nr(current), retcode);
 	return retcode;
+#endif
 }
 EXPORT_SYMBOL(drm_ioctl);
 
@@ -929,3 +1006,119 @@ bool drm_ioctl_flags(unsigned int nr, unsigned int *flags)
 	return true;
 }
 EXPORT_SYMBOL(drm_ioctl_flags);
+
+int
+drm_do_ioctl(struct drm_device *dev, int minor, u_long cmd, caddr_t data)
+{
+	struct drm_file *file_priv;
+	const struct drm_ioctl_desc *ioctl;
+	drm_ioctl_t *func;
+	unsigned int nr = DRM_IOCTL_NR(cmd);
+	int retcode = -EINVAL;
+	unsigned int usize, asize;
+	caddr_t adata = data;
+
+	mutex_lock(&dev->filelist_mutex);
+	file_priv = drm_find_file_by_minor(dev, minor);
+	mutex_unlock(&dev->filelist_mutex);
+	if (file_priv == NULL) {
+		DRM_ERROR("can't find authenticator\n");
+		return -EINVAL;
+	}
+
+	DRM_DEBUG("pid=%d, cmd=0x%02lx, nr=0x%02x, dev 0x%lx, auth=%d\n",
+	    curproc->p_p->ps_pid, cmd, (u_int)DRM_IOCTL_NR(cmd), (long)&dev->dev,
+	    file_priv->authenticated);
+
+	switch (cmd) {
+	case FIONBIO:
+	case FIOASYNC:
+		return 0;
+	}
+
+	if ((nr >= DRM_CORE_IOCTL_COUNT) &&
+	    ((nr < DRM_COMMAND_BASE) || (nr >= DRM_COMMAND_END)))
+		return (-EINVAL);
+	if ((nr >= DRM_COMMAND_BASE) && (nr < DRM_COMMAND_END) &&
+	    (nr < DRM_COMMAND_BASE + dev->driver->num_ioctls)) {
+		uint32_t drv_size;
+		ioctl = &dev->driver->ioctls[nr - DRM_COMMAND_BASE];
+		drv_size = IOCPARM_LEN(ioctl->cmd);
+		usize = asize = IOCPARM_LEN(cmd);
+		if (drv_size > asize)
+			asize = drv_size;
+	} else if ((nr >= DRM_COMMAND_END) || (nr < DRM_COMMAND_BASE)) {
+		uint32_t drv_size;
+		ioctl = &drm_ioctls[nr];
+
+		drv_size = IOCPARM_LEN(ioctl->cmd);
+		usize = asize = IOCPARM_LEN(cmd);
+		if (drv_size > asize)
+			asize = drv_size;
+		cmd = ioctl->cmd;
+	} else
+		return (-EINVAL);
+
+	func = ioctl->func;
+	if (!func) {
+		DRM_DEBUG("no function\n");
+		return (-EINVAL);
+	}
+
+	retcode = drm_ioctl_permit(ioctl->flags, file_priv);
+	if (unlikely(retcode))
+		return retcode;
+
+	if (asize > usize) {
+		adata = malloc(asize, M_DRM, M_WAITOK | M_ZERO);
+		memcpy(adata, data, usize);
+	}
+
+	/* Enforce sane locking for modern driver ioctls. */
+	if (likely(!drm_core_check_feature(dev, DRIVER_LEGACY)) ||
+	    (ioctl->flags & DRM_UNLOCKED))
+		retcode = func(dev, adata, file_priv);
+	else {
+		mutex_lock(&drm_global_mutex);
+		retcode = func(dev, adata, file_priv);
+		mutex_unlock(&drm_global_mutex);
+	}
+
+	if (asize > usize) {
+		memcpy(data, adata, usize);
+		free(adata, M_DRM, asize);
+	}
+
+	return (retcode);
+}
+
+/* drmioctl is called whenever a process performs an ioctl on /dev/drm.
+ */
+int
+drmioctl(dev_t kdev, u_long cmd, caddr_t data, int flags, struct proc *p)
+{
+	struct drm_device *dev = drm_get_device_from_kdev(kdev);
+	int error;
+
+	if (dev == NULL)
+		return ENODEV;
+
+	mtx_enter(&dev->quiesce_mtx);
+	while (dev->quiesce)
+		msleep_nsec(&dev->quiesce, &dev->quiesce_mtx, PZERO, "drmioc",
+		    INFSLP);
+	dev->quiesce_count++;
+	mtx_leave(&dev->quiesce_mtx);
+
+	error = -drm_do_ioctl(dev, minor(kdev), cmd, data);
+	if (error < 0 && error != ERESTART && error != EJUSTRETURN)
+		printf("%s: cmd 0x%lx errno %d\n", __func__, cmd, error);
+
+	mtx_enter(&dev->quiesce_mtx);
+	dev->quiesce_count--;
+	if (dev->quiesce)
+		wakeup(&dev->quiesce_count);
+	mtx_leave(&dev->quiesce_mtx);
+
+	return (error);
+}

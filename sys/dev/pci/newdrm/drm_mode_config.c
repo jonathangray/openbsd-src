@@ -398,11 +398,11 @@ static void drm_mode_config_init_release(struct drm_device *dev, void *ptr)
  */
 int drmm_mode_config_init(struct drm_device *dev)
 {
-	mutex_init(&dev->mode_config.mutex);
+	rw_init(&dev->mode_config.mutex, "mcrwl");
 	drm_modeset_lock_init(&dev->mode_config.connection_mutex);
-	mutex_init(&dev->mode_config.idr_mutex);
-	mutex_init(&dev->mode_config.fb_lock);
-	mutex_init(&dev->mode_config.blob_lock);
+	rw_init(&dev->mode_config.idr_mutex, "idrlk");
+	rw_init(&dev->mode_config.fb_lock, "fblk");
+	rw_init(&dev->mode_config.blob_lock, "mcblk");
 	INIT_LIST_HEAD(&dev->mode_config.fb_list);
 	INIT_LIST_HEAD(&dev->mode_config.crtc_list);
 	INIT_LIST_HEAD(&dev->mode_config.connector_list);
@@ -414,7 +414,7 @@ int drmm_mode_config_init(struct drm_device *dev)
 	idr_init(&dev->mode_config.object_idr);
 	idr_init(&dev->mode_config.tile_idr);
 	ida_init(&dev->mode_config.connector_ida);
-	spin_lock_init(&dev->mode_config.connector_list_lock);
+	mtx_init(&dev->mode_config.connector_list_lock, IPL_TTY);
 
 	init_llist_head(&dev->mode_config.connector_free_list);
 	INIT_WORK(&dev->mode_config.connector_free_work, drm_connector_free_work_fn);

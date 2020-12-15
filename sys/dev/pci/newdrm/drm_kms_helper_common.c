@@ -62,6 +62,8 @@ MODULE_PARM_DESC(edid_firmware,
 
 #endif
 
+#ifdef __linux__
+
 static int __init drm_kms_helper_init(void)
 {
 	int ret;
@@ -87,3 +89,5 @@ static void __exit drm_kms_helper_exit(void)
 
 module_init(drm_kms_helper_init);
 module_exit(drm_kms_helper_exit);
+
+#endif /* __linux__ */

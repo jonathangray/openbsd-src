@@ -152,9 +152,33 @@ static void show_leaks(struct drm_mm *mm) { }
 #define START(node) ((node)->start)
 #define LAST(node)  ((node)->start + (node)->size - 1)
 
+#ifdef __linux__
 INTERVAL_TREE_DEFINE(struct drm_mm_node, rb,
 		     u64, __subtree_last,
 		     START, LAST, static inline, drm_mm_interval_tree)
+#else
+static struct drm_mm_node *
+drm_mm_interval_tree_iter_first(const struct rb_root_cached *root,
+    uint64_t start, uint64_t last)
+{
+	struct drm_mm_node *node;
+	struct rb_node *rb;
+
+	for (rb = rb_first_cached(root); rb; rb = rb_next(rb)) {
+		node = rb_entry(rb, typeof(*node), rb);
+		if (LAST(node) >= start && START(node) <= last)
+			return node;
+	}
+	return NULL;
+}
+
+static void
+drm_mm_interval_tree_remove(struct drm_mm_node *node,
+    struct rb_root_cached *root) 
+{
+	rb_erase_cached(&node->rb, root);
+}
+#endif
 
 struct drm_mm_node *
 __drm_mm_interval_first(const struct drm_mm *mm, u64 start, u64 last)
@@ -208,8 +232,12 @@ static void drm_mm_interval_tree_add_node(struct drm_mm_node *hole_node,
 	}
 
 	rb_link_node(&node->rb, rb, link);
+#ifdef notyet
 	rb_insert_augmented_cached(&node->rb, &mm->interval_tree, leftmost,
 				   &drm_mm_interval_tree_augment);
+#else
+	rb_insert_color_cached(&node->rb, &mm->interval_tree, leftmost);
+#endif
 }
 
 #define HOLE_SIZE(NODE) ((NODE)->hole_size)

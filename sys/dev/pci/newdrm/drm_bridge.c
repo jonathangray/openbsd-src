@@ -92,7 +92,7 @@
  */
 
 static DEFINE_MUTEX(bridge_lock);
-static LIST_HEAD(bridge_list);
+static DRM_LIST_HEAD(bridge_list);
 
 /**
  * drm_bridge_add - add the given bridge to the global bridge list
@@ -101,7 +101,7 @@ static LIST_HEAD(bridge_list);
  */
 void drm_bridge_add(struct drm_bridge *bridge)
 {
-	mutex_init(&bridge->hpd_mutex);
+	rw_init(&bridge->hpd_mutex, "brhpd");
 
 	mutex_lock(&bridge_lock);
 	list_add_tail(&bridge->list, &bridge_list);

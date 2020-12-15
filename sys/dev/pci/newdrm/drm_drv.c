@@ -26,6 +26,20 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
+#include <sys/param.h>
+#include <sys/fcntl.h>
+#include <sys/poll.h>
+#include <sys/specdev.h>
+#include <sys/vnode.h>
+
+#include <machine/bus.h>
+
+#ifdef __HAVE_ACPI
+#include <dev/acpi/acpidev.h>
+#include <dev/acpi/acpivar.h>
+#include <dev/acpi/dsdt.h>
+#endif
+
 #include <linux/debugfs.h>
 #include <linux/fs.h>
 #include <linux/module.h>
@@ -42,6 +56,10 @@
 #include <drm/drm_managed.h>
 #include <drm/drm_mode_object.h>
 #include <drm/drm_print.h>
+
+#include <drm/drm_gem.h>
+#include <drm/drm_agpsupport.h>
+#include <drm/drm_irq.h>
 
 #include "drm_crtc_internal.h"
 #include "drm_internal.h"
@@ -65,7 +83,52 @@ static bool drm_core_init_complete = false;
 
 static struct dentry *drm_debugfs_root;
 
+#ifdef notyet
 DEFINE_STATIC_SRCU(drm_unplug_srcu);
+#endif
+
+/*
+ * Some functions are only called once on init regardless of how many times
+ * drm attaches.  In linux this is handled via module_init()/module_exit()
+ */
+int drm_refcnt; 
+
+struct drm_softc {
+	struct device		sc_dev;
+	struct drm_device 	*sc_drm;
+	int			sc_allocated;
+};
+
+struct drm_attach_args {
+	struct drm_device		*drm;
+	struct drm_driver		*driver;
+	char				*busid;
+	bus_dma_tag_t			 dmat;
+	bus_space_tag_t			 bst;
+	size_t				 busid_len;
+	int				 is_agp;
+	struct pci_attach_args		*pa;
+	int				 primary;
+};
+
+void	drm_linux_init(void);
+void	drm_linux_exit(void);
+int	drm_linux_acpi_notify(struct aml_node *, int, void *);
+
+int	drm_dequeue_event(struct drm_device *, struct drm_file *, size_t,
+	    struct drm_pending_event **);
+
+int	drmprint(void *, const char *);
+int	drmsubmatch(struct device *, void *, void *);
+const struct pci_device_id *
+	drm_find_description(int, int, const struct pci_device_id *);
+
+int	drm_file_cmp(struct drm_file *, struct drm_file *);
+SPLAY_PROTOTYPE(drm_file_tree, drm_file, link, drm_file_cmp);
+
+#define DRMDEVCF_PRIMARY	0
+#define drmdevcf_primary	cf_loc[DRMDEVCF_PRIMARY]	/* spec'd as primary? */
+#define DRMDEVCF_PRIMARY_UNK	-1
 
 /*
  * DRM Minors
@@ -100,7 +163,9 @@ static void drm_minor_alloc_release(struct drm_device *dev, void *data)
 
 	WARN_ON(dev != minor->dev);
 
+#ifdef __linux__
 	put_device(minor->kdev);
+#endif
 
 	spin_lock_irqsave(&drm_minor_lock, flags);
 	idr_remove(&drm_minors_idr, minor->index);
@@ -139,9 +204,11 @@ static int drm_minor_alloc(struct drm_device *dev, unsigned int type)
 	if (r)
 		return r;
 
+#ifdef __linux__
 	minor->kdev = drm_sysfs_minor_alloc(minor);
 	if (IS_ERR(minor->kdev))
 		return PTR_ERR(minor->kdev);
+#endif
 
 	*drm_minor_get_slot(dev, type) = minor;
 	return 0;
@@ -151,7 +218,9 @@ static int drm_minor_register(struct drm_device *dev, unsigned int type)
 {
 	struct drm_minor *minor;
 	unsigned long flags;
+#ifdef __linux__
 	int ret;
+#endif
 
 	DRM_DEBUG("\n");
 
@@ -159,6 +228,7 @@ static int drm_minor_register(struct drm_device *dev, unsigned int type)
 	if (!minor)
 		return 0;
 
+#ifdef __linux__
 	ret = drm_debugfs_init(minor, minor->index, drm_debugfs_root);
 	if (ret) {
 		DRM_ERROR("DRM: Failed to initialize /sys/kernel/debug/dri.\n");
@@ -168,6 +238,9 @@ static int drm_minor_register(struct drm_device *dev, unsigned int type)
 	ret = device_add(minor->kdev);
 	if (ret)
 		goto err_debugfs;
+#else
+	drm_debugfs_root = NULL;
+#endif
 
 	/* replace NULL with @minor so lookups will succeed from now on */
 	spin_lock_irqsave(&drm_minor_lock, flags);
@@ -177,9 +250,11 @@ static int drm_minor_register(struct drm_device *dev, unsigned int type)
 	DRM_DEBUG("new minor registered %d\n", minor->index);
 	return 0;
 
+#ifdef __linux__
 err_debugfs:
 	drm_debugfs_cleanup(minor);
 	return ret;
+#endif
 }
 
 static void drm_minor_unregister(struct drm_device *dev, unsigned int type)
@@ -188,7 +263,11 @@ static void drm_minor_unregister(struct drm_device *dev, unsigned int type)
 	unsigned long flags;
 
 	minor = *drm_minor_get_slot(dev, type);
+#ifdef __linux__
 	if (!minor || !device_is_registered(minor->kdev))
+#else
+	if (!minor)
+#endif
 		return;
 
 	/* replace @minor with NULL so lookups will fail from now on */
@@ -196,7 +275,9 @@ static void drm_minor_unregister(struct drm_device *dev, unsigned int type)
 	idr_replace(&drm_minors_idr, NULL, minor->index);
 	spin_unlock_irqrestore(&drm_minor_lock, flags);
 
+#ifdef __linux__
 	device_del(minor->kdev);
+#endif
 	dev_set_drvdata(minor->kdev, NULL); /* safety belt */
 	drm_debugfs_cleanup(minor);
 }
@@ -423,12 +504,14 @@ EXPORT_SYMBOL(drm_put_dev);
  */
 bool drm_dev_enter(struct drm_device *dev, int *idx)
 {
+#ifdef notyet
 	*idx = srcu_read_lock(&drm_unplug_srcu);
 
 	if (dev->unplugged) {
 		srcu_read_unlock(&drm_unplug_srcu, *idx);
 		return false;
 	}
+#endif
 
 	return true;
 }
@@ -443,7 +526,9 @@ EXPORT_SYMBOL(drm_dev_enter);
  */
 void drm_dev_exit(int idx)
 {
+#ifdef notyet
 	srcu_read_unlock(&drm_unplug_srcu, idx);
+#endif
 }
 EXPORT_SYMBOL(drm_dev_exit);
 
@@ -459,6 +544,8 @@ EXPORT_SYMBOL(drm_dev_exit);
  */
 void drm_dev_unplug(struct drm_device *dev)
 {
+	STUB();
+#ifdef notyet
 	/*
 	 * After synchronizing any critical read section is guaranteed to see
 	 * the new value of ->unplugged, and any critical section which might
@@ -469,9 +556,11 @@ void drm_dev_unplug(struct drm_device *dev)
 	synchronize_srcu(&drm_unplug_srcu);
 
 	drm_dev_unregister(dev);
+#endif
 }
 EXPORT_SYMBOL(drm_dev_unplug);
 
+#ifdef __linux__
 /*
  * DRM internal mount
  * We want to be able to allocate our own "struct address_space" to control
@@ -531,6 +620,8 @@ static void drm_fs_inode_free(struct inode *inode)
 	}
 }
 
+#endif /* __linux__ */
+
 /**
  * DOC: component helper usage recommendations
  *
@@ -560,9 +651,11 @@ static void drm_dev_init_release(struct drm_device *dev, void *res)
 {
 	drm_legacy_ctxbitmap_cleanup(dev);
 	drm_legacy_remove_map_hash(dev);
+#ifdef __linux__
 	drm_fs_inode_free(dev->anon_inode);
 
 	put_device(dev->dev);
+#endif
 	/* Prevent use-after-free in drm_managed_release when debugging is
 	 * enabled. Slightly awkward, but can't really be helped. */
 	dev->dev = NULL;
@@ -588,7 +681,9 @@ static int drm_dev_init(struct drm_device *dev,
 		return -EINVAL;
 
 	kref_init(&dev->ref);
+#ifdef __linux__
 	dev->dev = get_device(parent);
+#endif
 	dev->driver = driver;
 
 	INIT_LIST_HEAD(&dev->managed.resources);
@@ -598,27 +693,33 @@ static int drm_dev_init(struct drm_device *dev,
 	dev->driver_features = ~0u;
 
 	drm_legacy_init_members(dev);
+#ifdef notyet
 	INIT_LIST_HEAD(&dev->filelist);
+#else
+	SPLAY_INIT(&dev->files);
+#endif
 	INIT_LIST_HEAD(&dev->filelist_internal);
 	INIT_LIST_HEAD(&dev->clientlist);
 	INIT_LIST_HEAD(&dev->vblank_event_list);
 
-	spin_lock_init(&dev->event_lock);
-	mutex_init(&dev->struct_mutex);
-	mutex_init(&dev->filelist_mutex);
-	mutex_init(&dev->clientlist_mutex);
-	mutex_init(&dev->master_mutex);
+	mtx_init(&dev->event_lock, IPL_TTY);
+	rw_init(&dev->struct_mutex, "drmdevlk");
+	rw_init(&dev->filelist_mutex, "drmflist");
+	rw_init(&dev->clientlist_mutex, "drmclist");
+	rw_init(&dev->master_mutex, "drmmast");
 
 	ret = drmm_add_action(dev, drm_dev_init_release, NULL);
 	if (ret)
 		return ret;
 
+#ifdef __linux__
 	dev->anon_inode = drm_fs_inode_new();
 	if (IS_ERR(dev->anon_inode)) {
 		ret = PTR_ERR(dev->anon_inode);
 		DRM_ERROR("Cannot allocate anonymous inode: %d\n", ret);
 		goto err;
 	}
+#endif
 
 	if (drm_core_check_feature(dev, DRIVER_RENDER)) {
 		ret = drm_minor_alloc(dev, DRM_MINOR_RENDER);
@@ -656,15 +757,20 @@ err:
 	return ret;
 }
 
+#ifdef notyet
 static void devm_drm_dev_init_release(void *data)
 {
 	drm_dev_put(data);
 }
+#endif
 
 static int devm_drm_dev_init(struct device *parent,
 			     struct drm_device *dev,
 			     struct drm_driver *driver)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	int ret;
 
 	ret = drm_dev_init(dev, driver, parent);
@@ -813,6 +919,7 @@ static int create_compat_control_link(struct drm_device *dev)
 	kfree(name);
 
 	return ret;
+#endif
 }
 
 static void remove_compat_control_link(struct drm_device *dev)
@@ -942,8 +1049,10 @@ void drm_dev_unregister(struct drm_device *dev)
 	if (dev->driver->unload)
 		dev->driver->unload(dev);
 
+#if IS_ENABLED(CONFIG_AGP)
 	if (dev->agp)
-		drm_pci_agp_destroy(dev);
+		drm_agp_takedown(dev);
+#endif
 
 	drm_legacy_rmmaps(dev);
 
@@ -993,6 +1102,7 @@ EXPORT_SYMBOL(drm_dev_set_unique);
  * registered minor.
  */
 
+#ifdef __linux__
 static int drm_stub_open(struct inode *inode, struct file *filp)
 {
 	const struct file_operations *new_fops;
@@ -1028,23 +1138,29 @@ static const struct file_operations drm_stub_fops = {
 	.open = drm_stub_open,
 	.llseek = noop_llseek,
 };
+#endif /* __linux__ */
 
 static void drm_core_exit(void)
 {
+#ifdef __linux__
 	unregister_chrdev(DRM_MAJOR, "drm");
 	debugfs_remove(drm_debugfs_root);
 	drm_sysfs_destroy();
+#endif
 	idr_destroy(&drm_minors_idr);
 	drm_connector_ida_destroy();
 }
 
 static int __init drm_core_init(void)
 {
+#ifdef __linux__
 	int ret;
+#endif
 
 	drm_connector_ida_init();
 	idr_init(&drm_minors_idr);
 
+#ifdef __linux__
 	ret = drm_sysfs_init();
 	if (ret < 0) {
 		DRM_ERROR("Cannot create DRM class: %d\n", ret);
@@ -1056,16 +1172,855 @@ static int __init drm_core_init(void)
 	ret = register_chrdev(DRM_MAJOR, "drm", &drm_stub_fops);
 	if (ret < 0)
 		goto error;
+#endif
 
 	drm_core_init_complete = true;
 
 	DRM_DEBUG("Initialized\n");
 	return 0;
-
+#ifdef __linux__
 error:
 	drm_core_exit();
 	return ret;
+#endif
 }
 
+#ifdef __linux__
 module_init(drm_core_init);
 module_exit(drm_core_exit);
+#endif
+
+void
+drm_attach_platform(struct drm_driver *driver, bus_space_tag_t iot,
+    bus_dma_tag_t dmat, struct device *dev, struct drm_device *drm)
+{
+	struct drm_attach_args arg;
+
+	memset(&arg, 0, sizeof(arg));
+	arg.driver = driver;
+	arg.bst = iot;
+	arg.dmat = dmat;
+	arg.drm = drm;
+
+	arg.busid = dev->dv_xname;
+	arg.busid_len = strlen(dev->dv_xname) + 1;
+	config_found_sm(dev, &arg, drmprint, drmsubmatch);
+}
+
+struct drm_device *
+drm_attach_pci(struct drm_driver *driver, struct pci_attach_args *pa,
+    int is_agp, int primary, struct device *dev, struct drm_device *drm)
+{
+	struct drm_attach_args arg;
+	struct drm_softc *sc;
+
+	arg.drm = drm;
+	arg.driver = driver;
+	arg.dmat = pa->pa_dmat;
+	arg.bst = pa->pa_memt;
+	arg.is_agp = is_agp;
+	arg.primary = primary;
+	arg.pa = pa;
+
+	arg.busid_len = 20;
+	arg.busid = malloc(arg.busid_len + 1, M_DRM, M_NOWAIT);
+	if (arg.busid == NULL) {
+		printf("%s: no memory for drm\n", dev->dv_xname);
+		return (NULL);
+	}
+	snprintf(arg.busid, arg.busid_len, "pci:%04x:%02x:%02x.%1x",
+	    pa->pa_domain, pa->pa_bus, pa->pa_device, pa->pa_function);
+
+	sc = (struct drm_softc *)config_found_sm(dev, &arg, drmprint, drmsubmatch);
+	if (sc == NULL)
+		return NULL;
+	
+	return sc->sc_drm;
+}
+
+int
+drmprint(void *aux, const char *pnp)
+{
+	if (pnp != NULL)
+		printf("drm at %s", pnp);
+	return (UNCONF);
+}
+
+int
+drmsubmatch(struct device *parent, void *match, void *aux)
+{
+	extern struct cfdriver drm_cd;
+	struct cfdata *cf = match;
+
+	/* only allow drm to attach */
+	if (cf->cf_driver == &drm_cd)
+		return ((*cf->cf_attach->ca_match)(parent, match, aux));
+	return (0);
+}
+
+int
+drm_pciprobe(struct pci_attach_args *pa, const struct pci_device_id *idlist)
+{
+	const struct pci_device_id *id_entry;
+
+	id_entry = drm_find_description(PCI_VENDOR(pa->pa_id),
+	    PCI_PRODUCT(pa->pa_id), idlist);
+	if (id_entry != NULL)
+		return 1;
+
+	return 0;
+}
+
+int
+drm_probe(struct device *parent, void *match, void *aux)
+{
+	struct cfdata *cf = match;
+	struct drm_attach_args *da = aux;
+
+	if (cf->drmdevcf_primary != DRMDEVCF_PRIMARY_UNK) {
+		/*
+		 * If primary-ness of device specified, either match
+		 * exactly (at high priority), or fail.
+		 */
+		if (cf->drmdevcf_primary != 0 && da->primary != 0)
+			return (10);
+		else
+			return (0);
+	}
+
+	/* If primary-ness unspecified, it wins. */
+	return (1);
+}
+
+void
+drm_attach(struct device *parent, struct device *self, void *aux)
+{
+	struct drm_softc *sc = (struct drm_softc *)self;
+	struct drm_attach_args *da = aux;
+	struct drm_device *dev = da->drm;
+	int ret;
+
+	if (drm_refcnt == 0) {
+		drm_linux_init();
+		drm_core_init();
+	}
+	drm_refcnt++;
+
+	if (dev == NULL) {
+		dev = malloc(sizeof(struct drm_device), M_DRM,
+		    M_WAITOK | M_ZERO);
+		sc->sc_allocated = 1;
+	}
+
+	sc->sc_drm = dev;
+
+	dev->dev = self;
+	dev->dev_private = parent;
+	dev->driver = da->driver;
+
+	/* no per-device feature limits by default */
+	dev->driver_features = ~0u;
+
+	dev->dmat = da->dmat;
+	dev->bst = da->bst;
+	dev->unique = da->busid;
+
+	if (da->pa) {
+		struct pci_attach_args *pa = da->pa;
+		pcireg_t subsys;
+
+		subsys = pci_conf_read(pa->pa_pc, pa->pa_tag,
+		    PCI_SUBSYS_ID_REG);
+
+		dev->pdev = &dev->_pdev;
+		dev->pdev->vendor = PCI_VENDOR(pa->pa_id);
+		dev->pdev->device = PCI_PRODUCT(pa->pa_id);
+		dev->pdev->subsystem_vendor = PCI_VENDOR(subsys);
+		dev->pdev->subsystem_device = PCI_PRODUCT(subsys);
+		dev->pdev->revision = PCI_REVISION(pa->pa_class);
+
+		dev->pdev->devfn = PCI_DEVFN(pa->pa_device, pa->pa_function);
+		dev->pdev->bus = &dev->pdev->_bus;
+		dev->pdev->bus->pc = pa->pa_pc;
+		dev->pdev->bus->number = pa->pa_bus;
+		dev->pdev->bus->domain_nr = pa->pa_domain;
+		dev->pdev->bus->bridgetag = pa->pa_bridgetag;
+
+		if (pa->pa_bridgetag != NULL) {
+			dev->pdev->bus->self = malloc(sizeof(struct pci_dev),
+			    M_DRM, M_WAITOK | M_ZERO);
+			dev->pdev->bus->self->pc = pa->pa_pc;
+			dev->pdev->bus->self->tag = *pa->pa_bridgetag;
+		}
+
+		dev->pdev->pc = pa->pa_pc;
+		dev->pdev->tag = pa->pa_tag;
+		dev->pdev->pci = (struct pci_softc *)parent->dv_parent;
+
+#ifdef CONFIG_ACPI
+		dev->pdev->dev.node = acpi_find_pci(pa->pa_pc, pa->pa_tag);
+		aml_register_notify(dev->pdev->dev.node, NULL,
+		    drm_linux_acpi_notify, NULL, ACPIDEV_NOPOLL);
+#endif
+	}
+
+	mtx_init(&dev->quiesce_mtx, IPL_NONE);
+	mtx_init(&dev->event_lock, IPL_TTY);
+	rw_init(&dev->struct_mutex, "drmdevlk");
+	rw_init(&dev->filelist_mutex, "drmflist");
+	rw_init(&dev->clientlist_mutex, "drmclist");
+	rw_init(&dev->master_mutex, "drmmast");
+
+	SPLAY_INIT(&dev->files);
+	INIT_LIST_HEAD(&dev->filelist_internal);
+	INIT_LIST_HEAD(&dev->clientlist);
+	INIT_LIST_HEAD(&dev->vblank_event_list);
+
+	if (drm_core_check_feature(dev, DRIVER_RENDER)) {
+		ret = drm_minor_alloc(dev, DRM_MINOR_RENDER);
+		if (ret)
+			goto error;
+	}
+
+	ret = drm_minor_alloc(dev, DRM_MINOR_PRIMARY);
+	if (ret)
+		goto error;
+
+	if (drm_core_check_feature(dev, DRIVER_USE_AGP)) {
+#if IS_ENABLED(CONFIG_AGP)
+		if (da->is_agp)
+			dev->agp = drm_agp_init();
+#endif
+		if (dev->agp != NULL) {
+			if (drm_mtrr_add(dev->agp->info.ai_aperture_base,
+			    dev->agp->info.ai_aperture_size, DRM_MTRR_WC) == 0)
+				dev->agp->mtrr = 1;
+		}
+	}
+
+	if (dev->driver->gem_size > 0) {
+		KASSERT(dev->driver->gem_size >= sizeof(struct drm_gem_object));
+		/* XXX unique name */
+		pool_init(&dev->objpl, dev->driver->gem_size, 0, IPL_NONE, 0,
+		    "drmobjpl", NULL);
+	}
+
+	if (drm_core_check_feature(dev, DRIVER_GEM)) {
+		ret = drm_gem_init(dev);
+		if (ret) {
+			DRM_ERROR("Cannot initialize graphics execution manager (GEM)\n");
+			goto error;
+		}
+	}
+
+	printf("\n");
+	return;
+
+error:
+	drm_lastclose(dev);
+	dev->dev_private = NULL;
+}
+
+int
+drm_detach(struct device *self, int flags)
+{
+	struct drm_softc *sc = (struct drm_softc *)self;
+	struct drm_device *dev = sc->sc_drm;
+
+	drm_refcnt--;
+	if (drm_refcnt == 0) {
+		drm_core_exit();
+		drm_linux_exit();
+	}
+
+	drm_lastclose(dev);
+
+	if (drm_core_check_feature(dev, DRIVER_GEM)) {
+		drm_gem_destroy(dev);
+
+		if (dev->driver->gem_size > 0)
+			pool_destroy(&dev->objpl);
+	}
+
+	drm_vblank_cleanup(dev);
+
+	if (dev->agp && dev->agp->mtrr) {
+		int retcode;
+
+		retcode = drm_mtrr_del(0, dev->agp->info.ai_aperture_base,
+		    dev->agp->info.ai_aperture_size, DRM_MTRR_WC);
+		DRM_DEBUG("mtrr_del = %d", retcode);
+	}
+
+	free(dev->agp, M_DRM, 0);
+	if (dev->pdev && dev->pdev->bus)
+		free(dev->pdev->bus->self, M_DRM, sizeof(struct pci_dev));
+
+	if (sc->sc_allocated)
+		free(dev, M_DRM, sizeof(struct drm_device));
+
+	return 0;
+}
+
+void
+drm_quiesce(struct drm_device *dev)
+{
+	mtx_enter(&dev->quiesce_mtx);
+	dev->quiesce = 1;
+	while (dev->quiesce_count > 0) {
+		msleep_nsec(&dev->quiesce_count, &dev->quiesce_mtx,
+		    PZERO, "drmqui", INFSLP);
+	}
+	mtx_leave(&dev->quiesce_mtx);
+}
+
+void
+drm_wakeup(struct drm_device *dev)
+{
+	mtx_enter(&dev->quiesce_mtx);
+	dev->quiesce = 0;
+	wakeup(&dev->quiesce);
+	mtx_leave(&dev->quiesce_mtx);
+}
+
+int
+drm_activate(struct device *self, int act)
+{
+	struct drm_softc *sc = (struct drm_softc *)self;
+	struct drm_device *dev = sc->sc_drm;
+
+	switch (act) {
+	case DVACT_QUIESCE:
+		drm_quiesce(dev);
+		break;
+	case DVACT_WAKEUP:
+		drm_wakeup(dev);
+		break;
+	}
+
+	return (0);
+}
+
+struct cfattach drm_ca = {
+	sizeof(struct drm_softc), drm_probe, drm_attach,
+	drm_detach, drm_activate
+};
+
+struct cfdriver drm_cd = {
+	0, "drm", DV_DULL
+};
+
+const struct pci_device_id *
+drm_find_description(int vendor, int device, const struct pci_device_id *idlist)
+{
+	int i = 0;
+	
+	for (i = 0; idlist[i].vendor != 0; i++) {
+		if ((idlist[i].vendor == vendor) &&
+		    (idlist[i].device == device) &&
+		    (idlist[i].subvendor == PCI_ANY_ID) &&
+		    (idlist[i].subdevice == PCI_ANY_ID))
+			return &idlist[i];
+	}
+	return NULL;
+}
+
+int
+drm_file_cmp(struct drm_file *f1, struct drm_file *f2)
+{
+	return (f1->fminor < f2->fminor ? -1 : f1->fminor > f2->fminor);
+}
+
+SPLAY_GENERATE(drm_file_tree, drm_file, link, drm_file_cmp);
+
+struct drm_file *
+drm_find_file_by_minor(struct drm_device *dev, int minor)
+{
+	struct drm_file	key;
+	
+	key.fminor = minor;
+	return (SPLAY_FIND(drm_file_tree, &dev->files, &key));
+}
+
+struct drm_device *
+drm_get_device_from_kdev(dev_t kdev)
+{
+	int unit = minor(kdev) & ((1 << CLONE_SHIFT) - 1);
+	/* control */
+	if (unit >= 64 && unit < 128)
+		unit -= 64;
+	/* render */
+	if (unit >= 128)
+		unit -= 128;
+	struct drm_softc *sc;
+
+	if (unit < drm_cd.cd_ndevs) {
+		sc = (struct drm_softc *)drm_cd.cd_devs[unit];
+		if (sc)
+			return sc->sc_drm;
+	}
+
+	return NULL;
+}
+
+void
+filt_drmdetach(struct knote *kn)
+{
+	struct drm_device *dev = kn->kn_hook;
+	int s;
+
+	s = spltty();
+	klist_remove(&dev->note, kn);
+	splx(s);
+}
+
+int
+filt_drmkms(struct knote *kn, long hint)
+{
+	if (kn->kn_sfflags & hint)
+		kn->kn_fflags |= hint;
+	return (kn->kn_fflags != 0);
+}
+
+void
+filt_drmreaddetach(struct knote *kn)
+{
+	struct drm_file		*file_priv = kn->kn_hook;
+	int s;
+
+	s = spltty();
+	klist_remove(&file_priv->rsel.si_note, kn);
+	splx(s);
+}
+
+int
+filt_drmread(struct knote *kn, long hint)
+{
+	struct drm_file		*file_priv = kn->kn_hook;
+	int			 val = 0;
+
+	if ((hint & NOTE_SUBMIT) == 0)
+		mtx_enter(&file_priv->minor->dev->event_lock);
+	val = !list_empty(&file_priv->event_list);
+	if ((hint & NOTE_SUBMIT) == 0)
+		mtx_leave(&file_priv->minor->dev->event_lock);
+	return (val);
+}
+
+const struct filterops drm_filtops = {
+	.f_flags	= FILTEROP_ISFD,
+	.f_attach	= NULL,
+	.f_detach	= filt_drmdetach,
+	.f_event	= filt_drmkms,
+};
+
+const struct filterops drmread_filtops = {
+	.f_flags	= FILTEROP_ISFD,
+	.f_attach	= NULL,
+	.f_detach	= filt_drmreaddetach,
+	.f_event	= filt_drmread,
+};
+
+int
+drmkqfilter(dev_t kdev, struct knote *kn)
+{
+	struct drm_device	*dev = NULL;
+	struct drm_file		*file_priv = NULL;
+	int			 s;
+
+	dev = drm_get_device_from_kdev(kdev);
+	if (dev == NULL || dev->dev_private == NULL)
+		return (ENXIO);
+
+	switch (kn->kn_filter) {
+	case EVFILT_READ:
+		mutex_lock(&dev->struct_mutex);
+		file_priv = drm_find_file_by_minor(dev, minor(kdev));
+		mutex_unlock(&dev->struct_mutex);
+		if (file_priv == NULL)
+			return (ENXIO);
+
+		kn->kn_fop = &drmread_filtops;
+		kn->kn_hook = file_priv;
+
+		s = spltty();
+		klist_insert(&file_priv->rsel.si_note, kn);
+		splx(s);
+		break;
+	case EVFILT_DEVICE:
+		kn->kn_fop = &drm_filtops;
+		kn->kn_hook = dev;
+
+		s = spltty();
+		klist_insert(&dev->note, kn);
+		splx(s);
+		break;
+	default:
+		return (EINVAL);
+	}
+
+	return (0);
+}
+
+int
+drmopen(dev_t kdev, int flags, int fmt, struct proc *p)
+{
+	struct drm_device	*dev = NULL;
+	struct drm_file		*file_priv;
+	struct drm_minor	*dm;
+	int			 ret = 0;
+	int			 dminor, realminor, minor_type;
+	int need_setup = 0;
+
+	dev = drm_get_device_from_kdev(kdev);
+	if (dev == NULL || dev->dev_private == NULL)
+		return (ENXIO);
+
+	DRM_DEBUG("open_count = %d\n", atomic_read(&dev->open_count));
+
+	if (flags & O_EXCL)
+		return (EBUSY); /* No exclusive opens */
+
+	if (drm_dev_needs_global_mutex(dev))
+		mutex_lock(&drm_global_mutex);
+
+	if (!atomic_fetch_inc(&dev->open_count))
+		need_setup = 1;
+
+	dminor = minor(kdev);
+	realminor =  dminor & ((1 << CLONE_SHIFT) - 1);
+	if (realminor < 64)
+		minor_type = DRM_MINOR_PRIMARY;
+	else if (realminor >= 64 && realminor < 128)
+		minor_type = DRM_MINOR_CONTROL;
+	else
+		minor_type = DRM_MINOR_RENDER;
+
+	dm = *drm_minor_get_slot(dev, minor_type);
+	dm->index = minor(kdev);
+
+	file_priv = drm_file_alloc(dm);
+	if (IS_ERR(file_priv)) {
+		ret = ENOMEM;
+		goto err;
+	}
+
+	/* first opener automatically becomes master */
+	if (drm_is_primary_client(file_priv)) {
+		ret = drm_master_open(file_priv);
+		if (ret != 0)
+			goto out_file_free;
+	}
+
+	file_priv->filp = (void *)file_priv;
+	file_priv->fminor = minor(kdev);
+
+	mutex_lock(&dev->filelist_mutex);
+	SPLAY_INSERT(drm_file_tree, &dev->files, file_priv);
+	mutex_unlock(&dev->filelist_mutex);
+
+	if (need_setup) {
+		ret = drm_legacy_setup(dev);
+		if (ret)
+			goto out_file_free;
+	}
+
+	if (drm_dev_needs_global_mutex(dev))
+		mutex_unlock(&drm_global_mutex);
+
+	return 0;
+
+out_file_free:
+	drm_file_free(file_priv);
+err:
+	atomic_dec(&dev->open_count);
+	if (drm_dev_needs_global_mutex(dev))
+		mutex_unlock(&drm_global_mutex);
+	return (ret);
+}
+
+int
+drmclose(dev_t kdev, int flags, int fmt, struct proc *p)
+{
+	struct drm_device		*dev = drm_get_device_from_kdev(kdev);
+	struct drm_file			*file_priv;
+	int				 retcode = 0;
+
+	if (dev == NULL)
+		return (ENXIO);
+
+	if (drm_dev_needs_global_mutex(dev))
+		mutex_lock(&drm_global_mutex);
+
+	DRM_DEBUG("open_count = %d\n", atomic_read(&dev->open_count));
+
+	mutex_lock(&dev->filelist_mutex);
+	file_priv = drm_find_file_by_minor(dev, minor(kdev));
+	if (file_priv == NULL) {
+		DRM_ERROR("can't find authenticator\n");
+		retcode = EINVAL;
+		mutex_unlock(&dev->filelist_mutex);
+		goto done;
+	}
+
+	SPLAY_REMOVE(drm_file_tree, &dev->files, file_priv);
+	mutex_unlock(&dev->filelist_mutex);
+	drm_file_free(file_priv);
+done:
+	if (atomic_dec_and_test(&dev->open_count))
+		drm_lastclose(dev);
+
+	if (drm_dev_needs_global_mutex(dev))
+		mutex_unlock(&drm_global_mutex);
+
+	return (retcode);
+}
+
+int
+drmread(dev_t kdev, struct uio *uio, int ioflag)
+{
+	struct drm_device		*dev = drm_get_device_from_kdev(kdev);
+	struct drm_file			*file_priv;
+	struct drm_pending_event	*ev;
+	int		 		 error = 0;
+
+	if (dev == NULL)
+		return (ENXIO);
+
+	mutex_lock(&dev->filelist_mutex);
+	file_priv = drm_find_file_by_minor(dev, minor(kdev));
+	mutex_unlock(&dev->filelist_mutex);
+	if (file_priv == NULL)
+		return (ENXIO);
+
+	/*
+	 * The semantics are a little weird here. We will wait until we
+	 * have events to process, but as soon as we have events we will
+	 * only deliver as many as we have.
+	 * Note that events are atomic, if the read buffer will not fit in
+	 * a whole event, we won't read any of it out.
+	 */
+	mtx_enter(&dev->event_lock);
+	while (error == 0 && list_empty(&file_priv->event_list)) {
+		if (ioflag & IO_NDELAY) {
+			mtx_leave(&dev->event_lock);
+			return (EAGAIN);
+		}
+		error = msleep_nsec(&file_priv->event_wait, &dev->event_lock,
+		    PWAIT | PCATCH, "drmread", INFSLP);
+	}
+	if (error) {
+		mtx_leave(&dev->event_lock);
+		return (error);
+	}
+	while (drm_dequeue_event(dev, file_priv, uio->uio_resid, &ev)) {
+		MUTEX_ASSERT_UNLOCKED(&dev->event_lock);
+		/* XXX we always destroy the event on error. */
+		error = uiomove(ev->event, ev->event->length, uio);
+		kfree(ev);
+		if (error)
+			break;
+		mtx_enter(&dev->event_lock);
+	}
+	MUTEX_ASSERT_UNLOCKED(&dev->event_lock);
+
+	return (error);
+}
+
+/*
+ * Deqeue an event from the file priv in question. returning 1 if an
+ * event was found. We take the resid from the read as a parameter because
+ * we will only dequeue and event if the read buffer has space to fit the
+ * entire thing.
+ *
+ * We are called locked, but we will *unlock* the queue on return so that
+ * we may sleep to copyout the event.
+ */
+int
+drm_dequeue_event(struct drm_device *dev, struct drm_file *file_priv,
+    size_t resid, struct drm_pending_event **out)
+{
+	struct drm_pending_event *e = NULL;
+	int gotone = 0;
+
+	MUTEX_ASSERT_LOCKED(&dev->event_lock);
+
+	*out = NULL;
+	if (list_empty(&file_priv->event_list))
+		goto out;
+	e = list_first_entry(&file_priv->event_list,
+			     struct drm_pending_event, link);
+	if (e->event->length > resid)
+		goto out;
+
+	file_priv->event_space += e->event->length;
+	list_del(&e->link);
+	*out = e;
+	gotone = 1;
+
+out:
+	mtx_leave(&dev->event_lock);
+
+	return (gotone);
+}
+
+int
+drmpoll(dev_t kdev, int events, struct proc *p)
+{
+	struct drm_device	*dev = drm_get_device_from_kdev(kdev);
+	struct drm_file		*file_priv;
+	int		 	 revents = 0;
+
+	if (dev == NULL)
+		return (POLLERR);
+
+	mutex_lock(&dev->filelist_mutex);
+	file_priv = drm_find_file_by_minor(dev, minor(kdev));
+	mutex_unlock(&dev->filelist_mutex);
+	if (file_priv == NULL)
+		return (POLLERR);
+
+	mtx_enter(&dev->event_lock);
+	if (events & (POLLIN | POLLRDNORM)) {
+		if (!list_empty(&file_priv->event_list))
+			revents |=  events & (POLLIN | POLLRDNORM);
+		else
+			selrecord(p, &file_priv->rsel);
+	}
+	mtx_leave(&dev->event_lock);
+
+	return (revents);
+}
+
+paddr_t
+drmmmap(dev_t kdev, off_t offset, int prot)
+{
+	return -1;
+}
+
+struct drm_dmamem *
+drm_dmamem_alloc(bus_dma_tag_t dmat, bus_size_t size, bus_size_t alignment,
+    int nsegments, bus_size_t maxsegsz, int mapflags, int loadflags)
+{
+	struct drm_dmamem	*mem;
+	size_t			 strsize;
+	/*
+	 * segs is the last member of the struct since we modify the size 
+	 * to allow extra segments if more than one are allowed.
+	 */
+	strsize = sizeof(*mem) + (sizeof(bus_dma_segment_t) * (nsegments - 1));
+	mem = malloc(strsize, M_DRM, M_NOWAIT | M_ZERO);
+	if (mem == NULL)
+		return (NULL);
+
+	mem->size = size;
+
+	if (bus_dmamap_create(dmat, size, nsegments, maxsegsz, 0,
+	    BUS_DMA_NOWAIT | BUS_DMA_ALLOCNOW, &mem->map) != 0)
+		goto strfree;
+
+	if (bus_dmamem_alloc(dmat, size, alignment, 0, mem->segs, nsegments,
+	    &mem->nsegs, BUS_DMA_NOWAIT | BUS_DMA_ZERO) != 0)
+		goto destroy;
+
+	if (bus_dmamem_map(dmat, mem->segs, mem->nsegs, size, 
+	    &mem->kva, BUS_DMA_NOWAIT | mapflags) != 0)
+		goto free;
+
+	if (bus_dmamap_load(dmat, mem->map, mem->kva, size,
+	    NULL, BUS_DMA_NOWAIT | loadflags) != 0)
+		goto unmap;
+
+	return (mem);
+
+unmap:
+	bus_dmamem_unmap(dmat, mem->kva, size);
+free:
+	bus_dmamem_free(dmat, mem->segs, mem->nsegs);
+destroy:
+	bus_dmamap_destroy(dmat, mem->map);
+strfree:
+	free(mem, M_DRM, 0);
+
+	return (NULL);
+}
+
+void
+drm_dmamem_free(bus_dma_tag_t dmat, struct drm_dmamem *mem)
+{
+	if (mem == NULL)
+		return;
+
+	bus_dmamap_unload(dmat, mem->map);
+	bus_dmamem_unmap(dmat, mem->kva, mem->size);
+	bus_dmamem_free(dmat, mem->segs, mem->nsegs);
+	bus_dmamap_destroy(dmat, mem->map);
+	free(mem, M_DRM, 0);
+}
+
+struct drm_dma_handle *
+drm_pci_alloc(struct drm_device *dev, size_t size, size_t align)
+{
+	struct drm_dma_handle *dmah;
+
+	dmah = malloc(sizeof(*dmah), M_DRM, M_WAITOK);
+	dmah->mem = drm_dmamem_alloc(dev->dmat, size, align, 1, size,
+	    BUS_DMA_NOCACHE, 0);
+	if (dmah->mem == NULL) {
+		free(dmah, M_DRM, sizeof(*dmah));
+		return NULL;
+	}
+	dmah->busaddr = dmah->mem->segs[0].ds_addr;
+	dmah->size = dmah->mem->size;
+	dmah->vaddr = dmah->mem->kva;
+	return (dmah);
+}
+
+void
+drm_pci_free(struct drm_device *dev, struct drm_dma_handle *dmah)
+{
+	if (dmah == NULL)
+		return;
+
+	drm_dmamem_free(dev->dmat, dmah->mem);
+	free(dmah, M_DRM, sizeof(*dmah));
+}
+
+/*
+ * Compute order.  Can be made faster.
+ */
+int
+drm_order(unsigned long size)
+{
+	int order;
+	unsigned long tmp;
+
+	for (order = 0, tmp = size; tmp >>= 1; ++order)
+		;
+
+	if (size & ~(1 << order))
+		++order;
+
+	return order;
+}
+
+int
+drm_getpciinfo(struct drm_device *dev, void *data, struct drm_file *file_priv)
+{
+	struct drm_pciinfo *info = data;
+
+	if (dev->pdev == NULL)
+		return -ENOTTY;
+
+	info->domain = dev->pdev->bus->domain_nr;
+	info->bus = dev->pdev->bus->number;
+	info->dev = PCI_SLOT(dev->pdev->devfn);
+	info->func = PCI_FUNC(dev->pdev->devfn);
+	info->vendor_id = dev->pdev->vendor;
+	info->device_id = dev->pdev->device;
+	info->subvendor_id = dev->pdev->subsystem_vendor;
+	info->subdevice_id = dev->pdev->subsystem_device;
+	info->revision_id = 0;
+
+	return 0;
+}

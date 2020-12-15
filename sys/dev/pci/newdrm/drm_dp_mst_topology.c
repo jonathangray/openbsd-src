@@ -2260,8 +2260,13 @@ static void build_mst_prop_path(const struct drm_dp_mst_branch *mstb,
 int drm_dp_mst_connector_late_register(struct drm_connector *connector,
 				       struct drm_dp_mst_port *port)
 {
+#ifdef __linux__
 	DRM_DEBUG_KMS("registering %s remote bus for %s\n",
 		      port->aux.name, connector->kdev->kobj.name);
+#else
+	DRM_DEBUG_KMS("registering %s remote bus\n",
+		      port->aux.name);
+#endif
 
 	port->aux.dev = connector->kdev;
 	return drm_dp_aux_register_devnode(&port->aux);
@@ -2280,8 +2285,13 @@ EXPORT_SYMBOL(drm_dp_mst_connector_late_register);
 void drm_dp_mst_connector_early_unregister(struct drm_connector *connector,
 					   struct drm_dp_mst_port *port)
 {
+#ifdef __linux__
 	DRM_DEBUG_KMS("unregistering %s remote bus for %s\n",
 		      port->aux.name, connector->kdev->kobj.name);
+#else
+	DRM_DEBUG_KMS("unregistering %s remote bus\n",
+		      port->aux.name);
+#endif
 	drm_dp_aux_unregister_devnode(&port->aux);
 }
 EXPORT_SYMBOL(drm_dp_mst_connector_early_unregister);
@@ -5390,14 +5400,14 @@ int drm_dp_mst_topology_mgr_init(struct drm_dp_mst_topology_mgr *mgr,
 {
 	struct drm_dp_mst_topology_state *mst_state;
 
-	mutex_init(&mgr->lock);
-	mutex_init(&mgr->qlock);
-	mutex_init(&mgr->payload_lock);
-	mutex_init(&mgr->delayed_destroy_lock);
-	mutex_init(&mgr->up_req_lock);
-	mutex_init(&mgr->probe_lock);
+	rw_init(&mgr->lock, "mst");
+	rw_init(&mgr->qlock, "mstq");
+	rw_init(&mgr->payload_lock, "mstpl");
+	rw_init(&mgr->delayed_destroy_lock, "mstdc");
+	rw_init(&mgr->up_req_lock, "mstup");
+	rw_init(&mgr->probe_lock, "mstprb");
 #if IS_ENABLED(CONFIG_DRM_DEBUG_DP_MST_TOPOLOGY_REFS)
-	mutex_init(&mgr->topology_ref_history_lock);
+	rw_init(&mgr->topology_ref_history_lock, "mstref");
 #endif
 	INIT_LIST_HEAD(&mgr->tx_msg_downq);
 	INIT_LIST_HEAD(&mgr->destroy_port_list);
@@ -5662,17 +5672,21 @@ static const struct i2c_algorithm drm_dp_mst_i2c_algo = {
 static int drm_dp_mst_register_i2c_bus(struct drm_dp_mst_port *port)
 {
 	struct drm_dp_aux *aux = &port->aux;
+#ifdef __linux__
 	struct device *parent_dev = port->mgr->dev->dev;
+#endif
 
 	aux->ddc.algo = &drm_dp_mst_i2c_algo;
 	aux->ddc.algo_data = aux;
 	aux->ddc.retries = 3;
 
+#ifdef __linux__
 	aux->ddc.class = I2C_CLASS_DDC;
 	aux->ddc.owner = THIS_MODULE;
 	/* FIXME: set the kdev of the port's connector as parent */
 	aux->ddc.dev.parent = parent_dev;
 	aux->ddc.dev.of_node = parent_dev->of_node;
+#endif
 
 	strlcpy(aux->ddc.name, aux->name ? aux->name : dev_name(parent_dev),
 		sizeof(aux->ddc.name));

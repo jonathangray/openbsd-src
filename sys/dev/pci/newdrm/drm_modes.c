@@ -1386,6 +1386,8 @@ void drm_connector_list_update(struct drm_connector *connector)
 }
 EXPORT_SYMBOL(drm_connector_list_update);
 
+#ifdef __linux__
+
 static int drm_mode_parse_cmdline_bpp(const char *str, char **end_ptr,
 				      struct drm_cmdline_mode *mode)
 {
@@ -1680,6 +1682,8 @@ static int drm_mode_parse_cmdline_options(const char *str,
 	return 0;
 }
 
+#endif /* __linux__ */
+
 static const char * const drm_named_modes_whitelist[] = {
 	"NTSC",
 	"PAL",
@@ -1714,6 +1718,7 @@ bool drm_mode_parse_command_line_for_connector(const char *mode_option,
 					       const struct drm_connector *connector,
 					       struct drm_cmdline_mode *mode)
 {
+#ifdef __linux__
 	const char *name;
 	bool freestanding = false, parse_extras = false;
 	unsigned int bpp_off = 0, refresh_off = 0, options_off = 0;
@@ -1847,6 +1852,9 @@ bool drm_mode_parse_command_line_for_connector(const char *mode_option,
 	}
 
 	return true;
+#else
+	return false;
+#endif
 }
 EXPORT_SYMBOL(drm_mode_parse_command_line_for_connector);
 

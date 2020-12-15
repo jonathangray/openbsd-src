@@ -43,7 +43,7 @@ int drm_client_modeset_create(struct drm_client_dev *client)
 	if (!client->modesets)
 		return -ENOMEM;
 
-	mutex_init(&client->modeset_mutex);
+	rw_init(&client->modeset_mutex, "clmdset");
 
 	drm_for_each_crtc(crtc, dev)
 		client->modesets[i++].crtc = crtc;
@@ -785,11 +785,21 @@ int drm_client_modeset_probe(struct drm_client_dev *client, unsigned int width, 
 	drm_client_for_each_connector_iter(connector, &conn_iter) {
 		struct drm_connector **tmp;
 
+#ifdef __linux__
 		tmp = krealloc(connectors, (connector_count + 1) * sizeof(*connectors), GFP_KERNEL);
 		if (!tmp) {
 			ret = -ENOMEM;
 			goto free_connectors;
 		}
+#else
+		tmp = kmalloc((connector_count + 1) * sizeof(*connectors), GFP_KERNEL);
+		if (!tmp) {
+			ret = -ENOMEM;
+			goto free_connectors;
+		}
+		memcpy(tmp, connectors, connector_count * sizeof(*connectors));
+		kfree(connectors);
+#endif
 
 		connectors = tmp;
 		drm_connector_get(connector);

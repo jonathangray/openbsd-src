@@ -37,6 +37,8 @@
 
 #ifdef CONFIG_DRM_LEGACY
 
+#ifdef __linux__
+
 /**
  * drm_pci_alloc - Allocate a PCI consistent memory block, for DMA.
  * @dev: DRM device
@@ -96,6 +98,8 @@ void drm_pci_free(struct drm_device * dev, drm_dma_handle_t * dmah)
 EXPORT_SYMBOL(drm_pci_free);
 #endif
 
+#endif /* __linux__ */
+
 static int drm_get_pci_domain(struct drm_device *dev)
 {
 #ifndef __alpha__
@@ -123,6 +127,8 @@ int drm_pci_set_busid(struct drm_device *dev, struct drm_master *master)
 	master->unique_len = strlen(master->unique);
 	return 0;
 }
+
+#ifdef __linux__
 
 static int drm_pci_irq_by_busid(struct drm_device *dev, struct drm_irq_busid *p)
 {
@@ -315,3 +321,5 @@ void drm_legacy_pci_exit(struct drm_driver *driver, struct pci_driver *pdriver)
 EXPORT_SYMBOL(drm_legacy_pci_exit);
 
 #endif
+
+#endif /* __linux__ */
