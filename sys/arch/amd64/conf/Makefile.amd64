@@ -208,8 +208,6 @@ dml1_display_rq_dlg_calc.o: $S/dev/pci/newdrm/amd/display/dc/dml/dml1_display_rq
 	${NORMAL_C} ${HARDFLOAT_CFLAGS}
 display_rq_dlg_helpers.o: $S/dev/pci/newdrm/amd/display/dc/dml/display_rq_dlg_helpers.c
 	${NORMAL_C} ${HARDFLOAT_CFLAGS}
-dml_common_defs.o: $S/dev/pci/newdrm/amd/display/dc/dml/dml_common_defs.c
-	${NORMAL_C} ${HARDFLOAT_CFLAGS}
 dcn20_resource.o: $S/dev/pci/newdrm/amd/display/dc/dcn20/dcn20_resource.c
 	${NORMAL_C} ${HARDFLOAT_CFLAGS}
 dcn21_resource.o: $S/dev/pci/newdrm/amd/display/dc/dcn21/dcn21_resource.c
@@ -219,6 +217,10 @@ dc_dsc.o: $S/dev/pci/newdrm/amd/display/dc/dsc/dc_dsc.c
 rc_calc.o: $S/dev/pci/newdrm/amd/display/dc/dsc/rc_calc.c
 	${NORMAL_C} ${HARDFLOAT_CFLAGS}
 rc_calc_dpi.o: $S/dev/pci/newdrm/amd/display/dc/dsc/rc_calc_dpi.c
+	${NORMAL_C} ${HARDFLOAT_CFLAGS}
+dcn30_resource.o: $S/dev/pci/newdrm/amd/display/dc/dcn30/dcn30_resource.c
+	${NORMAL_C} ${HARDFLOAT_CFLAGS}
+dcn30_optc.o: $S/dev/pci/newdrm/amd/display/dc/dcn30/dcn30_optc.c
 	${NORMAL_C} ${HARDFLOAT_CFLAGS}
 
 clean:
