@@ -131,6 +131,9 @@ sg_set_page(struct scatterlist *sgl, struct vm_page *page,
   __sg_page_iter_start((iter), (sgl), (nents), (pgoffset)); \
   while (__sg_page_iter_next(iter))
 
+#define for_each_sgtable_page(st, iter, pgoffset) \
+	for_each_sg_page((st)->sgl, iter, (st)->orig_nents, pgoffset)
+
 size_t sg_copy_from_buffer(struct scatterlist *, unsigned int,
     const void *, size_t);
 
