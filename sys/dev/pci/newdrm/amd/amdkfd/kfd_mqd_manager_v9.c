@@ -108,8 +108,8 @@ static struct kfd_mem_obj *allocate_mqd(struct kfd_dev *kfd,
 		if (!mqd_mem_obj)
 			return NULL;
 		retval = amdgpu_amdkfd_alloc_gtt_mem(kfd->kgd,
-			ALIGN(q->ctl_stack_size, PAGE_SIZE) +
-				ALIGN(sizeof(struct v9_mqd), PAGE_SIZE),
+			roundup2(q->ctl_stack_size, PAGE_SIZE) +
+				roundup2(sizeof(struct v9_mqd), PAGE_SIZE),
 			&(mqd_mem_obj->gtt_mem),
 			&(mqd_mem_obj->gpu_addr),
 			(void *)&(mqd_mem_obj->cpu_ptr), true);

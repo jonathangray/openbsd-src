@@ -30,7 +30,7 @@ static bool baco_wait_register(struct pp_hwmgr *hwmgr, u32 reg, u32 mask, u32 va
 	u32 timeout = 5000, data;
 
 	do {
-		msleep(1);
+		drm_msleep(1);
 		data = RREG32(reg);
 		timeout--;
 	} while (value != (data & mask) && (timeout != 0));
@@ -63,7 +63,7 @@ static bool baco_cmd_handler(struct pp_hwmgr *hwmgr, u32 command, u32 reg, u32 m
 	case CMD_DELAY_MS:
 		if (timeout)
 			/* Delay in milli Seconds */
-			msleep(timeout);
+			drm_msleep(timeout);
 		break;
 	case CMD_DELAY_US:
 		if (timeout)

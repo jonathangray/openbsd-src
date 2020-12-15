@@ -10,6 +10,7 @@
 #include <linux/processor.h>
 #include <linux/preempt.h>
 #include <linux/compiler.h>
+#include <linux/ww_mutex.h>
 
 typedef struct {
 	unsigned int sequence;

@@ -140,13 +140,13 @@ static int vcn_v3_0_sw_init(void *handle)
 		adev->firmware.ucode[AMDGPU_UCODE_ID_VCN].ucode_id = AMDGPU_UCODE_ID_VCN;
 		adev->firmware.ucode[AMDGPU_UCODE_ID_VCN].fw = adev->vcn.fw;
 		adev->firmware.fw_size +=
-			ALIGN(le32_to_cpu(hdr->ucode_size_bytes), PAGE_SIZE);
+			roundup2(le32_to_cpu(hdr->ucode_size_bytes), PAGE_SIZE);
 
 		if (adev->vcn.num_vcn_inst == VCN_INSTANCES_SIENNA_CICHLID) {
 			adev->firmware.ucode[AMDGPU_UCODE_ID_VCN1].ucode_id = AMDGPU_UCODE_ID_VCN1;
 			adev->firmware.ucode[AMDGPU_UCODE_ID_VCN1].fw = adev->vcn.fw;
 			adev->firmware.fw_size +=
-				ALIGN(le32_to_cpu(hdr->ucode_size_bytes), PAGE_SIZE);
+				roundup2(le32_to_cpu(hdr->ucode_size_bytes), PAGE_SIZE);
 		}
 		DRM_INFO("PSP loading VCN firmware\n");
 	}
@@ -200,7 +200,7 @@ static int vcn_v3_0_sw_init(void *handle)
 		}
 		if (adev->asic_type == CHIP_SIENNA_CICHLID && i != 0)
 			ring->no_scheduler = true;
-		sprintf(ring->name, "vcn_dec_%d", i);
+		snprintf(ring->name, sizeof(ring->name), "vcn_dec_%d", i);
 		r = amdgpu_ring_init(adev, ring, 512, &adev->vcn.inst[i].irq, 0,
 				     AMDGPU_RING_PRIO_DEFAULT);
 		if (r)
@@ -224,7 +224,7 @@ static int vcn_v3_0_sw_init(void *handle)
 			}
 			if (adev->asic_type == CHIP_SIENNA_CICHLID && i != 1)
 				ring->no_scheduler = true;
-			sprintf(ring->name, "vcn_enc_%d.%d", i, j);
+			snprintf(ring->name, sizeof(ring->name), "vcn_enc_%d.%d", i, j);
 			r = amdgpu_ring_init(adev, ring, 512, &adev->vcn.inst[i].irq, 0,
 					     AMDGPU_RING_PRIO_DEFAULT);
 			if (r)

@@ -203,8 +203,10 @@ static int drm_new_set_master(struct drm_device *dev, struct drm_file *fpriv)
 static int
 drm_master_check_perm(struct drm_device *dev, struct drm_file *file_priv)
 {
+#ifdef __linux__
 	if (file_priv->pid == task_pid(current) && file_priv->was_master)
 		return 0;
+#endif
 
 	if (!capable(CAP_SYS_ADMIN))
 		return -EACCES;

@@ -631,6 +631,7 @@ bool amdgpu_dmabuf_is_xgmi_accessible(struct amdgpu_device *adev,
 	struct drm_gem_object *gobj;
 
 	if (obj->import_attach) {
+#ifdef notyet
 		struct dma_buf *dma_buf = obj->import_attach->dmabuf;
 
 		if (dma_buf->ops != &amdgpu_dmabuf_ops)
@@ -639,6 +640,9 @@ bool amdgpu_dmabuf_is_xgmi_accessible(struct amdgpu_device *adev,
 
 		gobj = dma_buf->priv;
 		bo = gem_to_amdgpu_bo(gobj);
+#else
+		return false;
+#endif
 	}
 
 	if (amdgpu_xgmi_same_hive(adev, amdgpu_ttm_adev(bo->tbo.bdev)) &&

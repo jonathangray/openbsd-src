@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 
+#ifdef __linux__
 #include <uapi/linux/sched/types.h>
+#endif
 
 #include <drm/drm_print.h>
 #include <drm/drm_vblank.h>

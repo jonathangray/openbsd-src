@@ -42,7 +42,6 @@
 #include <drm/drm_file.h>
 #include <drm/drm_ioctl.h>
 #include <drm/drm_print.h>
-#include <drm/drm_pci.h>
 
 #include "drm_crtc_internal.h"
 #include "drm_internal.h"

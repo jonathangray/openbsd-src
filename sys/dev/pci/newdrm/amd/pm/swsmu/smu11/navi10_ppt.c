@@ -2435,7 +2435,7 @@ static int navi10_i2c_write_data(struct i2c_adapter *control,
 		 * end of write transaction. During this time the EEPROM will not be
 		 * responsive to any more commands - so wait a bit more.
 		 */
-		msleep(10);
+		drm_msleep(10);
 
 	} else
 		dev_err(adev->dev, "navi10_i2c_write- error occurred :%x", ret);

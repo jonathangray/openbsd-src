@@ -68,7 +68,6 @@ void amdgpu_unregister_gpu_instance(struct amdgpu_device *adev)
 	mutex_unlock(&mgpu_info.mutex);
 }
 
-#include <drm/drm_pci.h>
 #include <drm/drm_drv.h>
 
 #include "vga.h"

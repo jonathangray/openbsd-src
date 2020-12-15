@@ -40,6 +40,7 @@ struct dma_buf_attachment {
 
 struct dma_buf_attach_ops {
 	void (*move_notify)(struct dma_buf_attachment *);
+	bool allow_peer2peer;
 };
 
 void	get_dma_buf(struct dma_buf *);
