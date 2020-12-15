@@ -27,5 +27,6 @@
 #define cpu_to_be64(x) htobe64(x)
 
 #define swab16(x) swap16(x)
+#define swab32(x) swap32(x)
 
 #endif
