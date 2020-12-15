@@ -730,8 +730,8 @@ static int gmc_v10_0_mc_init(struct amdgpu_device *adev)
 		if (r)
 			return r;
 	}
-	adev->gmc.aper_base = pci_resource_start(adev->pdev, 0);
-	adev->gmc.aper_size = pci_resource_len(adev->pdev, 0);
+	adev->gmc.aper_base = adev->fb_aper_offset;
+	adev->gmc.aper_size = adev->fb_aper_size;
 
 	/* In case the PCI BAR is larger than the actual amount of vram */
 	adev->gmc.visible_vram_size = adev->gmc.aper_size;
@@ -788,7 +788,7 @@ static int gmc_v10_0_sw_init(void *handle)
 
 	adev->mmhub.funcs->init(adev);
 
-	spin_lock_init(&adev->gmc.invalidate_lock);
+	mtx_init(&adev->gmc.invalidate_lock, IPL_NONE);
 
 	if (adev->asic_type == CHIP_SIENNA_CICHLID && amdgpu_emu_mode == 1) {
 		adev->gmc.vram_type = AMDGPU_VRAM_TYPE_GDDR6;

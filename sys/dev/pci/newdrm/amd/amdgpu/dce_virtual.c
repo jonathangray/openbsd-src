@@ -49,7 +49,11 @@ static int dce_virtual_connector_encoder_init(struct amdgpu_device *adev,
 					      int index);
 static int dce_virtual_pageflip(struct amdgpu_device *adev,
 				unsigned crtc_id);
+#ifdef __linux__
 static enum hrtimer_restart dce_virtual_vblank_timer_handle(struct hrtimer *vblank_timer);
+#else
+static void dce_virtual_vblank_timer_handle(void *);
+#endif
 static void dce_virtual_set_crtc_vblank_interrupt_state(struct amdgpu_device *adev,
 							int crtc,
 							enum amdgpu_interrupt_state state);
@@ -252,11 +256,19 @@ static int dce_virtual_crtc_init(struct amdgpu_device *adev, int index)
 	amdgpu_crtc->vsync_timer_enabled = AMDGPU_IRQ_STATE_DISABLE;
 	drm_crtc_helper_add(&amdgpu_crtc->base, &dce_virtual_crtc_helper_funcs);
 
+#ifdef __linux__
 	hrtimer_init(&amdgpu_crtc->vblank_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
 	hrtimer_set_expires(&amdgpu_crtc->vblank_timer, DCE_VIRTUAL_VBLANK_PERIOD);
 	amdgpu_crtc->vblank_timer.function = dce_virtual_vblank_timer_handle;
 	hrtimer_start(&amdgpu_crtc->vblank_timer,
 		      DCE_VIRTUAL_VBLANK_PERIOD, HRTIMER_MODE_REL);
+#else
+	timeout_set(&amdgpu_crtc->vblank_timer,
+	    dce_virtual_vblank_timer_handle,
+	    &amdgpu_crtc->vblank_timer);
+	timeout_add_nsec(&amdgpu_crtc->vblank_timer,
+	    DCE_VIRTUAL_VBLANK_PERIOD);
+#endif
 	return 0;
 }
 
@@ -702,6 +714,8 @@ static int dce_virtual_pageflip(struct amdgpu_device *adev,
 	return 0;
 }
 
+#ifdef __linux__
+
 static enum hrtimer_restart dce_virtual_vblank_timer_handle(struct hrtimer *vblank_timer)
 {
 	struct amdgpu_crtc *amdgpu_crtc = container_of(vblank_timer,
@@ -722,6 +736,24 @@ static enum hrtimer_restart dce_virtual_vblank_timer_handle(struct hrtimer *vbla
 
 	return HRTIMER_NORESTART;
 }
+
+#else
+
+static void dce_virtual_vblank_timer_handle(void *arg)
+{
+	struct timeout *vblank_timer = arg;
+	struct amdgpu_crtc *amdgpu_crtc = container_of(vblank_timer,
+						       struct amdgpu_crtc, vblank_timer);
+	struct drm_device *ddev = amdgpu_crtc->base.dev;
+	struct amdgpu_device *adev = ddev->dev_private;
+
+	drm_handle_vblank(ddev, amdgpu_crtc->crtc_id);
+	dce_virtual_pageflip(adev, amdgpu_crtc->crtc_id);
+	timeout_add_nsec(vblank_timer, DCE_VIRTUAL_VBLANK_PERIOD);
+
+}
+
+#endif
 
 static void dce_virtual_set_crtc_vblank_interrupt_state(struct amdgpu_device *adev,
 							int crtc,

@@ -5092,7 +5092,7 @@ pci_ers_result_t amdgpu_pci_slot_reset(struct pci_dev *pdev)
 	list_add_tail(&adev->gmc.xgmi.head, &device_list);
 
 	/* wait for asic to come out of reset */
-	msleep(500);
+	drm_msleep(500);
 
 	/* Restore PCI confspace */
 	amdgpu_device_load_pci_state(pdev);

@@ -32,7 +32,7 @@ struct amdgpu_hive_info {
 	struct list_head device_list;
 	struct list_head node;
 	atomic_t number_devices;
-	struct mutex hive_lock;
+	struct rwlock hive_lock;
 	atomic_t in_reset;
 	int hi_req_count;
 	struct amdgpu_device *hi_req_gpu;

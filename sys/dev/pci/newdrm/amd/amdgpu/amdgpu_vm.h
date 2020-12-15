@@ -244,6 +244,12 @@ struct amdgpu_vm_update_funcs {
 		      struct dma_fence **fence);
 };
 
+struct amdgpu_vm_fault {
+	SIMPLEQ_ENTRY(amdgpu_vm_fault)	vm_fault_entry;
+	uint64_t			val;
+};
+SIMPLEQ_HEAD(amdgpu_vm_faults, amdgpu_vm_fault);
+
 struct amdgpu_vm {
 	/* tree of virtual addresses mapped */
 	struct rb_root_cached	va;
@@ -251,7 +257,7 @@ struct amdgpu_vm {
 	/* Lock to prevent eviction while we are updating page tables
 	 * use vm_eviction_lock/unlock(vm)
 	 */
-	struct mutex		eviction_lock;
+	struct rwlock		eviction_lock;
 	bool			evicting;
 	unsigned int		saved_flags;
 
@@ -298,8 +304,12 @@ struct amdgpu_vm {
 	/* Flag to indicate ATS support from PTE for GFX9 */
 	bool			pte_support_ats;
 
+#ifdef __linux__
 	/* Up to 128 pending retry page faults */
 	DECLARE_KFIFO(faults, u64, 128);
+#else
+	struct amdgpu_vm_faults faults;
+#endif
 
 	/* Points to the KFD process VM info */
 	struct amdkfd_process_info *process_info;

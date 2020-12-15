@@ -183,7 +183,7 @@ int amdgpu_vram_mgr_init(struct amdgpu_device *adev)
 	man->func = &amdgpu_vram_mgr_func;
 
 	drm_mm_init(&mgr->mm, 0, man->size);
-	spin_lock_init(&mgr->lock);
+	mtx_init(&mgr->lock, IPL_NONE);
 
 	/* Add the two VRAM-related sysfs files */
 	ret = sysfs_create_files(&adev->dev->kobj, amdgpu_vram_mgr_attributes);

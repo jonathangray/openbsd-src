@@ -571,7 +571,7 @@ static uint32_t smu_v11_0_i2c_write_data(struct i2c_adapter *control,
 		 * TODO Improve to wait for first ACK for slave address after
 		 * internal write cycle done.
 		 */
-		msleep(10);
+		drm_msleep(10);
 
 	return ret;
 
@@ -662,9 +662,11 @@ int smu_v11_0_i2c_control_init(struct i2c_adapter *control)
 	struct amdgpu_device *adev = to_amdgpu_device(control);
 	int res;
 
+#ifdef __linux__
 	control->owner = THIS_MODULE;
 	control->class = I2C_CLASS_SPD;
 	control->dev.parent = &adev->pdev->dev;
+#endif
 	control->algo = &smu_v11_0_i2c_algo;
 	snprintf(control->name, sizeof(control->name), "AMDGPU SMU");
 	control->lock_ops = &smu_v11_0_i2c_i2c_lock_ops;

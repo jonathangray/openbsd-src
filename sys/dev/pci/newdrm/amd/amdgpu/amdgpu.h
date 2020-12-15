@@ -993,7 +993,9 @@ struct amdgpu_device {
 
 	atomic_t 			in_gpu_reset;
 	enum pp_mp1_state               mp1_state;
+#ifdef notyet
 	struct rw_semaphore reset_sem;
+#endif
 	struct amdgpu_doorbell_index doorbell_index;
 
 	struct rwlock			notifier_lock;
@@ -1024,7 +1026,9 @@ struct amdgpu_device {
 	struct amdgpu_autodump		autodump;
 
 	atomic_t			throttling_logging_enabled;
+#ifdef notyet
 	struct ratelimit_state		throttling_logging_rs;
+#endif
 	uint32_t			ras_features;
 
 	bool                            in_pci_err_recovery;

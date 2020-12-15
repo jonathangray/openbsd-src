@@ -144,13 +144,13 @@ static int vcn_v2_5_sw_init(void *handle)
 		adev->firmware.ucode[AMDGPU_UCODE_ID_VCN].ucode_id = AMDGPU_UCODE_ID_VCN;
 		adev->firmware.ucode[AMDGPU_UCODE_ID_VCN].fw = adev->vcn.fw;
 		adev->firmware.fw_size +=
-			ALIGN(le32_to_cpu(hdr->ucode_size_bytes), PAGE_SIZE);
+			roundup2(le32_to_cpu(hdr->ucode_size_bytes), PAGE_SIZE);
 
 		if (adev->vcn.num_vcn_inst == VCN25_MAX_HW_INSTANCES_ARCTURUS) {
 			adev->firmware.ucode[AMDGPU_UCODE_ID_VCN1].ucode_id = AMDGPU_UCODE_ID_VCN1;
 			adev->firmware.ucode[AMDGPU_UCODE_ID_VCN1].fw = adev->vcn.fw;
 			adev->firmware.fw_size +=
-				ALIGN(le32_to_cpu(hdr->ucode_size_bytes), PAGE_SIZE);
+				roundup2(le32_to_cpu(hdr->ucode_size_bytes), PAGE_SIZE);
 		}
 		DRM_INFO("PSP loading VCN firmware\n");
 	}
@@ -187,7 +187,7 @@ static int vcn_v2_5_sw_init(void *handle)
 
 		ring->doorbell_index = (adev->doorbell_index.vcn.vcn_ring0_1 << 1) +
 				(amdgpu_sriov_vf(adev) ? 2*j : 8*j);
-		sprintf(ring->name, "vcn_dec_%d", j);
+		snprintf(ring->name, sizeof(ring->name), "vcn_dec_%d", j);
 		r = amdgpu_ring_init(adev, ring, 512, &adev->vcn.inst[j].irq,
 				     0, AMDGPU_RING_PRIO_DEFAULT);
 		if (r)
@@ -200,7 +200,7 @@ static int vcn_v2_5_sw_init(void *handle)
 			ring->doorbell_index = (adev->doorbell_index.vcn.vcn_ring0_1 << 1) +
 					(amdgpu_sriov_vf(adev) ? (1 + i + 2*j) : (2 + i + 8*j));
 
-			sprintf(ring->name, "vcn_enc_%d.%d", j, i);
+			snprintf(ring->name, sizeof(ring->name), "vcn_enc_%d.%d", j, i);
 			r = amdgpu_ring_init(adev, ring, 512,
 					     &adev->vcn.inst[j].irq, 0,
 					     AMDGPU_RING_PRIO_DEFAULT);
@@ -1015,7 +1015,7 @@ static int vcn_v2_5_start(struct amdgpu_device *adev)
 				if (status & 2)
 					break;
 				if (amdgpu_emu_mode == 1)
-					msleep(500);
+					drm_msleep(500);
 				else
 					mdelay(10);
 			}

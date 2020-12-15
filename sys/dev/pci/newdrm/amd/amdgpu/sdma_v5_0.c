@@ -247,7 +247,7 @@ static int sdma_v5_0_init_microcode(struct amdgpu_device *adev)
 			info->fw = adev->sdma.instance[i].fw;
 			header = (const struct common_firmware_header *)info->fw->data;
 			adev->firmware.fw_size +=
-				ALIGN(le32_to_cpu(header->ucode_size_bytes), PAGE_SIZE);
+				roundup2(le32_to_cpu(header->ucode_size_bytes), PAGE_SIZE);
 		}
 	}
 out:
@@ -843,7 +843,7 @@ static int sdma_v5_0_load_microcode(struct amdgpu_device *adev)
 
 		for (j = 0; j < fw_size; j++) {
 			if (amdgpu_emu_mode == 1 && j % 500 == 0)
-				msleep(1);
+				drm_msleep(1);
 			WREG32(sdma_v5_0_get_reg_offset(adev, i, mmSDMA0_UCODE_DATA), le32_to_cpup(fw_data++));
 		}
 
@@ -942,7 +942,7 @@ static int sdma_v5_0_ring_test_ring(struct amdgpu_ring *ring)
 		if (tmp == 0xDEADBEEF)
 			break;
 		if (amdgpu_emu_mode == 1)
-			msleep(1);
+			drm_msleep(1);
 		else
 			udelay(1);
 	}
@@ -1267,7 +1267,7 @@ static int sdma_v5_0_sw_init(void *handle)
 			(adev->doorbell_index.sdma_engine[0] << 1) //get DWORD offset
 			: (adev->doorbell_index.sdma_engine[1] << 1); // get DWORD offset
 
-		sprintf(ring->name, "sdma%d", i);
+		snprintf(ring->name, sizeof(ring->name), "sdma%d", i);
 		r = amdgpu_ring_init(adev, ring, 1024,
 				     &adev->sdma.trap_irq,
 				     (i == 0) ?
