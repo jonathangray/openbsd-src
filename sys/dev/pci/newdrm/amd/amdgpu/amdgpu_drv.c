@@ -1564,6 +1564,7 @@ struct drm_driver amdgpu_kms_driver = {
 	.patchlevel = KMS_DRIVER_PATCHLEVEL,
 };
 
+#ifdef __linux__
 static struct pci_error_handlers amdgpu_pci_err_handler = {
 	.error_detected	= amdgpu_pci_error_detected,
 	.mmio_enabled	= amdgpu_pci_mmio_enabled,
@@ -1571,7 +1572,6 @@ static struct pci_error_handlers amdgpu_pci_err_handler = {
 	.resume		= amdgpu_pci_resume,
 };
 
-#ifdef __linux__
 static struct pci_driver amdgpu_kms_pci_driver = {
 	.name = DRIVER_NAME,
 	.id_table = pciidlist,

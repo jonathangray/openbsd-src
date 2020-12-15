@@ -1202,7 +1202,7 @@ static int psp_hdcp_load(struct psp_context *psp)
 	if (!ret) {
 		psp->hdcp_context.hdcp_initialized = true;
 		psp->hdcp_context.session_id = cmd->resp.session_id;
-		mutex_init(&psp->hdcp_context.mutex);
+		rw_init(&psp->hdcp_context.mutex, "pspcp");
 	}
 
 	kfree(cmd);
@@ -1348,7 +1348,7 @@ static int psp_dtm_load(struct psp_context *psp)
 	if (!ret) {
 		psp->dtm_context.dtm_initialized = true;
 		psp->dtm_context.session_id = cmd->resp.session_id;
-		mutex_init(&psp->dtm_context.mutex);
+		rw_init(&psp->dtm_context.mutex, "pspdtm");
 	}
 
 	kfree(cmd);
@@ -1489,7 +1489,7 @@ static int psp_rap_load(struct psp_context *psp)
 	if (!ret) {
 		psp->rap_context.rap_initialized = true;
 		psp->rap_context.session_id = cmd->resp.session_id;
-		mutex_init(&psp->rap_context.mutex);
+		rw_init(&psp->rap_context.mutex, "psprap");
 	}
 
 	kfree(cmd);

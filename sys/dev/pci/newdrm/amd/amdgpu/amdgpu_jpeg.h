@@ -46,7 +46,7 @@ struct amdgpu_jpeg {
 	unsigned harvest_config;
 	struct delayed_work idle_work;
 	enum amd_powergating_state cur_state;
-	struct mutex jpeg_pg_lock;
+	struct rwlock jpeg_pg_lock;
 	atomic_t total_submission_cnt;
 };
 

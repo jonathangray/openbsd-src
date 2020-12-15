@@ -37,7 +37,7 @@ static void amdgpu_jpeg_idle_work_handler(struct work_struct *work);
 int amdgpu_jpeg_sw_init(struct amdgpu_device *adev)
 {
 	INIT_DELAYED_WORK(&adev->jpeg.idle_work, amdgpu_jpeg_idle_work_handler);
-	mutex_init(&adev->jpeg.jpeg_pg_lock);
+	rw_init(&adev->jpeg.jpeg_pg_lock, "jpgpg");
 	atomic_set(&adev->jpeg.total_submission_cnt, 0);
 
 	return 0;

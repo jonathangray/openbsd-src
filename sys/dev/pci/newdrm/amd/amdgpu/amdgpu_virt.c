@@ -529,7 +529,8 @@ static int amdgpu_virt_write_vf2pf_data(struct amdgpu_device *adev)
 		strcpy(vf2pf_info->driver_version, THIS_MODULE->version);
 	else
 #endif
-		strcpy(vf2pf_info->driver_version, "N/A");
+		strlcpy(vf2pf_info->driver_version, "N/A",
+		    sizeof(vf2pf_info->driver_version));
 
 	vf2pf_info->pf2vf_version_required = 0; // no requirement, guest understands all
 	vf2pf_info->driver_cert = 0;
