@@ -98,9 +98,9 @@ file	dev/pci/newdrm/ttm/ttm_resource.c		ttm
 file	dev/pci/newdrm/ttm/ttm_tt.c			ttm
 
 define	drm_sched
-file	dev/pci/newdrm/ttm/sched_entity.c	drm_sched
-file	dev/pci/newdrm/ttm/sched_fence.c	drm_sched
-file	dev/pci/newdrm/ttm/sched_main.c		drm_sched
+file	dev/pci/newdrm/scheduler/sched_entity.c		drm_sched
+file	dev/pci/newdrm/scheduler/sched_fence.c		drm_sched
+file	dev/pci/newdrm/scheduler/sched_main.c		drm_sched
 
 device	inteldrm: agpint, drmbase, wsemuldisplaydev, rasops32, rasops_rotation, firmload, i2cbus, i2c_bitbang
 attach	inteldrm at pci
