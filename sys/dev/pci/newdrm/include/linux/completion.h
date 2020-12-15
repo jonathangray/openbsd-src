@@ -132,8 +132,8 @@ complete(struct completion *x)
 	mtx_enter(&x->lock);
 	if (x->done != UINT_MAX)
 		x->done++;
-	wakeup_one(x);
 	mtx_leave(&x->lock);
+	wakeup_one(x);
 }
 
 static inline void
@@ -141,8 +141,8 @@ complete_all(struct completion *x)
 {
 	mtx_enter(&x->lock);
 	x->done = UINT_MAX;
-	wakeup(x);
 	mtx_leave(&x->lock);
+	wakeup(x);
 }
 
 static inline bool

@@ -4,7 +4,6 @@
 #define _LINUX_DELAY_H
 
 #include <sys/param.h>
-#include <sys/systm.h>
 
 static inline void
 udelay(unsigned long usecs)
@@ -21,7 +20,7 @@ ndelay(unsigned long nsecs)
 static inline void
 usleep_range(unsigned long min, unsigned long max)
 {
-	tsleep_nsec(&min, PWAIT, "usleepr", USEC_TO_NSEC(((min + max) / 2)));
+	DELAY((min + max) / 2);
 }
 
 static inline void
@@ -32,10 +31,6 @@ mdelay(unsigned long msecs)
 		DELAY(1000);
 }
 
-static inline void
-drm_msleep(unsigned int msecs)
-{
-	tsleep_nsec(&msecs, PWAIT, "drmsleep", MSEC_TO_NSEC(msecs));
-}
+#define drm_msleep(x)		mdelay(x)
 
 #endif
