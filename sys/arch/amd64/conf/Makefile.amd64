@@ -32,6 +32,10 @@ INCLUDES=	-nostdinc -I$S -I${.OBJDIR} -I$S/arch \
 		-I$S/dev/pci/newdrm/amd/display/dc \
 		-I$S/dev/pci/newdrm/amd/display/amdgpu_dm \
 		-I$S/dev/pci/newdrm/amd/pm/inc \
+		-I$S/dev/pci/newdrm/amd/pm/swsmu \
+		-I$S/dev/pci/newdrm/amd/pm/powerplay \
+		-I$S/dev/pci/newdrm/amd/pm/powerplay/hwmgr \
+		-I$S/dev/pci/newdrm/amd/pm/powerplay/smumgr \
 		-I$S/dev/pci/newdrm/amd/display/dc/inc \
 		-I$S/dev/pci/newdrm/amd/display/dc/inc/hw \
 		-I$S/dev/pci/newdrm/amd/display/dc/clk_mgr \
