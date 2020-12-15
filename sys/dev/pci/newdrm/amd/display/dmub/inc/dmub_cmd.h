@@ -30,7 +30,7 @@
 #include <linux/types.h>
 #include <linux/string.h>
 #include <linux/delay.h>
-#include <stdarg.h>
+#include <sys/stdarg.h>
 
 #include "atomfirmware.h"
 
