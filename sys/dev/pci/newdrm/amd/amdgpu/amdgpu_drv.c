@@ -154,7 +154,7 @@ int amdgpu_reset_method = -1; /* auto */
 int amdgpu_num_kcq = -1;
 
 struct amdgpu_mgpu_info mgpu_info = {
-	.mutex = __MUTEX_INITIALIZER(mgpu_info.mutex),
+	.mutex = RWLOCK_INITIALIZER("mgpu_info"),
 };
 int amdgpu_ras_enable = -1;
 uint amdgpu_ras_mask = 0xffffffff;
@@ -798,7 +798,7 @@ module_param_named(bad_page_threshold, amdgpu_bad_page_threshold, int, 0444);
 MODULE_PARM_DESC(num_kcq, "number of kernel compute queue user want to setup (8 if set to greater than 8 or less than 0, only affect gfx 8+)");
 module_param_named(num_kcq, amdgpu_num_kcq, int, 0444);
 
-static const struct pci_device_id pciidlist[] = {
+const struct pci_device_id amdgpu_pciidlist[] = {
 #ifdef  CONFIG_DRM_AMDGPU_SI
 	{0x1002, 0x6780, PCI_ANY_ID, PCI_ANY_ID, 0, 0, CHIP_TAHITI},
 	{0x1002, 0x6784, PCI_ANY_ID, PCI_ANY_ID, 0, 0, CHIP_TAHITI},
@@ -1094,8 +1094,9 @@ static const struct pci_device_id pciidlist[] = {
 
 MODULE_DEVICE_TABLE(pci, pciidlist);
 
-static struct drm_driver kms_driver;
+struct drm_driver amdgpu_kms_driver;
 
+#ifdef notyet
 static int amdgpu_pci_probe(struct pci_dev *pdev,
 			    const struct pci_device_id *ent)
 {
@@ -1192,7 +1193,7 @@ retry_init:
 	if (ret == -EAGAIN && ++retry <= 3) {
 		DRM_INFO("retry init %d\n", retry);
 		/* Don't request EX mode too frequently which is attacking */
-		msleep(5000);
+		drm_msleep(5000);
 		goto retry_init;
 	} else if (ret) {
 		goto err_pci;
@@ -1435,7 +1436,9 @@ static int amdgpu_pmops_runtime_idle(struct device *dev)
 	pm_runtime_autosuspend(dev);
 	return ret;
 }
+#endif /* notyet */
 
+#ifdef __linux__
 long amdgpu_drm_ioctl(struct file *filp,
 		      unsigned int cmd, unsigned long arg)
 {
@@ -1493,8 +1496,13 @@ static const struct file_operations amdgpu_driver_kms_fops = {
 #endif
 };
 
+#endif /* __linux__ */
+
 int amdgpu_file_to_fpriv(struct file *filp, struct amdgpu_fpriv **fpriv)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
         struct drm_file *file;
 
 	if (!filp)
@@ -1507,33 +1515,46 @@ int amdgpu_file_to_fpriv(struct file *filp, struct amdgpu_fpriv **fpriv)
 	file = filp->private_data;
 	*fpriv = file->driver_priv;
 	return 0;
+#endif
 }
 
-static struct drm_driver kms_driver = {
+struct drm_driver amdgpu_kms_driver = {
 	.driver_features =
 	    DRIVER_ATOMIC |
 	    DRIVER_GEM |
 	    DRIVER_RENDER | DRIVER_MODESET | DRIVER_SYNCOBJ |
 	    DRIVER_SYNCOBJ_TIMELINE,
 	.open = amdgpu_driver_open_kms,
+#ifdef __OpenBSD__
+	.mmap = amdgpu_mmap,
+#endif
 	.postclose = amdgpu_driver_postclose_kms,
 	.lastclose = amdgpu_driver_lastclose_kms,
+#ifdef notyet
 	.irq_handler = amdgpu_irq_handler,
+#endif
 	.ioctls = amdgpu_ioctls_kms,
 	.gem_free_object_unlocked = amdgpu_gem_object_free,
 	.gem_open_object = amdgpu_gem_object_open,
 	.gem_close_object = amdgpu_gem_object_close,
+#ifdef __OpenBSD__
+	.gem_size = sizeof(struct amdgpu_bo),
+#endif
 	.dumb_create = amdgpu_mode_dumb_create,
 	.dumb_map_offset = amdgpu_mode_dumb_mmap,
+#ifdef __linux__
 	.fops = &amdgpu_driver_kms_fops,
+#endif
 
 	.prime_handle_to_fd = drm_gem_prime_handle_to_fd,
 	.prime_fd_to_handle = drm_gem_prime_fd_to_handle,
 	.gem_prime_export = amdgpu_gem_prime_export,
 	.gem_prime_import = amdgpu_gem_prime_import,
+#ifdef notyet
 	.gem_prime_vmap = amdgpu_gem_prime_vmap,
 	.gem_prime_vunmap = amdgpu_gem_prime_vunmap,
 	.gem_prime_mmap = amdgpu_gem_prime_mmap,
+#endif
 
 	.name = DRIVER_NAME,
 	.desc = DRIVER_DESC,
@@ -1550,6 +1571,7 @@ static struct pci_error_handlers amdgpu_pci_err_handler = {
 	.resume		= amdgpu_pci_resume,
 };
 
+#ifdef __linux__
 static struct pci_driver amdgpu_kms_pci_driver = {
 	.name = DRIVER_NAME,
 	.id_table = pciidlist,
@@ -1610,3 +1632,4 @@ module_exit(amdgpu_exit);
 MODULE_AUTHOR(DRIVER_AUTHOR);
 MODULE_DESCRIPTION(DRIVER_DESC);
 MODULE_LICENSE("GPL and additional rights");
+#endif /* __linux__ */

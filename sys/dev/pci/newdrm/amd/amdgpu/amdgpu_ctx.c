@@ -154,8 +154,8 @@ static int amdgpu_ctx_init(struct amdgpu_device *adev,
 	ctx->adev = adev;
 
 	kref_init(&ctx->refcount);
-	spin_lock_init(&ctx->ring_lock);
-	mutex_init(&ctx->lock);
+	mtx_init(&ctx->ring_lock, IPL_TTY);
+	rw_init(&ctx->lock, "amctxlk");
 
 	ctx->reset_counter = atomic_read(&adev->gpu_reset_counter);
 	ctx->reset_counter_query = ctx->reset_counter;
@@ -575,7 +575,7 @@ int amdgpu_ctx_wait_prev_fence(struct amdgpu_ctx *ctx,
 
 void amdgpu_ctx_mgr_init(struct amdgpu_ctx_mgr *mgr)
 {
-	mutex_init(&mgr->lock);
+	rw_init(&mgr->lock, "mgrlk");
 	idr_init(&mgr->ctx_handles);
 }
 

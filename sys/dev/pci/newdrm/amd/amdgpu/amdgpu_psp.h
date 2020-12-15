@@ -298,7 +298,7 @@ struct psp_context
 	struct psp_hdcp_context 	hdcp_context;
 	struct psp_dtm_context		dtm_context;
 	struct psp_rap_context		rap_context;
-	struct mutex			mutex;
+	struct rwlock			mutex;
 	struct psp_memory_training_context mem_train_ctx;
 };
 

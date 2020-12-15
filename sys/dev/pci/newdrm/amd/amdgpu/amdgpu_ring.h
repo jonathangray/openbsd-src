@@ -100,7 +100,7 @@ struct amdgpu_fence_driver {
 	bool				initialized;
 	struct amdgpu_irq_src		*irq_src;
 	unsigned			irq_type;
-	struct timer_list		fallback_timer;
+	struct timeout			fallback_timer;
 	unsigned			num_fences_mask;
 	spinlock_t			lock;
 	struct dma_fence		**fences;
@@ -244,7 +244,7 @@ struct amdgpu_ring {
 	bool			no_scheduler;
 
 	atomic_t		num_jobs[DRM_SCHED_PRIORITY_COUNT];
-	struct mutex		priority_mutex;
+	struct rwlock		priority_mutex;
 	/* protected by priority_mutex */
 	int			priority;
 

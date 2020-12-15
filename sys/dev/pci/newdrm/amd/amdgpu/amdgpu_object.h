@@ -98,6 +98,7 @@ struct amdgpu_bo {
 	/* per VM structure for page tables and with virtual addresses */
 	struct amdgpu_vm_bo_base	*vm_bo;
 	/* Constant after initialization */
+	struct amdgpu_device		*adev;
 	struct amdgpu_bo		*parent;
 	struct amdgpu_bo		*shadow;
 
@@ -272,8 +273,10 @@ int amdgpu_bo_evict_vram(struct amdgpu_device *adev);
 int amdgpu_bo_init(struct amdgpu_device *adev);
 int amdgpu_bo_late_init(struct amdgpu_device *adev);
 void amdgpu_bo_fini(struct amdgpu_device *adev);
+#ifdef notyet
 int amdgpu_bo_fbdev_mmap(struct amdgpu_bo *bo,
 				struct vm_area_struct *vma);
+#endif
 int amdgpu_bo_set_tiling_flags(struct amdgpu_bo *bo, u64 tiling_flags);
 void amdgpu_bo_get_tiling_flags(struct amdgpu_bo *bo, u64 *tiling_flags);
 int amdgpu_bo_set_metadata (struct amdgpu_bo *bo, void *metadata,

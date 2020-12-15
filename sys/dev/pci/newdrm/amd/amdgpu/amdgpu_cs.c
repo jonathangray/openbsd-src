@@ -479,9 +479,11 @@ static int amdgpu_cs_list_validate(struct amdgpu_cs_parser *p,
 		struct amdgpu_bo *bo = ttm_to_amdgpu_bo(lobj->tv.bo);
 		struct mm_struct *usermm;
 
+#ifdef notyet
 		usermm = amdgpu_ttm_tt_get_usermm(bo->tbo.ttm);
 		if (usermm && usermm != current->mm)
 			return -EPERM;
+#endif
 
 		if (amdgpu_ttm_tt_is_userptr(bo->tbo.ttm) &&
 		    lobj->user_invalidated && lobj->user_pages) {
@@ -558,7 +560,7 @@ static int amdgpu_cs_parser_bos(struct amdgpu_cs_parser *p,
 		int i;
 
 		e->user_pages = kvmalloc_array(bo->tbo.ttm->num_pages,
-					sizeof(struct page *),
+					sizeof(struct vm_page *),
 					GFP_KERNEL | __GFP_ZERO);
 		if (!e->user_pages) {
 			DRM_ERROR("calloc failure\n");

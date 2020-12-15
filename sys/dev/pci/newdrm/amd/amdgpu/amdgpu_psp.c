@@ -280,7 +280,7 @@ psp_cmd_submit_buf(struct psp_context *psp,
 		ras_intr = amdgpu_ras_intr_triggered();
 		if (ras_intr)
 			break;
-		msleep(1);
+		drm_msleep(1);
 		amdgpu_asic_invalidate_hdp(psp->adev, NULL);
 	}
 
@@ -2628,6 +2628,9 @@ static ssize_t psp_usbc_pd_fw_sysfs_read(struct device *dev,
 					 struct device_attribute *attr,
 					 char *buf)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct drm_device *ddev = dev_get_drvdata(dev);
 	struct amdgpu_device *adev = drm_to_adev(ddev);
 	uint32_t fw_ver;
@@ -2707,6 +2710,7 @@ fail:
 	}
 
 	return count;
+#endif
 }
 
 static DEVICE_ATTR(usbc_pd_fw, S_IRUGO | S_IWUSR,

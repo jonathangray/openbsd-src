@@ -101,7 +101,7 @@ int amdgpu_gtt_mgr_init(struct amdgpu_device *adev, uint64_t gtt_size)
 	start = AMDGPU_GTT_MAX_TRANSFER_SIZE * AMDGPU_GTT_NUM_TRANSFER_WINDOWS;
 	size = (adev->gmc.gart_size >> PAGE_SHIFT) - start;
 	drm_mm_init(&mgr->mm, start, size);
-	spin_lock_init(&mgr->lock);
+	mtx_init(&mgr->lock, IPL_NONE);
 	atomic64_set(&mgr->available, gtt_size >> PAGE_SHIFT);
 
 	ret = device_create_file(adev->dev, &dev_attr_mem_info_gtt_total);

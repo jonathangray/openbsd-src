@@ -258,7 +258,7 @@ int amdgpu_ring_init(struct amdgpu_device *adev, struct amdgpu_ring *ring,
 
 	ring->max_dw = max_dw;
 	ring->priority = DRM_SCHED_PRIORITY_NORMAL;
-	mutex_init(&ring->priority_mutex);
+	rw_init(&ring->priority_mutex, "ringpri");
 
 	if (!ring->no_scheduler) {
 		hw_ip = ring->funcs->type;

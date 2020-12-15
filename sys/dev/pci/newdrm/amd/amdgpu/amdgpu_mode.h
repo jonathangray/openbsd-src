@@ -229,7 +229,7 @@ struct amdgpu_i2c_chan {
 	struct amdgpu_i2c_bus_rec rec;
 	struct drm_dp_aux aux;
 	bool has_aux;
-	struct mutex mutex;
+	struct rwlock mutex;
 };
 
 struct amdgpu_fbdev;
@@ -424,7 +424,11 @@ struct amdgpu_crtc {
 	u32 lb_vblank_lead_lines;
 	struct drm_display_mode hw_mode;
 	/* for virtual dce */
+#ifdef __linux__
 	struct hrtimer vblank_timer;
+#else
+	struct timeout vblank_timer;
+#endif
 	enum amdgpu_interrupt_state vsync_timer_enabled;
 
 	int otg_inst;

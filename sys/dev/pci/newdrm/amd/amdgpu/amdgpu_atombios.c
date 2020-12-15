@@ -147,7 +147,7 @@ void amdgpu_atombios_i2c_init(struct amdgpu_device *adev)
 			i2c = amdgpu_atombios_get_bus_rec_for_i2c_gpio(gpio);
 
 			if (i2c.valid) {
-				sprintf(stmp, "0x%x", i2c.i2c_id);
+				snprintf(stmp, sizeof(stmp), "0x%x", i2c.i2c_id);
 				adev->i2c_bus[i] = amdgpu_i2c_create(adev_to_drm(adev), &i2c, stmp);
 			}
 			gpio = (ATOM_GPIO_I2C_ASSIGMENT *)
@@ -1734,9 +1734,9 @@ bool amdgpu_atombios_scratch_need_asic_init(struct amdgpu_device *adev)
  * data to or from atom. Note that atom operates on dw units.
  *
  * Use to_le=true when sending data to atom and provide at least
- * ALIGN(num_bytes,4) bytes in the dst buffer.
+ * roundup2(num_bytes,4) bytes in the dst buffer.
  *
- * Use to_le=false when receiving data from atom and provide ALIGN(num_bytes,4)
+ * Use to_le=false when receiving data from atom and provide roundup2(num_bytes,4)
  * byes in the src buffer.
  */
 void amdgpu_atombios_copy_swap(u8 *dst, u8 *src, u8 num_bytes, bool to_le)
@@ -1744,7 +1744,7 @@ void amdgpu_atombios_copy_swap(u8 *dst, u8 *src, u8 num_bytes, bool to_le)
 #ifdef __BIG_ENDIAN
 	u32 src_tmp[5], dst_tmp[5];
 	int i;
-	u8 align_num_bytes = ALIGN(num_bytes, 4);
+	u8 align_num_bytes = roundup2(num_bytes, 4);
 
 	if (to_le) {
 		memcpy(src_tmp, src, num_bytes);
@@ -1999,7 +1999,7 @@ int amdgpu_atombios_init(struct amdgpu_device *adev)
 	atom_card_info->reg_read = cail_reg_read;
 	atom_card_info->reg_write = cail_reg_write;
 	/* needed for iio ops */
-	if (adev->rio_mem) {
+	if (adev->rio_mem_size) {
 		atom_card_info->ioreg_read = cail_ioreg_read;
 		atom_card_info->ioreg_write = cail_ioreg_write;
 	} else {
@@ -2018,7 +2018,7 @@ int amdgpu_atombios_init(struct amdgpu_device *adev)
 		return -ENOMEM;
 	}
 
-	mutex_init(&adev->mode_info.atom_context->mutex);
+	rw_init(&adev->mode_info.atom_context->mutex, "atomcm");
 	if (adev->is_atom_fw) {
 		amdgpu_atomfirmware_scratch_regs_init(adev);
 		amdgpu_atomfirmware_allocate_fb_scratch(adev);

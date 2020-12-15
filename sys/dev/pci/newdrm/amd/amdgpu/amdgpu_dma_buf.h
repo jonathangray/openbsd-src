@@ -33,8 +33,10 @@ bool amdgpu_dmabuf_is_xgmi_accessible(struct amdgpu_device *adev,
 				      struct amdgpu_bo *bo);
 void *amdgpu_gem_prime_vmap(struct drm_gem_object *obj);
 void amdgpu_gem_prime_vunmap(struct drm_gem_object *obj, void *vaddr);
+#ifdef notyet
 int amdgpu_gem_prime_mmap(struct drm_gem_object *obj,
 			  struct vm_area_struct *vma);
+#endif
 
 extern const struct dma_buf_ops amdgpu_dmabuf_ops;
 
