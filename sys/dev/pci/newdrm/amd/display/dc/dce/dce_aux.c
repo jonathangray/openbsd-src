@@ -653,7 +653,7 @@ bool dce_aux_transfer_with_retries(struct ddc_service *ddc,
 					if ((*payload->reply == AUX_TRANSACTION_REPLY_AUX_DEFER) ||
 						(*payload->reply == AUX_TRANSACTION_REPLY_I2C_OVER_AUX_DEFER)) {
 						if (payload->defer_delay > 0)
-							msleep(payload->defer_delay);
+							drm_msleep(payload->defer_delay);
 					}
 				}
 				break;
@@ -685,7 +685,7 @@ bool dce_aux_transfer_with_retries(struct ddc_service *ddc,
 				if (++aux_defer_retries >= AUX_MAX_DEFER_RETRIES)
 					goto fail;
 				else if (payload->defer_delay > 0)
-					msleep(payload->defer_delay);
+					drm_msleep(payload->defer_delay);
 			} else {
 				if (++aux_timeout_retries >= AUX_MAX_TIMEOUT_RETRIES)
 					goto fail;

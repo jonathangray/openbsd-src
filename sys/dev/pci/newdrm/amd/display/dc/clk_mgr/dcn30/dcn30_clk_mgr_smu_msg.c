@@ -59,7 +59,7 @@ static uint32_t dcn30_smu_wait_for_response(struct clk_mgr_internal *clk_mgr, un
 			break;
 
 		if (delay_us >= 1000)
-			msleep(delay_us/1000);
+			drm_msleep(delay_us/1000);
 		else if (delay_us > 0)
 			udelay(delay_us);
 	} while (max_retries--);

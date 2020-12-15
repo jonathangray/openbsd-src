@@ -1165,7 +1165,7 @@ struct dc_sink_fec_caps {
  * The sink structure contains EDID and other display device properties
  */
 struct dc_sink {
-	enum signal_type sink_signal;
+	enum amd_signal_type sink_signal;
 	struct dc_edid dc_edid; /* raw edid */
 	struct dc_edid_caps edid_caps; /* parse display caps */
 	struct dc_container_id *dc_container_id;
@@ -1196,7 +1196,7 @@ void dc_sink_retain(struct dc_sink *sink);
 void dc_sink_release(struct dc_sink *sink);
 
 struct dc_sink_init_data {
-	enum signal_type sink_signal;
+	enum amd_signal_type sink_signal;
 	struct dc_link *link;
 	uint32_t dongle_max_pix_clk;
 	bool converter_disable_audio;
@@ -1240,7 +1240,7 @@ void dc_power_down_on_boot(struct dc *dc);
  * HDCP Interfaces
  */
 enum hdcp_message_status dc_process_hdcp_msg(
-		enum signal_type signal,
+		enum amd_signal_type signal,
 		struct dc_link *link,
 		struct hdcp_protection_message *message_info);
 #endif

@@ -675,8 +675,8 @@ static void hpd_initialize(
 
 bool dce110_link_encoder_validate_dvi_output(
 	const struct dce110_link_encoder *enc110,
-	enum signal_type connector_signal,
-	enum signal_type signal,
+	enum amd_signal_type connector_signal,
+	enum amd_signal_type signal,
 	const struct dc_crtc_timing *crtc_timing)
 {
 	uint32_t max_pixel_clock = TMDS_MAX_PIXEL_CLOCK;
@@ -973,7 +973,7 @@ void dce110_link_encoder_destroy(struct link_encoder **enc)
 
 void dce110_link_encoder_setup(
 	struct link_encoder *enc,
-	enum signal_type signal)
+	enum amd_signal_type signal)
 {
 	struct dce110_link_encoder *enc110 = TO_DCE110_LINK_ENC(enc);
 
@@ -1013,7 +1013,7 @@ void dce110_link_encoder_enable_tmds_output(
 	struct link_encoder *enc,
 	enum clock_source_id clock_source,
 	enum dc_color_depth color_depth,
-	enum signal_type signal,
+	enum amd_signal_type signal,
 	uint32_t pixel_clock)
 {
 	struct dce110_link_encoder *enc110 = TO_DCE110_LINK_ENC(enc);
@@ -1242,7 +1242,7 @@ void dce60_link_encoder_enable_dp_mst_output(
  */
 void dce110_link_encoder_disable_output(
 	struct link_encoder *enc,
-	enum signal_type signal)
+	enum amd_signal_type signal)
 {
 	struct dce110_link_encoder *enc110 = TO_DCE110_LINK_ENC(enc);
 	struct bp_transmitter_control cntl = { 0 };

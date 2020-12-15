@@ -25,7 +25,7 @@
 #ifndef __DAL_AUDIO_DCE_110_H__
 #define __DAL_AUDIO_DCE_110_H__
 
-#include "audio.h"
+#include <hw/audio.h>
 
 #define AUD_COMMON_REG_LIST(id)\
 	SRI(AZALIA_F0_CODEC_ENDPOINT_INDEX, AZF0ENDPOINT, id),\
@@ -166,12 +166,12 @@ void dce_aud_az_enable(struct audio *audio);
 void dce_aud_az_disable(struct audio *audio);
 
 void dce_aud_az_configure(struct audio *audio,
-	enum signal_type signal,
+	enum amd_signal_type signal,
 	const struct audio_crtc_info *crtc_info,
 	const struct audio_info *audio_info);
 
 void dce_aud_wall_dto_setup(struct audio *audio,
-	enum signal_type signal,
+	enum amd_signal_type signal,
 	const struct audio_crtc_info *crtc_info,
 	const struct audio_pll_info *pll_info);
 

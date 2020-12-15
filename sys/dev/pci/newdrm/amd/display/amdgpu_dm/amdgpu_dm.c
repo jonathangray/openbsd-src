@@ -687,10 +687,12 @@ static void amdgpu_dm_audio_component_unbind(struct device *kdev,
 	adev->dm.audio_component = NULL;
 }
 
+#ifdef notyet
 static const struct component_ops amdgpu_dm_audio_component_bind_ops = {
 	.bind	= amdgpu_dm_audio_component_bind,
 	.unbind	= amdgpu_dm_audio_component_unbind,
 };
+#endif
 
 static int amdgpu_dm_audio_init(struct amdgpu_device *adev)
 {
@@ -938,8 +940,8 @@ static int amdgpu_dm_init(struct amdgpu_device *adev)
 	memset(&init_params, 0, sizeof(init_params));
 #endif
 
-	mutex_init(&adev->dm.dc_lock);
-	mutex_init(&adev->dm.audio_lock);
+	rw_init(&adev->dm.dc_lock, "dmdc");
+	rw_init(&adev->dm.audio_lock, "dmaud");
 
 	if(amdgpu_dm_irq_init(adev)) {
 		DRM_ERROR("amdgpu: failed to initialize DM IRQ support.\n");
@@ -1221,12 +1223,12 @@ static int load_dmcu_fw(struct amdgpu_device *adev)
 	adev->firmware.ucode[AMDGPU_UCODE_ID_DMCU_ERAM].ucode_id = AMDGPU_UCODE_ID_DMCU_ERAM;
 	adev->firmware.ucode[AMDGPU_UCODE_ID_DMCU_ERAM].fw = adev->dm.fw_dmcu;
 	adev->firmware.fw_size +=
-		ALIGN(le32_to_cpu(hdr->header.ucode_size_bytes) - le32_to_cpu(hdr->intv_size_bytes), PAGE_SIZE);
+		roundup2(le32_to_cpu(hdr->header.ucode_size_bytes) - le32_to_cpu(hdr->intv_size_bytes), PAGE_SIZE);
 
 	adev->firmware.ucode[AMDGPU_UCODE_ID_DMCU_INTV].ucode_id = AMDGPU_UCODE_ID_DMCU_INTV;
 	adev->firmware.ucode[AMDGPU_UCODE_ID_DMCU_INTV].fw = adev->dm.fw_dmcu;
 	adev->firmware.fw_size +=
-		ALIGN(le32_to_cpu(hdr->intv_size_bytes), PAGE_SIZE);
+		roundup2(le32_to_cpu(hdr->intv_size_bytes), PAGE_SIZE);
 
 	adev->dm.dmcu_fw_version = le32_to_cpu(hdr->header.ucode_version);
 
@@ -1307,7 +1309,7 @@ static int dm_dmub_sw_init(struct amdgpu_device *adev)
 		adev->firmware.ucode[AMDGPU_UCODE_ID_DMCUB].fw =
 			adev->dm.dmub_fw;
 		adev->firmware.fw_size +=
-			ALIGN(le32_to_cpu(hdr->inst_const_bytes), PAGE_SIZE);
+			roundup2(le32_to_cpu(hdr->inst_const_bytes), PAGE_SIZE);
 
 		DRM_INFO("Loading DMUB firmware via PSP: version=0x%08X\n",
 			 adev->dm.dmcub_fw_version);
@@ -4484,9 +4486,15 @@ static void fill_audio_info(struct audio_info *audio_info,
 
 	cea_revision = drm_connector->display_info.cea_rev;
 
+#ifdef __linux__
 	strscpy(audio_info->display_name,
 		edid_caps->display_name,
 		AUDIO_INFO_DISPLAY_NAME_SIZE_IN_CHARS);
+#else
+	strncpy(audio_info->display_name,
+		edid_caps->display_name,
+		AUDIO_INFO_DISPLAY_NAME_SIZE_IN_CHARS - 1);
+#endif
 
 	if (cea_revision >= 3) {
 		audio_info->mode_count = edid_caps->audio_mode_count;
@@ -6167,7 +6175,7 @@ fail:
 }
 
 
-static int to_drm_connector_type(enum signal_type st)
+static int to_drm_connector_type(enum amd_signal_type st)
 {
 	switch (st) {
 	case SIGNAL_TYPE_HDMI_TYPE_A:
@@ -6250,7 +6258,11 @@ amdgpu_dm_create_common_mode(struct drm_encoder *encoder,
 	mode->hdisplay = hdisplay;
 	mode->vdisplay = vdisplay;
 	mode->type &= ~DRM_MODE_TYPE_PREFERRED;
+#ifdef __linux__
 	strscpy(mode->name, name, DRM_DISPLAY_MODE_LEN);
+#else
+	strncpy(mode->name, name, DRM_DISPLAY_MODE_LEN);
+#endif
 
 	return mode;
 
@@ -6386,7 +6398,7 @@ void amdgpu_dm_connector_init_helper(struct amdgpu_display_manager *dm,
 	aconnector->base.dpms = DRM_MODE_DPMS_OFF;
 	aconnector->hpd.hpd = AMDGPU_HPD_NONE; /* not used */
 	aconnector->audio_inst = -1;
-	mutex_init(&aconnector->hpd_lock);
+	rw_init(&aconnector->hpd_lock, "dmhpd");
 
 	/*
 	 * configure support HPD hot plug connector_>polled default value is 0
@@ -6510,9 +6522,11 @@ create_i2c(struct ddc_service *ddc_service,
 	i2c = kzalloc(sizeof(struct amdgpu_i2c_adapter), GFP_KERNEL);
 	if (!i2c)
 		return NULL;
+#ifdef notyet
 	i2c->base.owner = THIS_MODULE;
 	i2c->base.class = I2C_CLASS_DDC;
 	i2c->base.dev.parent = &adev->pdev->dev;
+#endif
 	i2c->base.algo = &amdgpu_dm_i2c_algo;
 	snprintf(i2c->base.name, sizeof(i2c->base.name), "AMDGPU DM i2c hw bus %d", link_index);
 	i2c_set_adapdata(&i2c->base, i2c);

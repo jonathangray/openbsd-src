@@ -291,6 +291,7 @@ bool dal_vector_reserve(struct vector *vector, uint32_t capacity)
 	if (capacity <= vector->capacity)
 		return true;
 
+#ifdef __linux__
 	new_container = krealloc(vector->container,
 				 capacity * vector->struct_size, GFP_KERNEL);
 
@@ -299,6 +300,18 @@ bool dal_vector_reserve(struct vector *vector, uint32_t capacity)
 		vector->capacity = capacity;
 		return true;
 	}
+#else
+	new_container = kmalloc(capacity * vector->struct_size, GFP_KERNEL);
+
+	if (new_container) {
+		memcpy(new_container, vector->container,
+		    vector->capacity * vector->struct_size);
+		kfree(vector->container);
+		vector->container = new_container;
+		vector->capacity = capacity;
+		return true;
+	}
+#endif
 
 	return false;
 }

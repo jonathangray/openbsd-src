@@ -30,7 +30,7 @@
 #include <linux/delay.h>
 
 #include "dm_services.h"
-#include <stdarg.h>
+#include <sys/stdarg.h>
 
 #include "dc.h"
 #include "dc_dmub_srv.h"
@@ -499,7 +499,7 @@ void generic_reg_wait(const struct dc_context *ctx,
 	for (i = 0; i <= time_out_num_tries; i++) {
 		if (i) {
 			if (delay_between_poll_us >= 1000)
-				msleep(delay_between_poll_us/1000);
+				drm_msleep(delay_between_poll_us / 1000);
 			else if (delay_between_poll_us > 0)
 				udelay(delay_between_poll_us);
 		}

@@ -1114,7 +1114,7 @@ void dce110_timing_generator_set_test_pattern(
 bool dce110_timing_generator_validate_timing(
 	struct timing_generator *tg,
 	const struct dc_crtc_timing *timing,
-	enum signal_type signal)
+	enum amd_signal_type signal)
 {
 	uint32_t h_blank;
 	uint32_t h_back_porch, hsync_offset, h_sync_start;
@@ -1961,7 +1961,7 @@ void dce110_tg_program_timing(struct timing_generator *tg,
 	int vstartup_start,
 	int vupdate_offset,
 	int vupdate_width,
-	const enum signal_type signal,
+	const enum amd_signal_type signal,
 	bool use_vbios)
 {
 	if (use_vbios)
