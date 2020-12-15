@@ -32,6 +32,8 @@
 
 #include <drm/drm_device.h>
 
+#include <uvm/uvm_extern.h>
+
 struct drm_file;
 struct drm_gem_object;
 struct drm_master;
@@ -457,8 +459,15 @@ struct drm_driver {
 	 * FIXME: There's way too much duplication going on here, and also moved
 	 * to &drm_gem_object_funcs.
 	 */
+#ifdef __linux__
 	int (*gem_prime_mmap)(struct drm_gem_object *obj,
 				struct vm_area_struct *vma);
+#endif
+
+#ifdef __OpenBSD__
+	struct uvm_object *(*mmap)(struct file *, vm_prot_t, voff_t, vsize_t);
+	size_t gem_size;
+#endif
 
 	/**
 	 * @dumb_create:
@@ -529,6 +538,12 @@ struct drm_driver {
 	 * &drm_gem_object_funcs.vm_ops.
 	 */
 	const struct vm_operations_struct *gem_vm_ops;
+
+#ifdef __OpenBSD__
+	int (*gem_fault)(struct drm_gem_object *,
+			 struct uvm_faultinfo *, off_t, vaddr_t,
+			 vm_page_t *, int, int, vm_prot_t, int);
+#endif
 
 	/** @major: driver major number */
 	int major;
@@ -710,5 +725,22 @@ static inline bool drm_drv_uses_atomic_modeset(struct drm_device *dev)
 
 int drm_dev_set_unique(struct drm_device *dev, const char *name);
 
+struct drm_file *drm_find_file_by_minor(struct drm_device *, int);
+struct drm_device *drm_get_device_from_kdev(dev_t);
+
+#ifdef __OpenBSD__
+
+void drm_attach_platform(struct drm_driver *, bus_space_tag_t, bus_dma_tag_t,
+    struct device *, struct drm_device *);
+struct drm_device *drm_attach_pci(struct drm_driver *,
+    struct pci_attach_args *, int, int, struct device *, struct drm_device *);
+
+int drm_pciprobe(struct pci_attach_args *, const struct pci_device_id * );
+const struct pci_device_id *drm_find_description(int, int,
+    const struct pci_device_id *);
+
+int drm_getpciinfo(struct drm_device *, void *, struct drm_file *);
+
+#endif
 
 #endif

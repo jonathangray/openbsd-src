@@ -66,11 +66,11 @@ enum ttm_caching_state {
  * memory.
  */
 struct ttm_tt {
-	struct page **pages;
+	struct vm_page **pages;
 	uint32_t page_flags;
 	unsigned long num_pages;
 	struct sg_table *sg; /* for SG objects via dma-buf */
-	struct file *swap_storage;
+	struct uvm_object *swap_storage;
 	enum ttm_caching_state caching_state;
 };
 
@@ -104,6 +104,10 @@ struct ttm_dma_tt {
 	struct ttm_tt ttm;
 	dma_addr_t *dma_address;
 	struct list_head pages_list;
+
+	bus_dma_tag_t dmat;
+	bus_dmamap_t map;
+	bus_dma_segment_t *segs;
 };
 
 /**
@@ -185,7 +189,7 @@ int ttm_tt_swapin(struct ttm_tt *ttm);
  * and cache flushes and potential page splitting / combining.
  */
 int ttm_tt_set_placement_caching(struct ttm_tt *ttm, uint32_t placement);
-int ttm_tt_swapout(struct ttm_bo_device *bdev, struct ttm_tt *ttm, struct file *persistent_swap_storage);
+int ttm_tt_swapout(struct ttm_bo_device *bdev, struct ttm_tt *ttm, struct uvm_object *persistent_swap_storage);
 
 /**
  * ttm_tt_populate - allocate pages for a ttm
@@ -221,7 +225,7 @@ void ttm_tt_unpopulate(struct ttm_bo_device *bdev, struct ttm_tt *ttm);
  * bind and unbind memory backing a ttm_tt.
  */
 struct ttm_tt *ttm_agp_tt_create(struct ttm_buffer_object *bo,
-				 struct agp_bridge_data *bridge,
+				 struct drm_agp_head *agp,
 				 uint32_t page_flags);
 int ttm_agp_bind(struct ttm_tt *ttm, struct ttm_resource *bo_mem);
 void ttm_agp_unbind(struct ttm_tt *ttm);

@@ -161,7 +161,9 @@ struct drm_gem_object_funcs {
 	 * drm_gem_prime_mmap().  When @mmap is present @vm_ops is not
 	 * used, the @mmap callback must set vma->vm_ops instead.
 	 */
+#ifdef __linux__
 	int (*mmap)(struct drm_gem_object *obj, struct vm_area_struct *vma);
+#endif
 
 	/**
 	 * @vm_ops:
@@ -182,6 +184,12 @@ struct drm_gem_object_funcs {
  * Buffer objects are often abbreviated to BO.
  */
 struct drm_gem_object {
+	/*
+	 * This must be first as uobj is cast to ttm_buffer_object for
+	 * radeon_ttm_fault() the first member of that struct is drm_gem_object
+	 */
+	struct uvm_object uobj;
+
 	/**
 	 * @refcount:
 	 *
@@ -311,6 +319,9 @@ struct drm_gem_object {
 	 *
 	 */
 	const struct drm_gem_object_funcs *funcs;
+
+	SPLAY_ENTRY(drm_gem_object) entry;
+	struct uvm_object *uao;
 };
 
 /**
@@ -345,11 +356,13 @@ int drm_gem_object_init(struct drm_device *dev,
 			struct drm_gem_object *obj, size_t size);
 void drm_gem_private_object_init(struct drm_device *dev,
 				 struct drm_gem_object *obj, size_t size);
+#ifdef __linux__
 void drm_gem_vm_open(struct vm_area_struct *vma);
 void drm_gem_vm_close(struct vm_area_struct *vma);
 int drm_gem_mmap_obj(struct drm_gem_object *obj, unsigned long obj_size,
 		     struct vm_area_struct *vma);
 int drm_gem_mmap(struct file *filp, struct vm_area_struct *vma);
+#endif
 
 /**
  * drm_gem_object_get - acquire a GEM buffer object reference
@@ -395,8 +408,8 @@ void drm_gem_free_mmap_offset(struct drm_gem_object *obj);
 int drm_gem_create_mmap_offset(struct drm_gem_object *obj);
 int drm_gem_create_mmap_offset_size(struct drm_gem_object *obj, size_t size);
 
-struct page **drm_gem_get_pages(struct drm_gem_object *obj);
-void drm_gem_put_pages(struct drm_gem_object *obj, struct page **pages,
+struct vm_page **drm_gem_get_pages(struct drm_gem_object *obj);
+void drm_gem_put_pages(struct drm_gem_object *obj, struct vm_page **pages,
 		bool dirty, bool accessed);
 
 int drm_gem_objects_lookup(struct drm_file *filp, void __user *bo_handles,
@@ -408,11 +421,13 @@ int drm_gem_lock_reservations(struct drm_gem_object **objs, int count,
 			      struct ww_acquire_ctx *acquire_ctx);
 void drm_gem_unlock_reservations(struct drm_gem_object **objs, int count,
 				 struct ww_acquire_ctx *acquire_ctx);
+#ifdef notyet
 int drm_gem_fence_array_add(struct xarray *fence_array,
 			    struct dma_fence *fence);
 int drm_gem_fence_array_add_implicit(struct xarray *fence_array,
 				     struct drm_gem_object *obj,
 				     bool write);
+#endif
 int drm_gem_dumb_map_offset(struct drm_file *file, struct drm_device *dev,
 			    u32 handle, u64 *offset);
 int drm_gem_dumb_destroy(struct drm_file *file,

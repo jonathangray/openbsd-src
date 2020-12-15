@@ -98,7 +98,11 @@ struct drm_sched_entity {
 	struct dma_fence_cb		cb;
 	atomic_t			*guilty;
 	struct dma_fence                *last_scheduled;
+#ifdef __linux__
 	struct task_struct		*last_user;
+#else
+	struct process			*last_user;
+#endif
 	bool 				stopped;
 	struct completion		entity_idle;
 };
@@ -281,7 +285,11 @@ struct drm_gpu_scheduler {
 	atomic_t			hw_rq_count;
 	atomic64_t			job_id_count;
 	struct delayed_work		work_tdr;
+#ifdef __linux__
 	struct task_struct		*thread;
+#else
+	struct proc			*thread;
+#endif
 	struct list_head		ring_mirror_list;
 	spinlock_t			job_list_lock;
 	int				hang_limit;

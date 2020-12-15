@@ -85,10 +85,10 @@ int ttm_mem_global_alloc(struct ttm_mem_global *glob, uint64_t memory,
 			 struct ttm_operation_ctx *ctx);
 void ttm_mem_global_free(struct ttm_mem_global *glob, uint64_t amount);
 int ttm_mem_global_alloc_page(struct ttm_mem_global *glob,
-			      struct page *page, uint64_t size,
+			      struct vm_page *page, uint64_t size,
 			      struct ttm_operation_ctx *ctx);
 void ttm_mem_global_free_page(struct ttm_mem_global *glob,
-			      struct page *page, uint64_t size);
+			      struct vm_page *page, uint64_t size);
 size_t ttm_round_pot(size_t size);
 bool ttm_check_under_lowerlimit(struct ttm_mem_global *glob, uint64_t num_pages,
 				struct ttm_operation_ctx *ctx);

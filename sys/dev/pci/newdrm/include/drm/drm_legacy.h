@@ -79,11 +79,24 @@ struct drm_buf {
 	void *dev_private;		 /**< Per-buffer private storage */
 };
 
+struct drm_dmamem {
+	bus_dmamap_t		map;
+	caddr_t			kva;
+	bus_size_t		size;
+	int			nsegs;
+	bus_dma_segment_t	segs[1];
+};
+
 typedef struct drm_dma_handle {
+	struct drm_dmamem *mem;
 	dma_addr_t busaddr;
 	void *vaddr;
 	size_t size;
 } drm_dma_handle_t;
+
+struct drm_dmamem	*drm_dmamem_alloc(bus_dma_tag_t, bus_size_t, bus_size_t,
+			     int, bus_size_t, int, int);
+void			 drm_dmamem_free(bus_dma_tag_t, struct drm_dmamem *);
 
 /**
  * Buffer entry.  There is one of this for each buffer size order.
@@ -128,7 +141,7 @@ struct drm_sg_mem {
 	unsigned long handle;
 	void *virtual;
 	int pages;
-	struct page **pagelist;
+	struct vm_page **pagelist;
 	dma_addr_t *busaddr;
 };
 
@@ -165,7 +178,9 @@ struct drm_local_map *drm_legacy_findmap(struct drm_device *dev, unsigned int to
 void drm_legacy_rmmap(struct drm_device *d, struct drm_local_map *map);
 int drm_legacy_rmmap_locked(struct drm_device *d, struct drm_local_map *map);
 struct drm_local_map *drm_legacy_getsarea(struct drm_device *dev);
+#ifdef __linux__
 int drm_legacy_mmap(struct file *filp, struct vm_area_struct *vma);
+#endif
 
 int drm_legacy_addbufs_agp(struct drm_device *d, struct drm_buf_desc *req);
 int drm_legacy_addbufs_pci(struct drm_device *d, struct drm_buf_desc *req);

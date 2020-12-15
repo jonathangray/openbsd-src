@@ -44,7 +44,7 @@
  */
 struct drm_prime_file_private {
 /* private: */
-	struct mutex lock;
+	struct rwlock lock;
 	struct rb_root dmabufs;
 	struct rb_root handles;
 };
@@ -85,11 +85,13 @@ void drm_gem_unmap_dma_buf(struct dma_buf_attachment *attach,
 void *drm_gem_dmabuf_vmap(struct dma_buf *dma_buf);
 void drm_gem_dmabuf_vunmap(struct dma_buf *dma_buf, void *vaddr);
 
+#ifdef __linux__
 int drm_gem_prime_mmap(struct drm_gem_object *obj, struct vm_area_struct *vma);
 int drm_gem_dmabuf_mmap(struct dma_buf *dma_buf, struct vm_area_struct *vma);
+#endif
 
 struct sg_table *drm_prime_pages_to_sg(struct drm_device *dev,
-				       struct page **pages, unsigned int nr_pages);
+				       struct vm_page **pages, unsigned int nr_pages);
 struct dma_buf *drm_gem_prime_export(struct drm_gem_object *obj,
 				     int flags);
 
@@ -104,7 +106,7 @@ struct drm_gem_object *drm_gem_prime_import(struct drm_device *dev,
 
 void drm_prime_gem_destroy(struct drm_gem_object *obj, struct sg_table *sg);
 
-int drm_prime_sg_to_page_addr_arrays(struct sg_table *sgt, struct page **pages,
+int drm_prime_sg_to_page_addr_arrays(struct sg_table *sgt, struct vm_page **pages,
 				     dma_addr_t *addrs, int max_pages);
 
 

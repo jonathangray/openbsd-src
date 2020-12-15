@@ -614,14 +614,14 @@ struct drm_dp_mst_topology_mgr {
 	 * @lock: protects @mst_state, @mst_primary, @dpcd, and
 	 * @payload_id_table_cleared.
 	 */
-	struct mutex lock;
+	struct rwlock lock;
 
 	/**
 	 * @probe_lock: Prevents @work and @up_req_work, the only writers of
 	 * &drm_dp_mst_port.mstb and &drm_dp_mst_branch.ports, from racing
 	 * while they update the topology.
 	 */
-	struct mutex probe_lock;
+	struct rwlock probe_lock;
 
 	/**
 	 * @mst_state: If this manager is enabled for an MST capable port. False
@@ -661,7 +661,7 @@ struct drm_dp_mst_topology_mgr {
 	/**
 	 * @qlock: protects @tx_msg_downq and &drm_dp_sideband_msg_tx.state
 	 */
-	struct mutex qlock;
+	struct rwlock qlock;
 
 	/**
 	 * @tx_msg_downq: List of pending down requests
@@ -671,7 +671,7 @@ struct drm_dp_mst_topology_mgr {
 	/**
 	 * @payload_lock: Protect payload information.
 	 */
-	struct mutex payload_lock;
+	struct rwlock payload_lock;
 	/**
 	 * @proposed_vcpis: Array of pointers for the new VCPI allocation. The
 	 * VCPI structure itself is &drm_dp_mst_port.vcpi, and the size of
@@ -721,7 +721,7 @@ struct drm_dp_mst_topology_mgr {
 	 * @delayed_destroy_lock: Protects @destroy_port_list and
 	 * @destroy_branch_device_list.
 	 */
-	struct mutex delayed_destroy_lock;
+	struct rwlock delayed_destroy_lock;
 
 	/**
 	 * @delayed_destroy_wq: Workqueue used for delayed_destroy_work items.
@@ -744,7 +744,7 @@ struct drm_dp_mst_topology_mgr {
 	/**
 	 * @up_req_lock: Protects @up_req_list
 	 */
-	struct mutex up_req_lock;
+	struct rwlock up_req_lock;
 	/**
 	 * @up_req_work: Work item to process up requests received from the
 	 * topology. Needed to avoid blocking hotplug handling and sideband
@@ -758,7 +758,7 @@ struct drm_dp_mst_topology_mgr {
 	 * &drm_dp_mst_port.topology_ref_history and
 	 * &drm_dp_mst_branch.topology_ref_history.
 	 */
-	struct mutex topology_ref_history_lock;
+	struct rwlock topology_ref_history_lock;
 #endif
 };
 

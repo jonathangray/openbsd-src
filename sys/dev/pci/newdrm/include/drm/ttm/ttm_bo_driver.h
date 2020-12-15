@@ -276,7 +276,7 @@ extern struct ttm_bo_global {
 	 */
 
 	struct kobject kobj;
-	struct page *dummy_read_page;
+	struct vm_page *dummy_read_page;
 	spinlock_t lru_lock;
 
 	/**
@@ -325,6 +325,11 @@ struct ttm_bo_device {
 	 */
 	struct ttm_resource_manager sysman;
 	struct ttm_resource_manager *man_drv[TTM_NUM_MEM_TYPES];
+
+	bus_space_tag_t iot;
+	bus_space_tag_t memt;
+	bus_dma_tag_t dmat;
+
 	/*
 	 * Protected by internal locks.
 	 */
