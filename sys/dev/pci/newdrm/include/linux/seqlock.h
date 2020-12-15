@@ -142,4 +142,9 @@ read_seqretry(seqlock_t *sl, unsigned int pos)
 	return sl->seq != pos;
 }
 
+typedef struct {
+	unsigned int seq;
+	struct ww_mutex lock;
+} seqcount_ww_mutex_t;
+
 #endif
