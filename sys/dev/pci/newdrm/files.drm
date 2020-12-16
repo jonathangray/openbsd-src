@@ -504,6 +504,17 @@ file	dev/pci/drm/amd/amdgpu/amdgpu_si_dpm.c		amdgpu_si
 file	dev/pci/drm/amd/amdgpu/si_ih.c			amdgpu_si
 file	dev/pci/drm/amd/amdgpu/amdgpu_si_smc.c		amdgpu_si
 
+# CONFIG_DRM_AMD_DC_SI
+define amd_dc_si
+file	dev/pci/newdrm/amd/display/dc/bios/dce60/command_table_helper_dce60.c	amd_dc_si
+file	dev/pci/newdrm/amd/display/dc/clk_mgr/dce60/dce60_clk_mgr.c	amd_dc_si
+file	dev/pci/newdrm/amd/display/dc/dce60/dce60_hw_sequencer.c	amd_dc_si
+file	dev/pci/newdrm/amd/display/dc/dce60/dce60_resource.c		amd_dc_si
+file	dev/pci/newdrm/amd/display/dc/dce60/dce60_timing_generator.c	amd_dc_si
+file	dev/pci/newdrm/amd/display/dc/gpio/dce60/hw_factory_dce60.c	amd_dc_si
+file	dev/pci/newdrm/amd/display/dc/gpio/dce60/hw_translate_dce60.c	amd_dc_si
+file	dev/pci/newdrm/amd/display/dc/irq/dce60/irq_service_dce60.c	amd_dc_si
+
 # CONFIG_DRM_AMDGPU_CIK
 define	amdgpu_cik
 file	dev/pci/drm/amd/amdgpu/amdgpu_cik.c		amdgpu_cik
@@ -736,7 +747,6 @@ file	dev/pci/newdrm/amd/display/dc/bios/command_table_helper2.c	amdgpu
 file	dev/pci/newdrm/amd/display/dc/bios/dce110/command_table_helper_dce110.c		amdgpu
 file	dev/pci/newdrm/amd/display/dc/bios/dce112/command_table_helper2_dce112.c	amdgpu
 file	dev/pci/newdrm/amd/display/dc/bios/dce112/command_table_helper_dce112.c		amdgpu
-file	dev/pci/newdrm/amd/display/dc/bios/dce60/command_table_helper_dce60.c		amdgpu
 file	dev/pci/newdrm/amd/display/dc/bios/dce80/command_table_helper_dce80.c		amdgpu
 file	dev/pci/newdrm/amd/display/dc/calcs/bw_fixed.c			amdgpu
 file	dev/pci/newdrm/amd/display/dc/calcs/custom_float.c		amdgpu
@@ -749,7 +759,6 @@ file	dev/pci/newdrm/amd/display/dc/clk_mgr/dce100/dce_clk_mgr.c	amdgpu
 file	dev/pci/newdrm/amd/display/dc/clk_mgr/dce110/dce110_clk_mgr.c	amdgpu
 file	dev/pci/newdrm/amd/display/dc/clk_mgr/dce112/dce112_clk_mgr.c	amdgpu
 file	dev/pci/newdrm/amd/display/dc/clk_mgr/dce120/dce120_clk_mgr.c	amdgpu
-file	dev/pci/newdrm/amd/display/dc/clk_mgr/dce60/dce60_clk_mgr.c	amdgpu
 file	dev/pci/newdrm/amd/display/dc/clk_mgr/dcn10/rv1_clk_mgr.c	amdgpu
 #file	dev/pci/newdrm/amd/display/dc/clk_mgr/dcn10/rv1_clk_mgr_clk.c	amdgpu
 file	dev/pci/newdrm/amd/display/dc/clk_mgr/dcn10/rv1_clk_mgr_vbios_smu.c	amdgpu
@@ -813,9 +822,6 @@ file	dev/pci/newdrm/amd/display/dc/dce112/dce112_resource.c		amdgpu
 file	dev/pci/newdrm/amd/display/dc/dce120/dce120_hw_sequencer.c	amdgpu
 file	dev/pci/newdrm/amd/display/dc/dce120/dce120_resource.c		amdgpu
 file	dev/pci/newdrm/amd/display/dc/dce120/dce120_timing_generator.c	amdgpu
-file	dev/pci/newdrm/amd/display/dc/dce60/dce60_hw_sequencer.c	amdgpu
-file	dev/pci/newdrm/amd/display/dc/dce60/dce60_resource.c		amdgpu
-file	dev/pci/newdrm/amd/display/dc/dce60/dce60_timing_generator.c	amdgpu
 file	dev/pci/newdrm/amd/display/dc/dce80/dce80_hw_sequencer.c	amdgpu
 file	dev/pci/newdrm/amd/display/dc/dce80/dce80_resource.c		amdgpu
 file	dev/pci/newdrm/amd/display/dc/dce80/dce80_timing_generator.c	amdgpu
@@ -897,8 +903,6 @@ file	dev/pci/newdrm/amd/display/dc/gpio/dce110/hw_factory_dce110.c	amdgpu
 file	dev/pci/newdrm/amd/display/dc/gpio/dce110/hw_translate_dce110.c	amdgpu
 file	dev/pci/newdrm/amd/display/dc/gpio/dce120/hw_factory_dce120.c	amdgpu
 file	dev/pci/newdrm/amd/display/dc/gpio/dce120/hw_translate_dce120.c	amdgpu
-file	dev/pci/newdrm/amd/display/dc/gpio/dce60/hw_factory_dce60.c	amdgpu
-file	dev/pci/newdrm/amd/display/dc/gpio/dce60/hw_translate_dce60.c	amdgpu
 file	dev/pci/newdrm/amd/display/dc/gpio/dce80/hw_factory_dce80.c	amdgpu
 file	dev/pci/newdrm/amd/display/dc/gpio/dce80/hw_translate_dce80.c	amdgpu
 file	dev/pci/newdrm/amd/display/dc/gpio/dcn10/hw_factory_dcn10.c	amdgpu
@@ -922,7 +926,6 @@ file	dev/pci/newdrm/amd/display/dc/gpio/hw_translate.c		amdgpu
 file	dev/pci/newdrm/amd/display/dc/hdcp/hdcp_msg.c			amdgpu
 file	dev/pci/newdrm/amd/display/dc/irq/dce110/irq_service_dce110.c	amdgpu
 file	dev/pci/newdrm/amd/display/dc/irq/dce120/irq_service_dce120.c	amdgpu
-file	dev/pci/newdrm/amd/display/dc/irq/dce60/irq_service_dce60.c	amdgpu
 file	dev/pci/newdrm/amd/display/dc/irq/dce80/irq_service_dce80.c	amdgpu
 file	dev/pci/newdrm/amd/display/dc/irq/dcn10/irq_service_dcn10.c	amdgpu
 file	dev/pci/newdrm/amd/display/dc/irq/dcn20/irq_service_dcn20.c	amdgpu
