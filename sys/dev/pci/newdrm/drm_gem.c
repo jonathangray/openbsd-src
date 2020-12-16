@@ -81,7 +81,7 @@ drm_unref(struct uvm_object *uobj)
 	struct drm_gem_object *obj =
 	    container_of(uobj, struct drm_gem_object, uobj);
 
-	drm_gem_object_put_unlocked(obj);
+	drm_gem_object_put(obj);
 }
 
 int
@@ -200,13 +200,13 @@ udv_attach_drm(dev_t device, vm_prot_t accessprot, voff_t off, vsize_t size)
 		return NULL;
 
 	if (!drm_vma_node_is_allowed(node, priv)) {
-		drm_gem_object_put_unlocked(obj);
+		drm_gem_object_put(obj);
 		return NULL;
 	}
 
 	if (node->readonly) {
 		if (accessprot & PROT_WRITE) {
-			drm_gem_object_put_unlocked(obj);
+			drm_gem_object_put(obj);
 			return NULL;
 		}
 	}
@@ -1210,6 +1210,8 @@ drm_gem_object_put_locked(struct drm_gem_object *obj)
 }
 EXPORT_SYMBOL(drm_gem_object_put_locked);
 
+#ifdef __linux__
+
 /**
  * drm_gem_vm_open - vma->ops->open implementation for GEM
  * @vma: VM area structure
@@ -1239,8 +1241,6 @@ void drm_gem_vm_close(struct vm_area_struct *vma)
 	drm_gem_object_put(obj);
 }
 EXPORT_SYMBOL(drm_gem_vm_close);
-
-#ifdef __linux
 
 /**
  * drm_gem_mmap_obj - memory map a GEM object

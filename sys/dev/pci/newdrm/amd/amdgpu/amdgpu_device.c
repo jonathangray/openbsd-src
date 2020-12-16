@@ -455,6 +455,8 @@ void amdgpu_mm_wreg_mmio_rlc(struct amdgpu_device *adev,
  */
 u32 amdgpu_io_rreg(struct amdgpu_device *adev, u32 reg)
 {
+	u32 val;
+
 	if (adev->in_pci_err_recovery)
 		return 0;
 
@@ -3284,15 +3286,15 @@ int amdgpu_device_init(struct amdgpu_device *adev,
 	if (r)
 		return r;
 
-	mtx_init(&adev->mmio_idx_lock IPL_TTY);
-	mtx_init(&adev->smc_idx_lock IPL_TTY);
-	mtx_init(&adev->pcie_idx_lock IPL_TTY);
-	mtx_init(&adev->uvd_ctx_idx_lock IPL_TTY);
-	mtx_init(&adev->didt_idx_lock IPL_TTY);
-	mtx_init(&adev->gc_cac_idx_lock IPL_TTY);
-	mtx_init(&adev->se_cac_idx_lock IPL_TTY);
-	mtx_init(&adev->audio_endpt_idx_lock IPL_TTY);
-	mtx_init(&adev->mm_stats.lock IPL_NONE);
+	mtx_init(&adev->mmio_idx_lock, IPL_TTY);
+	mtx_init(&adev->smc_idx_lock, IPL_TTY);
+	mtx_init(&adev->pcie_idx_lock, IPL_TTY);
+	mtx_init(&adev->uvd_ctx_idx_lock, IPL_TTY);
+	mtx_init(&adev->didt_idx_lock, IPL_TTY);
+	mtx_init(&adev->gc_cac_idx_lock, IPL_TTY);
+	mtx_init(&adev->se_cac_idx_lock, IPL_TTY);
+	mtx_init(&adev->audio_endpt_idx_lock, IPL_TTY);
+	mtx_init(&adev->mm_stats.lock, IPL_NONE);
 
 	INIT_LIST_HEAD(&adev->shadow_list);
 	rw_init(&adev->shadow_list_lock, "sdwlst");
