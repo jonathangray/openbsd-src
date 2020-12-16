@@ -416,8 +416,8 @@ static int smu_early_init(void *handle)
 	smu->adev = adev;
 	smu->pm_enabled = !!amdgpu_dpm;
 	smu->is_apu = false;
-	mutex_init(&smu->mutex);
-	mutex_init(&smu->smu_baco.mutex);
+	rw_init(&smu->mutex, "smurw");
+	rw_init(&smu->smu_baco.mutex, "smubc");
 	smu->smu_baco.state = SMU_BACO_STATE_EXIT;
 	smu->smu_baco.platform_support = false;
 
@@ -793,14 +793,14 @@ static int smu_sw_init(void *handle)
 
 	smu->pool_size = adev->pm.smu_prv_buffer_size;
 	smu->smu_feature.feature_num = SMU_FEATURE_MAX;
-	mutex_init(&smu->smu_feature.mutex);
+	rw_init(&smu->smu_feature.mutex, "smuft");
 	bitmap_zero(smu->smu_feature.supported, SMU_FEATURE_MAX);
 	bitmap_zero(smu->smu_feature.enabled, SMU_FEATURE_MAX);
 	bitmap_zero(smu->smu_feature.allowed, SMU_FEATURE_MAX);
 
-	mutex_init(&smu->sensor_lock);
-	mutex_init(&smu->metrics_lock);
-	mutex_init(&smu->message_lock);
+	rw_init(&smu->sensor_lock, "smusen");
+	rw_init(&smu->metrics_lock, "smumt");
+	rw_init(&smu->message_lock, "smuml");
 
 	INIT_WORK(&smu->throttling_logging_work, smu_throttling_logging_work_fn);
 	INIT_WORK(&smu->interrupt_work, smu_interrupt_work_fn);
@@ -811,8 +811,8 @@ static int smu_sw_init(void *handle)
 
 	atomic_set(&smu->smu_power.power_gate.vcn_gated, 1);
 	atomic_set(&smu->smu_power.power_gate.jpeg_gated, 1);
-	mutex_init(&smu->smu_power.power_gate.vcn_gate_lock);
-	mutex_init(&smu->smu_power.power_gate.jpeg_gate_lock);
+	rw_init(&smu->smu_power.power_gate.vcn_gate_lock, "vcngl");
+	rw_init(&smu->smu_power.power_gate.jpeg_gate_lock, "jpgglk");
 
 	smu->workload_mask = 1 << smu->workload_prority[PP_SMC_POWER_PROFILE_BOOTUP_DEFAULT];
 	smu->workload_prority[PP_SMC_POWER_PROFILE_BOOTUP_DEFAULT] = 0;

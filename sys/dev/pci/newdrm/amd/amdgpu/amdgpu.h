@@ -993,9 +993,7 @@ struct amdgpu_device {
 
 	atomic_t 			in_gpu_reset;
 	enum pp_mp1_state               mp1_state;
-#ifdef notyet
-	struct rw_semaphore reset_sem;
-#endif
+	struct rwlock			reset_sem;
 	struct amdgpu_doorbell_index doorbell_index;
 
 	struct rwlock			notifier_lock;

@@ -95,7 +95,7 @@ static void amdgpu_bo_destroy(struct ttm_buffer_object *tbo)
 	amdgpu_bo_unref(&bo->parent);
 
 	kfree(bo->metadata);
-	pool_put(&bo->adev->ddev->objpl, bo);
+	pool_put(&adev->ddev.objpl, bo);
 }
 
 /**
@@ -558,7 +558,7 @@ static int amdgpu_bo_do_create(struct amdgpu_device *adev,
 	acc_size = ttm_bo_dma_acc_size(&adev->mman.bdev, size,
 				       sizeof(struct amdgpu_bo));
 
-	bo = pool_get(&adev->ddev->objpl, PR_WAITOK | PR_ZERO);
+	bo = pool_get(&adev->ddev.objpl, PR_WAITOK | PR_ZERO);
 	if (bo == NULL)
 		return -ENOMEM;
 	drm_gem_private_object_init(adev_to_drm(adev), &bo->tbo.base, size);

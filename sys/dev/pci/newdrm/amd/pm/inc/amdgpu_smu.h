@@ -298,8 +298,8 @@ struct smu_power_gate {
 	bool vce_gated;
 	atomic_t vcn_gated;
 	atomic_t jpeg_gated;
-	struct mutex vcn_gate_lock;
-	struct mutex jpeg_gate_lock;
+	struct rwlock vcn_gate_lock;
+	struct rwlock jpeg_gate_lock;
 };
 
 struct smu_power_context {
@@ -353,7 +353,7 @@ enum smu_baco_state
 
 struct smu_baco_context
 {
-	struct mutex mutex;
+	struct rwlock mutex;
 	uint32_t state;
 	bool platform_support;
 };

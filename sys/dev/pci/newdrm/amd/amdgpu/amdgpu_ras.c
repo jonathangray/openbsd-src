@@ -1256,11 +1256,10 @@ static void amdgpu_ras_debugfs_remove_all(struct amdgpu_device *adev)
 }
 /* debugfs end */
 
-#endif /* __linux__ */
-
 /* ras fs */
 static BIN_ATTR(gpu_vram_bad_pages, S_IRUGO,
 		amdgpu_ras_sysfs_badpages_read, NULL, 0);
+#endif /* __linux__ */
 static DEVICE_ATTR(features, S_IRUGO,
 		amdgpu_ras_sysfs_features_read, NULL);
 static int amdgpu_ras_fs_init(struct amdgpu_device *adev)
