@@ -372,12 +372,12 @@ static int renoir_print_clk_levels(struct smu_context *smu,
 			else
 				i = 1;
 
-			size += sprintf(buf + size, "0: %uMhz %s\n", min,
+			size += snprintf(buf + size, PAGE_SIZE - size, "0: %uMhz %s\n", min,
 					i == 0 ? "*" : "");
-			size += sprintf(buf + size, "1: %uMhz %s\n",
+			size += snprintf(buf + size, PAGE_SIZE - size, "1: %uMhz %s\n",
 					i == 1 ? cur_value : RENOIR_UMD_PSTATE_GFXCLK,
 					i == 1 ? "*" : "");
-			size += sprintf(buf + size, "2: %uMhz %s\n", max,
+			size += snprintf(buf + size, PAGE_SIZE - size, "2: %uMhz %s\n", max,
 					i == 2 ? "*" : "");
 		}
 		return size;
@@ -407,14 +407,14 @@ static int renoir_print_clk_levels(struct smu_context *smu,
 			return ret;
 		if (!value)
 			continue;
-		size += sprintf(buf + size, "%d: %uMhz %s\n", i, value,
+		size += snprintf(buf + size, PAGE_SIZE - size, "%d: %uMhz %s\n", i, value,
 				cur_value == value ? "*" : "");
 		if (cur_value == value)
 			cur_value_match_level = true;
 	}
 
 	if (!cur_value_match_level)
-		size += sprintf(buf + size, "   %uMhz *\n", cur_value);
+		size += snprintf(buf + size, PAGE_SIZE - size, "   %uMhz *\n", cur_value);
 
 	return size;
 }
@@ -1004,7 +1004,7 @@ static int renoir_get_power_profile_mode(struct smu_context *smu,
 		if (workload_type < 0)
 			continue;
 
-		size += sprintf(buf + size, "%2d %14s%s\n",
+		size += snprintf(buf + size, PAGE_SIZE - size, "%2d %14s%s\n",
 			i, profile_name[i], (i == smu->power_profile_mode) ? "*" : " ");
 	}
 
