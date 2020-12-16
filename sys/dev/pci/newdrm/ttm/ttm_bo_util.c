@@ -124,6 +124,7 @@ static int ttm_resource_ioremap(struct ttm_bo_device *bdev,
 {
 	int ret;
 	void *addr;
+	int flags;
 
 	*virtual = NULL;
 	ret = ttm_mem_io_reserve(bdev, mem);
@@ -136,13 +137,25 @@ static int ttm_resource_ioremap(struct ttm_bo_device *bdev,
 		size_t bus_size = (size_t)mem->num_pages << PAGE_SHIFT;
 
 		if (mem->placement & TTM_PL_FLAG_WC)
-			addr = ioremap_wc(mem->bus.offset, bus_size);
+			flags = BUS_SPACE_MAP_PREFETCHABLE;
 		else
-			addr = ioremap(mem->bus.offset, bus_size);
+			flags = 0;
+
+		if (bus_space_map(bdev->memt, mem->bus.offset,
+		    bus_size, BUS_SPACE_MAP_LINEAR | flags,
+		    &mem->bus.bsh)) {
+			printf("%s bus_space_map failed\n", __func__);
+			return -ENOMEM;
+		}
+
+		addr = bus_space_vaddr(bdev->memt, mem->bus.bsh);
+
 		if (!addr) {
 			ttm_mem_io_free(bdev, mem);
 			return -ENOMEM;
 		}
+
+		mem->bus.size = bus_size;
 	}
 	*virtual = addr;
 	return 0;
@@ -153,7 +166,7 @@ static void ttm_resource_iounmap(struct ttm_bo_device *bdev,
 				void *virtual)
 {
 	if (virtual && mem->bus.addr == NULL)
-		iounmap(virtual);
+		bus_space_unmap(bdev->memt, mem->bus.bsh, mem->bus.size);
 	ttm_mem_io_free(bdev, mem);
 }
 
@@ -174,7 +187,10 @@ static int ttm_copy_io_ttm_page(struct ttm_tt *ttm, void *src,
 				unsigned long page,
 				pgprot_t prot)
 {
-	struct page *d = ttm->pages[page];
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
+	struct vm_page *d = ttm->pages[page];
 	void *dst;
 
 	if (!d)
@@ -190,13 +206,17 @@ static int ttm_copy_io_ttm_page(struct ttm_tt *ttm, void *src,
 	kunmap_atomic(dst);
 
 	return 0;
+#endif
 }
 
 static int ttm_copy_ttm_io_page(struct ttm_tt *ttm, void *dst,
 				unsigned long page,
 				pgprot_t prot)
 {
-	struct page *s = ttm->pages[page];
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
+	struct vm_page *s = ttm->pages[page];
 	void *src;
 
 	if (!s)
@@ -212,6 +232,7 @@ static int ttm_copy_ttm_io_page(struct ttm_tt *ttm, void *dst,
 	kunmap_atomic(src);
 
 	return 0;
+#endif
 }
 
 int ttm_bo_move_memcpy(struct ttm_buffer_object *bo,
@@ -384,6 +405,7 @@ static int ttm_buffer_object_transfer(struct ttm_buffer_object *bo,
 	return 0;
 }
 
+#ifdef __linux__
 pgprot_t ttm_io_prot(uint32_t caching_flags, pgprot_t tmp)
 {
 	/* Cached mappings need no adjustment */
@@ -409,12 +431,14 @@ pgprot_t ttm_io_prot(uint32_t caching_flags, pgprot_t tmp)
 	return tmp;
 }
 EXPORT_SYMBOL(ttm_io_prot);
+#endif
 
 static int ttm_bo_ioremap(struct ttm_buffer_object *bo,
 			  unsigned long offset,
 			  unsigned long size,
 			  struct ttm_bo_kmap_obj *map)
 {
+	int flags;
 	struct ttm_resource *mem = &bo->mem;
 
 	if (bo->mem.bus.addr) {
@@ -423,11 +447,18 @@ static int ttm_bo_ioremap(struct ttm_buffer_object *bo,
 	} else {
 		map->bo_kmap_type = ttm_bo_map_iomap;
 		if (mem->placement & TTM_PL_FLAG_WC)
-			map->virtual = ioremap_wc(bo->mem.bus.offset + offset,
-						  size);
+			flags = BUS_SPACE_MAP_PREFETCHABLE;
 		else
-			map->virtual = ioremap(bo->mem.bus.offset + offset,
-					       size);
+			flags = 0;
+		if (bus_space_map(bo->bdev->memt,
+		    bo->mem.bus.offset + offset,
+		    size, BUS_SPACE_MAP_LINEAR | flags,
+		    &bo->mem.bus.bsh)) {
+			printf("%s bus_space_map failed\n", __func__);
+			map->virtual = 0;
+		} else
+			map->virtual = bus_space_vaddr(bo->bdev->memt,
+			    bo->mem.bus.bsh);
 	}
 	return (!map->virtual) ? -ENOMEM : 0;
 }
@@ -507,13 +538,14 @@ void ttm_bo_kunmap(struct ttm_bo_kmap_obj *map)
 		return;
 	switch (map->bo_kmap_type) {
 	case ttm_bo_map_iomap:
-		iounmap(map->virtual);
+		bus_space_unmap(map->bo->bdev->memt, map->bo->mem.bus.bsh,
+		    map->bo->mem.bus.size);
 		break;
 	case ttm_bo_map_vmap:
-		vunmap(map->virtual);
+		vunmap(map->virtual, map->bo->mem.bus.size);
 		break;
 	case ttm_bo_map_kmap:
-		kunmap(map->page);
+		kunmap_va(map->virtual);
 		break;
 	case ttm_bo_map_premapped:
 		break;

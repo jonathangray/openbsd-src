@@ -53,10 +53,18 @@ unsigned ttm_bo_glob_use_count;
 struct ttm_bo_global ttm_bo_glob;
 EXPORT_SYMBOL(ttm_bo_glob);
 
+#ifdef notyet
 static struct attribute ttm_bo_count = {
 	.name = "bo_count",
 	.mode = S_IRUGO
 };
+#endif
+
+struct kobject *
+ttm_get_kobj(void)
+{
+	return (NULL);
+}
 
 /* default destructor */
 static void ttm_bo_default_destroy(struct ttm_buffer_object *bo)
@@ -83,6 +91,7 @@ static void ttm_bo_mem_space_debug(struct ttm_buffer_object *bo,
 	}
 }
 
+#ifdef notyet
 static ssize_t ttm_bo_global_show(struct kobject *kobj,
 				  struct attribute *attr,
 				  char *buffer)
@@ -102,11 +111,14 @@ static struct attribute *ttm_bo_global_attrs[] = {
 static const struct sysfs_ops ttm_bo_global_ops = {
 	.show = &ttm_bo_global_show
 };
+#endif
 
 static struct kobj_type ttm_bo_glob_kobj_type  = {
 	.release = &ttm_bo_global_kobj_release,
+#ifdef __linux__
 	.sysfs_ops = &ttm_bo_global_ops,
 	.default_attrs = ttm_bo_global_attrs
+#endif
 };
 
 static void ttm_bo_add_mem_to_lru(struct ttm_buffer_object *bo,
@@ -1155,6 +1167,7 @@ int ttm_bo_init_reserved(struct ttm_bo_device *bdev,
 	}
 	bo->destroy = destroy ? destroy : ttm_bo_default_destroy;
 
+	uvm_objinit(&bo->base.uobj, NULL, 0);
 	kref_init(&bo->kref);
 	INIT_LIST_HEAD(&bo->lru);
 	INIT_LIST_HEAD(&bo->ddestroy);
@@ -1361,7 +1374,7 @@ static int ttm_bo_global_init(void)
 	if (ret)
 		goto out;
 
-	spin_lock_init(&glob->lru_lock);
+	mtx_init(&glob->lru_lock, IPL_NONE);
 	glob->dummy_read_page = alloc_page(__GFP_ZERO | GFP_DMA32);
 
 	if (unlikely(glob->dummy_read_page == NULL)) {
@@ -1472,7 +1485,33 @@ void ttm_bo_unmap_virtual(struct ttm_buffer_object *bo)
 {
 	struct ttm_bo_device *bdev = bo->bdev;
 
+#ifdef __linux__
 	drm_vma_node_unmap(&bo->base.vma_node, bdev->dev_mapping);
+#else
+	if (drm_mm_node_allocated(&bo->base.vma_node.vm_node)) {
+		struct vm_page *pg;
+		bus_addr_t addr;
+		paddr_t paddr;
+		unsigned i;
+
+		if (bo->mem.bus.is_iomem) {
+			addr = bo->mem.bus.offset;
+			paddr = bus_space_mmap(bdev->memt, addr, 0, 0, 0);
+			for (i = 0; i < bo->mem.num_pages; i++) {
+				pg = PHYS_TO_VM_PAGE(paddr);
+				if (pg)
+					pmap_page_protect(pg, PROT_NONE);
+				paddr += PAGE_SIZE;
+			}
+		} else if (bo->ttm) {
+			for (i = 0; i < bo->ttm->num_pages; i++) {
+				pg = bo->ttm->pages[i];
+				if (pg)
+					pmap_page_protect(pg, PROT_NONE);
+			}
+		}
+	}
+#endif
 	ttm_mem_io_free(bdev, &bo->mem);
 }
 EXPORT_SYMBOL(ttm_bo_unmap_virtual);

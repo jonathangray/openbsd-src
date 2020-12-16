@@ -131,7 +131,7 @@ int ttm_range_man_init(struct ttm_bo_device *bdev,
 	ttm_resource_manager_init(man, p_size);
 
 	drm_mm_init(&rman->mm, 0, p_size);
-	spin_lock_init(&rman->lock);
+	mtx_init(&rman->lock, IPL_NONE);
 
 	ttm_set_driver_manager(bdev, type, &rman->manager);
 	ttm_resource_manager_set_used(man, true);

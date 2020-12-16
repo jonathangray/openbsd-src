@@ -65,7 +65,7 @@ void ttm_resource_manager_init(struct ttm_resource_manager *man,
 {
 	unsigned i;
 
-	spin_lock_init(&man->move_lock);
+	mtx_init(&man->move_lock, IPL_NONE);
 	man->size = p_size;
 
 	for (i = 0; i < TTM_MAX_BO_PRIORITY; ++i)
