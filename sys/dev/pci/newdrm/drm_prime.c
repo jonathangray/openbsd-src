@@ -863,6 +863,9 @@ EXPORT_SYMBOL(drm_prime_pages_to_sg);
  */
 unsigned long drm_prime_get_contiguous_size(struct sg_table *sgt)
 {
+	STUB();
+	return 0;
+#ifdef notyet
 	dma_addr_t expected = sg_dma_address(sgt->sgl);
 	struct scatterlist *sg;
 	unsigned long size = 0;
@@ -879,6 +882,7 @@ unsigned long drm_prime_get_contiguous_size(struct sg_table *sgt)
 		size += len;
 	}
 	return size;
+#endif
 }
 EXPORT_SYMBOL(drm_prime_get_contiguous_size);
 
@@ -1025,6 +1029,9 @@ EXPORT_SYMBOL(drm_gem_prime_import);
 int drm_prime_sg_to_page_addr_arrays(struct sg_table *sgt, struct vm_page **pages,
 				     dma_addr_t *addrs, int max_entries)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct sg_dma_page_iter dma_iter;
 	struct sg_page_iter page_iter;
 	struct vm_page **p = pages;
@@ -1046,6 +1053,7 @@ int drm_prime_sg_to_page_addr_arrays(struct sg_table *sgt, struct vm_page **page
 	}
 
 	return 0;
+#endif
 }
 EXPORT_SYMBOL(drm_prime_sg_to_page_addr_arrays);
 
