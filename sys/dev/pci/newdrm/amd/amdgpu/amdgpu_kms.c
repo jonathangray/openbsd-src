@@ -1760,8 +1760,7 @@ amdgpu_attach(struct device *parent, struct device *self, void *aux)
 }
 
 	dev = drm_attach_pci(&amdgpu_kms_driver, pa, 0, adev->primary,
-	    self, NULL);
-	adev->ddev = dev;
+	    self, &adev->ddev);
 	adev->pdev = dev->pdev;
 
 	if (!amdgpu_msi_ok(adev))
@@ -1778,7 +1777,7 @@ amdgpu_attach(struct device *parent, struct device *self, void *aux)
 	    pci_intr_string(pa->pa_pc, adev->intrh));
 
 	adev->irqh = pci_intr_establish(pa->pa_pc, adev->intrh, IPL_TTY,
-	    amdgpu_irq_handler, adev->ddev, adev->self.dv_xname);
+	    amdgpu_irq_handler, &adev->ddev, adev->self.dv_xname);
 	if (adev->irqh == NULL) {
 		printf("%s: couldn't establish interrupt\n",
 		    adev->self.dv_xname);
@@ -1987,7 +1986,7 @@ void
 amdgpu_attachhook(struct device *self)
 {
 	struct amdgpu_device	*adev = (struct amdgpu_device *)self;
-	struct drm_device	*dev = adev->ddev;
+	struct drm_device	*dev = &adev->ddev;
 	int r, acpi_status;
 
 	if (amdgpu_has_atpx() &&
@@ -2003,7 +2002,7 @@ amdgpu_attachhook(struct device *self)
 	 * properly initialize the GPU MC controller and permit
 	 * VRAM allocation
 	 */
-	r = amdgpu_device_init(adev, dev, dev->pdev, adev->flags);
+	r = amdgpu_device_init(adev, adev->flags);
 	if (r) {
 		dev_err(&dev->pdev->dev, "Fatal error during GPU init\n");
 		goto out;
@@ -2112,7 +2111,7 @@ int
 amdgpu_detach(struct device *self, int flags)
 {
 	struct amdgpu_device *adev = (struct amdgpu_device *)self;
-	struct drm_device *dev = adev->ddev;
+	struct drm_device *dev = &adev->ddev;
 
 	if (adev == NULL)
 		return 0;
@@ -2143,10 +2142,7 @@ amdgpu_detach(struct device *self, int flags)
 		drm_sched_fence_slab_fini();
 	}
 	
-	if (adev->ddev != NULL) {
-		config_detach(adev->ddev.dev, flags);
-		adev->ddev = NULL;
-	}
+	config_detach(adev->ddev.dev, flags);
 
 	return 0;
 }
@@ -2155,22 +2151,23 @@ int
 amdgpu_activate(struct device *self, int act)
 {
 	struct amdgpu_device *adev = (struct amdgpu_device *)self;
+	struct drm_device *dev = &adev->ddev;
 	int rv = 0;
 
-	if (adev->ddev == NULL)
+	if (dev->dev == NULL)
 		return (0);
 
 	switch (act) {
 	case DVACT_QUIESCE:
 		rv = config_activate_children(self, act);
-		amdgpu_device_suspend(adev->ddev, true);
+		amdgpu_device_suspend(dev, true);
 		break;
 	case DVACT_SUSPEND:
 		break;
 	case DVACT_RESUME:
 		break;
 	case DVACT_WAKEUP:
-		amdgpu_device_resume(adev->ddev, true);
+		amdgpu_device_resume(dev, true);
 		rv = config_activate_children(self, act);
 		break;
 	}
