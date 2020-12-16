@@ -687,7 +687,7 @@ static int drm_dev_init(struct drm_device *dev,
 	dev->driver = driver;
 
 	INIT_LIST_HEAD(&dev->managed.resources);
-	spin_lock_init(&dev->managed.lock);
+	mtx_init(&dev->managed.lock, IPL_TTY);
 
 	/* no per-device feature limits by default */
 	dev->driver_features = ~0u;
@@ -782,6 +782,7 @@ static int devm_drm_dev_init(struct device *parent,
 		devm_drm_dev_init_release(dev);
 
 	return ret;
+#endif
 }
 
 void *__devm_drm_dev_alloc(struct device *parent, struct drm_driver *driver,
@@ -919,7 +920,6 @@ static int create_compat_control_link(struct drm_device *dev)
 	kfree(name);
 
 	return ret;
-#endif
 }
 
 static void remove_compat_control_link(struct drm_device *dev)
@@ -1436,13 +1436,9 @@ drm_detach(struct device *self, int flags)
 	drm_lastclose(dev);
 
 	if (drm_core_check_feature(dev, DRIVER_GEM)) {
-		drm_gem_destroy(dev);
-
 		if (dev->driver->gem_size > 0)
 			pool_destroy(&dev->objpl);
 	}
-
-	drm_vblank_cleanup(dev);
 
 	if (dev->agp && dev->agp->mtrr) {
 		int retcode;

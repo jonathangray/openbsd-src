@@ -226,7 +226,8 @@ wake_up_all_locked(wait_queue_head_t *wqh)
 	wakeup(wqh);
 }
 
-#define wake_up_interruptible(wq)	wake_up(wq)
+#define wake_up_interruptible(wq)		wake_up(wq)
+#define wake_up_interruptible_poll(wq, flags)	wake_up(wq)
 
 #define	DEFINE_WAIT(name)				\
 	struct wait_queue_entry name = {		\
