@@ -749,8 +749,8 @@ struct pp_hwmgr {
 	bool not_vf;
 	bool pm_en;
 	bool pp_one_vf;
-	struct mutex smu_lock;
-	struct mutex msg_lock;
+	struct rwlock smu_lock;
+	struct rwlock msg_lock;
 
 	uint32_t pp_table_version;
 	void *device;
