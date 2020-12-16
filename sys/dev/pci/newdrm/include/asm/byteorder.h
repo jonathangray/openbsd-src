@@ -29,4 +29,10 @@
 #define swab16(x) swap16(x)
 #define swab32(x) swap32(x)
 
+static inline void
+le16_add_cpu(uint16_t *p, uint16_t n)
+{
+	htolem16(p, lemtoh16(p) + n);
+}
+
 #endif
