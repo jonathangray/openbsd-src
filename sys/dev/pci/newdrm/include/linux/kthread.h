@@ -15,4 +15,7 @@ void 	kthread_parkme(void);
 void	kthread_stop(struct proc *);
 int	kthread_should_stop(void);
 
+struct kthread_work {
+};
+
 #endif
