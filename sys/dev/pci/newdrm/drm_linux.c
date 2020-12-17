@@ -2129,3 +2129,9 @@ interval_tree_insert(struct interval_tree_node *node,
 	rb_link_node(&node->rb, parent, iter);
 	rb_insert_color_cached(&node->rb, root, false);
 }
+
+void
+drm_managed_release(struct drm_device *dev)
+{
+	panic("unimplemented");
+}
