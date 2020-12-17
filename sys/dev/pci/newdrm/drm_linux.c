@@ -2133,5 +2133,12 @@ interval_tree_insert(struct interval_tree_node *node,
 void
 drm_managed_release(struct drm_device *dev)
 {
-	panic("unimplemented");
+	STUB();
+}
+
+void
+drmm_add_final_kfree(struct drm_device *dev, void *p)
+{
+	STUB();
+	dev->managed.final_kfree = p;
 }
