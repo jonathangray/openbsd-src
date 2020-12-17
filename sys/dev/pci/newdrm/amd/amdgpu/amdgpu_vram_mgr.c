@@ -470,6 +470,9 @@ int amdgpu_vram_mgr_alloc_sgt(struct amdgpu_device *adev,
 			      enum dma_data_direction dir,
 			      struct sg_table **sgt)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct drm_mm_node *node;
 	struct scatterlist *sg;
 	int num_entries = 0;
@@ -525,6 +528,7 @@ error_unmap:
 error_free:
 	kfree(*sgt);
 	return r;
+#endif
 }
 
 /**
@@ -540,6 +544,8 @@ void amdgpu_vram_mgr_free_sgt(struct amdgpu_device *adev,
 			      enum dma_data_direction dir,
 			      struct sg_table *sgt)
 {
+	STUB();
+#ifdef notyet
 	struct scatterlist *sg;
 	int i;
 
@@ -549,6 +555,7 @@ void amdgpu_vram_mgr_free_sgt(struct amdgpu_device *adev,
 				   DMA_ATTR_SKIP_CPU_SYNC);
 	sg_free_table(sgt);
 	kfree(sgt);
+#endif
 }
 
 /**
