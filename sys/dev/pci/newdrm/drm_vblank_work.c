@@ -47,8 +47,6 @@
 
 void drm_handle_vblank_works(struct drm_vblank_crtc *vblank)
 {
-	STUB();
-#ifdef notyet
 	struct drm_vblank_work *work, *next;
 	u64 count = atomic64_read(&vblank->count);
 	bool wake = false;
@@ -66,7 +64,6 @@ void drm_handle_vblank_works(struct drm_vblank_crtc *vblank)
 	}
 	if (wake)
 		wake_up_all(&vblank->work_wait_queue);
-#endif
 }
 
 /* Handle cancelling any pending vblank work items and drop respective vblank
@@ -111,9 +108,6 @@ void drm_vblank_cancel_pending_works(struct drm_vblank_crtc *vblank)
 int drm_vblank_work_schedule(struct drm_vblank_work *work,
 			     u64 count, bool nextonmiss)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
 	struct drm_vblank_crtc *vblank = work->vblank;
 	struct drm_device *dev = vblank->dev;
 	u64 cur_vbl;
@@ -169,7 +163,6 @@ out:
 	if (wake)
 		wake_up_all(&vblank->work_wait_queue);
 	return ret;
-#endif
 }
 EXPORT_SYMBOL(drm_vblank_work_schedule);
 
@@ -190,9 +183,6 @@ EXPORT_SYMBOL(drm_vblank_work_schedule);
  */
 bool drm_vblank_work_cancel_sync(struct drm_vblank_work *work)
 {
-	STUB();
-	return false;
-#ifdef notyet
 	struct drm_vblank_crtc *vblank = work->vblank;
 	struct drm_device *dev = vblank->dev;
 	bool ret = false;
@@ -217,7 +207,6 @@ bool drm_vblank_work_cancel_sync(struct drm_vblank_work *work)
 	spin_unlock_irq(&dev->event_lock);
 
 	return ret;
-#endif
 }
 EXPORT_SYMBOL(drm_vblank_work_cancel_sync);
 
@@ -230,18 +219,19 @@ EXPORT_SYMBOL(drm_vblank_work_cancel_sync);
  */
 void drm_vblank_work_flush(struct drm_vblank_work *work)
 {
-	STUB();
-#ifdef notyet
 	struct drm_vblank_crtc *vblank = work->vblank;
 	struct drm_device *dev = vblank->dev;
 
+#ifdef notyet
 	spin_lock_irq(&dev->event_lock);
 	wait_event_lock_irq(vblank->work_wait_queue, list_empty(&work->node),
 			    dev->event_lock);
 	spin_unlock_irq(&dev->event_lock);
+#else
+	STUB();
+#endif
 
 	kthread_flush_work(&work->base);
-#endif
 }
 EXPORT_SYMBOL(drm_vblank_work_flush);
 
@@ -256,20 +246,14 @@ EXPORT_SYMBOL(drm_vblank_work_flush);
 void drm_vblank_work_init(struct drm_vblank_work *work, struct drm_crtc *crtc,
 			  void (*func)(struct kthread_work *work))
 {
-	STUB();
-#ifdef notyet
 	kthread_init_work(&work->base, func);
 	INIT_LIST_HEAD(&work->node);
 	work->vblank = &crtc->dev->vblank[drm_crtc_index(crtc)];
-#endif
 }
 EXPORT_SYMBOL(drm_vblank_work_init);
 
 int drm_vblank_worker_init(struct drm_vblank_crtc *vblank)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
 	struct kthread_worker *worker;
 
 	INIT_LIST_HEAD(&vblank->pending_work);
@@ -282,7 +266,8 @@ int drm_vblank_worker_init(struct drm_vblank_crtc *vblank)
 
 	vblank->worker = worker;
 
+#ifdef notyet
 	sched_set_fifo(worker->task);
-	return 0;
 #endif
+	return 0;
 }

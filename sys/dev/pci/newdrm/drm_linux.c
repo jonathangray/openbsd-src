@@ -47,6 +47,7 @@
 #include <linux/fb.h>
 #include <linux/xarray.h>
 #include <linux/interval_tree.h>
+#include <linux/kthread.h>
 
 #include <drm/drm_device.h>
 #include <drm/drm_print.h>
@@ -233,6 +234,41 @@ kthread_run(int (*func)(void *), void *data, const char *name)
 
 	LIST_INSERT_HEAD(&kthread_list, thread, next);
 	return thread->proc;
+}
+
+struct kthread_worker *
+kthread_create_worker(unsigned int flags, const char *name, ...)
+{
+	STUB();
+	struct kthread_worker *w = malloc(sizeof(*w), M_DRM, M_WAITOK);
+	return w;
+}
+
+void
+kthread_init_work(struct kthread_work *work, void (*func)(struct kthread_work *))
+{
+	memset(work, 0, sizeof(*work));
+	work->func = func;
+}
+
+bool
+kthread_queue_work(struct kthread_worker *worker, struct kthread_work *work)
+{
+	STUB();
+	return false;
+}
+
+bool
+kthread_cancel_work_sync(struct kthread_work *work)
+{
+	STUB();
+	return false;
+}
+
+void
+kthread_flush_work(struct kthread_work *work)
+{
+	STUB();
 }
 
 struct kthread *

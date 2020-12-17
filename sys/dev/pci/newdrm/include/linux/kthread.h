@@ -16,6 +16,17 @@ void	kthread_stop(struct proc *);
 int	kthread_should_stop(void);
 
 struct kthread_work {
+	void (*func)(struct kthread_work *);
 };
+
+struct kthread_worker {
+};
+
+struct kthread_worker *
+	kthread_create_worker(unsigned int, const char *, ...);
+void	kthread_init_work(struct kthread_work *, void (*)(struct kthread_work *));
+bool	kthread_queue_work(struct kthread_worker *, struct kthread_work *);
+bool	kthread_cancel_work_sync(struct kthread_work *);
+void	kthread_flush_work(struct kthread_work *);
 
 #endif
