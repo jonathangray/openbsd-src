@@ -34,9 +34,7 @@
 
 #include <linux/dma-resv.h>
 #include <linux/export.h>
-#include <linux/mm.h>
 #include <linux/sched/mm.h>
-#include <linux/mmu_notifier.h>
 
 /**
  * DOC: Reservation Object Overview
@@ -51,6 +49,12 @@
 
 DEFINE_WD_CLASS(reservation_ww_class);
 EXPORT_SYMBOL(reservation_ww_class);
+
+struct lock_class_key reservation_seqcount_class;
+EXPORT_SYMBOL(reservation_seqcount_class);
+
+const char reservation_seqcount_string[] = "reservation_seqcount";
+EXPORT_SYMBOL(reservation_seqcount_string);
 
 /**
  * dma_resv_list_alloc - allocate fence list
@@ -103,35 +107,23 @@ static int __init dma_resv_lockdep(void)
 	struct mm_struct *mm = mm_alloc();
 	struct ww_acquire_ctx ctx;
 	struct dma_resv obj;
-	struct address_space mapping;
 	int ret;
 
 	if (!mm)
 		return -ENOMEM;
 
 	dma_resv_init(&obj);
-	address_space_init_once(&mapping);
 
-	mmap_read_lock(mm);
+	down_read(&mm->mmap_sem);
 	ww_acquire_init(&ctx, &reservation_ww_class);
 	ret = dma_resv_lock(&obj, &ctx);
 	if (ret == -EDEADLK)
 		dma_resv_lock_slow(&obj, &ctx);
 	fs_reclaim_acquire(GFP_KERNEL);
-	/* for unmap_mapping_range on trylocked buffer objects in shrinkers */
-	i_mmap_lock_write(&mapping);
-	i_mmap_unlock_write(&mapping);
-#ifdef CONFIG_MMU_NOTIFIER
-	lock_map_acquire(&__mmu_notifier_invalidate_range_start_map);
-	__dma_fence_might_wait();
-	lock_map_release(&__mmu_notifier_invalidate_range_start_map);
-#else
-	__dma_fence_might_wait();
-#endif
 	fs_reclaim_release(GFP_KERNEL);
 	ww_mutex_unlock(&obj.lock);
 	ww_acquire_fini(&ctx);
-	mmap_read_unlock(mm);
+	up_read(&mm->mmap_sem);
 	
 	mmput(mm);
 
@@ -147,8 +139,9 @@ subsys_initcall(dma_resv_lockdep);
 void dma_resv_init(struct dma_resv *obj)
 {
 	ww_mutex_init(&obj->lock, &reservation_ww_class);
-	seqcount_ww_mutex_init(&obj->seq, &obj->lock);
 
+	__seqcount_init(&obj->seq, reservation_seqcount_string,
+			&reservation_seqcount_class);
 	RCU_INIT_POINTER(obj->fence, NULL);
 	RCU_INIT_POINTER(obj->fence_excl, NULL);
 }
@@ -278,6 +271,7 @@ void dma_resv_add_shared_fence(struct dma_resv *obj, struct dma_fence *fence)
 	fobj = dma_resv_get_list(obj);
 	count = fobj->shared_count;
 
+	preempt_disable();
 	write_seqcount_begin(&obj->seq);
 
 	for (i = 0; i < count; ++i) {
@@ -299,6 +293,7 @@ replace:
 	smp_store_mb(fobj->shared_count, count);
 
 	write_seqcount_end(&obj->seq);
+	preempt_enable();
 	dma_fence_put(old);
 }
 EXPORT_SYMBOL(dma_resv_add_shared_fence);
@@ -325,12 +320,14 @@ void dma_resv_add_excl_fence(struct dma_resv *obj, struct dma_fence *fence)
 	if (fence)
 		dma_fence_get(fence);
 
+	preempt_disable();
 	write_seqcount_begin(&obj->seq);
 	/* write_seqcount_begin provides the necessary memory barrier */
 	RCU_INIT_POINTER(obj->fence_excl, fence);
 	if (old)
 		old->shared_count = 0;
 	write_seqcount_end(&obj->seq);
+	preempt_enable();
 
 	/* inplace update, no shared fences */
 	while (i--)
@@ -408,11 +405,13 @@ retry:
 	src_list = dma_resv_get_list(dst);
 	old = dma_resv_get_excl(dst);
 
+	preempt_disable();
 	write_seqcount_begin(&dst->seq);
 	/* write_seqcount_begin provides the necessary memory barrier */
 	RCU_INIT_POINTER(dst->fence_excl, new);
 	RCU_INIT_POINTER(dst->fence, dst_list);
 	write_seqcount_end(&dst->seq);
+	preempt_enable();
 
 	dma_resv_list_free(src_list);
 	dma_fence_put(old);
