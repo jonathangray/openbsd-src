@@ -33,6 +33,8 @@ INCLUDES=	-nostdinc -I$S -I${.OBJDIR} -I$S/arch \
 		-I$S/dev/pci/newdrm/amd/display/amdgpu_dm \
 		-I$S/dev/pci/newdrm/amd/pm/inc \
 		-I$S/dev/pci/newdrm/amd/pm/swsmu \
+		-I$S/dev/pci/newdrm/amd/pm/swsmu/smu11 \
+		-I$S/dev/pci/newdrm/amd/pm/swsmu/smu12 \
 		-I$S/dev/pci/newdrm/amd/pm/powerplay \
 		-I$S/dev/pci/newdrm/amd/pm/powerplay/hwmgr \
 		-I$S/dev/pci/newdrm/amd/pm/powerplay/smumgr \
@@ -43,7 +45,7 @@ INCLUDES=	-nostdinc -I$S -I${.OBJDIR} -I$S/arch \
 		-I$S/dev/pci/newdrm/amd/display/modules/hdcp \
 		-I$S/dev/pci/newdrm/amd/display/dmub/inc \
 		-I$S/dev/pci/newdrm/i915
-CPPFLAGS=	${INCLUDES} ${IDENT} ${PARAM} -D_KERNEL -MD -MP
+CPPFLAGS=	${INCLUDES} ${IDENT} ${PARAM} -D_KERNEL -MD -MP -DCONFIG_DRM_AMD_DC_DCN3_0
 CWARNFLAGS=	-Werror -Wall -Wimplicit-function-declaration \
 		-Wno-uninitialized -Wno-pointer-sign \
 		-Wframe-larger-than=2047
@@ -197,6 +199,10 @@ display_mode_vba_20.o: $S/dev/pci/newdrm/amd/display/dc/dml/dcn20/display_mode_v
 display_rq_dlg_calc_20.o: $S/dev/pci/newdrm/amd/display/dc/dml/dcn20/display_rq_dlg_calc_20.c
 	${NORMAL_C} ${HARDFLOAT_CFLAGS}
 display_mode_vba_20v2.o: $S/dev/pci/newdrm/amd/display/dc/dml/dcn20/display_mode_vba_20v2.c
+	${NORMAL_C} ${HARDFLOAT_CFLAGS}
+display_mode_vba_30.o: $S/dev/pci/newdrm/amd/display/dc/dml/dcn30/display_mode_vba_30.c
+	${NORMAL_C} ${HARDFLOAT_CFLAGS}
+display_rq_dlg_calc_30.o: $S/dev/pci/newdrm/amd/display/dc/dml/dcn30/display_rq_dlg_calc_30.c
 	${NORMAL_C} ${HARDFLOAT_CFLAGS}
 display_rq_dlg_calc_20v2.o: $S/dev/pci/newdrm/amd/display/dc/dml/dcn20/display_rq_dlg_calc_20v2.c
 	${NORMAL_C} ${HARDFLOAT_CFLAGS}
