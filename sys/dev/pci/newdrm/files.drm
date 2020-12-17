@@ -734,7 +734,7 @@ file	dev/pci/newdrm/amd/display/amdgpu_dm/amdgpu_dm_services.c	amdgpu
 file	dev/pci/newdrm/amd/display/dc/basics/conversion.c	amdgpu
 file	dev/pci/newdrm/amd/display/dc/basics/dc_common.c	amdgpu
 file	dev/pci/newdrm/amd/display/dc/basics/fixpt31_32.c	amdgpu
-file	dev/pci/newdrm/amd/display/dc/basics/vector.c		amdgpu
+file	dev/pci/newdrm/amd/display/dc/basics/amdgpu_vector.c	amdgpu
 file	dev/pci/newdrm/amd/display/dc/bios/bios_parser.c	amdgpu
 file	dev/pci/newdrm/amd/display/dc/bios/bios_parser2.c	amdgpu
 file	dev/pci/newdrm/amd/display/dc/bios/bios_parser_common.c		amdgpu
@@ -768,7 +768,7 @@ file	dev/pci/newdrm/amd/display/dc/clk_mgr/dcn21/rn_clk_mgr.c		amdgpu
 file	dev/pci/newdrm/amd/display/dc/clk_mgr/dcn21/rn_clk_mgr_vbios_smu.c	amdgpu
 file	dev/pci/newdrm/amd/display/dc/clk_mgr/dcn30/dcn30_clk_mgr.c		amdgpu
 file	dev/pci/newdrm/amd/display/dc/clk_mgr/dcn30/dcn30_clk_mgr_smu_msg.c	amdgpu
-file	dev/pci/newdrm/amd/display/dc/core/dc.c				amdgpu
+file	dev/pci/newdrm/amd/display/dc/core/amdgpu_dc.c			amdgpu
 file	dev/pci/newdrm/amd/display/dc/core/dc_debug.c			amdgpu
 file	dev/pci/newdrm/amd/display/dc/core/dc_hw_sequencer.c		amdgpu
 file	dev/pci/newdrm/amd/display/dc/core/dc_link.c			amdgpu
