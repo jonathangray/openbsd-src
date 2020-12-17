@@ -2175,7 +2175,7 @@ struct uvm_object *
 amdgpu_mmap(struct file *filp, vm_prot_t accessprot, voff_t off, vsize_t size)
 {
 	struct drm_file *file_priv = (void *)filp;
-	struct amdgpu_device *adev = file_priv->minor->dev->dev_private;
+	struct amdgpu_device *adev = drm_to_adev(file_priv->minor->dev);
 
 	if (adev == NULL)
 		return NULL;
