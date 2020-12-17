@@ -3278,7 +3278,7 @@ int amdgpu_device_init(struct amdgpu_device *adev,
 	rw_init(&adev->virt.vf_errors.lock, "vferr");
 	hash_init(adev->mn_hash);
 	atomic_set(&adev->in_gpu_reset, 0);
-	init_rwsem(&adev->reset_sem);
+	rw_init(&adev->reset_sem, "amrs");
 	rw_init(&adev->psp.mutex, "agpsp");
 	rw_init(&adev->notifier_lock, "agnf");
 
@@ -3615,8 +3615,10 @@ failed:
 		vga_switcheroo_fini_domain_pm_ops(adev->dev);
 
 failed_unmap:
+#ifdef __linux__
 	iounmap(adev->rmmio);
 	adev->rmmio = NULL;
+#endif
 
 	return r;
 }
@@ -4488,6 +4490,9 @@ end:
 static bool amdgpu_device_lock_adev(struct amdgpu_device *adev,
 				struct amdgpu_hive_info *hive)
 {
+	STUB();
+	return false;
+#ifdef notyet
 	if (atomic_cmpxchg(&adev->in_gpu_reset, 0, 1) != 0)
 		return false;
 
@@ -4511,6 +4516,7 @@ static bool amdgpu_device_lock_adev(struct amdgpu_device *adev,
 	}
 
 	return true;
+#endif
 }
 
 static void amdgpu_device_unlock_adev(struct amdgpu_device *adev)
@@ -4523,6 +4529,8 @@ static void amdgpu_device_unlock_adev(struct amdgpu_device *adev)
 
 static void amdgpu_device_resume_display_audio(struct amdgpu_device *adev)
 {
+	STUB();
+#ifdef notyet
 	struct pci_dev *p = NULL;
 
 	p = pci_get_domain_bus_and_slot(pci_domain_nr(adev->pdev->bus),
@@ -4531,10 +4539,14 @@ static void amdgpu_device_resume_display_audio(struct amdgpu_device *adev)
 		pm_runtime_enable(&(p->dev));
 		pm_runtime_resume(&(p->dev));
 	}
+#endif
 }
 
 static int amdgpu_device_suspend_display_audio(struct amdgpu_device *adev)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	enum amd_reset_method reset_method;
 	struct pci_dev *p = NULL;
 	u64 expires;
@@ -4577,6 +4589,7 @@ static int amdgpu_device_suspend_display_audio(struct amdgpu_device *adev)
 	pm_runtime_disable(&(p->dev));
 
 	return 0;
+#endif
 }
 
 /**
@@ -4593,6 +4606,9 @@ static int amdgpu_device_suspend_display_audio(struct amdgpu_device *adev)
 int amdgpu_device_gpu_recover(struct amdgpu_device *adev,
 			      struct amdgpu_job *job)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct list_head device_list, *device_list_handle =  NULL;
 	bool need_full_reset = false;
 	bool job_signaled = false;
@@ -4809,6 +4825,7 @@ skip_recovery:
 	if (r)
 		dev_info(adev->dev, "GPU reset end with ret = %d\n", r);
 	return r;
+#endif
 }
 
 /**
@@ -5005,6 +5022,9 @@ static void amdgpu_cancel_all_tdr(struct amdgpu_device *adev)
  */
 pci_ers_result_t amdgpu_pci_error_detected(struct pci_dev *pdev, pci_channel_state_t state)
 {
+	STUB();
+	return 0;
+#ifdef notyet
 	struct drm_device *dev = pci_get_drvdata(pdev);
 	struct amdgpu_device *adev = drm_to_adev(dev);
 	int i;
@@ -5050,6 +5070,7 @@ pci_ers_result_t amdgpu_pci_error_detected(struct pci_dev *pdev, pci_channel_sta
 	}
 
 	return PCI_ERS_RESULT_NEED_RESET;
+#endif
 }
 
 /**
@@ -5081,6 +5102,9 @@ pci_ers_result_t amdgpu_pci_mmio_enabled(struct pci_dev *pdev)
  */
 pci_ers_result_t amdgpu_pci_slot_reset(struct pci_dev *pdev)
 {
+	STUB();
+	return PCI_ERS_RESULT_RECOVERED;
+#ifdef notyet
 	struct drm_device *dev = pci_get_drvdata(pdev);
 	struct amdgpu_device *adev = drm_to_adev(dev);
 	int r, i;
@@ -5132,6 +5156,7 @@ out:
 	}
 
 	return r ? PCI_ERS_RESULT_DISCONNECT : PCI_ERS_RESULT_RECOVERED;
+#endif
 }
 
 /**
@@ -5144,6 +5169,8 @@ out:
  */
 void amdgpu_pci_resume(struct pci_dev *pdev)
 {
+	STUB();
+#ifdef notyet
 	struct drm_device *dev = pci_get_drvdata(pdev);
 	struct amdgpu_device *adev = drm_to_adev(dev);
 	int i;
@@ -5163,10 +5190,13 @@ void amdgpu_pci_resume(struct pci_dev *pdev)
 	}
 
 	amdgpu_device_unlock_adev(adev);
+#endif
 }
 
 bool amdgpu_device_cache_pci_state(struct pci_dev *pdev)
 {
+	return false;
+#ifdef notyet
 	struct drm_device *dev = pci_get_drvdata(pdev);
 	struct amdgpu_device *adev = drm_to_adev(dev);
 	int r;
@@ -5187,10 +5217,14 @@ bool amdgpu_device_cache_pci_state(struct pci_dev *pdev)
 	}
 
 	return true;
+#endif
 }
 
 bool amdgpu_device_load_pci_state(struct pci_dev *pdev)
 {
+	STUB();
+	return false;
+#ifdef notyet
 	struct drm_device *dev = pci_get_drvdata(pdev);
 	struct amdgpu_device *adev = drm_to_adev(dev);
 	int r;
@@ -5208,6 +5242,7 @@ bool amdgpu_device_load_pci_state(struct pci_dev *pdev)
 	}
 
 	return true;
+#endif
 }
 
 

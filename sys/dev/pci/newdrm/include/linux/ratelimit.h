@@ -8,4 +8,7 @@
 
 #define __ratelimit(x)	(1)
 
+#define ratelimit_state_init(x, y, z)
+#define ratelimit_set_flags(x, y)
+
 #endif
