@@ -94,7 +94,7 @@ static int __shmem_rw(struct file *file, loff_t off,
 	for (pfn = off >> PAGE_SHIFT; len; pfn++) {
 		unsigned int this =
 			min_t(size_t, PAGE_SIZE - offset_in_page(off), len);
-		struct page *page;
+		struct vm_page *page;
 		void *vaddr;
 
 		page = shmem_read_mapping_page_gfp(file->f_mapping, pfn,

@@ -1119,7 +1119,7 @@ static void *reloc_kmap(struct drm_i915_gem_object *obj,
 			unsigned long pageno)
 {
 	void *vaddr;
-	struct page *page;
+	struct vm_page *page;
 
 	if (cache->vaddr) {
 		kunmap_atomic(unmask_page(cache->vaddr));
@@ -1453,7 +1453,7 @@ static inline bool use_reloc_gpu(struct i915_vma *vma)
 
 static unsigned long vma_phys_addr(struct i915_vma *vma, u32 offset)
 {
-	struct page *page;
+	struct vm_page *page;
 	unsigned long addr;
 
 	GEM_BUG_ON(vma->pages != vma->obj->mm.pages);
