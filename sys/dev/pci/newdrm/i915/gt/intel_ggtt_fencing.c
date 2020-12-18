@@ -739,7 +739,11 @@ static void swizzle_page(struct vm_page *page)
 		memcpy(&vaddr[i + 64], temp, 64);
 	}
 
+#ifdef __linux__
 	kunmap(page);
+#else
+	kunmap_va(vaddr);
+#endif
 }
 
 /**
