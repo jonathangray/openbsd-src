@@ -110,7 +110,11 @@ static int __shmem_rw(struct file *file, loff_t off,
 			memcpy(ptr, vaddr + offset_in_page(off), this);
 		}
 		mark_page_accessed(page);
+#ifdef __linux__
 		kunmap(page);
+#else
+		kunmap_va(vaddr);
+#endif
 		put_page(page);
 
 		len -= this;

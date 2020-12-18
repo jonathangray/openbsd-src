@@ -141,7 +141,11 @@ fill_page_dma(struct drm_i915_gem_object *p, const u64 val, unsigned int count)
 	vaddr = kmap(page);
 	memset64(vaddr, val, count);
 	clflush_cache_range(vaddr, PAGE_SIZE);
+#ifdef __linux__
 	kunmap(page);
+#else
+	kunmap_va(vaddr);
+#endif
 }
 
 static void poison_scratch_page(struct drm_i915_gem_object *scratch)
@@ -159,7 +163,11 @@ static void poison_scratch_page(struct drm_i915_gem_object *scratch)
 
 		vaddr = kmap(page);
 		memset(vaddr, val, PAGE_SIZE);
+#ifdef __linux__
 		kunmap(page);
+#else
+		kunmap_va(vaddr);
+#endif
 	}
 }
 
