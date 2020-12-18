@@ -224,7 +224,7 @@ void intel_gt_init_buffer_pool(struct intel_gt *gt)
 	struct intel_gt_buffer_pool *pool = &gt->buffer_pool;
 	int n;
 
-	spin_lock_init(&pool->lock);
+	mtx_init(&pool->lock, IPL_TTY);
 	for (n = 0; n < ARRAY_SIZE(pool->cache_list); n++)
 		INIT_LIST_HEAD(&pool->cache_list[n]);
 	INIT_DELAYED_WORK(&pool->work, pool_free_work);

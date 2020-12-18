@@ -5077,7 +5077,7 @@ void intel_ddi_init(struct drm_i915_private *dev_priv, enum port port)
 	drm_encoder_init(&dev_priv->drm, &encoder->base, &intel_ddi_funcs,
 			 DRM_MODE_ENCODER_TMDS, "DDI %c", port_name(port));
 
-	mutex_init(&dig_port->hdcp_mutex);
+	rw_init(&dig_port->hdcp_mutex, "dhdcp");
 	dig_port->num_hdcp_streams = 0;
 
 	encoder->hotplug = intel_ddi_hotplug;

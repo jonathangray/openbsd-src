@@ -392,7 +392,7 @@ intel_context_init(struct intel_context *ce, struct intel_engine_cs *engine)
 	ce->vm = i915_vm_get(engine->gt->vm);
 
 	/* NB ce->signal_link/lock is used under RCU */
-	spin_lock_init(&ce->signal_lock);
+	mtx_init(&ce->signal_lock, IPL_NONE);
 	INIT_LIST_HEAD(&ce->signals);
 
 	rw_init(&ce->pin_mutex, "cepin");

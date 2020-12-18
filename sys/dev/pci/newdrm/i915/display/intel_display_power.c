@@ -578,12 +578,12 @@ static void icl_tc_cold_exit(struct drm_i915_private *i915)
 						      0, 250, 1);
 		if (ret != -EAGAIN || ++tries == 3)
 			break;
-		msleep(1);
+		drm_msleep(1);
 	}
 
 	/* Spec states that TC cold exit can take up to 1ms to complete */
 	if (!ret)
-		msleep(1);
+		drm_msleep(1);
 
 	/* TODO: turn failure into a error as soon i915 CI updates ICL IFWI */
 	drm_dbg_kms(&i915->drm, "TC cold block %s\n", ret ? "failed" :
@@ -3956,7 +3956,7 @@ tgl_tc_cold_request(struct drm_i915_private *i915, bool block)
 		if (++tries == 3)
 			break;
 
-		msleep(1);
+		drm_msleep(1);
 	}
 
 	if (ret)

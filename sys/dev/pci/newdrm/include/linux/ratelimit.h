@@ -3,6 +3,9 @@
 #ifndef _LINUX_RATELIMIT_H
 #define _LINUX_RATELIMIT_H
 
+struct ratelimit_state {
+};
+
 #define DEFINE_RATELIMIT_STATE(name, interval, burst) \
 	int name __used = 1;
 

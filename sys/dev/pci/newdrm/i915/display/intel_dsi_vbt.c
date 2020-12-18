@@ -431,9 +431,6 @@ static int i2c_adapter_lookup(struct acpi_resource *ares, void *data)
 static void i2c_acpi_find_adapter(struct intel_dsi *intel_dsi,
 				  const u16 slave_addr)
 {
-	STUB();
-	return NULL;
-#ifdef notyet
 	struct drm_device *drm_dev = intel_dsi->base.base.dev;
 	struct device *dev = &drm_dev->pdev->dev;
 	struct acpi_device *acpi_dev;
@@ -463,6 +460,9 @@ static inline void i2c_acpi_find_adapter(struct intel_dsi *intel_dsi,
 
 static const u8 *mipi_exec_i2c(struct intel_dsi *intel_dsi, const u8 *data)
 {
+	STUB();
+	return NULL;
+#ifdef notyet
 	struct drm_i915_private *i915 = to_i915(intel_dsi->base.base.dev);
 	struct i2c_adapter *adapter;
 	struct i2c_msg msg;

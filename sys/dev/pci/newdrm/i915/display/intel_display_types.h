@@ -1422,7 +1422,7 @@ struct intel_digital_port {
 	u8 tc_phy_fia_idx;
 
 	/* protects num_hdcp_streams reference count */
-	struct mutex hdcp_mutex;
+	struct rwlock hdcp_mutex;
 	/* the number of pipes using HDCP signalling out of this port */
 	unsigned int num_hdcp_streams;
 
