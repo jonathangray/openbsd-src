@@ -267,7 +267,7 @@ file	dev/pci/newdrm/i915/gt/intel_workarounds.c		inteldrm
 #file	dev/pci/newdrm/i915/gt/selftest_workarounds.c		inteldrm
 #file	dev/pci/newdrm/i915/gt/selftests/mock_timeline.c	inteldrm
 file	dev/pci/newdrm/i915/gt/shmem_utils.c			inteldrm
-file	dev/pci/newdrm/i915/gt/st_shmem_utils.c			inteldrm
+#file	dev/pci/newdrm/i915/gt/st_shmem_utils.c			inteldrm
 file	dev/pci/newdrm/i915/gt/sysfs_engines.c			inteldrm
 file	dev/pci/newdrm/i915/gt/uc/intel_guc.c			inteldrm
 file	dev/pci/newdrm/i915/gt/uc/intel_guc_ads.c		inteldrm
