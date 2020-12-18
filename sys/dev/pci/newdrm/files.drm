@@ -496,14 +496,15 @@ file	dev/pci/newdrm/radeon/vce_v2_0.c		radeondrm
 
 # CONFIG_DRM_AMDGPU_SI
 define	amdgpu_si
-file	dev/pci/drm/amd/amdgpu/dce_v6_0.c		amdgpu_si
-file	dev/pci/drm/amd/amdgpu/gfx_v6_0.c		amdgpu_si
-file	dev/pci/drm/amd/amdgpu/gmc_v6_0.c		amdgpu_si
-file	dev/pci/drm/amd/amdgpu/amdgpu_si.c		amdgpu_si
-file	dev/pci/drm/amd/amdgpu/amdgpu_si_dma.c		amdgpu_si
-file	dev/pci/drm/amd/amdgpu/amdgpu_si_dpm.c		amdgpu_si
-file	dev/pci/drm/amd/amdgpu/si_ih.c			amdgpu_si
-file	dev/pci/drm/amd/amdgpu/amdgpu_si_smc.c		amdgpu_si
+file	dev/pci/newdrm/amd/amdgpu/dce_v6_0.c		amdgpu_si
+file	dev/pci/newdrm/amd/amdgpu/gfx_v6_0.c		amdgpu_si
+file	dev/pci/newdrm/amd/amdgpu/gmc_v6_0.c		amdgpu_si
+file	dev/pci/newdrm/amd/amdgpu/amdgpu_si.c		amdgpu_si
+file	dev/pci/newdrm/amd/amdgpu/amdgpu_si_dma.c	amdgpu_si
+file	dev/pci/newdrm/amd/amdgpu/amdgpu_si_dpm.c	amdgpu_si
+file	dev/pci/newdrm/amd/amdgpu/si_ih.c		amdgpu_si
+file	dev/pci/newdrm/amd/amdgpu/amdgpu_si_smc.c	amdgpu_si
+file	dev/pci/newdrm/amd/amdgpu/amdgpu_uvd_v3_1.c	amdgpu_si
 
 # CONFIG_DRM_AMD_DC_SI
 define amd_dc_si
@@ -612,11 +613,11 @@ file	dev/pci/newdrm/amd/amdgpu/arct_reg_init.c		amdgpu
 file	dev/pci/newdrm/amd/amdgpu/athub_v1_0.c			amdgpu
 file	dev/pci/newdrm/amd/amdgpu/athub_v2_0.c			amdgpu
 file	dev/pci/newdrm/amd/amdgpu/athub_v2_1.c			amdgpu
-file	dev/pci/newdrm/amd/amdgpu/atom.c			amdgpu
-file	dev/pci/newdrm/amd/amdgpu/atombios_crtc.c		amdgpu
-file	dev/pci/newdrm/amd/amdgpu/atombios_dp.c			amdgpu
-file	dev/pci/newdrm/amd/amdgpu/atombios_encoders.c		amdgpu
-file	dev/pci/newdrm/amd/amdgpu/atombios_i2c.c		amdgpu
+file	dev/pci/newdrm/amd/amdgpu/amdgpu_atom.c			amdgpu
+file	dev/pci/newdrm/amd/amdgpu/amdgpu_atombios_crtc.c	amdgpu
+file	dev/pci/newdrm/amd/amdgpu/amdgpu_atombios_dp.c		amdgpu
+file	dev/pci/newdrm/amd/amdgpu/amdgpu_atombios_encoders.c	amdgpu
+file	dev/pci/newdrm/amd/amdgpu/amdgpu_atombios_i2c.c		amdgpu
 file	dev/pci/newdrm/amd/amdgpu/cz_ih.c			amdgpu
 file	dev/pci/newdrm/amd/amdgpu/dce_v10_0.c			amdgpu
 file	dev/pci/newdrm/amd/amdgpu/dce_v11_0.c			amdgpu
@@ -633,7 +634,6 @@ file	dev/pci/newdrm/amd/amdgpu/gfxhub_v1_1.c			amdgpu
 file	dev/pci/newdrm/amd/amdgpu/gfxhub_v2_0.c			amdgpu
 file	dev/pci/newdrm/amd/amdgpu/gfxhub_v2_1.c			amdgpu
 file	dev/pci/newdrm/amd/amdgpu/gmc_v10_0.c			amdgpu
-file	dev/pci/newdrm/amd/amdgpu/gmc_v6_0.c			amdgpu
 file	dev/pci/newdrm/amd/amdgpu/gmc_v7_0.c			amdgpu
 file	dev/pci/newdrm/amd/amdgpu/gmc_v8_0.c			amdgpu
 file	dev/pci/newdrm/amd/amdgpu/gmc_v9_0.c			amdgpu
@@ -674,7 +674,6 @@ file	dev/pci/newdrm/amd/amdgpu/tonga_ih.c			amdgpu
 file	dev/pci/newdrm/amd/amdgpu/umc_v6_0.c			amdgpu
 file	dev/pci/newdrm/amd/amdgpu/umc_v6_1.c			amdgpu
 file	dev/pci/newdrm/amd/amdgpu/umc_v8_7.c			amdgpu
-file	dev/pci/newdrm/amd/amdgpu/uvd_v3_1.c			amdgpu
 file	dev/pci/newdrm/amd/amdgpu/uvd_v5_0.c			amdgpu
 file	dev/pci/newdrm/amd/amdgpu/uvd_v6_0.c			amdgpu
 file	dev/pci/newdrm/amd/amdgpu/uvd_v7_0.c			amdgpu
