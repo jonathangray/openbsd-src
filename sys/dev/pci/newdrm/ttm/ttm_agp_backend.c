@@ -42,81 +42,73 @@
 #include <linux/io.h>
 #include <asm/agp.h>
 
+#include <drm/drm_agpsupport.h>
+
 struct ttm_agp_backend {
 	struct ttm_tt ttm;
-	struct agp_memory *mem;
-	struct agp_bridge_data *bridge;
+	int bound;
+	bus_addr_t addr;
+	struct drm_agp_head *agp;
 };
 
 int ttm_agp_bind(struct ttm_tt *ttm, struct ttm_resource *bo_mem)
 {
-	struct ttm_agp_backend *agp_be = container_of(ttm, struct ttm_agp_backend, ttm);
-	struct page *dummy_read_page = ttm_bo_glob.dummy_read_page;
+	struct ttm_agp_backend	*agp_be = container_of(ttm, struct ttm_agp_backend, ttm);
+	struct vm_page *dummy_read_page = ttm_bo_glob.dummy_read_page;
 	struct drm_mm_node *node = bo_mem->mm_node;
-	struct agp_memory *mem;
-	int ret, cached = (bo_mem->placement & TTM_PL_FLAG_CACHED);
+	struct agp_softc *sc = agp_be->agp->agpdev;
+	bus_addr_t addr;
+//	int cached = (bo_mem->placement & TTM_PL_FLAG_CACHED);
 	unsigned i;
 
+#ifdef notyet
 	if (agp_be->mem)
 		return 0;
+#endif
 
-	mem = agp_allocate_memory(agp_be->bridge, ttm->num_pages, AGP_USER_MEMORY);
-	if (unlikely(mem == NULL))
-		return -ENOMEM;
-
-	mem->page_count = 0;
+	addr = sc->sc_apaddr + (node->start << PAGE_SHIFT);
 	for (i = 0; i < ttm->num_pages; i++) {
-		struct page *page = ttm->pages[i];
+		struct vm_page *page = ttm->pages[i];
 
 		if (!page)
 			page = dummy_read_page;
 
-		mem->pages[mem->page_count++] = page;
+		sc->sc_methods->bind_page(sc->sc_chipc, addr, VM_PAGE_TO_PHYS(page), 0);
+		addr += PAGE_SIZE;
 	}
-	agp_be->mem = mem;
+	agp_flush_cache();
+	sc->sc_methods->flush_tlb(sc->sc_chipc);
+	agp_be->addr = sc->sc_apaddr + (node->start << PAGE_SHIFT);
+	agp_be->bound = 1;
 
-	mem->is_flushed = 1;
-	mem->type = (cached) ? AGP_USER_CACHED_MEMORY : AGP_USER_MEMORY;
-
-	ret = agp_bind_memory(mem, node->start);
-	if (ret)
-		pr_err("AGP Bind memory failed\n");
-
-	return ret;
+	return 0;
 }
 EXPORT_SYMBOL(ttm_agp_bind);
 
 void ttm_agp_unbind(struct ttm_tt *ttm)
 {
 	struct ttm_agp_backend *agp_be = container_of(ttm, struct ttm_agp_backend, ttm);
+	struct agp_softc *sc = agp_be->agp->agpdev;
+	bus_addr_t addr;
+	unsigned i;
 
-	if (agp_be->mem) {
-		if (agp_be->mem->is_bound) {
-			agp_unbind_memory(agp_be->mem);
-			return;
+	if (agp_be->bound) {
+		addr = agp_be->addr;
+		for (i = 0; i < ttm->num_pages; i++) {
+			sc->sc_methods->unbind_page(sc->sc_chipc, addr);
+			addr += PAGE_SIZE;
 		}
-		agp_free_memory(agp_be->mem);
-		agp_be->mem = NULL;
+		agp_flush_cache();
+		sc->sc_methods->flush_tlb(sc->sc_chipc);
+		agp_be->bound = 0;
 	}
 }
-EXPORT_SYMBOL(ttm_agp_unbind);
-
-bool ttm_agp_is_bound(struct ttm_tt *ttm)
-{
-	struct ttm_agp_backend *agp_be = container_of(ttm, struct ttm_agp_backend, ttm);
-
-	if (!ttm)
-		return false;
-
-	return (agp_be->mem != NULL);
-}
-EXPORT_SYMBOL(ttm_agp_is_bound);
 
 void ttm_agp_destroy(struct ttm_tt *ttm)
 {
 	struct ttm_agp_backend *agp_be = container_of(ttm, struct ttm_agp_backend, ttm);
 
-	if (agp_be->mem)
+	if (agp_be->bound)
 		ttm_agp_unbind(ttm);
 	ttm_tt_fini(ttm);
 	kfree(agp_be);
@@ -124,7 +116,7 @@ void ttm_agp_destroy(struct ttm_tt *ttm)
 EXPORT_SYMBOL(ttm_agp_destroy);
 
 struct ttm_tt *ttm_agp_tt_create(struct ttm_buffer_object *bo,
-				 struct agp_bridge_data *bridge,
+				 struct drm_agp_head *agp,
 				 uint32_t page_flags)
 {
 	struct ttm_agp_backend *agp_be;
@@ -133,11 +125,10 @@ struct ttm_tt *ttm_agp_tt_create(struct ttm_buffer_object *bo,
 	if (!agp_be)
 		return NULL;
 
-	agp_be->mem = NULL;
-	agp_be->bridge = bridge;
+	agp_be->bound = 0;
+	agp_be->agp = agp;
 
 	if (ttm_tt_init(&agp_be->ttm, bo, page_flags)) {
-		kfree(agp_be);
 		return NULL;
 	}
 
