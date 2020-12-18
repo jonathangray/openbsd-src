@@ -22,6 +22,7 @@
 #include <sys/rwlock.h>
 #include <linux/workqueue.h>
 #include <linux/seq_file.h>
+#include <linux/acpi.h>
 
 #include <dev/i2c/i2cvar.h>
 
