@@ -339,7 +339,7 @@ static int intel_engine_setup(struct intel_gt *gt, enum intel_engine_id id)
 	engine->schedule = NULL;
 
 	ewma__engine_latency_init(&engine->latency);
-	seqlock_init(&engine->stats.lock);
+	seqlock_init(&engine->stats.lock, IPL_TTY);
 
 	ATOMIC_INIT_NOTIFIER_HEAD(&engine->context_status_notifier);
 
@@ -779,7 +779,7 @@ intel_engine_init_active(struct intel_engine_cs *engine, unsigned int subclass)
 	INIT_LIST_HEAD(&engine->active.requests);
 	INIT_LIST_HEAD(&engine->active.hold);
 
-	spin_lock_init(&engine->active.lock);
+	mtx_init(&engine->active.lock, IPL_TTY);
 	lockdep_set_subclass(&engine->active.lock, subclass);
 
 	/*
@@ -1227,7 +1227,11 @@ bool intel_engine_is_idle(struct intel_engine_cs *engine)
 
 	/* Waiting to drain ELSP? */
 	if (execlists_active(&engine->execlists)) {
+#ifdef __linux__
 		synchronize_hardirq(engine->i915->drm.pdev->irq);
+#else
+		intr_barrier(engine->i915->irqh);
+#endif
 
 		intel_engine_flush_submission(engine);
 
@@ -1376,6 +1380,8 @@ static int print_ring(char *buf, int sz, struct i915_request *rq)
 
 static void hexdump(struct drm_printer *m, const void *buf, size_t len)
 {
+	STUB();
+#ifdef notyet
 	const size_t rowsize = 8 * sizeof(u32);
 	const void *prev = NULL;
 	bool skip = false;
@@ -1401,11 +1407,12 @@ static void hexdump(struct drm_printer *m, const void *buf, size_t len)
 		prev = buf + pos;
 		skip = false;
 	}
+#endif
 }
 
-static const char *repr_timer(const struct timer_list *t)
+static const char *repr_timer(const struct timeout *t)
 {
-	if (!READ_ONCE(t->expires))
+	if (!READ_ONCE(t->to_time))
 		return "inactive";
 
 	if (timer_pending(t))

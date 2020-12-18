@@ -23,14 +23,14 @@ mock_context(struct drm_i915_private *i915,
 	INIT_LIST_HEAD(&ctx->link);
 	ctx->i915 = i915;
 
-	mutex_init(&ctx->mutex);
+	rw_init(&ctx->mutex, "mkctx");
 
-	spin_lock_init(&ctx->stale.lock);
+	mtx_init(&ctx->stale.lock, IPL_TTY);
 	INIT_LIST_HEAD(&ctx->stale.engines);
 
 	i915_gem_context_set_persistence(ctx);
 
-	mutex_init(&ctx->engines_mutex);
+	rw_init(&ctx->engines_mutex, "mkeng");
 	e = default_engines(ctx);
 	if (IS_ERR(e))
 		goto err_free;

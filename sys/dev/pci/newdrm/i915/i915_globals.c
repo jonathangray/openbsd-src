@@ -15,7 +15,7 @@
 #include "i915_scheduler.h"
 #include "i915_vma.h"
 
-static LIST_HEAD(globals);
+static DRM_LIST_HEAD(globals);
 
 static atomic_t active;
 static atomic_t epoch;

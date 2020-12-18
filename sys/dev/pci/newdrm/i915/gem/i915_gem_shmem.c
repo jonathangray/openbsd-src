@@ -20,7 +20,10 @@
  */
 static void check_release_pagevec(struct pagevec *pvec)
 {
+	STUB();
+#ifdef notyet
 	check_move_unevictable_pages(pvec);
+#endif
 	__pagevec_release(pvec);
 	cond_resched();
 }
@@ -35,7 +38,8 @@ static int shmem_get_pages(struct drm_i915_gem_object *obj)
 	struct sg_table *st;
 	struct scatterlist *sg;
 	struct sgt_iter sgt_iter;
-	struct page *page;
+	struct pglist plist;
+	struct vm_page *page;
 	unsigned long last_pfn = 0;	/* suppress gcc warning */
 	unsigned int max_segment = i915_sg_segment_size();
 	unsigned int sg_page_sizes;
@@ -67,6 +71,7 @@ rebuild_st:
 		return -ENOMEM;
 	}
 
+#ifdef __linux__
 	/*
 	 * Get the list of pages out of our struct file.  They'll be pinned
 	 * at this point until we release them.
@@ -149,6 +154,29 @@ rebuild_st:
 		/* Check that the i965g/gm workaround works. */
 		GEM_BUG_ON(gfp & __GFP_DMA32 && last_pfn >= 0x00100000UL);
 	}
+#else
+	sg = st->sgl;
+	st->nents = 0;
+	sg_page_sizes = 0;
+
+	TAILQ_INIT(&plist);
+	if (uvm_objwire(obj->base.uao, 0, obj->base.size, &plist)) {
+		sg_free_table(st);
+		kfree(st);
+		return -ENOMEM;
+	}
+
+	i = 0;
+	TAILQ_FOREACH(page, &plist, pageq) {
+		if (i) {
+			sg_page_sizes |= sg->length;
+			sg = sg_next(sg);
+		}
+		st->nents++;
+		sg_set_page(sg, page, PAGE_SIZE, 0);
+		i++;
+	}
+#endif
 	if (sg) { /* loop terminated early; short sg table */
 		sg_page_sizes |= sg->length;
 		sg_mark_end(sg);
@@ -165,8 +193,12 @@ rebuild_st:
 		 * for PAGE_SIZE chunks instead may be helpful.
 		 */
 		if (max_segment > PAGE_SIZE) {
+#ifdef __linux__
 			for_each_sgt_page(page, sgt_iter, st)
 				put_page(page);
+#else
+			uvm_objunwire(obj->base.uao, 0, obj->base.size);
+#endif
 			sg_free_table(st);
 
 			max_segment = PAGE_SIZE;
@@ -186,6 +218,7 @@ rebuild_st:
 
 	return 0;
 
+#ifdef __linux__
 err_sg:
 	sg_mark_end(sg);
 err_pages:
@@ -201,6 +234,10 @@ err_pages:
 		if (pagevec_count(&pvec))
 			check_release_pagevec(&pvec);
 	}
+#else
+err_pages:
+	uvm_objunwire(obj->base.uao, 0, obj->base.size);
+#endif
 	sg_free_table(st);
 	kfree(st);
 
@@ -228,7 +265,12 @@ shmem_truncate(struct drm_i915_gem_object *obj)
 	 * To do this we must instruct the shmfs to drop all of its
 	 * backing pages, *now*.
 	 */
+#ifdef __linux__
 	shmem_truncate_range(file_inode(obj->base.filp), 0, (loff_t)-1);
+#else
+	obj->base.uao->pgops->pgo_flush(obj->base.uao, 0, obj->base.size,
+	    PGO_ALLPAGES | PGO_FREE);
+#endif
 	obj->mm.madv = __I915_MADV_PURGED;
 	obj->mm.pages = ERR_PTR(-EFAULT);
 }
@@ -236,6 +278,8 @@ shmem_truncate(struct drm_i915_gem_object *obj)
 static void
 shmem_writeback(struct drm_i915_gem_object *obj)
 {
+	STUB();
+#ifdef notyet
 	struct address_space *mapping;
 	struct writeback_control wbc = {
 		.sync_mode = WB_SYNC_NONE,
@@ -256,7 +300,7 @@ shmem_writeback(struct drm_i915_gem_object *obj)
 
 	/* Begin writeback on each dirty page */
 	for (i = 0; i < obj->base.size >> PAGE_SHIFT; i++) {
-		struct page *page;
+		struct vm_page *page;
 
 		page = find_lock_page(mapping, i);
 		if (!page)
@@ -276,6 +320,7 @@ shmem_writeback(struct drm_i915_gem_object *obj)
 put:
 		put_page(page);
 	}
+#endif
 }
 
 void
@@ -301,7 +346,7 @@ shmem_put_pages(struct drm_i915_gem_object *obj, struct sg_table *pages)
 {
 	struct sgt_iter sgt_iter;
 	struct pagevec pvec;
-	struct page *page;
+	struct vm_page *page;
 
 	__i915_gem_object_release_shmem(obj, pages, true);
 
@@ -310,21 +355,29 @@ shmem_put_pages(struct drm_i915_gem_object *obj, struct sg_table *pages)
 	if (i915_gem_object_needs_bit17_swizzle(obj))
 		i915_gem_object_save_bit_17_swizzle(obj, pages);
 
+#ifdef __linux__
 	mapping_clear_unevictable(file_inode(obj->base.filp)->i_mapping);
+#endif
 
 	pagevec_init(&pvec);
 	for_each_sgt_page(page, sgt_iter, pages) {
 		if (obj->mm.dirty)
 			set_page_dirty(page);
 
+#ifdef __linux__
 		if (obj->mm.madv == I915_MADV_WILLNEED)
 			mark_page_accessed(page);
 
 		if (!pagevec_add(&pvec, page))
 			check_release_pagevec(&pvec);
+#endif
 	}
+#ifdef __linux__
 	if (pagevec_count(&pvec))
 		check_release_pagevec(&pvec);
+#else
+	uvm_objunwire(obj->base.uao, 0, obj->base.size);
+#endif
 	obj->mm.dirty = false;
 
 	sg_free_table(pages);
@@ -335,7 +388,9 @@ static int
 shmem_pwrite(struct drm_i915_gem_object *obj,
 	     const struct drm_i915_gem_pwrite *arg)
 {
+#ifdef __linux__
 	struct address_space *mapping = obj->base.filp->f_mapping;
+#endif
 	char __user *user_data = u64_to_user_ptr(arg->data_ptr);
 	u64 remain, offset;
 	unsigned int pg;
@@ -372,7 +427,7 @@ shmem_pwrite(struct drm_i915_gem_object *obj,
 
 	do {
 		unsigned int len, unwritten;
-		struct page *page;
+		struct vm_page *page;
 		void *data, *vaddr;
 		int err;
 		char c;
@@ -390,11 +445,22 @@ shmem_pwrite(struct drm_i915_gem_object *obj,
 		if (err)
 			return err;
 
+#ifdef __linux__
 		err = pagecache_write_begin(obj->base.filp, mapping,
 					    offset, len, 0,
 					    &page, &data);
 		if (err < 0)
 			return err;
+#else
+		struct pglist plist;
+		TAILQ_INIT(&plist);
+		if (uvm_objwire(obj->base.uao, trunc_page(offset),
+		    trunc_page(offset) + PAGE_SIZE, &plist)) {
+			err = -ENOMEM;
+			return err;
+		}
+		page = TAILQ_FIRST(&plist);
+#endif
 
 		vaddr = kmap_atomic(page);
 		unwritten = __copy_from_user_inatomic(vaddr + pg,
@@ -402,11 +468,16 @@ shmem_pwrite(struct drm_i915_gem_object *obj,
 						      len);
 		kunmap_atomic(vaddr);
 
+#ifdef __linux__
 		err = pagecache_write_end(obj->base.filp, mapping,
 					  offset, len, len - unwritten,
 					  page, data);
 		if (err < 0)
 			return err;
+#else
+		uvm_objunwire(obj->base.uao, trunc_page(offset),
+		    trunc_page(offset) + PAGE_SIZE);
+#endif
 
 		/* We don't handle -EFAULT, leave it to the caller to check */
 		if (unwritten)
@@ -443,6 +514,7 @@ const struct drm_i915_gem_object_ops i915_gem_shmem_ops = {
 	.release = shmem_release,
 };
 
+#ifdef __linux__
 static int __create_shmem(struct drm_i915_private *i915,
 			  struct drm_gem_object *obj,
 			  resource_size_t size)
@@ -463,6 +535,7 @@ static int __create_shmem(struct drm_i915_private *i915,
 	obj->filp = filp;
 	return 0;
 }
+#endif
 
 static struct drm_i915_gem_object *
 create_shmem(struct intel_memory_region *mem,
@@ -481,7 +554,11 @@ create_shmem(struct intel_memory_region *mem,
 	if (!obj)
 		return ERR_PTR(-ENOMEM);
 
+#ifdef __linux__
 	ret = __create_shmem(i915, &obj->base, size);
+#else
+	ret = drm_gem_object_init(&i915->drm, &obj->base, size);
+#endif
 	if (ret)
 		goto fail;
 
@@ -492,9 +569,11 @@ create_shmem(struct intel_memory_region *mem,
 		mask |= __GFP_DMA32;
 	}
 
+#ifdef __linux__
 	mapping = obj->base.filp->f_mapping;
 	mapping_set_gfp_mask(mapping, mask);
 	GEM_BUG_ON(!(mapping_gfp_mask(mapping) & __GFP_RECLAIM));
+#endif
 
 	i915_gem_object_init(obj, &i915_gem_shmem_ops, &lock_class);
 
@@ -542,6 +621,9 @@ struct drm_i915_gem_object *
 i915_gem_object_create_shmem_from_data(struct drm_i915_private *dev_priv,
 				       const void *data, resource_size_t size)
 {
+	STUB();
+	return NULL;
+#ifdef notyet
 	struct drm_i915_gem_object *obj;
 	struct file *file;
 	resource_size_t offset;
@@ -557,7 +639,7 @@ i915_gem_object_create_shmem_from_data(struct drm_i915_private *dev_priv,
 	offset = 0;
 	do {
 		unsigned int len = min_t(typeof(size), size, PAGE_SIZE);
-		struct page *page;
+		struct vm_page *page;
 		void *pgdata, *vaddr;
 
 		err = pagecache_write_begin(file, file->f_mapping,
@@ -586,6 +668,7 @@ i915_gem_object_create_shmem_from_data(struct drm_i915_private *dev_priv,
 fail:
 	i915_gem_object_put(obj);
 	return ERR_PTR(err);
+#endif
 }
 
 static int init_shmem(struct intel_memory_region *mem)
@@ -616,8 +699,15 @@ static const struct intel_memory_region_ops shmem_region_ops = {
 
 struct intel_memory_region *i915_gem_shmem_setup(struct drm_i915_private *i915)
 {
+#ifdef __linux__
 	return intel_memory_region_create(i915, 0,
 					  totalram_pages() << PAGE_SHIFT,
 					  PAGE_SIZE, 0,
 					  &shmem_region_ops);
+#else
+	return intel_memory_region_create(i915, 0,
+					  ptoa(physmem),
+					  PAGE_SIZE, 0,
+					  &shmem_region_ops);
+#endif
 }

@@ -1055,7 +1055,7 @@ static bool pipe_scanline_is_moving(struct drm_i915_private *dev_priv,
 		line_mask = DSL_LINEMASK_GEN3;
 
 	line1 = intel_de_read(dev_priv, reg) & line_mask;
-	msleep(5);
+	drm_msleep(5);
 	line2 = intel_de_read(dev_priv, reg) & line_mask;
 
 	return line1 != line2;
@@ -2105,7 +2105,7 @@ intel_fb_align_height(const struct drm_framebuffer *fb,
 {
 	unsigned int tile_height = intel_tile_height(fb, color_plane);
 
-	return ALIGN(height, tile_height);
+	return roundup2(height, tile_height);
 }
 
 unsigned int intel_rotation_info_size(const struct intel_rotation_info *rot_info)
@@ -2562,7 +2562,7 @@ static int intel_fb_offset_to_xy(int *x, int *y,
 	}
 
 	height = drm_framebuffer_plane_height(fb->height, fb, color_plane);
-	height = ALIGN(height, intel_tile_height(fb, color_plane));
+	height = roundup2(height, intel_tile_height(fb, color_plane));
 
 	/* Catch potential overflows early */
 	if (add_overflows_t(u32, mul_u32_u32(height, fb->pitches[color_plane]),
@@ -15506,6 +15506,7 @@ static void intel_atomic_commit_fence_wait(struct intel_atomic_state *intel_stat
 	struct wait_queue_entry wait_fence, wait_reset;
 	struct drm_i915_private *dev_priv = to_i915(intel_state->base.dev);
 
+#ifdef notyet
 	init_wait_entry(&wait_fence, 0);
 	init_wait_entry(&wait_reset, 0);
 	for (;;) {
@@ -15526,6 +15527,22 @@ static void intel_atomic_commit_fence_wait(struct intel_atomic_state *intel_stat
 	finish_wait(bit_waitqueue(&dev_priv->gt.reset.flags,
 				  I915_RESET_MODESET),
 		    &wait_reset);
+#else
+	/* XXX above recurses sch_mtx */
+	init_wait_entry(&wait_fence, 0);
+	for (;;) {
+		prepare_to_wait(&intel_state->commit_ready.wait,
+				&wait_fence, TASK_UNINTERRUPTIBLE);
+
+
+		if (i915_sw_fence_done(&intel_state->commit_ready) ||
+		    test_bit(I915_RESET_MODESET, &dev_priv->gt.reset.flags))
+			break;
+
+		schedule();
+	}
+	finish_wait(&intel_state->commit_ready.wait, &wait_fence);
+#endif
 }
 
 static void intel_cleanup_dsbs(struct intel_atomic_state *state)
@@ -18882,7 +18899,11 @@ static void intel_hpd_poll_fini(struct drm_i915_private *i915)
 	/* Kill all the work that may have been queued by hpd. */
 	drm_connector_list_iter_begin(&i915->drm, &conn_iter);
 	for_each_intel_connector_iter(connector, &conn_iter) {
+#ifdef __linux__
 		if (connector->modeset_retry_work.func)
+#else
+		if (connector->modeset_retry_work.task.t_func)
+#endif
 			cancel_work_sync(&connector->modeset_retry_work);
 		if (connector->hdcp.shim) {
 			cancel_delayed_work_sync(&connector->hdcp.check_work);

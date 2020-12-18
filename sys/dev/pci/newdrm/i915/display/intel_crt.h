@@ -8,6 +8,8 @@
 
 #include "i915_reg.h"
 
+#define drm_i915_private inteldrm_softc
+
 enum pipe;
 struct drm_encoder;
 struct drm_i915_private;

@@ -445,7 +445,7 @@ void intel_crtc_crc_init(struct intel_crtc *crtc)
 {
 	struct intel_pipe_crc *pipe_crc = &crtc->pipe_crc;
 
-	spin_lock_init(&pipe_crc->lock);
+	mtx_init(&pipe_crc->lock, IPL_TTY);
 }
 
 static int i8xx_crc_source_valid(struct drm_i915_private *dev_priv,

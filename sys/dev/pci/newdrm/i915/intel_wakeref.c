@@ -101,7 +101,11 @@ void __intel_wakeref_init(struct intel_wakeref *wf,
 	wf->rpm = rpm;
 	wf->ops = ops;
 
+#ifdef __linux__
 	__mutex_init(&wf->mutex, "wakeref.mutex", &key->mutex);
+#else
+	rw_init(&wf->mutex, "wakeref.mutex");
+#endif
 	atomic_set(&wf->count, 0);
 	wf->wakeref = 0;
 
@@ -125,6 +129,7 @@ int intel_wakeref_wait_for_idle(struct intel_wakeref *wf)
 	return 0;
 }
 
+#ifdef __linux__
 static void wakeref_auto_timeout(struct timer_list *t)
 {
 	struct intel_wakeref_auto *wf = from_timer(wf, t, timer);
@@ -139,12 +144,32 @@ static void wakeref_auto_timeout(struct timer_list *t)
 
 	intel_runtime_pm_put(wf->rpm, wakeref);
 }
+#else
+static void wakeref_auto_timeout(void *arg)
+{
+	struct intel_wakeref_auto *wf = arg;
+	intel_wakeref_t wakeref;
+	unsigned long flags;
+
+	if (!refcount_dec_and_lock_irqsave(&wf->count, &wf->lock, &flags))
+		return;
+
+	wakeref = fetch_and_zero(&wf->wakeref);
+	spin_unlock_irqrestore(&wf->lock, flags);
+
+	intel_runtime_pm_put(wf->rpm, wakeref);
+}
+#endif
 
 void intel_wakeref_auto_init(struct intel_wakeref_auto *wf,
 			     struct intel_runtime_pm *rpm)
 {
-	spin_lock_init(&wf->lock);
+	mtx_init(&wf->lock, IPL_TTY);
+#ifdef __linux__
 	timer_setup(&wf->timer, wakeref_auto_timeout, 0);
+#else
+	timeout_set(&wf->timer, wakeref_auto_timeout, wf);
+#endif
 	refcount_set(&wf->count, 0);
 	wf->wakeref = 0;
 	wf->rpm = rpm;

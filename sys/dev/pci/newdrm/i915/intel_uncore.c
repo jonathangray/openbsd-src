@@ -37,7 +37,7 @@
 void
 intel_uncore_mmio_debug_init_early(struct intel_uncore_mmio_debug *mmio_debug)
 {
-	spin_lock_init(&mmio_debug->lock);
+	mtx_init(&mmio_debug->lock, IPL_TTY);
 	mmio_debug->unclaimed_mmio_check = 1;
 }
 
@@ -107,10 +107,14 @@ fw_domain_arm_timer(struct intel_uncore_forcewake_domain *d)
 	GEM_BUG_ON(d->uncore->fw_domains_timer & d->mask);
 	d->uncore->fw_domains_timer |= d->mask;
 	d->wake_count++;
+#ifdef __linux__
 	hrtimer_start_range_ns(&d->timer,
 			       NSEC_PER_MSEC,
 			       NSEC_PER_MSEC,
 			       HRTIMER_MODE_REL);
+#else
+	timeout_add_msec(&d->timer, 1);
+#endif
 }
 
 static inline int
@@ -369,6 +373,8 @@ static void __gen6_gt_wait_for_fifo(struct intel_uncore *uncore)
 	uncore->fifo_count = n - 1;
 }
 
+#ifdef __linux__
+
 static enum hrtimer_restart
 intel_uncore_fw_release_timer(struct hrtimer *timer)
 {
@@ -394,6 +400,33 @@ intel_uncore_fw_release_timer(struct hrtimer *timer)
 
 	return HRTIMER_NORESTART;
 }
+
+#else
+
+void
+intel_uncore_fw_release_timer(void *arg)
+{
+	struct intel_uncore_forcewake_domain *domain = arg;
+	struct intel_uncore *uncore = domain->uncore;
+	unsigned long irqflags;
+
+	assert_rpm_device_not_suspended(uncore->rpm);
+
+	if (xchg(&domain->active, false))
+		return;
+
+	spin_lock_irqsave(&uncore->lock, irqflags);
+
+	uncore->fw_domains_timer &= ~domain->mask;
+
+	GEM_BUG_ON(!domain->wake_count);
+	if (--domain->wake_count == 0)
+		uncore->funcs.force_wake_put(uncore, domain->mask);
+
+	spin_unlock_irqrestore(&uncore->lock, irqflags);
+}
+
+#endif
 
 /* Note callers must have acquired the PUNIT->PMIC bus, before calling this. */
 static unsigned int
@@ -1502,8 +1535,12 @@ static int __fw_domain_init(struct intel_uncore *uncore,
 
 	d->mask = BIT(domain_id);
 
+#ifdef __linux__
 	hrtimer_init(&d->timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
 	d->timer.function = intel_uncore_fw_release_timer;
+#else
+	timeout_set(&d->timer, intel_uncore_fw_release_timer, d);
+#endif
 
 	uncore->fw_domains |= BIT(domain_id);
 
@@ -1728,26 +1765,30 @@ static int uncore_mmio_setup(struct intel_uncore *uncore)
 		mmio_size = 512 * 1024;
 	else
 		mmio_size = 2 * 1024 * 1024;
+#ifdef __linux__
 	uncore->regs = pci_iomap(pdev, mmio_bar, mmio_size);
 	if (uncore->regs == NULL) {
 		drm_err(&i915->drm, "failed to map registers\n");
 		return -EIO;
 	}
+#endif
 
 	return 0;
 }
 
 static void uncore_mmio_cleanup(struct intel_uncore *uncore)
 {
+#ifdef __linux__
 	struct pci_dev *pdev = uncore->i915->drm.pdev;
 
 	pci_iounmap(pdev, uncore->regs);
+#endif
 }
 
 void intel_uncore_init_early(struct intel_uncore *uncore,
 			     struct drm_i915_private *i915)
 {
-	spin_lock_init(&uncore->lock);
+	mtx_init(&uncore->lock, IPL_TTY);
 	uncore->i915 = i915;
 	uncore->rpm = &i915->runtime_pm;
 	uncore->debug = &i915->mmio_debug;

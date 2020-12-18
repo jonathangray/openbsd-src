@@ -83,17 +83,29 @@
 
 static struct i915_global_gem_context {
 	struct i915_global base;
+#ifdef __linux__
 	struct kmem_cache *slab_luts;
+#else
+	struct pool slab_luts;
+#endif
 } global;
 
 struct i915_lut_handle *i915_lut_handle_alloc(void)
 {
+#ifdef __linux__
 	return kmem_cache_alloc(global.slab_luts, GFP_KERNEL);
+#else
+	return pool_get(&global.slab_luts, PR_WAITOK);
+#endif
 }
 
 void i915_lut_handle_free(struct i915_lut_handle *lut)
 {
+#ifdef __linux__
 	return kmem_cache_free(global.slab_luts, lut);
+#else
+	pool_put(&global.slab_luts, lut);
+#endif
 }
 
 static void lut_close(struct i915_gem_context *ctx)
@@ -703,13 +715,13 @@ __create_context(struct drm_i915_private *i915)
 	kref_init(&ctx->ref);
 	ctx->i915 = i915;
 	ctx->sched.priority = I915_USER_PRIORITY(I915_PRIORITY_NORMAL);
-	mutex_init(&ctx->mutex);
+	rw_init(&ctx->mutex, "gemctx");
 	INIT_LIST_HEAD(&ctx->link);
 
-	spin_lock_init(&ctx->stale.lock);
+	mtx_init(&ctx->stale.lock, IPL_TTY);
 	INIT_LIST_HEAD(&ctx->stale.engines);
 
-	mutex_init(&ctx->engines_mutex);
+	rw_init(&ctx->engines_mutex, "gemeng");
 	e = default_engines(ctx);
 	if (IS_ERR(e)) {
 		err = PTR_ERR(e);
@@ -718,7 +730,7 @@ __create_context(struct drm_i915_private *i915)
 	RCU_INIT_POINTER(ctx->engines, e);
 
 	INIT_RADIX_TREE(&ctx->handles_vma, GFP_KERNEL);
-	mutex_init(&ctx->lut_mutex);
+	rw_init(&ctx->lut_mutex, "lutrw");
 
 	/* NB: Mark all slices as needing a remap so that when the context first
 	 * loads it will restore whatever remap state already exists. If there
@@ -894,7 +906,7 @@ i915_gem_create_context(struct drm_i915_private *i915, unsigned int flags)
 
 static void init_contexts(struct i915_gem_contexts *gc)
 {
-	spin_lock_init(&gc->lock);
+	mtx_init(&gc->lock, IPL_NONE);
 	INIT_LIST_HEAD(&gc->list);
 
 	INIT_WORK(&gc->free_work, contexts_free_worker);
@@ -931,9 +943,15 @@ static int gem_context_register(struct i915_gem_context *ctx,
 		WRITE_ONCE(vm->file, fpriv); /* XXX */
 	mutex_unlock(&ctx->mutex);
 
+#ifdef __linux__
 	ctx->pid = get_task_pid(current, PIDTYPE_PID);
 	snprintf(ctx->name, sizeof(ctx->name), "%s[%d]",
 		 current->comm, pid_nr(ctx->pid));
+#else
+	ctx->pid = curproc->p_p->ps_pid;
+	snprintf(ctx->name, sizeof(ctx->name), "%s[%d]",
+		 curproc->p_p->ps_comm, ctx->pid);
+#endif
 
 	/* And finally expose ourselves to userspace via the idr */
 	ret = xa_alloc(&fpriv->context_xa, id, ctx, xa_limit_32b, GFP_KERNEL);
@@ -1904,6 +1922,9 @@ static int
 get_engines(struct i915_gem_context *ctx,
 	    struct drm_i915_gem_context_param *args)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct i915_context_param_engines __user *user;
 	struct i915_gem_engines *e;
 	size_t n, count, size;
@@ -1972,6 +1993,7 @@ get_engines(struct i915_gem_context *ctx,
 err_free:
 	free_engines(e);
 	return err;
+#endif
 }
 
 static int
@@ -2287,6 +2309,9 @@ static int clone_vm(struct i915_gem_context *dst,
 
 static int create_clone(struct i915_user_extension __user *ext, void *data)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	static int (* const fn[])(struct i915_gem_context *dst,
 				  struct i915_gem_context *src) = {
 #define MAP(x, y) [ilog2(I915_CONTEXT_CLONE_##x)] = y
@@ -2334,6 +2359,7 @@ static int create_clone(struct i915_user_extension __user *ext, void *data)
 	}
 
 	return 0;
+#endif
 }
 
 static const i915_user_extension_fn create_extensions[] = {
@@ -2367,9 +2393,15 @@ int i915_gem_context_create_ioctl(struct drm_device *dev, void *data,
 
 	ext_data.fpriv = file->driver_priv;
 	if (client_is_banned(ext_data.fpriv)) {
+#ifdef __linux__
 		drm_dbg(&i915->drm,
 			"client %s[%d] banned from creating ctx\n",
 			current->comm, task_pid_nr(current));
+#else
+		drm_dbg(&i915->drm,
+			"client %s[%d] banned from creating ctx\n",
+			curproc->p_p->ps_comm, curproc->p_p->ps_pid);
+#endif
 		return -EIO;
 	}
 
@@ -2638,12 +2670,18 @@ i915_gem_engines_iter_next(struct i915_gem_engines_iter *it)
 
 static void i915_global_gem_context_shrink(void)
 {
+#ifdef notyet
 	kmem_cache_shrink(global.slab_luts);
+#endif
 }
 
 static void i915_global_gem_context_exit(void)
 {
+#ifdef __linux__
 	kmem_cache_destroy(global.slab_luts);
+#else
+	pool_destroy(&global.slab_luts);
+#endif
 }
 
 static struct i915_global_gem_context global = { {
@@ -2653,9 +2691,14 @@ static struct i915_global_gem_context global = { {
 
 int __init i915_global_gem_context_init(void)
 {
+#ifdef __linux__
 	global.slab_luts = KMEM_CACHE(i915_lut_handle, 0);
 	if (!global.slab_luts)
 		return -ENOMEM;
+#else
+	pool_init(&global.slab_luts , sizeof(struct i915_lut_handle),
+	    0, IPL_NONE, 0, "drmlut", NULL);
+#endif
 
 	i915_global_register(&global.base);
 	return 0;

@@ -27,6 +27,8 @@
 
 #include <drm/drm_util.h>
 
+#define drm_i915_private inteldrm_softc
+
 enum link_m_n_set;
 struct dpll;
 struct drm_connector;

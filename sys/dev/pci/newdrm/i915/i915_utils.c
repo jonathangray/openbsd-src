@@ -8,6 +8,8 @@
 #include "i915_drv.h"
 #include "i915_utils.h"
 
+#include <sys/syslog.h>
+
 #define FDO_BUG_MSG "Please file a bug on drm/i915; see " FDO_BUG_URL " for details."
 
 void
@@ -29,11 +31,17 @@ __i915_printk(struct drm_i915_private *dev_priv, const char *level,
 	vaf.fmt = fmt;
 	vaf.va = &args;
 
+#ifdef __linux__
 	if (is_error)
 		dev_printk(level, kdev, "%pV", &vaf);
 	else
 		dev_printk(level, kdev, "[" DRM_NAME ":%ps] %pV",
 			   __builtin_return_address(0), &vaf);
+#else
+	if (!is_error)
+		printf("[" DRM_NAME "] ");
+	vprintf(fmt, args);
+#endif
 
 	va_end(args);
 
@@ -43,8 +51,10 @@ __i915_printk(struct drm_i915_private *dev_priv, const char *level,
 		 * if they may have caused the bug by fiddling with unsafe
 		 * module parameters.
 		 */
+#ifdef __linux__
 		if (!test_taint(TAINT_USER))
 			dev_notice(kdev, "%s", FDO_BUG_MSG);
+#endif
 		shown_bug_once = true;
 	}
 }
@@ -85,16 +95,16 @@ bool i915_error_injected(void)
 
 #endif
 
-void cancel_timer(struct timer_list *t)
+void cancel_timer(struct timeout *t)
 {
-	if (!READ_ONCE(t->expires))
+	if (!READ_ONCE(t->to_time))
 		return;
 
 	del_timer(t);
-	WRITE_ONCE(t->expires, 0);
+	WRITE_ONCE(t->to_time, 0);
 }
 
-void set_timer_ms(struct timer_list *t, unsigned long timeout)
+void set_timer_ms(struct timeout *t, unsigned long timeout)
 {
 	if (!timeout) {
 		cancel_timer(t);

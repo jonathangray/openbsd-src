@@ -14,6 +14,8 @@
 
 #include "i915_buddy.h"
 
+#define drm_i915_private inteldrm_softc
+
 struct drm_i915_private;
 struct drm_i915_gem_object;
 struct intel_memory_region;
@@ -73,14 +75,16 @@ struct intel_memory_region {
 
 	const struct intel_memory_region_ops *ops;
 
+#ifdef notyet
 	struct io_mapping iomap;
+#endif
 	struct resource region;
 
 	/* For fake LMEM */
 	struct drm_mm_node fake_mappable;
 
 	struct i915_buddy_mm mm;
-	struct mutex mm_lock;
+	struct rwlock mm_lock;
 
 	struct kref kref;
 
@@ -97,7 +101,7 @@ struct intel_memory_region {
 	dma_addr_t remap_addr;
 
 	struct {
-		struct mutex lock; /* Protects access to objects */
+		struct rwlock lock; /* Protects access to objects */
 		struct list_head list;
 		struct list_head purgeable;
 	} objects;

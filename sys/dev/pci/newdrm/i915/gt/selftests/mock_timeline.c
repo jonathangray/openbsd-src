@@ -13,7 +13,7 @@ void mock_timeline_init(struct intel_timeline *timeline, u64 context)
 	timeline->gt = NULL;
 	timeline->fence_context = context;
 
-	mutex_init(&timeline->mutex);
+	rw_init(&timeline->mutex, "mktmln");
 
 	INIT_ACTIVE_FENCE(&timeline->last_request);
 	INIT_LIST_HEAD(&timeline->requests);

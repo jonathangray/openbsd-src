@@ -14,6 +14,7 @@
 #include "i915_scatterlist.h"
 #include "i915_utils.h"
 
+#undef QUIET
 #define QUIET (__GFP_NORETRY | __GFP_NOWARN)
 #define MAYFAIL (__GFP_RETRY_MAYFAIL | __GFP_NOWARN)
 
@@ -78,7 +79,7 @@ create_st:
 
 	do {
 		int order = min(fls(npages) - 1, max_order);
-		struct page *page;
+		struct vm_page *page;
 
 		do {
 			page = alloc_pages(gfp | (order ? QUIET : MAYFAIL),

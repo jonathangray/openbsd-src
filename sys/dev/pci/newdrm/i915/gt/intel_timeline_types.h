@@ -24,7 +24,7 @@ struct intel_timeline {
 	u64 fence_context;
 	u32 seqno;
 
-	struct mutex mutex; /* protects the flow of requests */
+	struct rwlock mutex; /* protects the flow of requests */
 
 	/*
 	 * pin_count and active_count track essentially the same thing:

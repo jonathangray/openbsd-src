@@ -8,7 +8,7 @@
 
 struct drm_i915_private;
 
-#ifdef CONFIG_ACPI
+#if defined(CONFIG_ACPI) && defined(__linux__)
 void intel_register_dsm_handler(void);
 void intel_unregister_dsm_handler(void);
 void intel_acpi_device_id_update(struct drm_i915_private *i915);

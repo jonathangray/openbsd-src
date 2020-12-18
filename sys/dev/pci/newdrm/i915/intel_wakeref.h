@@ -35,7 +35,7 @@ struct intel_wakeref_ops {
 
 struct intel_wakeref {
 	atomic_t count;
-	struct mutex mutex;
+	struct rwlock mutex;
 
 	intel_wakeref_t wakeref;
 
@@ -252,7 +252,7 @@ int intel_wakeref_wait_for_idle(struct intel_wakeref *wf);
 
 struct intel_wakeref_auto {
 	struct intel_runtime_pm *rpm;
-	struct timer_list timer;
+	struct timeout timer;
 	intel_wakeref_t wakeref;
 	spinlock_t lock;
 	refcount_t count;

@@ -6,6 +6,7 @@
 #include <linux/slab.h> /* fault-inject.h is not standalone! */
 
 #include <linux/fault-inject.h>
+#include <asm/set_memory.h>
 
 #include "i915_trace.h"
 #include "intel_gt.h"
@@ -95,7 +96,7 @@ void i915_address_space_init(struct i915_address_space *vm, int subclass)
 	 * Do a dummy acquire now under fs_reclaim so that any allocation
 	 * attempt holding the lock is immediately reported by lockdep.
 	 */
-	mutex_init(&vm->mutex);
+	rw_init(&vm->mutex, "vmlk");
 	lockdep_set_subclass(&vm->mutex, subclass);
 	i915_gem_shrinker_taints_mutex(vm->i915, &vm->mutex);
 
@@ -125,7 +126,7 @@ dma_addr_t __px_dma(struct drm_i915_gem_object *p)
 	return sg_dma_address(p->mm.pages->sgl);
 }
 
-struct page *__px_page(struct drm_i915_gem_object *p)
+struct vm_page *__px_page(struct drm_i915_gem_object *p)
 {
 	GEM_BUG_ON(!i915_gem_object_has_pages(p));
 	return sg_page(p->mm.pages->sgl);
@@ -134,7 +135,7 @@ struct page *__px_page(struct drm_i915_gem_object *p)
 void
 fill_page_dma(struct drm_i915_gem_object *p, const u64 val, unsigned int count)
 {
-	struct page *page = __px_page(p);
+	struct vm_page *page = __px_page(p);
 	void *vaddr;
 
 	vaddr = kmap(page);
@@ -146,7 +147,7 @@ fill_page_dma(struct drm_i915_gem_object *p, const u64 val, unsigned int count)
 static void poison_scratch_page(struct drm_i915_gem_object *scratch)
 {
 	struct sgt_iter sgt;
-	struct page *page;
+	struct vm_page *page;
 	u8 val;
 
 	val = 0;

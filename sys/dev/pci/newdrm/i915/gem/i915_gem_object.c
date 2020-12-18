@@ -36,34 +36,50 @@
 
 static struct i915_global_object {
 	struct i915_global base;
+#ifdef __linux__
 	struct kmem_cache *slab_objects;
+#else
+	struct pool slab_objects;
+#endif
 } global;
 
 struct drm_i915_gem_object *i915_gem_object_alloc(void)
 {
+#ifdef __linux__
 	return kmem_cache_zalloc(global.slab_objects, GFP_KERNEL);
+#else
+	return pool_get(&global.slab_objects, PR_WAITOK | PR_ZERO);
+#endif
 }
 
 void i915_gem_object_free(struct drm_i915_gem_object *obj)
 {
+#ifdef __linux__
 	return kmem_cache_free(global.slab_objects, obj);
+#else
+	pool_put(&global.slab_objects, obj);
+#endif
 }
 
 void i915_gem_object_init(struct drm_i915_gem_object *obj,
 			  const struct drm_i915_gem_object_ops *ops,
 			  struct lock_class_key *key)
 {
+#ifdef __linux__
 	__mutex_init(&obj->mm.lock, ops->name ?: "obj->mm.lock", key);
+#else
+	rw_init(&obj->mm.lock, "objmm");
+#endif
 
-	spin_lock_init(&obj->vma.lock);
+	mtx_init(&obj->vma.lock, IPL_NONE);
 	INIT_LIST_HEAD(&obj->vma.list);
 
 	INIT_LIST_HEAD(&obj->mm.link);
 
 	INIT_LIST_HEAD(&obj->lut_list);
-	spin_lock_init(&obj->lut_lock);
+	mtx_init(&obj->lut_lock, IPL_NONE);
 
-	spin_lock_init(&obj->mmo.lock);
+	mtx_init(&obj->mmo.lock, IPL_NONE);
 	obj->mmo.offsets = RB_ROOT;
 
 	init_rcu_head(&obj->rcu);
@@ -72,7 +88,7 @@ void i915_gem_object_init(struct drm_i915_gem_object *obj,
 
 	obj->mm.madv = I915_MADV_WILLNEED;
 	INIT_RADIX_TREE(&obj->mm.get_page.radix, GFP_KERNEL | __GFP_NOWARN);
-	mutex_init(&obj->mm.get_page.lock);
+	rw_init(&obj->mm.get_page.lock, "mmget");
 
 	if (IS_ENABLED(CONFIG_LOCKDEP) && i915_gem_object_is_shrinkable(obj))
 		i915_gem_shrinker_taints_mutex(to_i915(obj->base.dev),
@@ -108,7 +124,7 @@ void i915_gem_close_object(struct drm_gem_object *gem, struct drm_file *file)
 	struct i915_lut_handle bookmark = {};
 	struct i915_mmap_offset *mmo, *mn;
 	struct i915_lut_handle *lut, *ln;
-	LIST_HEAD(close);
+	DRM_LIST_HEAD(close);
 
 	spin_lock(&obj->lut_lock);
 	list_for_each_entry_safe(lut, ln, &obj->lut_list, obj_link) {
@@ -163,6 +179,11 @@ static void __i915_gem_free_object_rcu(struct rcu_head *head)
 	struct drm_i915_gem_object *obj =
 		container_of(head, typeof(*obj), rcu);
 	struct drm_i915_private *i915 = to_i915(obj->base.dev);
+
+#ifdef __OpenBSD__
+	if (obj->base.uao)
+		uao_detach(obj->base.uao);
+#endif
 
 	dma_resv_fini(&obj->base._resv);
 	i915_gem_object_free(obj);
@@ -379,12 +400,18 @@ void i915_gem_init__objects(struct drm_i915_private *i915)
 
 static void i915_global_objects_shrink(void)
 {
+#ifdef notyet
 	kmem_cache_shrink(global.slab_objects);
+#endif
 }
 
 static void i915_global_objects_exit(void)
 {
+#ifdef __linux__
 	kmem_cache_destroy(global.slab_objects);
+#else
+	pool_destroy(&global.slab_objects);
+#endif
 }
 
 static struct i915_global_object global = { {
@@ -394,10 +421,15 @@ static struct i915_global_object global = { {
 
 int __init i915_global_objects_init(void)
 {
+#ifdef __linux__
 	global.slab_objects =
 		KMEM_CACHE(drm_i915_gem_object, SLAB_HWCACHE_ALIGN);
 	if (!global.slab_objects)
 		return -ENOMEM;
+#else
+	pool_init(&global.slab_objects, sizeof(struct drm_i915_gem_object),
+	    CACHELINESIZE, IPL_NONE, 0, "drmobj", NULL);
+#endif
 
 	i915_global_register(&global.base);
 	return 0;

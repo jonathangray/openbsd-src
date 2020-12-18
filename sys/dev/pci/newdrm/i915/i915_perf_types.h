@@ -84,9 +84,11 @@ struct i915_perf_stream_ops {
 	 * @poll_wait: Call poll_wait, passing a wait queue that will be woken
 	 * once there is something ready to read() for the stream
 	 */
+#ifdef notyet
 	void (*poll_wait)(struct i915_perf_stream *stream,
 			  struct file *file,
 			  poll_table *wait);
+#endif
 
 	/**
 	 * @wait_unlocked: For handling a blocking read, wait until there is
@@ -388,7 +390,7 @@ struct i915_perf {
 	 * Lock associated with adding/modifying/removing OA configs
 	 * in perf->metrics_idr.
 	 */
-	struct mutex metrics_lock;
+	struct rwlock metrics_lock;
 
 	/*
 	 * List of dynamic configurations (struct i915_oa_config), you
@@ -400,7 +402,7 @@ struct i915_perf {
 	 * Lock associated with anything below within this structure
 	 * except exclusive_stream.
 	 */
-	struct mutex lock;
+	struct rwlock lock;
 
 	/*
 	 * The stream currently using the OA unit. If accessed
@@ -419,7 +421,9 @@ struct i915_perf {
 	 * For rate limiting any notifications of spurious
 	 * invalid OA reports
 	 */
+#ifdef notyet
 	struct ratelimit_state spurious_report_rs;
+#endif
 
 	/**
 	 * For rate limiting any notifications of tail pointer

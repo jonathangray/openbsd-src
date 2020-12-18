@@ -198,7 +198,7 @@ struct drm_i915_gem_object {
 		 * Protects the pages and their use. Do not use directly, but
 		 * instead go through the pin/unpin interfaces.
 		 */
-		struct mutex lock;
+		struct rwlock lock;
 		atomic_t pages_pin_count;
 		atomic_t shrink_pin;
 
@@ -253,7 +253,7 @@ struct drm_i915_gem_object {
 			unsigned int sg_idx; /* in pages, but 32bit eek! */
 
 			struct radix_tree_root radix;
-			struct mutex lock; /* protects this cache */
+			struct rwlock lock; /* protects this cache */
 		} get_page;
 
 		/**

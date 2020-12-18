@@ -31,8 +31,10 @@
 #include <linux/types.h>
 #include <linux/workqueue.h>
 
+#define drm_i915_private inteldrm_softc
+
 struct drm_i915_private;
-struct timer_list;
+struct timeout;
 
 #define FDO_BUG_URL "https://gitlab.freedesktop.org/drm/intel/-/wikis/How-to-file-i915-bugs"
 
@@ -127,6 +129,9 @@ bool i915_error_injected(void);
 static inline bool
 __check_struct_size(size_t base, size_t arr, size_t count, size_t *size)
 {
+	STUB();
+	return false;
+#ifdef notyet
 	size_t sz;
 
 	if (check_mul_overflow(count, arr, &sz))
@@ -137,6 +142,7 @@ __check_struct_size(size_t base, size_t arr, size_t count, size_t *size)
 
 	*size = sz;
 	return true;
+#endif
 }
 
 /**
@@ -435,12 +441,16 @@ static inline void __add_taint_for_CI(unsigned int taint)
 	add_taint(taint, LOCKDEP_STILL_OK);
 }
 
-void cancel_timer(struct timer_list *t);
-void set_timer_ms(struct timer_list *t, unsigned long timeout);
+void cancel_timer(struct timeout *t);
+void set_timer_ms(struct timeout *t, unsigned long timeout);
 
-static inline bool timer_expired(const struct timer_list *t)
+static inline bool timer_expired(const struct timeout *t)
 {
+#ifdef __linux__
 	return READ_ONCE(t->expires) && !timer_pending(t);
+#else
+	return READ_ONCE(t->to_time) && !timer_pending(t);
+#endif
 }
 
 /*

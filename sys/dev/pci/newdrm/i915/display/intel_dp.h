@@ -10,6 +10,8 @@
 
 #include "i915_reg.h"
 
+#define drm_i915_private inteldrm_softc
+
 enum pipe;
 enum port;
 struct drm_connector_state;

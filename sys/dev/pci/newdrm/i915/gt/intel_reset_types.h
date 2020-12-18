@@ -47,7 +47,7 @@ struct intel_reset {
 #define I915_WEDGED_ON_FINI	(BITS_PER_LONG - 2)
 #define I915_WEDGED		(BITS_PER_LONG - 1)
 
-	struct mutex mutex; /* serialises wedging/unwedging */
+	struct rwlock mutex; /* serialises wedging/unwedging */
 
 	/**
 	 * Waitqueue to signal when the reset has completed. Used by clients
@@ -55,7 +55,9 @@ struct intel_reset {
 	 */
 	wait_queue_head_t queue;
 
+#ifdef notyet
 	struct srcu_struct backoff_srcu;
+#endif
 };
 
 #endif /* _INTEL_RESET_TYPES_H_ */

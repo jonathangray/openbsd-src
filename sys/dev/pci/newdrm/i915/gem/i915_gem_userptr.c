@@ -15,6 +15,8 @@
 #include "i915_gem_object.h"
 #include "i915_scatterlist.h"
 
+#ifdef __linux__
+
 struct i915_mm_struct {
 	struct mm_struct *mm;
 	struct drm_i915_private *i915;
@@ -837,6 +839,18 @@ i915_gem_userptr_ioctl(struct drm_device *dev,
 	args->handle = handle;
 	return 0;
 }
+
+#else
+
+int
+i915_gem_userptr_ioctl(struct drm_device *dev,
+		       void *data,
+		       struct drm_file *file)
+{
+	return -ENODEV;
+}
+
+#endif
 
 int i915_gem_init_userptr(struct drm_i915_private *dev_priv)
 {

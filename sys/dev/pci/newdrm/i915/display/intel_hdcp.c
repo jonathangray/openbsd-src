@@ -1726,7 +1726,7 @@ static int hdcp2_authenticate_and_encrypt(struct intel_connector *connector)
 		 * Ensuring the required 200mSec min time interval between
 		 * Session Key Exchange and encryption.
 		 */
-		msleep(HDCP_2_2_DELAY_BEFORE_ENCRYPTION_EN);
+		drm_msleep(HDCP_2_2_DELAY_BEFORE_ENCRYPTION_EN);
 		ret = hdcp2_enable_encryption(connector);
 		if (ret < 0) {
 			drm_dbg_kms(&i915->drm,
@@ -1892,6 +1892,7 @@ static void intel_hdcp_check_work(struct work_struct *work)
 				      DRM_HDCP_CHECK_PERIOD_MS);
 }
 
+#ifdef notyet
 static int i915_hdcp_component_bind(struct device *i915_kdev,
 				    struct device *mei_kdev, void *data)
 {
@@ -1943,11 +1944,15 @@ static enum mei_fw_tc intel_get_mei_fw_tc(enum transcoder cpu_transcoder)
 		return MEI_INVALID_TRANSCODER;
 	}
 }
+#endif /* notyet */
 
 static int initialize_hdcp_port_data(struct intel_connector *connector,
 				     enum port port,
 				     const struct intel_hdcp_shim *shim)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct drm_i915_private *dev_priv = to_i915(connector->base.dev);
 	struct intel_hdcp *hdcp = &connector->hdcp;
 	struct hdcp_port_data *data = &hdcp->port_data;
@@ -1985,6 +1990,7 @@ static int initialize_hdcp_port_data(struct intel_connector *connector,
 	data->streams[0].stream_type = hdcp->content_type;
 
 	return 0;
+#endif
 }
 
 static bool is_hdcp2_supported(struct drm_i915_private *dev_priv)
@@ -2006,6 +2012,8 @@ void intel_hdcp_component_init(struct drm_i915_private *dev_priv)
 	if (!is_hdcp2_supported(dev_priv))
 		return;
 
+	STUB();
+#ifdef notyet
 	mutex_lock(&dev_priv->hdcp_comp_mutex);
 	drm_WARN_ON(&dev_priv->drm, dev_priv->hdcp_comp_added);
 
@@ -2021,6 +2029,7 @@ void intel_hdcp_component_init(struct drm_i915_private *dev_priv)
 		mutex_unlock(&dev_priv->hdcp_comp_mutex);
 		return;
 	}
+#endif
 }
 
 static void intel_hdcp2_init(struct intel_connector *connector, enum port port,
@@ -2063,7 +2072,7 @@ int intel_hdcp_init(struct intel_connector *connector,
 	}
 
 	hdcp->shim = shim;
-	mutex_init(&hdcp->mutex);
+	rw_init(&hdcp->mutex, "ihdcp");
 	INIT_DELAYED_WORK(&hdcp->check_work, intel_hdcp_check_work);
 	INIT_WORK(&hdcp->prop_work, intel_hdcp_prop_work);
 	init_waitqueue_head(&hdcp->cp_irq_queue);
@@ -2074,6 +2083,9 @@ int intel_hdcp_init(struct intel_connector *connector,
 int intel_hdcp_enable(struct intel_connector *connector,
 		      enum transcoder cpu_transcoder, u8 content_type)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct drm_i915_private *dev_priv = to_i915(connector->base.dev);
 	struct intel_digital_port *dig_port = intel_attached_dig_port(connector);
 	struct intel_hdcp *hdcp = &connector->hdcp;
@@ -2122,6 +2134,7 @@ int intel_hdcp_enable(struct intel_connector *connector,
 	mutex_unlock(&dig_port->hdcp_mutex);
 	mutex_unlock(&hdcp->mutex);
 	return ret;
+#endif
 }
 
 int intel_hdcp_disable(struct intel_connector *connector)

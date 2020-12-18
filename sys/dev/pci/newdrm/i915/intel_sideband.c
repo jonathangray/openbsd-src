@@ -61,7 +61,9 @@ static void __vlv_punit_get(struct drm_i915_private *i915)
 	 */
 	if (IS_VALLEYVIEW(i915)) {
 		cpu_latency_qos_update_request(&i915->sb_qos, 0);
+#ifdef notyet
 		on_each_cpu(ping, NULL, 1);
+#endif
 	}
 }
 

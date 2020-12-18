@@ -1178,8 +1178,13 @@ static u32 *copy_batch(struct drm_i915_gem_object *dst_obj,
 		 * validate up to the end of the batch.
 		 */
 		if (!(dst_obj->cache_coherent & I915_BO_CACHE_COHERENT_FOR_READ))
+#ifdef __linux__
 			length = round_up(length,
 					  boot_cpu_data.x86_clflush_size);
+#else
+			length = round_up(length,
+					  curcpu()->ci_cflushsz);
+#endif
 
 		ptr = dst;
 		x = offset_in_page(offset);

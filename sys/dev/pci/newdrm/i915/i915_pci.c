@@ -615,7 +615,15 @@ static const struct intel_device_info chv_info = {
 	.has_runtime_pm = 1,
 	.has_rc6 = 1,
 	.has_rps = true,
+#ifdef __linux__
 	.has_logical_ring_contexts = 1,
+#else
+	/*
+	 * avoid 'Resetting rcs0 for stopped heartbeat on rcs0' GPU hang
+	 * when starting X
+	 */
+	.has_logical_ring_contexts = 0,
+#endif
 	.display.has_gmch = 1,
 	.dma_mask_size = 39,
 	.ppgtt_type = INTEL_PPGTT_FULL,
@@ -922,7 +930,7 @@ static const struct intel_device_info dg1_info __maybe_unused = {
  * and subvendor IDs, we need it to come before the more general IVB
  * PCI ID matches, otherwise we'll use the wrong info struct above.
  */
-static const struct pci_device_id pciidlist[] = {
+const struct pci_device_id pciidlist[] = {
 	INTEL_I830_IDS(&i830_info),
 	INTEL_I845G_IDS(&i845g_info),
 	INTEL_I85X_IDS(&i85x_info),
@@ -992,6 +1000,7 @@ static const struct pci_device_id pciidlist[] = {
 };
 MODULE_DEVICE_TABLE(pci, pciidlist);
 
+#ifdef __linux__
 static void i915_pci_remove(struct pci_dev *pdev)
 {
 	struct drm_i915_private *i915;
@@ -1147,6 +1156,7 @@ static void __exit i915_exit(void)
 	pci_unregister_driver(&i915_pci_driver);
 	i915_globals_exit();
 }
+#endif
 
 module_init(i915_init);
 module_exit(i915_exit);

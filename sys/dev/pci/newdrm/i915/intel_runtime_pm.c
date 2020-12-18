@@ -77,7 +77,7 @@ static void __print_depot_stack(depot_stack_handle_t stack,
 
 static void init_intel_runtime_pm_wakeref(struct intel_runtime_pm *rpm)
 {
-	spin_lock_init(&rpm->debug.lock);
+	mtx_init(&rpm->debug.lock, IPL_TTY);
 }
 
 static noinline depot_stack_handle_t
@@ -625,10 +625,12 @@ void intel_runtime_pm_init_early(struct intel_runtime_pm *rpm)
 {
 	struct drm_i915_private *i915 =
 			container_of(rpm, struct drm_i915_private, runtime_pm);
+#ifdef notyet
 	struct pci_dev *pdev = i915->drm.pdev;
 	struct device *kdev = &pdev->dev;
 
 	rpm->kdev = kdev;
+#endif
 	rpm->available = HAS_RUNTIME_PM(i915);
 
 	init_intel_runtime_pm_wakeref(rpm);

@@ -22,7 +22,7 @@ struct context {
 static int cpu_set(struct context *ctx, unsigned long offset, u32 v)
 {
 	unsigned int needs_clflush;
-	struct page *page;
+	struct vm_page *page;
 	void *map;
 	u32 *cpu;
 	int err;
@@ -55,7 +55,7 @@ out:
 static int cpu_get(struct context *ctx, unsigned long offset, u32 *v)
 {
 	unsigned int needs_clflush;
-	struct page *page;
+	struct vm_page *page;
 	void *map;
 	u32 *cpu;
 	int err;

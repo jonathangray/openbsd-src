@@ -58,7 +58,11 @@ int __must_check i915_vma_move_to_active(struct i915_vma *vma,
 					 struct i915_request *rq,
 					 unsigned int flags);
 
+#ifdef __linux__
 #define __i915_vma_flags(v) ((unsigned long *)&(v)->flags.counter)
+#else
+#define __i915_vma_flags(v) ((unsigned long *)&(v)->flags)
+#endif
 
 static inline bool i915_vma_is_ggtt(const struct i915_vma *vma)
 {
@@ -314,7 +318,7 @@ void __iomem *i915_vma_pin_iomap(struct i915_vma *vma);
  */
 void i915_vma_unpin_iomap(struct i915_vma *vma);
 
-static inline struct page *i915_vma_first_page(struct i915_vma *vma)
+static inline struct vm_page *i915_vma_first_page(struct i915_vma *vma)
 {
 	GEM_BUG_ON(!vma->pages);
 	return sg_page(vma->pages->sgl);

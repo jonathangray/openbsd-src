@@ -1177,8 +1177,10 @@ execlists_context_status_change(struct i915_request *rq, unsigned long status)
 	if (!IS_ENABLED(CONFIG_DRM_I915_GVT))
 		return;
 
+#ifdef notyet
 	atomic_notifier_call_chain(&rq->engine->context_status_notifier,
 				   status, rq);
+#endif
 }
 
 static void intel_engine_context_in(struct intel_engine_cs *engine)
@@ -1845,7 +1847,7 @@ static void virtual_xfer_context(struct virtual_engine *ve,
 
 static void defer_request(struct i915_request *rq, struct list_head * const pl)
 {
-	LIST_HEAD(list);
+	DRM_LIST_HEAD(list);
 
 	/*
 	 * We want to move the interrupted request to the back of
@@ -2466,8 +2468,8 @@ cancel_port_requests(struct intel_engine_execlists * const execlists)
 static inline void
 invalidate_csb_entries(const u64 *first, const u64 *last)
 {
-	clflush((void *)first);
-	clflush((void *)last);
+	clflush((vaddr_t)first);
+	clflush((vaddr_t)last);
 }
 
 /*
@@ -2748,7 +2750,7 @@ static void __execlists_submission_tasklet(struct intel_engine_cs *const engine)
 
 static void __execlists_hold(struct i915_request *rq)
 {
-	LIST_HEAD(list);
+	DRM_LIST_HEAD(list);
 
 	do {
 		struct i915_dependency *p;
@@ -2871,7 +2873,7 @@ static bool hold_request(const struct i915_request *rq)
 
 static void __execlists_unhold(struct i915_request *rq)
 {
-	LIST_HEAD(list);
+	DRM_LIST_HEAD(list);
 
 	do {
 		struct i915_dependency *p;
@@ -3127,7 +3129,7 @@ static void execlists_reset(struct intel_engine_cs *engine, const char *msg)
 
 static bool preempt_timeout(const struct intel_engine_cs *const engine)
 {
-	const struct timer_list *t = &engine->execlists.preempt;
+	const struct timeout *t = &engine->execlists.preempt;
 
 	if (!CONFIG_DRM_I915_PREEMPT_TIMEOUT)
 		return false;
@@ -3188,6 +3190,8 @@ static void __execlists_kick(struct intel_engine_execlists *execlists)
 #define execlists_kick(t, member) \
 	__execlists_kick(container_of(t, struct intel_engine_execlists, member))
 
+#ifdef __linux__
+
 static void execlists_timeslice(struct timer_list *timer)
 {
 	execlists_kick(timer, timer);
@@ -3197,6 +3201,22 @@ static void execlists_preempt(struct timer_list *timer)
 {
 	execlists_kick(timer, preempt);
 }
+
+#else
+
+static void execlists_timeslice(void *arg)
+{
+	struct timeout *timer = arg;
+	execlists_kick(timer, timer);
+}
+
+static void execlists_preempt(void *arg)
+{
+	struct timeout *timer = arg;
+	execlists_kick(timer, preempt);
+}
+
+#endif
 
 static void queue_request(struct intel_engine_cs *engine,
 			  struct i915_request *rq)
@@ -4246,7 +4266,7 @@ static void __execlists_reset(struct intel_engine_cs *engine, bool stalled)
 	u32 head;
 
 	mb(); /* paranoia: read the CSB pointers from after the reset */
-	clflush(execlists->csb_write);
+	clflush((vaddr_t)execlists->csb_write);
 	mb();
 
 	process_csb(engine); /* drain preemption events */
@@ -5164,8 +5184,15 @@ int intel_execlists_submission_setup(struct intel_engine_cs *engine)
 
 	tasklet_init(&engine->execlists.tasklet,
 		     execlists_submission_tasklet, (unsigned long)engine);
+#ifdef __linux__
 	timer_setup(&engine->execlists.timer, execlists_timeslice, 0);
 	timer_setup(&engine->execlists.preempt, execlists_preempt, 0);
+#else
+	timeout_set(&engine->execlists.timer, execlists_timeslice,
+	    &engine->execlists.timer);
+	timeout_set(&engine->execlists.preempt, execlists_preempt,
+	    &engine->execlists.preempt);
+#endif
 
 	logical_ring_default_vfuncs(engine);
 	logical_ring_default_irqs(engine);
@@ -5959,11 +5986,21 @@ int intel_virtual_engine_attach_bond(struct intel_engine_cs *engine,
 		return 0;
 	}
 
+#ifdef __linux__
 	bond = krealloc(ve->bonds,
 			sizeof(*bond) * (ve->num_bonds + 1),
 			GFP_KERNEL);
 	if (!bond)
 		return -ENOMEM;
+#else
+	bond = kmalloc(sizeof(*bond) * (ve->num_bonds + 1),
+			GFP_KERNEL);
+	if (!bond)
+		return -ENOMEM;
+
+	memcpy(bond, ve->bonds, sizeof(*bond) * ve->num_bonds);
+	kfree(ve->bonds);
+#endif
 
 	bond[ve->num_bonds].master = master;
 	bond[ve->num_bonds].sibling_mask = sibling->mask;

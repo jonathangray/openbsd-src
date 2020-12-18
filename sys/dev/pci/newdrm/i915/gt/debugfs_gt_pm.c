@@ -18,6 +18,8 @@
 #include "intel_sideband.h"
 #include "intel_uncore.h"
 
+#ifdef notyet
+
 static int fw_domains_show(struct seq_file *m, void *data)
 {
 	struct intel_gt *gt = m->private;
@@ -613,8 +615,12 @@ static bool rps_eval(void *data)
 
 DEFINE_GT_DEBUGFS_ATTRIBUTE(rps_boost);
 
+#endif /* notyet */
+
 void debugfs_gt_pm_register(struct intel_gt *gt, struct dentry *root)
 {
+	STUB();
+#ifdef notyet
 	static const struct debugfs_gt_file files[] = {
 		{ "drpc", &drpc_fops, NULL },
 		{ "frequency", &frequency_fops, NULL },
@@ -624,4 +630,5 @@ void debugfs_gt_pm_register(struct intel_gt *gt, struct dentry *root)
 	};
 
 	intel_gt_debugfs_register_files(root, files, ARRAY_SIZE(files), gt);
+#endif
 }

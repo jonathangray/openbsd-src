@@ -761,7 +761,7 @@ static void ppgtt_free_all_spt(struct intel_vgpu *vgpu)
 {
 	struct intel_vgpu_ppgtt_spt *spt, *spn;
 	struct radix_tree_iter iter;
-	LIST_HEAD(all_spt);
+	DRM_LIST_HEAD(all_spt);
 	void __rcu **slot;
 
 	rcu_read_lock();
@@ -2741,7 +2741,7 @@ int intel_gvt_init_gtt(struct intel_gvt *gvt)
 		}
 	}
 	INIT_LIST_HEAD(&gvt->gtt.ppgtt_mm_lru_list_head);
-	mutex_init(&gvt->gtt.ppgtt_mm_lock);
+	rw_init(&gvt->gtt.ppgtt_mm_lock, "gvtmm");
 	return 0;
 }
 

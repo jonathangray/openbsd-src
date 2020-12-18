@@ -14,7 +14,9 @@
 #include "intel_gt_pm_irq.h"
 #include "intel_rps.h"
 #include "intel_sideband.h"
+#ifdef __linux__
 #include "../../../platform/x86/intel_ips.h"
+#endif
 
 #define BUSY_MAX_EI	20u /* ms */
 
@@ -1588,7 +1590,11 @@ static u32 vlv_wa_c0_ei(struct intel_rps *rps, u32 pm_iir)
 
 	vlv_c0_read(uncore, &now);
 
+#ifdef __linux__
 	if (prev->ktime) {
+#else
+	if (ktime_to_ns(prev->ktime)) {
+#endif
 		u64 time, c0;
 		u32 render, media;
 
@@ -1788,8 +1794,8 @@ void gen5_rps_irq_handler(struct intel_rps *rps)
 
 void intel_rps_init_early(struct intel_rps *rps)
 {
-	mutex_init(&rps->lock);
-	mutex_init(&rps->power.mutex);
+	rw_init(&rps->lock, "rpslk");
+	rw_init(&rps->power.mutex, "rpspwr");
 
 	INIT_WORK(&rps->work, rps_work);
 	timer_setup(&rps->timer, rps_timer, 0);
@@ -1917,6 +1923,7 @@ static struct drm_i915_private __rcu *ips_mchdev;
 static void
 ips_ping_for_i915_load(void)
 {
+#ifdef __linux__
 	void (*link)(void);
 
 	link = symbol_get(ips_link_to_i915_driver);
@@ -1924,6 +1931,7 @@ ips_ping_for_i915_load(void)
 		link();
 		symbol_put(ips_link_to_i915_driver);
 	}
+#endif
 }
 
 void intel_rps_driver_register(struct intel_rps *rps)

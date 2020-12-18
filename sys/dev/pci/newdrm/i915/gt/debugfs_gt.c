@@ -15,6 +15,7 @@
 
 void debugfs_gt_register(struct intel_gt *gt)
 {
+#ifdef __linux__
 	struct dentry *root;
 
 	if (!gt->i915->drm.primary->debugfs_root)
@@ -29,12 +30,14 @@ void debugfs_gt_register(struct intel_gt *gt)
 	intel_sseu_debugfs_register(gt, root);
 
 	intel_uc_debugfs_register(&gt->uc, root);
+#endif
 }
 
 void intel_gt_debugfs_register_files(struct dentry *root,
 				     const struct debugfs_gt_file *files,
 				     unsigned long count, void *data)
 {
+#ifdef __linux__
 	while (count--) {
 		umode_t mode = files->fops->write ? 0644 : 0444;
 		if (!files->eval || files->eval(data))
@@ -44,4 +47,5 @@ void intel_gt_debugfs_register_files(struct dentry *root,
 
 		files++;
 	}
+#endif
 }

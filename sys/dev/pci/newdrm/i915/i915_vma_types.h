@@ -130,8 +130,10 @@ static inline void assert_i915_gem_gtt_types(void)
 	/* Check that rotation/remapped shares offsets for simplicity */
 	BUILD_BUG_ON(offsetof(struct intel_remapped_info, plane[0]) !=
 		     offsetof(struct intel_rotation_info, plane[0]));
+#ifdef notyet
 	BUILD_BUG_ON(offsetofend(struct intel_remapped_info, plane[1]) !=
 		     offsetofend(struct intel_rotation_info, plane[1]));
+#endif
 
 	/* As we encode the size of each branch inside the union into its type,
 	 * we have to be careful that each branch has a unique size.
@@ -177,6 +179,7 @@ struct i915_vma {
 
 	struct sg_table *pages;
 	void __iomem *iomap;
+	bus_space_handle_t bsh;
 	void *private; /* owned by creator */
 
 	struct i915_fence_reg *fence;
@@ -254,7 +257,7 @@ struct i915_vma {
 #define I915_VMA_PAGES_BIAS 24
 #define I915_VMA_PAGES_ACTIVE (BIT(24) | 1)
 	atomic_t pages_count; /* number of active binds to the pages */
-	struct mutex pages_mutex; /* protect acquire/release of backing pages */
+	struct rwlock pages_mutex; /* protect acquire/release of backing pages */
 
 	/**
 	 * Support different GGTT views into the same object.

@@ -31,8 +31,10 @@ struct debugfs_gt_file {
 	bool (*eval)(void *data);
 };
 
+#ifdef notyet
 void intel_gt_debugfs_register_files(struct dentry *root,
 				     const struct debugfs_gt_file *files,
 				     unsigned long count, void *data);
+#endif
 
 #endif /* DEBUGFS_GT_H */

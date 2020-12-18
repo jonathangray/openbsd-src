@@ -39,13 +39,13 @@ enum {
 };
 
 struct intel_rps {
-	struct mutex lock; /* protects enabling and the worker */
+	struct rwlock lock; /* protects enabling and the worker */
 
 	/*
 	 * work, interrupts_enabled and pm_iir are protected by
 	 * dev_priv->irq_lock
 	 */
-	struct timer_list timer;
+	struct timeout timer;
 	struct work_struct work;
 	unsigned long flags;
 
@@ -83,7 +83,7 @@ struct intel_rps {
 	int last_adj;
 
 	struct {
-		struct mutex mutex;
+		struct rwlock mutex;
 
 		enum { LOW_POWER, BETWEEN, HIGH_POWER } mode;
 		unsigned int interactive;
