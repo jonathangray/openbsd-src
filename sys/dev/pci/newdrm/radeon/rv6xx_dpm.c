@@ -1295,7 +1295,7 @@ static int rv6xx_step_sw_voltage(struct radeon_device *rdev,
 		current_voltage += signed_voltage_step;
 		rv6xx_program_voltage_stepping_entry(rdev, R600_POWER_LEVEL_CTXSW,
 						     current_voltage);
-		msleep((rdev->pm.dpm.voltage_response_time + 999) / 1000);
+		drm_msleep((rdev->pm.dpm.voltage_response_time + 999) / 1000);
 	}
 
 	return 0;
@@ -1699,7 +1699,7 @@ int rv6xx_dpm_set_power_state(struct radeon_device *rdev)
 	if (pi->voltage_control) {
 		if (rdev->pm.dpm.platform_caps & ATOM_PP_PLATFORM_CAP_STEPVDDC)
 			rv6xx_step_voltage_if_increasing(rdev, new_ps, old_ps);
-		msleep((rdev->pm.dpm.voltage_response_time + 999) / 1000);
+		drm_msleep((rdev->pm.dpm.voltage_response_time + 999) / 1000);
 	}
 
 	r600_power_level_enable(rdev, R600_POWER_LEVEL_MEDIUM, true);

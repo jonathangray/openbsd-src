@@ -52,11 +52,14 @@
  * radeon_irq_process is a macro that points to the per-asic
  * irq handler callback.
  */
-irqreturn_t radeon_driver_irq_handler_kms(int irq, void *arg)
+irqreturn_t radeon_driver_irq_handler_kms(void *arg)
 {
 	struct drm_device *dev = (struct drm_device *) arg;
 	struct radeon_device *rdev = dev->dev_private;
 	irqreturn_t ret;
+
+	if (!rdev->irq.installed)
+		return 0;
 
 	ret = radeon_irq_process(rdev);
 	if (ret == IRQ_HANDLED)
@@ -205,7 +208,7 @@ void radeon_driver_irq_uninstall_kms(struct drm_device *dev)
  * Returns true if MSIs should be enabled, false if MSIs
  * should not be enabled.
  */
-static bool radeon_msi_ok(struct radeon_device *rdev)
+bool radeon_msi_ok(struct radeon_device *rdev)
 {
 	/* RV370/RV380 was first asic with MSI support */
 	if (rdev->family < CHIP_RV380)
@@ -289,7 +292,7 @@ int radeon_irq_kms_init(struct radeon_device *rdev)
 {
 	int r = 0;
 
-	spin_lock_init(&rdev->irq.lock);
+	mtx_init(&rdev->irq.lock, IPL_TTY);
 
 	/* Disable vblank irqs aggressively for power-saving */
 	rdev->ddev->vblank_disable_immediate = true;

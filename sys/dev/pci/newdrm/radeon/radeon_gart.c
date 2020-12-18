@@ -68,6 +68,7 @@
  * gart table to be in system memory.
  * Returns 0 for success, -ENOMEM for failure.
  */
+#ifdef __linux__
 int radeon_gart_table_ram_alloc(struct radeon_device *rdev)
 {
 	void *ptr;
@@ -87,6 +88,30 @@ int radeon_gart_table_ram_alloc(struct radeon_device *rdev)
 	rdev->gart.ptr = ptr;
 	return 0;
 }
+#else
+int radeon_gart_table_ram_alloc(struct radeon_device *rdev)
+{
+	struct drm_dmamem *dmah;
+	int flags = 0;
+
+#ifdef CONFIG_X86
+	if (rdev->family == CHIP_RS400 || rdev->family == CHIP_RS480 ||
+	    rdev->family == CHIP_RS690 || rdev->family == CHIP_RS740) {
+		flags |= BUS_DMA_NOCACHE;
+	}
+#endif
+	dmah = drm_dmamem_alloc(rdev->dmat, rdev->gart.table_size,
+	    rdev->gart.table_size, 1, rdev->gart.table_size, flags, 0);
+	if (dmah == NULL) {
+		return -ENOMEM;
+	}
+	rdev->gart.dmah = dmah;
+	rdev->gart.table_addr = dmah->map->dm_segs[0].ds_addr;
+	rdev->gart.ptr = dmah->kva;
+	memset((void *)rdev->gart.ptr, 0, rdev->gart.table_size);
+	return 0;
+}
+#endif
 
 /**
  * radeon_gart_table_ram_free - free system ram for gart page table
@@ -97,6 +122,7 @@ int radeon_gart_table_ram_alloc(struct radeon_device *rdev)
  * (r1xx-r3xx, non-pcie r4xx, rs400).  These asics require the
  * gart table to be in system memory.
  */
+#ifdef __linux__
 void radeon_gart_table_ram_free(struct radeon_device *rdev)
 {
 	if (rdev->gart.ptr == NULL) {
@@ -114,6 +140,24 @@ void radeon_gart_table_ram_free(struct radeon_device *rdev)
 	rdev->gart.ptr = NULL;
 	rdev->gart.table_addr = 0;
 }
+#else
+void radeon_gart_table_ram_free(struct radeon_device *rdev)
+{
+	if (rdev->gart.ptr == NULL) {
+		return;
+	}
+#if defined (CONFIG_X86) && defined(__linux__)
+	if (rdev->family == CHIP_RS400 || rdev->family == CHIP_RS480 ||
+	    rdev->family == CHIP_RS690 || rdev->family == CHIP_RS740) {
+		set_memory_wb((unsigned long)rdev->gart.ptr,
+			      rdev->gart.table_size >> PAGE_SHIFT);
+	}
+#endif
+	drm_dmamem_free(rdev->dmat, rdev->gart.dmah);
+	rdev->gart.ptr = NULL;
+	rdev->gart.table_addr = 0;
+}
+#endif
 
 /**
  * radeon_gart_table_vram_alloc - allocate vram for gart page table
@@ -285,7 +329,7 @@ void radeon_gart_unbind(struct radeon_device *rdev, unsigned offset,
  * Returns 0 for success, -EINVAL for failure.
  */
 int radeon_gart_bind(struct radeon_device *rdev, unsigned offset,
-		     int pages, struct page **pagelist, dma_addr_t *dma_addr,
+		     int pages, struct vm_page **pagelist, dma_addr_t *dma_addr,
 		     uint32_t flags)
 {
 	unsigned t;
