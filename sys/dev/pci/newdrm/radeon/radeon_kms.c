@@ -38,7 +38,6 @@
 #include <drm/drm_ioctl.h>
 #include <drm/radeon_drm.h>
 #include <drm/drm_drv.h>
-#include <drm/drm_pci.h>
 
 #include "radeon.h"
 #include "radeon_asic.h"
@@ -332,7 +331,7 @@ radeondrm_doswitch(void *v)
 		crtc->funcs->gamma_set(crtc, r_base, g_base, b_base,
 		    crtc->gamma_size, &ctx);
 
-		DRM_MODESET_LOCK_ALL_END(ctx, ret);
+		DRM_MODESET_LOCK_ALL_END(dev, ctx, ret);
 	}
 #endif
 	drm_fb_helper_restore_fbdev_mode_unlocked((void *)rdev->mode_info.rfbdev);
