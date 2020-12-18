@@ -407,7 +407,7 @@ file	dev/pci/newdrm/radeon/evergreen_dma.c		radeondrm
 file	dev/pci/newdrm/radeon/evergreen_hdmi.c		radeondrm
 file	dev/pci/newdrm/radeon/kv_dpm.c			radeondrm
 file	dev/pci/newdrm/radeon/kv_smc.c			radeondrm
-file	dev/pci/newdrm/radeon/mkregtable.c		radeondrm
+#file	dev/pci/newdrm/radeon/mkregtable.c		radeondrm
 file	dev/pci/newdrm/radeon/ni.c			radeondrm
 file	dev/pci/newdrm/radeon/ni_dma.c			radeondrm
 file	dev/pci/newdrm/radeon/ni_dpm.c			radeondrm
@@ -523,8 +523,8 @@ file	dev/pci/drm/amd/amdgpu/cik_ih.c			amdgpu_cik
 file	dev/pci/drm/amd/amdgpu/amdgpu_cik_sdma.c	amdgpu_cik
 file	dev/pci/drm/amd/amdgpu/dce_v8_0.c		amdgpu_cik
 file	dev/pci/drm/amd/amdgpu/gfx_v7_0.c		amdgpu_cik
-file	dev/pci/drm/amd/amdgpu/amdgpu_kv_dpm.c		amdgpu_cik
-file	dev/pci/drm/amd/amdgpu/amdgpu_kv_smc.c		amdgpu_cik
+file	dev/pci/drm/amd/pm/powerplay/amdgpu_kv_dpm.c	amdgpu_cik
+file	dev/pci/drm/amd/pm/powerplay/amdgpu_kv_smc.c	amdgpu_cik
 file	dev/pci/drm/amd/amdgpu/amdgpu_uvd_v4_2.c	amdgpu_cik
 file	dev/pci/drm/amd/amdgpu/amdgpu_vce_v2_0.c	amdgpu_cik
 
