@@ -50,9 +50,9 @@ static inline void set(struct intel_uncore *uncore, i915_reg_t reg, u32 val)
 	intel_uncore_write_fw(uncore, reg, val);
 }
 
-static void rps_timer(struct timer_list *t)
+static void rps_timer(void *arg)
 {
-	struct intel_rps *rps = from_timer(rps, t, timer);
+	struct intel_rps *rps = arg;
 	struct intel_engine_cs *engine;
 	ktime_t dt, last, timestamp;
 	enum intel_engine_id id;
@@ -1798,7 +1798,11 @@ void intel_rps_init_early(struct intel_rps *rps)
 	rw_init(&rps->power.mutex, "rpspwr");
 
 	INIT_WORK(&rps->work, rps_work);
+#ifdef __linux__
 	timer_setup(&rps->timer, rps_timer, 0);
+#else
+	timeout_set(&rps->timer, rps_timer, rps);
+#endif
 
 	atomic_set(&rps->num_waiters, 0);
 }
