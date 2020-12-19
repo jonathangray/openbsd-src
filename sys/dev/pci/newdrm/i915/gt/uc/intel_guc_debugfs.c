@@ -10,6 +10,8 @@
 #include "intel_guc_debugfs.h"
 #include "intel_guc_log_debugfs.h"
 
+#ifdef notyet
+
 static int guc_info_show(struct seq_file *m, void *data)
 {
 	struct intel_guc *guc = m->private;
@@ -28,8 +30,12 @@ static int guc_info_show(struct seq_file *m, void *data)
 }
 DEFINE_GT_DEBUGFS_ATTRIBUTE(guc_info);
 
+#endif
+
 void intel_guc_debugfs_register(struct intel_guc *guc, struct dentry *root)
 {
+	STUB();
+#ifdef notyet
 	static const struct debugfs_gt_file files[] = {
 		{ "guc_info", &guc_info_fops, NULL },
 	};
@@ -39,4 +45,5 @@ void intel_guc_debugfs_register(struct intel_guc *guc, struct dentry *root)
 
 	intel_gt_debugfs_register_files(root, files, ARRAY_SIZE(files), guc);
 	intel_guc_log_debugfs_register(&guc->log, root);
+#endif
 }

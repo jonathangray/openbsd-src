@@ -11,6 +11,8 @@
 #include "intel_guc_log.h"
 #include "intel_guc_log_debugfs.h"
 
+#ifdef notyet
+
 static int guc_log_dump_show(struct seq_file *m, void *data)
 {
 	struct drm_printer p = drm_seq_file_printer(m);
@@ -106,9 +108,13 @@ static const struct file_operations guc_log_relay_fops = {
 	.release = guc_log_relay_release,
 };
 
+#endif /* notyet */
+
 void intel_guc_log_debugfs_register(struct intel_guc_log *log,
 				    struct dentry *root)
 {
+	STUB();
+#ifdef notyet
 	static const struct debugfs_gt_file files[] = {
 		{ "guc_log_dump", &guc_log_dump_fops, NULL },
 		{ "guc_load_err_log_dump", &guc_load_err_log_dump_fops, NULL },
@@ -120,5 +126,6 @@ void intel_guc_log_debugfs_register(struct intel_guc_log *log,
 		return;
 
 	intel_gt_debugfs_register_files(root, files, ARRAY_SIZE(files), log);
+#endif
 }
 

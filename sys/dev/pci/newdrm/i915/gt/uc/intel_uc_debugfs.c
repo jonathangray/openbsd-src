@@ -12,6 +12,8 @@
 #include "intel_uc.h"
 #include "intel_uc_debugfs.h"
 
+#ifdef notyet
+
 static int uc_usage_show(struct seq_file *m, void *data)
 {
 	struct intel_uc *uc = m->private;
@@ -34,8 +36,12 @@ static int uc_usage_show(struct seq_file *m, void *data)
 }
 DEFINE_GT_DEBUGFS_ATTRIBUTE(uc_usage);
 
+#endif
+
 void intel_uc_debugfs_register(struct intel_uc *uc, struct dentry *gt_root)
 {
+	STUB();
+#ifdef notyet
 	static const struct debugfs_gt_file files[] = {
 		{ "usage", &uc_usage_fops, NULL },
 	};
@@ -56,4 +62,5 @@ void intel_uc_debugfs_register(struct intel_uc *uc, struct dentry *gt_root)
 
 	intel_guc_debugfs_register(&uc->guc, root);
 	intel_huc_debugfs_register(&uc->huc, root);
+#endif
 }
