@@ -301,7 +301,11 @@ static inline bool dma_fence_is_i915(const struct dma_fence *fence)
 	return fence->ops == &i915_fence_ops;
 }
 
+#ifdef __linux__
 struct kmem_cache *i915_request_slab_cache(void);
+#else
+struct pool *i915_request_slab_cache(void);
+#endif
 
 struct i915_request * __must_check
 __i915_request_create(struct intel_context *ce, gfp_t gfp);

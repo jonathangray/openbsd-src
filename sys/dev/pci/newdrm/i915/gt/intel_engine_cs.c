@@ -434,7 +434,11 @@ void intel_engine_free_request_pool(struct intel_engine_cs *engine)
 	if (!engine->request_pool)
 		return;
 
+#ifdef __linux__
 	kmem_cache_free(i915_request_slab_cache(), engine->request_pool);
+#else
+	pool_put(i915_request_slab_cache(), engine->request_pool);
+#endif
 }
 
 void intel_engines_free(struct intel_gt *gt)

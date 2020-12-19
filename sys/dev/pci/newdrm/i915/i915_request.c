@@ -107,10 +107,17 @@ static signed long i915_fence_wait(struct dma_fence *fence,
 				 timeout);
 }
 
+#ifdef __linux__
 struct kmem_cache *i915_request_slab_cache(void)
 {
 	return global.slab_requests;
 }
+#else
+struct pool *i915_request_slab_cache(void)
+{
+	return &global.slab_requests;
+}
+#endif
 
 static void i915_fence_release(struct dma_fence *fence)
 {
