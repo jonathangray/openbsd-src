@@ -1029,7 +1029,7 @@ int i915_driver_probe(struct drm_i915_private *i915, const struct pci_device_id 
 	if (ret < 0)
 		goto out_cleanup_mmio;
 
-	ret = i915_driver_modeset_probe_noirq(i915);
+	ret = intel_modeset_init_noirq(i915);
 	if (ret < 0)
 		goto out_cleanup_hw;
 
@@ -1037,9 +1037,17 @@ int i915_driver_probe(struct drm_i915_private *i915, const struct pci_device_id 
 	if (ret)
 		goto out_cleanup_modeset;
 
-	ret = i915_driver_modeset_probe(i915);
-	if (ret < 0)
+	ret = intel_modeset_init_nogem(i915);
+	if (ret)
 		goto out_cleanup_irq;
+
+	ret = i915_gem_init(i915);
+	if (ret)
+		goto out_cleanup_modeset2;
+
+	ret = intel_modeset_init(i915);
+	if (ret)
+		goto out_cleanup_gem;
 
 	i915_driver_register(i915);
 
@@ -1051,12 +1059,24 @@ int i915_driver_probe(struct drm_i915_private *i915, const struct pci_device_id 
 
 	i915_welcome_messages(i915);
 
+	i915->do_release = true;
+
 	return 0;
 
+out_cleanup_gem:
+	i915_gem_suspend(i915);
+	i915_gem_driver_remove(i915);
+	i915_gem_driver_release(i915);
+out_cleanup_modeset2:
+	/* FIXME clean up the error path */
+	intel_modeset_driver_remove(i915);
+	intel_irq_uninstall(i915);
+	intel_modeset_driver_remove_noirq(i915);
+	goto out_cleanup_modeset;
 out_cleanup_irq:
 	intel_irq_uninstall(i915);
 out_cleanup_modeset:
-	/* FIXME */
+	intel_modeset_driver_remove_nogem(i915);
 out_cleanup_hw:
 	i915_driver_hw_remove(i915);
 	intel_memory_regions_driver_release(i915);
@@ -1070,7 +1090,6 @@ out_pci_disable:
 	pci_disable_device(pdev);
 out_fini:
 	i915_probe_error(i915, "Device initialization failed (%d)\n", ret);
-	i915_driver_destroy(i915);
 	return ret;
 }
 
