@@ -103,6 +103,18 @@ void ttm_agp_unbind(struct ttm_tt *ttm)
 		agp_be->bound = 0;
 	}
 }
+EXPORT_SYMBOL(ttm_agp_unbind);
+
+bool ttm_agp_is_bound(struct ttm_tt *ttm)
+{
+	struct ttm_agp_backend *agp_be = container_of(ttm, struct ttm_agp_backend, ttm);
+
+	if (!ttm)
+		return false;
+
+	return (agp_be->bound == 1);
+}
+EXPORT_SYMBOL(ttm_agp_is_bound);
 
 void ttm_agp_destroy(struct ttm_tt *ttm)
 {
