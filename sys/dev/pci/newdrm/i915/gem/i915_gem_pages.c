@@ -264,8 +264,10 @@ static void *i915_gem_object_map_page(struct drm_i915_gem_object *obj,
 		 * So if the page is beyond the 32b boundary, make an explicit
 		 * vmap.
 		 */
+#ifdef notyet
 		if (n_pages == 1 && !PageHighMem(sg_page(obj->mm.pages->sgl)))
 			return page_address(sg_page(obj->mm.pages->sgl));
+#endif
 		pgprot = PAGE_KERNEL;
 		break;
 	case I915_MAP_WC:
@@ -292,6 +294,9 @@ static void *i915_gem_object_map_page(struct drm_i915_gem_object *obj,
 static void *i915_gem_object_map_pfn(struct drm_i915_gem_object *obj,
 		enum i915_map_type type)
 {
+	STUB();
+	return NULL;
+#ifdef notyet
 	resource_size_t iomap = obj->mm.region->iomap.base -
 		obj->mm.region->region.start;
 	unsigned long n_pfn = obj->base.size >> PAGE_SHIFT;
@@ -317,6 +322,7 @@ static void *i915_gem_object_map_pfn(struct drm_i915_gem_object *obj,
 	if (pfns != stack)
 		kvfree(pfns);
 	return vaddr;
+#endif
 }
 
 static void *i915_gem_object_map(struct drm_i915_gem_object *obj,
