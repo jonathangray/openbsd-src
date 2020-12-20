@@ -651,6 +651,9 @@ static int flush_lazy_signals(struct i915_active *ref)
 
 int __i915_active_wait(struct i915_active *ref, int state)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	int err;
 
 	might_sleep();
@@ -671,6 +674,7 @@ int __i915_active_wait(struct i915_active *ref, int state)
 
 	flush_work(&ref->work);
 	return 0;
+#endif
 }
 
 static int __await_active(struct i915_active_fence *active,
@@ -716,6 +720,9 @@ barrier_wake(wait_queue_entry_t *wq, unsigned int mode, int flags, void *key)
 
 static int __await_barrier(struct i915_active *ref, struct i915_sw_fence *fence)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct wait_barrier *wb;
 
 	wb = kmalloc(sizeof(*wb), GFP_KERNEL);
@@ -735,6 +742,7 @@ static int __await_barrier(struct i915_active *ref, struct i915_sw_fence *fence)
 
 	add_wait_queue(__var_waitqueue(ref), &wb->base);
 	return 0;
+#endif
 }
 
 static int await_active(struct i915_active *ref,
@@ -812,7 +820,11 @@ void i915_active_fini(struct i915_active *ref)
 	mutex_destroy(&ref->mutex);
 
 	if (ref->cache)
+#ifdef __linux__
 		kmem_cache_free(global.slab_cache, ref->cache);
+#else
+		pool_put(&global.slab_cache, ref->cache);
+#endif
 }
 
 static inline bool is_idle_barrier(struct active_node *node, u64 idx)
