@@ -384,6 +384,9 @@ static struct i915_address_space *kernel_vm(struct intel_gt *gt)
 
 static int __engines_record_defaults(struct intel_gt *gt)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct i915_request *requests[I915_NUM_ENGINES] = {};
 	struct intel_engine_cs *engine;
 	enum intel_engine_id id;
@@ -496,6 +499,7 @@ out:
 		intel_context_put(ce);
 	}
 	return err;
+#endif
 }
 
 static int __engines_verify_workarounds(struct intel_gt *gt)

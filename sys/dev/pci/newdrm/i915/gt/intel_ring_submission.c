@@ -512,6 +512,9 @@ static void ring_context_post_unpin(struct intel_context *ce)
 static struct i915_vma *
 alloc_context_vma(struct intel_engine_cs *engine)
 {
+	STUB();
+	return ERR_PTR(-ENOSYS);
+#ifdef notyet
 	struct drm_i915_private *i915 = engine->i915;
 	struct drm_i915_gem_object *obj;
 	struct i915_vma *vma;
@@ -566,6 +569,7 @@ alloc_context_vma(struct intel_engine_cs *engine)
 err_obj:
 	i915_gem_object_put(obj);
 	return ERR_PTR(err);
+#endif
 }
 
 static int ring_context_alloc(struct intel_context *ce)
