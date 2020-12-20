@@ -2871,17 +2871,28 @@ add_timeline_fence_array(struct i915_execbuffer *eb,
 	if (!access_ok(user_values, nfences * sizeof(*user_values)))
 		return -EFAULT;
 
+#ifdef __linux__
 	f = krealloc(eb->fences,
 		     (eb->num_fences + nfences) * sizeof(*f),
 		     __GFP_NOWARN | GFP_KERNEL);
 	if (!f)
 		return -ENOMEM;
+#else
+	f = kmalloc((eb->num_fences + nfences) * sizeof(*f),
+		     __GFP_NOWARN | GFP_KERNEL);
+	if (!f)
+		return -ENOMEM;
+	memcpy(f, eb->fences, eb->num_fences * sizeof(*f));
+	kfree(eb->fences);
+#endif
 
 	eb->fences = f;
 	f += eb->num_fences;
 
+#ifdef notyet
 	BUILD_BUG_ON(~(ARCH_KMALLOC_MINALIGN - 1) &
 		     ~__I915_EXEC_FENCE_UNKNOWN_FLAGS);
+#endif
 
 	while (nfences--) {
 		struct drm_i915_gem_exec_fence user_fence;
@@ -2997,11 +3008,20 @@ static int add_fence_array(struct i915_execbuffer *eb)
 	if (!access_ok(user, num_fences * sizeof(*user)))
 		return -EFAULT;
 
+#ifdef __linux__
 	f = krealloc(eb->fences,
 		     (eb->num_fences + num_fences) * sizeof(*f),
 		     __GFP_NOWARN | GFP_KERNEL);
 	if (!f)
 		return -ENOMEM;
+#else
+	f = kmalloc((eb->num_fences + num_fences) * sizeof(*f),
+		     __GFP_NOWARN | GFP_KERNEL);
+	if (!f)
+		return -ENOMEM;
+	memcpy(f, eb->fences, eb->num_fences * sizeof(*f));
+	kfree(eb->fences);
+#endif
 
 	eb->fences = f;
 	f += eb->num_fences;
