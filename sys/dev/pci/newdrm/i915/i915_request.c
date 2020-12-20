@@ -210,6 +210,8 @@ static void irq_execute_cb_hook(struct irq_work *wrk)
 static __always_inline void
 __notify_execute_cb(struct i915_request *rq, bool (*fn)(struct irq_work *wrk))
 {
+	STUB();
+#ifdef notyet
 	struct execute_cb *cb, *cn;
 
 	if (llist_empty(&rq->execute_cb))
@@ -219,6 +221,7 @@ __notify_execute_cb(struct i915_request *rq, bool (*fn)(struct irq_work *wrk))
 				  llist_del_all(&rq->execute_cb),
 				  work.llnode)
 		fn(&cb->work);
+#endif
 }
 
 static void __notify_execute_cb_irq(struct i915_request *rq)
@@ -228,7 +231,11 @@ static void __notify_execute_cb_irq(struct i915_request *rq)
 
 static bool irq_work_imm(struct irq_work *wrk)
 {
+#ifdef notyet
 	wrk->func(wrk);
+#else
+	STUB();
+#endif
 	return false;
 }
 
@@ -445,6 +452,9 @@ __await_execution(struct i915_request *rq,
 			       struct dma_fence *signal),
 		  gfp_t gfp)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct execute_cb *cb;
 
 	if (i915_request_is_active(signal)) {
@@ -496,6 +506,7 @@ __await_execution(struct i915_request *rq,
 	}
 
 	return 0;
+#endif
 }
 
 static bool fatal_error(int error)
