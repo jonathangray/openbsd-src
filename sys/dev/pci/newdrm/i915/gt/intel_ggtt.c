@@ -865,7 +865,7 @@ static int ggtt_probe_common(struct i915_ggtt *ggtt, u64 size)
 	ret = -bus_space_map(i915->bst, addr + len / 2, size,
 	    flags | BUS_SPACE_MAP_LINEAR, &ggtt->gsm_bsh);
 	if (ret) {
-		DRM_ERROR("Failed to map the ggtt page table\n");
+		drm_err(&i915->drm, "Failed to map the ggtt page table\n");
 		return ret;
 	}
 	ggtt->gsm = bus_space_vaddr(i915->bst, ggtt->gsm_bsh);
@@ -875,16 +875,16 @@ static int ggtt_probe_common(struct i915_ggtt *ggtt, u64 size)
 		return -ENOMEM;
 	}
 
-	ret = setup_scratch_page(&ggtt->vm, GFP_DMA32);
+	ret = setup_scratch_page(&ggtt->vm);
 	if (ret) {
-		DRM_ERROR("Scratch setup failed\n");
+		drm_err(&i915->drm, "Scratch setup failed\n");
 		/* iounmap will also get called at remove, but meh */
 		bus_space_unmap(i915->bst, ggtt->gsm_bsh, size);
 		return ret;
 	}
 
-	ggtt->vm.scratch[0].encode =
-		ggtt->vm.pte_encode(px_dma(&ggtt->vm.scratch[0]),
+	ggtt->vm.scratch[0]->encode =
+		ggtt->vm.pte_encode(px_dma(ggtt->vm.scratch[0]),
 				    I915_CACHE_NONE, 0);
 
 	return 0;
@@ -943,6 +943,7 @@ static int gen8_gmch_probe(struct i915_ggtt *ggtt)
 		bus_addr_t base;
 		bus_size_t sz;
 		pcireg_t type;
+		int err;
 
 		type = pci_mapreg_type(i915->pc, i915->tag, 0x18);
 		err = -pci_mapreg_info(i915->pc, i915->tag, 0x18, type,
@@ -1100,6 +1101,7 @@ static int gen6_gmch_probe(struct i915_ggtt *ggtt)
 	bus_addr_t base;
 	bus_size_t sz;
 	pcireg_t type;
+	int err;
 
 	type = pci_mapreg_type(i915->pc, i915->tag, 0x18);
 	err = -pci_mapreg_info(i915->pc, i915->tag, 0x18, type,
