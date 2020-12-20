@@ -40,6 +40,19 @@
 #define drm_need_resched() \
     (curcpu()->ci_schedstate.spc_schedflags & SPCF_SHOULDYIELD)
 
+static inline int
+cond_resched_lock(struct mutex *mtxp)
+{
+	if (drm_need_resched() == 0)
+		return 0;
+
+	mtx_leave(mtxp);
+	cond_resched();
+	mtx_enter(mtxp);
+
+	return 1;
+}
+
 void set_current_state(int);
 void __set_current_state(int);
 void schedule(void);
