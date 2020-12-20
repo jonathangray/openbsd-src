@@ -460,6 +460,9 @@ static u32 gen7_oa_hw_tail_read(struct i915_perf_stream *stream)
  */
 static bool oa_buffer_check_unlocked(struct i915_perf_stream *stream)
 {
+	STUB();
+	return false;
+#ifdef notyet
 	u32 gtt_offset = i915_ggtt_offset(stream->oa_buffer.vma);
 	int report_size = stream->oa_buffer.format_size;
 	unsigned long flags;
@@ -539,6 +542,7 @@ static bool oa_buffer_check_unlocked(struct i915_perf_stream *stream)
 	spin_unlock_irqrestore(&stream->oa_buffer.ptr_lock, flags);
 
 	return pollin;
+#endif
 }
 
 /**
