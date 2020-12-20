@@ -651,9 +651,6 @@ static int flush_lazy_signals(struct i915_active *ref)
 
 int __i915_active_wait(struct i915_active *ref, int state)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
 	int err;
 
 	might_sleep();
@@ -667,14 +664,19 @@ int __i915_active_wait(struct i915_active *ref, int state)
 	if (err)
 		return err;
 
+#ifdef notyet
 	if (!i915_active_is_idle(ref) &&
 	    ___wait_var_event(ref, i915_active_is_idle(ref),
 			      state, 0, 0, schedule()))
+#else
+	STUB();
+	if (!i915_active_is_idle(ref) &&
+	    wait_var_event_interruptible(ref, i915_active_is_idle(ref)))
+#endif
 		return -EINTR;
 
 	flush_work(&ref->work);
 	return 0;
-#endif
 }
 
 static int __await_active(struct i915_active_fence *active,
