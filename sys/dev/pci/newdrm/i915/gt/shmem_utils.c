@@ -10,6 +10,8 @@
 #include "gem/i915_gem_object.h"
 #include "shmem_utils.h"
 
+#ifdef __linux__
+
 struct file *shmem_create_from_data(const char *name, void *data, size_t len)
 {
 	struct file *file;
@@ -134,6 +136,8 @@ int shmem_write(struct file *file, loff_t off, void *src, size_t len)
 {
 	return __shmem_rw(file, off, src, len, true);
 }
+
+#endif /* __linux__ */
 
 #if IS_ENABLED(CONFIG_DRM_I915_SELFTEST)
 #include "st_shmem_utils.c"
