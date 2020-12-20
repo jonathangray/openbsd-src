@@ -347,6 +347,7 @@ void intel_device_info_subplatform_init(struct drm_i915_private *i915)
 	}
 
 	if (IS_TIGERLAKE(i915)) {
+#ifdef notyet
 		struct pci_dev *root, *pdev = i915->drm.pdev;
 
 		root = list_first_entry(&pdev->bus->devices, typeof(*root), bus_list);
@@ -363,6 +364,9 @@ void intel_device_info_subplatform_init(struct drm_i915_private *i915)
 			mask = BIT(INTEL_SUBPLATFORM_ULT);
 			break;
 		}
+#else
+		STUB();
+#endif
 	}
 
 	GEM_BUG_ON(mask & ~INTEL_SUBPLATFORM_BITS);
