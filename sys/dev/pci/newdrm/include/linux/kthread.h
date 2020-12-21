@@ -6,6 +6,7 @@
 /* both for printf */
 #include <sys/types.h>
 #include <sys/systm.h>
+#include <sys/task.h>
 
 struct proc *kthread_run(int (*)(void *), void *, const char *);
 void 	kthread_park(struct proc *);
@@ -16,10 +17,12 @@ void	kthread_stop(struct proc *);
 int	kthread_should_stop(void);
 
 struct kthread_work {
-	void (*func)(struct kthread_work *);
+	struct task	 task;
+	struct taskq	*tq;
 };
 
 struct kthread_worker {
+	struct taskq	*tq;
 };
 
 struct kthread_worker *

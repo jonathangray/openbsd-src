@@ -237,38 +237,49 @@ kthread_run(int (*func)(void *), void *data, const char *name)
 }
 
 struct kthread_worker *
-kthread_create_worker(unsigned int flags, const char *name, ...)
+kthread_create_worker(unsigned int flags, const char *fmt, ...)
 {
+	char name[MAXCOMLEN+1];
+	va_list ap;
+
 	STUB();
+
 	struct kthread_worker *w = malloc(sizeof(*w), M_DRM, M_WAITOK);
+	va_start(ap, fmt);
+	vsnprintf(name, sizeof(name), fmt, ap);
+	va_end(ap);
+	w->tq = taskq_create(name, 1, IPL_HIGH, 0);
+	
 	return w;
 }
 
 void
 kthread_init_work(struct kthread_work *work, void (*func)(struct kthread_work *))
 {
-	memset(work, 0, sizeof(*work));
-	work->func = func;
+	work->tq = NULL;
+	task_set(&work->task, (void (*)(void *))func, work);
 }
 
 bool
 kthread_queue_work(struct kthread_worker *worker, struct kthread_work *work)
 {
-	STUB();
-	return false;
+	work->tq = worker->tq;
+	return task_add(work->tq, &work->task);
 }
 
 bool
 kthread_cancel_work_sync(struct kthread_work *work)
 {
-	STUB();
-	return false;
+	return task_del(work->tq, &work->task);
 }
 
 void
 kthread_flush_work(struct kthread_work *work)
 {
-	STUB();
+	if (cold)
+		return;
+
+	taskq_barrier(work->tq);
 }
 
 struct kthread *
