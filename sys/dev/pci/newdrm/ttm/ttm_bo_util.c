@@ -154,8 +154,6 @@ static int ttm_resource_ioremap(struct ttm_bo_device *bdev,
 			ttm_mem_io_free(bdev, mem);
 			return -ENOMEM;
 		}
-
-		mem->bus.size = bus_size;
 	}
 	*virtual = addr;
 	return 0;
@@ -166,7 +164,8 @@ static void ttm_resource_iounmap(struct ttm_bo_device *bdev,
 				void *virtual)
 {
 	if (virtual && mem->bus.addr == NULL)
-		bus_space_unmap(bdev->memt, mem->bus.bsh, mem->bus.size);
+		bus_space_unmap(bdev->memt, mem->bus.bsh,
+		    (size_t)mem->num_pages << PAGE_SHIFT);
 	ttm_mem_io_free(bdev, mem);
 }
 
@@ -553,10 +552,11 @@ void ttm_bo_kunmap(struct ttm_bo_kmap_obj *map)
 	switch (map->bo_kmap_type) {
 	case ttm_bo_map_iomap:
 		bus_space_unmap(map->bo->bdev->memt, map->bo->mem.bus.bsh,
-		    map->bo->mem.bus.size);
+		    (size_t)map->bo->mem.num_pages << PAGE_SHIFT);
 		break;
 	case ttm_bo_map_vmap:
-		vunmap(map->virtual, map->bo->mem.bus.size);
+		vunmap(map->virtual,
+		    (size_t)map->bo->mem.num_pages << PAGE_SHIFT);
 		break;
 	case ttm_bo_map_kmap:
 		kunmap_va(map->virtual);

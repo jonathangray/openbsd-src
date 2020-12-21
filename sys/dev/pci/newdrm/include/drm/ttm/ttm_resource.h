@@ -152,7 +152,6 @@ struct ttm_bus_placement {
 	phys_addr_t	offset;
 	bool		is_iomem;
 	bus_space_handle_t bsh;
-	bus_size_t size;
 };
 
 /**
