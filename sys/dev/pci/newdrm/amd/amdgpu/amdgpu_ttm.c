@@ -387,7 +387,7 @@ int amdgpu_ttm_copy_mem_to_mem(struct amdgpu_device *adev,
 		dst_node_size = ULLONG_MAX;
 	}
 
-	rw_init(&adev->mman.gtt_window_lock, "gttwin");
+	mutex_lock(&adev->mman.gtt_window_lock);
 
 	while (size) {
 		uint32_t src_page_offset = src_offset & PAGE_MASK;
