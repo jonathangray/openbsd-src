@@ -266,7 +266,7 @@ static int amdgpu_ttm_map_buffer(struct ttm_buffer_object *bo,
 	*addr = adev->gmc.gart_start;
 	*addr += (u64)window * AMDGPU_GTT_MAX_TRANSFER_SIZE *
 		AMDGPU_GPU_PAGE_SIZE;
-	*addr += offset & ~PAGE_MASK;
+	*addr += offset & PAGE_MASK;
 
 	num_dw = roundup2(adev->mman.buffer_funcs->copy_num_dw, 8);
 	num_bytes = num_pages * 8;
@@ -390,8 +390,8 @@ int amdgpu_ttm_copy_mem_to_mem(struct amdgpu_device *adev,
 	rw_init(&adev->mman.gtt_window_lock, "gttwin");
 
 	while (size) {
-		uint32_t src_page_offset = src_offset & ~PAGE_MASK;
-		uint32_t dst_page_offset = dst_offset & ~PAGE_MASK;
+		uint32_t src_page_offset = src_offset & PAGE_MASK;
+		uint32_t dst_page_offset = dst_offset & PAGE_MASK;
 		struct dma_fence *next;
 		uint32_t cur_size;
 		uint64_t from, to;
