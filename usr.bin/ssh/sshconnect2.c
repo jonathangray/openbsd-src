@@ -1,4 +1,4 @@
-/* $OpenBSD: sshconnect2.c,v 1.336 2020/11/13 07:30:44 djm Exp $ */
+/* $OpenBSD: sshconnect2.c,v 1.341 2021/01/08 02:57:24 djm Exp $ */
 /*
  * Copyright (c) 2000 Markus Friedl.  All rights reserved.
  * Copyright (c) 2008 Damien Miller.  All rights reserved.
@@ -87,13 +87,15 @@ extern Options options;
 u_char *session_id2 = NULL;
 u_int session_id2_len = 0;
 
-char *xxx_host;
-struct sockaddr *xxx_hostaddr;
+static char *xxx_host;
+static struct sockaddr *xxx_hostaddr;
+static const struct ssh_conn_info *xxx_conn_info;
 
 static int
 verify_host_key_callback(struct sshkey *hostkey, struct ssh *ssh)
 {
-	if (verify_host_key(xxx_host, xxx_hostaddr, hostkey) == -1)
+	if (verify_host_key(xxx_host, xxx_hostaddr, hostkey,
+	    xxx_conn_info) == -1)
 		fatal("Host key verification failed.");
 	return 0;
 }
@@ -111,7 +113,8 @@ first_alg(const char *algs)
 }
 
 static char *
-order_hostkeyalgs(char *host, struct sockaddr *hostaddr, u_short port)
+order_hostkeyalgs(char *host, struct sockaddr *hostaddr, u_short port,
+    const struct ssh_conn_info *cinfo)
 {
 	char *oavail = NULL, *avail = NULL, *first = NULL, *last = NULL;
 	char *alg = NULL, *hostname = NULL, *ret = NULL, *best = NULL;
@@ -124,10 +127,15 @@ order_hostkeyalgs(char *host, struct sockaddr *hostaddr, u_short port)
 	get_hostfile_hostname_ipaddr(host, hostaddr, port, &hostname, NULL);
 	hostkeys = init_hostkeys();
 	for (i = 0; i < options.num_user_hostfiles; i++)
-		load_hostkeys(hostkeys, hostname, options.user_hostfiles[i]);
-	for (i = 0; i < options.num_system_hostfiles; i++)
-		load_hostkeys(hostkeys, hostname, options.system_hostfiles[i]);
-
+		load_hostkeys(hostkeys, hostname, options.user_hostfiles[i], 0);
+	for (i = 0; i < options.num_system_hostfiles; i++) {
+		load_hostkeys(hostkeys, hostname,
+		    options.system_hostfiles[i], 0);
+	}
+	if (options.known_hosts_command != NULL) {
+		load_hostkeys_command(hostkeys, options.known_hosts_command,
+		    "ORDER", cinfo, NULL, host);
+	}
 	/*
 	 * If a plain public key exists that matches the type of the best
 	 * preference HostkeyAlgorithms, then use the whole list as is.
@@ -189,7 +197,8 @@ order_hostkeyalgs(char *host, struct sockaddr *hostaddr, u_short port)
 	    (*first == '\0' || *last == '\0') ? "" : ",", last);
 	if (*first != '\0')
 		debug3_f("prefer hostkeyalgs: %s", first);
-
+	else
+		debug3_f("no algorithms matched; accept original");
  out:
 	free(best);
 	free(first);
@@ -202,7 +211,8 @@ order_hostkeyalgs(char *host, struct sockaddr *hostaddr, u_short port)
 }
 
 void
-ssh_kex2(struct ssh *ssh, char *host, struct sockaddr *hostaddr, u_short port)
+ssh_kex2(struct ssh *ssh, char *host, struct sockaddr *hostaddr, u_short port,
+    const struct ssh_conn_info *cinfo)
 {
 	char *myproposal[PROPOSAL_MAX] = { KEX_CLIENT };
 	char *s, *all_key;
@@ -210,6 +220,7 @@ ssh_kex2(struct ssh *ssh, char *host, struct sockaddr *hostaddr, u_short port)
 
 	xxx_host = host;
 	xxx_hostaddr = hostaddr;
+	xxx_conn_info = cinfo;
 
 	/*
 	 * If the user has not specified HostkeyAlgorithms, or has only
@@ -244,7 +255,7 @@ ssh_kex2(struct ssh *ssh, char *host, struct sockaddr *hostaddr, u_short port)
 		/* Query known_hosts and prefer algorithms that appear there */
 		myproposal[PROPOSAL_SERVER_HOST_KEY_ALGS] =
 		    compat_pkalg_proposal(
-		    order_hostkeyalgs(host, hostaddr, port));
+		    order_hostkeyalgs(host, hostaddr, port, cinfo));
 	} else {
 		/* Use specified HostkeyAlgorithms exactly */
 		myproposal[PROPOSAL_SERVER_HOST_KEY_ALGS] =
@@ -269,7 +280,7 @@ ssh_kex2(struct ssh *ssh, char *host, struct sockaddr *hostaddr, u_short port)
 	ssh->kex->kex[KEX_ECDH_SHA2] = kex_gen_client;
 #endif
 	ssh->kex->kex[KEX_C25519_SHA256] = kex_gen_client;
-	ssh->kex->kex[KEX_KEM_SNTRUP4591761X25519_SHA512] = kex_gen_client;
+	ssh->kex->kex[KEX_KEM_SNTRUP761X25519_SHA512] = kex_gen_client;
 	ssh->kex->verify_host_key=&verify_host_key_callback;
 
 	ssh_dispatch_run_fatal(ssh, DISPATCH_BLOCK, &ssh->kex->done);
@@ -1203,7 +1214,7 @@ identity_sign(struct identity *id, u_char **sigp, size_t *lenp,
     const u_char *data, size_t datalen, u_int compat, const char *alg)
 {
 	struct sshkey *sign_key = NULL, *prv = NULL;
-	int r = SSH_ERR_INTERNAL_ERROR;
+	int retried = 0, r = SSH_ERR_INTERNAL_ERROR;
 	struct notifier_ctx *notifier = NULL;
 	char *fp = NULL, *pin = NULL, *prompt = NULL;
 
@@ -1237,6 +1248,7 @@ identity_sign(struct identity *id, u_char **sigp, size_t *lenp,
 		if (sshkey_is_sk(sign_key)) {
 			if ((sign_key->sk_flags &
 			    SSH_SK_USER_VERIFICATION_REQD)) {
+ retry_pin:
 				xasprintf(&prompt, "Enter PIN for %s key %s: ",
 				    sshkey_type(sign_key), id->filename);
 				pin = read_passphrase(prompt, 0);
@@ -1257,8 +1269,16 @@ identity_sign(struct identity *id, u_char **sigp, size_t *lenp,
 	if ((r = sshkey_sign(sign_key, sigp, lenp, data, datalen,
 	    alg, options.sk_provider, pin, compat)) != 0) {
 		debug_fr(r, "sshkey_sign");
+		if (pin == NULL && !retried && sshkey_is_sk(sign_key) &&
+		    r == SSH_ERR_KEY_WRONG_PASSPHRASE) {
+			notify_complete(notifier, NULL);
+			notifier = NULL;
+			retried = 1;
+			goto retry_pin;
+		}
 		goto out;
 	}
+
 	/*
 	 * PKCS#11 tokens may not support all signature algorithms,
 	 * so check what we get back.
@@ -1273,7 +1293,7 @@ identity_sign(struct identity *id, u_char **sigp, size_t *lenp,
 	free(prompt);
 	if (pin != NULL)
 		freezero(pin, strlen(pin));
-	notify_complete(notifier, "User presence confirmed");
+	notify_complete(notifier, r == 0 ? "User presence confirmed" : NULL);
 	sshkey_free(prv);
 	return r;
 }

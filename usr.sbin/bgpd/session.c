@@ -1,4 +1,4 @@
-/*	$OpenBSD: session.c,v 1.406 2020/12/11 12:00:01 claudio Exp $ */
+/*	$OpenBSD: session.c,v 1.410 2021/01/05 10:02:44 claudio Exp $ */
 
 /*
  * Copyright (c) 2003, 2004, 2005 Henning Brauer <henning@openbsd.org>
@@ -375,6 +375,9 @@ session_main(int debug, int verbose)
 				case Timer_Hold:
 					bgp_fsm(p, EVNT_TIMER_HOLDTIME);
 					break;
+				case Timer_SendHold:
+					bgp_fsm(p, EVNT_TIMER_SENDHOLD);
+					break;
 				case Timer_ConnectRetry:
 					bgp_fsm(p, EVNT_TIMER_CONNRETRY);
 					break;
@@ -597,6 +600,7 @@ bgp_fsm(struct peer *peer, enum session_events event)
 		switch (event) {
 		case EVNT_START:
 			timer_stop(&peer->timers, Timer_Hold);
+			timer_stop(&peer->timers, Timer_SendHold);
 			timer_stop(&peer->timers, Timer_Keepalive);
 			timer_stop(&peer->timers, Timer_IdleHold);
 
@@ -709,6 +713,7 @@ bgp_fsm(struct peer *peer, enum session_events event)
 			change_state(peer, STATE_IDLE, event);
 			break;
 		case EVNT_TIMER_HOLDTIME:
+		case EVNT_TIMER_SENDHOLD:
 			session_notification(peer, ERR_HOLDTIMEREXPIRED,
 			    0, NULL, 0);
 			change_state(peer, STATE_IDLE, event);
@@ -749,6 +754,7 @@ bgp_fsm(struct peer *peer, enum session_events event)
 			change_state(peer, STATE_IDLE, event);
 			break;
 		case EVNT_TIMER_HOLDTIME:
+		case EVNT_TIMER_SENDHOLD:
 			session_notification(peer, ERR_HOLDTIMEREXPIRED,
 			    0, NULL, 0);
 			change_state(peer, STATE_IDLE, event);
@@ -784,6 +790,7 @@ bgp_fsm(struct peer *peer, enum session_events event)
 			change_state(peer, STATE_IDLE, event);
 			break;
 		case EVNT_TIMER_HOLDTIME:
+		case EVNT_TIMER_SENDHOLD:
 			session_notification(peer, ERR_HOLDTIMEREXPIRED,
 			    0, NULL, 0);
 			change_state(peer, STATE_IDLE, event);
@@ -875,6 +882,7 @@ change_state(struct peer *peer, enum session_state state,
 		timer_stop(&peer->timers, Timer_ConnectRetry);
 		timer_stop(&peer->timers, Timer_Keepalive);
 		timer_stop(&peer->timers, Timer_Hold);
+		timer_stop(&peer->timers, Timer_SendHold);
 		timer_stop(&peer->timers, Timer_IdleHold);
 		timer_stop(&peer->timers, Timer_IdleHoldReset);
 		session_close_connection(peer);
@@ -923,6 +931,7 @@ change_state(struct peer *peer, enum session_state state,
 			timer_stop(&peer->timers, Timer_ConnectRetry);
 			timer_stop(&peer->timers, Timer_Keepalive);
 			timer_stop(&peer->timers, Timer_Hold);
+			timer_stop(&peer->timers, Timer_SendHold);
 			timer_stop(&peer->timers, Timer_IdleHold);
 			timer_stop(&peer->timers, Timer_IdleHoldReset);
 			session_close_connection(peer);
@@ -1077,7 +1086,7 @@ session_connect(struct peer *peer)
 		bind_addr = &peer->conf.local_addr_v6;
 		break;
 	}
-	if (bind_addr && (sa = addr2sa(bind_addr, 0, &sa_len)) != NULL) {
+	if ((sa = addr2sa(bind_addr, 0, &sa_len)) != NULL) {
 		if (bind(peer->fd, sa, sa_len) == -1) {
 			log_peer_warn(&peer->conf, "session_connect bind");
 			bgp_fsm(peer, EVNT_CON_OPENFAIL);
@@ -1223,7 +1232,8 @@ get_alternate_addr(struct sockaddr *sa, struct bgpd_addr *alt)
 		fatal("getifaddrs");
 
 	for (match = ifap; match != NULL; match = match->ifa_next)
-		if (sa_cmp(sa, match->ifa_addr) == 0)
+		if (match->ifa_addr != NULL &&
+		    sa_cmp(sa, match->ifa_addr) == 0)
 			break;
 
 	if (match == NULL) {
@@ -1234,7 +1244,8 @@ get_alternate_addr(struct sockaddr *sa, struct bgpd_addr *alt)
 	switch (sa->sa_family) {
 	case AF_INET6:
 		for (ifa = ifap; ifa != NULL; ifa = ifa->ifa_next) {
-			if (ifa->ifa_addr->sa_family == AF_INET &&
+			if (ifa->ifa_addr != NULL &&
+			    ifa->ifa_addr->sa_family == AF_INET &&
 			    strcmp(ifa->ifa_name, match->ifa_name) == 0) {
 				sa2addr(ifa->ifa_addr, alt, NULL);
 				break;
@@ -1243,10 +1254,12 @@ get_alternate_addr(struct sockaddr *sa, struct bgpd_addr *alt)
 		break;
 	case AF_INET:
 		for (ifa = ifap; ifa != NULL; ifa = ifa->ifa_next) {
-			struct sockaddr_in6 *s =
-			    (struct sockaddr_in6 *)ifa->ifa_addr;
-			if (ifa->ifa_addr->sa_family == AF_INET6 &&
+			if (ifa->ifa_addr != NULL &&
+			    ifa->ifa_addr->sa_family == AF_INET6 &&
 			    strcmp(ifa->ifa_name, match->ifa_name) == 0) {
+				struct sockaddr_in6 *s =
+				    (struct sockaddr_in6 *)ifa->ifa_addr;
+
 				/* only accept global scope addresses */
 				if (IN6_IS_ADDR_LINKLOCAL(&s->sin6_addr) ||
 				    IN6_IS_ADDR_SITELOCAL(&s->sin6_addr))
@@ -1780,6 +1793,10 @@ session_dispatch_msg(struct pollfd *pfd, struct peer *p)
 			return (1);
 		}
 		p->stats.last_write = getmonotime();
+		if (p->holdtime > 0)
+			timer_set(&p->timers, Timer_SendHold,
+			    p->holdtime < INTERVAL_HOLD ? INTERVAL_HOLD :
+			    p->holdtime);
 		if (p->throttled && p->wbuf.queued < SESS_MSG_LOW_MARK) {
 			if (imsg_rde(IMSG_XON, p->conf.id, NULL, 0) == -1)
 				log_peer_warn(&p->conf, "imsg_compose XON");
@@ -2824,6 +2841,7 @@ session_dispatch_imsg(struct imsgbuf *ibuf, int idx, u_int *listener_cnt)
 		case IMSG_CTL_SHOW_RIB_HASH:
 		case IMSG_CTL_SHOW_NETWORK:
 		case IMSG_CTL_SHOW_NEIGHBOR:
+		case IMSG_CTL_SHOW_SET:
 			if (idx != PFD_PIPE_ROUTE_CTL)
 				fatalx("ctl rib request not from RDE");
 			control_imsg_relay(&imsg);

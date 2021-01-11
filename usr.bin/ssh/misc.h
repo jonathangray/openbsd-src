@@ -1,4 +1,4 @@
-/* $OpenBSD: misc.h,v 1.90 2020/11/27 00:49:58 djm Exp $ */
+/* $OpenBSD: misc.h,v 1.92 2021/01/11 02:12:57 dtucker Exp $ */
 
 /*
  * Author: Tatu Ylonen <ylo@cs.hut.fi>
@@ -67,7 +67,7 @@ char	*colon(char *);
 int	 parse_user_host_path(const char *, char **, char **, char **);
 int	 parse_user_host_port(const char *, char **, char **, int *);
 int	 parse_uri(const char *, const char *, char **, char **, int *, char **);
-long	 convtime(const char *);
+int	 convtime(const char *);
 const char *fmt_timeframe(time_t t);
 char	*tilde_expand_filename(const char *, uid_t);
 
@@ -96,6 +96,16 @@ int	 stdfd_devnull(int, int, int);
 
 struct passwd *pwcopy(struct passwd *);
 const char *ssh_gai_strerror(int);
+
+typedef void privdrop_fn(struct passwd *);
+typedef void privrestore_fn(void);
+#define	SSH_SUBPROCESS_STDOUT_DISCARD	(1)     /* Discard stdout */
+#define	SSH_SUBPROCESS_STDOUT_CAPTURE	(1<<1)  /* Redirect stdout */
+#define	SSH_SUBPROCESS_STDERR_DISCARD	(1<<2)  /* Discard stderr */
+#define	SSH_SUBPROCESS_UNSAFE_PATH	(1<<3)	/* Don't check for safe cmd */
+#define	SSH_SUBPROCESS_PRESERVE_ENV	(1<<4)	/* Keep parent environment */
+pid_t subprocess(const char *, const char *, int, char **, FILE **, u_int,
+    struct passwd *, privdrop_fn *, privrestore_fn *);
 
 typedef struct arglist arglist;
 struct arglist {

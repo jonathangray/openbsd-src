@@ -1,5 +1,5 @@
 #!/usr/bin/perl
-#	$OpenBSD: scapy.pl,v 1.2 2017/11/07 22:06:17 bluhm Exp $
+#	$OpenBSD: scapy.pl,v 1.4 2020/12/27 14:37:54 bluhm Exp $
 
 # Copyright (c) 2010-2017 Alexander Bluhm <bluhm@openbsd.org>
 #
@@ -87,6 +87,8 @@ if ($mode eq "relay") {
 	copy($log, \*STDERR);
 	$r->up;
 	copy($log, \*STDERR);
+	$r->loggrep(qr/^Spliced$/);
+	copy($log, \*STDERR);
 	$r->down;
 	copy($log, \*STDERR);
 
@@ -118,7 +120,7 @@ my $c = {
 };
 
 my @sudo = $ENV{SUDO} ? $ENV{SUDO} : ();
-my @python = $ENV{PYTHON} ? split(' ', $ENV{PYTHON}) : ("python2.7");
+my @python = $ENV{PYTHON} ? split(' ', $ENV{PYTHON}) : ("python3");
 my @cmd = (@sudo, @python, $testfile, $s->{listenport}, $c->{connectport});
 system("@cmd")
     and die "Scapy script '@cmd' failed: $?";

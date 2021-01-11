@@ -1,4 +1,4 @@
-#	$OpenBSD: Makefile,v 1.26 2020/01/15 20:47:13 bluhm Exp $
+#	$OpenBSD: Makefile,v 1.29 2020/12/21 00:47:18 bluhm Exp $
 
 # This test needs a manual setup of four machines, the make
 # target create-setup can be used to distribute the configuration.
@@ -155,23 +155,22 @@ PROGS =		nonxt-sendrecv nonxt-reflect
 
 .if empty (IPS_SSH) || empty (RT_SSH) || empty (ECO_SSH)
 regress:
-	@echo this tests needs three remote machines to operate on
-	@echo IPS_SSH RT_SSH ECO_SSH are empty
-	@echo fill out these variables for additional tests, then
-	@echo check whether your test machines are set up properly
+	# This tests needs three remote machines to operate on.
+	# IPS_SSH RT_SSH ECO_SSH are empty.
+	# Fill out these variables for additional tests, then
+	# check whether your test machines are set up properly.
 	@echo SKIPPED
 
 .elif make (regress) || make (all)
 .BEGIN:
-	@echo
 	${SUDO} true
 	ssh -t ${IPS_SSH} ${SUDO} true
 	rm -f stamp-*
+	@echo
 .endif
 
 # Create python include file containing the addresses.
 addr.py: Makefile
-	@echo '\n======== $@ ========'
 	rm -f $@ $@.tmp
 .for host in SRC IPS RT ECO
 .for dir in IN OUT BUNDLE
@@ -192,38 +191,38 @@ addr.py: Makefile
 .endfor
 	mv $@.tmp $@
 
-# Load the ipsec sa and flow into the kernel of the SRC and IPS machine.
+REGRESS_SETUP_ONCE +=	ipsec
 stamp-ipsec: addr.py ipsec.conf
-	@echo '\n======== $@ ========'
+ipsec:
+	# Load the ipsec sa and flow into the kernel of the SRC and IPS machine.
 	cat addr.py ${.CURDIR}/ipsec.conf | /sbin/ipsecctl -n -f -
 	${SUDO} ipsecctl -F
 	cat addr.py ${.CURDIR}/ipsec.conf | ${SUDO} ipsecctl -f -
 	ssh ${IPS_SSH} ${SUDO} ipsecctl -F
 	cat addr.py ${.CURDIR}/ipsec.conf | ssh ${IPS_SSH} ${SUDO} ipsecctl\
 	    -f - -D FROM=to -D TO=from -D LOCAL=peer -D PEER=local
-	@date >$@
 
-# Load a pf log enc0 pass any rule into the kernel of the IPS machine.
+REGRESS_SETUP_ONCE +=	pfctl
 stamp-pfctl: addr.py pf.conf
-	@echo '\n======== $@ ========'
+pfctl:
+	# Load a pf log enc0 pass any rule into the kernel of the IPS machine.
 	cat addr.py ${.CURDIR}/pf.conf | /sbin/pfctl -n -f -
 	cat addr.py ${.CURDIR}/pf.conf | \
 	    ssh ${IPS_SSH} ${SUDO} pfctl -a regress -f -
-	@date >$@
 
+REGRESS_SETUP_ONCE +=	reflect
 stamp-reflect: nonxt-reflect
-	@echo '\n======== $@ ========'
+reflect:
+	# Build and start packet reflection program on IPS and ECO machine.
 	ssh ${IPS_SSH} make -C ${.CURDIR} nonxt-reflect
 	ssh ${IPS_SSH} ${SUDO} rcctl start inetd nonxt_reflect
-	-ssh ${ECO_SSH} make -C ${.CURDIR} nonxt-reflect
+	ssh ${ECO_SSH} make -C ${.CURDIR} nonxt-reflect
 	ssh ${ECO_SSH} ${SUDO} rcctl start inetd nonxt_reflect
-	@date >$@
 
 DUMPCMD=	tcpdump -l -e -vvv -s 2048 -ni
 
-# Run tcpdump on enc device of IPS machine.
 stamp-bpf: Makefile stamp-drop
-	@echo '\n======== $@ ========'
+	# Run tcpdump on enc device of IPS machine.
 	rm -f enc0.tcpdump
 	-ssh ${IPS_SSH} ${SUDO} pkill -f "'^${DUMPCMD} enc0'" || true
 	ssh ${IPS_SSH} ${SUDO} ${DUMPCMD} enc0 >enc0.tcpdump &
@@ -231,9 +230,8 @@ stamp-bpf: Makefile stamp-drop
 	rm -f stamp-stop
 	@date >$@
 
-# Run tcpdump on pflog device of IPS machine.
 stamp-pflog: stamp-pfctl stamp-drop
-	@echo '\n======== $@ ========'
+	# Run tcpdump on pflog device of IPS machine.
 	rm -f pflog0.tcpdump
 	-ssh ${IPS_SSH} ${SUDO} pkill -f "'^${DUMPCMD} pflog0'" || true
 	ssh ${IPS_SSH} ${SUDO} ${DUMPCMD} pflog0 >pflog0.tcpdump &
@@ -242,7 +240,7 @@ stamp-pflog: stamp-pfctl stamp-drop
 	@date >$@
 
 stamp-stop:
-	@echo '\n======== $@ ========'
+	# Stop tcpdump on enc and pflog device of IPS machine.
 	sleep 5  # XXX
 	-ssh ${IPS_SSH} ${SUDO} pkill -f "'^${DUMPCMD}'"
 	@date >$@
@@ -250,7 +248,7 @@ stamp-stop:
 # Old TCP connections send packets from time to time.  These confuse
 # the checks that count the IPsec packets with netstat -ss.
 stamp-drop:
-	@echo '\n======== $@ ========'
+	# Drop old TCP connections.
 	netstat -nv -p tcp |\
 	    perl -ne '\
 		/ ${PREFIX_IPV6}.* ${PREFIX_IPV6}/ ||\
@@ -264,18 +262,17 @@ stamp-drop:
 
 # Disable tests that do not pass.
 
-run-regress-pflog-ping-IPS_AH_TRANSP_IPV4 \
-    run-regress-pflog-udp-IPS_AH_TRANSP_IPV4 \
-    run-regress-pflog-tcp-IPS_AH_TRANSP_IPV4 \
-    run-regress-pflog-nonxt-IPS_AH_TRANSP_IPV4 \
-    run-regress-pflog-ping-IPS_AH_TRANSP_IPV6 \
-    run-regress-pflog-udp-IPS_AH_TRANSP_IPV6 \
-    run-regress-pflog-tcp-IPS_AH_TRANSP_IPV6 \
-    run-regress-pflog-nonxt-IPS_AH_TRANSP_IPV6:
-	@echo '\n======== $@ ========'
-	@echo IPv6 AH packets are treated as their payload protocol by pf.
-	@echo So they match the floating state on the physical interface
-	@echo and are not logged by the enc0 pf rule.
+run-pflog-ping-IPS_AH_TRANSP_IPV4 \
+    run-pflog-udp-IPS_AH_TRANSP_IPV4 \
+    run-pflog-tcp-IPS_AH_TRANSP_IPV4 \
+    run-pflog-nonxt-IPS_AH_TRANSP_IPV4 \
+    run-pflog-ping-IPS_AH_TRANSP_IPV6 \
+    run-pflog-udp-IPS_AH_TRANSP_IPV6 \
+    run-pflog-tcp-IPS_AH_TRANSP_IPV6 \
+    run-pflog-nonxt-IPS_AH_TRANSP_IPV6:
+	# IPv6 AH packets are treated as their payload protocol by pf.
+	# So they match the floating state on the physical interface
+	# and are not logged by the enc0 pf rule.
 	@echo DISABLED
 
 # Ping all addresses.  This ensures that the IP addresses are configured
@@ -284,8 +281,7 @@ run-regress-pflog-ping-IPS_AH_TRANSP_IPV4 \
 .for host dir in SRC OUT IPS IN IPS OUT RT IN RT OUT ECO IN
 .for ping ipv in ping IPV4 ping6 IPV6
 TARGETS +=	ping-${host}_${dir}_${ipv}
-run-regress-send-ping-${host}_${dir}_${ipv}:
-	@echo '\n======== $@ ========'
+run-send-ping-${host}_${dir}_${ipv}:
 	${ping} -n -c 1 -w 2 ${${host}_${dir}_${ipv}}
 .endfor
 .endfor
@@ -302,9 +298,8 @@ run-regress-send-ping-${host}_${dir}_${ipv}:
 
 TARGETS +=	ping-${len}-${host}_${sec}_${mode}_${ipv}
 ping ${host:L} ${sec:L} ${mode:L} ${ipv:L}:\
-    run-regress-send-ping-${len}-${host}_${sec}_${mode}_${ipv}
-run-regress-send-ping-${len}-${host}_${sec}_${mode}_${ipv}:
-	@echo '\n======== $@ ========'
+    run-send-ping-${len}-${host}_${sec}_${mode}_${ipv}
+run-send-ping-${len}-${host}_${sec}_${mode}_${ipv}:
 	netstat -s -p ${sec:L:S/ipip/ipencap/:S/bundle/esp/} |\
 	    awk '/input ${sec:S/BUNDLE/ESP/} /{print $$1}' >pkt.in
 	netstat -s -p ${sec:L:S/ipip/ipencap/:S/bundle/esp/} |\
@@ -336,9 +331,8 @@ run-regress-send-ping-${len}-${host}_${sec}_${mode}_${ipv}:
 
 TARGETS +=	udp-${host}_${sec}_${mode}_${ipv}
 udp ${host:L} ${sec:L} ${mode:L} ${ipv:L}:\
-    run-regress-send-udp-${host}_${sec}_${mode}_${ipv}
-run-regress-send-udp-${host}_${sec}_${mode}_${ipv}:
-	@echo '\n======== $@ ========'
+    run-send-udp-${host}_${sec}_${mode}_${ipv}
+run-send-udp-${host}_${sec}_${mode}_${ipv}:
 	netstat -s -p ${sec:L:S/ipip/ipencap/:S/bundle/esp/} |\
 	    awk '/input ${sec:S/BUNDLE/ESP/} /{print $$1}' >pkt.in
 	netstat -s -p ${sec:L:S/ipip/ipencap/:S/bundle/esp/} |\
@@ -363,20 +357,32 @@ run-regress-send-udp-${host}_${sec}_${mode}_${ipv}:
 
 TARGETS +=	tcp-${host}_${sec}_${mode}_${ipv}
 tcp ${host:L} ${sec:L} ${mode:L} ${ipv:L}:\
-    run-regress-send-tcp-${host}_${sec}_${mode}_${ipv}
-run-regress-send-tcp-${host}_${sec}_${mode}_${ipv}:
-	@echo '\n======== $@ ========'
+    run-send-tcp-${host}_${sec}_${mode}_${ipv}
+run-send-tcp-${host}_${sec}_${mode}_${ipv}:
 	echo $$$$ | nc -n -N -w 3 ${${host}_${sec}_${mode}_${ipv}} 7 |\
 	    fgrep $$$$
+
+# Send large tcp stream, this should trigger path mtu discovery.
+# but it works only fo a few cases
+
+.if "${sec}" == ESP && "${mode}" == TUNNEL4 && "${ipv}" == IPV4
+TARGETS +=	tcp-pmtu-${host}_${sec}_${mode}_${ipv}
+tcp pmtu ${host:L} ${sec:L} ${mode:L} ${ipv:L}:\
+    run-send-tcp-pmtu-${host}_${sec}_${mode}_${ipv}
+run-send-tcp-pmtu-${host}_${sec}_${mode}_${ipv}:
+	route delete -host ${${host}_${sec}_${mode}_${ipv}} || true
+	openssl rand -base64 10000 |\
+	    nc -n -N -w 8 ${${host}_${sec}_${mode}_${ipv}} 7 |\
+	    wc | fgrep '     209     209   13545'
+.endif
 
 # Send no next header protocol 59 packets through the IPsec test.
 # They consist solely of an IPv6 header chain and trigger edge cases.
 
 TARGETS +=	nonxt-${host}_${sec}_${mode}_${ipv}
 nonxt ${host:L} ${sec:L} ${mode:L} ${ipv:L}:\
-    run-regress-send-nonxt-${host}_${sec}_${mode}_${ipv}
-run-regress-send-nonxt-${host}_${sec}_${mode}_${ipv}: nonxt-sendrecv
-	@echo '\n======== $@ ========'
+    run-send-nonxt-${host}_${sec}_${mode}_${ipv}
+run-send-nonxt-${host}_${sec}_${mode}_${ipv}: nonxt-sendrecv
 	netstat -s -p ${sec:L:S/ipip/ipencap/:S/bundle/esp/} |\
 	    awk '/input ${sec:S/BUNDLE/ESP/} /{print $$1}' >pkt.in
 	netstat -s -p ${sec:L:S/ipip/ipencap/:S/bundle/esp/} |\
@@ -456,8 +462,7 @@ REGEX_RPL_${host}_${sec}_${mode}_${ipv}_NONXT=\
 
 .for proto in PING UDP TCP NONXT
 
-run-regress-bpf-${proto:L}-${host}_${sec}_${mode}_${ipv}: stamp-stop
-	@echo '\n======== $@ ========'
+run-bpf-${proto:L}-${host}_${sec}_${mode}_${ipv}: stamp-stop
 	egrep -q '\
 	    ${REGEX_${sec}}\
 	    ${REGEX_REQ_${mode}}\
@@ -469,8 +474,7 @@ run-regress-bpf-${proto:L}-${host}_${sec}_${mode}_${ipv}: stamp-stop
 	    ${REGEX_RPL_${host}_${sec}_${mode}_${ipv}_${proto}}\
 	    ${REGEX_RPL_${proto}} ' enc0.tcpdump
 
-run-regress-pflog-${proto:L}-${host}_${sec}_${mode}_${ipv}: stamp-stop
-	@echo '\n======== $@ ========'
+run-pflog-${proto:L}-${host}_${sec}_${mode}_${ipv}: stamp-stop
 	egrep -q '\
 	    rule .*regress.0/\(match\) .*\
 	    pass in on enc0:.*\
@@ -488,11 +492,37 @@ run-regress-pflog-${proto:L}-${host}_${sec}_${mode}_${ipv}: stamp-stop
 .endfor
 .endfor
 
-REGRESS_TARGETS =	${TARGETS:S/^/run-regress-send-/} \
-    ${TARGETS:N*_IPIP_*:N*_BUNDLE_*:N*_IN_*:N*_OUT_*:N*-SRC_*:Nudp-*_IPCOMP_*:Ntcp-*_IPCOMP_*:N*-small-*:Nnonxt-*_IPCOMP_*:S/-big-/-/:S/^/run-regress-bpf-/} \
-    ${TARGETS:N*_IPIP_*:N*_IPCOMP_*:N*_IN_*:N*_OUT_*:N*-SRC_*:N*-small-*:S/-big-/-/:S/^/run-regress-pflog-/}
-${REGRESS_TARGETS:Mrun-regress-send-*}: \
-    stamp-ipsec stamp-reflect stamp-bpf stamp-pflog stamp-drop
+run-bpf-tcp-pmtu-IPS_ESP_TUNNEL4_IPV4: stamp-stop
+	egrep -q '\
+	    ${REGEX_ESP}\
+	    ${REGEX_REQ_TUNNEL4}\
+	    ${REGEX_REQ_IPS_ESP_TUNNEL4_IPV4_TCP}\
+	    .* 1:1...\(1372\) ack ' enc0.tcpdump
+
+run-bpf-tcp-pmtu-ECO_ESP_TUNNEL4_IPV4: stamp-stop
+	egrep -q '\
+	    ${REGEX_ESP}\
+	    ${REGEX_RPL_TUNNEL4}\
+	    ${IPS_IN_IPV4} > ${SRC_ESP_TUNNEL_IPV4}:\
+	    icmp: ${ECO_ESP_TUNNEL4_IPV4} unreachable -\
+	    need to frag \(mtu 1400\) ' enc0.tcpdump
+	egrep -q '\
+	    ${REGEX_ESP}\
+	    ${REGEX_RPL_TUNNEL4}\
+	    ${RT_IN_IPV4} > ${SRC_ESP_TUNNEL_IPV4}:\
+	    icmp: ${ECO_ESP_TUNNEL4_IPV4} unreachable -\
+	    need to frag \(mtu 1300\) ' enc0.tcpdump
+	egrep -q '\
+	    ${REGEX_ESP}\
+	    ${REGEX_REQ_TUNNEL4}\
+	    ${REGEX_REQ_ECO_ESP_TUNNEL4_IPV4_TCP}\
+	    .* 1:1...\(1248\) ack ' enc0.tcpdump
+
+REGRESS_TARGETS =	${TARGETS:S/^/run-send-/} \
+    ${TARGETS:N*_IPIP_*:N*_BUNDLE_*:N*_IN_*:N*_OUT_*:N*-SRC_*:Nudp-*_IPCOMP_*:Ntcp-*_IPCOMP_*:N*-small-*:Nnonxt-*_IPCOMP_*:S/-big-/-/:S/^/run-bpf-/} \
+    ${TARGETS:N*_IPIP_*:N*_IPCOMP_*:N*_IN_*:N*_OUT_*:N*-SRC_*:N*-small-*:N*-pmtu-*:S/-big-/-/:S/^/run-pflog-/}
+
+${REGRESS_TARGETS:Mrun-send-*}: stamp-bpf stamp-pflog stamp-drop
 
 CLEANFILES +=	addr.py *.pyc *.log stamp-* */hostname.* *.{in,out} *.tcpdump
 
@@ -505,7 +535,6 @@ create-setup: stamp-hostname stamp-inetd stamp-nonxt-reflect
 # Create hostname.if files, copy them to the machines and install addresses.
 
 etc/hostname.${SRC_OUT_IF}: Makefile
-	@echo '\n======== $@ ========'
 	mkdir -p ${@:H}
 	rm -f $@ $@.tmp
 	echo '### regress ipsec $@' >$@.tmp
@@ -584,7 +613,6 @@ ${IPS_SSH}/hostname.${IPS_IN_IF}: Makefile
 	mv $@.tmp $@
 
 ${IPS_SSH}/hostname.${IPS_OUT_IF}: Makefile
-	@echo '\n======== $@ ========'
 	mkdir -p ${@:H}
 	rm -f $@ $@.tmp
 	echo '### regress ipsec $@' >$@.tmp
@@ -620,7 +648,6 @@ ${IPS_SSH}/hostname.${IPS_OUT_IF}: Makefile
 	mv $@.tmp $@
 
 ${RT_SSH}/hostname.${RT_IN_IF}: Makefile
-	@echo '\n======== $@ ========'
 	mkdir -p ${@:H}
 	rm -f $@ $@.tmp
 	echo '### regress ipsec $@' >$@.tmp
@@ -650,7 +677,6 @@ ${RT_SSH}/hostname.${RT_IN_IF}: Makefile
 	mv $@.tmp $@
 
 ${RT_SSH}/hostname.${RT_OUT_IF}: Makefile
-	@echo '\n======== $@ ========'
 	mkdir -p ${@:H}
 	rm -f $@ $@.tmp
 	echo '### regress ipsec $@' >$@.tmp
@@ -673,7 +699,6 @@ ${RT_SSH}/hostname.${RT_OUT_IF}: Makefile
 	mv $@.tmp $@
 
 ${ECO_SSH}/hostname.${ECO_IN_IF}: Makefile
-	@echo '\n======== $@ ========'
 	mkdir -p ${@:H}
 	rm -f $@ $@.tmp
 	echo '### regress ipsec $@' >$@.tmp
@@ -714,7 +739,6 @@ stamp-hostname: etc/hostname.${SRC_OUT_IF} \
     ${IPS_SSH}/hostname.${IPS_IN_IF} ${IPS_SSH}/hostname.${IPS_OUT_IF} \
     ${RT_SSH}/hostname.${RT_IN_IF} ${RT_SSH}/hostname.${RT_OUT_IF} \
     ${ECO_SSH}/hostname.${ECO_IN_IF}
-	@echo '\n======== $@ ========'
 	${SUDO} sh -c "umask 027;\
 	    { sed '/^### regress/,\$$d' /etc/hostname.${SRC_OUT_IF} &&\
 	    cat; } >/etc/hostname.${SRC_OUT_IF}.tmp"\
@@ -737,7 +761,6 @@ stamp-hostname: etc/hostname.${SRC_OUT_IF} \
 
 .for host in IPS ECO
 ${${host}_SSH}/inetd.conf: Makefile
-	@echo '\n======== $@ ========'
 	mkdir -p ${@:H}
 	rm -f $@ $@.tmp
 	echo '### regress ipsec $@' >$@.tmp
@@ -757,7 +780,6 @@ ${${host}_SSH}/inetd.conf: Makefile
 .endfor
 
 stamp-inetd: ${IPS_SSH}/inetd.conf ${ECO_SSH}/inetd.conf
-	@echo '\n======== $@ ========'
 .for host in IPS ECO
 	ssh root@${${host}_SSH} "umask 022;\
 	    { sed '/^### regress/,\$$d' /etc/inetd.conf && cat; }\
@@ -774,7 +796,6 @@ stamp-inetd: ${IPS_SSH}/inetd.conf ${ECO_SSH}/inetd.conf
 
 .for host in IPS ECO
 ${${host}_SSH}/nonxt_reflect: nonxt_reflect.sh Makefile
-	@echo '\n======== $@ ========'
 	mkdir -p ${@:H}
 	rm -f $@ $@.tmp
 	echo '#!/bin/ksh' >$@.tmp
@@ -798,7 +819,6 @@ ${${host}_SSH}/nonxt_reflect: nonxt_reflect.sh Makefile
 
 stamp-nonxt-reflect: ${IPS_SSH}/nonxt_reflect ${ECO_SSH}/nonxt_reflect \
     nonxt-reflect
-	@echo '\n======== $@ ========'
 .for host in IPS ECO
 	ssh ${${host}_SSH} make -C ${.CURDIR} nonxt-reflect
 	scp ${${host}_SSH}/nonxt_reflect root@${${host}_SSH}:/etc/rc.d/

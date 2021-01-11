@@ -1,4 +1,4 @@
-/*	$OpenBSD: machdep.c,v 1.641 2020/11/08 20:37:23 mpi Exp $	*/
+/*	$OpenBSD: machdep.c,v 1.644 2021/01/09 21:01:20 gnezdo Exp $	*/
 /*	$NetBSD: machdep.c,v 1.214 1996/11/10 03:16:17 thorpej Exp $	*/
 
 /*-
@@ -3100,7 +3100,7 @@ fix_f00f(void)
 	void *p;
 
 	/* Allocate two new pages */
-	va = uvm_km_zalloc(kernel_map, NBPG*2);
+	va = (vaddr_t)km_alloc(NBPG*2, &kv_any, &kp_zero, &kd_waitok);
 	p = (void *)(va + NBPG - 7*sizeof(*idt));
 
 	/* Copy over old IDT */
@@ -3560,6 +3560,11 @@ idt_vec_free(int vec)
 
 const struct sysctl_bounded_args cpuctl_vars[] = {
 	{ CPU_LIDACTION, &lid_action, 0, 2 },
+	{ CPU_CPUID, &cpu_id, 1, 0 },
+	{ CPU_OSFXSR, &i386_use_fxsave, 1, 0 },
+	{ CPU_SSE, &i386_has_sse, 1, 0 },
+	{ CPU_SSE2, &i386_has_sse2, 1, 0 },
+	{ CPU_XCRYPT, &i386_has_xcrypt, 1, 0 },
 };
 
 /*
@@ -3609,8 +3614,6 @@ cpu_sysctl(int *name, u_int namelen, void *oldp, size_t *oldlenp, void *newp,
 #endif
 	case CPU_CPUVENDOR:
 		return (sysctl_rdstring(oldp, oldlenp, newp, cpu_vendor));
-	case CPU_CPUID:
-		return (sysctl_rdint(oldp, oldlenp, newp, cpu_id));
 	case CPU_CPUFEATURE:
 		return (sysctl_rdint(oldp, oldlenp, newp, curcpu()->ci_feature_flags));
 	case CPU_KBDRESET:
@@ -3620,14 +3623,6 @@ cpu_sysctl(int *name, u_int namelen, void *oldp, size_t *oldlenp, void *newp,
 		else
 			return (sysctl_int(oldp, oldlenp, newp, newlen,
 			    &kbd_reset));
-	case CPU_OSFXSR:
-		return (sysctl_rdint(oldp, oldlenp, newp, i386_use_fxsave));
-	case CPU_SSE:
-		return (sysctl_rdint(oldp, oldlenp, newp, i386_has_sse));
-	case CPU_SSE2:
-		return (sysctl_rdint(oldp, oldlenp, newp, i386_has_sse2));
-	case CPU_XCRYPT:
-		return (sysctl_rdint(oldp, oldlenp, newp, i386_has_xcrypt));
 #if NPCKBC > 0 && NUKBD > 0
 	case CPU_FORCEUKBD:
 		{
@@ -3995,6 +3990,8 @@ int
 splraise(int ncpl)
 {
 	int ocpl;
+
+	KASSERT(ncpl >= IPL_NONE);
 
 	_SPLRAISE(ocpl, ncpl);
 	return (ocpl);

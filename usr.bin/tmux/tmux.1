@@ -1,4 +1,4 @@
-.\" $OpenBSD: tmux.1,v 1.807 2020/12/03 07:12:12 nicm Exp $
+.\" $OpenBSD: tmux.1,v 1.810 2021/01/04 08:43:16 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
 .\"
@@ -14,7 +14,7 @@
 .\" IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 .\" OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: December 3 2020 $
+.Dd $Mdocdate: January 4 2021 $
 .Dt TMUX 1
 .Os
 .Sh NAME
@@ -3136,7 +3136,7 @@ abc123
 Commands which set options are as follows:
 .Bl -tag -width Ds
 .It Xo Ic set-option
-.Op Fl aFgopqsuw
+.Op Fl aFgopqsuUw
 .Op Fl t Ar target-pane
 .Ar option Ar value
 .Xc
@@ -3169,6 +3169,11 @@ flag unsets an option, so a session inherits the option from the global
 options (or with
 .Fl g ,
 restores a global option to the default).
+.Fl U
+unsets an option (like
+.Fl u )
+but if the option is a pane option also unsets the option on any panes in the
+window.
 .Ar value
 depends on the option and may be a number, a string, or a flag (on, off, or
 omitted to toggle).
@@ -4062,12 +4067,6 @@ see the
 section.
 Attributes are ignored.
 .Pp
-.It Xo Ic synchronize-panes
-.Op Ic on | off
-.Xc
-Duplicate input to any pane to all other panes in the same window (only
-for panes that are not in any special mode).
-.Pp
 .It Ic window-status-activity-style Ar style
 Set status line style for windows with an activity alert.
 For how to specify
@@ -4182,13 +4181,22 @@ interactive application starts and restores it on exit, so that any output
 visible before the application starts reappears unchanged after it exits.
 .Pp
 .It Xo Ic remain-on-exit
-.Op Ic on | off
+.Op Ic on | off | failed
 .Xc
 A pane with this flag set is not destroyed when the program running in it
 exits.
+If set to
+.Ic failed ,
+then only when the program exit status is not zero.
 The pane may be reactivated with the
 .Ic respawn-pane
 command.
+.Pp
+.It Xo Ic synchronize-panes
+.Op Ic on | off
+.Xc
+Duplicate input to all other panes in the same window where this option is also
+on (only for panes that are not in any mode).
 .Pp
 .It Ic window-active-style Ar style
 Set the pane style when it is the active pane.
@@ -5822,7 +5830,7 @@ Lock each client individually by running the command specified by the
 .Ic lock-command
 option.
 .It Xo Ic run-shell
-.Op Fl b
+.Op Fl bC
 .Op Fl d Ar delay
 .Op Fl t Ar target-pane
 .Op Ar shell-command
@@ -5830,9 +5838,14 @@ option.
 .D1 (alias: Ic run )
 Execute
 .Ar shell-command
-in the background without creating a window.
-Before being executed, shell-command is expanded using the rules specified in
-the
+or (with
+.Fl C )
+a
+.Nm
+command in the background without creating a window.
+Before being executed,
+.Ar shell-command
+is expanded using the rules specified in the
 .Sx FORMATS
 section.
 With
@@ -5842,11 +5855,13 @@ the command is run in the background.
 waits for
 .Ar delay
 seconds before starting the command.
-After the command finishes, any output to stdout is displayed in view mode (in
-the pane specified by
+If
+.Fl C
+is not given, any output to stdout is displayed in view mode (in the pane
+specified by
 .Fl t
-or the current pane if omitted).
-If the command doesn't return success, the exit status is also displayed.
+or the current pane if omitted) after the command finishes.
+If the command fails, the exit status is also displayed.
 .It Xo Ic wait-for
 .Op Fl L | S | U
 .Ar channel

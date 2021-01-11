@@ -1,4 +1,4 @@
-/*	$OpenBSD: fortune.c,v 1.60 2017/08/10 17:00:08 millert Exp $	*/
+/*	$OpenBSD: fortune.c,v 1.63 2021/01/03 01:32:13 schwarze Exp $	*/
 /*	$NetBSD: fortune.c,v 1.8 1995/03/23 08:28:40 cgd Exp $	*/
 
 /*-
@@ -160,12 +160,12 @@ main(int ac, char *av[])
 	getargs(ac, av);
 
 	if (Match)
-		return find_matches() != 0;
+		return find_matches() == 0;
 
 	init_prob();
 	if ((Short_only && minlen_in_list(File_list) > SLEN) ||
 	    (Long_only && maxlen_in_list(File_list) <= SLEN))
-		return 0;
+		return 1;
 
 	do {
 		get_fort();
@@ -718,7 +718,7 @@ copy(char *str, char *suf)
 	char	*new;
 
 	if (asprintf(&new, "%s%s", str, suf ? suf : "") == -1)
-		return NULL;
+		err(1, NULL);
 	return new;
 }
 

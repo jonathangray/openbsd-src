@@ -1,4 +1,4 @@
-/*	$OpenBSD: cpu.c,v 1.20 2020/09/26 12:42:52 kettenis Exp $	*/
+/*	$OpenBSD: cpu.c,v 1.22 2020/12/30 06:06:30 gkoehler Exp $	*/
 
 /*
  * Copyright (c) 2020 Mark Kettenis <kettenis@openbsd.org>
@@ -236,9 +236,12 @@ cpu_init(void)
 	uint64_t lpcr = LPCR_LPES;
 
 	if (cpu_features2 & PPC_FEATURE2_ARCH_3_00)
-		lpcr |= LPCR_HVICE;
+		lpcr |= LPCR_PECE | LPCR_HVICE;
 
 	mtlpcr(lpcr);
+	isync();
+
+	mtfscr(0);
 	isync();
 }
 
@@ -254,6 +257,25 @@ cpu_darn(void *arg)
 	}
 
 	timeout_add_msec(&cpu_darn_to, 10);
+}
+
+uint64_t cpu_idle_state_psscr;
+void	cpu_idle_spin(void);
+void	(*cpu_idle_cycle_fcn)(void) = &cpu_idle_spin;
+
+void
+cpu_idle_cycle(void)
+{
+	intr_disable();
+
+	if (!cpu_is_idle(curcpu())) {
+		intr_enable();
+		return;
+	}
+
+	(*cpu_idle_cycle_fcn)();
+
+	intr_enable();
 }
 
 #ifdef MULTIPROCESSOR
@@ -370,6 +392,13 @@ cpu_intr(void *arg)
 
 void
 cpu_kick(struct cpu_info *ci)
+{
+	if (ci != curcpu())
+		intr_send_ipi(ci, IPI_NOP);
+}
+
+void
+cpu_unidle(struct cpu_info *ci)
 {
 	if (ci != curcpu())
 		intr_send_ipi(ci, IPI_NOP);

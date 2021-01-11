@@ -1,4 +1,4 @@
-/*	$OpenBSD: trap.c,v 1.46 2020/10/27 12:50:49 kettenis Exp $	*/
+/*	$OpenBSD: trap.c,v 1.49 2021/01/09 13:14:02 kettenis Exp $	*/
 
 /*
  * Copyright (c) 2020 Mark Kettenis <kettenis@openbsd.org>
@@ -59,7 +59,7 @@ trap(struct trapframe *frame)
 	int error, sig, code;
 
 	/* Disable access to floating-point and vector registers. */
-	mtmsr(mfmsr() & ~(PSL_FP|PSL_VEC|PSL_VSX));
+	mtmsr(mfmsr() & ~(PSL_FPU|PSL_VEC|PSL_VSX));
 
 	switch (type) {
 	case EXC_DECR:
@@ -108,7 +108,7 @@ trap(struct trapframe *frame)
 			db_ktrap(T_BREAKPOINT, frame);
 			return;
 		}
-		break;
+		goto fatal;
 	case EXC_TRC:
 		db_ktrap(T_BREAKPOINT, frame); /* single-stepping */
 		return;
@@ -332,14 +332,19 @@ trap(struct trapframe *frame)
 
 	case EXC_PGM|EXC_USER:
 		sv.sival_ptr = (void *)frame->srr0;
-		trapsignal(p, SIGTRAP, 0, TRAP_BRKPT, sv);
+		if (frame->srr1 & EXC_PGM_FPENABLED)
+			trapsignal(p, SIGFPE, 0, fpu_sigcode(p), sv);
+		else if (frame->srr1 & EXC_PGM_TRAP)
+			trapsignal(p, SIGTRAP, 0, TRAP_BRKPT, sv);
+		else
+			trapsignal(p, SIGILL, 0, ILL_PRVOPC, sv);
 		break;
 
 	case EXC_FPU|EXC_USER:
 		if ((frame->srr1 & (PSL_FP|PSL_VEC|PSL_VSX)) == 0)
 			restore_vsx(p);
-		curpcb->pcb_flags |= PCB_FP;
-		frame->srr1 |= PSL_FP;
+		curpcb->pcb_flags |= PCB_FPU;
+		frame->srr1 |= PSL_FPU;
 		break;
 
 	case EXC_TRC|EXC_USER:
@@ -347,11 +352,28 @@ trap(struct trapframe *frame)
 		trapsignal(p, SIGTRAP, 0, TRAP_TRACE, sv);
 		break;
 
+	case EXC_HEA|EXC_USER:
+		sv.sival_ptr = (void *)frame->srr0;
+		trapsignal(p, SIGILL, 0, ILL_ILLOPC, sv);
+		break;
+
 	case EXC_VEC|EXC_USER:
 		if ((frame->srr1 & (PSL_FP|PSL_VEC|PSL_VSX)) == 0)
 			restore_vsx(p);
 		curpcb->pcb_flags |= PCB_VEC;
 		frame->srr1 |= PSL_VEC;
+		break;
+
+	case EXC_VSX|EXC_USER:
+		if ((frame->srr1 & (PSL_FP|PSL_VEC|PSL_VSX)) == 0)
+			restore_vsx(p);
+		curpcb->pcb_flags |= PCB_VSX;
+		frame->srr1 |= PSL_VSX;
+		break;
+
+	case EXC_FAC|EXC_USER:
+		sv.sival_ptr = (void *)frame->srr0;
+		trapsignal(p, SIGILL, 0, ILL_PRVOPC, sv);
 		break;
 
 	default:

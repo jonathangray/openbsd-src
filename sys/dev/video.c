@@ -1,4 +1,4 @@
-/*	$OpenBSD: video.c,v 1.44 2020/05/16 10:47:22 mpi Exp $	*/
+/*	$OpenBSD: video.c,v 1.47 2021/01/06 18:57:58 jca Exp $	*/
 
 /*
  * Copyright (c) 2008 Robert Nagy <robert@openbsd.org>
@@ -28,6 +28,7 @@
 #include <sys/kernel.h>
 #include <sys/malloc.h>
 #include <sys/conf.h>
+#include <sys/proc.h>
 #include <sys/videoio.h>
 
 #include <dev/video_if.h>
@@ -46,11 +47,11 @@ struct video_softc {
 	struct device		*sc_dev;	/* hardware device struct */
 	struct video_hw_if	*hw_if;		/* hardware interface */
 	char			 sc_dying;	/* device detached */
-#define VIDEO_OPEN	0x01
-	char			 sc_open;
+	struct process		 *sc_owner;	/* owner process */
 
 	int			 sc_fsize;
 	uint8_t			*sc_fbuffer;
+	caddr_t			 sc_fbuffer_mmap;
 	size_t			 sc_fbufferlen;
 	int			 sc_vidmode;	/* access mode */
 #define		VIDMODE_NONE	0
@@ -78,6 +79,11 @@ struct cfdriver video_cd = {
 	NULL, "video", DV_DULL
 };
 
+/*
+ * Global flag to control if video recording is enabled by kern.video.record.
+ */
+int video_record_enable = 0;
+
 int
 videoprobe(struct device *parent, void *match, void *aux)
 {
@@ -95,6 +101,7 @@ videoattach(struct device *parent, struct device *self, void *aux)
 	sc->hw_hdl = sa->hdl;
 	sc->sc_dev = parent;
 	sc->sc_fbufferlen = 0;
+	sc->sc_owner = NULL;
 
 	if (sc->hw_if->get_bufsize)
 		sc->sc_fbufferlen = (sc->hw_if->get_bufsize)(sc->hw_hdl);
@@ -122,9 +129,13 @@ videoopen(dev_t dev, int flags, int fmt, struct proc *p)
 	     sc->hw_if == NULL)
 		return (ENXIO);
 
-	if (sc->sc_open & VIDEO_OPEN)
-		return (EBUSY);
-	sc->sc_open |= VIDEO_OPEN;
+	if (sc->sc_owner != NULL) {
+		if (sc->sc_owner == p->p_p)
+			return (0);
+		else
+			return (EBUSY);
+	} else
+		sc->sc_owner = p->p_p;
 
 	sc->sc_vidmode = VIDMODE_NONE;
 	sc->sc_frames_ready = 0;
@@ -147,7 +158,7 @@ videoclose(dev_t dev, int flags, int fmt, struct proc *p)
 	if (sc->hw_if->close != NULL)
 		r = sc->hw_if->close(sc->hw_hdl);
 
-	sc->sc_open &= ~VIDEO_OPEN;
+	sc->sc_owner = NULL;
 
 	return (r);
 }
@@ -191,6 +202,8 @@ videoread(dev_t dev, struct uio *uio, int ioflag)
 
 	/* move no more than 1 frame to userland, as per specification */
 	size = ulmin(uio->uio_resid, sc->sc_fsize);
+	if (!video_record_enable)
+		bzero(sc->sc_fbuffer, size);
 	error = uiomove(sc->sc_fbuffer, size, uio);
 	sc->sc_frames_ready--;
 	if (error)
@@ -205,6 +218,7 @@ int
 videoioctl(dev_t dev, u_long cmd, caddr_t data, int flags, struct proc *p)
 {
 	struct video_softc *sc;
+	struct v4l2_buffer *vb = (struct v4l2_buffer *)data;
 	int unit, error;
 
 	unit = VIDEOUNIT(dev);
@@ -299,6 +313,8 @@ videoioctl(dev_t dev, u_long cmd, caddr_t data, int flags, struct proc *p)
 		}
 		error = (sc->hw_if->dqbuf)(sc->hw_hdl,
 		    (struct v4l2_buffer *)data);
+		if (!video_record_enable)
+			bzero(sc->sc_fbuffer_mmap + vb->m.offset, vb->length);
 		sc->sc_frames_ready--;
 		break;
 	case VIDIOC_STREAMON:
@@ -409,6 +425,10 @@ videommap(dev_t dev, off_t off, int prot)
 		panic("videommap: invalid page");
 	sc->sc_vidmode = VIDMODE_MMAP;
 
+	/* store frame buffer base address for later blanking */
+	if (off == 0)
+		sc->sc_fbuffer_mmap = p;
+
 	return (pa);
 }
 
@@ -419,7 +439,7 @@ filt_videodetach(struct knote *kn)
 	int s;
 
 	s = splhigh();
-	klist_remove(&sc->sc_rsel.si_note, kn);
+	klist_remove_locked(&sc->sc_rsel.si_note, kn);
 	splx(s);
 }
 
@@ -476,7 +496,7 @@ videokqfilter(dev_t dev, struct knote *kn)
 	}
 
 	s = splhigh();
-	klist_insert(&sc->sc_rsel.si_note, kn);
+	klist_insert_locked(&sc->sc_rsel.si_note, kn);
 	splx(s);
 
 	return (0);

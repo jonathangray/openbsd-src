@@ -1,4 +1,4 @@
-/*	$OpenBSD: drm_linux.c,v 1.73 2020/12/13 04:00:38 jsg Exp $	*/
+/*	$OpenBSD: drm_linux.c,v 1.75 2021/01/08 23:02:09 kettenis Exp $	*/
 /*
  * Copyright (c) 2013 Jonathan Gray <jsg@openbsd.org>
  * Copyright (c) 2015, 2016 Mark Kettenis <kettenis@openbsd.org>
@@ -428,6 +428,111 @@ dmi_check_system(const struct dmi_system_id *sysid)
 		}
 	}
 	return (num);
+}
+
+struct vmalloc_entry {
+	const void	*addr;
+	size_t		size;
+	RBT_ENTRY(vmalloc_entry) vmalloc_node;
+};
+
+struct pool vmalloc_pool;
+RBT_HEAD(vmalloc_tree, vmalloc_entry) vmalloc_tree;
+
+RBT_PROTOTYPE(vmalloc_tree, vmalloc_entry, vmalloc_node, vmalloc_compare);
+
+static inline int
+vmalloc_compare(const struct vmalloc_entry *a, const struct vmalloc_entry *b)
+{
+	vaddr_t va = (vaddr_t)a->addr;
+	vaddr_t vb = (vaddr_t)b->addr;
+
+	return va < vb ? -1 : va > vb;
+}
+
+RBT_GENERATE(vmalloc_tree, vmalloc_entry, vmalloc_node, vmalloc_compare);
+
+bool
+is_vmalloc_addr(const void *addr)
+{
+	struct vmalloc_entry key;
+	struct vmalloc_entry *entry;
+
+	key.addr = addr;
+	entry = RBT_FIND(vmalloc_tree, &vmalloc_tree, &key);
+	return (entry != NULL);
+}
+
+void *
+vmalloc(unsigned long size)
+{
+	struct vmalloc_entry *entry;
+	void *addr;
+
+	size = round_page(size);
+	addr = km_alloc(size, &kv_any, &kp_dirty, &kd_waitok);
+	if (addr) {
+		entry = pool_get(&vmalloc_pool, PR_WAITOK);
+		entry->addr = addr;
+		entry->size = size;
+		RBT_INSERT(vmalloc_tree, &vmalloc_tree, entry);
+	}
+
+	return addr;
+}
+
+void *
+vzalloc(unsigned long size)
+{
+	struct vmalloc_entry *entry;
+	void *addr;
+
+	size = round_page(size);
+	addr = km_alloc(size, &kv_any, &kp_zero, &kd_waitok);
+	if (addr) {
+		entry = pool_get(&vmalloc_pool, PR_WAITOK);
+		entry->addr = addr;
+		entry->size = size;
+		RBT_INSERT(vmalloc_tree, &vmalloc_tree, entry);
+	}
+
+	return addr;
+}
+
+void
+vfree(const void *addr)
+{
+	struct vmalloc_entry key;
+	struct vmalloc_entry *entry;
+
+	key.addr = addr;
+	entry = RBT_FIND(vmalloc_tree, &vmalloc_tree, &key);
+	if (entry == NULL)
+		panic("%s: non vmalloced addr %p", __func__, addr);
+
+	RBT_REMOVE(vmalloc_tree, &vmalloc_tree, entry);
+	km_free((void *)addr, entry->size, &kv_any, &kp_dirty);
+	pool_put(&vmalloc_pool, entry);
+}
+
+void *
+kvmalloc(size_t size, gfp_t flags)
+{
+	if ((flags & M_NOWAIT) || size < PAGE_SIZE)
+		return malloc(size, M_DRM, flags);
+	if (flags & M_ZERO)
+		return vzalloc(size);
+	else
+		return vmalloc(size);
+}
+
+void
+kvfree(const void *addr)
+{
+	if (is_vmalloc_addr(addr))
+		vfree(addr);
+	else
+		free((void *)addr, M_DRM, 0);
 }
 
 struct vm_page *
@@ -1325,9 +1430,12 @@ long
 dma_fence_default_wait(struct dma_fence *fence, bool intr, signed long timeout)
 {
 	long ret = timeout ? timeout : 1;
+	unsigned long end;
 	int err;
 	struct default_wait_cb cb;
 	bool was_set;
+
+	KASSERT(timeout <= INT_MAX);
 
 	if (test_bit(DMA_FENCE_FLAG_SIGNALED_BIT, &fence->flags))
 		return ret;
@@ -1356,14 +1464,14 @@ dma_fence_default_wait(struct dma_fence *fence, bool intr, signed long timeout)
 	cb.proc = curproc;
 	list_add(&cb.base.node, &fence->cb_list);
 
-	while (!test_bit(DMA_FENCE_FLAG_SIGNALED_BIT, &fence->flags)) {
-		err = msleep(curproc, fence->lock, intr ? PCATCH : 0, "dmafence",
-		    timeout);
+	end = jiffies + timeout;
+	for (ret = timeout; ret > 0; ret = MAX(0, end - jiffies)) {
+		if (test_bit(DMA_FENCE_FLAG_SIGNALED_BIT, &fence->flags))
+			break;
+		err = msleep(curproc, fence->lock, intr ? PCATCH : 0,
+		    "dmafence", ret);
 		if (err == EINTR || err == ERESTART) {
 			ret = -ERESTARTSYS;
-			break;
-		} else if (err == EWOULDBLOCK) {
-			ret = 0;
 			break;
 		}
 	}
@@ -1398,8 +1506,11 @@ dma_fence_wait_any_timeout(struct dma_fence **fences, uint32_t count,
     bool intr, long timeout, uint32_t *idx)
 {
 	struct default_wait_cb *cb;
+	long ret = timeout;
+	unsigned long end;
 	int i, err;
-	int ret = timeout;
+
+	KASSERT(timeout <= INT_MAX);
 
 	if (timeout == 0) {
 		for (i = 0; i < count; i++) {
@@ -1427,17 +1538,13 @@ dma_fence_wait_any_timeout(struct dma_fence **fences, uint32_t count,
 		}
 	}
 
-	while (ret > 0) {
+	end = jiffies + timeout;
+	for (ret = timeout; ret > 0; ret = MAX(0, end - jiffies)) {
 		if (dma_fence_test_signaled_any(fences, count, idx))
 			break;
-
-		err = tsleep(curproc, intr ? PCATCH : 0,
-		    "dfwat", timeout);
+		err = tsleep(curproc, intr ? PCATCH : 0, "dfwat", ret);
 		if (err == EINTR || err == ERESTART) {
 			ret = -ERESTARTSYS;
-			break;
-		} else if (err == EWOULDBLOCK) {
-			ret = 0;
 			break;
 		}
 	}
@@ -1937,6 +2044,10 @@ drm_linux_init(void)
 
 	pool_init(&idr_pool, sizeof(struct idr_entry), 0, IPL_TTY, 0,
 	    "idrpl", NULL);
+
+	pool_init(&vmalloc_pool, sizeof(struct vmalloc_entry), 0, IPL_NONE, 0,
+	    "vmallocpl", NULL);
+	RBT_INIT(vmalloc_tree, &vmalloc_tree);
 }
 
 void

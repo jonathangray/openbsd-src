@@ -1,4 +1,4 @@
-/*	$OpenBSD: tls13_legacy.c,v 1.19 2020/11/03 17:41:39 jsing Exp $ */
+/*	$OpenBSD: tls13_legacy.c,v 1.21 2021/01/07 16:26:31 tb Exp $ */
 /*
  * Copyright (c) 2018, 2019 Joel Sing <jsing@openbsd.org>
  *
@@ -216,7 +216,7 @@ tls13_legacy_read_bytes(SSL *ssl, int type, unsigned char *buf, int len, int pee
 		return -1;
 	}
 	if (len < 0) {
-		SSLerror(ssl, SSL_R_BAD_LENGTH); 
+		SSLerror(ssl, SSL_R_BAD_LENGTH);
 		return -1;
 	}
 
@@ -247,7 +247,7 @@ tls13_legacy_write_bytes(SSL *ssl, int type, const void *vbuf, int len)
 		return -1;
 	}
 	if (len < 0) {
-		SSLerror(ssl, SSL_R_BAD_LENGTH); 
+		SSLerror(ssl, SSL_R_BAD_LENGTH);
 		return -1;
 	}
 
@@ -261,12 +261,12 @@ tls13_legacy_write_bytes(SSL *ssl, int type, const void *vbuf, int len)
 	}
 
 	/*
- 	 * In the non-SSL_MODE_ENABLE_PARTIAL_WRITE case we have to loop until
+	 * In the non-SSL_MODE_ENABLE_PARTIAL_WRITE case we have to loop until
 	 * we have written out all of the requested data.
 	 */
 	sent = S3I(ssl)->wnum;
 	if (len < sent) {
-		SSLerror(ssl, SSL_R_BAD_LENGTH); 
+		SSLerror(ssl, SSL_R_BAD_LENGTH);
 		return -1;
 	}
 	n = len - sent;
@@ -515,14 +515,14 @@ tls13_legacy_servername_process(struct tls13_ctx *ctx, uint8_t *alert)
 	int legacy_alert = SSL_AD_UNRECOGNIZED_NAME;
 	int ret = SSL_TLSEXT_ERR_NOACK;
 	SSL_CTX *ssl_ctx = ctx->ssl->ctx;
-	SSL *ssl = ctx->ssl;
+	SSL *s = ctx->ssl;
 
 	if (ssl_ctx->internal->tlsext_servername_callback == NULL)
-		ssl_ctx = ssl->initial_ctx;
+		ssl_ctx = s->initial_ctx;
 	if (ssl_ctx->internal->tlsext_servername_callback == NULL)
 		return 1;
 
-	ret = ssl_ctx->internal->tlsext_servername_callback(ssl, &legacy_alert,
+	ret = ssl_ctx->internal->tlsext_servername_callback(s, &legacy_alert,
 	    ssl_ctx->internal->tlsext_servername_arg);
 
 	if (ret == SSL_TLSEXT_ERR_ALERT_FATAL ||

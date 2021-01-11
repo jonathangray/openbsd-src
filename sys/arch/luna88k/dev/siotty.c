@@ -1,4 +1,4 @@
-/* $OpenBSD: siotty.c,v 1.23 2019/02/25 11:29:30 jca Exp $ */
+/* $OpenBSD: siotty.c,v 1.25 2021/01/09 02:34:21 aoyama Exp $ */
 /* $NetBSD: siotty.c,v 1.9 2002/03/17 19:40:43 atatat Exp $ */
 
 /*-
@@ -460,7 +460,6 @@ sioopen(dev_t dev, int flag, int mode, struct proc *p)
 {
 	struct siotty_softc *sc;
 	struct tty *tp;
-	int error;
 	int s;
 
 	if ((sc = siotty_cd.cd_devs[minor(dev)]) == NULL)
@@ -503,9 +502,6 @@ sioopen(dev_t dev, int flag, int mode, struct proc *p)
 		splx(s);
 	}
 
-	error = ttyopen(dev, tp, p);
-	if (error > 0)
-		return error;
 	return (*linesw[tp->t_line].l_open)(dev, tp, p);
 }
  

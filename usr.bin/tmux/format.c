@@ -1,4 +1,4 @@
-/* $OpenBSD: format.c,v 1.267 2020/12/01 08:12:58 nicm Exp $ */
+/* $OpenBSD: format.c,v 1.269 2020/12/30 18:29:40 nicm Exp $ */
 
 /*
  * Copyright (c) 2011 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1876,7 +1876,7 @@ format_loop_sessions(struct format_expand_state *es, const char *fmt)
 	RB_FOREACH(s, sessions, &sessions) {
 		format_log(es, "session loop: $%u", s->id);
 		nft = format_create(c, item, FORMAT_NONE, ft->flags);
-		format_defaults(next.ft, ft->c, s, NULL, NULL);
+		format_defaults(nft, ft->c, s, NULL, NULL);
 		format_copy_state(&next, es, 0);
 		next.ft = nft;
 		expanded = format_expand1(&next, fmt);
@@ -3085,7 +3085,7 @@ format_defaults_pane(struct format_tree *ft, struct window_pane *wp)
 	format_add_cb(ft, "pane_in_mode", format_cb_pane_in_mode);
 
 	format_add(ft, "pane_synchronized", "%d",
-	    !!options_get_number(w->options, "synchronize-panes"));
+	    !!options_get_number(wp->options, "synchronize-panes"));
 	if (wp->searchstr != NULL)
 		format_add(ft, "pane_search_string", "%s", wp->searchstr);
 

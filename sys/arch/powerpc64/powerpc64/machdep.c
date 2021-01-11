@@ -1,4 +1,4 @@
-/*	$OpenBSD: machdep.c,v 1.65 2020/11/08 20:37:24 mpi Exp $	*/
+/*	$OpenBSD: machdep.c,v 1.67 2021/01/09 13:14:02 kettenis Exp $	*/
 
 /*
  * Copyright (c) 2020 Mark Kettenis <kettenis@openbsd.org>
@@ -78,10 +78,12 @@ int opal_have_console_flush;
 
 extern char trapcode[], trapcodeend[];
 extern char hvtrapcode[], hvtrapcodeend[];
+extern char rsttrapcode[], rsttrapcodeend[];
 extern char slbtrapcode[], slbtrapcodeend[];
 extern char generictrap[];
 extern char generichvtrap[];
 extern char kern_slbtrap[];
+extern char cpu_idle_restore_context[];
 
 extern char initstack[];
 
@@ -248,12 +250,16 @@ init_powernv(void *fdt, void *tocbase)
 	memcpy((void *)EXC_HFAC, hvtrapcode, hvtrapcodeend - hvtrapcode);
 	memcpy((void *)EXC_HVI, hvtrapcode, hvtrapcodeend - hvtrapcode);
 
+	/* System reset trap needs special handling. */
+	memcpy((void *)EXC_RST, rsttrapcode, rsttrapcodeend - rsttrapcode);
+
 	/* SLB trap needs special handling as well. */
 	memcpy((void *)EXC_DSE, slbtrapcode, slbtrapcodeend - slbtrapcode);
 
 	*((void **)TRAP_ENTRY) = generictrap;
 	*((void **)TRAP_HVENTRY) = generichvtrap;
 	*((void **)TRAP_SLBENTRY) = kern_slbtrap;
+	*((void **)TRAP_RSTENTRY) = cpu_idle_restore_context;
 
 	/* Make the stubs visible to the CPU. */
 	__syncicache(EXC_RSVD, EXC_LAST - EXC_RSVD);
@@ -909,9 +915,9 @@ sendsig(sig_t catcher, int sig, sigset_t mask, const siginfo_t *ksip)
 	fp = (struct sigframe *)(STACKALIGN(fp - 1) - 288);
 
 	/* Save FPU state to PCB if necessary. */
-	if (pcb->pcb_flags & (PCB_FP|PCB_VEC|PCB_VSX) &&
-	    tf->srr1 & (PSL_FP|PSL_VEC|PSL_VSX)) {
-		tf->srr1 &= ~(PSL_FP|PSL_VEC|PSL_VSX);
+	if (pcb->pcb_flags & (PCB_FPU|PCB_VEC|PCB_VSX) &&
+	    tf->srr1 & (PSL_FPU|PSL_VEC|PSL_VSX)) {
+		tf->srr1 &= ~(PSL_FPU|PSL_VEC|PSL_VSX);
 		save_vsx(p);
 	}
 
@@ -931,7 +937,7 @@ sendsig(sig_t catcher, int sig, sigset_t mask, const siginfo_t *ksip)
 	frame.sf_sc.sc_vrsave = tf->vrsave;
 
 	/* Copy the saved FPU state into the frame if necessary. */
-	if (pcb->pcb_flags & (PCB_FP|PCB_VEC|PCB_VSX)) {
+	if (pcb->pcb_flags & (PCB_FPU|PCB_VEC|PCB_VSX)) {
 		memcpy(frame.sf_sc.sc_vsx, pcb->pcb_fpstate.fp_vsx,
 		    sizeof(pcb->pcb_fpstate.fp_vsx));
 		frame.sf_sc.sc_fpscr = pcb->pcb_fpstate.fp_fpscr;
@@ -1010,7 +1016,7 @@ sys_sigreturn(struct proc *p, void *v, register_t *retval)
 	tf->vrsave = ksc.sc_vrsave;
 
 	/* Write saved FPU state back to PCB if necessary. */
-	if (pcb->pcb_flags & (PCB_FP|PCB_VEC|PCB_VSX)) {
+	if (pcb->pcb_flags & (PCB_FPU|PCB_VEC|PCB_VSX)) {
 		memcpy(pcb->pcb_fpstate.fp_vsx, ksc.sc_vsx,
 		    sizeof(pcb->pcb_fpstate.fp_vsx));
 		pcb->pcb_fpstate.fp_fpscr = ksc.sc_fpscr;
@@ -1043,9 +1049,9 @@ cpu_switchto(struct proc *old, struct proc *new)
 		struct pcb *pcb = &old->p_addr->u_pcb;
 		struct trapframe *tf = old->p_md.md_regs;
 
-		if (pcb->pcb_flags & (PCB_FP|PCB_VEC|PCB_VSX) &&
-		    tf->srr1 & (PSL_FP|PSL_VEC|PSL_VSX)) {
-			tf->srr1 &= ~(PSL_FP|PSL_VEC|PSL_VSX);
+		if (pcb->pcb_flags & (PCB_FPU|PCB_VEC|PCB_VSX) &&
+		    tf->srr1 & (PSL_FPU|PSL_VEC|PSL_VSX)) {
+			tf->srr1 &= ~(PSL_FPU|PSL_VEC|PSL_VSX);
 			save_vsx(old);
 		}
 

@@ -1,4 +1,4 @@
-/*	$OpenBSD: bgpd.h,v 1.405 2020/11/05 11:52:59 claudio Exp $ */
+/*	$OpenBSD: bgpd.h,v 1.409 2021/01/04 13:40:32 claudio Exp $ */
 
 /*
  * Copyright (c) 2003, 2004 Henning Brauer <henning@openbsd.org>
@@ -254,15 +254,33 @@ struct trie_head {
 	struct tentry_v6	*root_v6;
 	int			 match_default_v4;
 	int			 match_default_v6;
+	size_t			 v4_cnt;
+	size_t			 v6_cnt;
 };
 
 struct rde_prefixset {
 	char				name[SET_NAME_LEN];
 	struct trie_head		th;
 	SIMPLEQ_ENTRY(rde_prefixset)	entry;
+	time_t				lastchange;
 	int				dirty;
 };
 SIMPLEQ_HEAD(rde_prefixset_head, rde_prefixset);
+
+struct roa {
+	RB_ENTRY(roa)	entry;
+	uint8_t		aid;
+	uint8_t		prefixlen;
+	uint8_t		maxlen;
+	uint8_t		pad;
+	uint32_t	asnum;
+	union {
+		struct in_addr	inet;
+		struct in6_addr	inet6;
+	}		prefix;
+};
+
+RB_HEAD(roa_tree, roa);
 
 struct set_table;
 struct as_set;
@@ -280,7 +298,7 @@ struct bgpd_config {
 	struct mrt_head				*mrt;
 	struct prefixset_head			 prefixsets;
 	struct prefixset_head			 originsets;
-	struct prefixset_tree			 roa;
+	struct roa_tree				 roa;
 	struct rde_prefixset_head		 rde_prefixsets;
 	struct rde_prefixset_head		 rde_originsets;
 	struct rde_prefixset			 rde_roa;
@@ -465,6 +483,7 @@ enum imsg_type {
 	IMSG_CTL_SHOW_TIMER,
 	IMSG_CTL_LOG_VERBOSE,
 	IMSG_CTL_SHOW_FIB_TABLES,
+	IMSG_CTL_SHOW_SET,
 	IMSG_CTL_TERMINATE,
 	IMSG_NETWORK_ADD,
 	IMSG_NETWORK_ASPATH,
@@ -492,7 +511,7 @@ enum imsg_type {
 	IMSG_RECONF_AS_SET_DONE,
 	IMSG_RECONF_ORIGIN_SET,
 	IMSG_RECONF_ROA_SET,
-	IMSG_RECONF_ROA_SET_ITEMS,
+	IMSG_RECONF_ROA_ITEM,
 	IMSG_RECONF_DRAIN,
 	IMSG_RECONF_DONE,
 	IMSG_UPDATE,
@@ -694,6 +713,20 @@ struct ctl_show_nexthop {
 	} kr;
 	u_int8_t			valid;
 	u_int8_t			krvalid;
+};
+
+struct ctl_show_set {
+	char			name[SET_NAME_LEN];
+	time_t			lastchange;
+	size_t			v4_cnt;
+	size_t			v6_cnt;
+	size_t			as_cnt;
+	enum {
+		ASNUM_SET,
+		PREFIX_SET,
+		ORIGIN_SET,
+		ROA_SET,
+	}			type;
 };
 
 struct ctl_neighbor {
@@ -1035,13 +1068,13 @@ struct roa_set {
 struct prefixset_item {
 	struct filter_prefix		p;
 	RB_ENTRY(prefixset_item)	entry;
-	struct set_table		*set;
 };
 
 struct prefixset {
 	int				 sflags;
 	char				 name[SET_NAME_LEN];
 	struct prefixset_tree		 psitems;
+	struct roa_tree			 roaitems;
 	SIMPLEQ_ENTRY(prefixset)	 entry;
 };
 
@@ -1049,6 +1082,7 @@ struct as_set {
 	char				 name[SET_NAME_LEN];
 	SIMPLEQ_ENTRY(as_set)		 entry;
 	struct set_table		*set;
+	time_t				 lastchange;
 	int				 dirty;
 };
 
@@ -1181,12 +1215,13 @@ void		free_config(struct bgpd_config *);
 void		free_prefixsets(struct prefixset_head *);
 void		free_rde_prefixsets(struct rde_prefixset_head *);
 void		free_prefixtree(struct prefixset_tree *);
+void		free_roatree(struct roa_tree *);
 void		filterlist_free(struct filter_head *);
 int		host(const char *, struct bgpd_addr *, u_int8_t *);
 u_int32_t	get_bgpid(void);
 void		expand_networks(struct bgpd_config *);
-int		prefixset_cmp(struct prefixset_item *, struct prefixset_item *);
 RB_PROTOTYPE(prefixset_tree, prefixset_item, entry, prefixset_cmp);
+RB_PROTOTYPE(roa_tree, roa, entry, roa_cmp);
 
 /* kroute.c */
 int		 kr_init(int *);
@@ -1283,12 +1318,12 @@ void			 set_prep(struct set_table *);
 void			*set_match(const struct set_table *, u_int32_t);
 int			 set_equal(const struct set_table *,
 			    const struct set_table *);
+size_t			 set_nmemb(const struct set_table *);
 
 /* rde_trie.c */
 int	trie_add(struct trie_head *, struct bgpd_addr *, u_int8_t, u_int8_t,
 	    u_int8_t);
-int	trie_roa_add(struct trie_head *, struct bgpd_addr *, u_int8_t,
-	    struct set_table *);
+int	trie_roa_add(struct trie_head *, struct roa *);
 void	trie_free(struct trie_head *);
 int	trie_match(struct trie_head *, struct bgpd_addr *, u_int8_t, int);
 int	trie_roa_check(struct trie_head *, struct bgpd_addr *, u_int8_t,
@@ -1336,7 +1371,7 @@ int		 aid2afi(u_int8_t, u_int16_t *, u_int8_t *);
 int		 afi2aid(u_int16_t, u_int8_t, u_int8_t *);
 sa_family_t	 aid2af(u_int8_t);
 int		 af2aid(sa_family_t, u_int8_t, u_int8_t *);
-struct sockaddr	*addr2sa(struct bgpd_addr *, u_int16_t, socklen_t *);
+struct sockaddr	*addr2sa(const struct bgpd_addr *, u_int16_t, socklen_t *);
 void		 sa2addr(struct sockaddr *, struct bgpd_addr *, u_int16_t *);
 const char *	 get_baudrate(unsigned long long, char *);
 
@@ -1377,6 +1412,7 @@ static const char * const eventnames[] = {
 	"ConnectRetryTimer expired",
 	"HoldTimer expired",
 	"KeepaliveTimer expired",
+	"SendHoldTimer expired",
 	"OPEN message received",
 	"KEEPALIVE message received",
 	"UPDATE message received",
@@ -1467,6 +1503,7 @@ static const char * const timernames[] = {
 	"ConnectRetryTimer",
 	"KeepaliveTimer",
 	"HoldTimer",
+	"SendHoldTimer",
 	"IdleHoldTimer",
 	"IdleHoldResetTimer",
 	"CarpUndemoteTimer",

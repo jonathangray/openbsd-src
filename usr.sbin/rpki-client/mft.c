@@ -1,4 +1,4 @@
-/*	$OpenBSD: mft.c,v 1.20 2020/12/09 11:25:08 claudio Exp $ */
+/*	$OpenBSD: mft.c,v 1.23 2021/01/08 08:09:07 claudio Exp $ */
 /*
  * Copyright (c) 2019 Kristaps Dzonsons <kristaps@bsd.lv>
  *
@@ -17,6 +17,7 @@
 
 #include <assert.h>
 #include <err.h>
+#include <limits.h>
 #include <stdarg.h>
 #include <stdint.h>
 #include <fcntl.h>
@@ -447,6 +448,7 @@ mft_validfilehash(const char *fn, const struct mftfile *m)
 	/* Check hash of file now, but first build path for it */
 	cp = strrchr(fn, '/');
 	assert(cp != NULL);
+	assert(cp - fn < INT_MAX);
 	if (asprintf(&path, "%.*s/%s", (int)(cp - fn), fn, m->file) == -1)
 		err(1, "asprintf");
 
@@ -517,22 +519,21 @@ mft_free(struct mft *p)
  * See mft_read() for the other side of the pipe.
  */
 void
-mft_buffer(char **b, size_t *bsz, size_t *bmax, const struct mft *p)
+mft_buffer(struct ibuf *b, const struct mft *p)
 {
 	size_t		 i;
 
-	io_simple_buffer(b, bsz, bmax, &p->stale, sizeof(int));
-	io_str_buffer(b, bsz, bmax, p->file);
-	io_simple_buffer(b, bsz, bmax, &p->filesz, sizeof(size_t));
+	io_simple_buffer(b, &p->stale, sizeof(int));
+	io_str_buffer(b, p->file);
+	io_simple_buffer(b, &p->filesz, sizeof(size_t));
 
 	for (i = 0; i < p->filesz; i++) {
-		io_str_buffer(b, bsz, bmax, p->files[i].file);
-		io_simple_buffer(b, bsz, bmax,
-			p->files[i].hash, SHA256_DIGEST_LENGTH);
+		io_str_buffer(b, p->files[i].file);
+		io_simple_buffer(b, p->files[i].hash, SHA256_DIGEST_LENGTH);
 	}
 
-	io_str_buffer(b, bsz, bmax, p->aki);
-	io_str_buffer(b, bsz, bmax, p->ski);
+	io_str_buffer(b, p->aki);
+	io_str_buffer(b, p->ski);
 }
 
 /*
@@ -550,6 +551,7 @@ mft_read(int fd)
 
 	io_simple_read(fd, &p->stale, sizeof(int));
 	io_str_read(fd, &p->file);
+	assert(p->file);
 	io_simple_read(fd, &p->filesz, sizeof(size_t));
 
 	if ((p->files = calloc(p->filesz, sizeof(struct mftfile))) == NULL)
@@ -562,5 +564,7 @@ mft_read(int fd)
 
 	io_str_read(fd, &p->aki);
 	io_str_read(fd, &p->ski);
+	assert(p->aki && p->ski);
+
 	return p;
 }

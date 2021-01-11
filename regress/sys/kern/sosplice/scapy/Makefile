@@ -1,4 +1,4 @@
-#	$OpenBSD: Makefile,v 1.6 2020/01/15 20:47:13 bluhm Exp $
+#	$OpenBSD: Makefile,v 1.9 2020/12/30 21:40:32 kn Exp $
 
 # Copyright (c) 2017-2020 Alexander Bluhm <bluhm@openbsd.org>
 #
@@ -32,7 +32,8 @@ regress:
 .if ! empty (PERL_REQUIRE)
 regress:
 	@echo perl require: "${PERL_REQUIRE}"
-	@echo install these perl packages for additional tests
+	@echo Install these Perl modules for additional tests.
+	@echo SKIPPED
 .endif
 
 PF_STATUS !=	${SUDO} pfctl -si | sed -n 's/^Status: \([^ ]*\) .*/\1/p'
@@ -85,9 +86,9 @@ regress:
 
 .if make (regress) || make (all)
 .BEGIN:
-	@echo
 	${SUDO} true
 	ssh -t ${REMOTE_SSH} true
+	@echo
 .endif
 
 # Create python include file containing the addresses.
@@ -114,24 +115,22 @@ TARGETS =
 # Set variables so that make runs with and without obj directory.
 # Only do that if necessary to keep visible output short.
 .if ${.CURDIR} == ${.OBJDIR}
-PYTHON =	python2.7 -u
+PYTHON =	python3 -u
 SCAPYPATH =
 .else
-PYTHON =	PYTHONPATH=${.OBJDIR} python2.7 -u
+PYTHON =	PYTHONPATH=${.OBJDIR} python3 -u
 SCAPYPATH =	${.CURDIR}/
 .endif
 
 .for s in ${SCAPYS}
 REGRESS_TARGETS +=	run-$s
 run-$s: $s addr.py
-	@echo '\n======== $@ ========'
 	time SUDO=${SUDO} PYTHON="${PYTHON}" perl ${PERLINC} ${PERLPATH}scapy.pl splice ${FAKE_NET_ADDR} ${REMOTE_ADDR} ${REMOTE_SSH} ${SCAPYPATH}$s
 .endfor
 
 .if ! empty(PF_ANCHOR:Mregress)
 REGRESS_CLEANUP +=	cleanup
 cleanup:
-	@echo '\n======== $@ ========'
 	${SUDO} pfctl -a regress -Fr
 	rm -f stamp-pfctl
 .endif

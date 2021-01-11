@@ -1,4 +1,4 @@
-/*	$OpenBSD: pipex.c,v 1.127 2020/08/30 19:48:16 mvs Exp $	*/
+/*	$OpenBSD: pipex.c,v 1.129 2021/01/09 21:00:04 gnezdo Exp $	*/
 
 /*-
  * Copyright (c) 2009 Internet Initiative Japan Inc.
@@ -163,13 +163,6 @@ pipex_ioctl(void *ownersc, u_long cmd, caddr_t data)
 
 	NET_ASSERT_LOCKED();
 	switch (cmd) {
-	case PIPEXSMODE:
-		break;
-
-	case PIPEXGMODE:
-		*(int *)data = 1;
-		break;
-
 	case PIPEXCSESSION:
 		ret = pipex_config_session(
 		    (struct pipex_session_config_req *)data, ownersc);
@@ -2778,8 +2771,8 @@ pipex_sysctl(int *name, u_int namelen, void *oldp, size_t *oldlenp, void *newp,
 	case PIPEXCTL_ENABLE:
 		if (namelen != 1)
 			return (ENOTDIR);
-		return (sysctl_int(oldp, oldlenp, newp, newlen,
-		    &pipex_enable));
+		return (sysctl_int_bounded(oldp, oldlenp, newp, newlen,
+		    &pipex_enable, 0, 1));
 	default:
 		return (ENOPROTOOPT);
 	}

@@ -1,4 +1,4 @@
-/*	$OpenBSD: rde.c,v 1.507 2020/12/04 11:57:13 claudio Exp $ */
+/*	$OpenBSD: rde.c,v 1.511 2021/01/09 16:49:41 claudio Exp $ */
 
 /*
  * Copyright (c) 2003, 2004 Henning Brauer <henning@openbsd.org>
@@ -345,12 +345,15 @@ rde_dispatch_imsg_session(struct imsgbuf *ibuf)
 	struct imsg		 imsg;
 	struct peer		 p;
 	struct peer_config	 pconf;
+	struct ctl_show_set	 cset;
 	struct ctl_show_rib	 csr;
 	struct ctl_show_rib_request	req;
 	struct rde_peer		*peer;
 	struct rde_aspath	*asp;
 	struct rde_hashstats	 rdehash;
 	struct filter_set	*s;
+	struct as_set		*aset;
+	struct rde_prefixset	*pset;
 	u_int8_t		*asdata;
 	ssize_t			 n;
 	size_t			 aslen;
@@ -572,6 +575,53 @@ badnetdel:
 			imsg_compose(ibuf_se_ctl, IMSG_CTL_END, 0, imsg.hdr.pid,
 			    -1, NULL, 0);
 			break;
+		case IMSG_CTL_SHOW_SET:
+			/* first roa set */
+			pset = &conf->rde_roa;
+			memset(&cset, 0, sizeof(cset));
+			cset.type = ROA_SET;
+			strlcpy(cset.name, "RPKI ROA", sizeof(cset.name));
+			cset.lastchange = pset->lastchange;
+			cset.v4_cnt = pset->th.v4_cnt;
+			cset.v6_cnt = pset->th.v6_cnt;
+			imsg_compose(ibuf_se_ctl, IMSG_CTL_SHOW_SET, 0,
+			    imsg.hdr.pid, -1, &cset, sizeof(cset));
+
+			SIMPLEQ_FOREACH(aset, &conf->as_sets, entry) {
+				memset(&cset, 0, sizeof(cset));
+				cset.type = ASNUM_SET;
+				strlcpy(cset.name, aset->name,
+				    sizeof(cset.name));
+				cset.lastchange = aset->lastchange;
+				cset.as_cnt = set_nmemb(aset->set);
+				imsg_compose(ibuf_se_ctl, IMSG_CTL_SHOW_SET, 0,
+				    imsg.hdr.pid, -1, &cset, sizeof(cset));
+			}
+			SIMPLEQ_FOREACH(pset, &conf->rde_prefixsets, entry) {
+				memset(&cset, 0, sizeof(cset));
+				cset.type = PREFIX_SET;
+				strlcpy(cset.name, pset->name,
+				    sizeof(cset.name));
+				cset.lastchange = pset->lastchange;
+				cset.v4_cnt = pset->th.v4_cnt;
+				cset.v6_cnt = pset->th.v6_cnt;
+				imsg_compose(ibuf_se_ctl, IMSG_CTL_SHOW_SET, 0,
+				    imsg.hdr.pid, -1, &cset, sizeof(cset));
+			}
+			SIMPLEQ_FOREACH(pset, &conf->rde_originsets, entry) {
+				memset(&cset, 0, sizeof(cset));
+				cset.type = ORIGIN_SET;
+				strlcpy(cset.name, pset->name,
+				    sizeof(cset.name));
+				cset.lastchange = pset->lastchange;
+				cset.v4_cnt = pset->th.v4_cnt;
+				cset.v6_cnt = pset->th.v6_cnt;
+				imsg_compose(ibuf_se_ctl, IMSG_CTL_SHOW_SET, 0,
+				    imsg.hdr.pid, -1, &cset, sizeof(cset));
+			}
+			imsg_compose(ibuf_se_ctl, IMSG_CTL_END, 0, imsg.hdr.pid,
+			    -1, NULL, 0);
+			break;
 		case IMSG_CTL_LOG_VERBOSE:
 			/* already checked by SE */
 			memcpy(&verbose, imsg.data, sizeof(verbose));
@@ -614,10 +664,10 @@ rde_dispatch_imsg_parent(struct imsgbuf *ibuf)
 {
 	static struct rde_prefixset	*last_prefixset;
 	static struct as_set	*last_as_set;
-	static struct set_table	*last_set;
 	static struct l3vpn	*vpn;
 	struct imsg		 imsg;
 	struct mrt		 xmrt;
+	struct roa		 roa;
 	struct rde_rib		 rr;
 	struct filterstate	 state;
 	struct imsgbuf		*i;
@@ -813,42 +863,27 @@ rde_dispatch_imsg_parent(struct imsgbuf *ibuf)
 				    entry);
 			}
 			last_prefixset = ps;
-			last_set = NULL;
 			break;
 		case IMSG_RECONF_ROA_SET:
 			strlcpy(nconf->rde_roa.name, "RPKI ROA",
 			    sizeof(nconf->rde_roa.name));
 			last_prefixset = &nconf->rde_roa;
-			last_set = NULL;
 			break;
-		case IMSG_RECONF_ROA_SET_ITEMS:
-			nmemb = imsg.hdr.len - IMSG_HEADER_SIZE;
-			nmemb /= sizeof(struct roa_set);
-			if (last_set == NULL) {
-				last_set = set_new(1, sizeof(struct roa_set));
-				if (last_set == NULL)
-					fatal(NULL);
-			}
-			if (set_add(last_set, imsg.data, nmemb) != 0)
-				fatal(NULL);
+		case IMSG_RECONF_ROA_ITEM:
+			if (imsg.hdr.len - IMSG_HEADER_SIZE != sizeof(roa))
+				fatalx("IMSG_RECONF_ROA_ITEM bad len");
+			memcpy(&roa, imsg.data, sizeof(roa));
+			rv = trie_roa_add(&last_prefixset->th, &roa);
 			break;
 		case IMSG_RECONF_PREFIX_SET_ITEM:
-			if (imsg.hdr.len - IMSG_HEADER_SIZE !=
-			    sizeof(psi))
+			if (imsg.hdr.len - IMSG_HEADER_SIZE != sizeof(psi))
 				fatalx("IMSG_RECONF_PREFIX_SET_ITEM bad len");
 			memcpy(&psi, imsg.data, sizeof(psi));
 			if (last_prefixset == NULL)
 				fatalx("King Bula has no prefixset");
-			if (last_set) {
-				set_prep(last_set);
-				rv = trie_roa_add(&last_prefixset->th,
-				    &psi.p.addr, psi.p.len, last_set);
-				last_set = NULL;
-			} else {
-				rv = trie_add(&last_prefixset->th,
-				    &psi.p.addr, psi.p.len,
-				    psi.p.len_min, psi.p.len_max);
-			}
+			rv = trie_add(&last_prefixset->th,
+			    &psi.p.addr, psi.p.len,
+			    psi.p.len_min, psi.p.len_max);
 			if (rv == -1)
 				log_warnx("trie_add(%s) %s/%u) failed",
 				    last_prefixset->name, log_addr(&psi.p.addr),
@@ -2779,7 +2814,8 @@ rde_send_kroute(struct rib *rib, struct prefix *new, struct prefix *old)
 void
 rde_generate_updates(struct rib *rib, struct prefix *new, struct prefix *old)
 {
-	struct rde_peer			*peer;
+	struct rde_peer	*peer;
+	u_int8_t	 aid;
 
 	/*
 	 * If old is != NULL we know it was active and should be removed.
@@ -2789,6 +2825,11 @@ rde_generate_updates(struct rib *rib, struct prefix *new, struct prefix *old)
 	if (old == NULL && new == NULL)
 		return;
 
+	if (new)
+		aid = new->pt->aid;
+	else
+		aid = old->pt->aid;
+
 	LIST_FOREACH(peer, &peerlist, peer_l) {
 		if (peer->conf.id == 0)
 			continue;
@@ -2796,6 +2837,14 @@ rde_generate_updates(struct rib *rib, struct prefix *new, struct prefix *old)
 			continue;
 		if (peer->state != PEER_UP)
 			continue;
+		/* check if peer actually supports the address family */
+		if (peer->capa.mp[aid] == 0)
+			continue;
+		/* skip peers with special export types */
+		if (peer->conf.export_type == EXPORT_NONE ||
+		    peer->conf.export_type == EXPORT_DEFAULT_ROUTE)
+			continue;
+
 		up_generate_updates(out_rules, peer, new, old);
 	}
 }
@@ -3115,6 +3164,7 @@ rde_reload_done(void)
 	SIMPLEQ_CONCAT(&conf->as_sets, &nconf->as_sets);
 
 	conf->rde_roa = nconf->rde_roa;
+	conf->rde_roa.lastchange = roa_old.lastchange;
 	memset(&nconf->rde_roa, 0, sizeof(nconf->rde_roa));
 
 	/* apply new set of l3vpn, sync will be done later */
@@ -3138,8 +3188,10 @@ rde_reload_done(void)
 	if (trie_equal(&conf->rde_roa.th, &roa_old.th) == 0) {
 		log_debug("roa change: reloading Adj-RIB-In");
 		conf->rde_roa.dirty = 1;
+		conf->rde_roa.lastchange = getmonotime();
 		reload++;	/* run softreconf in */
 	}
+
 	trie_free(&roa_old.th);	/* old roa no longer needed */
 
 	rde_mark_prefixsets_dirty(&prefixsets_old, &conf->rde_prefixsets);
@@ -3870,9 +3922,13 @@ rde_mark_prefixsets_dirty(struct rde_prefixset_head *psold,
 		if ((psold == NULL) ||
 		    (old = rde_find_prefixset(new->name, psold)) == NULL) {
 			new->dirty = 1;
+			new->lastchange = getmonotime();
 		} else {
-			if (trie_equal(&new->th, &old->th) == 0)
+			if (trie_equal(&new->th, &old->th) == 0) {
 				new->dirty = 1;
+				new->lastchange = getmonotime();
+			} else
+				new->lastchange = old->lastchange;
 		}
 	}
 }

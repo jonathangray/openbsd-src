@@ -1,4 +1,4 @@
-/* $OpenBSD: tls13_server.c,v 1.64 2020/12/14 15:26:36 tb Exp $ */
+/* $OpenBSD: tls13_server.c,v 1.69 2021/01/09 10:41:48 tb Exp $ */
 /*
  * Copyright (c) 2019, 2020 Joel Sing <jsing@openbsd.org>
  * Copyright (c) 2020 Bob Beck <beck@openbsd.org>
@@ -99,7 +99,7 @@ tls13_client_hello_is_legacy(CBS *cbs)
 int
 tls13_client_hello_required_extensions(struct tls13_ctx *ctx)
 {
-	SSL *ssl = ctx->ssl;
+	SSL *s = ctx->ssl;
 
 	/*
 	 * RFC 8446, section 9.2. If the ClientHello has supported_versions
@@ -111,10 +111,10 @@ tls13_client_hello_required_extensions(struct tls13_ctx *ctx)
 	 * If we got no pre_shared_key, then signature_algorithms and
 	 * supported_groups must both be present.
 	 */
-	if (!tlsext_extension_seen(ssl, TLSEXT_TYPE_pre_shared_key)) {
-		if (!tlsext_extension_seen(ssl, TLSEXT_TYPE_signature_algorithms))
+	if (!tlsext_extension_seen(s, TLSEXT_TYPE_pre_shared_key)) {
+		if (!tlsext_extension_seen(s, TLSEXT_TYPE_signature_algorithms))
 			return 0;
-		if (!tlsext_extension_seen(ssl, TLSEXT_TYPE_supported_groups))
+		if (!tlsext_extension_seen(s, TLSEXT_TYPE_supported_groups))
 			return 0;
 	}
 
@@ -122,8 +122,8 @@ tls13_client_hello_required_extensions(struct tls13_ctx *ctx)
 	 * supported_groups and key_share must either both be present or
 	 * both be absent.
 	 */
-	if (tlsext_extension_seen(ssl, TLSEXT_TYPE_supported_groups) !=
-	    tlsext_extension_seen(ssl, TLSEXT_TYPE_key_share))
+	if (tlsext_extension_seen(s, TLSEXT_TYPE_supported_groups) !=
+	    tlsext_extension_seen(s, TLSEXT_TYPE_key_share))
 		return 0;
 
 	/*
@@ -249,6 +249,10 @@ tls13_client_hello_process(struct tls13_ctx *ctx, CBS *cbs)
 		goto err;
 	}
 	S3I(s)->hs.new_cipher = cipher;
+
+	sk_SSL_CIPHER_free(s->session->ciphers);
+	s->session->ciphers = ciphers;
+	ciphers = NULL;
 
 	/* Ensure only the NULL compression method is advertised. */
 	if (!CBS_mem_equal(&compression_methods, tls13_compression_null_only,
@@ -639,6 +643,8 @@ tls13_server_certificate_send(struct tls13_ctx *ctx, CBB *cbb)
 			goto err;
 		if (!X509_STORE_CTX_init(xsc, s->ctx->cert_store, cpk->x509, NULL))
 			goto err;
+		X509_VERIFY_PARAM_set_flags(X509_STORE_CTX_get0_param(xsc),
+		    X509_V_FLAG_LEGACY_VERIFY);
 		X509_verify_cert(xsc);
 		ERR_clear_error();
 		chain = xsc->chain;
@@ -768,20 +774,19 @@ tls13_server_finished_send(struct tls13_ctx *ctx, CBB *cbb)
 {
 	struct tls13_secrets *secrets = ctx->hs->secrets;
 	struct tls13_secret context = { .data = "", .len = 0 };
-	struct tls13_secret finished_key;
+	struct tls13_secret finished_key = { .data = NULL, .len = 0 } ;
 	uint8_t transcript_hash[EVP_MAX_MD_SIZE];
 	size_t transcript_hash_len;
-	uint8_t key[EVP_MAX_MD_SIZE];
 	uint8_t *verify_data;
-	size_t hmac_len;
+	size_t verify_data_len;
 	unsigned int hlen;
 	HMAC_CTX *hmac_ctx = NULL;
 	CBS cbs;
 	SSL *s = ctx->ssl;
 	int ret = 0;
 
-	finished_key.data = key;
-	finished_key.len = EVP_MD_size(ctx->hash);
+	if (!tls13_secret_init(&finished_key, EVP_MD_size(ctx->hash)))
+		goto err;
 
 	if (!tls13_hkdf_expand_label(&finished_key, ctx->hash,
 	    &secrets->server_handshake_traffic, "finished",
@@ -800,15 +805,15 @@ tls13_server_finished_send(struct tls13_ctx *ctx, CBB *cbb)
 	if (!HMAC_Update(hmac_ctx, transcript_hash, transcript_hash_len))
 		goto err;
 
-	hmac_len = HMAC_size(hmac_ctx);
-	if (!CBB_add_space(cbb, &verify_data, hmac_len))
+	verify_data_len = HMAC_size(hmac_ctx);
+	if (!CBB_add_space(cbb, &verify_data, verify_data_len))
 		goto err;
 	if (!HMAC_Final(hmac_ctx, verify_data, &hlen))
 		goto err;
-	if (hlen != hmac_len)
+	if (hlen != verify_data_len)
 		goto err;
 
-	CBS_init(&cbs, verify_data, hmac_len);
+	CBS_init(&cbs, verify_data, verify_data_len);
 	if (!CBS_write_bytes(&cbs, S3I(s)->tmp.finish_md,
 	    sizeof(S3I(s)->tmp.finish_md), &S3I(s)->tmp.finish_md_len))
 		goto err;
@@ -816,6 +821,7 @@ tls13_server_finished_send(struct tls13_ctx *ctx, CBB *cbb)
 	ret = 1;
 
  err:
+	tls13_secret_cleanup(&finished_key);
 	HMAC_CTX_free(hmac_ctx);
 
 	return ret;

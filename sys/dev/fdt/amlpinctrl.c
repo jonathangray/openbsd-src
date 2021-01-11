@@ -1,4 +1,4 @@
-/*	$OpenBSD: amlpinctrl.c,v 1.5 2019/10/06 16:17:06 kettenis Exp $	*/
+/*	$OpenBSD: amlpinctrl.c,v 1.9 2020/12/29 15:57:29 kettenis Exp $	*/
 /*
  * Copyright (c) 2019 Mark Kettenis <kettenis@openbsd.org>
  *
@@ -42,6 +42,7 @@
 #define GPIOH_1		17
 #define GPIOH_2		18
 #define GPIOH_3		19
+#define GPIOH_5		21
 #define GPIOH_6		22
 #define GPIOH_7		23
 #define BOOT_0		25
@@ -66,10 +67,28 @@
 #define GPIOA_14	63
 #define GPIOA_15	64
 #define GPIOX_0		65
+#define GPIOX_3		68
+#define GPIOX_5		70
+#define GPIOX_6		71
+#define GPIOX_7		72
+#define GPIOX_8		73
 #define GPIOX_10	75
 #define GPIOX_11	76
+#define GPIOX_16	81
 #define GPIOX_17	82
 #define GPIOX_18	83
+#define GPIOX_19	84
+
+#define GPIOAO_0	0
+#define GPIOAO_1	1
+#define GPIOAO_3	3
+#define GPIOAO_4	4
+#define GPIOAO_5	5
+#define GPIOAO_6	6
+#define GPIOAO_10	10
+#define GPIOAO_11	11
+#define GPIOE_0		12
+#define GPIOE_1		13
 
 #define PERIPHS_PIN_MUX_0		0xb0
 #define PERIPHS_PIN_MUX_3		0xb3
@@ -78,11 +97,23 @@
 #define PERIPHS_PIN_MUX_B		0xbb
 #define PERIPHS_PIN_MUX_D		0xbd
 #define PREG_PAD_GPIO0_EN_N		0x10
+#define PREG_PAD_GPIO0_O		0x11
+#define PREG_PAD_GPIO0_I		0x12
 #define PREG_PAD_GPIO1_EN_N		0x13
+#define PREG_PAD_GPIO1_O		0x14
+#define PREG_PAD_GPIO1_I		0x15
 #define PREG_PAD_GPIO2_EN_N		0x16
+#define PREG_PAD_GPIO2_O		0x16
+#define PREG_PAD_GPIO2_I		0x18
 #define PREG_PAD_GPIO3_EN_N		0x19
+#define PREG_PAD_GPIO3_O		0x1a
+#define PREG_PAD_GPIO3_I		0x1b
 #define PREG_PAD_GPIO4_EN_N		0x1c
+#define PREG_PAD_GPIO4_O		0x1d
+#define PREG_PAD_GPIO4_I		0x1e
 #define PREG_PAD_GPIO5_EN_N		0x20
+#define PREG_PAD_GPIO5_O		0x21
+#define PREG_PAD_GPIO5_I		0x22
 #define PAD_PULL_UP_EN_0		0x48
 #define PAD_PULL_UP_EN_1		0x49
 #define PAD_PULL_UP_EN_2		0x4a
@@ -102,13 +133,25 @@
 #define PAD_DS_4A			0xd5
 #define PAD_DS_5A			0xd6
 
+#define AO_RTI_PINMUX_0			0x05
+#define AO_RTI_PINMUX_1			0x06
+#define AO_PAD_DS_A			0x07
+#define AO_PAD_DS_B			0x08
+#define AO_GPIO_O_EN_N			0x09
+#define AO_GPIO_I			0x0a
+#define AO_GPIO_O			0x0d
+#define AO_RTI_PULL_UP			0x0b
+#define AO_RTI_PULL_UP_EN		0x0c
+
 struct aml_gpio_bank {
 	uint8_t first_pin, num_pins;
-	uint8_t mux_reg;
-	uint8_t gpio_reg;
-	uint8_t pull_reg;
-	uint8_t pull_en_reg;
-	uint8_t ds_reg;
+	uint8_t mux_reg, mux_bit;
+	uint8_t dir_reg, dir_bit;
+	uint8_t in_reg, in_bit;
+	uint8_t out_reg, out_bit;
+	uint8_t pull_reg, pull_bit;
+	uint8_t pull_en_reg, pull_en_bit;
+	uint8_t ds_reg, ds_bit;
 };
 
 struct aml_pin_group {
@@ -120,40 +163,64 @@ struct aml_pin_group {
 
 struct aml_gpio_bank aml_g12a_gpio_banks[] = {
 	/* BOOT */
-	{ BOOT_0, 16, PERIPHS_PIN_MUX_0 - PERIPHS_PIN_MUX_0,
-	  PREG_PAD_GPIO0_EN_N - PREG_PAD_GPIO0_EN_N,
-	  PAD_PULL_UP_0 - PAD_PULL_UP_0,
-	  PAD_PULL_UP_EN_0 - PAD_PULL_UP_EN_0, PAD_DS_0A - PAD_DS_0A },
+	{ BOOT_0, 16,
+	  PERIPHS_PIN_MUX_0 - PERIPHS_PIN_MUX_0, 0,
+	  PREG_PAD_GPIO0_EN_N - PREG_PAD_GPIO0_EN_N, 0,
+	  PREG_PAD_GPIO0_I - PREG_PAD_GPIO0_EN_N, 0,
+	  PREG_PAD_GPIO0_O - PREG_PAD_GPIO0_EN_N, 0,
+	  PAD_PULL_UP_0 - PAD_PULL_UP_0, 0,
+	  PAD_PULL_UP_EN_0 - PAD_PULL_UP_EN_0, 0,
+	  PAD_DS_0A - PAD_DS_0A, 0 },
 
 	/* GPIOC */
-	{ GPIOC_0, 8, PERIPHS_PIN_MUX_9 - PERIPHS_PIN_MUX_0,
-	  PREG_PAD_GPIO1_EN_N - PREG_PAD_GPIO0_EN_N,
-	  PAD_PULL_UP_1 - PAD_PULL_UP_0,
-	  PAD_PULL_UP_EN_1 - PAD_PULL_UP_EN_0, PAD_DS_1A - PAD_DS_0A },
+	{ GPIOC_0, 8,
+	  PERIPHS_PIN_MUX_9 - PERIPHS_PIN_MUX_0, 0,
+	  PREG_PAD_GPIO1_EN_N - PREG_PAD_GPIO0_EN_N, 0,
+	  PREG_PAD_GPIO1_I - PREG_PAD_GPIO0_EN_N, 0,
+	  PREG_PAD_GPIO1_O - PREG_PAD_GPIO0_EN_N, 0,
+	  PAD_PULL_UP_1 - PAD_PULL_UP_0, 0,
+	  PAD_PULL_UP_EN_1 - PAD_PULL_UP_EN_0, 0,
+	  PAD_DS_1A - PAD_DS_0A, 0 },
 
 	/* GPIOX */
-	{ GPIOX_0, 20, PERIPHS_PIN_MUX_3 - PERIPHS_PIN_MUX_0,
-	  PREG_PAD_GPIO2_EN_N - PREG_PAD_GPIO0_EN_N,
-	  PAD_PULL_UP_2 - PAD_PULL_UP_0,
-	  PAD_PULL_UP_EN_2 - PAD_PULL_UP_EN_0, PAD_DS_2A - PAD_DS_0A },
+	{ GPIOX_0, 20,
+	  PERIPHS_PIN_MUX_3 - PERIPHS_PIN_MUX_0, 0,
+	  PREG_PAD_GPIO2_EN_N - PREG_PAD_GPIO0_EN_N, 0,
+	  PREG_PAD_GPIO2_I - PREG_PAD_GPIO0_EN_N, 0,
+	  PREG_PAD_GPIO2_O - PREG_PAD_GPIO0_EN_N, 0,
+	  PAD_PULL_UP_2 - PAD_PULL_UP_0, 0,
+	  PAD_PULL_UP_EN_2 - PAD_PULL_UP_EN_0, 0,
+	  PAD_DS_2A - PAD_DS_0A, 0 },
 
 	/* GPIOH */
-	{ GPIOH_0, 9, PERIPHS_PIN_MUX_B - PERIPHS_PIN_MUX_0,
-	  PREG_PAD_GPIO3_EN_N - PREG_PAD_GPIO0_EN_N,
-	  PAD_PULL_UP_3 - PAD_PULL_UP_0,
-	  PAD_PULL_UP_EN_3 - PAD_PULL_UP_EN_0, PAD_DS_3A - PAD_DS_0A },
+	{ GPIOH_0, 9,
+	  PERIPHS_PIN_MUX_B - PERIPHS_PIN_MUX_0, 0,
+	  PREG_PAD_GPIO3_EN_N - PREG_PAD_GPIO0_EN_N, 0,
+	  PREG_PAD_GPIO3_I - PREG_PAD_GPIO0_EN_N, 0,
+	  PREG_PAD_GPIO3_O - PREG_PAD_GPIO0_EN_N, 0,
+	  PAD_PULL_UP_3 - PAD_PULL_UP_0, 0,
+	  PAD_PULL_UP_EN_3 - PAD_PULL_UP_EN_0, 0,
+	  PAD_DS_3A - PAD_DS_0A, 0 },
 
 	/* GPIOZ */
-	{ GPIOZ_0, 16, PERIPHS_PIN_MUX_6 - PERIPHS_PIN_MUX_0,
-	  PREG_PAD_GPIO4_EN_N - PREG_PAD_GPIO0_EN_N,
-	  PAD_PULL_UP_4 - PAD_PULL_UP_0,
-	  PAD_PULL_UP_EN_4 - PAD_PULL_UP_EN_0, PAD_DS_4A - PAD_DS_0A },
+	{ GPIOZ_0, 16,
+	  PERIPHS_PIN_MUX_6 - PERIPHS_PIN_MUX_0, 0,
+	  PREG_PAD_GPIO4_EN_N - PREG_PAD_GPIO0_EN_N, 0,
+	  PREG_PAD_GPIO4_I - PREG_PAD_GPIO0_EN_N, 0,
+	  PREG_PAD_GPIO4_O - PREG_PAD_GPIO0_EN_N, 0,
+	  PAD_PULL_UP_4 - PAD_PULL_UP_0, 0,
+	  PAD_PULL_UP_EN_4 - PAD_PULL_UP_EN_0, 0,
+	  PAD_DS_4A - PAD_DS_0A, 0 },
 
 	/* GPIOA */
-	{ GPIOA_0, 16, PERIPHS_PIN_MUX_D - PERIPHS_PIN_MUX_0,
-	  PREG_PAD_GPIO5_EN_N - PREG_PAD_GPIO0_EN_N,
-	  PAD_PULL_UP_5 - PAD_PULL_UP_0,
-	  PAD_PULL_UP_EN_5 - PAD_PULL_UP_EN_0, PAD_DS_5A - PAD_DS_0A },
+	{ GPIOA_0, 16,
+	  PERIPHS_PIN_MUX_D - PERIPHS_PIN_MUX_0, 0,
+	  PREG_PAD_GPIO5_EN_N - PREG_PAD_GPIO0_EN_N, 0,
+	  PREG_PAD_GPIO5_I - PREG_PAD_GPIO0_EN_N, 0,
+	  PREG_PAD_GPIO5_O - PREG_PAD_GPIO0_EN_N, 0,
+	  PAD_PULL_UP_5 - PAD_PULL_UP_0, 0,
+	  PAD_PULL_UP_EN_5 - PAD_PULL_UP_EN_0, 0,
+	  PAD_DS_5A - PAD_DS_0A, 0 },
 
 	{ }
 };
@@ -191,24 +258,79 @@ struct aml_pin_group aml_g12a_pin_groups[] = {
 	{ "sdcard_d2_c", GPIOC_2, 1, "sdcard" },
 	{ "sdcard_d3_c", GPIOC_3, 1, "sdcard" },
 	{ "GPIOC_4", GPIOC_4, 0, "gpio_periphs" },
+	{ "pwm_c_c", GPIOC_4, 5, "pwm_c" },
 	{ "sdcard_clk_c", GPIOC_4, 1, "sdcard" },
 	{ "sdcard_cmd_c", GPIOC_5, 1, "sdcard" },
 	{ "i2c0_sda_c", GPIOC_5, 3, "i2c0" },
 	{ "i2c0_sck_c", GPIOC_6, 3, "i2c0" },
 
 	/* GPIOX */
+	{ "pwm_d_x3", GPIOX_3, 4, "pwm_d" },
+	{ "pwm_c_x5", GPIOX_5, 4, "pwm_c" },
+	{ "pwm_a", GPIOX_6, 1, "pwm_a" },
+	{ "pwm_d_x6", GPIOX_6, 4, "pwm_d" },
+	{ "pwm_b_x7", GPIOX_7, 4, "pwm_b" },
+	{ "pwm_f_x", GPIOX_7, 1, "pwm_f" },
+	{ "pwm_c_x8", GPIOX_8, 5, "pwm_c" },
 	{ "i2c1_sda_x", GPIOX_10, 5, "i2c1" },
 	{ "i2c1_sck_x", GPIOX_11, 5, "i2c1" },
+	{ "pwm_e", GPIOX_16, 1, "pwm_e" },
 	{ "i2c2_sda_x", GPIOX_17, 1, "i2c2" },
 	{ "i2c2_sck_x", GPIOX_18, 1, "i2c2" },
+	{ "pwm_b_x19", GPIOX_19, 1, "pwm_b" },
 
 	/* GPIOH */
 	{ "i2c3_sda_h", GPIOH_0, 2, "i2c3" },
 	{ "i2c3_sck_h", GPIOH_1, 2, "i2c3" },
 	{ "i2c1_sda_h2", GPIOH_2, 2, "i2c1" },
 	{ "i2c1_sck_h3", GPIOH_3, 2, "i2c1" },
+	{ "pwm_f_h", GPIOH_5, 4, "pwm_f" },
 	{ "i2c1_sda_h6", GPIOH_6, 4, "i2c1" },
 	{ "i2c1_sck_h7", GPIOH_7, 4, "i2c1" },
+
+	{ }
+};
+
+struct aml_gpio_bank aml_g12a_ao_gpio_banks[] = {
+	/* GPIOAO */
+	{ GPIOAO_0, 12,
+	  AO_RTI_PINMUX_0 - AO_RTI_PINMUX_0, 0,
+	  AO_GPIO_O_EN_N - AO_GPIO_O_EN_N, 0,
+	  AO_GPIO_I - AO_GPIO_O_EN_N, 0,
+	  AO_GPIO_O - AO_GPIO_O_EN_N, 0,
+	  AO_RTI_PULL_UP - AO_RTI_PULL_UP, 0,
+	  AO_RTI_PULL_UP_EN - AO_RTI_PULL_UP_EN, 0,
+	  AO_PAD_DS_A - AO_PAD_DS_A, 0 },
+
+	/* GPIOE */
+	{ GPIOE_0, 3,
+	  AO_RTI_PINMUX_1 - AO_RTI_PINMUX_0, 16,
+	  AO_GPIO_O_EN_N - AO_GPIO_O_EN_N, 16,
+	  AO_GPIO_I - AO_GPIO_O_EN_N, 16,
+	  AO_GPIO_O - AO_GPIO_O_EN_N, 16,
+	  AO_RTI_PULL_UP - AO_RTI_PULL_UP, 16,
+	  AO_RTI_PULL_UP_EN - AO_RTI_PULL_UP_EN, 16,
+	  AO_PAD_DS_B - AO_PAD_DS_A, 0 },
+
+	{ }
+};
+
+struct aml_pin_group aml_g12a_ao_pin_groups[] = {
+	/* GPIOAO */
+	{ "uart_ao_a_tx", GPIOAO_0, 1, "uart_ao_a" },
+	{ "uart_ao_a_rx", GPIOAO_1, 1, "uart_ao_a" },
+	{ "pwm_ao_c_4", GPIOAO_4, 3, "pwm_ao_c" },
+	{ "pwm_ao_c_hiz", GPIOAO_4, 4, "pwm_ao_c" },
+	{ "pwm_ao_d_5", GPIOAO_5, 3, "pwm_ao_d" },
+	{ "remote_ao_input", GPIOAO_5, 1, "remote_ao_input" },
+	{ "pwm_ao_c_6", GPIOAO_6, 3, "pwm_ao_c" },
+	{ "pwm_ao_d_10", GPIOAO_10, 3, "pwm_ao_d" },
+	{ "pwm_ao_a", GPIOAO_11, 3, "pwm_ao_a" },
+	{ "pwm_ao_a_hiz", GPIOAO_11, 2, "pwm_ao_a" },
+
+	/* GPIOE */
+	{ "pwm_ao_b", GPIOE_0, 3, "pwm_ao_b" },
+	{ "pwm_ao_d_e", GPIOE_1, 3, "pwm_ao_d" },
 
 	{ }
 };
@@ -221,6 +343,7 @@ struct amlpinctrl_softc {
 	bus_space_handle_t	sc_pull_en_ioh;
 	bus_space_handle_t	sc_mux_ioh;
 	bus_space_handle_t	sc_ds_ioh;
+	int			sc_nobias;
 
 	struct aml_gpio_bank	*sc_gpio_banks;
 	struct aml_pin_group	*sc_pin_groups;
@@ -250,7 +373,8 @@ amlpinctrl_match(struct device *parent, void *match, void *aux)
 	struct fdt_attach_args *faa = aux;
 	int node = faa->fa_node;
 
-	return OF_is_compatible(node, "amlogic,meson-g12a-periphs-pinctrl");
+	return (OF_is_compatible(node, "amlogic,meson-g12a-periphs-pinctrl") ||
+	    OF_is_compatible(node, "amlogic,meson-g12a-aobus-pinctrl"));
 }
 
 void
@@ -285,6 +409,7 @@ amlpinctrl_attach(struct device *parent, struct device *self, void *aux)
 		return;
 	}
 
+	memset(&size, 0, sizeof(size));
 	OF_getpropintarray(child, "reg", reg, len);
 	for (i = 0, cell = reg; i < len / line; i++) {
 		addr[i] = cell[0];
@@ -298,31 +423,51 @@ amlpinctrl_attach(struct device *parent, struct device *self, void *aux)
 	}
 
 	sc->sc_iot = faa->fa_iot;
-	if (bus_space_map(sc->sc_iot, addr[0], size[0], 0, &sc->sc_gpio_ioh)) {
+
+	i = OF_getindex(child, "gpio", "reg-names");
+	if (i < 0 || i >= nitems(size) || size[i] == 0 ||
+	    bus_space_map(sc->sc_iot, addr[i], size[i], 0, &sc->sc_gpio_ioh)) {
 		printf(": can't map gpio registers\n");
 		return;
 	}
-	if (bus_space_map(sc->sc_iot, addr[1], size[1], 0, &sc->sc_pull_ioh)) {
-		printf(": can't map pull registers\n");
-		return;
-	}
-	if (bus_space_map(sc->sc_iot, addr[2], size[2], 0, &sc->sc_pull_en_ioh)) {
-		printf(": can't map pull-enable registers\n");
-		return;
-	}
-	if (bus_space_map(sc->sc_iot, addr[3], size[3], 0, &sc->sc_mux_ioh)) {
+	i = OF_getindex(child, "mux", "reg-names");
+	if (i < 0 || i >= nitems(size) || size[i] == 0 ||
+	    bus_space_map(sc->sc_iot, addr[i], size[i], 0, &sc->sc_mux_ioh)) {
 		printf(": can't map mux registers\n");
 		return;
 	}
-	if (bus_space_map(sc->sc_iot, addr[4], size[4], 0, &sc->sc_ds_ioh)) {
+	i = OF_getindex(child, "ds", "reg-names");
+	if (i < 0 || i >= nitems(size) || size[i] == 0 ||
+	    bus_space_map(sc->sc_iot, addr[i], size[i], 0, &sc->sc_ds_ioh)) {
 		printf(": can't map ds registers\n");
+		return;
+	}
+	i = OF_getindex(child, "pull", "reg-names");
+	if (i < 0)
+		sc->sc_nobias = 1;
+	else if (i >= nitems(size) || size[i] == 0 ||
+	    bus_space_map(sc->sc_iot, addr[i], size[i], 0, &sc->sc_pull_ioh)) {
+		printf(": can't map pull registers\n");
+		return;
+	}
+	i = OF_getindex(child, "pull-enable", "reg-names");
+	if (i < 0)
+		sc->sc_nobias = 1;
+	else if (i >= nitems(size) || size[i] == 0 ||
+	    bus_space_map(sc->sc_iot, addr[i], size[i], 0, &sc->sc_pull_en_ioh)) {
+		printf(": can't map pull-enable registers\n");
 		return;
 	}
 
 	printf("\n");
 
-	sc->sc_gpio_banks = aml_g12a_gpio_banks;
-	sc->sc_pin_groups = aml_g12a_pin_groups;
+	if (OF_is_compatible(node, "amlogic,meson-g12a-periphs-pinctrl")) {
+		sc->sc_gpio_banks = aml_g12a_gpio_banks;
+		sc->sc_pin_groups = aml_g12a_pin_groups;
+	} else {
+		sc->sc_gpio_banks = aml_g12a_ao_gpio_banks;
+		sc->sc_pin_groups = aml_g12a_ao_pin_groups;
+	}
 
 	pinctrl_register(faa->fa_node, amlpinctrl_pinctrl, sc);
 
@@ -389,27 +534,29 @@ amlpinctrl_config_func(struct amlpinctrl_softc *sc, const char *name,
 	/* mux */
 	off = (bank->mux_reg + pin / 8) << 2;
 	reg = bus_space_read_4(sc->sc_iot, sc->sc_mux_ioh, off);
-	reg &= ~(0xf << ((pin % 8) * 4));
-	reg |= (group->func << ((pin % 8) * 4));
+	reg &= ~(0xf << (((pin % 8) * 4) + bank->mux_bit));
+	reg |= (group->func << (((pin % 8) * 4) + bank->mux_bit));
 	bus_space_write_4(sc->sc_iot, sc->sc_mux_ioh, off, reg);
-	
-	/* pull */
-	off = bank->pull_reg << 2;
-	reg = bus_space_read_4(sc->sc_iot, sc->sc_pull_ioh, off);
-	if (bias == BIAS_PULL_UP)
-		reg |= (1 << pin);
-	else
-		reg &= ~(1 << pin);
-	bus_space_write_4(sc->sc_iot, sc->sc_pull_ioh, off, reg);
 
-	/* pull-enable */
-	off = bank->pull_en_reg << 2;
-	reg = bus_space_read_4(sc->sc_iot, sc->sc_pull_en_ioh, off);
-	if (bias != BIAS_DISABLE)
-		reg |= (1 << pin);
-	else
-		reg &= ~(1 << pin);
-	bus_space_write_4(sc->sc_iot, sc->sc_pull_en_ioh, off, reg);
+	if (!sc->sc_nobias) {
+		/* pull */
+		off = bank->pull_reg << 2;
+		reg = bus_space_read_4(sc->sc_iot, sc->sc_pull_ioh, off);
+		if (bias == BIAS_PULL_UP)
+			reg |= (1 << (pin + bank->pull_bit));
+		else
+			reg &= ~(1 << (pin + bank->pull_bit));
+		bus_space_write_4(sc->sc_iot, sc->sc_pull_ioh, off, reg);
+
+		/* pull-enable */
+		off = bank->pull_en_reg << 2;
+		reg = bus_space_read_4(sc->sc_iot, sc->sc_pull_en_ioh, off);
+		if (bias != BIAS_DISABLE)
+			reg |= (1 << (pin + bank->pull_en_bit));
+		else
+			reg &= ~(1 << (pin + bank->pull_en_bit));
+		bus_space_write_4(sc->sc_iot, sc->sc_pull_en_ioh, off, reg);
+	}
 
 	if (ds < 0)
 		return;
@@ -429,8 +576,8 @@ amlpinctrl_config_func(struct amlpinctrl_softc *sc, const char *name,
 	/* ds */
 	off = (bank->ds_reg + pin / 16) << 2;
 	reg = bus_space_read_4(sc->sc_iot, sc->sc_ds_ioh, off);
-	reg &= ~(0x3 << ((pin % 16) * 2));
-	reg |= (ds << ((pin % 16) * 2));
+	reg &= ~(0x3 << (((pin % 16) * 2) + bank->ds_bit));
+	reg |= (ds << (((pin % 16) * 2) + bank->ds_bit));
 	bus_space_write_4(sc->sc_iot, sc->sc_ds_ioh, off, reg);
 }
 
@@ -494,6 +641,7 @@ amlpinctrl_config_pin(void *cookie, uint32_t *cells, int config)
 	struct aml_gpio_bank *bank;
 	bus_addr_t off;
 	uint32_t pin = cells[0];
+	uint32_t flags = cells[1];
 	uint32_t reg;
 
 	bank = amlpinctrl_lookup_bank(sc, pin);
@@ -507,16 +655,20 @@ amlpinctrl_config_pin(void *cookie, uint32_t *cells, int config)
 	/* mux */
 	off = (bank->mux_reg + pin / 8) << 2;
 	reg = bus_space_read_4(sc->sc_iot, sc->sc_mux_ioh, off);
-	reg &= ~(0xf << ((pin % 8) * 4));
+	reg &= ~(0xf << (((pin % 8) * 4) + bank->mux_bit));
 	bus_space_write_4(sc->sc_iot, sc->sc_mux_ioh, off, reg);
 
+	/* Emulate open drain. */
+	if (flags & GPIO_OPEN_DRAIN)
+		config &= ~GPIO_CONFIG_OUTPUT;
+
 	/* gpio */
-	off = bank->gpio_reg << 2;
+	off = bank->dir_reg << 2;
 	reg = bus_space_read_4(sc->sc_iot, sc->sc_gpio_ioh, off);
 	if (config & GPIO_CONFIG_OUTPUT)
-		reg &= ~(1 << pin);
+		reg &= ~(1 << (pin + bank->dir_bit));
 	else
-		reg |= (1 << pin);
+		reg |= (1 << (pin + bank->dir_bit));
 	bus_space_write_4(sc->sc_iot, sc->sc_gpio_ioh, off, reg);
 }
 
@@ -540,9 +692,9 @@ amlpinctrl_get_pin(void *cookie, uint32_t *cells)
 	pin = pin - bank->first_pin;
 
 	/* gpio */
-	off = (bank->gpio_reg + 2) << 2;
+	off = bank->in_reg << 2;
 	reg = bus_space_read_4(sc->sc_iot, sc->sc_gpio_ioh, off);
-	val = (reg >> pin) & 1;
+	val = (reg >> (pin + bank->in_bit)) & 1;
 	if (flags & GPIO_ACTIVE_LOW)
 		val = !val;
 
@@ -565,17 +717,31 @@ amlpinctrl_set_pin(void *cookie, uint32_t *cells, int val)
 		return;
 	}
 
+	pin = pin - bank->first_pin;
+
 	if (flags & GPIO_ACTIVE_LOW)
 		val = !val;
 
-	pin = pin - bank->first_pin;
+	/* Emulate open drain. */
+	if (flags & GPIO_OPEN_DRAIN) {
+		/* gpio */
+		off = bank->dir_reg << 2;
+		reg = bus_space_read_4(sc->sc_iot, sc->sc_gpio_ioh, off);
+		if (val)
+			reg |= (1 << (pin + bank->dir_bit));
+		else
+			reg &= ~(1 << (pin + bank->dir_bit));
+		bus_space_write_4(sc->sc_iot, sc->sc_gpio_ioh, off, reg);
+		if (val)
+			return;
+	}
 
 	/* gpio */
-	off = (bank->gpio_reg + 1) << 2;
+	off = bank->out_reg << 2;
 	reg = bus_space_read_4(sc->sc_iot, sc->sc_gpio_ioh, off);
 	if (val)
-		reg |= (1 << pin);
+		reg |= (1 << (pin + bank->out_bit));
 	else
-		reg &= ~(1 << pin);
+		reg &= ~(1 << (pin + bank->out_bit));
 	bus_space_write_4(sc->sc_iot, sc->sc_gpio_ioh, off, reg);
 }

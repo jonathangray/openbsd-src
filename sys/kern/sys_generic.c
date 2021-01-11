@@ -1,4 +1,4 @@
-/*	$OpenBSD: sys_generic.c,v 1.132 2020/10/02 15:45:22 deraadt Exp $	*/
+/*	$OpenBSD: sys_generic.c,v 1.135 2021/01/08 09:29:04 visa Exp $	*/
 /*	$NetBSD: sys_generic.c,v 1.24 1996/03/29 00:25:32 cgd Exp $	*/
 
 /*

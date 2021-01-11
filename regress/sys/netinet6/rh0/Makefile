@@ -1,15 +1,14 @@
-#	$OpenBSD: Makefile,v 1.13 2020/01/15 20:47:14 bluhm Exp $
+#	$OpenBSD: Makefile,v 1.16 2020/12/30 21:40:33 kn Exp $
 
 # The following ports must be installed:
 #
-# python-2.7		interpreted object-oriented programming language
 # scapy			powerful interactive packet manipulation in python
 
-.if ! exists(/usr/local/bin/python2.7) || ! exists(/usr/local/bin/scapy)
+.if ! exists(/usr/local/bin/scapy)
 .BEGIN:
 	@true
 regress:
-	@echo Install python and the scapy module for additional tests.
+	@echo Install scapy package to run this regress.
 	@echo SKIPPED
 .endif
 
@@ -54,10 +53,10 @@ regress:
 
 .if make (regress) || make (all)
 .BEGIN:
-	@echo
 	${SUDO} true
 	ssh -t ${REMOTE_SSH} ${SUDO} true
 	rm -f stamp-stack stamp-pf
+	@echo
 .endif
 
 # Create python include file containing the addresses.
@@ -74,13 +73,12 @@ addr.py: Makefile
 # Set variables so that make runs with and without obj directory.
 # Only do that if necessary to keep visible output short.
 .if ${.CURDIR} == ${.OBJDIR}
-PYTHON =	python2.7 -u ./
+PYTHON =	python3 -u ./
 .else
-PYTHON =	PYTHONPATH=${.OBJDIR} python2.7 -u ${.CURDIR}/
+PYTHON =	PYTHONPATH=${.OBJDIR} python3 -u ${.CURDIR}/
 .endif
 
 stamp-stack:
-	@echo '\n======== $@ ========'
 	rm -f stamp-stack stamp-pf
 	-ssh ${REMOTE_SSH} ${SUDO} pfctl -d
 	ssh ${REMOTE_SSH} ${SUDO} pfctl -a regress -Fr
@@ -90,7 +88,6 @@ stamp-stack:
 # This is the expected default configuration.
 REGRESS_CLEANUP +=      stamp-pf
 stamp-pf:
-	@echo '\n======== $@ ========'
 	rm -f stamp-stack stamp-pf
 	echo 'pass proto tcp from port ssh no state\n'\
 	    'pass proto tcp to port ssh no state'|\
@@ -103,7 +100,6 @@ RH0_SCRIPTS !!=		cd ${.CURDIR} && ls -1 rh0*.py
 .for s in ${RH0_SCRIPTS}
 REGRESS_TARGETS =	run-${s}
 run-${s}: addr.py stamp-stack
-	@echo '\n======== $@ ========'
 	${SUDO} ${PYTHON}${s}
 .endfor
 

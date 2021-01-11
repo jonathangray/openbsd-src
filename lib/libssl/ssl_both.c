@@ -1,4 +1,4 @@
-/* $OpenBSD: ssl_both.c,v 1.21 2020/10/14 16:57:33 jsing Exp $ */
+/* $OpenBSD: ssl_both.c,v 1.23 2021/01/07 15:32:59 jsing Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -301,13 +301,6 @@ f_err:
 	return (0);
 }
 
-/* for these 2 messages, we need to
- * ssl->enc_read_ctx			re-init
- * ssl->s3->internal->read_sequence		zero
- * ssl->s3->internal->read_mac_secret		re-init
- * ssl->session->read_sym_enc		assign
- * ssl->session->read_hash		assign
- */
 int
 ssl3_send_change_cipher_spec(SSL *s, int a, int b)
 {
@@ -408,6 +401,8 @@ ssl3_output_cert_chain(SSL *s, CBB *cbb, CERT_PKEY *cpk)
 			SSLerror(s, ERR_R_X509_LIB);
 			goto err;
 		}
+		X509_VERIFY_PARAM_set_flags(X509_STORE_CTX_get0_param(xs_ctx),
+		    X509_V_FLAG_LEGACY_VERIFY);
 		X509_verify_cert(xs_ctx);
 		ERR_clear_error();
 		chain = xs_ctx->chain;

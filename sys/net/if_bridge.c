@@ -1,4 +1,4 @@
-/*	$OpenBSD: if_bridge.c,v 1.345 2020/08/06 19:47:44 bluhm Exp $	*/
+/*	$OpenBSD: if_bridge.c,v 1.347 2021/01/08 23:31:53 dlg Exp $	*/
 
 /*
  * Copyright (c) 1999, 2000 Jason L. Wright (jason@thought.net)
@@ -236,9 +236,6 @@ bridge_clone_destroy(struct ifnet *ifp)
 		bridge_spanremove(bif);
 
 	bstp_destroy(sc->sc_stp);
-
-	/* Undo pseudo-driver changes. */
-	if_deactivate(ifp);
 
 	if_detach(ifp);
 
@@ -1159,7 +1156,8 @@ bridge_process(struct ifnet *ifp, struct mbuf *m)
 
 	sc = brifp->if_softc;
 	SMR_SLIST_FOREACH_LOCKED(bif, &sc->sc_iflist, bif_next) {
-		if (bridge_ourether(bif->ifp, eh->ether_shost))
+		struct arpcom *ac = (struct arpcom *)bif->ifp;
+		if (memcmp(ac->ac_enaddr, eh->ether_shost, ETHER_ADDR_LEN) == 0)
 			goto bad;
 		if (bif->ifp == ifp)
 			bif0 = bif;

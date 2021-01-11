@@ -1,4 +1,4 @@
-/* $OpenBSD: if_pppoe.c,v 1.73 2020/09/13 11:00:40 kn Exp $ */
+/* $OpenBSD: if_pppoe.c,v 1.76 2021/01/04 21:21:41 kn Exp $ */
 /* $NetBSD: if_pppoe.c,v 1.51 2003/11/28 08:56:48 keihan Exp $ */
 
 /*
@@ -143,14 +143,8 @@ struct pppoe_softc {
 	struct timeval sc_session_time;	/* [N] time the session was established */
 };
 
-/* incoming traffic will be queued here */
-struct niqueue pppoediscinq = NIQUEUE_INITIALIZER(IFQ_MAXLEN, NETISR_PPPOE);
-struct niqueue pppoeinq = NIQUEUE_INITIALIZER(IFQ_MAXLEN, NETISR_PPPOE);
-
 /* input routines */
-static void pppoe_disc_input(struct mbuf *);
-static void pppoe_dispatch_disc_pkt(struct mbuf *, int);
-static void pppoe_data_input(struct mbuf *);
+static void pppoe_dispatch_disc_pkt(struct mbuf *);
 
 /* management routines */
 void pppoeattach(int);
@@ -341,23 +335,9 @@ pppoe_find_softc_by_hunique(u_int8_t *token, size_t len, u_int ifidx)
 	return (sc);
 }
 
-/* Interface interrupt handler routine. */
-void
-pppoeintr(void)
-{
-	struct mbuf *m;
-
-	NET_ASSERT_LOCKED();
-
-	while ((m = niq_dequeue(&pppoediscinq)) != NULL)
-		pppoe_disc_input(m);
-
-	while ((m = niq_dequeue(&pppoeinq)) != NULL)
-		pppoe_data_input(m);
-}
-
 /* Analyze and handle a single received packet while not in session state. */
-static void pppoe_dispatch_disc_pkt(struct mbuf *m, int off)
+static void
+pppoe_dispatch_disc_pkt(struct mbuf *m)
 {
 	struct pppoe_softc *sc;
 	struct pppoehdr *ph;
@@ -367,7 +347,7 @@ static void pppoe_dispatch_disc_pkt(struct mbuf *m, int off)
 	const char *err_msg, *devname;
 	size_t ac_cookie_len;
 	size_t relay_sid_len;
-	int noff, err, errortag;
+	int off, noff, err, errortag;
 	u_int16_t *max_payload;
 	u_int16_t tag, len;
 	u_int16_t session, plen;
@@ -377,6 +357,7 @@ static void pppoe_dispatch_disc_pkt(struct mbuf *m, int off)
 
 	err_msg = NULL;
 	devname = "pppoe";
+	off = 0;
 	errortag = 0;
 
 	if (m->m_len < sizeof(*eh)) {
@@ -647,19 +628,19 @@ done:
 }
 
 /* Input function for discovery packets. */
-static void
+void
 pppoe_disc_input(struct mbuf *m)
 {
 	/* avoid error messages if there is not a single pppoe instance */
 	if (!LIST_EMPTY(&pppoe_softc_list)) {
 		KASSERT(m->m_flags & M_PKTHDR);
-		pppoe_dispatch_disc_pkt(m, 0);
+		pppoe_dispatch_disc_pkt(m);
 	} else
 		m_freem(m);
 }
 
 /* Input function for data packets */
-static void
+void
 pppoe_data_input(struct mbuf *m)
 {
 	struct pppoe_softc *sc;

@@ -1,4 +1,4 @@
-/*	$OpenBSD: bpfdesc.h,v 1.42 2020/12/11 05:00:21 cheloha Exp $	*/
+/*	$OpenBSD: bpfdesc.h,v 1.44 2021/01/02 02:46:06 cheloha Exp $	*/
 /*	$NetBSD: bpfdesc.h,v 1.11 1995/09/27 18:30:42 thorpej Exp $	*/
 
 /*
@@ -78,8 +78,8 @@ struct bpf_d {
 	int		bd_in_uiomove;	/* for debugging purpose */
 
 	struct bpf_if  *bd_bif;		/* interface descriptor */
-	u_long		bd_rtout;	/* [m] Read timeout in 'ticks' */
-	u_long		bd_rdStart;	/* when the read started */
+	uint64_t	bd_rtout;	/* [m] Read timeout in nanoseconds */
+	u_long		bd_nreaders;	/* [m] # threads asleep in bpfread() */
 	int		bd_rnonblock;	/* true if nonblocking reads are set */
 	struct bpf_program_smr
 		       *bd_rfilter;	/* read filter code */

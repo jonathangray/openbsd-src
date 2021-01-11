@@ -1,15 +1,14 @@
-#	$OpenBSD: Makefile,v 1.6 2020/01/15 20:47:13 bluhm Exp $
+#	$OpenBSD: Makefile,v 1.10 2020/12/30 21:40:33 kn Exp $
 
 # The following ports must be installed:
 #
-# python-2.7          interpreted object-oriented programming language
 # scapy               powerful interactive packet manipulation in python
 
-.if ! exists(/usr/local/bin/python2.7) || ! exists(/usr/local/bin/scapy)
+.if ! exists(/usr/local/bin/scapy)
 .BEGIN:
 	@true
 regress:
-	@echo Install python and the scapy module for additional tests.
+	@echo Install scapy package to run this regress.
 	@echo SKIPPED
 .endif
 
@@ -47,10 +46,10 @@ regress:
 
 .if make (regress) || make (all)
 .BEGIN:
-	@echo
 	${SUDO} true
 	ssh -t ${REMOTE_SSH} ${SUDO} true
 	rm -f stamp-stack stamp-pf
+	@echo
 .endif
 
 # Create python include file containing the addresses.
@@ -67,20 +66,18 @@ addr.py: Makefile
 # Set variables so that make runs with and without obj directory.
 # Only do that if necessary to keep visible output short.
 .if ${.CURDIR} == ${.OBJDIR}
-PYTHON =	python2.7 -u ./
+PYTHON =	python3 -u ./
 .else
-PYTHON =	PYTHONPATH=${.OBJDIR} python2.7 -u ${.CURDIR}/
+PYTHON =	PYTHONPATH=${.OBJDIR} python3 -u ${.CURDIR}/
 .endif
 
 stamp-stack:
-	@echo '\n======== $@ ========'
 	rm -f stamp-stack stamp-pf
 	-ssh ${REMOTE_SSH} ${SUDO} pfctl -d
 	ssh ${REMOTE_SSH} ${SUDO} pfctl -a regress -Fr
 	date >$@
 
 stamp-pf: addr.py pf.conf
-	@echo '\n======== $@ ========'
 	rm -f stamp-stack stamp-pf
 	cat addr.py ${.CURDIR}/pf.conf | /sbin/pfctl -n -f -
 	cat addr.py ${.CURDIR}/pf.conf | \
@@ -91,23 +88,23 @@ stamp-pf: addr.py pf.conf
 REGRESS_TARGETS =
 FRAG_SCRIPTS !!=	cd ${.CURDIR} && ls -1 frag*.py
 
+run-stack-frag_maxpacket0.py:
+	# the stack allows fragments with data behind maximum packt length
+	@echo DISABLED
+
 run-stack-frag_mf0long.py:
-	@echo '\n======== $@ ========'
 	# the stack allows fragments with data behind a fragment without MF
 	@echo DISABLED
 
 run-stack-frag_mf0short.py:
-	@echo '\n======== $@ ========'
 	# the stack allows fragments without MF ending before other fragments
 	@echo DISABLED
 
 run-stack-frag_mf1end.py:
-	@echo '\n======== $@ ========'
 	# the stack allows fragments with MF together with fragments without MF
 	@echo DISABLED
 
 run-stack-frag_queuelimit.py:
-	@echo '\n======== $@ ========'
 	# the stack does not limit the amount of fragments during reassembly
 	@echo DISABLED
 
@@ -118,7 +115,6 @@ run-stack-frag_queuelimit.py:
 ${sp}: run-${sp}-ping
 REGRESS_TARGETS +=	run-${sp}-ping
 run-${sp}-ping: stamp-${sp}
-	@echo '\n======== $@ ========'
 .for ip in LOCAL_ADDR REMOTE_ADDR
 	@echo Check ping ${ip}:
 	ping -n -c 1 ${${ip}}
@@ -129,7 +125,6 @@ run-${sp}-ping: stamp-${sp}
 ${sp}: run-${sp}-fragping
 REGRESS_TARGETS +=	run-${sp}-fragping
 run-${sp}-fragping: stamp-${sp}
-	@echo '\n======== $@ ========'
 .for ip in LOCAL_ADDR REMOTE_ADDR
 	@echo Check ping ${ip}:
 	ping -n -c 1 -s 5000 ${${ip}}
@@ -139,7 +134,6 @@ run-${sp}-fragping: stamp-${sp}
 ${sp}: run-${sp}-${s}
 REGRESS_TARGETS +=	run-${sp}-${s}
 run-${sp}-${s}: addr.py stamp-${sp}
-	@echo '\n======== $@ ========'
 	${SUDO} ${PYTHON}${s}
 .endfor
 
@@ -149,7 +143,6 @@ run-${sp}-${s}: addr.py stamp-${sp}
 # This is the expected default configuration.
 REGRESS_CLEANUP +=	cleanup-pf
 cleanup-pf:
-	@echo '\n======== $@ ========'
 	rm -f stamp-stack stamp-pf
 	ssh ${REMOTE_SSH} ${SUDO} pfctl -a regress -Fa
 	-ssh ${REMOTE_SSH} ${SUDO} pfctl -e || true
