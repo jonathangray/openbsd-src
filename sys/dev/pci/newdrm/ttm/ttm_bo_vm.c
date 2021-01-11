@@ -612,6 +612,7 @@ vm_fault_t ttm_bo_vm_fault_reserved(struct uvm_faultinfo *ufi,
 	ret = ttm_bo_vm_fault_idle(bo, ufi);
 	if (unlikely(ret != 0))
 		return ret;
+	ret = VM_FAULT_NOPAGE;
 
 	err = ttm_mem_io_reserve(bdev, &bo->mem);
 	if (unlikely(err != 0))
