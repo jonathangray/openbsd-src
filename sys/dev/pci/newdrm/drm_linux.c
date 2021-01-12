@@ -242,8 +242,6 @@ kthread_create_worker(unsigned int flags, const char *fmt, ...)
 	char name[MAXCOMLEN+1];
 	va_list ap;
 
-	STUB();
-
 	struct kthread_worker *w = malloc(sizeof(*w), M_DRM, M_WAITOK);
 	va_start(ap, fmt);
 	vsnprintf(name, sizeof(name), fmt, ap);
