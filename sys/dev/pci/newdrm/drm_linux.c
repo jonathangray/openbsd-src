@@ -280,6 +280,16 @@ kthread_flush_work(struct kthread_work *work)
 	taskq_barrier(work->tq);
 }
 
+void
+kthread_flush_worker(struct kthread_worker *worker)
+{
+	if (cold)
+		return;
+
+	if (worker->tq)
+		taskq_barrier(worker->tq);
+}
+
 struct kthread *
 kthread_lookup(struct proc *p)
 {
