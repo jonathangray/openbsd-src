@@ -111,11 +111,7 @@ u64 drm_vblank_count(struct drm_device *dev, unsigned int pipe);
 /* drm_vblank_work.c */
 static inline void drm_vblank_flush_worker(struct drm_vblank_crtc *vblank)
 {
-#ifdef notyet
 	kthread_flush_worker(vblank->worker);
-#else
-	printf("%s: stub\n", __func__);
-#endif
 }
 
 static inline void drm_vblank_destroy_worker(struct drm_vblank_crtc *vblank)
