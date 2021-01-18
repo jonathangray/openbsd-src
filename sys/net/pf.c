@@ -1,4 +1,4 @@
-/*	$OpenBSD: pf.c,v 1.1097 2021/01/04 12:48:27 bluhm Exp $ */
+/*	$OpenBSD: pf.c,v 1.1100 2021/01/16 13:09:46 bluhm Exp $ */
 
 /*
  * Copyright (c) 2001 Daniel Hartmeier
@@ -1122,12 +1122,6 @@ pf_find_state(struct pf_pdesc *pd, struct pf_state_key_cmp *key,
 	}
 
 	*state = s;
-	if (pd->dir == PF_OUT && s->rt_kif != NULL && s->rt_kif != pd->kif &&
-	    ((s->rule.ptr->rt == PF_ROUTETO &&
-	    s->rule.ptr->direction == PF_OUT) ||
-	    (s->rule.ptr->rt == PF_REPLYTO &&
-	    s->rule.ptr->direction == PF_IN)))
-		return (PF_PASS);
 
 	return (PF_MATCH);
 }
@@ -3081,7 +3075,10 @@ pf_match_tag(struct mbuf *m, struct pf_rule *r, int *tag)
 int
 pf_match_rcvif(struct mbuf *m, struct pf_rule *r)
 {
-	struct ifnet *ifp, *ifp0;
+	struct ifnet *ifp;
+#if NCARP > 0
+	struct ifnet *ifp0;
+#endif
 	struct pfi_kif *kif;
 
 	ifp = if_get(m->m_pkthdr.ph_ifidx);
@@ -6841,7 +6838,9 @@ pf_counters_inc(int action, struct pf_pdesc *pd, struct pf_state *s,
 int
 pf_test(sa_family_t af, int fwdir, struct ifnet *ifp, struct mbuf **m0)
 {
+#if NCARP > 0
 	struct ifnet		*ifp0;
+#endif
 	struct pfi_kif		*kif;
 	u_short			 action, reason = 0;
 	struct pf_rule		*a = NULL, *r = &pf_default_rule;
@@ -7254,20 +7253,32 @@ done:
 		pd.m->m_pkthdr.pf.flags |= PF_TAG_GENERATED;
 		switch (pd.naf) {
 		case AF_INET:
-			if (pd.dir == PF_IN)
+			if (pd.dir == PF_IN) {
+				if (ipforwarding == 0) {
+					ipstat_inc(ips_cantforward);
+					action = PF_DROP;
+					break;
+				}
 				ip_forward(pd.m, ifp, NULL, 1);
-			else
+			} else
 				ip_output(pd.m, NULL, NULL, 0, NULL, NULL, 0);
 			break;
 		case AF_INET6:
-			if (pd.dir == PF_IN)
+			if (pd.dir == PF_IN) {
+				if (ip6_forwarding == 0) {
+					ip6stat_inc(ip6s_cantforward);
+					action = PF_DROP;
+					break;
+				}
 				ip6_forward(pd.m, NULL, 1);
-			else
+			} else
 				ip6_output(pd.m, NULL, NULL, 0, NULL, NULL);
 			break;
 		}
-		pd.m = NULL;
-		action = PF_PASS;
+		if (action != PF_DROP) {
+			pd.m = NULL;
+			action = PF_PASS;
+		}
 		break;
 #endif /* INET6 */
 	case PF_DROP:

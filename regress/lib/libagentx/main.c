@@ -1,3 +1,5 @@
+/*	$OpenBSD: main.c,v 1.5 2021/01/13 17:00:20 martijn Exp $	*/
+
 /*
  * Copyright (c) 2019 Martijn van Duren <martijn@openbsd.org>
  *
@@ -23,15 +25,12 @@
 #include <event.h>
 #include <signal.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
 #include "log.h"
 #include <agentx.h>
-
-#ifndef __OpenBSD__
-#include "openbsd-compat.h"
-#endif
 
 #define LINKDOWN 1, 3, 6, 1, 6, 3, 1, 1, 5, 3
 #define IFINDEX 1, 3, 6, 1, 2, 1, 2, 2, 1, 1
@@ -40,7 +39,7 @@
 
 void regress_fd(struct agentx *, void *, int);
 void regress_tryconnect(int, short, void *);
-void regress_shutdown(int, short, void *);
+void regress_shutdown(void);
 void regress_read(int, short, void *);
 void regress_usr1(int, short, void *);
 void regress_usr2(int, short, void *);
@@ -74,8 +73,6 @@ void regress_intindexstaticanystring(struct agentx_varbind *);
 void regress_intindexstaticnewint(struct agentx_varbind *);
 void regress_intindexstaticnewstring(struct agentx_varbind *);
 
-struct event intev, usr1ev, usr2ev, connev;
-char *path = AGENTX_MASTER_PATH;
 struct agentx *sa;
 struct agentx_session *sas;
 struct agentx_context *sac;
@@ -127,19 +124,36 @@ struct agentx_object *regressobj_intindexstaticnewstring;
 
 struct agentx_object *regressobj_scalarerror;
 
+char *path = AGENTX_MASTER_PATH;
+int fd = -1;
 struct event rev;
+struct event intev, usr1ev, usr2ev, connev;
 
 int
 main(int argc, char *argv[])
 {
 	struct agentx_index *idx[AGENTX_OID_INDEX_MAX_LEN];
+	int ch;
+	int dflag = 0;
 
 	log_init(2, 1);
 
-	if (argc >= 2)
-		path = argv[1];
+	while ((ch = getopt(argc, argv, "d")) != -1) {
+		switch (ch) {
+		case 'd':
+			dflag = 1;
+			break;
+		default:
+			exit(1);
+		}
+	}
 
-	event_init();
+	argc -= optind;
+	argv += optind;
+
+	if (argc >= 1)
+		path = argv[0];
+
 	bzero(&rev, sizeof(rev));
 
 	agentx_log_fatal = fatalx;
@@ -296,57 +310,46 @@ main(int argc, char *argv[])
 	    &regressidx_new, 1, 0, regress_intindexstaticnewstring)) == NULL)
 		fatal("agentx_object");
 
-
 	if ((regressobj_scalarerror = agentx_object(regress,
 	    AGENTX_OID(AGENTX_ENTERPRISES, 30155, 100, UINT32_MAX), NULL,
 	    0, 0, regress_scalarerror)) == NULL)
 		fatal("agentx_object");
 
+	if (!dflag) {
+		if (daemon(0, 0) == -1)
+			fatalx("daemon");
+	}
 
-	/* Abuse some signals for easier regressing */
-	signal_set(&intev, SIGINT, regress_shutdown, sa);
-	signal_set(&usr1ev, SIGUSR1, regress_usr1, sa);
-	signal_set(&usr2ev, SIGUSR2, regress_usr2, sa);
-	signal_add(&intev, NULL);
-	signal_add(&usr1ev, NULL);
-	signal_add(&usr2ev, NULL);
+	event_init();
+
+	event_set(&rev, fd, EV_READ|EV_PERSIST, regress_read, NULL);
+	if (event_add(&rev, NULL) == -1)
+		fatal("event_add");
 
 	event_dispatch();
-	return 1;
+	return 0;
 }
 
 void
 regress_fd(struct agentx *sa2, void *cookie, int close)
 {
-	event_del(&rev);
-	if (!close)
-		regress_tryconnect(-1, 0, sa2);
-}
-
-void
-regress_tryconnect(int fd, short event, void *cookie)
-{
-	struct agentx *sa2 = cookie;
-	struct timeval timeout = {3, 0};
+	static int init = 0;
 	struct sockaddr_un sun;
 
-	sun.sun_family = AF_UNIX;
-	strlcpy(sun.sun_path, path, sizeof(sun.sun_path));
+	/* For ease of cleanup we take the single run approach */
+	if (init)
+		regress_shutdown();
+	else {
+		sun.sun_family = AF_UNIX;
+		strlcpy(sun.sun_path, path, sizeof(sun.sun_path));
 
-	if ((fd = socket(AF_UNIX, SOCK_STREAM, 0)) == -1 ||
-	    connect(fd, (struct sockaddr *)&sun, sizeof(sun)) == -1) {
-		log_warn("connect");
-		close(fd);
-		evtimer_set(&connev, regress_tryconnect, sa2);
-		evtimer_add(&connev, &timeout);
-		return;
+		if ((fd = socket(AF_UNIX, SOCK_STREAM, 0)) == -1 ||
+		    connect(fd, (struct sockaddr *)&sun, sizeof(sun)) == -1) {
+			fatal("connect");
+		}
+		agentx_connect(sa2, fd);
+		init = 1;
 	}
-
-	event_set(&rev, fd, EV_READ|EV_PERSIST, regress_read, NULL);
-	event_add(&rev, NULL);
-
-	agentx_connect(sa2, fd);
-	
 }
 
 void
@@ -356,14 +359,13 @@ regress_read(int fd, short event, void *cookie)
 }
 
 void
-regress_shutdown(int fd, short event, void *cookie)
+regress_shutdown(void)
 {
 	agentx_free(sa);
-	signal_del(&intev);
-	signal_del(&usr1ev);
-	signal_del(&usr2ev);
 	evtimer_del(&connev);
 }
+
+#ifdef notyet
 
 void
 regress_usr1(int fd, short event, void *cookie)
@@ -378,6 +380,8 @@ regress_usr1(int fd, short event, void *cookie)
 	agentx_notify_integer(san, AGENTX_OID(IFOPERSTATUS), 6);
 	agentx_notify_send(san);
 }
+
+#endif
 
 void
 regress_usr2(int fd, short event, void *cookie)

@@ -1,4 +1,4 @@
-/*	$OpenBSD: ip_input.c,v 1.352 2020/11/16 06:44:38 gnezdo Exp $	*/
+/*	$OpenBSD: ip_input.c,v 1.354 2021/01/15 15:18:12 bluhm Exp $	*/
 /*	$NetBSD: ip_input.c,v 1.30 1996/03/16 23:53:58 christos Exp $	*/
 
 /*
@@ -115,7 +115,7 @@ const struct sysctl_bounded_args ipctl_vars[] = {
 #ifdef MROUTING
 	{ IPCTL_MRTPROTO, &ip_mrtproto, 1, 0 },
 #endif
-	{ IPCTL_FORWARDING, &ipforwarding, 0, 1 },
+	{ IPCTL_FORWARDING, &ipforwarding, 0, 2 },
 	{ IPCTL_SENDREDIRECTS, &ipsendredirects, 0, 1 },
 	{ IPCTL_DEFTTL, &ip_defttl, 0, 255 },
 	{ IPCTL_DIRECTEDBCAST, &ip_directedbcast, 0, 1 },
@@ -1251,7 +1251,7 @@ ip_dooptions(struct mbuf *m, struct ifnet *ifp)
 		}
 	}
 	KERNEL_UNLOCK();
-	if (forward && ipforwarding) {
+	if (forward && ipforwarding > 0) {
 		ip_forward(m, ifp, NULL, 1);
 		return (1);
 	}
@@ -1418,8 +1418,8 @@ ip_forward(struct mbuf *m, struct ifnet *ifp, struct rtentry *rt, int srcrt)
 		goto freecopy;
 	}
 
+	memset(&ro, 0, sizeof(ro));
 	sin = satosin(&ro.ro_dst);
-	memset(sin, 0, sizeof(*sin));
 	sin->sin_family = AF_INET;
 	sin->sin_len = sizeof(*sin);
 	sin->sin_addr = ip->ip_dst;
@@ -1429,6 +1429,7 @@ ip_forward(struct mbuf *m, struct ifnet *ifp, struct rtentry *rt, int srcrt)
 		rt = rtalloc_mpath(sintosa(sin), &ip->ip_src.s_addr,
 		    m->m_pkthdr.ph_rtableid);
 		if (rt == NULL) {
+			ipstat_inc(ips_noroute);
 			icmp_error(m, ICMP_UNREACH, ICMP_UNREACH_HOST, dest, 0);
 			return;
 		}

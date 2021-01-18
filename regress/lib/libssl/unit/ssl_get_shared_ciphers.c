@@ -1,4 +1,4 @@
-/*	$OpenBSD: ssl_get_shared_ciphers.c,v 1.3 2021/01/10 23:59:32 tb Exp $ */
+/*	$OpenBSD: ssl_get_shared_ciphers.c,v 1.7 2021/01/12 17:53:18 tb Exp $ */
 /*
  * Copyright (c) 2021 Theo Buehler <tb@openbsd.org>
  *
@@ -16,6 +16,12 @@
  */
 
 #include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#include <openssl/bio.h>
+#include <openssl/crypto.h>
 #include <openssl/err.h>
 #include <openssl/ssl.h>
 
@@ -213,8 +219,7 @@ peer_config_to_ssl_ctx(const struct peer_config *config)
 		goto err;
 	}
 	if (!SSL_CTX_set_cipher_list(ctx, config->ciphers)) {
-		fprintf(stderr, "set_cipher_list(%s) failed\n",
-		    config->name);
+		fprintf(stderr, "set_cipher_list(%s) failed\n", config->name);
 		goto err;
 	}
 
@@ -298,14 +303,18 @@ push_data_to_peer(SSL *ssl, int *ret, int (*func)(SSL *), const char *func_name,
 		return 1;
 
 	/*
-	 * Do SSL_connect/SSL_accept once and loop while hitting WANT_WRITE.
-	 * If done or on WANT_READ hand off to peer.
+	 * Do SSL_connect/SSL_accept/SSL_shutdown once and loop while hitting
+	 * WANT_WRITE.  If done or on WANT_READ hand off to peer.
 	 */
 
 	do {
 		if ((*ret = func(ssl)) <= 0)
 			ssl_err = SSL_get_error(ssl, *ret);
 	} while (*ret <= 0 && ssl_err == SSL_ERROR_WANT_WRITE);
+
+	/* Ignore erroneous error - see SSL_shutdown(3)... */
+	if (func == SSL_shutdown && ssl_err == SSL_ERROR_SYSCALL)
+		return 1;
 
 	if (*ret <= 0 && ssl_err != SSL_ERROR_WANT_READ) {
 		fprintf(stderr, "%s: %s failed\n", description, func_name);
@@ -319,8 +328,8 @@ push_data_to_peer(SSL *ssl, int *ret, int (*func)(SSL *), const char *func_name,
 /*
  * Alternate between loops of SSL_connect() and SSL_accept() as long as only
  * WANT_READ and WANT_WRITE situations are encountered. A function is repeated
- * until WANT_READ is returned or it succeeds, then it's the other functions
- * turn to make progress. Success: both functions returned 1.
+ * until WANT_READ is returned or it succeeds, then it's the other function's
+ * turn to make progress. Succeeds if SSL_connect() and SSL_accept() return 1.
  */
 static int
 handshake(SSL *client_ssl, SSL *server_ssl, const char *description)
@@ -337,7 +346,35 @@ handshake(SSL *client_ssl, SSL *server_ssl, const char *description)
 			return 0;
 	}
 
-	return client_ret == 1 && server_ret == 1;
+	if (client_ret != 1 || server_ret != 1) {
+		fprintf(stderr, "%s: failed\n", __func__);
+		return 0;
+	}
+
+	return 1;
+}
+
+static int
+shutdown(SSL *client_ssl, SSL *server_ssl, const char *description)
+{
+	int loops = 0, client_ret = 0, server_ret = 0;
+
+	while (loops++ < 10 && (client_ret <= 0 || server_ret <= 0)) {
+		if (!push_data_to_peer(client_ssl, &client_ret, SSL_shutdown,
+		    "client shutdown", description))
+			return 0;
+
+		if (!push_data_to_peer(server_ssl, &server_ret, SSL_shutdown,
+		    "server shutdown", description))
+			return 0;
+	}
+
+	if (client_ret != 1 || server_ret != 1) {
+		fprintf(stderr, "%s: failed\n", __func__);
+		return 0;
+	}
+
+	return 1;
 }
 
 /* from ssl_ciph.c */
@@ -358,13 +395,11 @@ check_shared_ciphers(const struct ssl_shared_ciphers_test_data *test,
 	const char *want = test->shared_ciphers;
 	int failed;
 
-	failed = strcmp(want, got);
-
-	if (failed && !ssl_aes_is_accelerated() &&
-	    test->shared_ciphers_without_aesni != NULL) {
+	if (!ssl_aes_is_accelerated() &&
+	    test->shared_ciphers_without_aesni != NULL)
 		want = test->shared_ciphers_without_aesni;
-		failed = strcmp(want, got);
-	}
+
+	failed = strcmp(want, got);
 
 	if (failed)
 		fprintf(stderr, "%s: want \"%s\", got \"%s\"\n",
@@ -408,6 +443,9 @@ test_get_shared_ciphers(const struct ssl_shared_ciphers_test_data *test)
 		    test->description);
 		goto err;
 	}
+
+	if (!shutdown(client_ssl, server_ssl, test->description))
+		goto err;
 
 	failed = check_shared_ciphers(test, buf);
 
