@@ -20,4 +20,7 @@ void shmem_unpin_map(struct file *file, void *ptr);
 int shmem_read(struct file *file, loff_t off, void *dst, size_t len);
 int shmem_write(struct file *file, loff_t off, void *src, size_t len);
 
+struct uvm_object *
+uobj_create_from_object(struct drm_i915_gem_object *);
+
 #endif /* SHMEM_UTILS_H */

@@ -139,6 +139,54 @@ int shmem_write(struct file *file, loff_t off, void *src, size_t len)
 
 #endif /* __linux__ */
 
+struct uvm_object *
+uobj_create_from_object(struct drm_i915_gem_object *obj)
+{
+	struct uvm_object *uobj;
+	void *ptr;
+	struct pglist from_plist, to_plist;
+	struct vm_page *from_page;
+	struct vm_page *to_page;
+	int i;
+
+#ifdef notyet
+	if (obj->ops == &i915_gem_shmem_ops) {
+		file = obj->base.filp;
+		atomic_long_inc(&file->f_count);
+		return file;
+	}
+#endif
+
+	ptr = i915_gem_object_pin_map(obj, I915_MAP_WB);
+	if (IS_ERR(ptr))
+		return ERR_CAST(ptr);
+
+	uobj = uao_create(obj->base.size, 0);
+
+	TAILQ_INIT(&from_plist);
+	if (uvm_objwire(obj->base.uao, 0, obj->base.size, &from_plist))
+		return ERR_PTR(-ENOMEM);
+
+	TAILQ_INIT(&to_plist);
+	if (uvm_objwire(uobj, 0, obj->base.size, &to_plist))
+		return ERR_PTR(-ENOMEM);
+
+	from_page = TAILQ_FIRST(&from_plist);
+	to_page = TAILQ_FIRST(&to_plist);
+	for (i = 0; i < obj->base.size >> PAGE_SHIFT; ++i) {
+		uvm_pagecopy(from_page, to_page);
+		to_page = TAILQ_NEXT(to_page, pageq);
+		from_page = TAILQ_NEXT(from_page, pageq);
+	}
+
+	uvm_objunwire(uobj, 0, obj->base.size);
+	uvm_objunwire(obj->base.uao, 0, obj->base.size);
+
+	i915_gem_object_unpin_map(obj);
+
+	return uobj;
+}
+
 #if IS_ENABLED(CONFIG_DRM_I915_SELFTEST)
 #include "st_shmem_utils.c"
 #endif
