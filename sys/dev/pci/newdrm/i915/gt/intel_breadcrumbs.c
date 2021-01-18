@@ -347,11 +347,7 @@ void intel_breadcrumbs_reset(struct intel_breadcrumbs *b)
 void intel_breadcrumbs_park(struct intel_breadcrumbs *b)
 {
 	/* Kick the work once more to drain the signalers */
-#ifdef notyet
 	irq_work_sync(&b->irq_work);
-#else
-	STUB();
-#endif
 	while (unlikely(READ_ONCE(b->irq_armed))) {
 		local_irq_disable();
 		signal_irq_work(&b->irq_work);
