@@ -548,12 +548,12 @@ alloc_context_vma(struct intel_engine_cs *engine)
 			goto err_obj;
 		}
 
-#ifdef notyet
+#ifdef __linux__
 		shmem_read(engine->default_state, 0,
 			   vaddr, engine->context_size);
 #else
-		STUB();
-		memcpy(vaddr, engine->default_state, engine->context_size);
+		uobj_read(engine->default_state, 0,
+			   vaddr, engine->context_size);
 #endif
 
 		i915_gem_object_flush_map(obj);
