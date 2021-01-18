@@ -210,13 +210,13 @@ static void irq_execute_cb_hook(struct irq_work *wrk)
 static __always_inline void
 __notify_execute_cb(struct i915_request *rq, bool (*fn)(struct irq_work *wrk))
 {
-	STUB();
-#ifdef notyet
 	struct execute_cb *cb, *cn;
 
 	if (llist_empty(&rq->execute_cb))
 		return;
 
+	STUB();
+#ifdef notyet
 	llist_for_each_entry_safe(cb, cn,
 				  llist_del_all(&rq->execute_cb),
 				  work.llnode)
