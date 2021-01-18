@@ -5338,9 +5338,6 @@ populate_lr_context(struct intel_context *ce,
 		    struct intel_engine_cs *engine,
 		    struct intel_ring *ring)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
 	bool inhibit = true;
 	void *vaddr;
 
@@ -5353,8 +5350,13 @@ populate_lr_context(struct intel_context *ce,
 	set_redzone(vaddr, engine);
 
 	if (engine->default_state) {
+#ifdef __linux__
 		shmem_read(engine->default_state, 0,
 			   vaddr, engine->context_size);
+#else
+		uobj_read(engine->default_state, 0,
+			   vaddr, engine->context_size);
+#endif
 		__set_bit(CONTEXT_VALID_BIT, &ce->flags);
 		inhibit = false;
 	}
@@ -5372,7 +5374,6 @@ populate_lr_context(struct intel_context *ce,
 	__i915_gem_object_flush_map(ctx_obj, 0, engine->context_size);
 	i915_gem_object_unpin_map(ctx_obj);
 	return 0;
-#endif
 }
 
 static struct intel_timeline *pinned_timeline(struct intel_context *ce)
