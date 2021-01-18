@@ -360,7 +360,11 @@ struct intel_engine_cs {
 
 	unsigned long wakeref_serial;
 	struct intel_wakeref wakeref;
+#ifdef __linux__
 	struct file *default_state;
+#else
+	struct uvm_object *default_state;
+#endif
 
 	struct {
 		struct intel_ring *ring;

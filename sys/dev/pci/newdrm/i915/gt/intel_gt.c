@@ -384,9 +384,6 @@ static struct i915_address_space *kernel_vm(struct intel_gt *gt)
 
 static int __engines_record_defaults(struct intel_gt *gt)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
 	struct i915_request *requests[I915_NUM_ENGINES] = {};
 	struct intel_engine_cs *engine;
 	enum intel_engine_id id;
@@ -453,7 +450,7 @@ err:
 
 	for (id = 0; id < ARRAY_SIZE(requests); id++) {
 		struct i915_request *rq;
-		struct file *state;
+		struct uvm_object *state;
 
 		rq = requests[id];
 		if (!rq)
@@ -469,7 +466,11 @@ err:
 			continue;
 
 		/* Keep a copy of the state's backing pages; free the obj */
+#ifdef __linux__
 		state = shmem_create_from_object(rq->context->state->obj);
+#else
+		state = uobj_create_from_object(rq->context->state->obj);
+#endif
 		if (IS_ERR(state)) {
 			err = PTR_ERR(state);
 			goto out;
@@ -499,7 +500,6 @@ out:
 		intel_context_put(ce);
 	}
 	return err;
-#endif
 }
 
 static int __engines_verify_workarounds(struct intel_gt *gt)
