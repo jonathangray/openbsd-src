@@ -682,6 +682,7 @@ dwhdmi_bridge_mode_set(struct drm_bridge *bridge,
 
 enum drm_mode_status
 dwhdmi_bridge_mode_valid(struct drm_bridge *bridge,
+    const struct drm_display_info *info,
     const struct drm_display_mode *mode)
 {
 	struct dwhdmi_softc *sc = bridge->driver_private;

@@ -361,12 +361,6 @@ anxdp_bridge_attach(struct drm_bridge *bridge,
 	if (error != 0)
 		return error;
 
-	if (sc->sc_panel != NULL) {
-		error = drm_panel_attach(sc->sc_panel, connector);
-		if (error != 0)
-			return error;
-	}
-
 	return drm_connector_register(connector);
 }
 
