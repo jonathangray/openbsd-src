@@ -1318,6 +1318,9 @@ drm_attach(struct device *parent, struct device *self, void *aux)
 	dev->dev_private = parent;
 	dev->driver = da->driver;
 
+	INIT_LIST_HEAD(&dev->managed.resources);
+	mtx_init(&dev->managed.lock, IPL_TTY);
+
 	/* no per-device feature limits by default */
 	dev->driver_features = ~0u;
 
@@ -1371,6 +1374,10 @@ drm_attach(struct device *parent, struct device *self, void *aux)
 	rw_init(&dev->clientlist_mutex, "drmclist");
 	rw_init(&dev->master_mutex, "drmmast");
 
+	ret = drmm_add_action(dev, drm_dev_init_release, NULL);
+	if (ret)
+		goto error;
+
 	SPLAY_INIT(&dev->files);
 	INIT_LIST_HEAD(&dev->filelist_internal);
 	INIT_LIST_HEAD(&dev->clientlist);
@@ -1413,11 +1420,13 @@ drm_attach(struct device *parent, struct device *self, void *aux)
 		}
 	}
 
+	drmm_add_final_kfree(dev, dev);
+
 	printf("\n");
 	return;
 
 error:
-	drm_lastclose(dev);
+	drm_managed_release(dev);
 	dev->dev_private = NULL;
 }
 
