@@ -9,6 +9,7 @@
 #include <linux/types.h>
 
 struct drm_i915_gem_object;
+#ifdef __linux__
 struct file;
 
 struct file *shmem_create_from_data(const char *name, void *data, size_t len);
@@ -19,8 +20,11 @@ void shmem_unpin_map(struct file *file, void *ptr);
 
 int shmem_read(struct file *file, loff_t off, void *dst, size_t len);
 int shmem_write(struct file *file, loff_t off, void *src, size_t len);
+#endif /* __linux__ */
 
 struct uvm_object *
 uobj_create_from_object(struct drm_i915_gem_object *);
+int uobj_read(struct uvm_object *, loff_t, void *, size_t);
+int uobj_write(struct uvm_object *, loff_t, void *, size_t);
 
 #endif /* SHMEM_UTILS_H */

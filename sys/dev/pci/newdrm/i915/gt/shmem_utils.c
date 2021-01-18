@@ -187,6 +187,52 @@ uobj_create_from_object(struct drm_i915_gem_object *obj)
 	return uobj;
 }
 
+static int __uobj_rw(struct uvm_object *uobj, loff_t off,
+		      void *ptr, size_t len,
+		      bool write)
+{
+	struct pglist plist;
+	struct vm_page *page;
+	vaddr_t pgoff = trunc_page(off);
+	size_t olen = len;
+
+	TAILQ_INIT(&plist);
+	if (uvm_objwire(uobj, pgoff, olen, &plist))
+		return -ENOMEM;
+
+	TAILQ_FOREACH(page, &plist, pageq) {
+		unsigned int this =
+			min_t(size_t, PAGE_SIZE - offset_in_page(off), len);
+		void *vaddr = kmap(page);
+		
+		if (write) {
+			memcpy(vaddr + offset_in_page(off), ptr, this);
+			set_page_dirty(page);
+		} else {
+			memcpy(ptr, vaddr + offset_in_page(off), this);
+		}
+
+		kunmap_va(vaddr);
+		len -= this;
+		ptr += this;
+		off = 0;
+	}
+
+	uvm_objunwire(uobj, pgoff, olen);
+
+	return 0;
+}
+
+int uobj_read(struct uvm_object *uobj, loff_t off, void *dst, size_t len)
+{
+	return __uobj_rw(uobj, off, dst, len, false);
+}
+
+int uobj_write(struct uvm_object *uobj, loff_t off, void *src, size_t len)
+{
+	return __uobj_rw(uobj, off, src, len, true);
+}
+
 #if IS_ENABLED(CONFIG_DRM_I915_SELFTEST)
 #include "st_shmem_utils.c"
 #endif
