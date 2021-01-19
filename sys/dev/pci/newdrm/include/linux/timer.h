@@ -24,7 +24,7 @@
 #include <sys/kernel.h>
 #include <linux/ktime.h>
 
-#define mod_timer(x, y)		timeout_add((x), (y - jiffies))
+#define mod_timer(x, y)		timeout_add((x), ((y) - jiffies))
 #define del_timer_sync(x)	timeout_del_barrier((x))
 #define del_timer(x)		timeout_del((x))
 #define timer_pending(x)	timeout_pending((x))
