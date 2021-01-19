@@ -387,7 +387,7 @@ radeondrm_setcolor(void *v, u_int index, u_int8_t r, u_int8_t g, u_int8_t b)
 		crtc->funcs->gamma_set(crtc, r_base, g_base, b_base,
 		    crtc->gamma_size, &ctx);
 
-		DRM_MODESET_LOCK_ALL_END(ctx, ret);
+		DRM_MODESET_LOCK_ALL_END(dev, ctx, ret);
 	}
 }
 #endif
