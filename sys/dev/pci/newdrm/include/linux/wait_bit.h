@@ -11,6 +11,7 @@ void wake_up_bit(void *, int);
 void clear_and_wake_up_bit(int, void *);
 
 wait_queue_head_t *bit_waitqueue(void *, int);
+wait_queue_head_t *__var_waitqueue(void *);
 
 extern wait_queue_head_t var_waitq;
 

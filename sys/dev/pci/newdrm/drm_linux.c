@@ -1969,6 +1969,13 @@ bit_waitqueue(void *word, int bit)
 	return &bit_waitq;
 }
 
+wait_queue_head_t *
+__var_waitqueue(void *p)
+{
+	/* XXX hash table of wait queues? */
+	return &bit_waitq;
+}
+
 struct workqueue_struct *system_wq;
 struct workqueue_struct *system_highpri_wq;
 struct workqueue_struct *system_unbound_wq;
