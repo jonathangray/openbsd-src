@@ -3512,12 +3512,18 @@ fence_driver_init:
 
 	switch (adev->asic_type) {
 	case CHIP_RAVEN:
-		if (adev->rev_id >= 8)
+		if (adev->apu_flags & AMD_APU_IS_RAVEN2)
 			chip_name = "RAVEN2";
-		else if (adev->pdev->device == 0x15d8)
+		else if (adev->apu_flags & AMD_APU_IS_PICASSO)
 			chip_name = "PICASSO";
 		else
 			chip_name = "RAVEN";
+		break;
+	case CHIP_RENOIR:
+		if (adev->apu_flags & AMD_APU_IS_RENOIR)
+			chip_name = "RENOIR";
+		else
+			chip_name = "GREEN_SARDINE";
 		break;
 	default:
 		chip_name = amdgpu_asic_name[adev->asic_type];
