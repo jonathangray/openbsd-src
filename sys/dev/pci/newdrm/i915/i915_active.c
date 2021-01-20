@@ -722,9 +722,6 @@ barrier_wake(wait_queue_entry_t *wq, unsigned int mode, int flags, void *key)
 
 static int __await_barrier(struct i915_active *ref, struct i915_sw_fence *fence)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
 	struct wait_barrier *wb;
 
 	wb = kmalloc(sizeof(*wb), GFP_KERNEL);
@@ -744,7 +741,6 @@ static int __await_barrier(struct i915_active *ref, struct i915_sw_fence *fence)
 
 	add_wait_queue(__var_waitqueue(ref), &wb->base);
 	return 0;
-#endif
 }
 
 static int await_active(struct i915_active *ref,
