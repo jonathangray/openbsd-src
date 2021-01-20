@@ -323,6 +323,7 @@ file	dev/pci/newdrm/i915/i915_gpu_error.c			inteldrm
 #file	dev/pci/newdrm/i915/i915_ioc32.c			inteldrm
 file	dev/pci/newdrm/i915/i915_irq.c				inteldrm
 file	dev/pci/newdrm/i915/i915_memcpy.c			inteldrm
+file	dev/pci/newdrm/i915/i915_mitigations.c			inteldrm
 file	dev/pci/newdrm/i915/i915_mm.c				inteldrm
 file	dev/pci/newdrm/i915/i915_params.c			inteldrm
 file	dev/pci/newdrm/i915/i915_pci.c				inteldrm
