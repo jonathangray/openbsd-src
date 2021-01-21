@@ -21,10 +21,23 @@ wake_up_var(void *var)
 	wake_up(&var_waitq);
 }
 
+#define wait_var_event(var, condition)				\
+	wait_event(var_waitq, (condition))
+
 #define wait_var_event_interruptible(var, condition)		\
 	wait_event_interruptible(var_waitq, condition)
 
 #define wait_var_event_killable(var, condition)			\
-	wait_event_killable(var_waitq, condition)
+	wait_event_killable(var_waitq, (condition))
+
+#define ___wait_var_event(var, condition, state, ex, ret, fn)	\
+({								\
+	long __ret = ret ;					\
+	if (state & TASK_INTERRUPTIBLE)				\
+		__ret = wait_var_event_interruptible((var), (condition)); \
+	else							\
+		wait_var_event((var), (condition));		\
+	__ret;							\
+})
 
 #endif
