@@ -664,15 +664,9 @@ int __i915_active_wait(struct i915_active *ref, int state)
 	if (err)
 		return err;
 
-#ifdef notyet
 	if (!i915_active_is_idle(ref) &&
 	    ___wait_var_event(ref, i915_active_is_idle(ref),
 			      state, 0, 0, schedule()))
-#else
-	STUB();
-	if (!i915_active_is_idle(ref) &&
-	    wait_var_event_interruptible(ref, i915_active_is_idle(ref)))
-#endif
 		return -EINTR;
 
 	flush_work(&ref->work);
