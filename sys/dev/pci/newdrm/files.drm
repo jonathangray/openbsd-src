@@ -54,6 +54,7 @@ file	dev/pci/newdrm/drm_kms_helper_common.c		drm
 #file	dev/pci/newdrm/drm_legacy_misc.c		drm
 file	dev/pci/newdrm/drm_linux.c			drm
 #file	dev/pci/newdrm/drm_lock.c			drm
+file	dev/pci/newdrm/drm_managed.c			drm
 file	dev/pci/newdrm/drm_memory.c			drm
 file	dev/pci/newdrm/drm_mipi_dsi.c			drm & inteldrm
 file	dev/pci/newdrm/drm_mm.c				drm
