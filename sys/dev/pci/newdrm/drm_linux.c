@@ -252,6 +252,14 @@ kthread_create_worker(unsigned int flags, const char *fmt, ...)
 }
 
 void
+kthread_destroy_worker(struct kthread_worker *worker)
+{
+	taskq_destroy(worker->tq);
+	free(worker, M_DRM, sizeof(*worker));
+	
+}
+
+void
 kthread_init_work(struct kthread_work *work, void (*func)(struct kthread_work *))
 {
 	work->tq = NULL;
