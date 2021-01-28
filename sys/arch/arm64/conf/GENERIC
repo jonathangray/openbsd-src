@@ -1,4 +1,4 @@
-# $OpenBSD: GENERIC,v 1.182 2020/12/18 18:24:44 patrick Exp $
+# $OpenBSD: GENERIC,v 1.184 2021/01/23 05:08:34 thfr Exp $
 #
 # GENERIC machine description file
 #
@@ -281,6 +281,7 @@ re*		at pci?			# Realtek 8169/8169S/8110S
 rge*		at pci?			# Realtek 8125
 
 # PCI WiFi
+athn*		at pci?			# Atheros AR9k (802.11a/g/n)
 bwfm*		at pci?			# Broadcom FullMAC
 
 # PCI SCSI
@@ -368,6 +369,7 @@ uslhcom*	at uhidev?		# Silicon Labs CP2110 USB HID UART
 ucom*		at uslhcom?
 uhid*		at uhidev?		# USB generic HID support
 fido*		at uhidev?		# FIDO/U2F security key support
+ujoy*		at uhidev?		# USB joystick/gamecontroller support
 upd*		at uhidev?		# USB Power Devices sensors
 aue*		at uhub?		# ADMtek AN986 Pegasus Ethernet
 atu*		at uhub?		# Atmel AT76c50x based 802.11b

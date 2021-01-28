@@ -1,4 +1,4 @@
-.\" $OpenBSD: tmux.1,v 1.811 2021/01/17 16:17:41 nicm Exp $
+.\" $OpenBSD: tmux.1,v 1.813 2021/01/22 10:24:52 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
 .\"
@@ -14,7 +14,7 @@
 .\" IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 .\" OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: January 17 2021 $
+.Dd $Mdocdate: January 22 2021 $
 .Dt TMUX 1
 .Os
 .Sh NAME
@@ -1657,6 +1657,8 @@ The following commands are supported in copy mode:
 .It Li "previous-paragraph" Ta "{" Ta "M-{"
 .It Li "previous-space" Ta "B" Ta ""
 .It Li "previous-word" Ta "b" Ta "M-b"
+.It Li "rectangle-on" Ta "" Ta ""
+.It Li "rectangle-off" Ta "" Ta ""
 .It Li "rectangle-toggle" Ta "v" Ta "R"
 .It Li "refresh-from-pane" Ta "r" Ta "r"
 .It Li "scroll-down" Ta "C-e" Ta "C-Down"
@@ -4651,8 +4653,8 @@ of the variable respectively.
 .Ql q:\&
 will escape
 .Xr sh 1
-special characters or with an
-.Ql e
+special characters or with a
+.Ql h
 suffix, escape hash characters (so
 .Ql #
 becomes
@@ -4882,7 +4884,8 @@ The following variables are available, where appropriate:
 .It Li "window_cell_height" Ta "" Ta "Height of each cell in pixels"
 .It Li "window_cell_width" Ta "" Ta "Width of each cell in pixels"
 .It Li "window_end_flag" Ta "" Ta "1 if window has the highest index"
-.It Li "window_flags" Ta "#F" Ta "Window flags"
+.It Li "window_flags" Ta "#F" Ta "Window flags with # escaped as ##"
+.It Li "window_raw_flags" Ta "" Ta "Window flags with nothing escaped"
 .It Li "window_format" Ta "" Ta "1 if format is for a window"
 .It Li "window_height" Ta "" Ta "Height of window"
 .It Li "window_id" Ta "" Ta "Unique window ID"

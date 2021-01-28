@@ -1,4 +1,4 @@
-/*	$OpenBSD: ldpe.c,v 1.77 2020/06/22 15:09:34 mestre Exp $ */
+/*	$OpenBSD: ldpe.c,v 1.80 2021/01/19 15:59:25 claudio Exp $ */
 
 /*
  * Copyright (c) 2013, 2016 Renato Westphal <renato@openbsd.org>
@@ -78,7 +78,7 @@ ldpe(int debug, int verbose, char *sockname)
 
 	setproctitle("ldp engine");
 	ldpd_process = PROC_LDP_ENGINE;
-	log_procname = log_procnames[ldpd_process];
+	log_procname = "ldpe";
 
 	/* create ldpd control socket outside chroot */
 	global.csock = sockname;
@@ -146,11 +146,7 @@ ldpe(int debug, int verbose, char *sockname)
 	global.ipv6.ldp_session_socket = -1;
 
 	/* listen on ldpd control socket */
-	TAILQ_INIT(&ctl_conns);
 	control_listen();
-
-	if ((pkt_ptr = calloc(1, IBUF_READ_SIZE)) == NULL)
-		fatal(__func__);
 
 	event_dispatch();
 
@@ -192,7 +188,6 @@ ldpe_shutdown(void)
 	/* clean up */
 	free(iev_lde);
 	free(iev_main);
-	free(pkt_ptr);
 
 	log_info("ldp engine exiting");
 	exit(0);

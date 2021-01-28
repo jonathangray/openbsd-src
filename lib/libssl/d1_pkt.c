@@ -1,4 +1,4 @@
-/* $OpenBSD: d1_pkt.c,v 1.88 2021/01/13 18:38:34 jsing Exp $ */
+/* $OpenBSD: d1_pkt.c,v 1.91 2021/01/26 14:22:19 jsing Exp $ */
 /*
  * DTLS implementation written by Nagendra Modadugu
  * (nagendra@cs.stanford.edu) for the OpenSSL project 2005.
@@ -204,9 +204,6 @@ dtls1_copy_record(SSL *s, DTLS1_RECORD_DATA_INTERNAL *rdata)
 	s->internal->packet_length = rdata->packet_length;
 	memcpy(&(S3I(s)->rbuf), &(rdata->rbuf), sizeof(SSL3_BUFFER_INTERNAL));
 	memcpy(&(S3I(s)->rrec), &(rdata->rrec), sizeof(SSL3_RECORD_INTERNAL));
-
-	/* Set proper sequence number for mac calculation */
-	memcpy(&(S3I(s)->read_sequence[2]), &(rdata->packet[5]), 6);
 
 	return (1);
 }
@@ -417,10 +414,6 @@ again:
 			goto again;
 
 		if (!CBS_get_u16(&header, &len))
-			goto again;
-
-		if (!CBS_write_bytes(&seq_no, &(S3I(s)->read_sequence[2]),
-		    sizeof(S3I(s)->read_sequence) - 2, NULL))
 			goto again;
 
 		if (!CBS_write_bytes(&seq_no, &rr->seq_num[2],
@@ -642,13 +635,12 @@ dtls1_read_bytes(SSL *s, int type, unsigned char *buf, int len, int peek)
 		return (0);
 	}
 
-
-	if (type == rr->type) /* SSL3_RT_APPLICATION_DATA or SSL3_RT_HANDSHAKE */
-	{
+	/* SSL3_RT_APPLICATION_DATA or SSL3_RT_HANDSHAKE */
+	if (type == rr->type) {
 		/* make sure that we are not getting application data when we
 		 * are doing a handshake for the first time */
-		if (SSL_in_init(s) && (type == SSL3_RT_APPLICATION_DATA) &&
-			(s->enc_read_ctx == NULL)) {
+		if (SSL_in_init(s) && type == SSL3_RT_APPLICATION_DATA &&
+		    !tls12_record_layer_read_protected(s->internal->rl)) {
 			al = SSL_AD_UNEXPECTED_MESSAGE;
 			SSLerror(s, SSL_R_APP_DATA_IN_HANDSHAKE);
 			goto f_err;
@@ -1106,7 +1098,6 @@ do_dtls1_write(SSL *s, int type, const unsigned char *buf, unsigned int len)
 		goto err;
 
 	tls12_record_layer_set_version(s->internal->rl, s->version);
-	tls12_record_layer_set_write_epoch(s->internal->rl, D1I(s)->w_epoch);
 
 	if (!tls12_record_layer_seal_record(s->internal->rl, type, buf, len, &cbb))
 		goto err;
@@ -1243,11 +1234,8 @@ dtls1_reset_seq_numbers(SSL *s, int rw)
 		memcpy(&(D1I(s)->bitmap), &(D1I(s)->next_bitmap),
 		    sizeof(DTLS1_BITMAP));
 		memset(&(D1I(s)->next_bitmap), 0, sizeof(DTLS1_BITMAP));
-		memset(S3I(s)->read_sequence, 0, sizeof(S3I(s)->read_sequence));
 	} else {
 		D1I(s)->w_epoch++;
-		memcpy(D1I(s)->last_write_sequence, S3I(s)->write_sequence,
-		    sizeof(S3I(s)->write_sequence));
-		memset(S3I(s)->write_sequence, 0, sizeof(S3I(s)->write_sequence));
+		tls12_record_layer_set_write_epoch(s->internal->rl, D1I(s)->w_epoch);
 	}
 }

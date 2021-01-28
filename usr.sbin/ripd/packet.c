@@ -1,4 +1,4 @@
-/*	$OpenBSD: packet.c,v 1.13 2016/12/23 14:53:16 jca Exp $ */
+/*	$OpenBSD: packet.c,v 1.17 2021/01/19 16:02:22 claudio Exp $ */
 
 /*
  * Copyright (c) 2006 Michele Marchetto <mydecay@openbeer.it>
@@ -40,6 +40,8 @@
 
 int		 rip_hdr_sanity_check(struct rip_hdr *);
 struct iface	*find_iface(struct ripd_conf *, unsigned int, struct in_addr);
+
+static u_int8_t	*recv_buf;
 
 int
 gen_rip_hdr(struct ibuf *buf, u_int8_t command)
@@ -100,13 +102,14 @@ recv_packet(int fd, short event, void *bula)
 	if (event != EV_READ)
 		return;
 
+	if (recv_buf == NULL)
+		if ((recv_buf = malloc(READ_BUF_SIZE)) == NULL)
+			fatal(__func__);
+
 	/* setup buffer */
-	buf = pkt_ptr;
-
 	bzero(&msg, sizeof(msg));
-
-	iov.iov_base = buf;
-	iov.iov_len = IBUF_READ_SIZE;
+	iov.iov_base = buf = recv_buf;
+	iov.iov_len = READ_BUF_SIZE;
 	msg.msg_name = &src;
 	msg.msg_namelen = sizeof(src);
 	msg.msg_iov = &iov;

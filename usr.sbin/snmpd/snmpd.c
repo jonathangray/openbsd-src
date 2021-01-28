@@ -1,4 +1,4 @@
-/*	$OpenBSD: snmpd.c,v 1.42 2020/09/06 15:51:28 martijn Exp $	*/
+/*	$OpenBSD: snmpd.c,v 1.44 2021/01/27 07:21:54 deraadt Exp $	*/
 
 /*
  * Copyright (c) 2007, 2008, 2012 Reyk Floeter <reyk@openbsd.org>
@@ -52,9 +52,9 @@ struct snmpd	*snmpd_env;
 
 static struct privsep_proc procs[] = {
 	{ "snmpe", PROC_SNMPE, snmpd_dispatch_snmpe, snmpe, snmpe_shutdown },
-	{ "traphandler", PROC_TRAP, snmpd_dispatch_traphandler, traphandler,
-	    traphandler_shutdown }
 };
+
+enum privsep_procid privsep_process;
 
 void
 snmpd_sig_handler(int sig, short event, void *arg)
@@ -300,6 +300,8 @@ int
 snmpd_dispatch_snmpe(int fd, struct privsep_proc *p, struct imsg *imsg)
 {
 	switch (imsg->hdr.type) {
+	case IMSG_TRAP_EXEC:
+		return (traphandler_priv_recvmsg(p, imsg));
 	case IMSG_CTL_RELOAD:
 		/* XXX notyet */
 	default:

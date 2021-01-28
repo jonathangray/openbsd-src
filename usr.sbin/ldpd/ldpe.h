@@ -1,4 +1,4 @@
-/*	$OpenBSD: ldpe.h,v 1.77 2019/12/12 00:10:29 yasuoka Exp $ */
+/*	$OpenBSD: ldpe.h,v 1.79 2021/01/19 15:59:25 claudio Exp $ */
 
 /*
  * Copyright (c) 2013, 2016 Renato Westphal <renato@openbsd.org>
@@ -127,6 +127,8 @@ struct mapping_entry {
 	struct map			map;
 };
 
+struct ctl_conn;
+
 struct ldpd_sysdep {
 	uint8_t		no_pfkey;
 	uint8_t		no_md5sig;
@@ -194,7 +196,6 @@ void		 ldpe_reset_nbrs(int);
 void		 ldpe_reset_ds_nbrs(void);
 void		 ldpe_remove_dynamic_tnbrs(int);
 void		 ldpe_stop_init_backoff(int);
-struct ctl_conn;
 void		 ldpe_iface_ctl(struct ctl_conn *, unsigned int);
 void		 ldpe_adj_ctl(struct ctl_conn *);
 void		 ldpe_nbr_ctl(struct ctl_conn *);
@@ -269,8 +270,6 @@ void			 session_close(struct nbr *);
 struct tcp_conn		*tcp_new(int, struct nbr *);
 void			 pending_conn_del(struct pending_conn *);
 struct pending_conn	*pending_conn_find(int, union ldpd_addr *);
-
-char	*pkt_ptr;	/* packet buffer */
 
 /* pfkey.c */
 int	pfkey_read(int, struct sadb_msg *);

@@ -1,4 +1,4 @@
-/*	$OpenBSD: ndp.c,v 1.99 2019/12/19 18:36:37 bluhm Exp $	*/
+/*	$OpenBSD: ndp.c,v 1.102 2021/01/24 08:57:10 florian Exp $	*/
 /*	$KAME: ndp.c,v 1.101 2002/07/17 08:46:33 itojun Exp $	*/
 
 /*
@@ -103,8 +103,6 @@
 #include <limits.h>
 #include <err.h>
 
-#include "gmt2local.h"
-
 /* packing rule for routing socket */
 #define ROUNDUP(a) \
 	((a) > 0 ? (1 + (((a) - 1) | (sizeof(long) - 1))) : sizeof(long))
@@ -113,7 +111,6 @@
 static pid_t pid;
 static int nflag;
 static int tflag;
-static int32_t thiszone;	/* time difference with gmt */
 static int rtsock = -1;
 static int repeat = 0;
 
@@ -122,11 +119,11 @@ char ifix_buf[IFNAMSIZ];		/* if_indextoname() */
 
 int file(char *);
 void getsocket(void);
-int parse_host(const char *, struct in6_addr *);
+int parse_host(const char *, struct sockaddr_in6 *);
 int set(int, char **);
 void get(const char *);
 int delete(const char *);
-void dump(struct in6_addr *, int);
+void dump(struct sockaddr_in6 *, int);
 static struct in6_nbrinfo *getnbrinfo(struct in6_addr *, int, int);
 static char *ether_str(struct sockaddr_dl *);
 int ndp_ether_aton(const char *, u_char *);
@@ -147,7 +144,6 @@ main(int argc, char *argv[])
 	const char	*errstr;
 
 	pid = getpid();
-	thiszone = gmt2local(0);
 	rdomain = getrtable();
 	while ((ch = getopt(argc, argv, "acd:f:i:nstA:V:")) != -1) {
 		switch (ch) {
@@ -208,7 +204,7 @@ main(int argc, char *argv[])
 		if (argc != 0) {
 			usage();
 		}
-		dump(0, mode == 'c');
+		dump(NULL, mode == 'c');
 		break;
 	case 'd':
 		if (argc != 0) {
@@ -292,10 +288,9 @@ getsocket(void)
 }
 
 int
-parse_host(const char *host, struct in6_addr *in6)
+parse_host(const char *host, struct sockaddr_in6 *sin6)
 {
 	struct addrinfo hints, *res;
-	struct sockaddr_in6 *sin6;
 	int gai_error;
 
 	bzero(&hints, sizeof(hints));
@@ -308,15 +303,7 @@ parse_host(const char *host, struct in6_addr *in6)
 		warnx("%s: %s", host, gai_strerror(gai_error));
 		return 1;
 	}
-
-	sin6 = (struct sockaddr_in6 *)res->ai_addr;
-	*in6 = sin6->sin6_addr;
-#ifdef __KAME__
-	if (IN6_IS_ADDR_LINKLOCAL(in6)) {
-		*(u_int16_t *)&in6->s6_addr[2] = htons(sin6->sin6_scope_id);
-	}
-#endif
-
+	*sin6 = *(struct sockaddr_in6 *)res->ai_addr;
 	freeaddrinfo(res);
 	return 0;
 }
@@ -350,7 +337,7 @@ set(int argc, char *argv[])
 	sdl_m = blank_sdl;
 	sin_m = blank_sin;
 
-	if (parse_host(host, &sin->sin6_addr))
+	if (parse_host(host, sin))
 		return 1;
 	ea = (u_char *)LLADDR(&sdl_m);
 	if (ndp_ether_aton(eaddr, ea) == 0)
@@ -372,7 +359,8 @@ set(int argc, char *argv[])
 		errx(1, "RTM_GET(%s) failed", host);
 	}
 
-	if (IN6_ARE_ADDR_EQUAL(&sin->sin6_addr, &sin_m.sin6_addr)) {
+	if (IN6_ARE_ADDR_EQUAL(&sin->sin6_addr, &sin_m.sin6_addr) &&
+	    sin->sin6_scope_id == sin_m.sin6_scope_id) {
 		if (sdl->sdl_family == AF_LINK &&
 		    (rtm->rtm_flags & RTF_LLINFO) &&
 		    !(rtm->rtm_flags & RTF_GATEWAY)) {
@@ -408,10 +396,10 @@ get(const char *host)
 	struct sockaddr_in6 *sin = &sin_m;
 
 	sin_m = blank_sin;
-	if (parse_host(host, &sin->sin6_addr))
+	if (parse_host(host, sin))
 		return;
 
-	dump(&sin->sin6_addr, 0);
+	dump(sin, 0);
 	if (found_entry == 0) {
 		getnameinfo((struct sockaddr *)sin, sin->sin6_len, host_buf,
 		    sizeof(host_buf), NULL ,0,
@@ -433,13 +421,14 @@ delete(const char *host)
 
 	getsocket();
 	sin_m = blank_sin;
-	if (parse_host(host, &sin->sin6_addr))
+	if (parse_host(host, sin))
 		return 1;
 	if (rtget(&sin, &sdl)) {
 		errx(1, "RTM_GET(%s) failed", host);
 	}
 
-	if (IN6_ARE_ADDR_EQUAL(&sin->sin6_addr, &sin_m.sin6_addr)) {
+	if (IN6_ARE_ADDR_EQUAL(&sin->sin6_addr, &sin_m.sin6_addr) &&
+	    sin->sin6_scope_id == sin_m.sin6_scope_id) {
 		if (sdl->sdl_family == AF_LINK && rtm->rtm_flags & RTF_LLINFO) {
 			if (rtm->rtm_flags & RTF_LOCAL)
 				return (0);
@@ -459,16 +448,8 @@ delete:
 		return (1);
 	}
 	if (rtmsg(RTM_DELETE) == 0) {
-		struct sockaddr_in6 s6 = *sin; /* XXX: for safety */
-
-#ifdef __KAME__
-		if (IN6_IS_ADDR_LINKLOCAL(&s6.sin6_addr)) {
-			s6.sin6_scope_id = ntohs(*(u_int16_t *)&s6.sin6_addr.s6_addr[2]);
-			*(u_int16_t *)&s6.sin6_addr.s6_addr[2] = 0;
-		}
-#endif
-		getnameinfo((struct sockaddr *)&s6,
-		    s6.sin6_len, host_buf,
+		getnameinfo((struct sockaddr *)sin,
+		    sin->sin6_len, host_buf,
 		    sizeof(host_buf), NULL, 0,
 		    (nflag ? NI_NUMERICHOST : 0));
 		printf("%s (%s) deleted\n", host, host_buf);
@@ -485,7 +466,7 @@ delete:
  * Dump the entire neighbor cache
  */
 void
-dump(struct in6_addr *addr, int cflag)
+dump(struct sockaddr_in6 *addr, int cflag)
 {
 	int mib[7];
 	size_t needed;
@@ -538,6 +519,19 @@ again:;
 		if (rtm->rtm_version != RTM_VERSION)
 			continue;
 		sin = (struct sockaddr_in6 *)(next + rtm->rtm_hdrlen);
+#ifdef __KAME__
+		{
+			struct in6_addr *in6 = &sin->sin6_addr;
+			if ((IN6_IS_ADDR_LINKLOCAL(in6) ||
+			    IN6_IS_ADDR_MC_LINKLOCAL(in6) ||
+			    IN6_IS_ADDR_MC_INTFACELOCAL(in6)) &&
+			    sin->sin6_scope_id == 0) {
+				sin->sin6_scope_id = (u_int32_t)
+				    ntohs(*(u_short *)&in6->s6_addr[2]);
+				*(u_short *)&in6->s6_addr[2] = 0;
+			}
+		}
+#endif
 		sdl = (struct sockaddr_dl *)((char *)sin + ROUNDUP(sin->sin6_len));
 
 		/*
@@ -560,21 +554,13 @@ again:;
 			continue;
 
 		if (addr) {
-			if (!IN6_ARE_ADDR_EQUAL(addr, &sin->sin6_addr))
+			if (!IN6_ARE_ADDR_EQUAL(&addr->sin6_addr,
+			    &sin->sin6_addr) || addr->sin6_scope_id !=
+			    sin->sin6_scope_id)
 				continue;
 			found_entry = 1;
 		} else if (IN6_IS_ADDR_MULTICAST(&sin->sin6_addr))
 			continue;
-		if (IN6_IS_ADDR_LINKLOCAL(&sin->sin6_addr) ||
-		    IN6_IS_ADDR_MC_LINKLOCAL(&sin->sin6_addr)) {
-			/* XXX: should scope id be filled in the kernel? */
-			if (sin->sin6_scope_id == 0)
-				sin->sin6_scope_id = sdl->sdl_index;
-#ifdef __KAME__
-			/* KAME specific hack; removed the embedded id */
-			*(u_int16_t *)&sin->sin6_addr.s6_addr[2] = 0;
-#endif
-		}
 		getnameinfo((struct sockaddr *)sin, sin->sin6_len, host_buf,
 		    sizeof(host_buf), NULL, 0, (nflag ? NI_NUMERICHOST : 0));
 		if (cflag) {
@@ -583,8 +569,16 @@ again:;
 			continue;
 		}
 		gettimeofday(&now, 0);
-		if (tflag)
-			ts_print(&now);
+		if (tflag) {
+			char buf[sizeof("00:00:00")];
+			struct tm *tm;
+
+			tm = localtime(&now.tv_sec);
+			if (tm != NULL) {
+				strftime(buf, sizeof(buf), "%H:%M:%S", tm);
+				printf("%s.%06ld ", buf, now.tv_usec);
+			}
+		}
 
 		addrwidth = strlen(host_buf);
 		if (addrwidth < W_ADDR)
@@ -774,7 +768,22 @@ rtmsg(int cmd)
 		ADVANCE(cp, (struct sockaddr *)&(s));			\
 	}
 
+#ifdef __KAME__
+	{
+		struct sockaddr_in6 sin6 = sin_m;
+		struct in6_addr *in6 = &sin6.sin6_addr;
+		if (IN6_IS_ADDR_LINKLOCAL(in6) ||
+		    IN6_IS_ADDR_MC_LINKLOCAL(in6) ||
+		    IN6_IS_ADDR_MC_INTFACELOCAL(in6)) {
+			*(u_int16_t *)& in6->s6_addr[2] =
+			    htons(sin6.sin6_scope_id);
+			sin6.sin6_scope_id = 0;
+		}
+		NEXTADDR(RTA_DST, sin6);
+	}
+#else
 	NEXTADDR(RTA_DST, sin_m);
+#endif
 	NEXTADDR(RTA_GATEWAY, sdl_m);
 #if 0	/* we don't support ipv6addr/128 type proxying. */
 	memset(&so_mask.sin6_addr, 0xff, sizeof(so_mask.sin6_addr));
@@ -837,6 +846,26 @@ rtget(struct sockaddr_in6 **sinp, struct sockaddr_dl **sdlp)
 	if (sin == NULL || sdl == NULL)
 		return (1);
 
+#ifdef __KAME__
+	{
+		static struct sockaddr_in6 ksin;
+		struct in6_addr *in6;
+
+		/* do not damage the route message, we need it for delete */
+		ksin = *sin;
+		sin = &ksin;
+		in6 = &sin->sin6_addr;
+
+		if ((IN6_IS_ADDR_LINKLOCAL(in6) ||
+		    IN6_IS_ADDR_MC_LINKLOCAL(in6) ||
+		    IN6_IS_ADDR_MC_INTFACELOCAL(in6)) &&
+		    sin->sin6_scope_id == 0) {
+			sin->sin6_scope_id = (u_int32_t)ntohs(*(u_short *)
+			    &in6->s6_addr[2]);
+			*(u_short *)&in6->s6_addr[2] = 0;
+		}
+	}
+#endif
 	*sinp = sin;
 	*sdlp = sdl;
 
@@ -908,19 +937,4 @@ sec2str(time_t total)
 	snprintf(p, ep - p, "%ds", secs);
 
 	return(result);
-}
-
-/*
- * Print the timestamp
- * from tcpdump/util.c
- */
-static void
-ts_print(const struct timeval *tvp)
-{
-	int s;
-
-	/* Default */
-	s = (tvp->tv_sec + thiszone) % 86400;
-	(void)printf("%02d:%02d:%02d.%06u ",
-	    s / 3600, (s % 3600) / 60, s % 60, (u_int32_t)tvp->tv_usec);
 }

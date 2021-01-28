@@ -1,4 +1,4 @@
-/*	$OpenBSD: iked.h,v 1.179 2020/12/21 22:49:36 tobhe Exp $	*/
+/*	$OpenBSD: iked.h,v 1.182 2021/01/28 01:20:37 mortimer Exp $	*/
 
 /*
  * Copyright (c) 2019 Tobias Heider <tobias.heider@stusta.de>
@@ -99,7 +99,7 @@ struct ctl_conn {
 TAILQ_HEAD(ctl_connlist, ctl_conn);
 extern  struct ctl_connlist ctl_conns;
 
-enum privsep_procid privsep_process;
+extern enum privsep_procid privsep_process;
 
 /*
  * Runtime structures
@@ -334,6 +334,7 @@ struct iked_dsa {
 	void		*dsa_key;	/* parsed public or private key */
 	int		 dsa_hmac;	/* HMAC or public/private key */
 	int		 dsa_sign;	/* Sign or verify operation */
+	uint32_t	 dsa_flags;	/* State flags */
 };
 
 struct iked_id {
@@ -479,7 +480,7 @@ struct iked_sa {
 	struct iked_sa			*sa_previ;	/* matching back pointer */
 	struct iked_sa			*sa_nextr;	/* simultaneous rekey */
 	struct iked_sa			*sa_prevr;	/* matching back pointer */
-	uint64_t			 sa_rekeyspi;	/* peerspi CSA rekey*/
+	uint64_t			 sa_rekeyspi;	/* peerspi CSA rekey */
 	struct ibuf			*sa_simult;	/* simultaneous rekey */
 
 	struct iked_ipcomp		 sa_ipcompi;	/* IPcomp initator */
@@ -800,6 +801,8 @@ uint64_t
 	 config_getspi(void);
 struct iked_transform *
 	 config_findtransform(struct iked_proposals *, uint8_t, unsigned int);
+struct iked_transform *
+	 config_findtransform_ext(struct iked_proposals *, uint8_t,int, unsigned int);
 void	 config_free_policy(struct iked *, struct iked_policy *);
 struct iked_proposal *
 	 config_add_proposal(struct iked_proposals *, unsigned int,

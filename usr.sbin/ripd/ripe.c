@@ -1,4 +1,4 @@
-/*	$OpenBSD: ripe.c,v 1.25 2019/12/11 21:04:59 remi Exp $ */
+/*	$OpenBSD: ripe.c,v 1.30 2021/01/19 10:20:47 claudio Exp $ */
 
 /*
  * Copyright (c) 2006 Michele Marchetto <mydecay@openbeer.it>
@@ -46,8 +46,8 @@ void		 ripe_sig_handler(int, short, void *);
 __dead void	 ripe_shutdown(void);
 
 struct ripd_conf	*oeconf = NULL;
-struct imsgev		*iev_main;
-struct imsgev		*iev_rde;
+static struct imsgev	*iev_main;
+static struct imsgev	*iev_rde;
 
 /* ARGSUSED */
 void
@@ -127,8 +127,7 @@ ripe(struct ripd_conf *xconf, int pipe_parent2ripe[2], int pipe_ripe2rde[2],
 		fatal("chdir(\"/\")");
 
 	setproctitle("rip engine");
-	ripd_process = PROC_RIP_ENGINE;
-	log_procname = log_procnames[ripd_process];
+	log_procname = "ripe";
 
 	if (setgroups(1, &pw->pw_gid) ||
 	    setresgid(pw->pw_gid, pw->pw_gid, pw->pw_gid) ||
@@ -182,11 +181,7 @@ ripe(struct ripd_conf *xconf, int pipe_parent2ripe[2], int pipe_ripe2rde[2],
 	}
 
 	/* listen on ripd control socket */
-	TAILQ_INIT(&ctl_conns);
 	control_listen();
-
-	if ((pkt_ptr = calloc(1, IBUF_READ_SIZE)) == NULL)
-		fatal("ripe");
 
 	/* start interfaces */
 	LIST_FOREACH(iface, &xconf->iface_list, entry) {
@@ -475,6 +470,11 @@ ripe_shutdown(void)
 	}
 	while ((iface = LIST_FIRST(&oeconf->iface_list)) != NULL) {
 		LIST_REMOVE(iface, entry);
+
+		/* revert the demotion when the interface is deleted */
+		if (iface->state == IF_STA_DOWN)
+			ripe_demote_iface(iface, 1);
+
 		if_del(iface);
 	}
 
@@ -484,7 +484,6 @@ ripe_shutdown(void)
 	free(iev_rde);
 	free(iev_main);
 	free(oeconf);
-	free(pkt_ptr);
 
 	log_info("rip engine exiting");
 	_exit(0);
@@ -528,8 +527,7 @@ ripe_demote_iface(struct iface *iface, int active)
 {
 	struct demote_msg	dmsg;
 
-	if (ripd_process != PROC_RIP_ENGINE ||
-	    iface->demote_group[0] == '\0')
+	if (iface->demote_group[0] == '\0')
 		return;
 
 	bzero(&dmsg, sizeof(dmsg));

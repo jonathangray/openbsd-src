@@ -1,4 +1,4 @@
-/*	$OpenBSD: ospfe.h,v 1.46 2014/10/25 03:23:49 lteo Exp $ */
+/*	$OpenBSD: ospfe.h,v 1.48 2021/01/19 09:33:38 claudio Exp $ */
 
 /*
  * Copyright (c) 2004, 2005 Esben Norby <norby@openbsd.org>
@@ -25,8 +25,6 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netinet/ip.h>
-
-TAILQ_HEAD(ctl_conns, ctl_conn)	ctl_conns;
 
 struct lsa_entry {
 	TAILQ_ENTRY(lsa_entry)	 entry;
@@ -94,6 +92,8 @@ struct nbr {
 	u_int8_t		 dd_more;
 	u_int8_t		 dd_snapshot;	/* snapshot running */
 };
+
+struct ctl_conn;
 
 /* auth.c */
 int		 auth_validate(void *buf, u_int16_t len, struct iface *,
@@ -237,7 +237,5 @@ struct lsa_hdr	*lsa_hdr_new(void);
 int	 gen_ospf_hdr(struct ibuf *, struct iface *, u_int8_t);
 int	 send_packet(struct iface *, struct ibuf *, struct sockaddr_in *);
 void	 recv_packet(int, short, void *);
-
-char	*pkt_ptr;	/* packet buffer */
 
 #endif	/* _OSPFE_H_ */

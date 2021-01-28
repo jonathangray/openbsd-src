@@ -1,4 +1,4 @@
-/* $OpenBSD: ssh_api.c,v 1.24 2020/12/29 00:59:15 djm Exp $ */
+/* $OpenBSD: ssh_api.c,v 1.26 2021/01/27 10:05:28 djm Exp $ */
 /*
  * Copyright (c) 2012 Markus Friedl.  All rights reserved.
  *
@@ -55,10 +55,6 @@ int	mm_sshkey_sign(struct sshkey *, u_char **, u_int *,
 #ifdef WITH_OPENSSL
 DH	*mm_choose_dh(int, int, int);
 #endif
-
-/* Define these two variables here so that they are part of the library */
-u_char *session_id2 = NULL;
-u_int session_id2_len = 0;
 
 int
 mm_sshkey_sign(struct sshkey *key, u_char **sigp, u_int *lenp,
@@ -386,7 +382,7 @@ _ssh_read_banner(struct ssh *ssh, struct sshbuf *banner)
 	debug("Remote protocol version %d.%d, remote software version %.100s",
 	    remote_major, remote_minor, remote_version);
 
-	ssh->compat = compat_datafellows(remote_version);
+	compat_banner(ssh, remote_version);
 	if  (remote_major == 1 && remote_minor == 99) {
 		remote_major = 2;
 		remote_minor = 0;

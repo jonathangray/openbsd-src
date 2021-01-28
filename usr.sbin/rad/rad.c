@@ -1,4 +1,4 @@
-/*	$OpenBSD: rad.c,v 1.24 2020/12/01 17:31:37 florian Exp $	*/
+/*	$OpenBSD: rad.c,v 1.26 2021/01/19 16:54:48 florian Exp $	*/
 
 /*
  * Copyright (c) 2018 Florian Obser <florian@openbsd.org>
@@ -52,12 +52,18 @@
 #include "engine.h"
 #include "control.h"
 
+enum rad_process {
+	PROC_MAIN,
+	PROC_ENGINE,
+	PROC_FRONTEND
+};
+
 __dead void	usage(void);
 __dead void	main_shutdown(void);
 
 void	main_sig_handler(int, short, void *);
 
-static pid_t	start_child(int, char *, int, int, int);
+static pid_t	start_child(enum rad_process, char *, int, int, int);
 
 void	main_dispatch_frontend(int, short, void *);
 void	main_dispatch_engine(int, short, void *);
@@ -71,15 +77,13 @@ int	main_sendboth(enum imsg_type, void *, uint16_t);
 
 void	in6_prefixlen2mask(struct in6_addr *, int len);
 
-struct rad_conf	*main_conf;
-struct imsgev		*iev_frontend;
-struct imsgev		*iev_engine;
+struct rad_conf		*main_conf;
+static struct imsgev	*iev_frontend;
+static struct imsgev	*iev_engine;
 char			*conffile;
-
-pid_t	 frontend_pid;
-pid_t	 engine_pid;
-
-uint32_t cmd_opts;
+pid_t			 frontend_pid;
+pid_t			 engine_pid;
+uint32_t		 cmd_opts;
 
 void
 main_sig_handler(int sig, short event, void *arg)
@@ -221,8 +225,7 @@ main(int argc, char *argv[])
 	frontend_pid = start_child(PROC_FRONTEND, saved_argv0,
 	    pipe_main2frontend[1], debug, cmd_opts & OPT_VERBOSE);
 
-	rad_process = PROC_MAIN;
-	log_procinit(log_procnames[rad_process]);
+	log_procinit("main");
 
 	event_init();
 
@@ -325,7 +328,7 @@ main_shutdown(void)
 }
 
 static pid_t
-start_child(int p, char *argv0, int fd, int debug, int verbose)
+start_child(enum rad_process p, char *argv0, int fd, int debug, int verbose)
 {
 	char	*argv[6];
 	int	 argc = 0;

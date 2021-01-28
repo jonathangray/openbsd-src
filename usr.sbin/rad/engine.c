@@ -1,4 +1,4 @@
-/*	$OpenBSD: engine.c,v 1.16 2020/05/20 10:37:02 claudio Exp $	*/
+/*	$OpenBSD: engine.c,v 1.18 2021/01/19 16:54:48 florian Exp $	*/
 
 /*
  * Copyright (c) 2018 Florian Obser <florian@openbsd.org>
@@ -64,9 +64,9 @@ void			 remove_iface(uint32_t);
 struct engine_iface	*find_engine_iface_by_id(uint32_t);
 void			 iface_timeout(int, short, void *);
 
-struct rad_conf	*engine_conf;
-struct imsgev		*iev_frontend;
-struct imsgev		*iev_main;
+struct rad_conf		*engine_conf;
+static struct imsgev	*iev_frontend;
+static struct imsgev	*iev_main;
 struct sockaddr_in6	 all_nodes;
 
 void
@@ -105,9 +105,8 @@ engine(int debug, int verbose)
 	if (chdir("/") == -1)
 		fatal("chdir(\"/\")");
 
-	rad_process = PROC_ENGINE;
-	setproctitle("%s", log_procnames[rad_process]);
-	log_procinit(log_procnames[rad_process]);
+	setproctitle("%s", "engine");
+	log_procinit("engine");
 
 	if (setgroups(1, &pw->pw_gid) ||
 	    setresgid(pw->pw_gid, pw->pw_gid, pw->pw_gid) ||

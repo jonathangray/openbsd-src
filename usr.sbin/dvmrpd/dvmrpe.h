@@ -1,4 +1,4 @@
-/*	$OpenBSD: dvmrpe.h,v 1.5 2014/10/25 03:23:49 lteo Exp $ */
+/*	$OpenBSD: dvmrpe.h,v 1.7 2021/01/19 12:23:30 claudio Exp $ */
 
 /*
  * Copyright (c) 2004, 2005, 2006 Esben Norby <norby@openbsd.org>
@@ -23,8 +23,6 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netinet/ip.h>
-
-TAILQ_HEAD(ctl_conns, ctl_conn)	ctl_conns;
 
 /* neighbor events */
 enum nbr_event {
@@ -84,6 +82,8 @@ struct rr_entry {
 	TAILQ_ENTRY(rr_entry)	 entry;
 	struct route_report	*re;
 };
+
+struct ctl_conn;
 
 /* ask_nbrs2.c */
 int	 send_ask_nbrs2(struct iface *, struct in_addr, void *, int);
@@ -185,8 +185,6 @@ struct ctl_nbr	*nbr_to_ctl(struct nbr *);
 int		 gen_dvmrp_hdr(struct ibuf *, struct iface *, u_int8_t);
 int		 send_packet(struct iface *, void *, size_t, struct sockaddr_in *);
 void		 recv_packet(int, short, void *);
-
-char		*pkt_ptr;	/* packet buffer */
 
 /* probe.c */
 int		 send_probe(struct iface *);

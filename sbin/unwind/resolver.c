@@ -1,4 +1,4 @@
-/*	$OpenBSD: resolver.c,v 1.129 2020/12/26 15:07:25 florian Exp $	*/
+/*	$OpenBSD: resolver.c,v 1.137 2021/01/27 08:30:50 florian Exp $	*/
 
 /*
  * Copyright (c) 2018 Florian Obser <florian@openbsd.org>
@@ -96,6 +96,9 @@
 #define	INSECURE	0
 #define	BOGUS		1
 #define	SECURE		2
+
+#define	WKA1_FOUND	1
+#define	WKA2_FOUND	2
 
 struct uw_resolver {
 	struct event		 check_ev;
@@ -195,10 +198,17 @@ int			 running_query_cnt(void);
 int			*resolvers_to_restart(struct uw_conf *,
 			     struct uw_conf *);
 const char		*query_imsg2str(struct query_imsg *);
+char			*gen_resolv_conf(void);
+void			 check_dns64(void);
+void			 check_dns64_done(struct asr_result *, void *);
+int			 dns64_prefixlen(const struct in6_addr *,
+			     const uint8_t *);
+void			 add_dns64_prefix(const struct in6_addr *, int,
+			     struct dns64_prefix *, int, int);
 
 struct uw_conf			*resolver_conf;
-struct imsgev			*iev_frontend;
-struct imsgev			*iev_main;
+static struct imsgev		*iev_frontend;
+static struct imsgev		*iev_main;
 struct uw_forwarder_head	 autoconf_forwarder_list;
 struct uw_resolver		*resolvers[UW_RES_NONE];
 int				 enabled_resolvers[UW_RES_NONE];
@@ -218,6 +228,9 @@ struct slabhash			*unified_msg_cache;
 struct rrset_cache		*unified_rrset_cache;
 struct key_cache		*unified_key_cache;
 struct val_neg_cache		*unified_neg_cache;
+
+int				 dns64_present;
+int				 available_afs = HAVE_IPV4 | HAVE_IPV6;
 
 static const char * const	 as112_zones[] = {
 	/* RFC1918 */
@@ -355,9 +368,8 @@ resolver(int debug, int verbose)
 	if ((pw = getpwnam(UNWIND_USER)) == NULL)
 		fatal("getpwnam");
 
-	uw_process = PROC_RESOLVER;
-	setproctitle("%s", log_procnames[uw_process]);
-	log_procinit(log_procnames[uw_process]);
+	setproctitle("%s", "resolver");
+	log_procinit("resolver");
 
 	if (setgroups(1, &pw->pw_gid) ||
 	    setresgid(pw->pw_gid, pw->pw_gid, pw->pw_gid) ||
@@ -451,13 +463,13 @@ resolver_imsg_compose_frontend(int type, pid_t pid, void *data,
 void
 resolver_dispatch_frontend(int fd, short event, void *bula)
 {
-	struct imsgev			*iev = bula;
-	struct imsgbuf			*ibuf;
-	struct imsg			 imsg;
-	struct query_imsg		*query_imsg;
-	ssize_t				 n;
-	int				 shut = 0, verbose, i;
-	char				*ta;
+	struct imsgev		*iev = bula;
+	struct imsgbuf		*ibuf;
+	struct imsg		 imsg;
+	struct query_imsg	*query_imsg;
+	ssize_t			 n;
+	int			 shut = 0, verbose, i, new_available_afs;
+	char			*ta;
 
 	ibuf = &iev->ibuf;
 
@@ -487,7 +499,7 @@ resolver_dispatch_frontend(int fd, short event, void *bula)
 				    "%lu", __func__,
 				    IMSG_DATA_SIZE(imsg));
 			memcpy(&verbose, imsg.data, sizeof(verbose));
-			if ((log_getverbose() & OPT_VERBOSE3)
+			if (log_getdebug() && (log_getverbose() & OPT_VERBOSE3)
 			    != (verbose & OPT_VERBOSE3))
 				restart_ub_resolvers();
 			log_setverbose(verbose);
@@ -555,6 +567,18 @@ resolver_dispatch_frontend(int fd, short event, void *bula)
 				    __func__, IMSG_DATA_SIZE(imsg));
 			replace_autoconf_forwarders((struct
 			    imsg_rdns_proposal *)imsg.data);
+			break;
+		case IMSG_CHANGE_AFS:
+			if (IMSG_DATA_SIZE(imsg) !=
+			    sizeof(new_available_afs))
+				fatalx("%s: IMSG_CHANGE_AFS wrong length: %lu",
+				    __func__, IMSG_DATA_SIZE(imsg));
+			memcpy(&new_available_afs, imsg.data,
+			    sizeof(new_available_afs));
+			if (new_available_afs != available_afs) {
+				available_afs = new_available_afs;
+				restart_ub_resolvers();
+			}
 			break;
 		default:
 			log_debug("%s: unexpected imsg %d", __func__,
@@ -1009,8 +1033,8 @@ resolve_done(struct uw_resolver *res, void *arg, int rcode,
 	if (result->rcode == LDNS_RCODE_SERVFAIL)
 		goto servfail;
 
-	if (sec == SECURE)
-		res->state = VALIDATING;
+	if (sec == SECURE && res->state != VALIDATING && res->stop != -1)
+		check_resolver(res);
 
 	if (res->state == VALIDATING && sec == BOGUS) {
 		answer_header->bogus = !force_acceptbogus;
@@ -1109,6 +1133,7 @@ new_resolver(enum uw_resolver_type type, enum uw_resolver_state state)
 		return;
 
 	switch (state) {
+	case DEAD:
 	case UNKNOWN:
 		check_resolver(resolvers[type]);
 		break;
@@ -1118,9 +1143,6 @@ new_resolver(enum uw_resolver_type type, enum uw_resolver_state state)
 	case RESOLVING:
 		resolvers[type]->state = state;
 		break;
-	default:
-		fatalx("%s: invalid resolver state: %s", __func__,
-		    uw_resolver_state_str[state]);
 	}
 }
 
@@ -1173,10 +1195,9 @@ create_resolver(enum uw_resolver_type type)
 {
 	struct uw_resolver	*res;
 	struct trust_anchor	*ta;
-	struct uw_forwarder	*uw_forwarder;
 	size_t			 i;
 	int			 err;
-	char			*resolv_conf = NULL, *tmp = NULL;
+	char			*resolv_conf;
 
 	if ((res = calloc(1, sizeof(*res))) == NULL) {
 		log_warn("%s", __func__);
@@ -1194,18 +1215,11 @@ create_resolver(enum uw_resolver_type type)
 			free(res);
 			return (NULL);
 		}
-		TAILQ_FOREACH(uw_forwarder, &autoconf_forwarder_list, entry) {
-			tmp = resolv_conf;
-			if (asprintf(&resolv_conf, "%snameserver %s\n", tmp ==
-			    NULL ? "" : tmp, uw_forwarder->ip) == -1) {
-				free(tmp);
-				free(res);
-				log_warnx("could not create asr context");
-				return (NULL);
-			}
-			free(tmp);
+		if ((resolv_conf = gen_resolv_conf()) == NULL) {
+			free(res);
+			log_warnx("could not create asr context");
+			return (NULL);
 		}
-
 		if ((res->asr_ctx = asr_resolver_from_string(resolv_conf)) ==
 		    NULL) {
 			free(res);
@@ -1252,15 +1266,38 @@ create_resolver(enum uw_resolver_type type)
 			}
 		}
 
-		if (!log_getdebug()) {
-			if((err = ub_ctx_set_option(res->ctx, "use-syslog:",
-			    "yes")) != 0) {
+		if (!(available_afs & HAVE_IPV4)) {
+			if((err = ub_ctx_set_option(res->ctx, "do-ip4:",
+			    "no")) != 0) {
 				ub_ctx_delete(res->ctx);
 				free(res);
-				log_warnx("error setting use-syslog: yes: %s",
+				log_warnx("error setting do-ip4: no: %s",
 				    ub_strerror(err));
 				return (NULL);
 			}
+		}
+
+		if (!(available_afs & HAVE_IPV6)) {
+			if((err = ub_ctx_set_option(res->ctx, "do-ip6:",
+			    "no")) != 0) {
+				ub_ctx_delete(res->ctx);
+				free(res);
+				log_warnx("error setting do-ip6: no: %s",
+				    ub_strerror(err));
+				return (NULL);
+			}
+		}
+
+		if (!log_getdebug()) {
+			if((err = ub_ctx_set_option(res->ctx, "use-syslog:",
+			    "no")) != 0) {
+				ub_ctx_delete(res->ctx);
+				free(res);
+				log_warnx("error setting use-syslog: no: %s",
+				    ub_strerror(err));
+				return (NULL);
+			}
+			ub_ctx_debugout(res->ctx, NULL);
 		}
 
 		break;
@@ -1509,10 +1546,19 @@ check_resolver_done(struct uw_resolver *res, void *arg, int rcode,
 	}
 
 	if (sec == SECURE) {
-		if (prev_state != VALIDATING)
-			new_resolver(checked_resolver->type, VALIDATING);
-		if (!(evtimer_pending(&trust_anchor_timer, NULL)))
-			evtimer_add(&trust_anchor_timer, &tv);
+		if (dns64_present && (res->type == UW_RES_DHCP ||
+		    res->type == UW_RES_ODOT_DHCP)) {
+			/* do not upgrade to validating, DNS64 breaks DNSSEC */
+			if (prev_state != RESOLVING)
+				new_resolver(checked_resolver->type,
+				    RESOLVING);
+		} else {
+			if (prev_state != VALIDATING)
+				new_resolver(checked_resolver->type,
+				    VALIDATING);
+			if (!(evtimer_pending(&trust_anchor_timer, NULL)))
+				evtimer_add(&trust_anchor_timer, &tv);
+		}
 	 } else if (rcode == LDNS_RCODE_NOERROR &&
 	    LDNS_RCODE_WIRE((uint8_t*)answer_packet) == LDNS_RCODE_NOERROR) {
 		if (why_bogus) {
@@ -1997,6 +2043,7 @@ replace_autoconf_forwarders(struct imsg_rdns_proposal *rdns_proposal)
 		new_resolver(UW_RES_ASR, UNKNOWN);
 		new_resolver(UW_RES_DHCP, UNKNOWN);
 		new_resolver(UW_RES_ODOT_DHCP, UNKNOWN);
+		check_dns64();
 	} else {
 		while ((tmp = TAILQ_FIRST(&new_forwarder_list)) != NULL) {
 			TAILQ_REMOVE(&new_forwarder_list, tmp, entry);
@@ -2146,4 +2193,230 @@ query_imsg2str(struct query_imsg *query_imsg)
 	snprintf(buf, sizeof(buf), "%s %s %s", query_imsg->qname, qclass_buf,
 	    qtype_buf);
 	return buf;
+}
+
+char *
+gen_resolv_conf()
+{
+	struct uw_forwarder	*uw_forwarder;
+	char			*resolv_conf = NULL, *tmp = NULL;
+
+	TAILQ_FOREACH(uw_forwarder, &autoconf_forwarder_list, entry) {
+		tmp = resolv_conf;
+		if (asprintf(&resolv_conf, "%snameserver %s\n", tmp ==
+		    NULL ? "" : tmp, uw_forwarder->ip) == -1) {
+			free(tmp);
+			return (NULL);
+		}
+		free(tmp);
+	}
+	return resolv_conf;
+}
+
+void
+check_dns64(void)
+{
+	struct asr_query	*aq = NULL;
+	char			*resolv_conf;
+	void			*asr_ctx;
+
+	if (TAILQ_EMPTY(&autoconf_forwarder_list))
+		return;
+
+	if ((resolv_conf = gen_resolv_conf()) == NULL) {
+		log_warnx("could not create asr context");
+		return;
+	}
+
+	if ((asr_ctx = asr_resolver_from_string(resolv_conf)) != NULL) {
+		if ((aq = res_query_async("ipv4only.arpa", LDNS_RR_CLASS_IN,
+		    LDNS_RR_TYPE_AAAA, asr_ctx)) == NULL) {
+			log_warn("%s: res_query_async", __func__);
+			asr_resolver_free(asr_ctx);
+		}
+		if (event_asr_run(aq, check_dns64_done, asr_ctx) == NULL) {
+			log_warn("%s: event_asr_run", __func__);
+			free(aq);
+			asr_resolver_free(asr_ctx);
+		}
+	} else
+		log_warnx("%s: could not create asr context", __func__);
+
+	free(resolv_conf);
+}
+
+void
+check_dns64_done(struct asr_result *ar, void *arg)
+{
+	/* RFC 7050: ipv4only.arpa resolves to 192.0.0.170 and 192.9.0.171 */
+	const uint8_t			 wka1[] = {192, 0, 0, 170};
+	const uint8_t			 wka2[] = {192, 0, 0, 171};
+	struct query_info		 skip, qinfo;
+	struct reply_info		*rinfo = NULL;
+	struct regional			*region = NULL;
+	struct sldns_buffer		*buf = NULL;
+	struct ub_packed_rrset_key	*an_rrset = NULL;
+	struct packed_rrset_data	*an_rrset_data;
+	struct alloc_cache		 alloc;
+	struct edns_data		 edns;
+	struct dns64_prefix		*prefixes = NULL;
+	size_t				 i;
+	int				 preflen, count = 0;
+	void				*asr_ctx = arg;
+
+	memset(&qinfo, 0, sizeof(qinfo));
+	alloc_init(&alloc, NULL, 0);
+
+	if (ar->ar_datalen < LDNS_HEADER_SIZE) {
+		log_warnx("%s: bad packet: too short: %d", __func__,
+		    ar->ar_datalen);
+		goto out;
+	}
+
+	if (ar->ar_datalen > UINT16_MAX) {
+		log_warnx("%s: bad packet: too large: %d", __func__,
+		    ar->ar_datalen);
+		goto out;
+	}
+
+	if (ar->ar_rcode == LDNS_RCODE_NXDOMAIN) {
+		/* XXX this means that the dhcp resolver is broken */
+		log_debug("%s: NXDOMAIN", __func__);
+		goto out;
+	}
+
+	if ((buf = sldns_buffer_new(ar->ar_datalen)) == NULL)
+		goto out;
+
+	if ((region = regional_create()) == NULL)
+		goto out;
+
+	sldns_buffer_write(buf, ar->ar_data, ar->ar_datalen);
+	sldns_buffer_flip(buf);
+
+	/* read past query section, no memory is allocated */
+	if (!query_info_parse(&skip, buf))
+		goto out;
+
+	if (reply_info_parse(buf, &alloc, &qinfo, &rinfo, region, &edns) != 0)
+		goto out;
+
+	if ((an_rrset = reply_find_answer_rrset(&qinfo, rinfo)) == NULL)
+		goto out;
+
+	an_rrset_data = (struct packed_rrset_data*)an_rrset->entry.data;
+
+	prefixes = calloc(an_rrset_data->count, sizeof(struct dns64_prefix));
+	if (prefixes == NULL)
+		goto out;
+
+	for (i = 0; i < an_rrset_data->count; i++) {
+		struct in6_addr	 in6;
+
+		/* check for AAAA record */
+		if (an_rrset_data->rr_len[i] != 18) /* 2 + 128/8 */
+			continue;
+		if (an_rrset_data->rr_data[i][0] != 0 &&
+		    an_rrset_data->rr_data[i][1] != 16)
+			continue;
+
+		memcpy(&in6, &an_rrset_data->rr_data[i][2],
+		    sizeof(in6));
+		if ((preflen = dns64_prefixlen(&in6, wka1)) != -1)
+			add_dns64_prefix(&in6, preflen, prefixes,
+			    an_rrset_data->count, WKA1_FOUND);
+		if ((preflen = dns64_prefixlen(&in6, wka2)) != -1)
+			add_dns64_prefix(&in6, preflen, prefixes,
+			    an_rrset_data->count, WKA2_FOUND);
+	}
+
+	for (i = 0; i < an_rrset_data->count && prefixes[i].flags != 0; i++)
+		if ((prefixes[i].flags & (WKA1_FOUND | WKA2_FOUND)) ==
+		    (WKA1_FOUND | WKA2_FOUND))
+			count++;
+
+	dns64_present = count > 0;
+
+	if (dns64_present) {
+		/* downgrade DHCP resolvers, DNS64 breaks DNSSEC */
+		if (resolvers[UW_RES_DHCP] != NULL &&
+		    resolvers[UW_RES_DHCP]->state == VALIDATING)
+			new_resolver(UW_RES_DHCP, RESOLVING);
+		if (resolvers[UW_RES_ODOT_DHCP] != NULL &&
+		    resolvers[UW_RES_ODOT_DHCP]->state == VALIDATING)
+			new_resolver(UW_RES_ODOT_DHCP, RESOLVING);
+	}
+
+	resolver_imsg_compose_frontend(IMSG_NEW_DNS64_PREFIXES_START, 0,
+	    &count, sizeof(count));
+	for (i = 0; i < an_rrset_data->count && prefixes[i].flags != 0; i++) {
+		if ((prefixes[i].flags & (WKA1_FOUND | WKA2_FOUND)) ==
+		    (WKA1_FOUND | WKA2_FOUND)) {
+			resolver_imsg_compose_frontend(IMSG_NEW_DNS64_PREFIX,
+			    0, &prefixes[i], sizeof(struct dns64_prefix));
+		}
+	}
+	resolver_imsg_compose_frontend(IMSG_NEW_DNS64_PREFIXES_DONE, 0, NULL,
+	    0);
+ out:
+	free(prefixes);
+	query_info_clear(&qinfo);
+	reply_info_parsedelete(rinfo, &alloc);
+	alloc_clear(&alloc);
+	regional_destroy(region);
+	sldns_buffer_free(buf);
+	free(ar->ar_data);
+	asr_resolver_free(asr_ctx);
+}
+
+int
+dns64_prefixlen(const struct in6_addr *in6, const uint8_t *wka)
+{
+	/* RFC 6052, 2.2 */
+	static const int	 possible_prefixes[] = {32, 40, 48, 56, 64, 96};
+	size_t			 i, j;
+	int			 found, pos;
+
+	for (i = 0; i < nitems(possible_prefixes); i++) {
+		pos = possible_prefixes[i] / 8;
+		found = 1;
+		for (j = 0; j < 4 && found; j++, pos++) {
+			if (pos == 8) {
+				if (in6->s6_addr[pos] != 0)
+					found = 0;
+				pos++;
+			}
+			if (in6->s6_addr[pos] != wka[j])
+				found = 0;
+		}
+		if (found)
+			return possible_prefixes[i];
+	}
+	return -1;
+}
+
+void
+add_dns64_prefix(const struct in6_addr *in6, int prefixlen,
+    struct dns64_prefix *prefixes, int prefixes_size, int flag)
+{
+	struct in6_addr	 tmp;
+	int		 i;
+
+	tmp = *in6;
+
+	for(i = prefixlen / 8; i < 16; i++)
+		tmp.s6_addr[i] = 0;
+
+	for (i = 0; i < prefixes_size; i++) {
+		if (prefixes[i].flags == 0) {
+			prefixes[i].in6 = tmp;
+			prefixes[i].prefixlen = prefixlen;
+			prefixes[i].flags |= flag;
+			break;
+		} else if (prefixes[i].prefixlen == prefixlen &&
+		    memcmp(&prefixes[i].in6, &tmp, sizeof(tmp)) == 0) {
+			prefixes[i].flags |= flag;
+			break;
+		}
+	}
 }

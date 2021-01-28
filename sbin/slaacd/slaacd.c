@@ -1,4 +1,4 @@
-/*	$OpenBSD: slaacd.c,v 1.54 2021/01/17 15:39:17 florian Exp $	*/
+/*	$OpenBSD: slaacd.c,v 1.56 2021/01/19 16:49:56 florian Exp $	*/
 
 /*
  * Copyright (c) 2017 Florian Obser <florian@openbsd.org>
@@ -54,12 +54,18 @@
 #include "engine.h"
 #include "control.h"
 
+enum slaacd_process {
+	PROC_MAIN,
+	PROC_ENGINE,
+	PROC_FRONTEND
+};
+
 __dead void	usage(void);
 __dead void	main_shutdown(void);
 
 void	main_sig_handler(int, short, void *);
 
-static pid_t	start_child(int, char *, int, int, int);
+static pid_t	start_child(enum slaacd_process, char *, int, int, int);
 
 void	main_dispatch_frontend(int, short, void *);
 void	main_dispatch_engine(int, short, void *);
@@ -78,13 +84,13 @@ static int	main_imsg_send_ipc_sockets(struct imsgbuf *, struct imsgbuf *);
 int		main_imsg_compose_frontend(int, int, void *, uint16_t);
 int		main_imsg_compose_engine(int, pid_t, void *, uint16_t);
 
-struct imsgev		*iev_frontend;
-struct imsgev		*iev_engine;
+static struct imsgev	*iev_frontend;
+static struct imsgev	*iev_engine;
 
-pid_t	 frontend_pid;
-pid_t	 engine_pid;
+pid_t			 frontend_pid;
+pid_t			 engine_pid;
 
-int	 routesock, ioctl_sock, rtm_seq = 0;
+int			 routesock, ioctl_sock, rtm_seq = 0;
 
 void
 main_sig_handler(int sig, short event, void *arg)
@@ -197,9 +203,7 @@ main(int argc, char *argv[])
 	frontend_pid = start_child(PROC_FRONTEND, saved_argv0,
 	    pipe_main2frontend[1], debug, verbose);
 
-	slaacd_process = PROC_MAIN;
-
-	log_procinit(log_procnames[slaacd_process]);
+	log_procinit("main");
 
 	if ((routesock = socket(AF_ROUTE, SOCK_RAW | SOCK_CLOEXEC |
 	    SOCK_NONBLOCK, AF_INET6)) == -1)
@@ -319,7 +323,7 @@ main_shutdown(void)
 }
 
 static pid_t
-start_child(int p, char *argv0, int fd, int debug, int verbose)
+start_child(enum slaacd_process p, char *argv0, int fd, int debug, int verbose)
 {
 	char	*argv[7];
 	int	 argc = 0;

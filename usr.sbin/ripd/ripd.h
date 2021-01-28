@@ -1,4 +1,4 @@
-/*	$OpenBSD: ripd.h,v 1.26 2018/12/31 20:34:16 remi Exp $ */
+/*	$OpenBSD: ripd.h,v 1.28 2021/01/19 10:28:07 claudio Exp $ */
 
 /*
  * Copyright (c) 2004 Esben Norby <norby@openbsd.org>
@@ -43,6 +43,8 @@
 
 #define	NBR_TIMEOUT		180
 
+#define READ_BUF_SIZE		65535
+#define RT_BUF_SIZE		16384
 #define RT_BUF_SIZE		16384
 #define MAX_RTSOCK_BUF		(2 * 1024 * 1024)
 
@@ -94,12 +96,6 @@ enum imsg_type {
 	IMSG_SEND_REQUEST,
 	IMSG_SEND_TRIGGERED_UPDATE,
 	IMSG_DEMOTE
-};
-
-static const char * const log_procnames[] = {
-	"parent",
-	"ripe",
-	"rde"
 };
 
 struct imsgev {
@@ -206,12 +202,6 @@ struct packet_entry {
 	TAILQ_ENTRY(packet_entry)	 entry;
 	struct rip_route		*rr;
 };
-
-enum {
-	PROC_MAIN,
-	PROC_RIP_ENGINE,
-	PROC_RDE_ENGINE
-} ripd_process;
 
 #define	REDIST_CONNECTED	0x01
 #define	REDIST_STATIC		0x02

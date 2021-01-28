@@ -1,4 +1,4 @@
-/*	$OpenBSD: ospfe.c,v 1.107 2020/11/02 00:29:58 dlg Exp $ */
+/*	$OpenBSD: ospfe.c,v 1.110 2021/01/19 09:37:53 claudio Exp $ */
 
 /*
  * Copyright (c) 2005 Claudio Jeker <claudio@openbsd.org>
@@ -47,9 +47,9 @@ __dead void	 ospfe_shutdown(void);
 void		 orig_rtr_lsa_all(struct area *);
 struct iface	*find_vlink(struct abr_rtr *);
 
-struct ospfd_conf	*oeconf = NULL, *nconf;
-struct imsgev		*iev_main;
-struct imsgev		*iev_rde;
+struct ospfd_conf	*oeconf = NULL, *noeconf;
+static struct imsgev	*iev_main;
+static struct imsgev	*iev_rde;
 int			 oe_nofib;
 
 /* ARGSUSED */
@@ -185,9 +185,6 @@ ospfe(struct ospfd_conf *xconf, int pipe_parent2ospfe[2], int pipe_ospfe2rde[2],
 		}
 	}
 
-	if ((pkt_ptr = calloc(1, READ_BUF_SIZE)) == NULL)
-		fatal("ospfe");
-
 	/* start interfaces */
 	LIST_FOREACH(area, &oeconf->area_list, entry) {
 		ospfe_demote_area(area, 0);
@@ -240,7 +237,6 @@ ospfe_shutdown(void)
 	free(iev_rde);
 	free(iev_main);
 	free(oeconf);
-	free(pkt_ptr);
 
 	log_info("ospf engine exiting");
 	_exit(0);
@@ -403,13 +399,13 @@ ospfe_dispatch_main(int fd, short event, void *bula)
 			}
 			break;
 		case IMSG_RECONF_CONF:
-			if ((nconf = malloc(sizeof(struct ospfd_conf))) ==
+			if ((noeconf = malloc(sizeof(struct ospfd_conf))) ==
 			    NULL)
 				fatal(NULL);
-			memcpy(nconf, imsg.data, sizeof(struct ospfd_conf));
+			memcpy(noeconf, imsg.data, sizeof(struct ospfd_conf));
 
-			LIST_INIT(&nconf->area_list);
-			LIST_INIT(&nconf->cand_list);
+			LIST_INIT(&noeconf->area_list);
+			LIST_INIT(&noeconf->cand_list);
 			break;
 		case IMSG_RECONF_AREA:
 			if ((narea = area_new()) == NULL)
@@ -421,7 +417,7 @@ ospfe_dispatch_main(int fd, short event, void *bula)
 			RB_INIT(&narea->lsa_tree);
 			SIMPLEQ_INIT(&narea->redist_list);
 
-			LIST_INSERT_HEAD(&nconf->area_list, narea, entry);
+			LIST_INSERT_HEAD(&noeconf->area_list, narea, entry);
 			break;
 		case IMSG_RECONF_IFACE:
 			if ((niface = malloc(sizeof(struct iface))) == NULL)
@@ -442,12 +438,12 @@ ospfe_dispatch_main(int fd, short event, void *bula)
 			break;
 		case IMSG_RECONF_END:
 			if ((oeconf->flags & OSPFD_FLAG_STUB_ROUTER) !=
-			    (nconf->flags & OSPFD_FLAG_STUB_ROUTER))
+			    (noeconf->flags & OSPFD_FLAG_STUB_ROUTER))
 				stub_changed = 1;
 			else
 				stub_changed = 0;
-			merge_config(oeconf, nconf);
-			nconf = NULL;
+			merge_config(oeconf, noeconf);
+			noeconf = NULL;
 			if (stub_changed)
 				orig_rtr_lsa_all(NULL);
 			break;
@@ -461,10 +457,8 @@ ospfe_dispatch_main(int fd, short event, void *bula)
 			if ((fd = imsg.fd) == -1)
 				fatalx("%s: expected to receive imsg control"
 				    "fd but didn't receive any", __func__);
-			control_state.fd = fd;
 			/* Listen on control socket. */
-			TAILQ_INIT(&ctl_conns);
-			control_listen();
+			control_listen(fd);
 			if (pledge("stdio inet mcast", NULL) == -1)
 				fatal("pledge");
 			break;

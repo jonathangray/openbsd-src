@@ -1,4 +1,4 @@
-/*	$OpenBSD: unwind.c,v 1.53 2021/01/12 16:40:33 florian Exp $	*/
+/*	$OpenBSD: unwind.c,v 1.57 2021/01/27 08:30:50 florian Exp $	*/
 
 /*
  * Copyright (c) 2018 Florian Obser <florian@openbsd.org>
@@ -50,12 +50,18 @@
 
 #define	TRUST_ANCHOR_FILE	"/var/db/unwind.key"
 
+enum uw_process {
+	PROC_MAIN,
+	PROC_RESOLVER,
+	PROC_FRONTEND,
+};
+
 __dead void	usage(void);
 __dead void	main_shutdown(void);
 
 void		main_sig_handler(int, short, void *);
 
-static pid_t	start_child(int, char *, int, int, int);
+static pid_t	start_child(enum uw_process, char *, int, int, int);
 
 void		main_dispatch_frontend(int, short, void *);
 void		main_dispatch_resolver(int, short, void *);
@@ -69,17 +75,14 @@ void		open_ports(void);
 void		solicit_dns_proposals(void);
 void		send_blocklist_fd(void);
 
-struct uw_conf	*main_conf;
-struct imsgev	*iev_frontend;
-struct imsgev	*iev_resolver;
-char		*conffile;
-
-pid_t		 frontend_pid;
-pid_t		 resolver_pid;
-
-uint32_t	 cmd_opts;
-
-int		 routesock;
+struct uw_conf		*main_conf;
+static struct imsgev	*iev_frontend;
+static struct imsgev	*iev_resolver;
+char			*conffile;
+pid_t			 frontend_pid;
+pid_t			 resolver_pid;
+uint32_t		 cmd_opts;
+int			 routesock;
 
 void
 main_sig_handler(int sig, short event, void *arg)
@@ -218,8 +221,7 @@ main(int argc, char *argv[])
 	    pipe_main2frontend[1], debug, cmd_opts & (OPT_VERBOSE |
 	    OPT_VERBOSE2 | OPT_VERBOSE3));
 
-	uw_process = PROC_MAIN;
-	log_procinit(log_procnames[uw_process]);
+	log_procinit("main");
 
 	event_init();
 
@@ -267,7 +269,8 @@ main(int argc, char *argv[])
 		fatal("route socket");
 
 	rtfilter = ROUTE_FILTER(RTM_IFINFO) | ROUTE_FILTER(RTM_PROPOSAL)
-	    | ROUTE_FILTER(RTM_IFANNOUNCE);
+	    | ROUTE_FILTER(RTM_IFANNOUNCE) | ROUTE_FILTER(RTM_NEWADDR)
+	    | ROUTE_FILTER(RTM_DELADDR);
 	if (setsockopt(frontend_routesock, AF_ROUTE, ROUTE_MSGFILTER,
 	    &rtfilter, sizeof(rtfilter)) == -1)
 		fatal("setsockopt(ROUTE_MSGFILTER)");
@@ -336,7 +339,7 @@ main_shutdown(void)
 }
 
 static pid_t
-start_child(int p, char *argv0, int fd, int debug, int verbose)
+start_child(enum uw_process p, char *argv0, int fd, int debug, int verbose)
 {
 	char	*argv[7];
 	int	 argc = 0;
@@ -830,8 +833,7 @@ open_ports(void)
 
 	if ((udp4sock == -1 || tcp4sock == -1) && (udp6sock == -1 ||
 	    tcp6sock == -1))
-		//fatalx("could not bind to 127.0.0.1 or ::1 on port 53");
-		fatalx("could not bind to 127.0.0.1 or ::1 on port 53 %d %d %d %d", udp4sock, tcp4sock, udp6sock, tcp6sock);
+		fatalx("could not bind to 127.0.0.1 or ::1 on port 53");
 
 	if (udp4sock != -1)
 		main_imsg_compose_frontend_fd(IMSG_UDP4SOCK, 0, udp4sock);

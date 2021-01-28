@@ -1,4 +1,4 @@
-/*	$OpenBSD: frontend.c,v 1.35 2020/12/29 19:47:16 benno Exp $	*/
+/*	$OpenBSD: frontend.c,v 1.39 2021/01/19 16:54:48 florian Exp $	*/
 
 /*
  * Copyright (c) 2018 Florian Obser <florian@openbsd.org>
@@ -151,12 +151,11 @@ void			 handle_route_message(struct rt_msghdr *,
 			     struct sockaddr **);
 
 struct rad_conf	*frontend_conf;
-struct imsgev		*iev_main;
-struct imsgev		*iev_engine;
+static struct imsgev	*iev_main;
+static struct imsgev	*iev_engine;
 struct event		 ev_route;
 int			 ioctlsock = -1, routesock = -1;
 struct ipv6_mreq	 all_routers;
-struct sockaddr_in6	 all_nodes;
 struct msghdr		 sndmhdr;
 struct iovec		 sndiov[2];
 
@@ -186,7 +185,6 @@ frontend(int debug, int verbose)
 	uint8_t			*sndcmsgbuf = NULL;
 
 	frontend_conf = config_new_empty();
-	control_state.fd = -1;
 
 	log_init(debug, LOG_DAEMON);
 	log_setverbose(verbose);
@@ -199,9 +197,8 @@ frontend(int debug, int verbose)
 	if (chdir("/") == -1)
 		fatal("chdir(\"/\")");
 
-	rad_process = PROC_FRONTEND;
-	setproctitle("%s", log_procnames[rad_process]);
-	log_procinit(log_procnames[rad_process]);
+	setproctitle("%s", "frontend");
+	log_procinit("frontend");
 
 	if (setgroups(1, &pw->pw_gid) ||
 	    setresgid(pw->pw_gid, pw->pw_gid, pw->pw_gid) ||
@@ -237,11 +234,6 @@ frontend(int debug, int verbose)
 
 	if (inet_pton(AF_INET6, "ff02::2",
 	    &all_routers.ipv6mr_multiaddr.s6_addr) == -1)
-		fatal("inet_pton");
-
-	all_nodes.sin6_len = sizeof(all_nodes);
-	all_nodes.sin6_family = AF_INET6;
-	if (inet_pton(AF_INET6, "ff02::1", &all_nodes.sin6_addr) != 1)
 		fatal("inet_pton");
 
 	sndcmsgbuflen = CMSG_SPACE(sizeof(struct in6_pktinfo)) +
@@ -475,17 +467,12 @@ frontend_dispatch_main(int fd, short event, void *bula)
 			frontend_startup();
 			break;
 		case IMSG_CONTROLFD:
-			if (control_state.fd != -1)
-				fatalx("%s: received unexpected controlsock",
-				    __func__);
 			if ((fd = imsg.fd) == -1)
 				fatalx("%s: expected to receive imsg "
 				    "control fd but didn't receive any",
 				    __func__);
-			control_state.fd = fd;
 			/* Listen on control socket. */
-			TAILQ_INIT(&ctl_conns);
-			control_listen();
+			control_listen(fd);
 			break;
 		default:
 			log_debug("%s: error handling imsg %d", __func__,

@@ -1,4 +1,4 @@
-/*	$OpenBSD: rde.c,v 1.512 2021/01/13 11:34:01 claudio Exp $ */
+/*	$OpenBSD: rde.c,v 1.514 2021/01/25 09:15:24 claudio Exp $ */
 
 /*
  * Copyright (c) 2003, 2004 Henning Brauer <henning@openbsd.org>
@@ -79,6 +79,7 @@ static void	 rde_softreconfig_in(struct rib_entry *, void *);
 static void	 rde_softreconfig_sync_reeval(struct rib_entry *, void *);
 static void	 rde_softreconfig_sync_fib(struct rib_entry *, void *);
 static void	 rde_softreconfig_sync_done(void *, u_int8_t);
+static int	 rde_no_as_set(struct rde_peer *);
 int		 rde_update_queue_pending(void);
 void		 rde_update_queue_runner(void);
 void		 rde_update6_queue_runner(u_int8_t);
@@ -1591,7 +1592,8 @@ bad_flags:
 	case ATTR_ASPATH:
 		if (!CHECK_FLAGS(flags, ATTR_WELL_KNOWN, 0))
 			goto bad_flags;
-		error = aspath_verify(p, attr_len, rde_as4byte(peer));
+		error = aspath_verify(p, attr_len, rde_as4byte(peer),
+		    rde_no_as_set(peer));
 		if (error == AS_ERR_SOFT) {
 			/*
 			 * soft errors like unexpected segment types are
@@ -1599,8 +1601,6 @@ bad_flags:
 			 * marked invalid.
 			 */
 			a->flags |= F_ATTR_PARSE_ERR;
-			log_peer_warnx(&peer->conf, "bad ASPATH, "
-			    "path invalidated and prefix withdrawn");
 		} else if (error != 0) {
 			rde_update_err(peer, ERR_UPDATE, ERR_UPD_ASPATH,
 			    NULL, 0);
@@ -1615,6 +1615,15 @@ bad_flags:
 			npath = aspath_inflate(p, attr_len, &nlen);
 			if (npath == NULL)
 				fatal("aspath_inflate");
+		}
+		if (error == AS_ERR_SOFT) {
+			char *str;
+
+			aspath_asprint(&str, npath, nlen);
+			log_peer_warnx(&peer->conf, "bad ASPATH %s, "
+			    "path invalidated and prefix withdrawn",
+			    str ? str : "(bad aspath)");
+			free(str);
 		}
 		a->flags |= F_ATTR_ASPATH;
 		a->aspath = aspath_get(npath, nlen);
@@ -1842,7 +1851,8 @@ bad_flags:
 		if (!CHECK_FLAGS(flags, ATTR_OPTIONAL|ATTR_TRANSITIVE,
 		    ATTR_PARTIAL))
 			goto bad_flags;
-		if ((error = aspath_verify(p, attr_len, 1)) != 0) {
+		if ((error = aspath_verify(p, attr_len, 1,
+		    rde_no_as_set(peer))) != 0) {
 			/*
 			 * XXX RFC does not specify how to handle errors.
 			 * XXX Instead of dropping the session because of a
@@ -3585,6 +3595,12 @@ rde_as4byte(struct rde_peer *peer)
 	return (peer->capa.as4byte);
 }
 
+static int
+rde_no_as_set(struct rde_peer *peer)
+{
+	return (peer->conf.flags & PEERFLAG_NO_AS_SET);
+}
+
 /* End-of-RIB marker, RFC 4724 */
 static void
 rde_peer_recv_eor(struct rde_peer *peer, u_int8_t aid)
@@ -3658,7 +3674,7 @@ network_add(struct network_config *nc, struct filterstate *state)
 {
 	struct l3vpn		*vpn;
 	struct filter_set_head	*vpnset = NULL;
-	in_addr_t		 prefix4;
+	struct in_addr		 prefix4;
 	struct in6_addr		 prefix6;
 	u_int8_t		 vstate;
 	u_int16_t		 i;
@@ -3669,37 +3685,35 @@ network_add(struct network_config *nc, struct filterstate *state)
 				continue;
 			switch (nc->prefix.aid) {
 			case AID_INET:
-				prefix4 = nc->prefix.v4.s_addr;
-				bzero(&nc->prefix, sizeof(nc->prefix));
+				prefix4 = nc->prefix.v4;
+				memset(&nc->prefix, 0, sizeof(nc->prefix));
 				nc->prefix.aid = AID_VPN_IPv4;
-				nc->prefix.vpn4.rd = vpn->rd;
-				nc->prefix.vpn4.addr.s_addr = prefix4;
-				nc->prefix.vpn4.labellen = 3;
-				nc->prefix.vpn4.labelstack[0] =
+				nc->prefix.rd = vpn->rd;
+				nc->prefix.v4 = prefix4;
+				nc->prefix.labellen = 3;
+				nc->prefix.labelstack[0] =
 				    (vpn->label >> 12) & 0xff;
-				nc->prefix.vpn4.labelstack[1] =
+				nc->prefix.labelstack[1] =
 				    (vpn->label >> 4) & 0xff;
-				nc->prefix.vpn4.labelstack[2] =
+				nc->prefix.labelstack[2] =
 				    (vpn->label << 4) & 0xf0;
-				nc->prefix.vpn4.labelstack[2] |= BGP_MPLS_BOS;
+				nc->prefix.labelstack[2] |= BGP_MPLS_BOS;
 				vpnset = &vpn->export;
 				break;
 			case AID_INET6:
-				memcpy(&prefix6, &nc->prefix.v6.s6_addr,
-				    sizeof(struct in6_addr));
+				prefix6 = nc->prefix.v6;
 				memset(&nc->prefix, 0, sizeof(nc->prefix));
 				nc->prefix.aid = AID_VPN_IPv6;
-				nc->prefix.vpn6.rd = vpn->rd;
-				memcpy(&nc->prefix.vpn6.addr.s6_addr, &prefix6,
-				    sizeof(struct in6_addr));
-				nc->prefix.vpn6.labellen = 3;
-				nc->prefix.vpn6.labelstack[0] =
+				nc->prefix.rd = vpn->rd;
+				nc->prefix.v6 = prefix6;
+				nc->prefix.labellen = 3;
+				nc->prefix.labelstack[0] =
 				    (vpn->label >> 12) & 0xff;
-				nc->prefix.vpn6.labelstack[1] =
+				nc->prefix.labelstack[1] =
 				    (vpn->label >> 4) & 0xff;
-				nc->prefix.vpn6.labelstack[2] =
+				nc->prefix.labelstack[2] =
 				    (vpn->label << 4) & 0xf0;
-				nc->prefix.vpn6.labelstack[2] |= BGP_MPLS_BOS;
+				nc->prefix.labelstack[2] |= BGP_MPLS_BOS;
 				vpnset = &vpn->export;
 				break;
 			default:
@@ -3745,7 +3759,7 @@ void
 network_delete(struct network_config *nc)
 {
 	struct l3vpn	*vpn;
-	in_addr_t	 prefix4;
+	struct in_addr	 prefix4;
 	struct in6_addr	 prefix6;
 	u_int32_t	 i;
 
@@ -3755,36 +3769,34 @@ network_delete(struct network_config *nc)
 				continue;
 			switch (nc->prefix.aid) {
 			case AID_INET:
-				prefix4 = nc->prefix.v4.s_addr;
-				bzero(&nc->prefix, sizeof(nc->prefix));
+				prefix4 = nc->prefix.v4;
+				memset(&nc->prefix, 0, sizeof(nc->prefix));
 				nc->prefix.aid = AID_VPN_IPv4;
-				nc->prefix.vpn4.rd = vpn->rd;
-				nc->prefix.vpn4.addr.s_addr = prefix4;
-				nc->prefix.vpn4.labellen = 3;
-				nc->prefix.vpn4.labelstack[0] =
+				nc->prefix.rd = vpn->rd;
+				nc->prefix.v4 = prefix4;
+				nc->prefix.labellen = 3;
+				nc->prefix.labelstack[0] =
 				    (vpn->label >> 12) & 0xff;
-				nc->prefix.vpn4.labelstack[1] =
+				nc->prefix.labelstack[1] =
 				    (vpn->label >> 4) & 0xff;
-				nc->prefix.vpn4.labelstack[2] =
+				nc->prefix.labelstack[2] =
 				    (vpn->label << 4) & 0xf0;
-				nc->prefix.vpn4.labelstack[2] |= BGP_MPLS_BOS;
+				nc->prefix.labelstack[2] |= BGP_MPLS_BOS;
 				break;
 			case AID_INET6:
-				memcpy(&prefix6, &nc->prefix.v6.s6_addr,
-				    sizeof(struct in6_addr));
+				prefix6 = nc->prefix.v6;
 				memset(&nc->prefix, 0, sizeof(nc->prefix));
 				nc->prefix.aid = AID_VPN_IPv6;
-				nc->prefix.vpn6.rd = vpn->rd;
-				memcpy(&nc->prefix.vpn6.addr.s6_addr, &prefix6,
-				    sizeof(struct in6_addr));
-				nc->prefix.vpn6.labellen = 3;
-				nc->prefix.vpn6.labelstack[0] =
+				nc->prefix.rd = vpn->rd;
+				nc->prefix.v6 = prefix6;
+				nc->prefix.labellen = 3;
+				nc->prefix.labelstack[0] =
 				    (vpn->label >> 12) & 0xff;
-				nc->prefix.vpn6.labelstack[1] =
+				nc->prefix.labelstack[1] =
 				    (vpn->label >> 4) & 0xff;
-				nc->prefix.vpn6.labelstack[2] =
+				nc->prefix.labelstack[2] =
 				    (vpn->label << 4) & 0xf0;
-				nc->prefix.vpn6.labelstack[2] |= BGP_MPLS_BOS;
+				nc->prefix.labelstack[2] |= BGP_MPLS_BOS;
 				break;
 			default:
 				log_warnx("unable to VPNize prefix");

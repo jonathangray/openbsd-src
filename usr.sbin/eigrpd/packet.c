@@ -1,4 +1,4 @@
-/*	$OpenBSD: packet.c,v 1.18 2016/09/02 16:44:33 renato Exp $ */
+/*	$OpenBSD: packet.c,v 1.20 2021/01/19 11:49:26 claudio Exp $ */
 
 /*
  * Copyright (c) 2015 Renato Westphal <renato@openbsd.org>
@@ -475,6 +475,7 @@ recv_packet(int fd, short event, void *bula)
 	struct sockaddr_storage	 from;
 	struct iovec		 iov;
 	struct ip		 ip_hdr;
+	char 			 pkt[READ_BUF_SIZE];
 	char			*buf;
 	struct cmsghdr		*cmsg;
 	ssize_t			 r;
@@ -490,7 +491,7 @@ recv_packet(int fd, short event, void *bula)
 
 	/* setup buffer */
 	memset(&msg, 0, sizeof(msg));
-	iov.iov_base = buf = pkt_ptr;
+	iov.iov_base = buf = pkt;
 	iov.iov_len = READ_BUF_SIZE;
 	msg.msg_name = &from;
 	msg.msg_namelen = sizeof(from);

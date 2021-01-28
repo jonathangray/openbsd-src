@@ -1,4 +1,4 @@
-/*	$OpenBSD: ripd.c,v 1.33 2019/08/08 16:50:15 mestre Exp $ */
+/*	$OpenBSD: ripd.c,v 1.35 2021/01/19 10:20:47 claudio Exp $ */
 
 /*
  * Copyright (c) 2006 Michele Marchetto <mydecay@openbeer.it>
@@ -58,8 +58,8 @@ int			 pipe_parent2rde[2];
 int			 pipe_ripe2rde[2];
 
 struct ripd_conf	*conf = NULL;
-struct imsgev		*iev_ripe;
-struct imsgev		*iev_rde;
+static struct imsgev	*iev_ripe;
+static struct imsgev	*iev_rde;
 
 pid_t			 ripe_pid = 0;
 pid_t			 rde_pid = 0;
@@ -109,8 +109,7 @@ main(int argc, char *argv[])
 	size_t		 len;
 
 	conffile = CONF_FILE;
-	ripd_process = PROC_MAIN;
-	log_procname = log_procnames[ripd_process];
+	log_procname = "parent";
 	sockname = RIPD_SOCKET;
 
 	log_init(1);	/* log to stderr until daemonized */

@@ -1,4 +1,4 @@
-/*	$OpenBSD: dvmrpe.c,v 1.19 2016/09/02 16:20:34 benno Exp $ */
+/*	$OpenBSD: dvmrpe.c,v 1.23 2021/01/19 12:29:46 claudio Exp $ */
 
 /*
  * Copyright (c) 2005 Claudio Jeker <claudio@openbsd.org>
@@ -47,9 +47,8 @@ __dead void	 dvmrpe_shutdown(void);
 
 volatile sig_atomic_t	 dvmrpe_quit = 0;
 struct dvmrpd_conf	*deconf = NULL;
-struct imsgev		*iev_main;
-struct imsgev		*iev_rde;
-struct ctl_conn		*ctl_conn;
+static struct imsgev	*iev_main;
+static struct imsgev	*iev_rde;
 
 void
 dvmrpe_sig_handler(int sig, short event, void *bula)
@@ -118,8 +117,7 @@ dvmrpe(struct dvmrpd_conf *xconf, int pipe_parent2dvmrpe[2],
 		fatal("chdir(\"/\")");
 
 	setproctitle("dvmrp engine");
-	dvmrpd_process = PROC_DVMRP_ENGINE;
-	log_procname = log_procnames[dvmrpd_process];
+	log_procname = "dvmrpe";
 
 	if (setgroups(1, &pw->pw_gid) ||
 	    setresgid(pw->pw_gid, pw->pw_gid, pw->pw_gid) ||
@@ -167,11 +165,7 @@ dvmrpe(struct dvmrpd_conf *xconf, int pipe_parent2dvmrpe[2],
 	event_add(&deconf->ev, NULL);
 
 	/* listen on dvmrpd control socket */
-	TAILQ_INIT(&ctl_conns);
 	control_listen();
-
-	if ((pkt_ptr = calloc(1, IBUF_READ_SIZE)) == NULL)
-		fatal("dvmrpe");
 
 	/* start interfaces */
 	LIST_FOREACH(iface, &deconf->iface_list, entry) {
@@ -216,7 +210,6 @@ dvmrpe_shutdown(void)
 	/* clean up */
 	free(iev_rde);
 	free(iev_main);
-	free(pkt_ptr);
 
 	log_info("dvmrp engine exiting");
 	_exit(0);

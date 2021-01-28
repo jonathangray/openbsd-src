@@ -1,4 +1,4 @@
-/*	$OpenBSD: frontend.c,v 1.46 2021/01/17 15:39:17 florian Exp $	*/
+/*	$OpenBSD: frontend.c,v 1.49 2021/01/19 16:49:56 florian Exp $	*/
 
 /*
  * Copyright (c) 2017 Florian Obser <florian@openbsd.org>
@@ -101,8 +101,8 @@ const char	*flags_to_str(int);
 #endif	/* SMALL */
 
 LIST_HEAD(, iface)		 interfaces;
-struct imsgev			*iev_main;
-struct imsgev			*iev_engine;
+static struct imsgev		*iev_main;
+static struct imsgev		*iev_engine;
 struct event			 ev_route;
 struct msghdr			 sndmhdr;
 struct iovec			 sndiov[4];
@@ -143,10 +143,6 @@ frontend(int debug, int verbose)
 	log_init(debug, LOG_DAEMON);
 	log_setverbose(verbose);
 
-#ifndef	SMALL
-	control_state.fd = -1;
-#endif	/* SMALL */
-
 	if ((pw = getpwnam(SLAACD_USER)) == NULL)
 		fatal("getpwnam");
 
@@ -155,9 +151,8 @@ frontend(int debug, int verbose)
 	if (chdir("/") == -1)
 		fatal("chdir(\"/\")");
 
-	slaacd_process = PROC_FRONTEND;
-	setproctitle("%s", log_procnames[slaacd_process]);
-	log_procinit(log_procnames[slaacd_process]);
+	setproctitle("%s", "frontend");
+	log_procinit("frontend");
 
 	if ((ioctlsock = socket(AF_INET6, SOCK_DGRAM | SOCK_CLOEXEC, 0)) == -1)
 		fatal("socket");
@@ -358,17 +353,12 @@ frontend_dispatch_main(int fd, short event, void *bula)
 			break;
 #ifndef	SMALL
 		case IMSG_CONTROLFD:
-			if (control_state.fd != -1)
-				fatalx("%s: received unexpected controlsock",
-				    __func__);
 			if ((fd = imsg.fd) == -1)
 				fatalx("%s: expected to receive imsg "
 				    "control fd but didn't receive any",
 				    __func__);
-			control_state.fd = fd;
 			/* Listen on control socket. */
-			TAILQ_INIT(&ctl_conns);
-			control_listen();
+			control_listen(fd);
 			break;
 		case IMSG_CTL_END:
 			control_imsg_relay(&imsg);

@@ -1,4 +1,4 @@
-/*	$OpenBSD: packet.c,v 1.5 2015/12/07 19:14:49 mmcc Exp $ */
+/*	$OpenBSD: packet.c,v 1.7 2021/01/19 16:02:56 claudio Exp $ */
 
 /*
  * Copyright (c) 2004, 2005, 2006 Esben Norby <norby@openbsd.org>
@@ -41,7 +41,7 @@ int		 dvmrp_hdr_sanity_check(const struct ip *, struct dvmrp_hdr *,
 		     u_int16_t, const struct iface *);
 struct iface	*find_iface(struct dvmrpd_conf *, struct in_addr);
 
-extern struct dvmrpd_conf	*deconf;
+static u_int8_t	*recv_buf;
 
 int
 gen_dvmrp_hdr(struct ibuf *buf, struct iface *iface, u_int8_t code)
@@ -104,10 +104,12 @@ recv_packet(int fd, short event, void *bula)
 	if (event != EV_READ)
 		return;
 
-	/* setup buffer */
-	buf = pkt_ptr;
+	if (recv_buf == NULL)
+		if ((recv_buf = malloc(READ_BUF_SIZE)) == NULL)
+			fatal(__func__);
 
-	if ((r = recvfrom(fd, buf, IBUF_READ_SIZE, 0, NULL, NULL)) == -1) {
+	buf = recv_buf;
+	if ((r = recvfrom(fd, buf, READ_BUF_SIZE, 0, NULL, NULL)) == -1) {
 		if (errno != EAGAIN && errno != EINTR)
 			log_debug("recv_packet: error receiving packet");
 		return;
