@@ -1,4 +1,4 @@
-/*	$OpenBSD: main.c,v 1.90 2021/01/08 08:45:55 claudio Exp $ */
+/*	$OpenBSD: main.c,v 1.98 2021/02/05 12:26:52 claudio Exp $ */
 /*
  * Copyright (c) 2019 Kristaps Dzonsons <kristaps@bsd.lv>
  *
@@ -52,11 +52,10 @@
 
 #include <assert.h>
 #include <err.h>
+#include <errno.h>
 #include <dirent.h>
-#include <fcntl.h>
 #include <fnmatch.h>
 #include <fts.h>
-#include <inttypes.h>
 #include <poll.h>
 #include <pwd.h>
 #include <stdio.h>
@@ -67,10 +66,6 @@
 #include <syslog.h>
 #include <unistd.h>
 #include <imsg.h>
-
-#include <openssl/err.h>
-#include <openssl/evp.h>
-#include <openssl/x509v3.h>
 
 #include "extern.h"
 
@@ -83,10 +78,11 @@
  * An rsync repository.
  */
 struct	repo {
-	char	*host; /* hostname */
-	char	*module; /* module name */
-	int	 loaded; /* whether loaded or not */
-	size_t	 id; /* identifier (array index) */
+	char		*repo;	/* repository rsync URI */
+	char		*local;	/* local path name */
+	char		*notify; /* RRDB notify URI if available */
+	size_t		 id; /* identifier (array index) */
+	int		 loaded; /* whether loaded or not */
 };
 
 size_t	entity_queue;
@@ -101,25 +97,6 @@ static struct	repotab {
 	struct repo	*repos; /* repositories */
 	size_t		 reposz; /* number of repos */
 } rt;
-
-/*
- * An entity (MFT, ROA, certificate, etc.) that needs to be downloaded
- * and parsed.
- */
-struct	entity {
-	enum rtype	 type; /* type of entity (not RTYPE_EOF) */
-	char		*uri; /* file or rsync:// URI */
-	int		 has_dgst; /* whether dgst is specified */
-	unsigned char	 dgst[SHA256_DIGEST_LENGTH]; /* optional */
-	ssize_t		 repo; /* repo index or <0 if w/o repo */
-	int		 has_pkey; /* whether pkey/sz is specified */
-	unsigned char	*pkey; /* public key (optional) */
-	size_t		 pkeysz; /* public key length (optional) */
-	char		*descr; /* tal description */
-	TAILQ_ENTRY(entity) entries;
-};
-
-TAILQ_HEAD(entityq, entity);
 
 /*
  * Database of all file path accessed during a run.
@@ -137,17 +114,9 @@ filepathcmp(struct filepath *a, struct filepath *b)
 
 RB_HEAD(filepath_tree, filepath);
 RB_PROTOTYPE(filepath_tree, filepath, entry, filepathcmp);
-struct filepath_tree  fpt = RB_INITIALIZER(&fpt);
 
-/*
- * Mark that our subprocesses will never return.
- */
-static void	entityq_flush(struct msgbuf *, struct entityq *,
-		    const struct repo *);
-static void	proc_parser(int) __attribute__((noreturn));
-static void	build_chain(const struct auth *, STACK_OF(X509) **);
-static void	build_crls(const struct auth *, struct crl_tree *,
-		    STACK_OF(X509_CRL) **);
+static struct filepath_tree	fpt = RB_INITIALIZER(&fpt);
+static struct msgbuf		procq, rsyncq;
 
 const char	*bird_tablename = "ROAS";
 
@@ -203,7 +172,7 @@ filepath_exists(char *file)
 
 RB_GENERATE(filepath_tree, filepath, entry, filepathcmp);
 
-static void
+void
 entity_free(struct entity *ent)
 {
 
@@ -211,7 +180,7 @@ entity_free(struct entity *ent)
 		return;
 
 	free(ent->pkey);
-	free(ent->uri);
+	free(ent->file);
 	free(ent->descr);
 	free(ent);
 }
@@ -221,15 +190,12 @@ entity_free(struct entity *ent)
  * Matched by entity_buffer_req().
  * The pointer must be passed entity_free().
  */
-static void
+void
 entity_read_req(int fd, struct entity *ent)
 {
 
 	io_simple_read(fd, &ent->type, sizeof(enum rtype));
-	io_str_read(fd, &ent->uri);
-	io_simple_read(fd, &ent->has_dgst, sizeof(int));
-	if (ent->has_dgst)
-		io_simple_read(fd, ent->dgst, sizeof(ent->dgst));
+	io_str_read(fd, &ent->file);
 	io_simple_read(fd, &ent->has_pkey, sizeof(int));
 	if (ent->has_pkey)
 		io_buf_read_alloc(fd, (void **)&ent->pkey, &ent->pkeysz);
@@ -237,37 +203,23 @@ entity_read_req(int fd, struct entity *ent)
 }
 
 /*
- * Like entity_write_req() but into a buffer.
+ * Write the queue entity.
  * Matched by entity_read_req().
  */
 static void
-entity_buffer_req(struct ibuf *b, const struct entity *ent)
-{
-
-	io_simple_buffer(b, &ent->type, sizeof(ent->type));
-	io_str_buffer(b, ent->uri);
-	io_simple_buffer(b, &ent->has_dgst, sizeof(int));
-	if (ent->has_dgst)
-		io_simple_buffer(b, ent->dgst, sizeof(ent->dgst));
-	io_simple_buffer(b, &ent->has_pkey, sizeof(int));
-	if (ent->has_pkey)
-		io_buf_buffer(b, ent->pkey, ent->pkeysz);
-	io_str_buffer(b, ent->descr);
-}
-
-/*
- * Write the queue entity.
- * Simply a wrapper around entity_buffer_req().
- */
-static void
-entity_write_req(struct msgbuf *msgq, const struct entity *ent)
+entity_write_req(const struct entity *ent)
 {
 	struct ibuf *b;
 
 	if ((b = ibuf_dynamic(sizeof(*ent), UINT_MAX)) == NULL)
 		err(1, NULL);
-	entity_buffer_req(b, ent);
-	ibuf_close(msgq, b);
+	io_simple_buffer(b, &ent->type, sizeof(ent->type));
+	io_str_buffer(b, ent->file);
+	io_simple_buffer(b, &ent->has_pkey, sizeof(int));
+	if (ent->has_pkey)
+		io_buf_buffer(b, ent->pkey, ent->pkeysz);
+	io_str_buffer(b, ent->descr);
+	ibuf_close(&procq, b);
 }
 
 /*
@@ -275,103 +227,26 @@ entity_write_req(struct msgbuf *msgq, const struct entity *ent)
  * repo, then flush those into the parser process.
  */
 static void
-entityq_flush(struct msgbuf *msgq, struct entityq *q, const struct repo *repo)
+entityq_flush(struct entityq *q, const struct repo *repo)
 {
 	struct entity	*p, *np;
 
 	TAILQ_FOREACH_SAFE(p, q, entries, np) {
 		if (p->repo < 0 || repo->id != (size_t)p->repo)
 			continue;
-		entity_write_req(msgq, p);
+		entity_write_req(p);
 		TAILQ_REMOVE(q, p, entries);
 		entity_free(p);
 	}
 }
 
 /*
- * Look up a repository, queueing it for discovery if not found.
- */
-static const struct repo *
-repo_lookup(struct msgbuf *msgq, const char *uri)
-{
-	const char	*host, *mod;
-	size_t		 hostsz, modsz, i;
-	struct repo	*rp;
-	struct ibuf	*b;
-
-	if (!rsync_uri_parse(&host, &hostsz,
-	    &mod, &modsz, NULL, NULL, NULL, uri))
-		errx(1, "%s: malformed", uri);
-
-	/* Look up in repository table. */
-
-	for (i = 0; i < rt.reposz; i++) {
-		if (strlen(rt.repos[i].host) != hostsz)
-			continue;
-		if (strlen(rt.repos[i].module) != modsz)
-			continue;
-		if (strncasecmp(rt.repos[i].host, host, hostsz))
-			continue;
-		if (strncasecmp(rt.repos[i].module, mod, modsz))
-			continue;
-		return &rt.repos[i];
-	}
-
-	rt.repos = reallocarray(rt.repos,
-		rt.reposz + 1, sizeof(struct repo));
-	if (rt.repos == NULL)
-		err(1, "reallocarray");
-
-	rp = &rt.repos[rt.reposz++];
-	memset(rp, 0, sizeof(struct repo));
-	rp->id = rt.reposz - 1;
-
-	if ((rp->host = strndup(host, hostsz)) == NULL ||
-	    (rp->module = strndup(mod, modsz)) == NULL)
-		err(1, "strndup");
-
-	i = rt.reposz - 1;
-
-	if (!noop) {
-		logx("%s/%s: pulling from network", rp->host, rp->module);
-		if ((b = ibuf_dynamic(128, UINT_MAX)) == NULL)
-			err(1, NULL);
-		io_simple_buffer(b, &i, sizeof(i));
-		io_str_buffer(b, rp->host);
-		io_str_buffer(b, rp->module);
-
-		ibuf_close(msgq, b);
-	} else {
-		rp->loaded = 1;
-		logx("%s/%s: using cache", rp->host, rp->module);
-		stats.repos++;
-		/* there is nothing in the queue so no need to flush */
-	}
-	return rp;
-}
-
-/*
- * Build local file name base on the URI and the repo info.
- */
-static char *
-repo_filename(const struct repo *repo, const char *uri)
-{
-	char *nfile;
-
-	uri += 8 + strlen(repo->host) + 1 + strlen(repo->module) + 1;
-
-	if (asprintf(&nfile, "%s/%s/%s", repo->host, repo->module, uri) == -1)
-		err(1, "asprintf");
-	return nfile;
-}
-
-/*
  * Add the heap-allocated file to the queue for processing.
  */
 static void
-entityq_add(struct msgbuf *msgq, struct entityq *q, char *file, enum rtype type,
-    const struct repo *rp, const unsigned char *dgst,
-    const unsigned char *pkey, size_t pkeysz, char *descr)
+entityq_add(struct entityq *q, char *file, enum rtype type,
+    const struct repo *rp, const unsigned char *pkey, size_t pkeysz,
+    char *descr)
 {
 	struct entity	*p;
 
@@ -379,12 +254,9 @@ entityq_add(struct msgbuf *msgq, struct entityq *q, char *file, enum rtype type,
 		err(1, "calloc");
 
 	p->type = type;
-	p->uri = file;
+	p->file = file;
 	p->repo = (rp != NULL) ? (ssize_t)rp->id : -1;
-	p->has_dgst = dgst != NULL;
 	p->has_pkey = pkey != NULL;
-	if (p->has_dgst)
-		memcpy(p->dgst, dgst, sizeof(p->dgst));
 	if (p->has_pkey) {
 		p->pkeysz = pkeysz;
 		if ((p->pkey = malloc(pkeysz)) == NULL)
@@ -405,10 +277,86 @@ entityq_add(struct msgbuf *msgq, struct entityq *q, char *file, enum rtype type,
 	 */
 
 	if (rp == NULL || rp->loaded) {
-		entity_write_req(msgq, p);
+		entity_write_req(p);
 		entity_free(p);
 	} else
 		TAILQ_INSERT_TAIL(q, p, entries);
+}
+
+/*
+ * Look up a repository, queueing it for discovery if not found.
+ */
+static const struct repo *
+repo_lookup(const char *uri)
+{
+	const char	*host, *mod;
+	size_t		 hostsz, modsz, i;
+	char		*local;
+	struct repo	*rp;
+	struct ibuf	*b;
+
+	if (!rsync_uri_parse(&host, &hostsz,
+	    &mod, &modsz, NULL, NULL, NULL, uri))
+		errx(1, "%s: malformed", uri);
+
+	if (asprintf(&local, "%.*s/%.*s", (int)hostsz, host,
+	    (int)modsz, mod) == -1)
+		err(1, "asprintf");
+
+	/* Look up in repository table. */
+
+	for (i = 0; i < rt.reposz; i++) {
+		if (strcmp(rt.repos[i].local, local))
+			continue;
+		free(local);
+		return &rt.repos[i];
+	}
+
+	rt.repos = reallocarray(rt.repos,
+		rt.reposz + 1, sizeof(struct repo));
+	if (rt.repos == NULL)
+		err(1, "reallocarray");
+
+	rp = &rt.repos[rt.reposz++];
+	memset(rp, 0, sizeof(struct repo));
+	rp->id = rt.reposz - 1;
+	rp->local = local;
+
+	if ((rp->repo = strndup(uri, mod + modsz - uri)) == NULL)
+		err(1, "strdup");
+
+	if (!noop) {
+		if (asprintf(&local, "%s", rp->local) == -1)
+			err(1, "asprintf");
+		logx("%s: pulling from network", local);
+		if ((b = ibuf_dynamic(256, UINT_MAX)) == NULL)
+			err(1, NULL);
+		io_simple_buffer(b, &rp->id, sizeof(rp->id));
+		io_str_buffer(b, local);
+		io_str_buffer(b, rp->repo);
+		ibuf_close(&rsyncq, b);
+		free(local);
+	} else {
+		rp->loaded = 1;
+		logx("%s: using cache", rp->local);
+		stats.repos++;
+		/* there is nothing in the queue so no need to flush */
+	}
+	return rp;
+}
+
+/*
+ * Build local file name base on the URI and the repo info.
+ */
+static char *
+repo_filename(const struct repo *repo, const char *uri)
+{
+	char *nfile;
+
+	uri += strlen(repo->repo) + 1;
+	if (asprintf(&nfile, "%s/%s", repo->local, uri) == -1)
+		err(1, "asprintf");
+	return nfile;
 }
 
 /*
@@ -416,14 +364,12 @@ entityq_add(struct msgbuf *msgq, struct entityq *q, char *file, enum rtype type,
  * These are always relative to the directory in which "mft" sits.
  */
 static void
-queue_add_from_mft(struct msgbuf *msgq, struct entityq *q, const char *mft,
+queue_add_from_mft(struct entityq *q, const char *mft,
     const struct mftfile *file, enum rtype type)
 {
 	char		*cp, *nfile;
 
 	/* Construct local path from filename. */
-	/* We know this is host/module/... */
-
 	cp = strrchr(mft, '/');
 	assert(cp != NULL);
 	assert(cp - mft < INT_MAX);
@@ -435,7 +381,7 @@ queue_add_from_mft(struct msgbuf *msgq, struct entityq *q, const char *mft,
 	 * that the repository has already been loaded.
 	 */
 
-	entityq_add(msgq, q, nfile, type, NULL, file->hash, NULL, 0, NULL);
+	entityq_add(q, nfile, type, NULL, NULL, 0, NULL);
 }
 
 /*
@@ -447,8 +393,7 @@ queue_add_from_mft(struct msgbuf *msgq, struct entityq *q, const char *mft,
  * check the suffix anyway).
  */
 static void
-queue_add_from_mft_set(struct msgbuf *msgq, struct entityq *q,
-    const struct mft *mft)
+queue_add_from_mft_set(struct entityq *q, const struct mft *mft)
 {
 	size_t			 i, sz;
 	const struct mftfile	*f;
@@ -459,7 +404,7 @@ queue_add_from_mft_set(struct msgbuf *msgq, struct entityq *q,
 		assert(sz > 4);
 		if (strcasecmp(f->file + sz - 4, ".crl"))
 			continue;
-		queue_add_from_mft(msgq, q, mft->file, f, RTYPE_CRL);
+		queue_add_from_mft(q, mft->file, f, RTYPE_CRL);
 	}
 
 	for (i = 0; i < mft->filesz; i++) {
@@ -468,7 +413,7 @@ queue_add_from_mft_set(struct msgbuf *msgq, struct entityq *q,
 		assert(sz > 4);
 		if (strcasecmp(f->file + sz - 4, ".cer"))
 			continue;
-		queue_add_from_mft(msgq, q, mft->file, f, RTYPE_CER);
+		queue_add_from_mft(q, mft->file, f, RTYPE_CER);
 	}
 
 	for (i = 0; i < mft->filesz; i++) {
@@ -477,7 +422,7 @@ queue_add_from_mft_set(struct msgbuf *msgq, struct entityq *q,
 		assert(sz > 4);
 		if (strcasecmp(f->file + sz - 4, ".roa"))
 			continue;
-		queue_add_from_mft(msgq, q, mft->file, f, RTYPE_ROA);
+		queue_add_from_mft(q, mft->file, f, RTYPE_ROA);
 	}
 
 	for (i = 0; i < mft->filesz; i++) {
@@ -486,7 +431,7 @@ queue_add_from_mft_set(struct msgbuf *msgq, struct entityq *q,
 		assert(sz > 4);
 		if (strcasecmp(f->file + sz - 4, ".gbr"))
 			continue;
-		queue_add_from_mft(msgq, q, mft->file, f, RTYPE_GBR);
+		queue_add_from_mft(q, mft->file, f, RTYPE_GBR);
 	}
 
 	for (i = 0; i < mft->filesz; i++) {
@@ -506,7 +451,7 @@ queue_add_from_mft_set(struct msgbuf *msgq, struct entityq *q,
  * Add a local TAL file (RFC 7730) to the queue of files to fetch.
  */
 static void
-queue_add_tal(struct msgbuf *msgq, struct entityq *q, const char *file)
+queue_add_tal(struct entityq *q, const char *file)
 {
 	char	*nfile, *buf;
 
@@ -526,7 +471,7 @@ queue_add_tal(struct msgbuf *msgq, struct entityq *q, const char *file)
 	}
 
 	/* Not in a repository, so directly add to queue. */
-	entityq_add(msgq, q, nfile, RTYPE_TAL, NULL, NULL, NULL, 0, buf);
+	entityq_add(q, nfile, RTYPE_TAL, NULL, NULL, 0, buf);
 	/* entityq_add makes a copy of buf */
 	free(buf);
 }
@@ -535,8 +480,7 @@ queue_add_tal(struct msgbuf *msgq, struct entityq *q, const char *file)
  * Add URIs (CER) from a TAL file, RFC 8630.
  */
 static void
-queue_add_from_tal(struct msgbuf *procq, struct msgbuf *rsyncq,
-    struct entityq *q, const struct tal *tal)
+queue_add_from_tal(struct entityq *q, const struct tal *tal)
 {
 	char			*nfile;
 	const struct repo	*repo;
@@ -554,10 +498,10 @@ queue_add_from_tal(struct msgbuf *procq, struct msgbuf *rsyncq,
 		errx(1, "TAL file has no rsync:// URI");
 
 	/* Look up the repository. */
-	repo = repo_lookup(rsyncq, uri);
+	repo = repo_lookup(uri);
 	nfile = repo_filename(repo, uri);
 
-	entityq_add(procq, q, nfile, RTYPE_CER, repo, NULL, tal->pkey,
+	entityq_add(q, nfile, RTYPE_CER, repo, tal->pkey,
 	    tal->pkeysz, tal->descr);
 }
 
@@ -565,616 +509,15 @@ queue_add_from_tal(struct msgbuf *procq, struct msgbuf *rsyncq,
  * Add a manifest (MFT) found in an X509 certificate, RFC 6487.
  */
 static void
-queue_add_from_cert(struct msgbuf *procq, struct msgbuf *rsyncq,
-    struct entityq *q, const char *rsyncuri, const char *rrdpuri)
+queue_add_from_cert(struct entityq *q, const struct cert *cert)
 {
-	char			*nfile;
 	const struct repo	*repo;
+	char			*nfile;
 
-	if (rsyncuri == NULL)
-		return;
+	repo = repo_lookup(cert->mft);
+	nfile = repo_filename(repo, cert->mft);
 
-	/* Look up the repository. */
-	repo = repo_lookup(rsyncq, rsyncuri);
-	nfile = repo_filename(repo, rsyncuri);
-
-	entityq_add(procq, q, nfile, RTYPE_MFT, repo, NULL, NULL, 0, NULL);
-}
-
-/*
- * Parse and validate a ROA.
- * This is standard stuff.
- * Returns the roa on success, NULL on failure.
- */
-static struct roa *
-proc_parser_roa(struct entity *entp,
-    X509_STORE *store, X509_STORE_CTX *ctx,
-    struct auth_tree *auths, struct crl_tree *crlt)
-{
-	struct roa		*roa;
-	X509			*x509;
-	int			 c;
-	struct auth		*a;
-	STACK_OF(X509)		*chain;
-	STACK_OF(X509_CRL)	*crls;
-
-	assert(entp->has_dgst);
-	if ((roa = roa_parse(&x509, entp->uri, entp->dgst)) == NULL)
-		return NULL;
-
-	a = valid_ski_aki(entp->uri, auths, roa->ski, roa->aki);
-
-	build_chain(a, &chain);
-	build_crls(a, crlt, &crls);
-
-	assert(x509 != NULL);
-	if (!X509_STORE_CTX_init(ctx, store, x509, chain))
-		cryptoerrx("X509_STORE_CTX_init");
-	X509_STORE_CTX_set_flags(ctx,
-	    X509_V_FLAG_IGNORE_CRITICAL | X509_V_FLAG_CRL_CHECK);
-	X509_STORE_CTX_set0_crls(ctx, crls);
-
-	if (X509_verify_cert(ctx) <= 0) {
-		c = X509_STORE_CTX_get_error(ctx);
-		X509_STORE_CTX_cleanup(ctx);
-		if (verbose > 0 || c != X509_V_ERR_UNABLE_TO_GET_CRL)
-			warnx("%s: %s", entp->uri,
-			    X509_verify_cert_error_string(c));
-		X509_free(x509);
-		roa_free(roa);
-		sk_X509_free(chain);
-		sk_X509_CRL_free(crls);
-		return NULL;
-	}
-	X509_STORE_CTX_cleanup(ctx);
-	sk_X509_free(chain);
-	sk_X509_CRL_free(crls);
-	X509_free(x509);
-
-	/*
-	 * If the ROA isn't valid, we accept it anyway and depend upon
-	 * the code around roa_read() to check the "valid" field itself.
-	 */
-
-	if (valid_roa(entp->uri, auths, roa))
-		roa->valid = 1;
-
-	return roa;
-}
-
-/*
- * Parse and validate a manifest file.
- * Here we *don't* validate against the list of CRLs, because the
- * certificate used to sign the manifest may specify a CRL that the root
- * certificate didn't, and we haven't scanned for it yet.
- * This chicken-and-egg isn't important, however, because we'll catch
- * the revocation list by the time we scan for any contained resources
- * (ROA, CER) and will see it then.
- * Return the mft on success or NULL on failure.
- */
-static struct mft *
-proc_parser_mft(struct entity *entp, X509_STORE *store, X509_STORE_CTX *ctx,
-	struct auth_tree *auths, struct crl_tree *crlt)
-{
-	struct mft		*mft;
-	X509			*x509;
-	int			 c;
-	struct auth		*a;
-	STACK_OF(X509)		*chain;
-
-	assert(!entp->has_dgst);
-	if ((mft = mft_parse(&x509, entp->uri)) == NULL)
-		return NULL;
-
-	a = valid_ski_aki(entp->uri, auths, mft->ski, mft->aki);
-	build_chain(a, &chain);
-
-	if (!X509_STORE_CTX_init(ctx, store, x509, chain))
-		cryptoerrx("X509_STORE_CTX_init");
-
-	/* CRL checked disabled here because CRL is referenced from mft */
-	X509_STORE_CTX_set_flags(ctx, X509_V_FLAG_IGNORE_CRITICAL);
-
-	if (X509_verify_cert(ctx) <= 0) {
-		c = X509_STORE_CTX_get_error(ctx);
-		X509_STORE_CTX_cleanup(ctx);
-		warnx("%s: %s", entp->uri, X509_verify_cert_error_string(c));
-		mft_free(mft);
-		X509_free(x509);
-		sk_X509_free(chain);
-		return NULL;
-	}
-
-	X509_STORE_CTX_cleanup(ctx);
-	sk_X509_free(chain);
-	X509_free(x509);
-
-	if (!mft_check(entp->uri, mft)) {
-		mft_free(mft);
-		return NULL;
-	}
-
-	return mft;
-}
-
-/*
- * Certificates are from manifests (has a digest and is signed with
- * another certificate) Parse the certificate, make sure its
- * signatures are valid (with CRLs), then validate the RPKI content.
- * This returns a certificate (which must not be freed) or NULL on
- * parse failure.
- */
-static struct cert *
-proc_parser_cert(const struct entity *entp,
-    X509_STORE *store, X509_STORE_CTX *ctx,
-    struct auth_tree *auths, struct crl_tree *crlt)
-{
-	struct cert		*cert;
-	X509			*x509;
-	int			 c;
-	struct auth		*a = NULL, *na;
-	char			*tal;
-	STACK_OF(X509)		*chain;
-	STACK_OF(X509_CRL)	*crls;
-
-	assert(entp->has_dgst);
-	assert(!entp->has_pkey);
-
-	/* Extract certificate data and X509. */
-
-	cert = cert_parse(&x509, entp->uri, entp->dgst);
-	if (cert == NULL)
-		return NULL;
-
-	a = valid_ski_aki(entp->uri, auths, cert->ski, cert->aki);
-	build_chain(a, &chain);
-	build_crls(a, crlt, &crls);
-
-	/*
-	 * Validate certificate chain w/CRLs.
-	 * Only check the CRLs if specifically asked.
-	 */
-
-	assert(x509 != NULL);
-	if (!X509_STORE_CTX_init(ctx, store, x509, chain))
-		cryptoerrx("X509_STORE_CTX_init");
-
-	X509_STORE_CTX_set_flags(ctx,
-	    X509_V_FLAG_IGNORE_CRITICAL | X509_V_FLAG_CRL_CHECK);
-	X509_STORE_CTX_set0_crls(ctx, crls);
-
-	if (X509_verify_cert(ctx) <= 0) {
-		c = X509_STORE_CTX_get_error(ctx);
-		warnx("%s: %s", entp->uri,
-		    X509_verify_cert_error_string(c));
-		X509_STORE_CTX_cleanup(ctx);
-		cert_free(cert);
-		sk_X509_free(chain);
-		sk_X509_CRL_free(crls);
-		X509_free(x509);
-		return NULL;
-	}
-
-	X509_STORE_CTX_cleanup(ctx);
-	sk_X509_free(chain);
-	sk_X509_CRL_free(crls);
-
-	/* Validate the cert to get the parent */
-	if (!valid_cert(entp->uri, auths, cert)) {
-		X509_free(x509); // needed? XXX
-		return cert;
-	}
-
-	/*
-	 * Add validated certs to the RPKI auth tree.
-	 */
-
-	cert->valid = 1;
-
-	na = malloc(sizeof(*na));
-	if (na == NULL)
-		err(1, NULL);
-
-	tal = a->tal;
-
-	na->parent = a;
-	na->cert = cert;
-	na->tal = tal;
-	na->fn = strdup(entp->uri);
-	if (na->fn == NULL)
-		err(1, NULL);
-
-	if (RB_INSERT(auth_tree, auths, na) != NULL)
-		err(1, "auth tree corrupted");
-
-	return cert;
-}
-
-
-/*
- * Root certificates come from TALs (has a pkey and is self-signed).
- * Parse the certificate, ensure that it's public key matches the
- * known public key from the TAL, and then validate the RPKI
- * content. If valid, we add it as a trusted root (trust anchor) to
- * "store".
- *
- * This returns a certificate (which must not be freed) or NULL on
- * parse failure.
- */
-static struct cert *
-proc_parser_root_cert(const struct entity *entp,
-    X509_STORE *store, X509_STORE_CTX *ctx,
-    struct auth_tree *auths, struct crl_tree *crlt)
-{
-	char			subject[256];
-	ASN1_TIME		*notBefore, *notAfter;
-	X509_NAME		*name;
-	struct cert		*cert;
-	X509			*x509;
-	struct auth		*na;
-	char			*tal;
-
-	assert(!entp->has_dgst);
-	assert(entp->has_pkey);
-
-	/* Extract certificate data and X509. */
-
-	cert = ta_parse(&x509, entp->uri, entp->pkey, entp->pkeysz);
-	if (cert == NULL)
-		return NULL;
-
-	if ((name = X509_get_subject_name(x509)) == NULL) {
-		warnx("%s Unable to get certificate subject", entp->uri);
-		goto badcert;
-	}
-	if (X509_NAME_oneline(name, subject, sizeof(subject)) == NULL) {
-		warnx("%s: Unable to parse certificate subject name",
-		    entp->uri);
-		goto badcert;
-	}
-	if ((notBefore = X509_get_notBefore(x509)) == NULL) {
-		warnx("%s: certificate has invalid notBefore, subject='%s'",
-		    entp->uri, subject);
-		goto badcert;
-	}
-	if ((notAfter = X509_get_notAfter(x509)) == NULL) {
-		warnx("%s: certificate has invalid notAfter, subject='%s'",
-		    entp->uri, subject);
-		goto badcert;
-	}
-	if (X509_cmp_current_time(notBefore) != -1) {
-		warnx("%s: certificate not yet valid, subject='%s'", entp->uri,
-		    subject);
-		goto badcert;
-	}
-	if (X509_cmp_current_time(notAfter) != 1)  {
-		warnx("%s: certificate has expired, subject='%s'", entp->uri,
-		    subject);
-		goto badcert;
-	}
-	if (!valid_ta(entp->uri, auths, cert)) {
-		warnx("%s: certificate not a valid ta, subject='%s'",
-		    entp->uri, subject);
-		goto badcert;
-	}
-
-	/*
-	 * Add valid roots to the RPKI auth tree and as a trusted root
-	 * for chain validation to the X509_STORE.
-	 */
-
-	cert->valid = 1;
-
-	na = malloc(sizeof(*na));
-	if (na == NULL)
-		err(1, NULL);
-
-	if ((tal = strdup(entp->descr)) == NULL)
-		err(1, NULL);
-
-	na->parent = NULL;
-	na->cert = cert;
-	na->tal = tal;
-	na->fn = strdup(entp->uri);
-	if (na->fn == NULL)
-		err(1, NULL);
-
-	if (RB_INSERT(auth_tree, auths, na) != NULL)
-		err(1, "auth tree corrupted");
-
-	X509_STORE_add_cert(store, x509);
-
-	return cert;
- badcert:
-	X509_free(x509); // needed? XXX
-	return cert;
-}
-
-/*
- * Parse a certificate revocation list
- * This simply parses the CRL content itself, optionally validating it
- * within the digest if it comes from a manifest, then adds it to the
- * store of CRLs.
- */
-static void
-proc_parser_crl(struct entity *entp, X509_STORE *store,
-    X509_STORE_CTX *ctx, struct crl_tree *crlt)
-{
-	X509_CRL		*x509_crl;
-	struct crl		*crl;
-	const unsigned char	*dgst;
-
-	dgst = entp->has_dgst ? entp->dgst : NULL;
-	if ((x509_crl = crl_parse(entp->uri, dgst)) != NULL) {
-		if ((crl = malloc(sizeof(*crl))) == NULL)
-			err(1, NULL);
-		if ((crl->aki = x509_crl_get_aki(x509_crl)) == NULL)
-			errx(1, "x509_crl_get_aki failed");
-		crl->x509_crl = x509_crl;
-
-		if (RB_INSERT(crl_tree, crlt, crl) != NULL) {
-			warnx("%s: duplicate AKI %s", entp->uri, crl->aki);
-			free_crl(crl);
-		}
-	}
-}
-
-/*
- * Parse a ghostbuster record
- */
-static void
-proc_parser_gbr(struct entity *entp, X509_STORE *store,
-    X509_STORE_CTX *ctx, struct auth_tree *auths, struct crl_tree *crlt)
-{
-	struct gbr		*gbr;
-	X509			*x509;
-	int			 c;
-	struct auth		*a;
-	STACK_OF(X509)		*chain;
-	STACK_OF(X509_CRL)	*crls;
-
-	if ((gbr = gbr_parse(&x509, entp->uri)) == NULL)
-		return;
-
-	a = valid_ski_aki(entp->uri, auths, gbr->ski, gbr->aki);
-
-	build_chain(a, &chain);
-	build_crls(a, crlt, &crls);
-
-	assert(x509 != NULL);
-	if (!X509_STORE_CTX_init(ctx, store, x509, chain))
-		cryptoerrx("X509_STORE_CTX_init");
-	X509_STORE_CTX_set_flags(ctx,
-	    X509_V_FLAG_IGNORE_CRITICAL | X509_V_FLAG_CRL_CHECK);
-	X509_STORE_CTX_set0_crls(ctx, crls);
-
-	if (X509_verify_cert(ctx) <= 0) {
-		c = X509_STORE_CTX_get_error(ctx);
-		if (verbose > 0 || c != X509_V_ERR_UNABLE_TO_GET_CRL)
-			warnx("%s: %s", entp->uri,
-			    X509_verify_cert_error_string(c));
-	}
-
-	X509_STORE_CTX_cleanup(ctx);
-	sk_X509_free(chain);
-	sk_X509_CRL_free(crls);
-	X509_free(x509);
-	gbr_free(gbr);
-}
-
-/* use the parent (id) to walk the tree to the root and
-   build a certificate chain from cert->x509 */
-static void
-build_chain(const struct auth *a, STACK_OF(X509) **chain)
-{
-	*chain = NULL;
-
-	if (a == NULL)
-		return;
-
-	if ((*chain = sk_X509_new_null()) == NULL)
-		err(1, "sk_X509_new_null");
-	for (; a != NULL; a = a->parent) {
-		assert(a->cert->x509 != NULL);
-		if (!sk_X509_push(*chain, a->cert->x509))
-			errx(1, "sk_X509_push");
-	}
-}
-
-/* use the parent (id) to walk the tree to the root and
-   build a stack of CRLs */
-static void
-build_crls(const struct auth *a, struct crl_tree *crlt,
-    STACK_OF(X509_CRL) **crls)
-{
-	struct crl	find, *found;
-
-	if ((*crls = sk_X509_CRL_new_null()) == NULL)
-		errx(1, "sk_X509_CRL_new_null");
-
-	if (a == NULL)
-		return;
-
-	find.aki = a->cert->ski;
-	found = RB_FIND(crl_tree, crlt, &find);
-	if (found && !sk_X509_CRL_push(*crls, found->x509_crl))
-		err(1, "sk_X509_CRL_push");
-}
-
-/*
- * Process responsible for parsing and validating content.
- * All this process does is wait to be told about a file to parse, then
- * it parses it and makes sure that the data being returned is fully
- * validated and verified.
- * The process will exit cleanly only when fd is closed.
- */
-static void
-proc_parser(int fd)
-{
-	struct tal	*tal;
-	struct cert	*cert;
-	struct mft	*mft;
-	struct roa	*roa;
-	struct entity	*entp;
-	struct entityq	 q;
-	int		 c, rc = 1;
-	struct msgbuf	 msgq;
-	struct pollfd	 pfd;
-	struct ibuf	*b;
-	X509_STORE	*store;
-	X509_STORE_CTX	*ctx;
-	struct auth_tree auths = RB_INITIALIZER(&auths);
-	struct crl_tree	 crlt = RB_INITIALIZER(&crlt);
-
-	ERR_load_crypto_strings();
-	OpenSSL_add_all_ciphers();
-	OpenSSL_add_all_digests();
-
-	if ((store = X509_STORE_new()) == NULL)
-		cryptoerrx("X509_STORE_new");
-	if ((ctx = X509_STORE_CTX_new()) == NULL)
-		cryptoerrx("X509_STORE_CTX_new");
-
-	TAILQ_INIT(&q);
-
-	msgbuf_init(&msgq);
-	msgq.fd = fd;
-
-	pfd.fd = fd;
-
-	io_socket_nonblocking(pfd.fd);
-
-	for (;;) {
-		pfd.events = POLLIN;
-		if (msgq.queued)
-			pfd.events |= POLLOUT;
-
-		if (poll(&pfd, 1, INFTIM) == -1)
-			err(1, "poll");
-		if ((pfd.revents & (POLLERR|POLLNVAL)))
-			errx(1, "poll: bad descriptor");
-
-		/* If the parent closes, return immediately. */
-
-		if ((pfd.revents & POLLHUP))
-			break;
-
-		/*
-		 * Start with read events.
-		 * This means that the parent process is sending us
-		 * something we need to parse.
-		 * We don't actually parse it til we have space in our
-		 * outgoing buffer for responding, though.
-		 */
-
-		if ((pfd.revents & POLLIN)) {
-			io_socket_blocking(fd);
-			entp = calloc(1, sizeof(struct entity));
-			if (entp == NULL)
-				err(1, NULL);
-			entity_read_req(fd, entp);
-			TAILQ_INSERT_TAIL(&q, entp, entries);
-			io_socket_nonblocking(fd);
-		}
-
-		if (pfd.revents & POLLOUT) {
-			switch (msgbuf_write(&msgq)) {
-			case 0:
-				errx(1, "write: connection closed");
-			case -1:
-				err(1, "write");
-			}
-		}
-
-		/*
-		 * If there's nothing to parse, then stop waiting for
-		 * the write signal.
-		 */
-
-		if (TAILQ_EMPTY(&q)) {
-			pfd.events &= ~POLLOUT;
-			continue;
-		}
-
-		entp = TAILQ_FIRST(&q);
-		assert(entp != NULL);
-
-		if ((b = ibuf_dynamic(256, UINT_MAX)) == NULL)
-			err(1, NULL);
-		io_simple_buffer(b, &entp->type, sizeof(entp->type));
-
-		switch (entp->type) {
-		case RTYPE_TAL:
-			assert(!entp->has_dgst);
-			if ((tal = tal_parse(entp->uri, entp->descr)) == NULL)
-				goto out;
-			tal_buffer(b, tal);
-			tal_free(tal);
-			break;
-		case RTYPE_CER:
-			if (entp->has_dgst)
-				cert = proc_parser_cert(entp, store, ctx,
-				    &auths, &crlt);
-			else
-				cert = proc_parser_root_cert(entp, store, ctx,
-				    &auths, &crlt);
-			c = (cert != NULL);
-			io_simple_buffer(b, &c, sizeof(int));
-			if (cert != NULL)
-				cert_buffer(b, cert);
-			/*
-			 * The parsed certificate data "cert" is now
-			 * managed in the "auths" table, so don't free
-			 * it here (see the loop after "out").
-			 */
-			break;
-		case RTYPE_MFT:
-			mft = proc_parser_mft(entp, store, ctx, &auths, &crlt);
-			c = (mft != NULL);
-			io_simple_buffer(b, &c, sizeof(int));
-			if (mft != NULL)
-				mft_buffer(b, mft);
-			mft_free(mft);
-			break;
-		case RTYPE_CRL:
-			proc_parser_crl(entp, store, ctx, &crlt);
-			break;
-		case RTYPE_ROA:
-			assert(entp->has_dgst);
-			roa = proc_parser_roa(entp, store, ctx, &auths, &crlt);
-			c = (roa != NULL);
-			io_simple_buffer(b, &c, sizeof(int));
-			if (roa != NULL)
-				roa_buffer(b, roa);
-			roa_free(roa);
-			break;
-		case RTYPE_GBR:
-			proc_parser_gbr(entp, store, ctx, &auths, &crlt);
-			break;
-		default:
-			abort();
-		}
-
-		ibuf_close(&msgq, b);
-		TAILQ_REMOVE(&q, entp, entries);
-		entity_free(entp);
-	}
-
-	rc = 0;
-out:
-	while ((entp = TAILQ_FIRST(&q)) != NULL) {
-		TAILQ_REMOVE(&q, entp, entries);
-		entity_free(entp);
-	}
-
-	/* XXX free auths and crl tree */
-
-	X509_STORE_CTX_free(ctx);
-	X509_STORE_free(store);
-
-	msgbuf_clear(&msgq);
-
-	exit(rc);
+	entityq_add(q, nfile, RTYPE_MFT, repo, NULL, 0, NULL);
 }
 
 /*
@@ -1184,8 +527,8 @@ out:
  * In all cases, we gather statistics.
  */
 static void
-entity_process(int proc, struct msgbuf *procq, struct msgbuf *rsyncq,
-    struct stats *st, struct entityq *q, struct vrp_tree *tree)
+entity_process(int proc, struct stats *st, struct entityq *q,
+    struct vrp_tree *tree)
 {
 	enum rtype	type;
 	struct tal	*tal;
@@ -1206,7 +549,7 @@ entity_process(int proc, struct msgbuf *procq, struct msgbuf *rsyncq,
 	case RTYPE_TAL:
 		st->tals++;
 		tal = tal_read(proc);
-		queue_add_from_tal(procq, rsyncq, q, tal);
+		queue_add_from_tal(q, tal);
 		tal_free(tal);
 		break;
 	case RTYPE_CER:
@@ -1224,8 +567,7 @@ entity_process(int proc, struct msgbuf *procq, struct msgbuf *rsyncq,
 			 * we're revoked and then we don't want to
 			 * process the MFT.
 			 */
-			queue_add_from_cert(procq, rsyncq,
-			    q, cert->mft, cert->notify);
+			queue_add_from_cert(q, cert);
 		} else
 			st->certs_invalid++;
 		cert_free(cert);
@@ -1240,7 +582,7 @@ entity_process(int proc, struct msgbuf *procq, struct msgbuf *rsyncq,
 		mft = mft_read(proc);
 		if (mft->stale)
 			st->mfts_stale++;
-		queue_add_from_mft_set(procq, q, mft);
+		queue_add_from_mft_set(q, mft);
 		mft_free(mft);
 		break;
 	case RTYPE_CRL:
@@ -1330,8 +672,7 @@ repo_cleanup(const char *cachedir)
 		err(1, "%s: chdir", cachedir);
 
 	for (i = 0; i < rt.reposz; i++) {
-		if (asprintf(&argv[0], "%s/%s", rt.repos[i].host,
-		    rt.repos[i].module) == -1)
+		if (asprintf(&argv[0], "%s", rt.repos[i].local) == -1)
 			err(1, NULL);
 		argv[1] = NULL;
 		if ((fts = fts_open(argv, FTS_PHYSICAL | FTS_NOSTAT,
@@ -1397,11 +738,10 @@ main(int argc, char *argv[])
 {
 	int		 rc = 1, c, proc, st, rsync,
 			 fl = SOCK_STREAM | SOCK_CLOEXEC;
-	size_t		 i, j, outsz = 0, talsz = 0;
+	size_t		 i, outsz = 0, talsz = 0;
 	pid_t		 procpid, rsyncpid;
 	int		 fd[2];
 	struct entityq	 q;
-	struct msgbuf	 procq, rsyncq;
 	struct pollfd	 pfd[2];
 	struct roa	**out = NULL;
 	char		*rsync_prog = "openrsync";
@@ -1602,7 +942,7 @@ main(int argc, char *argv[])
 	 */
 
 	for (i = 0; i < talsz; i++)
-		queue_add_tal(&procq, &q, tals[i]);
+		queue_add_tal(&q, tals[i]);
 
 	while (entity_queue > 0 && !killme) {
 		pfd[0].events = POLLIN;
@@ -1612,21 +952,10 @@ main(int argc, char *argv[])
 		if (procq.queued)
 			pfd[1].events = POLLOUT;
 
-		if ((c = poll(pfd, 2, verbose ? 10000 : INFTIM)) == -1) {
+		if ((c = poll(pfd, 2, INFTIM)) == -1) {
 			if (errno == EINTR)
 				continue;
 			err(1, "poll");
-		}
-
-		/* Debugging: print some statistics if we stall. */
-
-		if (c == 0) {
-			for (i = j = 0; i < rt.reposz; i++)
-				if (!rt.repos[i].loaded)
-					j++;
-			logx("period stats: %zu pending repos", j);
-			logx("period stats: %zu pending entries", entity_queue);
-			continue;
 		}
 
 		if ((pfd[0].revents & (POLLERR|POLLNVAL)) ||
@@ -1665,17 +994,17 @@ main(int argc, char *argv[])
 			io_simple_read(rsync, &i, sizeof(size_t));
 			io_simple_read(rsync, &ok, sizeof(ok));
 			assert(i < rt.reposz);
+
 			assert(!rt.repos[i].loaded);
 			rt.repos[i].loaded = 1;
 			if (ok)
-				logx("%s/%s: loaded from network",
-				    rt.repos[i].host, rt.repos[i].module);
+				logx("%s: loaded from network",
+				    rt.repos[i].local);
 			else
-				logx("%s/%s: load from network failed, "
-				    "fallback to cache",
-				    rt.repos[i].host, rt.repos[i].module);
+				logx("%s: load from network failed, "
+				    "fallback to cache", rt.repos[i].local);
 			stats.repos++;
-			entityq_flush(&procq, &q, &rt.repos[i]);
+			entityq_flush(&q, &rt.repos[i]);
 		}
 
 		/*
@@ -1684,7 +1013,7 @@ main(int argc, char *argv[])
 		 */
 
 		if ((pfd[1].revents & POLLIN)) {
-			entity_process(proc, &procq, &rsyncq, &stats, &q, &v);
+			entity_process(proc, &stats, &q, &v);
 		}
 	}
 
@@ -1752,8 +1081,8 @@ main(int argc, char *argv[])
 
 	/* Memory cleanup. */
 	for (i = 0; i < rt.reposz; i++) {
-		free(rt.repos[i].host);
-		free(rt.repos[i].module);
+		free(rt.repos[i].local);
+		free(rt.repos[i].repo);
 	}
 	free(rt.repos);
 
@@ -1767,6 +1096,7 @@ usage:
 	fprintf(stderr,
 	    "usage: rpki-client [-Bcjnov] [-b sourceaddr] [-d cachedir]"
 	    " [-e rsync_prog]\n"
-	    "                   [-s timeout] [-T table] [-t tal] [outputdir]\n");
+	    "                   [-s timeout] [-T table] [-t tal]"
+	    " [outputdir]\n");
 	return 1;
 }

@@ -1,4 +1,4 @@
-/*	$OpenBSD: iked.h,v 1.182 2021/01/28 01:20:37 mortimer Exp $	*/
+/*	$OpenBSD: iked.h,v 1.184 2021/02/04 20:38:26 tobhe Exp $	*/
 
 /*
  * Copyright (c) 2019 Tobias Heider <tobias.heider@stusta.de>
@@ -369,7 +369,7 @@ struct iked_kex {
 	struct ibuf			*kex_inonce;	/* Ni */
 	struct ibuf			*kex_rnonce;	/* Nr */
 
-	struct group			*kex_dhgroup;	/* DH group */
+	struct dh_group			*kex_dhgroup;	/* DH group */
 	struct ibuf			*kex_dhiexchange;
 	struct ibuf			*kex_dhrexchange;
 	struct ibuf			*kex_dhpeer;	/* pointer to i or r */
@@ -848,7 +848,7 @@ int	 config_getcertpartialchain(struct iked *, struct imsg *);
 /* policy.c */
 void	 policy_init(struct iked *);
 int	 policy_lookup(struct iked *, struct iked_message *,
-	    struct iked_proposals *proposals);
+	    struct iked_proposals *, struct iked_flows *, int);
 int	 policy_lookup_sa(struct iked *, struct iked_sa *);
 struct iked_policy *
 	 policy_test(struct iked *, struct iked_policy *);

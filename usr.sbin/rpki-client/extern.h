@@ -1,4 +1,4 @@
-/*	$OpenBSD: extern.h,v 1.37 2021/01/08 08:09:07 claudio Exp $ */
+/*	$OpenBSD: extern.h,v 1.41 2021/02/04 14:32:01 claudio Exp $ */
 /*
  * Copyright (c) 2019 Kristaps Dzonsons <kristaps@bsd.lv>
  *
@@ -17,6 +17,7 @@
 #ifndef EXTERN_H
 #define EXTERN_H
 
+#include <sys/queue.h>
 #include <sys/tree.h>
 #include <sys/time.h>
 
@@ -259,6 +260,22 @@ enum rtype {
 };
 
 /*
+ * An entity (MFT, ROA, certificate, etc.) that needs to be downloaded
+ * and parsed.
+ */
+struct	entity {
+	enum rtype	 type; /* type of entity (not RTYPE_EOF) */
+	char		*file; /* local path to file */
+	ssize_t		 repo; /* repo index or <0 if w/o repo */
+	int		 has_pkey; /* whether pkey/sz is specified */
+	unsigned char	*pkey; /* public key (optional) */
+	size_t		 pkeysz; /* public key length (optional) */
+	char		*descr; /* tal description */
+	TAILQ_ENTRY(entity) entries;
+};
+TAILQ_HEAD(entityq, entity);
+
+/*
  * Statistics collected during run-time.
  */
 struct	stats {
@@ -299,7 +316,7 @@ struct tal	*tal_read(int);
 
 void		 cert_buffer(struct ibuf *, const struct cert *);
 void		 cert_free(struct cert *);
-struct cert	*cert_parse(X509 **, const char *, const unsigned char *);
+struct cert	*cert_parse(X509 **, const char *);
 struct cert	*ta_parse(X509 **, const char *, const unsigned char *, size_t);
 struct cert	*cert_read(int);
 
@@ -311,7 +328,7 @@ struct mft	*mft_read(int);
 
 void		 roa_buffer(struct ibuf *, const struct roa *);
 void		 roa_free(struct roa *);
-struct roa	*roa_parse(X509 **, const char *, const unsigned char *);
+struct roa	*roa_parse(X509 **, const char *);
 struct roa	*roa_read(int);
 void		 roa_insert_vrps(struct vrp_tree *, struct roa *, size_t *,
 		    size_t *);
@@ -320,7 +337,7 @@ void		 gbr_free(struct gbr *);
 struct gbr	*gbr_parse(X509 **, const char *);
 
 /* crl.c */
-X509_CRL	*crl_parse(const char *, const unsigned char *);
+X509_CRL	*crl_parse(const char *);
 void		 free_crl(struct crl *);
 
 /* Validation of our objects. */
@@ -336,7 +353,7 @@ int		 valid_roa(const char *, struct auth_tree *, struct roa *);
 /* Working with CMS files. */
 
 unsigned char	*cms_parse_validate(X509 **, const char *,
-			const char *, const unsigned char *, size_t *);
+			const char *, size_t *);
 
 /* Work with RFC 3779 IP addresses, prefixes, ranges. */
 
@@ -366,6 +383,11 @@ int		 as_check_overlap(const struct cert_as *, const char *,
 			const struct cert_as *, size_t);
 int		 as_check_covered(uint32_t, uint32_t,
 			const struct cert_as *, size_t);
+
+/* Parser-specific */
+void		 entity_free(struct entity *);
+void		 entity_read_req(int fd, struct entity *);
+void		 proc_parser(int) __attribute__((noreturn));
 
 /* Rsync-specific. */
 
@@ -421,6 +443,8 @@ int		 output_json(FILE *, struct vrp_tree *, struct stats *);
 
 void	logx(const char *fmt, ...)
 		    __attribute__((format(printf, 1, 2)));
+
+int	mkpath(const char *);
 
 #define		RPKI_PATH_OUT_DIR	"/var/db/rpki-client"
 #define		RPKI_PATH_BASE_DIR	"/var/cache/rpki-client"

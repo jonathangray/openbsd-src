@@ -1,4 +1,4 @@
-/* $OpenBSD: exuart.c,v 1.17 2020/01/10 06:45:27 jsg Exp $ */
+/* $OpenBSD: exuart.c,v 1.4 2021/02/05 00:42:25 patrick Exp $ */
 /*
  * Copyright (c) 2005 Dale Rahn <drahn@motorola.com>
  *
@@ -29,21 +29,19 @@
 #include <sys/select.h>
 #include <sys/kernel.h>
 
+#include <machine/bus.h>
+#include <machine/fdt.h>
+
 #include <dev/cons.h>
 
 #ifdef DDB
 #include <ddb/db_var.h>
 #endif
 
-#include <machine/bus.h>
-#include <machine/fdt.h>
-#include <arm/armv7/armv7var.h>
-#include <armv7/exynos/exuartreg.h>
-#include <armv7/exynos/exuartvar.h>
-#include <armv7/exynos/exclockvar.h>
+#include <dev/fdt/exuartreg.h>
 
-#include <dev/ofw/fdt.h>
 #include <dev/ofw/openfirm.h>
+#include <dev/ofw/fdt.h>
 
 #define DEVUNIT(x)      (minor(x) & 0x7f)
 #define DEVCUA(x)       (minor(x) & 0x80)
@@ -88,8 +86,8 @@ struct exuart_softc {
 };
 
 
-int     exuartprobe(struct device *parent, void *self, void *aux);
-void    exuartattach(struct device *parent, struct device *self, void *aux);
+int	 exuart_match(struct device *, void *, void *);
+void	 exuart_attach(struct device *, struct device *, void *);
 
 void exuartcnprobe(struct consdev *cp);
 void exuartcninit(struct consdev *cp);
@@ -117,7 +115,7 @@ struct cfdriver exuart_cd = {
 };
 
 struct cfattach exuart_ca = {
-	sizeof(struct exuart_softc), exuartprobe, exuartattach
+	sizeof(struct exuart_softc), exuart_match, exuart_attach
 };
 
 bus_space_tag_t	exuartconsiot;
@@ -125,6 +123,9 @@ bus_space_handle_t exuartconsioh;
 bus_addr_t	exuartconsaddr;
 tcflag_t	exuartconscflag = TTYDEF_CFLAG;
 int		exuartdefaultrate = B115200;
+
+struct cdevsw exuartdev =
+	cdev_tty_init(3/*XXX NEXUART */ ,exuart);		/* 12: serial port */
 
 void
 exuart_init_cons(void)
@@ -145,38 +146,35 @@ exuart_init_cons(void)
 		}
 		stdout_node = OF_finddevice("/serial@13800000");
 	}
-	
+
 	if (fdt_get_reg(node, 0, &reg))
 		return;
 
-	exuartcnattach(&armv7_bs_tag, reg.addr, B115200, TTYDEF_CFLAG);
+	exuartcnattach(fdt_cons_bs_tag, reg.addr, B115200, TTYDEF_CFLAG);
 }
 
 int
-exuartprobe(struct device *parent, void *self, void *aux)
+exuart_match(struct device *parent, void *self, void *aux)
 {
 	struct fdt_attach_args *faa = aux;
 
 	return OF_is_compatible(faa->fa_node, "samsung,exynos4210-uart");
 }
 
-struct cdevsw exuartdev =
-	cdev_tty_init(3/*XXX NEXUART */ ,exuart);		/* 12: serial port */
-
 void
-exuartattach(struct device *parent, struct device *self, void *aux)
+exuart_attach(struct device *parent, struct device *self, void *aux)
 {
-	struct fdt_attach_args *faa = aux;
 	struct exuart_softc *sc = (struct exuart_softc *) self;
+	struct fdt_attach_args *faa = aux;
 	int maj;
 
 	if (faa->fa_nreg < 1)
 		return;
 
-	sc->sc_iot = faa->fa_iot;
-
-	sc->sc_irq = arm_intr_establish_fdt(faa->fa_node, IPL_TTY,
+	sc->sc_irq = fdt_intr_establish(faa->fa_node, IPL_TTY,
 	    exuart_intr, sc, sc->sc_dev.dv_xname);
+
+	sc->sc_iot = faa->fa_iot;
 	if (bus_space_map(sc->sc_iot, faa->fa_reg[0].addr, faa->fa_reg[0].size,
 	    0, &sc->sc_ioh))
 		panic("%s: bus_space_map failed!", __func__);
@@ -894,7 +892,7 @@ exuartcnattach(bus_space_tag_t iot, bus_addr_t iobase, int rate, tcflag_t cflag)
 	};
 
 	if (bus_space_map(iot, iobase, 0x100, 0, &exuartconsioh))
-			return ENOMEM;
+		return ENOMEM;
 
 	cn_tab = &exuartcons;
 	cn_tab->cn_dev = makedev(12 /* XXX */, 0);

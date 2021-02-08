@@ -1,4 +1,4 @@
-/*	$OpenBSD: cn30xxsmi.c,v 1.7 2019/09/28 22:20:25 deraadt Exp $	*/
+/*	$OpenBSD: cn30xxsmi.c,v 1.9 2021/02/04 16:16:10 visa Exp $	*/
 
 /*
  * Copyright (c) 2007 Internet Initiative Japan, Inc.
@@ -155,6 +155,10 @@ cn30xxsmi_get_phy(int phandle, int port, struct cn30xxsmi_softc **psmi,
 	static const int cam0100_phys[] = {
 		0x02, 0x03, 0x22
 	};
+	/* PHY addresses for Netgear ProSecure UTM25 */
+	static const int nutm25_phys[] = {
+		0x00, 0x04, 0x09
+	};
 
 	struct cn30xxsmi_softc *smi;
 	int parent, phynode;
@@ -179,14 +183,19 @@ cn30xxsmi_get_phy(int phandle, int port, struct cn30xxsmi_softc **psmi,
 		if (smi == NULL)
 			return ENOENT;
 
-		switch (octeon_boot_info->board_type) {
-		case BOARD_TYPE_UBIQUITI_E100:
-		case BOARD_TYPE_UBIQUITI_E120:
+		switch (octeon_board) {
+		case BOARD_NETGEAR_UTM25:
+			if (port >= nitems(nutm25_phys))
+				return ENOENT;
+			reg = nutm25_phys[port];
+			break;
+		case BOARD_UBIQUITI_E100:
+		case BOARD_UBIQUITI_E120:
 			if (port > 2)
 				return ENOENT;
 			reg = 7 - port;
 			break;
-		case BOARD_TYPE_CN3010_EVB_HS5:
+		case BOARD_CN3010_EVB_HS5:
 			if (port >= nitems(cam0100_phys))
 				return ENOENT;
 			reg = cam0100_phys[port];

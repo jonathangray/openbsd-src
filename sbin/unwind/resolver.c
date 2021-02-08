@@ -1,4 +1,4 @@
-/*	$OpenBSD: resolver.c,v 1.137 2021/01/27 08:30:50 florian Exp $	*/
+/*	$OpenBSD: resolver.c,v 1.143 2021/02/07 13:35:41 florian Exp $	*/
 
 /*
  * Copyright (c) 2018 Florian Obser <florian@openbsd.org>
@@ -175,7 +175,7 @@ void			 replace_forwarders(struct uw_forwarder_head *,
 void			 resolver_ref(struct uw_resolver *);
 void			 resolver_unref(struct uw_resolver *);
 int			 resolver_cmp(const void *, const void *);
-void			 restart_ub_resolvers(void);
+void			 restart_ub_resolvers(int);
 void			 show_status(pid_t);
 void			 show_autoconf(pid_t);
 void			 show_mem(pid_t);
@@ -501,7 +501,7 @@ resolver_dispatch_frontend(int fd, short event, void *bula)
 			memcpy(&verbose, imsg.data, sizeof(verbose));
 			if (log_getdebug() && (log_getverbose() & OPT_VERBOSE3)
 			    != (verbose & OPT_VERBOSE3))
-				restart_ub_resolvers();
+				restart_ub_resolvers(0);
 			log_setverbose(verbose);
 			break;
 		case IMSG_QUERY:
@@ -545,7 +545,7 @@ resolver_dispatch_frontend(int fd, short event, void *bula)
 			break;
 		case IMSG_NEW_TAS_DONE:
 			if (merge_tas(&new_trust_anchors, &trust_anchors))
-				restart_ub_resolvers();
+				restart_ub_resolvers(1);
 			break;
 		case IMSG_NETWORK_CHANGED:
 			clock_gettime(CLOCK_MONOTONIC, &last_network_change);
@@ -577,7 +577,7 @@ resolver_dispatch_frontend(int fd, short event, void *bula)
 			    sizeof(new_available_afs));
 			if (new_available_afs != available_afs) {
 				available_afs = new_available_afs;
-				restart_ub_resolvers();
+				restart_ub_resolvers(1);
 			}
 			break;
 		default:
@@ -1142,6 +1142,8 @@ new_resolver(enum uw_resolver_type type, enum uw_resolver_state state)
 		/* FALLTHROUGH */
 	case RESOLVING:
 		resolvers[type]->state = state;
+		if (type == UW_RES_ASR)
+			check_dns64();
 		break;
 	}
 }
@@ -1513,8 +1515,6 @@ check_resolver(struct uw_resolver *resolver_to_check)
 		evtimer_add(&resolver_to_check->check_ev,
 		    &resolver_to_check->check_tv);
 	}
-
-
 }
 
 void
@@ -1528,6 +1528,12 @@ check_resolver_done(struct uw_resolver *res, void *arg, int rcode,
 	char			*str;
 
 	checked_resolver->check_running--;
+
+	if (checked_resolver != resolvers[checked_resolver->type]) {
+		log_debug("%s: %s: ignoring late check result", __func__,
+		    uw_resolver_type_str[checked_resolver->type]);
+		goto out;
+	}
 
 	prev_state = checked_resolver->state;
 
@@ -1750,14 +1756,20 @@ resolver_cmp(const void *_a, const void *_b)
 }
 
 void
-restart_ub_resolvers(void)
+restart_ub_resolvers(int recheck)
 {
-	int	 i;
+	int			 i;
+	enum uw_resolver_state	 state;
 
-	for (i = 0; i < UW_RES_NONE; i++)
-		if (i != UW_RES_ASR)
-			new_resolver(i, resolvers[i] != NULL ?
-			    resolvers[i]->state : UNKNOWN);
+	for (i = 0; i < UW_RES_NONE; i++) {
+		if (i == UW_RES_ASR)
+			continue;
+		if (recheck || resolvers[i] == NULL)
+			state = UNKNOWN;
+		else
+			state = resolvers[i]->state;
+		new_resolver(i, state);
+	}
 }
 
 void
@@ -1986,19 +1998,19 @@ replace_autoconf_forwarders(struct imsg_rdns_proposal *rdns_proposal)
 		switch (af) {
 		case AF_INET:
 			memcpy(&addr4, src, sizeof(struct in_addr));
+			src += sizeof(struct in_addr);
 			if (addr4.s_addr == INADDR_LOOPBACK)
 				continue;
 			ns = inet_ntop(af, &addr4, ntopbuf,
 			    INET6_ADDRSTRLEN);
-			src += sizeof(struct in_addr);
 			break;
 		case AF_INET6:
 			memcpy(&addr6, src, sizeof(struct in6_addr));
+			src += sizeof(struct in6_addr);
 			if (IN6_IS_ADDR_LOOPBACK(&addr6))
 				continue;
 			ns = inet_ntop(af, &addr6, ntopbuf,
 			    INET6_ADDRSTRLEN);
-			src += sizeof(struct in6_addr);
 		}
 
 		if ((uw_forwarder = calloc(1, sizeof(struct uw_forwarder))) ==
@@ -2043,7 +2055,6 @@ replace_autoconf_forwarders(struct imsg_rdns_proposal *rdns_proposal)
 		new_resolver(UW_RES_ASR, UNKNOWN);
 		new_resolver(UW_RES_DHCP, UNKNOWN);
 		new_resolver(UW_RES_ODOT_DHCP, UNKNOWN);
-		check_dns64();
 	} else {
 		while ((tmp = TAILQ_FIRST(&new_forwarder_list)) != NULL) {
 			TAILQ_REMOVE(&new_forwarder_list, tmp, entry);

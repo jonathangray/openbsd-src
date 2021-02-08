@@ -1,4 +1,4 @@
-/*	$OpenBSD: roa.c,v 1.11 2021/01/08 08:09:07 claudio Exp $ */
+/*	$OpenBSD: roa.c,v 1.13 2021/02/04 08:58:19 claudio Exp $ */
 /*
  * Copyright (c) 2019 Kristaps Dzonsons <kristaps@bsd.lv>
  *
@@ -22,6 +22,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+
+#include <openssl/asn1.h>
+#include <openssl/x509.h>
 
 #include "extern.h"
 
@@ -323,13 +326,11 @@ out:
 }
 
 /*
- * Parse a full RFC 6482 file with a SHA256 digest "dgst" and signed by
- * the certificate "cacert" (the latter two are optional and may be
- * passed as NULL to disable).
+ * Parse a full RFC 6482 file.
  * Returns the ROA or NULL if the document was malformed.
  */
 struct roa *
-roa_parse(X509 **x509, const char *fn, const unsigned char *dgst)
+roa_parse(X509 **x509, const char *fn)
 {
 	struct parse	 p;
 	size_t		 cmsz;
@@ -342,7 +343,7 @@ roa_parse(X509 **x509, const char *fn, const unsigned char *dgst)
 	/* OID from section 2, RFC 6482. */
 
 	cms = cms_parse_validate(x509, fn,
-	    "1.2.840.113549.1.9.16.1.24", dgst, &cmsz);
+	    "1.2.840.113549.1.9.16.1.24", &cmsz);
 	if (cms == NULL)
 		return NULL;
 

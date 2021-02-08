@@ -138,12 +138,12 @@
 ./usr/include/dev/eisa/eisareg.h
 ./usr/include/dev/eisa/eisavar.h
 ./usr/include/dev/fdt
+./usr/include/dev/fdt/exuartreg.h
 ./usr/include/dev/fdt/if_mvnetareg.h
 ./usr/include/dev/fdt/if_mvppreg.h
 ./usr/include/dev/fdt/imxanatopvar.h
 ./usr/include/dev/fdt/imxccm_clocks.h
 ./usr/include/dev/fdt/imxuartreg.h
-./usr/include/dev/fdt/imxuartvar.h
 ./usr/include/dev/fdt/mvpinctrl_pins.h
 ./usr/include/dev/fdt/pscivar.h
 ./usr/include/dev/fdt/rkclock_clocks.h

@@ -1,5 +1,5 @@
 # ex:ts=8 sw=4:
-# $OpenBSD: State.pm,v 1.65 2021/01/08 14:21:37 espie Exp $
+# $OpenBSD: State.pm,v 1.69 2021/02/01 20:15:01 espie Exp $
 #
 # Copyright (c) 2007-2014 Marc Espie <espie@openbsd.org>
 #
@@ -120,6 +120,9 @@ sub init
 	$self->{subst} = OpenBSD::Subst->new;
 	$self->{repo} = OpenBSD::PackageRepositoryFactory->new($self);
 	$self->{export_level} = 1;
+	$SIG{'CONT'} = sub {
+		$self->handle_continue;
+	}
 }
 
 sub repo
@@ -127,6 +130,27 @@ sub repo
 	my $self = shift;
 	return $self->{repo};
 }
+
+sub handle_continue
+{
+	my $self = shift;
+	$self->find_window_size(1);	# 1 is legacy interface for dpb
+	# invalidate cache so this runs again after continue
+	delete $self->{can_output};
+}
+
+OpenBSD::Auto::cache(can_output,
+	sub {
+		require POSIX;
+
+		return 1 if !-t STDOUT;
+		# XXX uses POSIX semantics so fd, we can hardcode stdout ;)
+		my $s = POSIX::tcgetpgrp(1);
+		# note that STDOUT may be redirected 
+		# (tcgetpgrp() returns 0 for pipes and -1 for files)
+		# (we shouldn't be there because of the tty test)
+		return $s <= 0 || getpgrp() == $s;
+	});
 
 sub sync_display
 {
@@ -235,7 +259,7 @@ sub _fhprint
 sub _print
 {
 	my $self = shift;
-	$self->_fhprint(\*STDOUT, @_);
+	$self->_fhprint(\*STDOUT, @_) if $self->can_output;
 }
 
 sub _errprint
@@ -265,13 +289,13 @@ sub fhsay
 sub print
 {
 	my $self = shift;
-	$self->fhprint(\*STDOUT, @_);
+	$self->fhprint(\*STDOUT, @_) if $self->can_output;
 }
 
 sub say
 {
 	my $self = shift;
-	$self->fhsay(\*STDOUT, @_);
+	$self->fhsay(\*STDOUT, @_) if $self->can_output;
 }
 
 sub errprint
@@ -373,9 +397,6 @@ sub find_window_size
 		$SIG{'WINCH'} = sub {
 			$self->find_window_size;
 		};
-	}
-	$SIG{'CONT'} = sub {
-		$self->find_window_size(1);
 	}
 }
 

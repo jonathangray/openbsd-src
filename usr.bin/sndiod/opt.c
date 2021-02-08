@@ -1,4 +1,4 @@
-/*	$OpenBSD: opt.c,v 1.4 2018/06/26 07:12:35 ratchov Exp $	*/
+/*	$OpenBSD: opt.c,v 1.6 2021/01/29 11:25:05 ratchov Exp $	*/
 /*
  * Copyright (c) 2008-2011 Alexandre Ratchov <alex@caoua.org>
  *
@@ -20,6 +20,8 @@
 #include "opt.h"
 #include "utils.h"
 
+struct opt *opt_list;
+
 /*
  * create a new audio sub-device "configuration"
  */
@@ -28,17 +30,10 @@ opt_new(struct dev *d, char *name,
     int pmin, int pmax, int rmin, int rmax,
     int maxweight, int mmc, int dup, unsigned int mode)
 {
-	struct opt *o;
-	unsigned int len;
+	struct opt *o, **po;
+	unsigned int len, num;
 	char c;
 
-	if (opt_byname(d, name)) {
-		dev_log(d);
-		log_puts(".");
-		log_puts(name);
-		log_puts(": already defined\n");
-		return NULL;
-	}
 	for (len = 0; name[len] != '\0'; len++) {
 		if (len == OPT_NAMEMAX) {
 			log_puts(name);
@@ -53,7 +48,24 @@ opt_new(struct dev *d, char *name,
 			return NULL;
 		}
 	}
+	num = 0;
+	for (po = &opt_list; *po != NULL; po = &(*po)->next)
+		num++;
+	if (num >= OPT_NMAX) {
+		log_puts(name);
+		log_puts(": too many opts\n");
+		return NULL;
+	}
+	if (opt_byname(d, name)) {
+		dev_log(d);
+		log_puts(".");
+		log_puts(name);
+		log_puts(": already defined\n");
+		return NULL;
+	}
 	o = xmalloc(sizeof(struct opt));
+	o->num = num;
+	o->dev = d;
 	if (mode & MODE_PLAY) {
 		o->pmin = pmin;
 		o->pmax = pmax;
@@ -67,8 +79,8 @@ opt_new(struct dev *d, char *name,
 	o->dup = dup;
 	o->mode = mode;
 	memcpy(o->name, name, len + 1);
-	o->next = d->opt_list;
-	d->opt_list = o;
+	o->next = *po;
+	*po = o;
 	if (log_level >= 2) {
 		dev_log(d);
 		log_puts(".");
@@ -110,7 +122,9 @@ opt_byname(struct dev *d, char *name)
 {
 	struct opt *o;
 
-	for (o = d->opt_list; o != NULL; o = o->next) {
+	for (o = opt_list; o != NULL; o = o->next) {
+		if (d != NULL && o->dev != d)
+			continue;
 		if (strcmp(name, o->name) == 0)
 			return o;
 	}
@@ -118,11 +132,11 @@ opt_byname(struct dev *d, char *name)
 }
 
 void
-opt_del(struct dev *d, struct opt *o)
+opt_del(struct opt *o)
 {
 	struct opt **po;
 
-	for (po = &d->opt_list; *po != o; po = &(*po)->next) {
+	for (po = &opt_list; *po != o; po = &(*po)->next) {
 #ifdef DEBUG
 		if (*po == NULL) {
 			log_puts("opt_del: not on list\n");

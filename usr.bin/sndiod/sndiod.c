@@ -1,4 +1,4 @@
-/*	$OpenBSD: sndiod.c,v 1.41 2020/06/18 05:11:13 ratchov Exp $	*/
+/*	$OpenBSD: sndiod.c,v 1.44 2021/02/05 17:59:33 jcs Exp $	*/
 /*
  * Copyright (c) 2008-2012 Alexandre Ratchov <alex@caoua.org>
  *
@@ -477,11 +477,11 @@ main(int argc, char **argv)
 	/*
 	 * global options defaults
 	 */
-	vol = 118;
+	vol = 127;
 	dup = 1;
 	mmc = 0;
 	hold = 0;
-	autovol = 1;
+	autovol = 0;
 	bufsz = 0;
 	round = 0;
 	rate = DEFAULT_RATE;
@@ -495,6 +495,8 @@ main(int argc, char **argv)
 	mode = MODE_PLAY | MODE_REC;
 	tcpaddr_list = NULL;
 	devindex = 0;
+
+	slot_array_init();
 
 	while ((c = getopt(argc, argv,
 	    "a:b:c:C:de:F:f:j:L:m:Q:q:r:s:t:U:v:w:x:z:")) != -1) {
@@ -698,6 +700,8 @@ main(int argc, char **argv)
 		; /* nothing */
 	midi_done();
 
+	while (opt_list)
+		opt_del(opt_list);
 	while (dev_list)
 		dev_del(dev_list);
 	while (port_list)

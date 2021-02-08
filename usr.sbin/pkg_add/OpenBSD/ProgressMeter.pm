@@ -1,5 +1,5 @@
 # ex:ts=8 sw=4:
-# $OpenBSD: ProgressMeter.pm,v 1.49 2016/06/23 16:11:23 espie Exp $
+# $OpenBSD: ProgressMeter.pm,v 1.51 2021/01/30 11:19:01 espie Exp $
 #
 # Copyright (c) 2010 Marc Espie <espie@openbsd.org>
 #
@@ -82,6 +82,18 @@ sub for_list
 
 sub compute_playfield
 {
+}
+
+sub handle_continue
+{
+	my $self = shift;
+	$self->{continued} = 1;
+}
+
+sub can_output
+{
+	my $self = shift;
+	return $self->{state}->can_output;
 }
 
 # stub class when no actual progressmeter that still prints out.

@@ -1,3 +1,4 @@
+/* $OpenBSD: exuartreg.h,v 1.2 2021/02/05 00:25:19 patrick Exp $ */
 /*
  * Copyright (c) 2013 Patrick Wildt <patrick@blueri.se>
  *

@@ -1,4 +1,4 @@
-/* $OpenBSD: dtlstest.c,v 1.4 2020/10/16 17:57:20 tb Exp $ */
+/* $OpenBSD: dtlstest.c,v 1.7 2021/02/07 14:52:17 jsing Exp $ */
 /*
  * Copyright (c) 2020 Joel Sing <jsing@openbsd.org>
  *
@@ -149,7 +149,8 @@ bio_packet_monkey_write(BIO *bio, const char *in, int in_len)
 	if (debug) {
 		fprintf(stderr, "DEBUG: %s packet...\n",
 		    drop ? "dropping" : "writing");
-		hexdump(in, in_len);
+		if (debug > 1)
+			hexdump(in, in_len);
 	}
 	if (drop)
 		return in_len;
@@ -284,7 +285,7 @@ static void
 dtls_info_callback(const SSL *ssl, int type, int val)
 {
 	/*
-	 * Squeal's ahead... remove the bbio from the info callback, so we can
+	 * Squeals ahead... remove the bbio from the info callback, so we can
 	 * drop specific messages. Ideally this would be an option for the SSL.
 	 */
 	if (ssl->wbio == ssl->bbio)
@@ -343,6 +344,7 @@ dtls_server(int sock, long options, long mtu)
 
 	SSL_CTX_set_cookie_generate_cb(ssl_ctx, dtls_cookie_generate);
 	SSL_CTX_set_cookie_verify_cb(ssl_ctx, dtls_cookie_verify);
+	SSL_CTX_set_dh_auto(ssl_ctx, 2);
 	SSL_CTX_set_options(ssl_ctx, options);
 	SSL_CTX_set_read_ahead(ssl_ctx, 1);
 
@@ -425,6 +427,38 @@ do_accept(SSL *ssl, const char *name, int *done, short *events)
 	}
 
 	return ssl_error(ssl, name, "accept", ssl_ret, events);
+}
+
+static int
+do_read(SSL *ssl, const char *name, int *done, short *events)
+{
+	uint8_t buf[512];
+	int ssl_ret;
+
+	if ((ssl_ret = SSL_read(ssl, buf, sizeof(buf))) > 0) {
+		fprintf(stderr, "INFO: %s read done\n", name);
+		if (debug > 1)
+			hexdump(buf, ssl_ret);
+		*done = 1;
+		return 1;
+	}
+
+	return ssl_error(ssl, name, "read", ssl_ret, events);
+}
+
+static int
+do_write(SSL *ssl, const char *name, int *done, short *events)
+{
+	const uint8_t buf[] = "Hello, World!\n";
+	int ssl_ret;
+
+	if ((ssl_ret = SSL_write(ssl, buf, sizeof(buf))) > 0) {
+		fprintf(stderr, "INFO: %s write done\n", name);
+		*done = 1;
+		return 1;
+	}
+
+	return ssl_error(ssl, name, "write", ssl_ret, events);
 }
 
 static int
@@ -530,34 +564,34 @@ static const struct dtls_test dtls_tests[] = {
 	},
 	{
 		.desc = "DTLS with dropped ServerHello",
-		.ssl_options = 0,
+		.ssl_options = SSL_OP_NO_TICKET,
 		.server_bbio_off = 1,
 		.server_drops = { 1 },
 	},
 	{
 		.desc = "DTLS with dropped server Certificate",
-		.ssl_options = 0,
+		.ssl_options = SSL_OP_NO_TICKET,
 		.server_bbio_off = 1,
 		.server_drops = { 2 },
 	},
 	{
 		.desc = "DTLS with dropped ServerKeyExchange",
-		.ssl_options = 0,
+		.ssl_options = SSL_OP_NO_TICKET,
 		.server_bbio_off = 1,
 		.server_drops = { 3 },
 	},
-#if 0
-	/*
-	 * These three currently result in the server accept completing and the
-	 * client looping on a timeout. Presumably the server should not
-	 * complete until the client Finished is received...
-	 */
 	{
 		.desc = "DTLS with dropped ServerHelloDone",
-		.ssl_options = 0,
+		.ssl_options = SSL_OP_NO_TICKET,
 		.server_bbio_off = 1,
 		.server_drops = { 4 },
 	},
+#if 0
+	/*
+	 * These two result in the server accept completing and the
+	 * client looping on a timeout. Presumably the server should not
+	 * complete until the client Finished is received...
+	 */
 	{
 		.desc = "DTLS with dropped server CCS",
 		.ssl_options = 0,
@@ -578,7 +612,7 @@ static const struct dtls_test dtls_tests[] = {
 		.client_drops = { 2 },
 	},
 	{
-		.desc = "DTLS with dropped Client CCS",
+		.desc = "DTLS with dropped client CCS",
 		.ssl_options = 0,
 		.client_bbio_off = 1,
 		.client_drops = { 3 },
@@ -657,7 +691,21 @@ dtlstest(const struct dtls_test *dt)
 		goto failure;
 	}
 
-	/* XXX - do reads and writes. */
+	pfd[0].events = POLLIN;
+	pfd[1].events = POLLOUT;
+
+	if (!do_client_server_loop(client, do_read, server, do_write, pfd)) {
+		fprintf(stderr, "FAIL: client read and server write I/O failed\n");
+		goto failure;
+	}
+
+	pfd[0].events = POLLOUT;
+	pfd[1].events = POLLIN;
+
+	if (!do_client_server_loop(client, do_write, server, do_read, pfd)) {
+		fprintf(stderr, "FAIL: client write and server read I/O failed\n");
+		goto failure;
+	}
 
 	pfd[0].events = POLLOUT;
 	pfd[1].events = POLLOUT;
