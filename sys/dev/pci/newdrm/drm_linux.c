@@ -1363,6 +1363,224 @@ drm_sysfs_hotplug_event(struct drm_device *dev)
 	KNOTE(&dev->note, NOTE_CHANGE);
 }
 
+struct dma_fence *
+dma_fence_get(struct dma_fence *fence)
+{
+	if (fence)
+		kref_get(&fence->refcount);
+	return fence;
+}
+
+struct dma_fence *
+dma_fence_get_rcu(struct dma_fence *fence)
+{
+	if (fence)
+		kref_get(&fence->refcount);
+	return fence;
+}
+
+struct dma_fence *
+dma_fence_get_rcu_safe(struct dma_fence **dfp)
+{
+	struct dma_fence *fence;
+	if (dfp == NULL)
+		return NULL;
+	fence = *dfp;
+	if (fence)
+		kref_get(&fence->refcount);
+	return fence;
+}
+
+void
+dma_fence_release(struct kref *ref)
+{
+	struct dma_fence *fence = container_of(ref, struct dma_fence, refcount);
+	if (fence->ops && fence->ops->release)
+		fence->ops->release(fence);
+	else
+		free(fence, M_DRM, 0);
+}
+
+void
+dma_fence_put(struct dma_fence *fence)
+{
+	if (fence)
+		kref_put(&fence->refcount, dma_fence_release);
+}
+
+int
+dma_fence_signal_locked(struct dma_fence *fence)
+{
+	struct dma_fence_cb *cur, *tmp;
+	struct list_head cb_list;
+
+	if (fence == NULL)
+		return -EINVAL;
+
+	if (test_and_set_bit(DMA_FENCE_FLAG_SIGNALED_BIT, &fence->flags))
+		return -EINVAL;
+
+	list_replace(&fence->cb_list, &cb_list);
+
+	fence->timestamp = ktime_get();
+	set_bit(DMA_FENCE_FLAG_TIMESTAMP_BIT, &fence->flags);
+
+	list_for_each_entry_safe(cur, tmp, &cb_list, node) {
+		INIT_LIST_HEAD(&cur->node);
+		cur->func(fence, cur);
+	}
+
+	return 0;
+}
+
+int
+dma_fence_signal(struct dma_fence *fence)
+{
+	int r;
+
+	if (fence == NULL)
+		return -EINVAL;
+
+	mtx_enter(fence->lock);
+	r = dma_fence_signal_locked(fence);
+	mtx_leave(fence->lock);
+
+	return r;
+}
+
+bool
+dma_fence_is_signaled(struct dma_fence *fence)
+{
+	if (test_bit(DMA_FENCE_FLAG_SIGNALED_BIT, &fence->flags))
+		return true;
+
+	if (fence->ops->signaled && fence->ops->signaled(fence)) {
+		dma_fence_signal(fence);
+		return true;
+	}
+
+	return false;
+}
+
+bool
+dma_fence_is_signaled_locked(struct dma_fence *fence)
+{
+	if (test_bit(DMA_FENCE_FLAG_SIGNALED_BIT, &fence->flags))
+		return true;
+
+	if (fence->ops->signaled && fence->ops->signaled(fence)) {
+		dma_fence_signal_locked(fence);
+		return true;
+	}
+
+	return false;
+}
+
+long
+dma_fence_wait_timeout(struct dma_fence *fence, bool intr, long timeout)
+{
+	if (timeout < 0)
+		return -EINVAL;
+
+	if (fence->ops->wait)
+		return fence->ops->wait(fence, intr, timeout);
+	else
+		return dma_fence_default_wait(fence, intr, timeout);
+}
+
+long
+dma_fence_wait(struct dma_fence *fence, bool intr)
+{
+	long ret;
+
+	ret = dma_fence_wait_timeout(fence, intr, MAX_SCHEDULE_TIMEOUT);
+	if (ret < 0)
+		return ret;
+	
+	return 0;
+}
+
+void
+dma_fence_enable_sw_signaling(struct dma_fence *fence)
+{
+	if (!test_and_set_bit(DMA_FENCE_FLAG_ENABLE_SIGNAL_BIT, &fence->flags) &&
+	    !test_bit(DMA_FENCE_FLAG_SIGNALED_BIT, &fence->flags) &&
+	    fence->ops->enable_signaling) {
+		mtx_enter(fence->lock);
+		if (!fence->ops->enable_signaling(fence))
+			dma_fence_signal_locked(fence);
+		mtx_leave(fence->lock);
+	}
+}
+
+void
+dma_fence_init(struct dma_fence *fence, const struct dma_fence_ops *ops,
+    struct mutex *lock, uint64_t context, uint64_t seqno)
+{
+	fence->ops = ops;
+	fence->lock = lock;
+	fence->context = context;
+	fence->seqno = seqno;
+	fence->flags = 0;
+	fence->error = 0;
+	kref_init(&fence->refcount);
+	INIT_LIST_HEAD(&fence->cb_list);
+}
+
+int
+dma_fence_add_callback(struct dma_fence *fence, struct dma_fence_cb *cb,
+    dma_fence_func_t func)
+{
+	int ret = 0;
+	bool was_set;
+
+	if (WARN_ON(!fence || !func))
+		return -EINVAL;
+
+	if (test_bit(DMA_FENCE_FLAG_SIGNALED_BIT, &fence->flags)) {
+		INIT_LIST_HEAD(&cb->node);
+		return -ENOENT;
+	}
+
+	mtx_enter(fence->lock);
+
+	was_set = test_and_set_bit(DMA_FENCE_FLAG_ENABLE_SIGNAL_BIT, &fence->flags);
+
+	if (test_bit(DMA_FENCE_FLAG_SIGNALED_BIT, &fence->flags))
+		ret = -ENOENT;
+	else if (!was_set && fence->ops->enable_signaling) {
+		if (!fence->ops->enable_signaling(fence)) {
+			dma_fence_signal_locked(fence);
+			ret = -ENOENT;
+		}
+	}
+
+	if (!ret) {
+		cb->func = func;
+		list_add_tail(&cb->node, &fence->cb_list);
+	} else
+		INIT_LIST_HEAD(&cb->node);
+	mtx_leave(fence->lock);
+
+	return ret;
+}
+
+bool
+dma_fence_remove_callback(struct dma_fence *fence, struct dma_fence_cb *cb)
+{
+	bool ret;
+
+	mtx_enter(fence->lock);
+
+	ret = !list_empty(&cb->node);
+	if (ret)
+		list_del_init(&cb->node);
+
+	mtx_leave(fence->lock);
+
+	return ret;
+}
+
 static atomic64_t drm_fence_context_count = ATOMIC64_INIT(1);
 
 uint64_t
