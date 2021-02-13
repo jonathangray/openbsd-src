@@ -159,7 +159,8 @@ flush_workqueue(struct workqueue_struct *wq)
 	if (cold)
 		return;
 
-	taskq_barrier((struct taskq *)wq);
+	if (wq)
+		taskq_barrier((struct taskq *)wq);
 }
 
 bool
@@ -168,7 +169,8 @@ flush_work(struct work_struct *work)
 	if (cold)
 		return false;
 
-	taskq_barrier(work->tq);
+	if (work->tq)
+		taskq_barrier(work->tq);
 	return false;
 }
 
@@ -185,7 +187,8 @@ flush_delayed_work(struct delayed_work *dwork)
 		ret = true;
 	}
 
-	taskq_barrier(dwork->tq ? dwork->tq : (struct taskq *)system_wq);
+	if (dwork->tq)
+		taskq_barrier(dwork->tq);
 	return ret;
 }
 
@@ -283,7 +286,8 @@ kthread_flush_work(struct kthread_work *work)
 	if (cold)
 		return;
 
-	taskq_barrier(work->tq);
+	if (work->tq)
+		taskq_barrier(work->tq);
 }
 
 void
