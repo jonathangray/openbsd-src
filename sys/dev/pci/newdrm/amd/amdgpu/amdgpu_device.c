@@ -4495,9 +4495,6 @@ end:
 static bool amdgpu_device_lock_adev(struct amdgpu_device *adev,
 				struct amdgpu_hive_info *hive)
 {
-	STUB();
-	return false;
-#ifdef notyet
 	if (atomic_cmpxchg(&adev->in_gpu_reset, 0, 1) != 0)
 		return false;
 
@@ -4521,7 +4518,6 @@ static bool amdgpu_device_lock_adev(struct amdgpu_device *adev,
 	}
 
 	return true;
-#endif
 }
 
 static void amdgpu_device_unlock_adev(struct amdgpu_device *adev)
