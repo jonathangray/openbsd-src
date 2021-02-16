@@ -335,14 +335,15 @@ static void amdgpu_xgmi_sysfs_rem_dev_info(struct amdgpu_device *adev,
 
 struct amdgpu_hive_info *amdgpu_get_xgmi_hive(struct amdgpu_device *adev)
 {
-	STUB();
-	return NULL;
-#ifdef notyet
 	struct amdgpu_hive_info *hive = NULL, *tmp = NULL;
 	int ret;
 
 	if (!adev->gmc.xgmi.hive_id)
 		return NULL;
+
+	STUB();
+	return NULL;
+#ifdef notyet
 
 	if (adev->hive) {
 		kobject_get(&adev->hive->kobj);
