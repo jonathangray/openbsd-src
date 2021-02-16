@@ -4611,9 +4611,6 @@ static int amdgpu_device_suspend_display_audio(struct amdgpu_device *adev)
 int amdgpu_device_gpu_recover(struct amdgpu_device *adev,
 			      struct amdgpu_job *job)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
 	struct list_head device_list, *device_list_handle =  NULL;
 	bool need_full_reset = false;
 	bool job_signaled = false;
@@ -4830,7 +4827,6 @@ skip_recovery:
 	if (r)
 		dev_info(adev->dev, "GPU reset end with ret = %d\n", r);
 	return r;
-#endif
 }
 
 /**
