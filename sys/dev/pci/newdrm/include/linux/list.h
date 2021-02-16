@@ -129,6 +129,13 @@ static inline void list_move_tail(struct list_head *list,
 }
 
 static inline void
+list_rotate_to_front(struct list_head *list, struct list_head *head)
+{
+	list_del(head);
+	list_add_tail(head, list);
+}
+
+static inline void
 list_bulk_move_tail(struct list_head *head, struct list_head *first,
     struct list_head *last)
 {
