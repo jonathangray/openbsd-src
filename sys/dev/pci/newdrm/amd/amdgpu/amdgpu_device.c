@@ -4545,9 +4545,6 @@ static void amdgpu_device_resume_display_audio(struct amdgpu_device *adev)
 
 static int amdgpu_device_suspend_display_audio(struct amdgpu_device *adev)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
 	enum amd_reset_method reset_method;
 	struct pci_dev *p = NULL;
 	u64 expires;
@@ -4560,6 +4557,10 @@ static int amdgpu_device_suspend_display_audio(struct amdgpu_device *adev)
 	if ((reset_method != AMD_RESET_METHOD_BACO) &&
 	     (reset_method != AMD_RESET_METHOD_MODE1))
 		return -EINVAL;
+
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 
 	p = pci_get_domain_bus_and_slot(pci_domain_nr(adev->pdev->bus),
 			adev->pdev->bus->number, 1);
