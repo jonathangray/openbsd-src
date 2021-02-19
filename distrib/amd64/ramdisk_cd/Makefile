@@ -1,4 +1,4 @@
-#	$OpenBSD: Makefile,v 1.24 2021/01/05 15:10:42 deraadt Exp $
+#	$OpenBSD: Makefile,v 1.30 2021/02/14 17:14:42 semarie Exp $
 
 FS=		miniroot${OSrev}.img
 FSSIZE=		9920
@@ -27,9 +27,7 @@ ${FS}: bsd.gz
 	umount ${MOUNT_POINT}
 	newfs -O 1 -m 0 -o space -i 524288 -c ${FSSIZE} /dev/r`cat vnd`a
 	mount /dev/`cat vnd`a ${MOUNT_POINT}
-	cp ${DESTDIR}/usr/mdec/boot ${.OBJDIR}/boot
-	strip ${.OBJDIR}/boot
-	strip -R .comment -R .SUNW_ctf ${.OBJDIR}/boot
+	objcopy -S -R .comment ${DESTDIR}/usr/mdec/boot ${.OBJDIR}/boot
 	installboot -v -r ${MOUNT_POINT} `cat vnd` \
 	    ${DESTDIR}/usr/mdec/biosboot ${.OBJDIR}/boot
 	install -c -m 555 -o root -g wheel bsd.gz ${MOUNT_POINT}/bsd
@@ -40,27 +38,27 @@ ${FS}: bsd.gz
 
 ${CDROM}: bsd.rd
 	rm -rf ${.OBJDIR}/cd-dir
-	mkdir -p ${.OBJDIR}/cd-dir/${OSREV}/amd64
+	mkdir -p ${.OBJDIR}/cd-dir/${OSREV}/${MACHINE}
 	mkdir -p ${.OBJDIR}/cd-dir/etc
-	echo "set image /${OSREV}/amd64/bsd.rd" > ${.OBJDIR}/cd-dir/etc/boot.conf
-	cp ${.OBJDIR}/bsd.rd ${.OBJDIR}/cd-dir/${OSREV}/amd64
-	cp ${DESTDIR}/usr/mdec/cdbr ${.OBJDIR}/cd-dir/${OSREV}/amd64
-	cp ${DESTDIR}/usr/mdec/cdboot ${.OBJDIR}/cd-dir/${OSREV}/amd64/cdboot
+	echo "set image /${OSREV}/${MACHINE}/bsd.rd" > ${.OBJDIR}/cd-dir/etc/boot.conf
+	cp ${.OBJDIR}/bsd.rd ${.OBJDIR}/cd-dir/${OSREV}/${MACHINE}
+	cp ${DESTDIR}/usr/mdec/cdbr ${.OBJDIR}/cd-dir/${OSREV}/${MACHINE}
+	cp ${DESTDIR}/usr/mdec/cdboot ${.OBJDIR}/cd-dir/${OSREV}/${MACHINE}/cdboot
 	mkhybrid -a -R -T -L -l -d -D -N -o ${.OBJDIR}/${CDROM} \
-	    -A "OpenBSD ${OSREV} amd64 bootonly CD" \
+	    -A "OpenBSD ${OSREV} ${MACHINE} bootonly CD" \
 	    -P "Copyright (c) `date +%Y` Theo de Raadt, The OpenBSD project" \
 	    -p "Theo de Raadt <deraadt@openbsd.org>" \
-	    -V "OpenBSD/amd64   ${OSREV} boot-only CD" \
-	    -b ${OSREV}/amd64/cdbr -c ${OSREV}/amd64/boot.catalog \
+	    -V "OpenBSD/${MACHINE}   ${OSREV} boot-only CD" \
+	    -b ${OSREV}/${MACHINE}/cdbr -c ${OSREV}/${MACHINE}/boot.catalog \
 	    ${.OBJDIR}/cd-dir
 
 MRDISKTYPE=	rdrootb
 MRMAKEFSARGS=	-o disklabel=${MRDISKTYPE},minfree=0,density=4096
 
 bsd.gz: bsd.rd
-	cp bsd.rd bsd.strip
-	strip bsd.strip
-	strip -R .comment -R .SUNW_ctf bsd.strip
+	objcopy -S -R .comment -R .SUNW_ctf \
+	    -K rd_root_size -K rd_root_image \
+	    bsd.rd bsd.strip
 	gzip -9cn bsd.strip > bsd.gz
 
 bsd.rd: mr.fs bsd
@@ -88,7 +86,6 @@ instbin.mk instbin.cache instbin.c: instbin.conf
 
 instbin: instbin.mk instbin.cache instbin.c
 	${MAKE} -f instbin.mk SRCLIBDIR=${.CURDIR}/../../../lib all
-	strip -R .comment -R .SUNW_ctf instbin
 
 instbin.conf: ${LISTS}
 	awk -f ${UTILS}/makeconf.awk  ${LISTS} > instbin.conf

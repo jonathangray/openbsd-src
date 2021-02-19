@@ -1,4 +1,4 @@
-/* $OpenBSD: pmap.h,v 1.14 2020/10/21 21:53:47 deraadt Exp $ */
+/* $OpenBSD: pmap.h,v 1.16 2021/02/16 12:33:22 kettenis Exp $ */
 /*
  * Copyright (c) 2008,2009,2014 Dale Rahn <drahn@dalerahn.com>
  *
@@ -42,7 +42,8 @@
 #define PMAP_CACHE_CI		(PMAP_MD0)		/* cache inhibit */
 #define PMAP_CACHE_WT		(PMAP_MD1)	 	/* writethru */
 #define PMAP_CACHE_WB		(PMAP_MD1|PMAP_MD0)	/* writeback */
-#define PMAP_CACHE_DEV		(PMAP_MD2)		/* device mapping */
+#define PMAP_CACHE_DEV_NGNRNE	(PMAP_MD2)		/* device nGnRnE */
+#define PMAP_CACHE_DEV_NGNRE	(PMAP_MD2|PMAP_MD0)	/* device nGnRE */
 #define PMAP_CACHE_BITS		(PMAP_MD0|PMAP_MD1|PMAP_MD2)	
 
 #define PTED_VA_MANAGED_M	(PMAP_MD3)
@@ -74,6 +75,7 @@ struct pmap {
 #define PMAP_PA_MASK	~((paddr_t)PAGE_MASK) /* to remove the flags */
 #define PMAP_NOCACHE	0x1 /* non-cacheable memory */
 #define PMAP_DEVICE	0x2 /* device memory */
+#define PMAP_WC		PMAP_DEVICE
 
 #define PG_PMAP_MOD		PG_PMAP0
 #define PG_PMAP_REF		PG_PMAP1

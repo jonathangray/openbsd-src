@@ -1,4 +1,4 @@
-/*	$OpenBSD: ikev2.c,v 1.304 2021/02/09 21:35:48 tobhe Exp $	*/
+/*	$OpenBSD: ikev2.c,v 1.308 2021/02/18 21:30:52 tobhe Exp $	*/
 
 /*
  * Copyright (c) 2019 Tobias Heider <tobias.heider@stusta.de>
@@ -1011,6 +1011,7 @@ ikev2_ike_auth_recv(struct iked *env, struct iked_sa *sa,
 			certlen = ibuf_length(msg->msg_cert.id_buf);
 			bzero(&msg->msg_cert, sizeof(msg->msg_cert));
 		}
+		sa->sa_stateflags &= ~IKED_REQ_CERTVALID;
 		if (ca_setcert(env, &sa->sa_hdr, id, certtype, cert, certlen, PROC_CERT) == -1)
 			return (-1);
 	}
@@ -1615,6 +1616,7 @@ ikev2_init_done(struct iked *env, struct iked_sa *sa)
 		ikev2_enable_timer(env, sa);
 		ikev2_log_established(sa);
 		ikev2_record_dstid(env, sa);
+		sa_configure_iface(env, sa, 1);
 	}
 
 	if (ret)
@@ -4566,7 +4568,15 @@ ikev2_ikesa_recv_delete(struct iked *env, struct iked_sa *sa)
 		sa->sa_nexti = NULL;	/* reset by sa_free */
 	}
 	ikev2_ike_sa_setreason(sa, "received delete");
-	sa_state(env, sa, IKEV2_STATE_CLOSED);
+	if (env->sc_stickyaddress) {
+		/* delay deletion if client reconnects soon */
+		sa_state(env, sa, IKEV2_STATE_CLOSING);
+		timer_del(env, &sa->sa_timer);
+		timer_set(env, &sa->sa_timer, ikev2_ike_sa_timeout, sa);
+		timer_add(env, &sa->sa_timer, 3 * IKED_RETRANSMIT_TIMEOUT);
+	} else {
+		sa_state(env, sa, IKEV2_STATE_CLOSED);
+	}
 }
 
 int
@@ -5152,10 +5162,8 @@ ikev2_sa_initiator_dh(struct iked_sa *sa, struct iked_message *msg,
 			log_debug("%s: invalid peer dh exchange", __func__);
 			return (-1);
 		}
-		if ((sa->sa_dhrexchange = ibuf_dup(msg->msg_ke)) == NULL) {
-			log_debug("%s: failed to copy dh exchange", __func__);
-			return (-1);
-		}
+		sa->sa_dhrexchange = msg->msg_ke;
+		msg->msg_ke = NULL;
 	}
 
 	/* Set a pointer to the peer exchange */
@@ -5312,13 +5320,8 @@ ikev2_sa_responder_dh(struct iked_kex *kex, struct iked_proposals *proposals,
 	}
 
 	if (!ibuf_length(kex->kex_dhiexchange)) {
-		if ((kex->kex_dhiexchange = ibuf_dup(msg->msg_ke)) == NULL) {
-			/* XXX send notification to peer */
-			log_info("%s: invalid dh, size %zu",
-			    SPI_SA(msg->msg_sa, __func__),
-			    ibuf_length(msg->msg_ke));
-			return (-1);
-		}
+		kex->kex_dhiexchange = msg->msg_ke;
+		msg->msg_ke = NULL;
 	}
 
 	if (!ibuf_length(kex->kex_dhrexchange)) {

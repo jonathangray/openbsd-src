@@ -1,4 +1,4 @@
-/* $OpenBSD: exuart.c,v 1.4 2021/02/05 00:42:25 patrick Exp $ */
+/* $OpenBSD: exuart.c,v 1.7 2021/02/16 21:58:14 kettenis Exp $ */
 /*
  * Copyright (c) 2005 Dale Rahn <drahn@motorola.com>
  *
@@ -55,6 +55,11 @@ struct exuart_softc {
 	struct tty	*sc_tty;
 	struct timeout	sc_diag_tmo;
 	struct timeout	sc_dtr_tmo;
+
+	uint32_t	sc_rx_fifo_cnt_mask;
+	uint32_t	sc_rx_fifo_full;
+	uint32_t	sc_tx_fifo_full;
+
 	int		sc_fifo;
 	int		sc_overflows;
 	int		sc_floods;
@@ -108,6 +113,7 @@ int exuart_intr(void *);
 
 /* XXX - we imitate 'com' serial ports and take over their entry points */
 /* XXX: These belong elsewhere */
+cdev_decl(com);
 cdev_decl(exuart);
 
 struct cfdriver exuart_cd = {
@@ -124,6 +130,10 @@ bus_addr_t	exuartconsaddr;
 tcflag_t	exuartconscflag = TTYDEF_CFLAG;
 int		exuartdefaultrate = B115200;
 
+uint32_t	exuart_rx_fifo_cnt_mask;
+uint32_t	exuart_rx_fifo_full;
+uint32_t	exuart_tx_fifo_full;
+
 struct cdevsw exuartdev =
 	cdev_tty_init(3/*XXX NEXUART */ ,exuart);		/* 12: serial port */
 
@@ -133,7 +143,8 @@ exuart_init_cons(void)
 	struct fdt_reg reg;
 	void *node, *root;
 
-	if ((node = fdt_find_cons("samsung,exynos4210-uart")) == NULL)
+	if ((node = fdt_find_cons("apple,s5l-uart")) == NULL &&
+	    (node = fdt_find_cons("samsung,exynos4210-uart")) == NULL)
 		return;
 
 	/* dtb uses serial2, qemu uses serial0 */
@@ -150,6 +161,16 @@ exuart_init_cons(void)
 	if (fdt_get_reg(node, 0, &reg))
 		return;
 
+	if (fdt_is_compatible(node, "apple,s5l-uart")) {
+		exuart_rx_fifo_cnt_mask = EXUART_S5L_UFSTAT_RX_FIFO_CNT_MASK;
+		exuart_rx_fifo_full = EXUART_S5L_UFSTAT_RX_FIFO_FULL;
+		exuart_tx_fifo_full = EXUART_S5L_UFSTAT_TX_FIFO_FULL;
+	} else {
+		exuart_rx_fifo_cnt_mask = EXUART_UFSTAT_RX_FIFO_CNT_MASK;
+		exuart_rx_fifo_full = EXUART_UFSTAT_RX_FIFO_FULL;
+		exuart_tx_fifo_full = EXUART_UFSTAT_TX_FIFO_FULL;
+	}
+
 	exuartcnattach(fdt_cons_bs_tag, reg.addr, B115200, TTYDEF_CFLAG);
 }
 
@@ -158,7 +179,8 @@ exuart_match(struct device *parent, void *self, void *aux)
 {
 	struct fdt_attach_args *faa = aux;
 
-	return OF_is_compatible(faa->fa_node, "samsung,exynos4210-uart");
+	return (OF_is_compatible(faa->fa_node, "apple,s5l-uart") ||
+	    OF_is_compatible(faa->fa_node, "samsung,exynos4210-uart"));
 }
 
 void
@@ -187,6 +209,16 @@ exuart_attach(struct device *parent, struct device *self, void *aux)
 		cn_tab->cn_dev = makedev(maj, sc->sc_dev.dv_unit);
 
 		printf(": console");
+	}
+
+	if (OF_is_compatible(faa->fa_node, "apple,s5l-uart")) {
+		sc->sc_rx_fifo_cnt_mask = EXUART_S5L_UFSTAT_RX_FIFO_CNT_MASK;
+		sc->sc_rx_fifo_full = EXUART_S5L_UFSTAT_RX_FIFO_FULL;
+		sc->sc_tx_fifo_full = EXUART_S5L_UFSTAT_TX_FIFO_FULL;
+	} else {
+		sc->sc_rx_fifo_cnt_mask = EXUART_UFSTAT_RX_FIFO_CNT_MASK;
+		sc->sc_rx_fifo_full = EXUART_UFSTAT_RX_FIFO_FULL;
+		sc->sc_tx_fifo_full = EXUART_UFSTAT_TX_FIFO_FULL;
 	}
 
 	/* Mask and clear interrupts. */
@@ -238,8 +270,8 @@ exuart_intr(void *arg)
 		p = sc->sc_ibufp;
 
 		while (bus_space_read_4(iot, ioh, EXUART_UFSTAT) &
-		    (EXUART_UFSTAT_RX_FIFO_CNT_MASK|EXUART_UFSTAT_RX_FIFO_FULL)) {
-			c = bus_space_read_1(iot, ioh, EXUART_URXH);
+		    (sc->sc_rx_fifo_cnt_mask | sc->sc_rx_fifo_full)) {
+			c = bus_space_read_4(iot, ioh, EXUART_URXH);
 			if (p >= sc->sc_ibufend) {
 				sc->sc_floods++;
 				if (sc->sc_errors++ == 0)
@@ -277,7 +309,7 @@ exuart_intr(void *arg)
 	p = sc->sc_ibufp;
 
 	while(ISSET(bus_space_read_2(iot, ioh, EXUART_USR2), EXUART_SR2_RDR)) {
-		c = bus_space_read_1(iot, ioh, EXUART_URXH);
+		c = bus_space_read_4(iot, ioh, EXUART_URXH);
 		if (p >= sc->sc_ibufend) {
 			sc->sc_floods++;
 			if (sc->sc_errors++ == 0)
@@ -421,7 +453,7 @@ exuart_start(struct tty *tp)
 
 		n = q_to_b(&tp->t_outq, buffer, sizeof buffer);
 		for (i = 0; i < n; i++)
-			bus_space_write_1(iot, ioh, EXUART_UTXH, buffer[i]);
+			bus_space_write_4(iot, ioh, EXUART_UTXH, buffer[i]);
 		bzero(buffer, n);
 	}
 
@@ -874,8 +906,6 @@ exuart_sc(dev_t dev)
 void
 exuartcnprobe(struct consdev *cp)
 {
-	cp->cn_dev = makedev(12 /* XXX */, 0);
-	cp->cn_pri = CN_MIDPRI;
 }
 
 void
@@ -890,13 +920,21 @@ exuartcnattach(bus_space_tag_t iot, bus_addr_t iobase, int rate, tcflag_t cflag)
 		NULL, NULL, exuartcngetc, exuartcnputc, exuartcnpollc, NULL,
 		NODEV, CN_MIDPRI
 	};
+	int maj;
 
 	if (bus_space_map(iot, iobase, 0x100, 0, &exuartconsioh))
 		return ENOMEM;
 
+	/* Look for major of com(4) to replace. */
+	for (maj = 0; maj < nchrdev; maj++)
+		if (cdevsw[maj].d_open == comopen)
+			break;
+	if (maj == nchrdev)
+		return ENXIO;
+
 	cn_tab = &exuartcons;
-	cn_tab->cn_dev = makedev(12 /* XXX */, 0);
-	cdevsw[12] = exuartdev; 	/* KLUDGE */
+	cn_tab->cn_dev = makedev(maj, 0);
+	cdevsw[maj] = exuartdev; 	/* KLUDGE */
 
 	exuartconsiot = iot;
 	exuartconsaddr = iobase;
@@ -914,9 +952,9 @@ exuartcngetc(dev_t dev)
 	while((bus_space_read_4(exuartconsiot, exuartconsioh, EXUART_UTRSTAT) &
 	    EXUART_UTRSTAT_RXBREADY) == 0 &&
 	      (bus_space_read_4(exuartconsiot, exuartconsioh, EXUART_UFSTAT) &
-	    (EXUART_UFSTAT_RX_FIFO_CNT_MASK|EXUART_UFSTAT_RX_FIFO_FULL)) == 0)
+	    (exuart_rx_fifo_cnt_mask | exuart_rx_fifo_full)) == 0)
 		;
-	c = bus_space_read_1(exuartconsiot, exuartconsioh, EXUART_URXH);
+	c = bus_space_read_4(exuartconsiot, exuartconsioh, EXUART_URXH);
 	splx(s);
 	return c;
 }
@@ -927,9 +965,9 @@ exuartcnputc(dev_t dev, int c)
 	int s;
 	s = splhigh();
 	while (bus_space_read_4(exuartconsiot, exuartconsioh, EXUART_UFSTAT) &
-	   EXUART_UFSTAT_TX_FIFO_FULL)
+	   exuart_tx_fifo_full)
 		;
-	bus_space_write_1(exuartconsiot, exuartconsioh, EXUART_UTXH, c);
+	bus_space_write_4(exuartconsiot, exuartconsioh, EXUART_UTXH, c);
 	splx(s);
 }
 

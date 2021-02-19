@@ -1,4 +1,4 @@
-/*	$OpenBSD: pf.c,v 1.1108 2021/02/04 00:55:41 sashan Exp $ */
+/*	$OpenBSD: pf.c,v 1.1111 2021/02/16 03:12:32 dlg Exp $ */
 
 /*
  * Copyright (c) 2001 Daniel Hartmeier
@@ -1404,6 +1404,10 @@ pf_remove_divert_state(struct pf_state_key *sk)
 {
 	struct pf_state_item	*si;
 
+	PF_ASSERT_UNLOCKED();
+
+	PF_LOCK();
+	PF_STATE_ENTER_WRITE();
 	TAILQ_FOREACH(si, &sk->states, entry) {
 		if (sk == si->s->key[PF_SK_STACK] && si->s->rule.ptr &&
 		    (si->s->rule.ptr->divert.type == PF_DIVERT_TO ||
@@ -1412,6 +1416,8 @@ pf_remove_divert_state(struct pf_state_key *sk)
 			break;
 		}
 	}
+	PF_STATE_EXIT_WRITE();
+	PF_UNLOCK();
 }
 
 void
@@ -6014,7 +6020,7 @@ pf_route(struct pf_pdesc *pd, struct pf_state *s)
 	dst->sin_addr = s->rt_addr.v4;
 	rtableid = m0->m_pkthdr.ph_rtableid;
 
-	rt = rtalloc(sintosa(dst), RT_RESOLVE, rtableid);
+	rt = rtalloc_mpath(sintosa(dst), &ip->ip_src.s_addr, rtableid);
 	if (!rtisvalid(rt)) {
 		if (s->rt != PF_DUPTO) {
 			pf_send_icmp(m0, ICMP_UNREACH, ICMP_UNREACH_HOST,
@@ -6156,9 +6162,8 @@ pf_route6(struct pf_pdesc *pd, struct pf_state *s)
 	dst->sin6_addr = s->rt_addr.v6;
 	rtableid = m0->m_pkthdr.ph_rtableid;
 
-	if (IN6_IS_SCOPE_EMBED(&dst->sin6_addr))
-		dst->sin6_addr.s6_addr16[1] = htons(ifp->if_index);
-	rt = rtalloc(sin6tosa(dst), RT_RESOLVE, rtableid);
+	rt = rtalloc_mpath(sin6tosa(dst), &ip6->ip6_src.s6_addr32[0],
+	    rtableid);
 	if (!rtisvalid(rt)) {
 		if (s->rt != PF_DUPTO) {
 			pf_send_icmp(m0, ICMP6_DST_UNREACH,

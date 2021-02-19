@@ -1,4 +1,4 @@
-/*	$OpenBSD: cert.c,v 1.25 2021/02/08 09:22:53 claudio Exp $ */
+/*	$OpenBSD: cert.c,v 1.27 2021/02/18 16:23:17 claudio Exp $ */
 /*
  * Copyright (c) 2019 Kristaps Dzonsons <kristaps@bsd.lv>
  *
@@ -1079,15 +1079,11 @@ cert_parse_inner(X509 **xp, const char *fn, int ta)
 		case NID_crl_distribution_points:
 			/* ignored here, handled later */
 			break;
+		case NID_info_access:
+			break;
 		case NID_authority_key_identifier:
-			free(p.res->aki);
-			p.res->aki = x509_get_aki_ext(ext, p.fn);
-			c = (p.res->aki != NULL);
 			break;
 		case NID_subject_key_identifier:
-			free(p.res->ski);
-			p.res->ski = x509_get_ski_ext(ext, p.fn);
-			c = (p.res->ski != NULL);
 			break;
 		default:
 			/* {
@@ -1102,8 +1098,12 @@ cert_parse_inner(X509 **xp, const char *fn, int ta)
 			goto out;
 	}
 
-	if (!ta)
+	p.res->aki = x509_get_aki(x, ta, p.fn);
+	p.res->ski = x509_get_ski(x, p.fn);
+	if (!ta) {
+		p.res->aia = x509_get_aia(x, p.fn);
 		p.res->crl = x509_get_crl(x, p.fn);
+	}
 
 	/* Validation on required fields. */
 
@@ -1126,6 +1126,16 @@ cert_parse_inner(X509 **xp, const char *fn, int ta)
 	} else if (!ta && strcmp(p.res->aki, p.res->ski) == 0) {
 		warnx("%s: RFC 6487 section 8.4.2: "
 		    "non-trust anchor AKI may not match SKI", p.fn);
+		goto out;
+	}
+
+	if (!ta && p.res->aia == NULL) {
+		warnx("%s: RFC 6487 section 8.4.7: "
+		    "non-trust anchor missing AIA", p.fn);
+		goto out;
+	} else if (ta && p.res->aia != NULL) {
+		warnx("%s: RFC 6487 section 8.4.7: "
+		    "trust anchor must not have AIA", p.fn);
 		goto out;
 	}
 
@@ -1223,6 +1233,7 @@ cert_free(struct cert *p)
 	free(p->notify);
 	free(p->ips);
 	free(p->as);
+	free(p->aia);
 	free(p->aki);
 	free(p->ski);
 	X509_free(p->x509);
@@ -1279,6 +1290,7 @@ cert_buffer(struct ibuf *b, const struct cert *p)
 	io_str_buffer(b, p->notify);
 	io_str_buffer(b, p->repo);
 	io_str_buffer(b, p->crl);
+	io_str_buffer(b, p->aia);
 	io_str_buffer(b, p->aki);
 	io_str_buffer(b, p->ski);
 }
@@ -1347,6 +1359,7 @@ cert_read(int fd)
 	io_str_read(fd, &p->notify);
 	io_str_read(fd, &p->repo);
 	io_str_read(fd, &p->crl);
+	io_str_read(fd, &p->aia);
 	io_str_read(fd, &p->aki);
 	io_str_read(fd, &p->ski);
 	assert(p->ski);

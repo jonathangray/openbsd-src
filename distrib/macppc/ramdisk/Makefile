@@ -1,4 +1,4 @@
-#	$OpenBSD: Makefile,v 1.48 2021/01/05 15:10:43 deraadt Exp $
+#	$OpenBSD: Makefile,v 1.50 2021/02/14 17:14:42 semarie Exp $
 
 CDROM=		cd${OSrev}.iso
 MTREE=		${UTILS}/mtree.conf
@@ -11,21 +11,21 @@ all: ${CDROM}
 
 ${CDROM}: bsd.gz
 	rm -rf ${.OBJDIR}/cd-dir/
-	mkdir -p ${.OBJDIR}/cd-dir/${OSREV}/macppc/
-	cp bsd.gz ${.OBJDIR}/cd-dir/${OSREV}/macppc/bsd.rd
+	mkdir -p ${.OBJDIR}/cd-dir/${OSREV}/${MACHINE}/
+	cp bsd.gz ${.OBJDIR}/cd-dir/${OSREV}/${MACHINE}/bsd.rd
 	# On HFS, doing the following means COPIES of the files.. therefore
 	# we skip doing so.
-	# ln ${.OBJDIR}/cd-dir/${OSREV}/macppc/bsd.rd ${.OBJDIR}/cd-dir/bsd.rd
+	# ln ${.OBJDIR}/cd-dir/${OSREV}/${MACHINE}/bsd.rd ${.OBJDIR}/cd-dir/bsd.rd
 	# ln ${.OBJDIR}/cd-dir/bsd.rd ${.OBJDIR}/cd-dir/bsd
-	cp ${DESTDIR}/usr/mdec/bsd.tbxi ${.OBJDIR}/cd-dir/${OSREV}/macppc
+	cp ${DESTDIR}/usr/mdec/bsd.tbxi ${.OBJDIR}/cd-dir/${OSREV}/${MACHINE}
 	cp ${DESTDIR}/usr/mdec/ofwboot ${.OBJDIR}/cd-dir/
 	mkhybrid -r -part -hfs \
-	    -hfs-bless ${.OBJDIR}/cd-dir/${OSREV}/macppc \
+	    -hfs-bless ${.OBJDIR}/cd-dir/${OSREV}/${MACHINE} \
 	    -map ${.CURDIR}/../../../gnu/usr.sbin/mkhybrid/src/more.mapping \
-	    -A "OpenBSD ${OSREV} macppc bootonly CD" \
+	    -A "OpenBSD ${OSREV} ${MACHINE} bootonly CD" \
 	    -P "Copyright (c) `date +%Y` Theo de Raadt, The OpenBSD project" \
 	    -p "Theo de Raadt <deraadt@openbsd.org>" \
-	    -V "OpenBSD/macppc  ${OSREV} boot-only CD" \
+	    -V "OpenBSD/${MACHINE}  ${OSREV} boot-only CD" \
 	    -o ${CDROM} ${.OBJDIR}/cd-dir
 
 MRDISKTYPE=	rdroot
@@ -35,9 +35,10 @@ bsd.gz: bsd.rd
 	gzip -9cn bsd.rd > bsd.gz
 
 bsd.rd: mr.fs bsd
-	cp bsd bsd.rd
+	objcopy -S -R .comment -R .SUNW_ctf \
+	    -K rd_root_size -K rd_root_image \
+	    bsd bsd.rd
 	rdsetroot bsd.rd mr.fs
-	strip -R .SUNW_ctf bsd.rd
 
 bsd:
 	cd ${.CURDIR}/../../../sys/arch/${MACHINE}/compile/${RAMDISK} && \

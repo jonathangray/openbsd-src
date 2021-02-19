@@ -1,4 +1,4 @@
-#	$OpenBSD: Makefile,v 1.10 2020/05/18 06:20:43 otto Exp $
+#	$OpenBSD: Makefile,v 1.15 2021/02/14 17:14:42 semarie Exp $
 
 FS=		floppy${OSrev}.img
 FSSIZE=		2880
@@ -20,9 +20,7 @@ ${FS}: bsd.gz
 	disklabel -w `cat vnd` ${FSDISKTYPE}
 	newfs -O 1 -m 0 -o space -i 524288 -c ${FSSIZE} /dev/r`cat vnd`a
 	mount /dev/`cat vnd`a ${MOUNT_POINT}
-	cp ${DESTDIR}/usr/mdec/fdboot ${.OBJDIR}/boot
-	strip ${.OBJDIR}/boot
-	strip -R .comment -R .SUNW_ctf ${.OBJDIR}/boot
+	objcopy -S -R .comment ${DESTDIR}/usr/mdec/fdboot ${.OBJDIR}/boot
 	installboot -v -r ${MOUNT_POINT} `cat vnd` \
 	    ${DESTDIR}/usr/mdec/biosboot ${.OBJDIR}/boot
 	install -c -m 555 -o root -g wheel bsd.gz ${MOUNT_POINT}/bsd
@@ -35,9 +33,9 @@ MRDISKTYPE=	rdroot
 MRMAKEFSARGS=	-o disklabel=${MRDISKTYPE},minfree=0,density=4096
 
 bsd.gz: bsd.rd
-	cp bsd.rd bsd.strip
-	strip bsd.strip
-	strip -R .comment -R .SUNW_ctf bsd.strip
+	objcopy -S -R .comment -R .SUNW_ctf \
+	    -K rd_root_size -K rd_root_image \
+	    bsd.rd bsd.strip
 	gzip -9cn bsd.strip > bsd.gz
 
 bsd.rd: mr.fs bsd
@@ -65,7 +63,6 @@ instbin.mk instbin.cache instbin.c: instbin.conf
 
 instbin: instbin.mk instbin.cache instbin.c
 	${MAKE} -f instbin.mk SRCLIBDIR=${.CURDIR}/../../../lib all
-	strip -R .comment -R .SUNW_ctf instbin
 
 instbin.conf: ${LISTS}
 	awk -f ${UTILS}/makeconf.awk  ${LISTS} > instbin.conf
