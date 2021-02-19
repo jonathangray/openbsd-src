@@ -828,7 +828,11 @@ static void __i915_request_ctor(void *arg)
 {
 	struct i915_request *rq = arg;
 
-	mtx_init(&rq->lock, IPL_TTY);
+	/*
+	 * witness does not understand spin_lock_nested()
+	 * order reversal in i915 with this lock
+	 */
+	mtx_init_flags(&rq->lock, IPL_TTY, NULL, MTX_NOWITNESS);
 	i915_sched_node_init(&rq->sched);
 	i915_sw_fence_init(&rq->submit, submit_notify);
 	i915_sw_fence_init(&rq->semaphore, semaphore_notify);

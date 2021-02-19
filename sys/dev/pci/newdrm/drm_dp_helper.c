@@ -1626,7 +1626,11 @@ EXPORT_SYMBOL(drm_dp_remote_aux_init);
  */
 void drm_dp_aux_init(struct drm_dp_aux *aux)
 {
-	rw_init(&aux->hw_mutex, "drmdp");
+	/*
+	 * witness does not understand mutex_lock_nest_lock()
+	 * order reversal in i915 with this lock
+	 */
+	rw_init_flags(&aux->hw_mutex, "drmdp", RWL_NOWITNESS);
 	rw_init(&aux->cec.lock, "drmcec");
 	INIT_WORK(&aux->crc_work, drm_dp_aux_crc_work);
 
