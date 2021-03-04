@@ -1,4 +1,4 @@
-/*	$OpenBSD: acpipci.c,v 1.24 2021/01/15 20:49:38 patrick Exp $	*/
+/*	$OpenBSD: acpipci.c,v 1.26 2021/02/28 21:42:08 patrick Exp $	*/
 /*
  * Copyright (c) 2018 Mark Kettenis
  *
@@ -33,6 +33,8 @@
 #include <dev/pci/pcireg.h>
 #include <dev/pci/pcivar.h>
 #include <dev/pci/ppbreg.h>
+
+#include <arm64/dev/acpiiort.h>
 
 struct acpipci_mcfg {
 	SLIST_ENTRY(acpipci_mcfg) am_list;
@@ -106,6 +108,7 @@ void	acpipci_decompose_tag(void *, pcitag_t, int *, int *, int *);
 int	acpipci_conf_size(void *, pcitag_t);
 pcireg_t acpipci_conf_read(void *, pcitag_t, int);
 void	acpipci_conf_write(void *, pcitag_t, int, pcireg_t);
+int	acpipci_probe_device_hook(void *, struct pci_attach_args *);
 
 int	acpipci_intr_map(struct pci_attach_args *, pci_intr_handle_t *);
 const char *acpipci_intr_string(void *, pci_intr_handle_t);
@@ -180,6 +183,8 @@ acpipci_attach(struct device *parent, struct device *self, void *aux)
 
 	sc->sc_pc = pci_lookup_segment(seg);
 	KASSERT(sc->sc_pc->pc_intr_v == NULL);
+
+	sc->sc_pc->pc_probe_device_hook = acpipci_probe_device_hook;
 
 	sc->sc_pc->pc_intr_v = sc;
 	sc->sc_pc->pc_intr_map = acpipci_intr_map;
@@ -338,6 +343,78 @@ acpipci_conf_write(void *v, pcitag_t tag, int reg, pcireg_t data)
 		return;
 
 	bus_space_write_4(am->am_iot, am->am_ioh, tag | reg, data);
+}
+
+int
+acpipci_probe_device_hook(void *v, struct pci_attach_args *pa)
+{
+	struct acpipci_mcfg *am = v;
+	struct acpi_table_header *hdr;
+	struct acpi_iort *iort = NULL;
+	struct acpi_iort_node *node;
+	struct acpi_iort_mapping *map;
+	struct acpi_iort_rc_node *rc;
+	struct acpi_q *entry;
+	uint32_t rid, offset;
+	int i;
+
+	rid = pci_requester_id(pa->pa_pc, pa->pa_tag);
+
+	/* Look for IORT table. */
+	SIMPLEQ_FOREACH(entry, &acpi_softc->sc_tables, q_next) {
+		hdr = entry->q_table;
+		if (strncmp(hdr->signature, IORT_SIG,
+		    sizeof(hdr->signature)) == 0) {
+			iort = entry->q_table;
+			break;
+		}
+	}
+	if (iort == NULL)
+		return 0;
+
+	/* Find our root complex. */
+	offset = iort->offset;
+	for (i = 0; i < iort->number_of_nodes; i++) {
+		node = (struct acpi_iort_node *)((char *)iort + offset);
+		if (node->type == ACPI_IORT_ROOT_COMPLEX) {
+			rc = (struct acpi_iort_rc_node *)&node[1];
+			if (rc->segment == am->am_segment)
+				break;
+		}
+		offset += node->length;
+	}
+
+	/* No RC found? Weird. */
+	if (i >= iort->number_of_nodes)
+		return 0;
+
+	/* Find our output base towards SMMU. */
+	map = (struct acpi_iort_mapping *)((char *)node + node->mapping_offset);
+	for (i = 0; i < node->number_of_mappings; i++) {
+		offset = map[i].output_reference;
+
+		if (map[i].flags & ACPI_IORT_MAPPING_SINGLE) {
+			rid = map[i].output_base;
+			break;
+		}
+
+		/* Mapping encodes number of IDs in the range minus one. */
+		if (map[i].input_base <= rid &&
+		    rid <= map[i].input_base + map[i].number_of_ids) {
+			rid = map[i].output_base + (rid - map[i].input_base);
+			break;
+		}
+	}
+
+	/* No mapping found? Even weirder. */
+	if (i >= node->number_of_mappings)
+		return 0;
+
+	node = (struct acpi_iort_node *)((char *)iort + offset);
+	if (node->type == ACPI_IORT_SMMU)
+		acpiiort_smmu_hook(node, rid, pa);
+
+	return 0;
 }
 
 int

@@ -1,4 +1,4 @@
-/* $OpenBSD: bwfm.c,v 1.80 2021/01/31 11:07:51 patrick Exp $ */
+/* $OpenBSD: bwfm.c,v 1.83 2021/02/26 00:07:41 patrick Exp $ */
 /*
  * Copyright (c) 2010-2016 Broadcom Corporation
  * Copyright (c) 2016,2017 Patrick Wildt <patrick@blueri.se>
@@ -27,6 +27,11 @@
 #include <sys/queue.h>
 #include <sys/socket.h>
 #include <sys/sockio.h>
+
+#if defined(__HAVE_FDT)
+#include <machine/fdt.h>
+#include <dev/ofw/openfirm.h>
+#endif
 
 #if NBPFILTER > 0
 #include <net/bpf.h>
@@ -69,6 +74,7 @@ void	 bwfm_process_clm_blob(struct bwfm_softc *);
 
 int	 bwfm_chip_attach(struct bwfm_softc *);
 int	 bwfm_chip_detach(struct bwfm_softc *, int);
+struct bwfm_core *bwfm_chip_get_core_idx(struct bwfm_softc *, int, int);
 struct bwfm_core *bwfm_chip_get_core(struct bwfm_softc *, int);
 struct bwfm_core *bwfm_chip_get_pmu(struct bwfm_softc *);
 int	 bwfm_chip_ai_isup(struct bwfm_softc *, struct bwfm_core *);
@@ -927,16 +933,22 @@ bwfm_chip_attach(struct bwfm_softc *sc)
 }
 
 struct bwfm_core *
-bwfm_chip_get_core(struct bwfm_softc *sc, int id)
+bwfm_chip_get_core_idx(struct bwfm_softc *sc, int id, int idx)
 {
 	struct bwfm_core *core;
 
 	LIST_FOREACH(core, &sc->sc_chip.ch_list, co_link) {
-		if (core->co_id == id)
+		if (core->co_id == id && idx-- == 0)
 			return core;
 	}
 
 	return NULL;
+}
+
+struct bwfm_core *
+bwfm_chip_get_core(struct bwfm_softc *sc, int id)
+{
+	return bwfm_chip_get_core_idx(sc, id, 0);
 }
 
 struct bwfm_core *
@@ -1017,9 +1029,15 @@ void
 bwfm_chip_ai_reset(struct bwfm_softc *sc, struct bwfm_core *core,
     uint32_t prereset, uint32_t reset, uint32_t postreset)
 {
+	struct bwfm_core *core2 = NULL;
 	int i;
 
+	if (core->co_id == BWFM_AGENT_CORE_80211)
+		core2 = bwfm_chip_get_core_idx(sc, BWFM_AGENT_CORE_80211, 1);
+
 	bwfm_chip_ai_disable(sc, core, prereset, reset);
+	if (core2)
+		bwfm_chip_ai_disable(sc, core2, prereset, reset);
 
 	for (i = 50; i > 0; i--) {
 		if ((sc->sc_buscore_ops->bc_read(sc,
@@ -1032,12 +1050,32 @@ bwfm_chip_ai_reset(struct bwfm_softc *sc, struct bwfm_core *core,
 	}
 	if (i == 0)
 		printf("%s: timeout on core reset\n", DEVNAME(sc));
+	if (core2) {
+		for (i = 50; i > 0; i--) {
+			if ((sc->sc_buscore_ops->bc_read(sc,
+			    core2->co_wrapbase + BWFM_AGENT_RESET_CTL) &
+			    BWFM_AGENT_RESET_CTL_RESET) == 0)
+				break;
+			sc->sc_buscore_ops->bc_write(sc,
+			    core2->co_wrapbase + BWFM_AGENT_RESET_CTL, 0);
+			delay(60);
+		}
+		if (i == 0)
+			printf("%s: timeout on core reset\n", DEVNAME(sc));
+	}
 
 	sc->sc_buscore_ops->bc_write(sc,
 	    core->co_wrapbase + BWFM_AGENT_IOCTL,
 	    postreset | BWFM_AGENT_IOCTL_CLK);
 	sc->sc_buscore_ops->bc_read(sc,
 	    core->co_wrapbase + BWFM_AGENT_IOCTL);
+	if (core2) {
+		sc->sc_buscore_ops->bc_write(sc,
+		    core2->co_wrapbase + BWFM_AGENT_IOCTL,
+		    postreset | BWFM_AGENT_IOCTL_CLK);
+		sc->sc_buscore_ops->bc_read(sc,
+		    core2->co_wrapbase + BWFM_AGENT_IOCTL);
+	}
 }
 
 void
@@ -1078,7 +1116,8 @@ bwfm_chip_dmp_erom_scan(struct bwfm_softc *sc)
 		rev = (val & BWFM_DMP_COMP_REVISION)
 		    >> BWFM_DMP_COMP_REVISION_S;
 
-		if (nmw + nsw == 0 && id != BWFM_AGENT_CORE_PMU)
+		if (nmw + nsw == 0 && id != BWFM_AGENT_CORE_PMU &&
+		    id != BWFM_AGENT_CORE_GCI)
 			continue;
 
 		if (bwfm_chip_dmp_get_regaddr(sc, &erom, &base, &wrap))
@@ -1142,7 +1181,8 @@ bwfm_chip_dmp_get_regaddr(struct bwfm_softc *sc, uint32_t *erom,
 			else
 				*erom += 4;
 		}
-		if (sztype != BWFM_DMP_SLAVE_SIZE_4K)
+		if (sztype != BWFM_DMP_SLAVE_SIZE_4K &&
+		    sztype != BWFM_DMP_SLAVE_SIZE_8K)
 			continue;
 
 		stype = (val & BWFM_DMP_SLAVE_TYPE) >> BWFM_DMP_SLAVE_TYPE_S;
@@ -2865,4 +2905,116 @@ out:
 	free(sc->sc_clm, M_DEVBUF, sc->sc_clmsize);
 	sc->sc_clm = NULL;
 	sc->sc_clmsize = 0;
+}
+
+#if defined(__HAVE_FDT)
+const char *
+bwfm_sysname(void)
+{
+	static char sysfw[128];
+	int len;
+	char *p;
+
+	len = OF_getprop(OF_peer(0), "compatible", sysfw, sizeof(sysfw));
+	if (len > 0 && len < sizeof(sysfw)) {
+		sysfw[len] = '\0';
+		if ((p = strchr(sysfw, '/')) != NULL)
+			*p = '\0';
+		return sysfw;
+	}
+	return NULL;
+}
+#else
+const char *
+bwfm_sysname(void)
+{
+	return NULL;
+}
+#endif
+
+int
+bwfm_loadfirmware(struct bwfm_softc *sc, const char *chip, const char *bus,
+    u_char **ucode, size_t *size, u_char **nvram, size_t *nvsize, size_t *nvlen)
+{
+	const char *sysname = NULL;
+	char name[128];
+	int r;
+
+	*ucode = *nvram = NULL;
+	*size = *nvsize = *nvlen = 0;
+
+	sysname = bwfm_sysname();
+
+	if (sysname != NULL) {
+		r = snprintf(name, sizeof(name), "brcmfmac%s%s.%s.bin", chip,
+		    bus, sysname);
+		if ((r > 0 && r < sizeof(name)) &&
+		    loadfirmware(name, ucode, size) != 0)
+			*size = 0;
+	}
+	if (*size == 0) {
+		snprintf(name, sizeof(name), "brcmfmac%s%s.bin", chip, bus);
+		if (loadfirmware(name, ucode, size) != 0) {
+			printf("%s: failed loadfirmware of file %s\n",
+			    DEVNAME(sc), name);
+			return 1;
+		}
+	}
+
+	/* .txt needs to be processed first */
+	if (sysname != NULL) {
+		r = snprintf(name, sizeof(name), "brcmfmac%s%s.%s.txt", chip,
+		    bus, sysname);
+		if ((r > 0 && r < sizeof(name)) &&
+		    loadfirmware(name, nvram, nvsize) == 0) {
+			if (bwfm_nvram_convert(*nvram, *nvsize, nvlen) != 0) {
+				printf("%s: failed to process file %s\n",
+				    DEVNAME(sc), name);
+				free(*ucode, M_DEVBUF, *size);
+				free(*nvram, M_DEVBUF, *nvsize);
+				return 1;
+			}
+		}
+	}
+
+	if (*nvlen == 0) {
+		snprintf(name, sizeof(name), "brcmfmac%s%s.txt", chip, bus);
+		if (loadfirmware(name, nvram, nvsize) == 0) {
+			if (bwfm_nvram_convert(*nvram, *nvsize, nvlen) != 0) {
+				printf("%s: failed to process file %s\n",
+				    DEVNAME(sc), name);
+				free(*ucode, M_DEVBUF, *size);
+				free(*nvram, M_DEVBUF, *nvsize);
+				return 1;
+			}
+		}
+	}
+
+	/* .nvram is the pre-processed version */
+	if (*nvlen == 0) {
+		snprintf(name, sizeof(name), "brcmfmac%s%s.nvram", chip, bus);
+		if (loadfirmware(name, nvram, nvsize) == 0)
+			*nvlen = *nvsize;
+	}
+
+	if (*nvlen == 0 && strcmp(bus, "-sdio") == 0) {
+		snprintf(name, sizeof(name), "brcmfmac%s%s.txt", chip, bus);
+		printf("%s: failed loadfirmware of file %s\n",
+		    DEVNAME(sc), name);
+		free(*ucode, M_DEVBUF, *size);
+		return 1;
+	}
+
+	if (sysname != NULL) {
+		r = snprintf(name, sizeof(name), "brcmfmac%s%s.%s.clm_blob",
+		    chip, bus, sysname);
+		if (r > 0 && r < sizeof(name))
+			loadfirmware(name, &sc->sc_clm, &sc->sc_clmsize);
+	}
+	if (sc->sc_clmsize == 0) {
+		snprintf(name, sizeof(name), "brcmfmac%s%s.clm_blob", chip, bus);
+		loadfirmware(name, &sc->sc_clm, &sc->sc_clmsize);
+	}
+
+	return 0;
 }

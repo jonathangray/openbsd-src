@@ -1,4 +1,4 @@
-/*	$OpenBSD: mkdir.c,v 1.1 2021/02/02 18:33:11 claudio Exp $	*/
+/*	$OpenBSD: mkdir.c,v 1.4 2021/03/02 09:23:59 claudio Exp $	*/
 
 /*
  * Copyright (c) 1983, 1992, 1993
@@ -59,7 +59,7 @@ mkpath(const char *dir)
 		done = (*slash == '\0');
 		*slash = '\0';
 
-		if (mkdir(path, 0700) == -1 && errno != EEXIST) {
+		if (mkdir(path, 0755) == -1 && errno != EEXIST) {
 			free(path);
 			return (-1);
 		}

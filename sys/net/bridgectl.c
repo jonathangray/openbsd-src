@@ -1,4 +1,4 @@
-/*	$OpenBSD: bridgectl.c,v 1.23 2021/01/28 20:06:38 mvs Exp $	*/
+/*	$OpenBSD: bridgectl.c,v 1.25 2021/02/25 02:48:21 dlg Exp $	*/
 
 /*
  * Copyright (c) 1999, 2000 Jason L. Wright (jason@thought.net)
@@ -667,9 +667,9 @@ bridge_arpfilter(struct brl_node *n, struct ether_header *eh, struct mbuf *m)
 
 	if (ntohs(eh->ether_type) != ETHERTYPE_ARP)
 		return (0);
-	if (m->m_pkthdr.len <= ETHER_HDR_LEN + sizeof(ea))
+	if (m->m_pkthdr.len < ETHER_HDR_LEN + sizeof(ea))
 		return (0);	/* log error? */
-	m_copydata(m, ETHER_HDR_LEN, sizeof(ea), (caddr_t)&ea);
+	m_copydata(m, ETHER_HDR_LEN, sizeof(ea), &ea);
 
 	if (ntohs(ea.arp_hrd) != ARPHRD_ETHER ||
 	    ntohs(ea.arp_pro) != ETHERTYPE_IP ||

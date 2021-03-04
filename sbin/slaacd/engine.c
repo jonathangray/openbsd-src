@@ -1,4 +1,4 @@
-/*	$OpenBSD: engine.c,v 1.59 2021/01/19 16:49:56 florian Exp $	*/
+/*	$OpenBSD: engine.c,v 1.61 2021/03/02 17:17:15 florian Exp $	*/
 
 /*
  * Copyright (c) 2017 Florian Obser <florian@openbsd.org>
@@ -310,17 +310,11 @@ void			 rdns_proposal_timeout(int, short, void *);
 #endif	/* SMALL */
 void			 iface_timeout(int, short, void *);
 struct radv		*find_ra(struct slaacd_iface *, struct sockaddr_in6 *);
-struct address_proposal	*find_address_proposal_by_id(struct slaacd_iface *,
-			     int64_t);
 struct address_proposal	*find_address_proposal_by_addr(struct slaacd_iface *,
 			     struct sockaddr_in6 *);
-struct dfr_proposal	*find_dfr_proposal_by_id(struct slaacd_iface *,
-			     int64_t);
 struct dfr_proposal	*find_dfr_proposal_by_gw(struct slaacd_iface *,
 			     struct sockaddr_in6 *);
 #ifndef	SMALL
-struct rdns_proposal	*find_rdns_proposal_by_id(struct slaacd_iface *,
-			     int64_t);
 struct rdns_proposal	*find_rdns_proposal_by_gw(struct slaacd_iface *,
 			     struct sockaddr_in6 *);
 #endif	/* SMALL */
@@ -2536,47 +2530,43 @@ iface_timeout(int fd, short events, void *arg)
 	    if_state_name[iface->state]);
 
 	switch (iface->state) {
-		case IF_DELAY:
-		case IF_PROBE:
-			iface->state = IF_PROBE;
-			engine_imsg_compose_frontend(
-			    IMSG_CTL_SEND_SOLICITATION, 0, &iface->if_index,
-			    sizeof(iface->if_index));
-			if (++iface->probes >= MAX_RTR_SOLICITATIONS) {
-				iface->state = IF_DEAD;
-				tv.tv_sec = 0;
-			} else
-				tv.tv_sec = RTR_SOLICITATION_INTERVAL;
-			tv.tv_usec = arc4random_uniform(1000000);
-			evtimer_add(&iface->timer, &tv);
-			break;
-		case IF_DEAD:
-			while(!LIST_EMPTY(&iface->addr_proposals)) {
-				addr_proposal =
-				    LIST_FIRST(&iface->addr_proposals);
-				addr_proposal->state = PROPOSAL_STALE;
-				free_address_proposal(addr_proposal);
-			}
-			while(!LIST_EMPTY(&iface->dfr_proposals)) {
-				dfr_proposal =
-				    LIST_FIRST(&iface->dfr_proposals);
-				dfr_proposal->state = PROPOSAL_STALE;
-				free_dfr_proposal(dfr_proposal);
-			}
+	case IF_DELAY:
+	case IF_PROBE:
+		iface->state = IF_PROBE;
+		engine_imsg_compose_frontend(IMSG_CTL_SEND_SOLICITATION, 0,
+		    &iface->if_index, sizeof(iface->if_index));
+		if (++iface->probes >= MAX_RTR_SOLICITATIONS) {
+			iface->state = IF_DEAD;
+			tv.tv_sec = 0;
+		} else
+			tv.tv_sec = RTR_SOLICITATION_INTERVAL;
+		tv.tv_usec = arc4random_uniform(1000000);
+		evtimer_add(&iface->timer, &tv);
+		break;
+	case IF_DEAD:
+		while(!LIST_EMPTY(&iface->addr_proposals)) {
+			addr_proposal = LIST_FIRST(&iface->addr_proposals);
+			addr_proposal->state = PROPOSAL_STALE;
+			free_address_proposal(addr_proposal);
+		}
+		while(!LIST_EMPTY(&iface->dfr_proposals)) {
+			dfr_proposal = LIST_FIRST(&iface->dfr_proposals);
+			dfr_proposal->state = PROPOSAL_STALE;
+			free_dfr_proposal(dfr_proposal);
+		}
 #ifndef	SMALL
-			while(!LIST_EMPTY(&iface->rdns_proposals)) {
-				rdns_proposal =
-				    LIST_FIRST(&iface->rdns_proposals);
-				rdns_proposal->state = PROPOSAL_STALE;
-				free_rdns_proposal(rdns_proposal);
-			}
-			compose_rdns_proposal(iface->if_index, iface->rdomain);
+		while(!LIST_EMPTY(&iface->rdns_proposals)) {
+			rdns_proposal = LIST_FIRST(&iface->rdns_proposals);
+			rdns_proposal->state = PROPOSAL_STALE;
+			free_rdns_proposal(rdns_proposal);
+		}
+		compose_rdns_proposal(iface->if_index, iface->rdomain);
 #endif	/* SMALL */
-			break;
-		case IF_DOWN:
-		case IF_IDLE:
-		default:
-			break;
+		break;
+	case IF_DOWN:
+	case IF_IDLE:
+	default:
+		break;
 	}
 }
 
@@ -2589,19 +2579,6 @@ find_ra(struct slaacd_iface *iface, struct sockaddr_in6 *from)
 		if (memcmp(&ra->from.sin6_addr, &from->sin6_addr,
 		    sizeof(from->sin6_addr)) == 0)
 			return (ra);
-	}
-
-	return (NULL);
-}
-
-struct address_proposal*
-find_address_proposal_by_id(struct slaacd_iface *iface, int64_t id)
-{
-	struct address_proposal	*addr_proposal;
-
-	LIST_FOREACH (addr_proposal, &iface->addr_proposals, entries) {
-		if (addr_proposal->id == id)
-			return (addr_proposal);
 	}
 
 	return (NULL);
@@ -2622,19 +2599,6 @@ find_address_proposal_by_addr(struct slaacd_iface *iface, struct sockaddr_in6
 }
 
 struct dfr_proposal*
-find_dfr_proposal_by_id(struct slaacd_iface *iface, int64_t id)
-{
-	struct dfr_proposal	*dfr_proposal;
-
-	LIST_FOREACH (dfr_proposal, &iface->dfr_proposals, entries) {
-		if (dfr_proposal->id == id)
-			return (dfr_proposal);
-	}
-
-	return (NULL);
-}
-
-struct dfr_proposal*
 find_dfr_proposal_by_gw(struct slaacd_iface *iface, struct sockaddr_in6
     *addr)
 {
@@ -2649,19 +2613,6 @@ find_dfr_proposal_by_gw(struct slaacd_iface *iface, struct sockaddr_in6
 }
 
 #ifndef	SMALL
-struct rdns_proposal*
-find_rdns_proposal_by_id(struct slaacd_iface *iface, int64_t id)
-{
-	struct rdns_proposal	*rdns_proposal;
-
-	LIST_FOREACH (rdns_proposal, &iface->rdns_proposals, entries) {
-		if (rdns_proposal->id == id)
-			return (rdns_proposal);
-	}
-
-	return (NULL);
-}
-
 struct rdns_proposal*
 find_rdns_proposal_by_gw(struct slaacd_iface *iface, struct sockaddr_in6
     *from)

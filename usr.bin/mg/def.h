@@ -1,4 +1,4 @@
-/*	$OpenBSD: def.h,v 1.166 2020/02/09 10:13:13 florian Exp $	*/
+/*	$OpenBSD: def.h,v 1.168 2021/03/01 10:51:14 lum Exp $	*/
 
 /* This file is in the public domain. */
 
@@ -267,6 +267,8 @@ struct buffer {
 	char		 b_flag;	/* Flags			 */
 	char		 b_fname[NFILEN]; /* File name			 */
 	char		 b_cwd[NFILEN]; /* working directory		 */
+	char		*b_nlseq;	/* Newline sequence of chars	 */
+	char		*b_nlchr;	/* 1st newline character	 */
 	struct fileinfo	 b_fi;		/* File attributes		 */
 	struct undoq	 b_undo;	/* Undo actions list		 */
 	struct undo_rec *b_undoptr;
@@ -471,7 +473,7 @@ int		 ffputbuf(FILE *, struct buffer *, int);
 int		 ffgetline(FILE *, char *, int, int *);
 int		 fbackupfile(const char *);
 char		*adjustname(const char *, int);
-char		*startupfile(char *);
+char		*startupfile(char *, char *);
 int		 copy(char *, char *);
 struct list	*make_file_list(char *);
 int		 fisdir(const char *);

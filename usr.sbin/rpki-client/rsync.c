@@ -1,4 +1,4 @@
-/*	$OpenBSD: rsync.c,v 1.17 2021/02/16 08:52:00 claudio Exp $ */
+/*	$OpenBSD: rsync.c,v 1.19 2021/02/23 14:25:29 claudio Exp $ */
 /*
  * Copyright (c) 2019 Kristaps Dzonsons <kristaps@bsd.lv>
  *
@@ -160,14 +160,7 @@ proc_rsync(char *prog, char *bind_addr, int fd)
 	} else if (unveil(prog, "x") == -1)
 		err(1, "%s: unveil", prog);
 
-	/* Unveil the repository directory and terminate unveiling. */
-
-	if (unveil(".", "c") == -1)
-		err(1, "unveil");
-	if (unveil(NULL, NULL) == -1)
-		err(1, "unveil");
-
-	if (pledge("stdio cpath proc exec", NULL) == -1)
+	if (pledge("stdio proc exec", NULL) == -1)
 		err(1, "pledge");
 
 	/* Initialise retriever for children exiting. */
@@ -260,15 +253,6 @@ proc_rsync(char *prog, char *bind_addr, int fd)
 		io_str_read(fd, &uri);
 		assert(dst);
 		assert(uri);
-
-		/*
-		 * Create source and destination locations.
-		 * Build up the tree to this point because GPL rsync(1)
-		 * will not build the destination for us.
-		 */
-
-		if (mkpath(dst) == -1)
-			err(1, "%s", dst);
 
 		/* Run process itself, wait for exit, check error. */
 

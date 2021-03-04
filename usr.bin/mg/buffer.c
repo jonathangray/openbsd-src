@@ -398,11 +398,8 @@ listbuf_goto_buffer_helper(int f, int n, int only)
 	char		*line = NULL;
 	int		 i, ret = FALSE;
 
-	if (curwp->w_dotp->l_text[listbuf_ncol/2 - 1] == '$') {
-		dobeep();
-		ewprintf("buffer name truncated");
-		return (FALSE);
-	}
+	if (curwp->w_dotp->l_text[listbuf_ncol/2 - 1] == '$')
+		return(dobeep_msg("buffer name truncated"));
 
 	if ((line = malloc(listbuf_ncol/2)) == NULL)
 		return (FALSE);
@@ -489,8 +486,7 @@ anycb(int f)
 			ret = snprintf(pbuf, sizeof(pbuf), "Save file %s",
 			    bp->b_fname);
 			if (ret < 0 || ret >= sizeof(pbuf)) {
-				dobeep();
-				ewprintf("Error: filename too long!");
+				(void)dobeep_msg("Error: filename too long!");
 				return (UERROR);
 			}
 			if ((f == TRUE || (save = eyorn(pbuf)) == TRUE) &&
@@ -589,6 +585,8 @@ bnew(const char *bname)
 	bheadp = bp;
 	bp->b_dotline = bp->b_markline = 1;
 	bp->b_lines = 1;
+	bp->b_nlseq = "\n";		/* use unix default */
+	bp->b_nlchr = bp->b_nlseq;
 	if ((bp->b_bname = strdup(bname)) == NULL) {
 		dobeep();
 		ewprintf("Can't get %d bytes", strlen(bname) + 1);
@@ -779,11 +777,9 @@ bufferinsert(int f, int n)
 	else if ((bp = bfind(bufn, FALSE)) == NULL)
 		return (FALSE);
 
-	if (bp == curbp) {
-		dobeep();
-		ewprintf("Cannot insert buffer into self");
-		return (FALSE);
-	}
+	if (bp == curbp)
+		return(dobeep_msg("Cannot insert buffer into self"));
+
 	/* insert the buffer */
 	nline = 0;
 	clp = bfirstlp(bp);
@@ -921,11 +917,9 @@ revertbuffer(int f, int n)
 {
 	char fbuf[NFILEN + 32];
 
-	if (curbp->b_fname[0] == 0) {
-		dobeep();
-		ewprintf("Cannot revert buffer not associated with any files.");
-		return (FALSE);
-	}
+	if (curbp->b_fname[0] == 0)
+		return(dobeep_msg("Cannot revert buffer not associated "
+		    "with any files."));
 
 	snprintf(fbuf, sizeof(fbuf), "Revert buffer from file %s",
 	    curbp->b_fname);
@@ -997,11 +991,9 @@ diffbuffer(int f, int n)
 		return (FALSE);
 	}
 
-	if (curbp->b_fname[0] == 0) {
-		dobeep();
-		ewprintf("Cannot diff buffer not associated with any files.");
-		return (FALSE);
-	}
+	if (curbp->b_fname[0] == 0)
+		return(dobeep_msg("Cannot diff buffer not associated with "
+		    "any files."));
 
 	lpend = curbp->b_headp;
 	for (lp = lforw(lpend); lp != lpend; lp = lforw(lp)) {
@@ -1009,11 +1001,9 @@ diffbuffer(int f, int n)
 		if (lforw(lp) != lpend)		/* no implied \n on last line */
 			len++;
 	}
-	if ((text = calloc(len + 1, sizeof(char))) == NULL) {
-		dobeep();
-		ewprintf("Cannot allocate memory.");
-		return (FALSE);
-	}
+	if ((text = calloc(len + 1, sizeof(char))) == NULL)
+		return(dobeep_msg("Cannot allocate memory."));
+
 	ttext = text;
 
 	for (lp = lforw(lpend); lp != lpend; lp = lforw(lp)) {
@@ -1022,7 +1012,7 @@ diffbuffer(int f, int n)
 			ttext += llength(lp);
 		}
 		if (lforw(lp) != lpend)		/* no implied \n on last line */
-			*ttext++ = '\n';
+			*ttext++ = *curbp->b_nlchr;
 	}
 
 	bp = bfind("*Diff*", TRUE);
@@ -1055,8 +1045,7 @@ findbuffer(char *fn)
 	char		bname[NBUFN], fname[NBUFN];
 
 	if (strlcpy(fname, fn, sizeof(fname)) >= sizeof(fname)) {
-		dobeep();
-		ewprintf("filename too long");
+		(void)dobeep_msg("filename too long");
 		return (NULL);
 	}
 

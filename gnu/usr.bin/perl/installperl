@@ -618,9 +618,9 @@ sub install {
     my $xto = $to;
     my $cmd = join(' ', @installcmd);
     $cmd .= " -m $mode" if $mode;
+    $cmd .= " -s" if $opts{strip};
     $cmd .= " -o $opts{uid}" if defined($opts{uid});
     $cmd .= " -g $opts{gid}" if defined($opts{gid});
-    $cmd .= " -s" if $opts{strip};
     $cmd .= " $from $to";
     $xto =~ s/^\Q$opts{destdir}\E// if $opts{destdir};
     print $opts{verbose} ? "  install $from $xto\n" : "  $xto\n" unless $opts{silent};

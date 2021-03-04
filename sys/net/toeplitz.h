@@ -1,4 +1,4 @@
-/*	$OpenBSD: toeplitz.h,v 1.3 2020/06/19 08:48:15 dlg Exp $ */
+/*	$OpenBSD: toeplitz.h,v 1.8 2021/02/24 23:44:04 dlg Exp $ */
 
 /*
  * Copyright (c) 2019 David Gwynne <dlg@openbsd.org>
@@ -53,6 +53,9 @@ uint16_t	stoeplitz_hash_ip6port(const struct stoeplitz_cache *,
 		    uint16_t, uint16_t);
 #endif
 
+uint16_t	stoeplitz_hash_eaddr(const struct stoeplitz_cache *,
+		    const uint8_t []);
+
 /* hash a uint16_t in network byte order */
 static __unused inline uint16_t
 stoeplitz_hash_n16(const struct stoeplitz_cache *scache, uint16_t n16)
@@ -88,6 +91,18 @@ stoeplitz_hash_h16(const struct stoeplitz_cache *scache, uint16_t h16)
 #endif
 }
 
+static __unused inline uint16_t
+stoeplitz_hash_h32(const struct stoeplitz_cache *scache, uint64_t h32)
+{
+	return (stoeplitz_hash_h16(scache, h32 & (h32 >> 16)));
+}
+
+static __unused inline uint16_t
+stoeplitz_hash_h64(const struct stoeplitz_cache *scache, uint64_t h64)
+{
+	return (stoeplitz_hash_h32(scache, h64 ^ (h64 >> 32)));
+}
+
 /*
  * system provided symmetric toeplitz
  */
@@ -101,10 +116,14 @@ void		stoeplitz_to_key(void *, size_t)
 
 extern const struct stoeplitz_cache *const stoeplitz_cache;
 
-#define	stoeplitz_n16(_n16) \
-	stoeplitz_cache_n16(stoeplitz_cache, (_n16))
+#define stoeplitz_n16(_n16) \
+	stoeplitz_hash_n16(stoeplitz_cache, (_n16))
 #define stoeplitz_h16(_h16) \
-	stoeplitz_cache_h16(stoeplitz_cache, (_h16))
+	stoeplitz_hash_h16(stoeplitz_cache, (_h16))
+#define stoeplitz_h32(_h32) \
+	stoeplitz_hash_h32(stoeplitz_cache, (_h32))
+#define stoeplitz_h64(_h64) \
+	stoeplitz_hash_h64(stoeplitz_cache, (_h64))
 #define stoeplitz_port(_p)	stoeplitz_n16((_p))
 #define stoeplitz_ip4(_sa4, _da4) \
 	stoeplitz_hash_ip4(stoeplitz_cache, (_sa4), (_da4))
@@ -116,5 +135,7 @@ extern const struct stoeplitz_cache *const stoeplitz_cache;
 #define stoeplitz_ip6port(_sa6, _da6, _sp, _dp) \
 	stoeplitz_hash_ip6port(stoeplitz_cache, (_sa6), (_da6), (_sp), (_dp))
 #endif
+#define stoeplitz_eaddr(_ea) \
+	stoeplitz_hash_eaddr(stoeplitz_cache, (_ea))
 
 #endif /* _SYS_NET_TOEPLITZ_H_ */

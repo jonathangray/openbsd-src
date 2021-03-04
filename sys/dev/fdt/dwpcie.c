@@ -1,4 +1,4 @@
-/*	$OpenBSD: dwpcie.c,v 1.24 2020/12/28 12:24:31 kettenis Exp $	*/
+/*	$OpenBSD: dwpcie.c,v 1.27 2021/03/01 21:03:24 patrick Exp $	*/
 /*
  * Copyright (c) 2018 Mark Kettenis <kettenis@openbsd.org>
  *
@@ -100,6 +100,14 @@
 #define  PCIE_AXUSER_DOMAIN_MASK		(0x3 << 4)
 #define  PCIE_AXUSER_DOMAIN_INNER_SHARABLE	(0x1 << 4)
 #define  PCIE_AXUSER_DOMAIN_OUTER_SHARABLE	(0x2 << 4)
+#define PCIE_STREAMID		0x8064
+#define  PCIE_STREAMID_FUNC_BITS(x)		((x) << 0)
+#define  PCIE_STREAMID_DEV_BITS(x)		((x) << 4)
+#define  PCIE_STREAMID_BUS_BITS(x)		((x) << 8)
+#define  PCIE_STREAMID_ROOTPORT(x)		((x) << 12)
+#define  PCIE_STREAMID_8040			\
+    (PCIE_STREAMID_ROOTPORT(0x80) | PCIE_STREAMID_BUS_BITS(2) | \
+     PCIE_STREAMID_DEV_BITS(2) | PCIE_STREAMID_FUNC_BITS(3))
 
 /* Amlogic G12A registers */
 #define PCIE_CFG0		0x0000
@@ -264,6 +272,7 @@ void	dwpcie_decompose_tag(void *, pcitag_t, int *, int *, int *);
 int	dwpcie_conf_size(void *, pcitag_t);
 pcireg_t dwpcie_conf_read(void *, pcitag_t, int);
 void	dwpcie_conf_write(void *, pcitag_t, int, pcireg_t);
+int	dwpcie_probe_device_hook(void *, struct pci_attach_args *);
 
 int	dwpcie_intr_map(struct pci_attach_args *, pci_intr_handle_t *);
 const char *dwpcie_intr_string(void *, pci_intr_handle_t);
@@ -535,6 +544,7 @@ dwpcie_attach_deferred(struct device *self)
 	sc->sc_pc.pc_conf_size = dwpcie_conf_size;
 	sc->sc_pc.pc_conf_read = dwpcie_conf_read;
 	sc->sc_pc.pc_conf_write = dwpcie_conf_write;
+	sc->sc_pc.pc_probe_device_hook = dwpcie_probe_device_hook;
 
 	sc->sc_pc.pc_intr_v = sc;
 	sc->sc_pc.pc_intr_map = dwpcie_intr_map;
@@ -618,6 +628,12 @@ dwpcie_armada8k_init(struct dwpcie_softc *sc)
 		reg &= ~PCIE_GLOBAL_CTRL_APP_LTSSM_EN;
 		HWRITE4(sc, PCIE_GLOBAL_CTRL, reg);
 	}
+
+	/*
+	 * Setup Requester-ID to Stream-ID mapping
+	 * XXX: TF-A is supposed to set this up, but doesn't!
+	 */
+	HWRITE4(sc, PCIE_STREAMID, PCIE_STREAMID_8040);
 
 	/* Enable Root Complex mode. */
 	reg = HREAD4(sc, PCIE_GLOBAL_CTRL);
@@ -1128,6 +1144,18 @@ dwpcie_conf_write(void *v, pcitag_t tag, int reg, pcireg_t data)
 		dwpcie_atu_config(sc, IATU_VIEWPORT_INDEX1,
 		    IATU_REGION_CTRL_1_TYPE_IO, sc->sc_io_base,
 		    sc->sc_io_bus_addr, sc->sc_io_size);
+}
+
+int
+dwpcie_probe_device_hook(void *v, struct pci_attach_args *pa)
+{
+	struct dwpcie_softc *sc = v;
+	uint16_t rid;
+
+	rid = pci_requester_id(pa->pa_pc, pa->pa_tag);
+	pa->pa_dmat = iommu_device_map_pci(sc->sc_node, rid, pa->pa_dmat);
+
+	return 0;
 }
 
 int

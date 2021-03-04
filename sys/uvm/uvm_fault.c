@@ -1,4 +1,4 @@
-/*	$OpenBSD: uvm_fault.c,v 1.115 2021/02/16 09:10:17 mpi Exp $	*/
+/*	$OpenBSD: uvm_fault.c,v 1.117 2021/03/01 09:09:35 mpi Exp $	*/
 /*	$NetBSD: uvm_fault.c,v 1.51 2000/08/06 00:22:53 thorpej Exp $	*/
 
 /*
@@ -598,10 +598,37 @@ uvm_fault(vm_map_t orig_map, vaddr_t vaddr, vm_fault_t fault_type,
 			/* case 1: fault on an anon in our amap */
 			error = uvm_fault_upper(&ufi, &flt, anons, fault_type);
 		} else {
-			/* case 2: fault on backing object or zero fill */
-			KERNEL_LOCK();
-			error = uvm_fault_lower(&ufi, &flt, pages, fault_type);
-			KERNEL_UNLOCK();
+			struct uvm_object *uobj = ufi.entry->object.uvm_obj;
+
+			/*
+			 * if the desired page is not shadowed by the amap and
+			 * we have a backing object, then we check to see if
+			 * the backing object would prefer to handle the fault
+			 * itself (rather than letting us do it with the usual
+			 * pgo_get hook).  the backing object signals this by
+			 * providing a pgo_fault routine.
+			 */
+			if (uobj != NULL && uobj->pgops->pgo_fault != NULL) {
+				KERNEL_LOCK();
+				error = uobj->pgops->pgo_fault(&ufi,
+				    flt.startva, pages, flt.npages,
+				    flt.centeridx, fault_type, flt.access_type,
+				    PGO_LOCKED);
+				KERNEL_UNLOCK();
+
+				if (error == VM_PAGER_OK)
+					error = 0;
+				else if (error == VM_PAGER_REFAULT)
+					error = ERESTART;
+				else
+					error = EACCES;
+			} else {
+				/* case 2: fault on backing obj or zero fill */
+				KERNEL_LOCK();
+				error = uvm_fault_lower(&ufi, &flt, pages,
+				    fault_type);
+				KERNEL_UNLOCK();
+			}
 		}
 	}
 
@@ -1039,6 +1066,98 @@ uvm_fault_upper(struct uvm_faultinfo *ufi, struct uvm_faultctx *flt,
 }
 
 /*
+ * uvm_fault_lower_lookup: look up on-memory uobj pages.
+ *
+ *	1. get on-memory pages.
+ *	2. if failed, give up (get only center page later).
+ *	3. if succeeded, enter h/w mapping of neighbor pages.
+ */
+
+struct vm_page *
+uvm_fault_lower_lookup(
+	struct uvm_faultinfo *ufi, const struct uvm_faultctx *flt,
+	struct vm_page **pages)
+{
+	struct uvm_object *uobj = ufi->entry->object.uvm_obj;
+	struct vm_page *uobjpage = NULL;
+	int lcv, gotpages;
+	vaddr_t currva;
+
+	counters_inc(uvmexp_counters, flt_lget);
+	gotpages = flt->npages;
+	(void) uobj->pgops->pgo_get(uobj,
+	    ufi->entry->offset + (flt->startva - ufi->entry->start),
+	    pages, &gotpages, flt->centeridx,
+	    flt->access_type & MASK(ufi->entry), ufi->entry->advice,
+	    PGO_LOCKED);
+
+	/*
+	 * check for pages to map, if we got any
+	 */
+	if (gotpages == 0) {
+		return NULL;
+	}
+
+	currva = flt->startva;
+	for (lcv = 0; lcv < flt->npages; lcv++, currva += PAGE_SIZE) {
+		if (pages[lcv] == NULL ||
+		    pages[lcv] == PGO_DONTCARE)
+			continue;
+
+		KASSERT((pages[lcv]->pg_flags & PG_RELEASED) == 0);
+
+		/*
+		 * if center page is resident and not
+		 * PG_BUSY, then pgo_get made it PG_BUSY
+		 * for us and gave us a handle to it.
+		 * remember this page as "uobjpage."
+		 * (for later use).
+		 */
+		if (lcv == flt->centeridx) {
+			uobjpage = pages[lcv];
+			continue;
+		}
+
+		/*
+		 * note: calling pgo_get with locked data
+		 * structures returns us pages which are
+		 * neither busy nor released, so we don't
+		 * need to check for this.   we can just
+		 * directly enter the page (after moving it
+		 * to the head of the active queue [useful?]).
+		 */
+
+		uvm_lock_pageq();
+		uvm_pageactivate(pages[lcv]);	/* reactivate */
+		uvm_unlock_pageq();
+		counters_inc(uvmexp_counters, flt_nomap);
+
+		/*
+		 * Since this page isn't the page that's
+		 * actually faulting, ignore pmap_enter()
+		 * failures; it's not critical that we
+		 * enter these right now.
+		 */
+		(void) pmap_enter(ufi->orig_map->pmap, currva,
+		    VM_PAGE_TO_PHYS(pages[lcv]) | flt->pa_flags,
+		    flt->enter_prot & MASK(ufi->entry),
+		    PMAP_CANFAIL |
+		     (flt->wired ? PMAP_WIRED : 0));
+
+		/*
+		 * NOTE: page can't be PG_WANTED because
+		 * we've held the lock the whole time
+		 * we've had the handle.
+		 */
+		atomic_clearbits_int(&pages[lcv]->pg_flags, PG_BUSY);
+		UVM_PAGE_OWN(pages[lcv], NULL);
+	}
+	pmap_update(ufi->orig_map->pmap);
+
+	return uobjpage;
+}
+
+/*
  * uvm_fault_lower: handle lower fault.
  *
  */
@@ -1049,31 +1168,10 @@ uvm_fault_lower(struct uvm_faultinfo *ufi, struct uvm_faultctx *flt,
 	struct vm_amap *amap = ufi->entry->aref.ar_amap;
 	struct uvm_object *uobj = ufi->entry->object.uvm_obj;
 	boolean_t promote, locked;
-	int result, lcv, gotpages;
+	int result;
 	struct vm_page *uobjpage, *pg = NULL;
 	struct vm_anon *anon = NULL;
-	vaddr_t currva;
 	voff_t uoff;
-
-	/*
-	 * if the desired page is not shadowed by the amap and we have a
-	 * backing object, then we check to see if the backing object would
-	 * prefer to handle the fault itself (rather than letting us do it
-	 * with the usual pgo_get hook).  the backing object signals this by
-	 * providing a pgo_fault routine.
-	 */
-	if (uobj != NULL && uobj->pgops->pgo_fault != NULL) {
-		result = uobj->pgops->pgo_fault(ufi, flt->startva, pages,
-		    flt->npages, flt->centeridx, fault_type, flt->access_type,
-		    PGO_LOCKED);
-
-		if (result == VM_PAGER_OK)
-			return (0);		/* pgo_fault did pmap enter */
-		else if (result == VM_PAGER_REFAULT)
-			return ERESTART;	/* try again! */
-		else
-			return (EACCES);
-	}
 
 	/*
 	 * now, if the desired page is not shadowed by the amap and we have
@@ -1081,82 +1179,11 @@ uvm_fault_lower(struct uvm_faultinfo *ufi, struct uvm_faultctx *flt,
 	 * we ask (with pgo_get) the object for resident pages that we care
 	 * about and attempt to map them in.  we do not let pgo_get block
 	 * (PGO_LOCKED).
-	 *
-	 * ("get" has the option of doing a pmap_enter for us)
 	 */
-	if (uobj != NULL) {
-		counters_inc(uvmexp_counters, flt_lget);
-		gotpages = flt->npages;
-		(void) uobj->pgops->pgo_get(uobj, ufi->entry->offset +
-				(flt->startva - ufi->entry->start),
-				pages, &gotpages, flt->centeridx,
-				flt->access_type & MASK(ufi->entry),
-				ufi->entry->advice, PGO_LOCKED);
-
-		/* check for pages to map, if we got any */
+	if (uobj == NULL) {
 		uobjpage = NULL;
-		if (gotpages) {
-			currva = flt->startva;
-			for (lcv = 0 ; lcv < flt->npages ;
-			    lcv++, currva += PAGE_SIZE) {
-				if (pages[lcv] == NULL ||
-				    pages[lcv] == PGO_DONTCARE)
-					continue;
-
-				KASSERT((pages[lcv]->pg_flags & PG_RELEASED) == 0);
-
-				/*
-				 * if center page is resident and not
-				 * PG_BUSY, then pgo_get made it PG_BUSY
-				 * for us and gave us a handle to it.
-				 * remember this page as "uobjpage."
-				 * (for later use).
-				 */
-				if (lcv == flt->centeridx) {
-					uobjpage = pages[lcv];
-					continue;
-				}
-
-				/*
-				 * note: calling pgo_get with locked data
-				 * structures returns us pages which are
-				 * neither busy nor released, so we don't
-				 * need to check for this.   we can just
-				 * directly enter the page (after moving it
-				 * to the head of the active queue [useful?]).
-				 */
-
-				uvm_lock_pageq();
-				uvm_pageactivate(pages[lcv]);	/* reactivate */
-				uvm_unlock_pageq();
-				counters_inc(uvmexp_counters, flt_nomap);
-
-				/*
-				 * Since this page isn't the page that's
-				 * actually faulting, ignore pmap_enter()
-				 * failures; it's not critical that we
-				 * enter these right now.
-				 */
-				(void) pmap_enter(ufi->orig_map->pmap, currva,
-				    VM_PAGE_TO_PHYS(pages[lcv]) | flt->pa_flags,
-				    flt->enter_prot & MASK(ufi->entry),
-				    PMAP_CANFAIL |
-				     (flt->wired ? PMAP_WIRED : 0));
-
-				/*
-				 * NOTE: page can't be PG_WANTED because
-				 * we've held the lock the whole time
-				 * we've had the handle.
-				 */
-				atomic_clearbits_int(&pages[lcv]->pg_flags,
-				    PG_BUSY);
-				UVM_PAGE_OWN(pages[lcv], NULL);
-			}	/* for "lcv" loop */
-			pmap_update(ufi->orig_map->pmap);
-		}   /* "gotpages" != 0 */
-		/* note: object still _locked_ */
 	} else {
-		uobjpage = NULL;
+		uobjpage = uvm_fault_lower_lookup(ufi, flt, pages);
 	}
 
 	/*
@@ -1195,6 +1222,8 @@ uvm_fault_lower(struct uvm_faultinfo *ufi, struct uvm_faultctx *flt,
 		/* update rusage counters */
 		curproc->p_ru.ru_minflt++;
 	} else {
+		int gotpages;
+
 		/* update rusage counters */
 		curproc->p_ru.ru_majflt++;
 

@@ -1,4 +1,4 @@
-/*	$OpenBSD: if_bwfm_pci.c,v 1.39 2021/01/31 11:07:51 patrick Exp $	*/
+/*	$OpenBSD: if_bwfm_pci.c,v 1.51 2021/02/26 12:33:59 patrick Exp $	*/
 /*
  * Copyright (c) 2010-2016 Broadcom Corporation
  * Copyright (c) 2017 Patrick Wildt <patrick@blueri.se>
@@ -26,6 +26,11 @@
 #include <sys/device.h>
 #include <sys/queue.h>
 #include <sys/socket.h>
+
+#if defined(__HAVE_FDT)
+#include <machine/fdt.h>
+#include <dev/ofw/openfirm.h>
+#endif
 
 #if NBPFILTER > 0
 #include <net/bpf.h>
@@ -197,9 +202,18 @@ int		 bwfm_pci_match(struct device *, void *, void *);
 void		 bwfm_pci_attach(struct device *, struct device *, void *);
 int		 bwfm_pci_detach(struct device *, int);
 
+#if defined(__HAVE_FDT)
+int		 bwfm_pci_read_otp(struct bwfm_pci_softc *);
+void		 bwfm_pci_process_otp_tuple(struct bwfm_pci_softc *, uint8_t,
+		    uint8_t, uint8_t *);
+#endif
+
 int		 bwfm_pci_intr(void *);
 void		 bwfm_pci_intr_enable(struct bwfm_pci_softc *);
 void		 bwfm_pci_intr_disable(struct bwfm_pci_softc *);
+uint32_t	 bwfm_pci_intr_status(struct bwfm_pci_softc *);
+void		 bwfm_pci_intr_ack(struct bwfm_pci_softc *, uint32_t);
+void		 bwfm_pci_hostready(struct bwfm_pci_softc *);
 int		 bwfm_pci_load_microcode(struct bwfm_pci_softc *, const u_char *,
 		    size_t, const u_char *, size_t);
 void		 bwfm_pci_select_core(struct bwfm_pci_softc *, int );
@@ -318,6 +332,7 @@ static const struct pci_matchid bwfm_pci_devices[] = {
 	{ PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM4356 },
 	{ PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM43602 },
 	{ PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM4371 },
+	{ PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM4378 },
 };
 
 int
@@ -390,9 +405,8 @@ bwfm_pci_preinit(struct bwfm_softc *bwfm)
 	struct bwfm_pci_softc *sc = (void *)bwfm;
 	struct bwfm_pci_ringinfo ringinfo;
 	const char *chip = NULL;
-	char name[128];
-	u_char *ucode, *nvram = NULL;
-	size_t size, nvsize, nvlen = 0;
+	u_char *ucode, *nvram;
+	size_t size, nvsize, nvlen;
 	uint32_t d2h_w_idx_ptr, d2h_r_idx_ptr;
 	uint32_t h2d_w_idx_ptr, h2d_r_idx_ptr;
 	uint32_t idx_offset, reg;
@@ -406,6 +420,13 @@ bwfm_pci_preinit(struct bwfm_softc *bwfm)
 		printf("%s: cannot attach chip\n", DEVNAME(sc));
 		return 1;
 	}
+
+#if defined(__HAVE_FDT)
+	if (bwfm_pci_read_otp(sc)) {
+		printf("%s: cannot read OTP\n", DEVNAME(sc));
+		return 1;
+	}
+#endif
 
 	bwfm_pci_select_core(sc, BWFM_AGENT_CORE_PCIE2);
 	bus_space_write_4(sc->sc_reg_iot, sc->sc_reg_ioh,
@@ -441,31 +462,9 @@ bwfm_pci_preinit(struct bwfm_softc *bwfm)
 		return 1;
 	}
 
-	snprintf(name, sizeof(name), "brcmfmac%s-pcie.bin", chip);
-	if (loadfirmware(name, &ucode, &size) != 0) {
-		printf("%s: failed loadfirmware of file %s\n",
-		    DEVNAME(sc), name);
+	if (bwfm_loadfirmware(bwfm, chip, "-pcie", &ucode, &size,
+	    &nvram, &nvsize, &nvlen) != 0)
 		return 1;
-	}
-
-	/* .txt needs to be processed first */
-	snprintf(name, sizeof(name), "brcmfmac%s-pcie.txt", chip);
-	if (loadfirmware(name, &nvram, &nvsize) == 0) {
-		if (bwfm_nvram_convert(nvram, nvsize, &nvlen) != 0) {
-			printf("%s: failed to process file %s\n",
-			    DEVNAME(sc), name);
-			free(ucode, M_DEVBUF, size);
-			free(nvram, M_DEVBUF, nvsize);
-			return 1;
-		}
-	}
-
-	/* .nvram is the pre-processed version */
-	if (nvlen == 0) {
-		snprintf(name, sizeof(name), "brcmfmac%s-pcie.nvram", chip);
-		if (loadfirmware(name, &nvram, &nvsize) == 0)
-			nvlen = nvsize;
-	}
 
 	/* Retrieve RAM size from firmware. */
 	if (size >= BWFM_RAMSIZE + 8) {
@@ -617,11 +616,13 @@ bwfm_pci_preinit(struct bwfm_softc *bwfm)
 	    d2h_w_idx_ptr, d2h_r_idx_ptr, 0, idx_offset,
 	    &ring_mem_ptr))
 		goto cleanup;
-	if (bwfm_pci_setup_ring(sc, &sc->sc_tx_complete, 1024, 16,
+	if (bwfm_pci_setup_ring(sc, &sc->sc_tx_complete, 1024,
+	    sc->sc_shared_version >= 7 ? 24 : 16,
 	    d2h_w_idx_ptr, d2h_r_idx_ptr, 1, idx_offset,
 	    &ring_mem_ptr))
 		goto cleanup;
-	if (bwfm_pci_setup_ring(sc, &sc->sc_rx_complete, 512, 32,
+	if (bwfm_pci_setup_ring(sc, &sc->sc_rx_complete, 512,
+	    sc->sc_shared_version >= 7 ? 40 : 32,
 	    d2h_w_idx_ptr, d2h_r_idx_ptr, 2, idx_offset,
 	    &ring_mem_ptr))
 		goto cleanup;
@@ -664,14 +665,15 @@ bwfm_pci_preinit(struct bwfm_softc *bwfm)
 
 	bwfm_pci_select_core(sc, BWFM_AGENT_CORE_PCIE2);
 	bwfm_pci_intr_enable(sc);
+	bwfm_pci_hostready(sc);
 
 	/* Maps RX mbufs to a packet id and back. */
 	sc->sc_rx_pkts.npkt = BWFM_NUM_RX_PKTIDS;
 	sc->sc_rx_pkts.pkts = malloc(BWFM_NUM_RX_PKTIDS *
 	    sizeof(struct bwfm_pci_buf), M_DEVBUF, M_WAITOK | M_ZERO);
 	for (i = 0; i < BWFM_NUM_RX_PKTIDS; i++)
-		bus_dmamap_create(sc->sc_dmat, MSGBUF_MAX_PKT_SIZE,
-		    BWFM_NUM_RX_DESCS, MSGBUF_MAX_PKT_SIZE, 0, BUS_DMA_WAITOK,
+		bus_dmamap_create(sc->sc_dmat, MSGBUF_MAX_CTL_PKT_SIZE,
+		    BWFM_NUM_RX_DESCS, MSGBUF_MAX_CTL_PKT_SIZE, 0, BUS_DMA_WAITOK,
 		    &sc->sc_rx_pkts.pkts[i].bb_map);
 
 	/* Maps TX mbufs to a packet id and back. */
@@ -695,10 +697,10 @@ bwfm_pci_preinit(struct bwfm_softc *bwfm)
 	/*
 	 * For whatever reason, could also be a bug somewhere in this
 	 * driver, the firmware needs a bunch of RX buffers otherwise
-	 * it won't send any RX complete messages.  64 buffers don't
-	 * suffice, but 128 buffers are enough.
+	 * it won't send any RX complete messages.
 	 */
-	if_rxr_init(&sc->sc_rxbuf_ring, 128, sc->sc_max_rxbufpost);
+	if_rxr_init(&sc->sc_rxbuf_ring, min(256, sc->sc_max_rxbufpost),
+	    sc->sc_max_rxbufpost);
 	if_rxr_init(&sc->sc_ioctl_ring, 8, 8);
 	if_rxr_init(&sc->sc_event_ring, 8, 8);
 	bwfm_pci_fill_rx_rings(sc);
@@ -779,15 +781,21 @@ bwfm_pci_load_microcode(struct bwfm_pci_softc *sc, const u_char *ucode, size_t s
 	}
 	bwfm_chip_set_active(bwfm, *(uint32_t *)ucode);
 
-	for (i = 0; i < 40; i++) {
+	for (i = 0; i < 100; i++) {
 		delay(50 * 1000);
 		shared = bus_space_read_4(sc->sc_tcm_iot, sc->sc_tcm_ioh,
 		    bwfm->sc_chip.ch_rambase + bwfm->sc_chip.ch_ramsize - 4);
 		if (shared != written)
 			break;
 	}
-	if (!shared) {
+	if (shared == written) {
 		printf("%s: firmware did not come up\n", DEVNAME(sc));
+		return 1;
+	}
+	if (shared < bwfm->sc_chip.ch_rambase ||
+	    shared >= bwfm->sc_chip.ch_rambase + bwfm->sc_chip.ch_ramsize) {
+		printf("%s: invalid shared RAM address 0x%08x\n", DEVNAME(sc),
+		    shared);
 		return 1;
 	}
 
@@ -816,6 +824,120 @@ bwfm_pci_detach(struct device *self, int flags)
 	bwfm_pci_dmamem_free(sc, sc->sc_dma_idx_buf);
 	return 0;
 }
+
+#if defined(__HAVE_FDT)
+int
+bwfm_pci_read_otp(struct bwfm_pci_softc *sc)
+{
+	struct bwfm_softc *bwfm = (void *)sc;
+	struct bwfm_core *core;
+	uint8_t otp[BWFM_OTP_SIZE];
+	int i;
+
+	if (bwfm->sc_chip.ch_chip != BRCM_CC_4378_CHIP_ID)
+		return 0;
+
+	core = bwfm_chip_get_core(bwfm, BWFM_AGENT_CORE_GCI);
+	if (core == NULL)
+		return 1;
+
+	for (i = 0; i < (sizeof(otp) / sizeof(uint32_t)); i++)
+		((uint32_t *)otp)[i] = bwfm_pci_buscore_read(bwfm,
+		    core->co_base + BWFM_OTP_4378_BASE + i * sizeof(uint32_t));
+
+	for (i = 0; i < BWFM_OTP_SIZE - 1; ) {
+		if (otp[i + 0] == 0) {
+			i++;
+			continue;
+		}
+		if (i + otp[i + 1] > BWFM_OTP_SIZE)
+			break;
+		bwfm_pci_process_otp_tuple(sc, otp[i + 0], otp[i + 1],
+		    &otp[i + 2]);
+		i += otp[i + 1];
+	}
+
+	return 0;
+}
+
+void
+bwfm_pci_process_otp_tuple(struct bwfm_pci_softc *sc, uint8_t type, uint8_t size,
+    uint8_t *data)
+{
+	struct bwfm_softc *bwfm = (void *)sc;
+	char chiprev[8] = "", module[8] = "", modrev[8] = "", vendor[8] = "", chip[8] = "";
+	char product[16] = "unknown";
+	int node, len;
+
+	switch (type) {
+	case 0x15: /* system vendor OTP */
+		DPRINTF(("%s: system vendor OTP\n", DEVNAME(sc)));
+		if (size < sizeof(uint32_t))
+			return;
+		if (data[0] != 0x08 || data[1] != 0x00 ||
+		    data[2] != 0x00 || data[3] != 0x00)
+			return;
+		size -= sizeof(uint32_t);
+		data += sizeof(uint32_t);
+		while (size) {
+			/* reached end */
+			if (data[0] == 0xff)
+				break;
+			for (len = 0; len < size; len++)
+				if (data[len] == 0x00 || data[len] == ' ' ||
+				    data[len] == 0xff)
+					break;
+			if (len < 3 || len > 9) /* X=abcdef */
+				goto next;
+			if (data[1] != '=')
+				goto next;
+			/* NULL-terminate string */
+			if (data[len] == ' ')
+				data[len] = '\0';
+			switch (data[0]) {
+			case 's':
+				strlcpy(chiprev, &data[2], sizeof(chiprev));
+				break;
+			case 'M':
+				strlcpy(module, &data[2], sizeof(module));
+				break;
+			case 'm':
+				strlcpy(modrev, &data[2], sizeof(modrev));
+				break;
+			case 'V':
+				strlcpy(vendor, &data[2], sizeof(vendor));
+				break;
+			}
+next:
+			/* skip content */
+			data += len;
+			size -= len;
+			/* skip spacer tag */
+			if (size) {
+				data++;
+				size--;
+			}
+		}
+		snprintf(chip, sizeof(chip),
+		    bwfm->sc_chip.ch_chip > 40000 ? "%05d" : "%04x",
+		    bwfm->sc_chip.ch_chip);
+		node = OF_finddevice("/chosen");
+		if (node != -1)
+			OF_getprop(node, "module-wlan0", product, sizeof(product));
+		printf("%s: firmware C-%s%s%s/P-%s_M-%s_V-%s__m-%s\n",
+		    DEVNAME(sc), chip,
+		    *chiprev ? "__s-" : "", *chiprev ? chiprev : "",
+		    product, module, vendor, modrev);
+		break;
+	case 0x80: /* Broadcom CIS */
+		DPRINTF(("%s: Broadcom CIS\n", DEVNAME(sc)));
+		break;
+	default:
+		DPRINTF(("%s: unknown OTP tuple\n", DEVNAME(sc)));
+		break;
+	}
+}
+#endif
 
 /* DMA code */
 struct bwfm_pci_dmamem *
@@ -966,12 +1088,12 @@ bwfm_pci_fill_rx_ioctl_ring(struct bwfm_pci_softc *sc, struct if_rxring *rxring,
 		req = bwfm_pci_ring_write_reserve(sc, &sc->sc_ctrl_submit);
 		if (req == NULL)
 			break;
-		m = MCLGETL(NULL, M_DONTWAIT, MSGBUF_MAX_PKT_SIZE);
+		m = MCLGETL(NULL, M_DONTWAIT, MSGBUF_MAX_CTL_PKT_SIZE);
 		if (m == NULL) {
 			bwfm_pci_ring_write_cancel(sc, &sc->sc_ctrl_submit, 1);
 			break;
 		}
-		m->m_len = m->m_pkthdr.len = MSGBUF_MAX_PKT_SIZE;
+		m->m_len = m->m_pkthdr.len = MSGBUF_MAX_CTL_PKT_SIZE;
 		if (bwfm_pci_pktid_new(sc, &sc->sc_rx_pkts, m, &pktid, &paddr)) {
 			bwfm_pci_ring_write_cancel(sc, &sc->sc_ctrl_submit, 1);
 			m_freem(m);
@@ -980,7 +1102,7 @@ bwfm_pci_fill_rx_ioctl_ring(struct bwfm_pci_softc *sc, struct if_rxring *rxring,
 		memset(req, 0, sizeof(*req));
 		req->msg.msgtype = msgtype;
 		req->msg.request_id = htole32(pktid);
-		req->host_buf_len = htole16(MSGBUF_MAX_PKT_SIZE);
+		req->host_buf_len = htole16(MSGBUF_MAX_CTL_PKT_SIZE);
 		req->host_buf_addr.high_addr = htole32((uint64_t)paddr >> 32);
 		req->host_buf_addr.low_addr = htole32(paddr & 0xffffffff);
 		bwfm_pci_ring_write_commit(sc, &sc->sc_ctrl_submit);
@@ -1080,8 +1202,14 @@ void
 bwfm_pci_ring_bell(struct bwfm_pci_softc *sc,
     struct bwfm_pci_msgring *ring)
 {
-	bus_space_write_4(sc->sc_reg_iot, sc->sc_reg_ioh,
-	    BWFM_PCI_PCIE2REG_H2D_MAILBOX, 1);
+	struct bwfm_softc *bwfm = (void *)sc;
+
+	if (bwfm->sc_chip.ch_chip == BRCM_CC_4378_CHIP_ID)
+		bus_space_write_4(sc->sc_reg_iot, sc->sc_reg_ioh,
+		    BWFM_PCI_64_PCIE2REG_H2D_MAILBOX_0, 1);
+	else
+		bus_space_write_4(sc->sc_reg_iot, sc->sc_reg_ioh,
+		    BWFM_PCI_PCIE2REG_H2D_MAILBOX_0, 1);
 }
 
 void
@@ -1529,11 +1657,9 @@ bwfm_pci_buscore_reset(struct bwfm_softc *bwfm)
 		}
 	}
 
-	reg = bus_space_read_4(sc->sc_reg_iot, sc->sc_reg_ioh,
-	    BWFM_PCI_PCIE2REG_MAILBOXINT);
+	reg = bwfm_pci_intr_status(sc);
 	if (reg != 0xffffffff)
-		bus_space_write_4(sc->sc_reg_iot, sc->sc_reg_ioh,
-		    BWFM_PCI_PCIE2REG_MAILBOXINT, reg);
+		bwfm_pci_intr_ack(sc, reg);
 
 	return 0;
 }
@@ -1546,10 +1672,10 @@ bwfm_pci_buscore_activate(struct bwfm_softc *bwfm, uint32_t rstvec)
 }
 
 static int bwfm_pci_prio2fifo[8] = {
-	1, /* best effort */
-	0, /* IPTOS_PREC_IMMEDIATE */
-	0, /* IPTOS_PREC_PRIORITY */
-	1, /* IPTOS_PREC_FLASH */
+	0, /* best effort */
+	1, /* IPTOS_PREC_IMMEDIATE */
+	1, /* IPTOS_PREC_PRIORITY */
+	0, /* IPTOS_PREC_FLASH */
 	2, /* IPTOS_PREC_FLASHOVERRIDE */
 	2, /* IPTOS_PREC_CRITIC_ECP */
 	3, /* IPTOS_PREC_INTERNETCONTROL */
@@ -1897,23 +2023,34 @@ int
 bwfm_pci_intr(void *v)
 {
 	struct bwfm_pci_softc *sc = (void *)v;
+	struct bwfm_softc *bwfm = (void *)sc;
 	struct ifnet *ifp = &sc->sc_sc.sc_ic.ic_if;
 	struct mbuf_list ml = MBUF_LIST_INITIALIZER();
-	uint32_t status;
+	uint32_t status, mask;
 
-	if ((status = bus_space_read_4(sc->sc_reg_iot, sc->sc_reg_ioh,
-	    BWFM_PCI_PCIE2REG_MAILBOXINT)) == 0)
+	if (!sc->sc_initialized)
+		return 0;
+
+	status = bwfm_pci_intr_status(sc);
+	/* FIXME: interrupt status seems to be zero? */
+	if (status == 0 && bwfm->sc_chip.ch_chip == BRCM_CC_4378_CHIP_ID)
+		status |= BWFM_PCI_64_PCIE2REG_MAILBOXMASK_INT_D2H_DB;
+	if (status == 0)
 		return 0;
 
 	bwfm_pci_intr_disable(sc);
-	bus_space_write_4(sc->sc_reg_iot, sc->sc_reg_ioh,
-	    BWFM_PCI_PCIE2REG_MAILBOXINT, status);
+	bwfm_pci_intr_ack(sc, status);
 
-	if (status & (BWFM_PCI_PCIE2REG_MAILBOXMASK_INT_FN0_0 |
-	    BWFM_PCI_PCIE2REG_MAILBOXMASK_INT_FN0_1))
+	if (bwfm->sc_chip.ch_chip != BRCM_CC_4378_CHIP_ID &&
+	    (status & (BWFM_PCI_PCIE2REG_MAILBOXMASK_INT_FN0_0 |
+	    BWFM_PCI_PCIE2REG_MAILBOXMASK_INT_FN0_1)))
 		printf("%s: handle MB data\n", __func__);
 
-	if (status & BWFM_PCI_PCIE2REG_MAILBOXMASK_INT_D2H_DB) {
+	mask = BWFM_PCI_PCIE2REG_MAILBOXMASK_INT_D2H_DB;
+	if (bwfm->sc_chip.ch_chip == BRCM_CC_4378_CHIP_ID)
+		mask = BWFM_PCI_64_PCIE2REG_MAILBOXMASK_INT_D2H_DB;
+
+	if (status & mask) {
 		bwfm_pci_ring_rx(sc, &sc->sc_rx_complete, &ml);
 		bwfm_pci_ring_rx(sc, &sc->sc_tx_complete, &ml);
 		bwfm_pci_ring_rx(sc, &sc->sc_ctrl_complete, &ml);
@@ -1933,18 +2070,73 @@ bwfm_pci_intr(void *v)
 void
 bwfm_pci_intr_enable(struct bwfm_pci_softc *sc)
 {
-	bus_space_write_4(sc->sc_reg_iot, sc->sc_reg_ioh,
-	    BWFM_PCI_PCIE2REG_MAILBOXMASK,
-	    BWFM_PCI_PCIE2REG_MAILBOXMASK_INT_FN0_0 |
-	    BWFM_PCI_PCIE2REG_MAILBOXMASK_INT_FN0_1 |
-	    BWFM_PCI_PCIE2REG_MAILBOXMASK_INT_D2H_DB);
+	struct bwfm_softc *bwfm = (void *)sc;
+
+	if (bwfm->sc_chip.ch_chip == BRCM_CC_4378_CHIP_ID)
+		bus_space_write_4(sc->sc_reg_iot, sc->sc_reg_ioh,
+		    BWFM_PCI_64_PCIE2REG_MAILBOXMASK,
+		    BWFM_PCI_64_PCIE2REG_MAILBOXMASK_INT_D2H_DB);
+	else
+		bus_space_write_4(sc->sc_reg_iot, sc->sc_reg_ioh,
+		    BWFM_PCI_PCIE2REG_MAILBOXMASK,
+		    BWFM_PCI_PCIE2REG_MAILBOXMASK_INT_FN0_0 |
+		    BWFM_PCI_PCIE2REG_MAILBOXMASK_INT_FN0_1 |
+		    BWFM_PCI_PCIE2REG_MAILBOXMASK_INT_D2H_DB);
 }
 
 void
 bwfm_pci_intr_disable(struct bwfm_pci_softc *sc)
 {
-	bus_space_write_4(sc->sc_reg_iot, sc->sc_reg_ioh,
-	    BWFM_PCI_PCIE2REG_MAILBOXMASK, 0);
+	struct bwfm_softc *bwfm = (void *)sc;
+
+	if (bwfm->sc_chip.ch_chip == BRCM_CC_4378_CHIP_ID)
+		bus_space_write_4(sc->sc_reg_iot, sc->sc_reg_ioh,
+		    BWFM_PCI_64_PCIE2REG_MAILBOXMASK, 0);
+	else
+		bus_space_write_4(sc->sc_reg_iot, sc->sc_reg_ioh,
+		    BWFM_PCI_PCIE2REG_MAILBOXMASK, 0);
+}
+
+uint32_t
+bwfm_pci_intr_status(struct bwfm_pci_softc *sc)
+{
+	struct bwfm_softc *bwfm = (void *)sc;
+
+	if (bwfm->sc_chip.ch_chip == BRCM_CC_4378_CHIP_ID)
+		return bus_space_read_4(sc->sc_reg_iot, sc->sc_reg_ioh,
+		    BWFM_PCI_64_PCIE2REG_MAILBOXINT);
+	else
+		return bus_space_read_4(sc->sc_reg_iot, sc->sc_reg_ioh,
+		    BWFM_PCI_PCIE2REG_MAILBOXINT);
+}
+
+void
+bwfm_pci_intr_ack(struct bwfm_pci_softc *sc, uint32_t status)
+{
+	struct bwfm_softc *bwfm = (void *)sc;
+
+	if (bwfm->sc_chip.ch_chip == BRCM_CC_4378_CHIP_ID)
+		bus_space_write_4(sc->sc_reg_iot, sc->sc_reg_ioh,
+		    BWFM_PCI_64_PCIE2REG_MAILBOXINT, status);
+	else
+		bus_space_write_4(sc->sc_reg_iot, sc->sc_reg_ioh,
+		    BWFM_PCI_PCIE2REG_MAILBOXINT, status);
+}
+
+void
+bwfm_pci_hostready(struct bwfm_pci_softc *sc)
+{
+	struct bwfm_softc *bwfm = (void *)sc;
+
+	if ((sc->sc_shared_flags & BWFM_SHARED_INFO_HOSTRDY_DB1) == 0)
+		return;
+
+	if (bwfm->sc_chip.ch_chip == BRCM_CC_4378_CHIP_ID)
+		bus_space_write_4(sc->sc_reg_iot, sc->sc_reg_ioh,
+		    BWFM_PCI_64_PCIE2REG_H2D_MAILBOX_1, 1);
+	else
+		bus_space_write_4(sc->sc_reg_iot, sc->sc_reg_ioh,
+		    BWFM_PCI_PCIE2REG_H2D_MAILBOX_1, 1);
 }
 
 /* Msgbuf protocol implementation */
@@ -2017,7 +2209,7 @@ bwfm_pci_msgbuf_query_dcmd(struct bwfm_softc *bwfm, int ifidx,
 	*len = min(ctl->retlen, m->m_len);
 	*len = min(*len, buflen);
 	if (buf)
-		m_copydata(ctl->m, 0, *len, (caddr_t)buf);
+		m_copydata(ctl->m, 0, *len, buf);
 	m_freem(ctl->m);
 
 	if (ctl->status < 0) {

@@ -1,4 +1,4 @@
-/*	$OpenBSD: ifconfig.c,v 1.433 2021/02/10 14:45:27 bluhm Exp $	*/
+/*	$OpenBSD: ifconfig.c,v 1.435 2021/03/04 07:46:26 jsg Exp $	*/
 /*	$NetBSD: ifconfig.c,v 1.40 1997/10/01 02:19:43 enami Exp $	*/
 
 /*
@@ -468,6 +468,8 @@ const struct	cmd {
 	{ "-autoconfprivacy",	IFXF_INET6_NOPRIVACY,	0,	setifxflags },
 	{ "soii",	-IFXF_INET6_NOSOII,	0,	setifxflags },
 	{ "-soii",	IFXF_INET6_NOSOII,	0,	setifxflags },
+	{ "monitor",	IFXF_MONITOR,	0,		setifxflags },
+	{ "-monitor",	-IFXF_MONITOR,	0,		setifxflags },
 #ifndef SMALL
 	{ "hwfeatures", NEXTARG0,	0,		printifhwfeatures },
 	{ "metric",	NEXTARG,	0,		setifmetric },
@@ -675,7 +677,7 @@ const struct	cmd {
 	"\7RUNNING\10NOARP\11PROMISC\12ALLMULTI\13OACTIVE\14SIMPLEX"	\
 	"\15LINK0\16LINK1\17LINK2\20MULTICAST"				\
 	"\23INET6_NOPRIVACY\24MPLS\25WOL\26AUTOCONF6\27INET6_NOSOII"	\
-	"\30AUTOCONF4"
+	"\30AUTOCONF4" "\31MONITOR"
 
 int	getinfo(struct ifreq *, int);
 void	getsock(int);
@@ -2641,7 +2643,7 @@ join_status(void)
 				if (wpa->i_protos & IEEE80211_WPA_PROTO_WPA2)
 					printf("%swpa2", sep);
 
-				printf(" wpaakms ", stdout); sep = "";
+				printf(" wpaakms "); sep = "";
 				if (wpa->i_akms & IEEE80211_WPA_AKM_PSK) {
 					printf("psk");
 					sep = ",";

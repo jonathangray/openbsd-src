@@ -1,4 +1,4 @@
-/*	$OpenBSD: fileio.c,v 1.106 2019/06/22 10:21:57 lum Exp $	*/
+/*	$OpenBSD: fileio.c,v 1.108 2021/03/01 10:51:14 lum Exp $	*/
 
 /* This file is in the public domain. */
 
@@ -163,11 +163,11 @@ ffputbuf(FILE *ffp, struct buffer *bp, int eobnl)
 			return (FIOERR);
 		}
 		if (lforw(lp) != lpend)		/* no implied \n on last line */
-			putc('\n', ffp);
+			putc(*bp->b_nlchr, ffp);
 	}
 	if (eobnl) {
 		lnewline_at(lback(lpend), llength(lback(lpend)));
-		putc('\n', ffp);
+		putc(*bp->b_nlchr, ffp);
 	}
 	return (FIOSUC);
 }
@@ -185,7 +185,7 @@ ffgetline(FILE *ffp, char *buf, int nbuf, int *nbytes)
 	int	c, i;
 
 	i = 0;
-	while ((c = getc(ffp)) != EOF && c != '\n') {
+	while ((c = getc(ffp)) != EOF && c != *curbp->b_nlchr) {
 		buf[i++] = c;
 		if (i >= nbuf)
 			return (FIOLONG);
@@ -330,7 +330,7 @@ adjustname(const char *fn, int slashslash)
  * to the startup file name.
  */
 char *
-startupfile(char *suffix)
+startupfile(char *suffix, char *conffile)
 {
 	static char	 file[NFILEN];
 	char		*home;
@@ -339,7 +339,9 @@ startupfile(char *suffix)
 	if ((home = getenv("HOME")) == NULL || *home == '\0')
 		goto nohome;
 
-	if (suffix == NULL) {
+	if (conffile != NULL) {
+		(void)strncpy(file, conffile, NFILEN);
+	} else if (suffix == NULL) {
 		ret = snprintf(file, sizeof(file), _PATH_MG_STARTUP, home);
 		if (ret < 0 || ret >= sizeof(file))
 			return (NULL);

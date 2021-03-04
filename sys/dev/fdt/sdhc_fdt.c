@@ -1,4 +1,4 @@
-/*	$OpenBSD: sdhc_fdt.c,v 1.12 2020/05/31 11:47:09 kettenis Exp $	*/
+/*	$OpenBSD: sdhc_fdt.c,v 1.14 2021/02/22 18:55:23 patrick Exp $	*/
 /*
  * Copyright (c) 2017 Mark Kettenis
  *
@@ -275,8 +275,10 @@ sdhc_fdt_attach(struct device *parent, struct device *self, void *aux)
 		    SDHC_CAPABILITIES);
 		if (OF_getpropint(faa->fa_node, "bus-width", 1) != 8)
 			cap &= ~SDHC_8BIT_MODE_SUPP;
-		if (OF_getproplen(faa->fa_node, "no-1-8-v") == 0)
+		if (OF_getproplen(faa->fa_node, "no-1-8-v") == 0) {
 			cap &= ~SDHC_VOLTAGE_SUPP_1_8V;
+			sc->sc.sc_flags |= SDHC_F_NODDR50;
+		}
 		if (OF_getproplen(faa->fa_node,
 		    "marvell,xenon-phy-slow-mode") == 0)
 			sc->sc_slow_mode = 1;
@@ -428,8 +430,8 @@ phy_init:
 	    XENON_EMMC_PHY_TIMING_ADJUST);
 	reg |= XENON_EMMC_PHY_TIMING_ADJUST_SAMPL_INV_QSP_PHASE_SELECT;
 	reg &= ~XENON_EMMC_PHY_TIMING_ADJUST_SLOW_MODE;
-	if (timing == SDMMC_TIMING_LEGACY ||
-	    timing == SDMMC_TIMING_HIGHSPEED || sc->sc_slow_mode)
+	if ((timing == SDMMC_TIMING_LEGACY ||
+	    timing == SDMMC_TIMING_HIGHSPEED) && sc->sc_slow_mode)
 		reg |= XENON_EMMC_PHY_TIMING_ADJUST_SLOW_MODE;
 	bus_space_write_4(sc->sc_iot, sc->sc_ioh,
 	    XENON_EMMC_PHY_TIMING_ADJUST, reg);

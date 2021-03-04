@@ -1,4 +1,4 @@
-/*	$OpenBSD: ofw_misc.c,v 1.27 2020/11/30 17:57:36 kettenis Exp $	*/
+/*	$OpenBSD: ofw_misc.c,v 1.30 2021/02/28 21:09:44 patrick Exp $	*/
 /*
  * Copyright (c) 2017 Mark Kettenis
  *
@@ -838,4 +838,130 @@ mii_byphandle(uint32_t phandle)
 		return NULL;
 
 	return mii_bynode(node);
+}
+
+/* IOMMU support */
+
+LIST_HEAD(, iommu_device) iommu_devices =
+	LIST_HEAD_INITIALIZER(iommu_devices);
+
+void
+iommu_device_register(struct iommu_device *id)
+{
+	id->id_phandle = OF_getpropint(id->id_node, "phandle", 0);
+	if (id->id_phandle == 0)
+		return;
+
+	LIST_INSERT_HEAD(&iommu_devices, id, id_list);
+}
+
+bus_dma_tag_t
+iommu_device_do_map(uint32_t phandle, uint32_t *cells, bus_dma_tag_t dmat)
+{
+	struct iommu_device *id;
+
+	if (phandle == 0)
+		return dmat;
+
+	LIST_FOREACH(id, &iommu_devices, id_list) {
+		if (id->id_phandle == phandle)
+			return id->id_map(id->id_cookie, cells, dmat);
+	}
+
+	return dmat;
+}
+
+bus_dma_tag_t
+iommu_device_map(int node, bus_dma_tag_t dmat)
+{
+	uint32_t sid = 0;
+	uint32_t phandle = 0;
+	uint32_t *cell;
+	uint32_t *map;
+	int len, icells, ncells;
+
+	len = OF_getproplen(node, "iommus");
+	if (len <= 0)
+		return dmat;
+
+	map = malloc(len, M_TEMP, M_WAITOK);
+	OF_getpropintarray(node, "iommus", map, len);
+
+	cell = map;
+	ncells = len / sizeof(uint32_t);
+	while (ncells > 1) {
+		node = OF_getnodebyphandle(cell[0]);
+		if (node == 0)
+			goto out;
+
+		icells = OF_getpropint(node, "#iommu-cells", 1);
+		if (ncells < icells + 1)
+			goto out;
+
+		KASSERT(icells == 1);
+
+		phandle = cell[0];
+		sid = cell[1];
+		break;
+
+		cell += (1 + icells);
+		ncells -= (1 + icells);
+	}
+
+out:
+	free(map, M_TEMP, len);
+
+	return iommu_device_do_map(phandle, &sid, dmat);
+}
+
+bus_dma_tag_t
+iommu_device_map_pci(int node, uint32_t rid, bus_dma_tag_t dmat)
+{
+	uint32_t sid_base, sid = 0;
+	uint32_t phandle = 0;
+	uint32_t *cell;
+	uint32_t *map;
+	uint32_t mask, rid_base;
+	int len, length, icells, ncells;
+
+	len = OF_getproplen(node, "iommu-map");
+	if (len <= 0)
+		return dmat;
+
+	map = malloc(len, M_TEMP, M_WAITOK);
+	OF_getpropintarray(node, "iommu-map", map, len);
+
+	mask = OF_getpropint(node, "msi-map-mask", 0xffff);
+	rid = rid & mask;
+
+	cell = map;
+	ncells = len / sizeof(uint32_t);
+	while (ncells > 1) {
+		node = OF_getnodebyphandle(cell[1]);
+		if (node == 0)
+			goto out;
+
+		icells = OF_getpropint(node, "#iommu-cells", 1);
+		if (ncells < icells + 3)
+			goto out;
+
+		KASSERT(icells == 1);
+
+		rid_base = cell[0];
+		sid_base = cell[2];
+		length = cell[3];
+		if (rid >= rid_base && rid < rid_base + length) {
+			sid = sid_base + (rid - rid_base);
+			phandle = cell[1];
+			break;
+		}
+
+		cell += 4;
+		ncells -= 4;
+	}
+
+out:
+	free(map, M_TEMP, len);
+
+	return iommu_device_do_map(phandle, &sid, dmat);
 }

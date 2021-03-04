@@ -1,4 +1,4 @@
-/*	$OpenBSD: vroute.c,v 1.1 2021/02/13 16:14:12 tobhe Exp $	*/
+/*	$OpenBSD: vroute.c,v 1.6 2021/02/28 19:25:59 tobhe Exp $	*/
 
 /*
  * Copyright (c) 2021 Tobias Heider <tobhe@openbsd.org>
@@ -43,7 +43,7 @@
 int vroute_setroute(struct iked *, uint8_t, struct sockaddr *, uint8_t,
     struct sockaddr *, int);
 int vroute_doroute(struct iked *, int, int, int, uint8_t, struct sockaddr *,
-    struct sockaddr *, struct sockaddr *);
+    struct sockaddr *, struct sockaddr *, int *);
 int vroute_doaddr(struct iked *, char *, struct sockaddr *, struct sockaddr *, int);
 
 struct iked_vroute_sc {
@@ -60,7 +60,7 @@ struct vroute_msg {
 };
 
 int vroute_process(struct iked *, int msglen, struct vroute_msg *,
-    struct sockaddr *, struct sockaddr *, struct sockaddr *);
+    struct sockaddr *, struct sockaddr *, struct sockaddr *, int *);
 
 void
 vroute_init(struct iked *env)
@@ -169,10 +169,6 @@ vroute_setroute(struct iked *env, uint8_t rdomain, struct sockaddr *dst,
 		return (-1);
 	af = dst->sa_family;
 
-	iov[iovcnt].iov_base = &af;
-	iov[iovcnt].iov_len = sizeof(af);
-	iovcnt++;
-
 	iov[iovcnt].iov_base = &rdomain;
 	iov[iovcnt].iov_len = sizeof(rdomain);
 	iovcnt++;
@@ -216,21 +212,15 @@ vroute_setroute(struct iked *env, uint8_t rdomain, struct sockaddr *dst,
 int
 vroute_getroute(struct iked *env, struct imsg *imsg)
 {
-	struct sockaddr		*dest, *mask = NULL, *addr = NULL;
+	struct sockaddr		*dest, *mask = NULL, *gateway = NULL;
 	uint8_t			*ptr;
 	size_t			 left;
 	int			 addrs = 0;
 	int			 type, flags;
-	uint8_t			 af, rdomain;
+	uint8_t			 rdomain;
 
 	ptr = (uint8_t *)imsg->data;
 	left = IMSG_DATA_SIZE(imsg);
-
-	if (left < sizeof(af))
-		return (-1);
-	af = *ptr;
-	ptr += sizeof(af);
-	left -= sizeof(af);
 
 	if (left < sizeof(rdomain))
 		return (-1);
@@ -248,7 +238,7 @@ vroute_getroute(struct iked *env, struct imsg *imsg)
 	left -= dest->sa_len;
 	addrs |= RTA_DST;
 
-	flags = RTF_UP | RTF_STATIC;
+	flags = RTF_UP | RTF_GATEWAY | RTF_STATIC;
 	if (left != 0) {
 		if (left < sizeof(struct sockaddr))
 			return (-1);
@@ -262,12 +252,12 @@ vroute_getroute(struct iked *env, struct imsg *imsg)
 
 		if (left < sizeof(struct sockaddr))
 			return (-1);
-		addr = (struct sockaddr *)ptr;
-		if (left < addr->sa_len)
+		gateway = (struct sockaddr *)ptr;
+		if (left < gateway->sa_len)
 			return (-1);
-		socket_setport(addr, 0);
-		ptr += addr->sa_len;
-		left -= addr->sa_len;
+		socket_setport(gateway, 0);
+		ptr += gateway->sa_len;
+		left -= gateway->sa_len;
 		addrs |= RTA_GATEWAY;
 	} else {
 		flags |= RTF_HOST;
@@ -283,7 +273,7 @@ vroute_getroute(struct iked *env, struct imsg *imsg)
 	}
 
 	return (vroute_doroute(env, flags, addrs, rdomain, type,
-	    dest, mask, addr));
+	    dest, mask, gateway, NULL));
 }
 
 int
@@ -295,18 +285,13 @@ vroute_getcloneroute(struct iked *env, struct imsg *imsg)
 	struct sockaddr_storage	 addr;
 	uint8_t			*ptr;
 	size_t			 left;
-	uint8_t			 af, rdomain;
+	uint8_t			 rdomain;
 	int			 flags;
 	int			 addrs;
+	int			 need_gw;
 
 	ptr = (uint8_t *)imsg->data;
 	left = IMSG_DATA_SIZE(imsg);
-
-	if (left < sizeof(af))
-		return (-1);
-	af = *ptr;
-	ptr += sizeof(af);
-	left -= sizeof(af);
 
 	if (left < sizeof(rdomain))
 		return (-1);
@@ -318,43 +303,34 @@ vroute_getcloneroute(struct iked *env, struct imsg *imsg)
 	bzero(&mask, sizeof(mask));
 	bzero(&addr, sizeof(addr));
 
-	switch(af) {
-	case AF_INET:
-		if (left < sizeof(struct sockaddr_in))
-			return (-1);
-		dst = (struct sockaddr *)ptr;;
-		memcpy(&dest, ptr, sizeof(struct sockaddr_in));;
-		ptr += sizeof(struct sockaddr_in);
-		left -= sizeof(struct sockaddr_in);
-		break;
-	case AF_INET6:
-		if (left < sizeof(struct sockaddr_in6))
-			return (-1);
-		dst = (struct sockaddr *)ptr;;
-		memcpy(&dest, ptr, sizeof(struct sockaddr_in6));;
-		ptr += sizeof(struct sockaddr_in6);
-		left -= sizeof(struct sockaddr_in6);
-		break;
-	default:
+	if (left < sizeof(struct sockaddr))
 		return (-1);
-	}
+	dst = (struct sockaddr *)ptr;
+	if (left < dst->sa_len)
+		return (-1);
+	memcpy(&dest, ptr, dst->sa_len);
+	ptr += dst->sa_len;
+	left -= dst->sa_len;
 
 	/* Get route to peer */
-	flags = RTF_UP | RTF_GATEWAY | RTF_HOST | RTF_STATIC;
+	flags = RTF_UP | RTF_HOST | RTF_STATIC;
 	if (vroute_doroute(env, flags, RTA_DST, rdomain, RTM_GET,
 	    (struct sockaddr *)&dest, (struct sockaddr *)&mask,
-	    (struct sockaddr *)&addr))
+	    (struct sockaddr *)&addr, &need_gw))
 		return (-1);
+
+	if (need_gw)
+		flags |= RTF_GATEWAY;
 
 	/* Set explicit route to peer with gateway addr*/
 	addrs = RTA_DST | RTA_GATEWAY | RTA_NETMASK;
 	return (vroute_doroute(env, flags, addrs, rdomain, RTM_ADD,
-	    dst, (struct sockaddr *)&mask, (struct sockaddr *)&addr));
+	    dst, (struct sockaddr *)&mask, (struct sockaddr *)&addr, NULL));
 }
 
 int
 vroute_doroute(struct iked *env, int flags, int addrs, int rdomain, uint8_t type,
-    struct sockaddr *dest, struct sockaddr *mask, struct sockaddr *addr)
+    struct sockaddr *dest, struct sockaddr *mask, struct sockaddr *addr, int *need_gw)
 {
 	struct vroute_msg	 m_rtmsg;
 	struct iovec		 iov[7];
@@ -427,7 +403,7 @@ vroute_doroute(struct iked *env, int flags, int addrs, int rdomain, uint8_t type
 		if ((type == RTM_ADD && errno != EEXIST) ||
 		    (type == RTM_DELETE && errno != ESRCH)) {
 			log_warn("%s: write %d", __func__, rtm.rtm_errno);
-			return (-1);
+			return (0);
 		}
 	}
 
@@ -436,7 +412,7 @@ vroute_doroute(struct iked *env, int flags, int addrs, int rdomain, uint8_t type
 			len = read(ivr->ivr_rtsock, &m_rtmsg, sizeof(m_rtmsg));
 		} while(len > 0 && (rtm.rtm_version != RTM_VERSION ||
 		    rtm.rtm_seq != ivr->ivr_rtseq || rtm.rtm_pid != ivr->ivr_pid));
-		return (vroute_process(env, len, &m_rtmsg, dest, mask, addr));
+		return (vroute_process(env, len, &m_rtmsg, dest, mask, addr, need_gw));
 	}
 #undef rtm
 
@@ -445,7 +421,7 @@ vroute_doroute(struct iked *env, int flags, int addrs, int rdomain, uint8_t type
 
 int
 vroute_process(struct iked *env, int msglen, struct vroute_msg *m_rtmsg,
-    struct sockaddr *dest, struct sockaddr *mask, struct sockaddr *addr)
+    struct sockaddr *dest, struct sockaddr *mask, struct sockaddr *addr, int *need_gw)
 {
 	struct sockaddr *sa;
 	char *cp;
@@ -468,6 +444,7 @@ vroute_process(struct iked *env, int msglen, struct vroute_msg *m_rtmsg,
 		return (-1);
 	}
 	cp = m_rtmsg->vm_space;
+	*need_gw = rtm.rtm_flags & RTF_GATEWAY;
 	if(rtm.rtm_addrs) {
 		for (i = 1; i; i <<= 1) {
 			if (i & rtm.rtm_addrs) {
@@ -535,7 +512,6 @@ vroute_doaddr(struct iked *env, char *ifname, struct sockaddr *addr,
 		if (add)
 			memcpy(&req6.ifra_prefixmask, mask,
 			    sizeof(req6.ifra_prefixmask));
-
 
 		inet_ntop(af, &((struct sockaddr_in6 *)addr)->sin6_addr,
 		    addr_buf, sizeof(addr_buf));

@@ -1,4 +1,4 @@
-/* $OpenBSD: tmux.h,v 1.1092 2021/02/17 07:18:36 nicm Exp $ */
+/* $OpenBSD: tmux.h,v 1.1096 2021/03/02 10:56:45 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1887,7 +1887,6 @@ const char	*sig2name(int);
 const char	*find_cwd(void);
 const char	*find_home(void);
 const char	*getversion(void);
-void		 expand_paths(const char *, char ***, u_int *);
 
 /* proc.c */
 struct imsg;
@@ -1907,13 +1906,14 @@ pid_t	proc_fork_and_daemon(int *);
 /* cfg.c */
 extern int cfg_finished;
 extern struct client *cfg_client;
+extern char **cfg_files;
+extern u_int cfg_nfiles;
+extern int cfg_quiet;
 void	start_cfg(void);
 int	load_cfg(const char *, struct client *, struct cmdq_item *, int,
 	    struct cmdq_item **);
 int	load_cfg_from_buffer(const void *, size_t, const char *,
 	    struct client *, struct cmdq_item *, int, struct cmdq_item **);
-void	set_cfg_file(const char *);
-const char *get_cfg_file(void);
 void printflike(1, 2) cfg_add_cause(const char *, ...);
 void	cfg_print_causes(struct cmdq_item *);
 void	cfg_show_causes(struct session *);
@@ -1944,7 +1944,7 @@ char		*paste_make_sample(struct paste_buffer *);
 #define FORMAT_WINDOW 0x40000000U
 struct format_tree;
 struct format_modifier;
-typedef char *(*format_cb)(struct format_tree *);
+typedef void *(*format_cb)(struct format_tree *);
 const char	*format_skip(const char *, const char *);
 int		 format_true(const char *);
 struct format_tree *format_create(struct client *, struct cmdq_item *, int,
@@ -2067,9 +2067,9 @@ typedef void (*job_free_cb) (void *);
 #define JOB_NOWAIT 0x1
 #define JOB_KEEPWRITE 0x2
 #define JOB_PTY 0x4
-struct job	*job_run(const char *, struct session *, const char *,
-		     job_update_cb, job_complete_cb, job_free_cb, void *, int,
-		     int, int);
+struct job	*job_run(const char *, int, char **, struct session *,
+		     const char *, job_update_cb, job_complete_cb, job_free_cb,
+		     void *, int, int, int);
 void		 job_free(struct job *);
 void		 job_resize(struct job *, u_int, u_int);
 void		 job_check_died(pid_t, int);
@@ -2589,6 +2589,10 @@ void	 grid_reader_cursor_next_word(struct grid_reader *, const char *);
 void	 grid_reader_cursor_next_word_end(struct grid_reader *, const char *);
 void	 grid_reader_cursor_previous_word(struct grid_reader *, const char *,
 	     int);
+int	 grid_reader_cursor_jump(struct grid_reader *,
+	     const struct utf8_data *);
+int	 grid_reader_cursor_jump_back(struct grid_reader *,
+	     const struct utf8_data *);
 
 /* grid-view.c */
 void	 grid_view_get_cell(struct grid *, u_int, u_int, struct grid_cell *);
@@ -2709,7 +2713,6 @@ void	 screen_alternate_off(struct screen *, struct grid_cell *, int);
 /* window.c */
 extern struct windows windows;
 extern struct window_pane_tree all_window_panes;
-extern const struct window_mode *all_window_modes[];
 int		 window_cmp(struct window *, struct window *);
 RB_PROTOTYPE(windows, window, entry, window_cmp);
 int		 winlink_cmp(struct winlink *, struct winlink *);
@@ -3035,18 +3038,13 @@ int		 menu_display(struct menu *, int, struct cmdq_item *, u_int,
 		    menu_choice_cb, void *);
 
 /* popup.c */
-#define POPUP_WRITEKEYS 0x1
-#define POPUP_CLOSEEXIT 0x2
-#define POPUP_CLOSEEXITZERO 0x4
+#define POPUP_CLOSEEXIT 0x1
+#define POPUP_CLOSEEXITZERO 0x2
 typedef void (*popup_close_cb)(int, void *);
 typedef void (*popup_finish_edit_cb)(char *, size_t, void *);
-u_int		 popup_width(struct cmdq_item *, u_int, const char **,
-		    struct client *, struct cmd_find_state *);
-u_int		 popup_height(u_int, const char **);
 int		 popup_display(int, struct cmdq_item *, u_int, u_int, u_int,
-		    u_int, u_int, const char **, const char *, const char *,
-		    const char *, struct client *, struct cmd_find_state *,
-		    popup_close_cb, void *);
+		    u_int, const char *, int, char **, const char *,
+		    struct client *, struct session *, popup_close_cb, void *);
 int		 popup_editor(struct client *, const char *, size_t,
 		    popup_finish_edit_cb, void *);
 

@@ -241,10 +241,13 @@
 ./usr/share/man/man1/perl5280delta.1
 ./usr/share/man/man1/perl5281delta.1
 ./usr/share/man/man1/perl5282delta.1
+./usr/share/man/man1/perl5283delta.1
 ./usr/share/man/man1/perl5300delta.1
 ./usr/share/man/man1/perl5301delta.1
 ./usr/share/man/man1/perl5302delta.1
 ./usr/share/man/man1/perl5303delta.1
+./usr/share/man/man1/perl5320delta.1
+./usr/share/man/man1/perl5321delta.1
 ./usr/share/man/man1/perl561delta.1
 ./usr/share/man/man1/perl56delta.1
 ./usr/share/man/man1/perl581delta.1
@@ -294,6 +297,7 @@
 ./usr/share/man/man1/perlfunc.1
 ./usr/share/man/man1/perlgit.1
 ./usr/share/man/man1/perlglossary.1
+./usr/share/man/man1/perlgov.1
 ./usr/share/man/man1/perlguts.1
 ./usr/share/man/man1/perlhack.1
 ./usr/share/man/man1/perlhacktips.1
@@ -341,6 +345,7 @@
 ./usr/share/man/man1/perlretut.1
 ./usr/share/man/man1/perlrun.1
 ./usr/share/man/man1/perlsec.1
+./usr/share/man/man1/perlsecpolicy.1
 ./usr/share/man/man1/perlsource.1
 ./usr/share/man/man1/perlstyle.1
 ./usr/share/man/man1/perlsub.1
@@ -368,6 +373,7 @@
 ./usr/share/man/man1/pkg-config.1
 ./usr/share/man/man1/pkg_check-manpages.1
 ./usr/share/man/man1/pkg_check-problems.1
+./usr/share/man/man1/pkg_check-version.1
 ./usr/share/man/man1/pkg_create.1
 ./usr/share/man/man1/pkg_delete.1
 ./usr/share/man/man1/pkg_info.1
@@ -382,7 +388,6 @@
 ./usr/share/man/man1/pod2text.1
 ./usr/share/man/man1/pod2usage.1
 ./usr/share/man/man1/podchecker.1
-./usr/share/man/man1/podselect.1
 ./usr/share/man/man1/port-getpkgpath-helper.1
 ./usr/share/man/man1/port-resolve-lib-helper.1
 ./usr/share/man/man1/port-search-helper.1
@@ -449,6 +454,7 @@
 ./usr/share/man/man1/ssh-keyscan.1
 ./usr/share/man/man1/ssh.1
 ./usr/share/man/man1/stat.1
+./usr/share/man/man1/streamzip.1
 ./usr/share/man/man1/strings.1
 ./usr/share/man/man1/stty.1
 ./usr/share/man/man1/su.1
@@ -831,14 +837,10 @@
 ./usr/share/man/man3p/PerlIO::via::QuotedPrint.3p
 ./usr/share/man/man3p/Pod::Checker.3p
 ./usr/share/man/man3p/Pod::Escapes.3p
-./usr/share/man/man3p/Pod::Find.3p
 ./usr/share/man/man3p/Pod::Functions.3p
 ./usr/share/man/man3p/Pod::Html.3p
-./usr/share/man/man3p/Pod::InputObjects.3p
 ./usr/share/man/man3p/Pod::Man.3p
 ./usr/share/man/man3p/Pod::ParseLink.3p
-./usr/share/man/man3p/Pod::ParseUtils.3p
-./usr/share/man/man3p/Pod::Parser.3p
 ./usr/share/man/man3p/Pod::Perldoc.3p
 ./usr/share/man/man3p/Pod::Perldoc::BaseTo.3p
 ./usr/share/man/man3p/Pod::Perldoc::GetOptsOO.3p
@@ -852,8 +854,6 @@
 ./usr/share/man/man3p/Pod::Perldoc::ToText.3p
 ./usr/share/man/man3p/Pod::Perldoc::ToTk.3p
 ./usr/share/man/man3p/Pod::Perldoc::ToXml.3p
-./usr/share/man/man3p/Pod::PlainText.3p
-./usr/share/man/man3p/Pod::Select.3p
 ./usr/share/man/man3p/Pod::Simple.3p
 ./usr/share/man/man3p/Pod::Simple::Checker.3p
 ./usr/share/man/man3p/Pod::Simple::Debug.3p
@@ -861,6 +861,7 @@
 ./usr/share/man/man3p/Pod::Simple::DumpAsXML.3p
 ./usr/share/man/man3p/Pod::Simple::HTML.3p
 ./usr/share/man/man3p/Pod::Simple::HTMLBatch.3p
+./usr/share/man/man3p/Pod::Simple::JustPod.3p
 ./usr/share/man/man3p/Pod::Simple::LinkSection.3p
 ./usr/share/man/man3p/Pod::Simple::Methody.3p
 ./usr/share/man/man3p/Pod::Simple::PullParser.3p
@@ -1228,6 +1229,10 @@
 ./usr/share/man/man4/arm64
 ./usr/share/man/man4/arm64/agtimer.4
 ./usr/share/man/man4/arm64/ampintc.4
+./usr/share/man/man4/arm64/apldart.4
+./usr/share/man/man4/arm64/apldog.4
+./usr/share/man/man4/arm64/aplintc.4
+./usr/share/man/man4/arm64/aplpcie.4
 ./usr/share/man/man4/arm64/apm.4
 ./usr/share/man/man4/arm64/efi.4
 ./usr/share/man/man4/arm64/intro.4
@@ -2064,6 +2069,7 @@
 ./usr/share/man/man4/uvscom.4
 ./usr/share/man/man4/uwacom.4
 ./usr/share/man/man4/uxrcom.4
+./usr/share/man/man4/veb.4
 ./usr/share/man/man4/vether.4
 ./usr/share/man/man4/vga.4
 ./usr/share/man/man4/vgafb.4
@@ -2131,6 +2137,7 @@
 ./usr/share/man/man5/bsd.port.mk.5
 ./usr/share/man/man5/bsd.regress.mk.5
 ./usr/share/man/man5/bt.5
+./usr/share/man/man5/cargo-module.5
 ./usr/share/man/man5/changelist.5
 ./usr/share/man/man5/chio.conf.5
 ./usr/share/man/man5/core.5
@@ -2159,6 +2166,8 @@
 ./usr/share/man/man5/fstab.5
 ./usr/share/man/man5/genassym.cf.5
 ./usr/share/man/man5/gettytab.5
+./usr/share/man/man5/gnome-module.5
+./usr/share/man/man5/go-module.5
 ./usr/share/man/man5/group.5
 ./usr/share/man/man5/hostapd.conf.5
 ./usr/share/man/man5/hostname.if.5
@@ -2204,6 +2213,8 @@
 ./usr/share/man/man5/port-modules.5
 ./usr/share/man/man5/printcap.5
 ./usr/share/man/man5/protocols.5
+./usr/share/man/man5/python-module.5
+./usr/share/man/man5/qmake-module.5
 ./usr/share/man/man5/rad.conf.5
 ./usr/share/man/man5/radiusd.conf.5
 ./usr/share/man/man5/ranlib.5
@@ -2332,6 +2343,8 @@
 ./usr/share/man/man8/dev_mkdb.8
 ./usr/share/man/man8/dhclient.8
 ./usr/share/man/man8/dhcpd.8
+./usr/share/man/man8/dhcpleasectl.8
+./usr/share/man/man8/dhcpleased.8
 ./usr/share/man/man8/dhcrelay.8
 ./usr/share/man/man8/dhcrelay6.8
 ./usr/share/man/man8/disklabel.8
@@ -2526,6 +2539,7 @@
 ./usr/share/man/man8/release.8
 ./usr/share/man/man8/renice.8
 ./usr/share/man/man8/repquota.8
+./usr/share/man/man8/resolvd.8
 ./usr/share/man/man8/restore.8
 ./usr/share/man/man8/revnetgroup.8
 ./usr/share/man/man8/ripctl.8

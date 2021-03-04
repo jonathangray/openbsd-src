@@ -1,4 +1,4 @@
-/* $OpenBSD: bwfmreg.h,v 1.19 2020/05/15 14:09:14 patrick Exp $ */
+/* $OpenBSD: bwfmreg.h,v 1.21 2021/02/26 12:33:59 patrick Exp $ */
 /*
  * Copyright (c) 2010-2016 Broadcom Corporation
  * Copyright (c) 2016,2017 Patrick Wildt <patrick@blueri.se>
@@ -69,6 +69,7 @@
 #define BWFM_AGENT_CORE_ARM_CM3			0x82A
 #define BWFM_AGENT_CORE_PCIE2			0x83C
 #define BWFM_AGENT_CORE_ARM_CR4			0x83E
+#define BWFM_AGENT_CORE_GCI			0x840
 #define BWFM_AGENT_CORE_ARM_CA7			0x847
 #define BWFM_AGENT_SYS_MEM			0x849
 
@@ -88,6 +89,10 @@
 #define  BWFM_ARMCR4_BANKINFO_BSZ_MASK			0x3f
 #define  BWFM_ARMCR4_BANKINFO_BSZ_MULT			8192
 #define BWFM_ARMCR4_BANKPDA			0x004C
+
+/* GCI (OTP) registers */
+#define BWFM_OTP_SIZE				64
+#define BWFM_OTP_4378_BASE			0x1120
 
 /* SOCRAM registers */
 #define BWFM_SOCRAM_COREINFO			0x0000

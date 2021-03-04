@@ -1,4 +1,4 @@
-# $OpenBSD: files.arm64,v 1.32 2020/07/25 12:26:09 tobhe Exp $
+# $OpenBSD: files.arm64,v 1.38 2021/02/28 21:40:11 patrick Exp $
 
 maxpartitions	16
 maxusers	2 8 128
@@ -39,6 +39,9 @@ file	arch/arm64/arm64/bus_dma.c
 
 file	arch/arm64/dev/arm64_bus_space.c
 file	arch/arm64/dev/pci_machdep.c
+
+file	arch/arm64/arm64/cryptox.c		crypto
+file	arch/arm64/arm64/aesv8-armx.S		crypto
 
 file	arch/arm64/arm64/db_disasm.c		ddb
 file	arch/arm64/arm64/db_interface.c		ddb
@@ -133,6 +136,22 @@ device	agtimer
 attach	agtimer at fdt
 file	arch/arm64/dev/agtimer.c		agtimer
 
+device	apldart
+attach	apldart at fdt
+file	arch/arm64/dev/apldart.c		apldart
+
+device	apldog
+attach	apldog at fdt
+file	arch/arm64/dev/apldog.c			apldog
+
+device	aplintc
+attach	aplintc at fdt
+file	arch/arm64/dev/aplintc.c		aplintc
+
+device	aplpcie: pcibus
+attach	aplpcie at fdt
+file	arch/arm64/dev/aplpcie.c		aplpcie
+
 device	bcmintc
 attach	bcmintc at fdt
 file	arch/arm64/dev/bcm2836_intr.c		bcmintc
@@ -141,15 +160,28 @@ device	pciecam: pcibus
 attach	pciecam at fdt
 file	arch/arm64/dev/pciecam.c		pciecam
 
+device	smmu
+attach	smmu at fdt with smmu_fdt
+file	arch/arm64/dev/smmu.c			smmu
+file	arch/arm64/dev/smmu_fdt.c		smmu_fdt
+
 # ACPI
 include "dev/acpi/files.acpi"
 
 attach	acpi at fdt with acpi_fdt
 file	arch/arm64/arm64/acpi_machdep.c		acpi_fdt
 
+define	acpiiort {}
+device	acpiiort: acpiiort
+attach	acpiiort at acpi
+file	arch/arm64/dev/acpiiort.c		acpiiort
+
 device	acpipci: pcibus
 attach	acpipci at acpi
 file	arch/arm64/dev/acpipci.c		acpipci
+
+attach	smmu at acpiiort with smmu_acpi
+file	arch/arm64/dev/smmu_acpi.c		smmu_acpi
 
 device  apm
 attach  apm at mainbus

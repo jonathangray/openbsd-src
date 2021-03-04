@@ -1,4 +1,4 @@
-/* $OpenBSD: tls12_record_layer.c,v 1.17 2021/01/28 18:32:46 jsing Exp $ */
+/* $OpenBSD: tls12_record_layer.c,v 1.23 2021/03/02 17:26:25 jsing Exp $ */
 /*
  * Copyright (c) 2020 Joel Sing <jsing@openbsd.org>
  *
@@ -28,17 +28,13 @@ struct tls12_record_protection {
 
 	SSL_AEAD_CTX *aead_ctx;
 
+	EVP_CIPHER_CTX *cipher_ctx;
+	EVP_MD_CTX *hash_ctx;
+
 	int stream_mac;
 
 	uint8_t *mac_key;
 	size_t mac_key_len;
-
-	/*
-	 * XXX - for now these are just pointers to externally managed
-	 * structs/memory. These should eventually be owned by the record layer.
-	 */
-	EVP_CIPHER_CTX *cipher_ctx;
-	EVP_MD_CTX *hash_ctx;
 };
 
 static struct tls12_record_protection *
@@ -57,6 +53,12 @@ tls12_record_protection_clear(struct tls12_record_protection *rp)
 		freezero(rp->aead_ctx, sizeof(*rp->aead_ctx));
 		rp->aead_ctx = NULL;
 	}
+
+	EVP_CIPHER_CTX_free(rp->cipher_ctx);
+	rp->cipher_ctx = NULL;
+
+	EVP_MD_CTX_free(rp->hash_ctx);
+	rp->hash_ctx = NULL;
 
 	freezero(rp->mac_key, rp->mac_key_len);
 	rp->mac_key = NULL;
@@ -78,6 +80,13 @@ static int
 tls12_record_protection_engaged(struct tls12_record_protection *rp)
 {
 	return rp->aead_ctx != NULL || rp->cipher_ctx != NULL;
+}
+
+static int
+tls12_record_protection_unused(struct tls12_record_protection *rp)
+{
+	return rp->aead_ctx == NULL && rp->cipher_ctx == NULL &&
+	    rp->hash_ctx == NULL && rp->mac_key == NULL;
 }
 
 static int
@@ -149,6 +158,9 @@ struct tls12_record_layer {
 	uint8_t alert_desc;
 
 	const EVP_AEAD *aead;
+	const EVP_CIPHER *cipher;
+	const EVP_MD *handshake_hash;
+	const EVP_MD *mac_hash;
 
 	/* Pointers to active record protection (memory is not owned). */
 	struct tls12_record_protection *read;
@@ -247,10 +259,20 @@ tls12_record_layer_set_aead(struct tls12_record_layer *rl, const EVP_AEAD *aead)
 }
 
 void
+tls12_record_layer_set_cipher_hash(struct tls12_record_layer *rl,
+    const EVP_CIPHER *cipher, const EVP_MD *handshake_hash,
+    const EVP_MD *mac_hash)
+{
+	rl->cipher = cipher;
+	rl->handshake_hash = handshake_hash;
+	rl->mac_hash = mac_hash;
+}
+
+void
 tls12_record_layer_set_version(struct tls12_record_layer *rl, uint16_t version)
 {
 	rl->version = version;
-	rl->dtls = (version == DTLS1_VERSION);
+	rl->dtls = ((version >> 8) == DTLS1_VERSION_MAJOR);
 }
 
 void
@@ -290,39 +312,27 @@ tls12_record_layer_write_epoch_done(struct tls12_record_layer *rl, uint16_t epoc
 	rl->write_previous = NULL;
 }
 
-static void
-tls12_record_layer_set_read_state(struct tls12_record_layer *rl,
-    EVP_CIPHER_CTX *cipher_ctx, EVP_MD_CTX *hash_ctx, int stream_mac)
-{
-	rl->read->cipher_ctx = cipher_ctx;
-	rl->read->hash_ctx = hash_ctx;
-	rl->read->stream_mac = stream_mac;
-}
-
-static void
-tls12_record_layer_set_write_state(struct tls12_record_layer *rl,
-    EVP_CIPHER_CTX *cipher_ctx, EVP_MD_CTX *hash_ctx, int stream_mac)
-{
-	rl->write->cipher_ctx = cipher_ctx;
-	rl->write->hash_ctx = hash_ctx;
-	rl->write->stream_mac = stream_mac;
-}
-
 void
 tls12_record_layer_clear_read_state(struct tls12_record_layer *rl)
 {
-	tls12_record_layer_set_read_state(rl, NULL, NULL, 0);
 	tls12_record_protection_clear(rl->read);
 }
 
 void
 tls12_record_layer_clear_write_state(struct tls12_record_layer *rl)
 {
-	tls12_record_layer_set_write_state(rl, NULL, NULL, 0);
 	tls12_record_protection_clear(rl->write);
 
 	tls12_record_protection_free(rl->write_previous);
 	rl->write_previous = NULL;
+}
+
+void
+tls12_record_layer_read_cipher_hash(struct tls12_record_layer *rl,
+    EVP_CIPHER_CTX **cipher, EVP_MD_CTX **hash)
+{
+	*cipher = rl->read->cipher_ctx;
+	*hash = rl->read->hash_ctx;
 }
 
 void
@@ -332,42 +342,22 @@ tls12_record_layer_reflect_seq_num(struct tls12_record_layer *rl)
 	    sizeof(rl->write->seq_num));
 }
 
-int
-tls12_record_layer_set_read_cipher_hash(struct tls12_record_layer *rl,
-    EVP_CIPHER_CTX *cipher_ctx, EVP_MD_CTX *hash_ctx, int stream_mac)
-{
-	tls12_record_layer_set_read_state(rl, cipher_ctx, hash_ctx,
-	    stream_mac);
-
-	return 1;
-}
-
-int
-tls12_record_layer_set_write_cipher_hash(struct tls12_record_layer *rl,
-    EVP_CIPHER_CTX *cipher_ctx, EVP_MD_CTX *hash_ctx, int stream_mac)
-{
-	tls12_record_layer_set_write_state(rl, cipher_ctx, hash_ctx,
-	    stream_mac);
-
-	return 1;
-}
-
-int
-tls12_record_layer_set_read_mac_key(struct tls12_record_layer *rl,
+static int
+tls12_record_layer_set_mac_key(struct tls12_record_protection *rp,
     const uint8_t *mac_key, size_t mac_key_len)
 {
-	freezero(rl->read->mac_key, rl->read->mac_key_len);
-	rl->read->mac_key = NULL;
-	rl->read->mac_key_len = 0;
+	freezero(rp->mac_key, rp->mac_key_len);
+	rp->mac_key = NULL;
+	rp->mac_key_len = 0;
 
 	if (mac_key == NULL || mac_key_len == 0)
 		return 1;
 
-	if ((rl->read->mac_key = calloc(1, mac_key_len)) == NULL)
+	if ((rp->mac_key = calloc(1, mac_key_len)) == NULL)
 		return 0;
 
-	memcpy(rl->read->mac_key, mac_key, mac_key_len);
-	rl->read->mac_key_len = mac_key_len;
+	memcpy(rp->mac_key, mac_key, mac_key_len);
+	rp->mac_key_len = mac_key_len;
 
 	return 1;
 }
@@ -378,7 +368,10 @@ tls12_record_layer_ccs_aead(struct tls12_record_layer *rl,
     size_t mac_key_len, const uint8_t *key, size_t key_len, const uint8_t *iv,
     size_t iv_len)
 {
-	size_t aead_nonce_len = EVP_AEAD_nonce_length(rl->aead);
+	size_t aead_nonce_len;
+
+	if (!tls12_record_protection_unused(rp))
+		return 0;
 
 	if ((rp->aead_ctx = calloc(1, sizeof(*rp->aead_ctx))) == NULL)
 		return 0;
@@ -399,6 +392,8 @@ tls12_record_layer_ccs_aead(struct tls12_record_layer *rl,
 	rp->aead_ctx->fixed_nonce_len = iv_len;
 	rp->aead_ctx->tag_len = EVP_AEAD_max_overhead(rl->aead);
 	rp->aead_ctx->variable_nonce_len = 8;
+
+	aead_nonce_len = EVP_AEAD_nonce_length(rl->aead);
 
 	if (rp->aead_ctx->xor_fixed_nonce) {
 		/* Fixed nonce length must match, variable must not exceed. */
@@ -421,23 +416,98 @@ tls12_record_layer_ccs_aead(struct tls12_record_layer *rl,
 }
 
 static int
+tls12_record_layer_ccs_cipher(struct tls12_record_layer *rl,
+    struct tls12_record_protection *rp, int is_write, const uint8_t *mac_key,
+    size_t mac_key_len, const uint8_t *key, size_t key_len, const uint8_t *iv,
+    size_t iv_len)
+{
+	EVP_PKEY *mac_pkey = NULL;
+	int gost_param_nid;
+	int mac_type;
+	int ret = 0;
+
+	if (!tls12_record_protection_unused(rp))
+		goto err;
+
+	mac_type = EVP_PKEY_HMAC;
+	rp->stream_mac = 0;
+
+	if (iv_len > INT_MAX || key_len > INT_MAX)
+		goto err;
+	if (EVP_CIPHER_iv_length(rl->cipher) != iv_len)
+		goto err;
+	if (EVP_CIPHER_key_length(rl->cipher) != key_len)
+		goto err;
+
+	/* Special handling for GOST... */
+	if (EVP_MD_type(rl->mac_hash) == NID_id_Gost28147_89_MAC) {
+		if (mac_key_len != 32)
+			goto err;
+		mac_type = EVP_PKEY_GOSTIMIT;
+		rp->stream_mac = 1;
+	} else {
+		if (mac_key_len > INT_MAX)
+			goto err;
+		if (EVP_MD_size(rl->mac_hash) != mac_key_len)
+			goto err;
+	}
+
+	if ((rp->cipher_ctx = EVP_CIPHER_CTX_new()) == NULL)
+		goto err;
+	if ((rp->hash_ctx = EVP_MD_CTX_new()) == NULL)
+		goto err;
+
+	if (!tls12_record_layer_set_mac_key(rp, mac_key, mac_key_len))
+		goto err;
+
+	if ((mac_pkey = EVP_PKEY_new_mac_key(mac_type, NULL, mac_key,
+	    mac_key_len)) == NULL)
+		goto err;
+
+	if (!EVP_CipherInit_ex(rp->cipher_ctx, rl->cipher, NULL, key, iv,
+	    is_write))
+		goto err;
+
+	if (EVP_DigestSignInit(rp->hash_ctx, NULL, rl->mac_hash, NULL,
+	    mac_pkey) <= 0)
+		goto err;
+
+	/* More special handling for GOST... */
+	if (EVP_CIPHER_type(rl->cipher) == NID_gost89_cnt) {
+		gost_param_nid = NID_id_tc26_gost_28147_param_Z;
+		if (EVP_MD_type(rl->handshake_hash) == NID_id_GostR3411_94)
+			gost_param_nid = NID_id_Gost28147_89_CryptoPro_A_ParamSet;
+
+		if (EVP_CIPHER_CTX_ctrl(rp->cipher_ctx, EVP_CTRL_GOST_SET_SBOX,
+		    gost_param_nid, 0) <= 0)
+			goto err;
+
+		if (EVP_MD_type(rl->mac_hash) == NID_id_Gost28147_89_MAC) {
+			if (EVP_MD_CTX_ctrl(rp->hash_ctx, EVP_MD_CTRL_GOST_SET_SBOX,
+			    gost_param_nid, 0) <= 0)
+				goto err;
+		}
+	}
+
+	ret = 1;
+
+ err:
+	EVP_PKEY_free(mac_pkey);
+
+	return ret;
+}
+
+static int
 tls12_record_layer_change_cipher_state(struct tls12_record_layer *rl,
     struct tls12_record_protection *rp, int is_write, const uint8_t *mac_key,
     size_t mac_key_len, const uint8_t *key, size_t key_len, const uint8_t *iv,
     size_t iv_len)
 {
-	/* Require unused record protection. */
-	if (rp->cipher_ctx != NULL || rp->aead_ctx != NULL)
-		return 0;
+	if (rl->aead != NULL)
+		return tls12_record_layer_ccs_aead(rl, rp, is_write, mac_key,
+		    mac_key_len, key, key_len, iv, iv_len);
 
-	if (mac_key_len > INT_MAX || key_len > INT_MAX || iv_len > INT_MAX)
-		return 0;
-
-	/* XXX - only aead for now. */
-	if (rl->aead == NULL)
-		return 1;
-
-	return tls12_record_layer_ccs_aead(rl, rp, is_write, mac_key,
+	return tls12_record_layer_ccs_cipher(rl, rp, is_write, mac_key,
 	    mac_key_len, key, key_len, iv, iv_len);
 }
 
@@ -748,7 +818,7 @@ static int
 tls12_record_layer_open_record_plaintext(struct tls12_record_layer *rl,
     uint8_t content_type, CBS *fragment, uint8_t **out, size_t *out_len)
 {
-	if (rl->read->aead_ctx != NULL || rl->read->cipher_ctx != NULL)
+	if (tls12_record_protection_engaged(rl->read))
 		return 0;
 
 	/* XXX - decrypt/process in place for now. */
@@ -1013,7 +1083,7 @@ static int
 tls12_record_layer_seal_record_plaintext(struct tls12_record_layer *rl,
     uint8_t content_type, const uint8_t *content, size_t content_len, CBB *out)
 {
-	if (rl->write->aead_ctx != NULL || rl->write->cipher_ctx != NULL)
+	if (tls12_record_protection_engaged(rl->write))
 		return 0;
 
 	return CBB_add_bytes(out, content, content_len);

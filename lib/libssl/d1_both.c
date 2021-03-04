@@ -1,4 +1,4 @@
-/* $OpenBSD: d1_both.c,v 1.66 2021/01/26 14:22:19 jsing Exp $ */
+/* $OpenBSD: d1_both.c,v 1.68 2021/02/27 14:20:50 jsing Exp $ */
 /*
  * DTLS implementation written by Nagendra Modadugu
  * (nagendra@cs.stanford.edu) for the OpenSSL project 2005.
@@ -201,12 +201,6 @@ dtls1_hm_fragment_free(hm_fragment *frag)
 	if (frag == NULL)
 		return;
 
-	if (frag->msg_header.is_ccs) {
-		EVP_CIPHER_CTX_free(
-		    frag->msg_header.saved_retransmit_state.enc_write_ctx);
-		EVP_MD_CTX_free(
-		    frag->msg_header.saved_retransmit_state.write_hash);
-	}
 	free(frag->fragment);
 	free(frag->reassembly);
 	free(frag);
@@ -391,7 +385,7 @@ dtls1_get_message(SSL *s, int st1, int stn, int mt, long max, int *ok)
 		if ((mt >= 0) && (S3I(s)->tmp.message_type != mt)) {
 			al = SSL_AD_UNEXPECTED_MESSAGE;
 			SSLerror(s, SSL_R_UNEXPECTED_MESSAGE);
-			goto f_err;
+			goto fatal_err;
 		}
 		*ok = 1;
 		s->internal->init_msg = s->internal->init_buf->data + DTLS1_HM_HEADER_LENGTH;
@@ -433,7 +427,7 @@ again:
 	s->internal->init_msg = s->internal->init_buf->data + DTLS1_HM_HEADER_LENGTH;
 	return s->internal->init_num;
 
-f_err:
+ fatal_err:
 	ssl3_send_alert(s, SSL3_AL_FATAL, al);
 	*ok = 0;
 	return -1;
@@ -776,7 +770,7 @@ again:
 	    dtls1_get_message_header(wire, &msg_hdr) == 0) {
 		al = SSL_AD_UNEXPECTED_MESSAGE;
 		SSLerror(s, SSL_R_UNEXPECTED_MESSAGE);
-		goto f_err;
+		goto fatal_err;
 	}
 
 	/*
@@ -818,12 +812,12 @@ again:
 		{
 			al = SSL_AD_UNEXPECTED_MESSAGE;
 			SSLerror(s, SSL_R_UNEXPECTED_MESSAGE);
-			goto f_err;
+			goto fatal_err;
 		}
 	}
 
 	if ((al = dtls1_preprocess_fragment(s, &msg_hdr, max)))
-		goto f_err;
+		goto fatal_err;
 
 	/* XDTLS:  ressurect this when restart is in place */
 	S3I(s)->hs.state = stn;
@@ -849,7 +843,7 @@ again:
 	if (i != (int)frag_len) {
 		al = SSL3_AD_ILLEGAL_PARAMETER;
 		SSLerror(s, SSL3_AD_ILLEGAL_PARAMETER);
-		goto f_err;
+		goto fatal_err;
 	}
 
 	*ok = 1;
@@ -863,7 +857,7 @@ again:
 	s->internal->init_num = frag_len;
 	return frag_len;
 
-f_err:
+ fatal_err:
 	ssl3_send_alert(s, SSL3_AL_FATAL, al);
 	s->internal->init_num = 0;
 
@@ -977,8 +971,6 @@ dtls1_buffer_message(SSL *s, int is_ccs)
 	frag->msg_header.is_ccs = is_ccs;
 
 	/* save current state*/
-	frag->msg_header.saved_retransmit_state.enc_write_ctx = s->internal->enc_write_ctx;
-	frag->msg_header.saved_retransmit_state.write_hash = s->internal->write_hash;
 	frag->msg_header.saved_retransmit_state.session = s->session;
 	frag->msg_header.saved_retransmit_state.epoch = D1I(s)->w_epoch;
 
@@ -1078,11 +1070,16 @@ dtls1_retransmit_message(SSL *s, unsigned short seq, unsigned long frag_off,
 void
 dtls1_clear_record_buffer(SSL *s)
 {
+	hm_fragment *frag;
 	pitem *item;
 
 	for(item = pqueue_pop(s->d1->sent_messages); item != NULL;
 	    item = pqueue_pop(s->d1->sent_messages)) {
-		dtls1_hm_fragment_free((hm_fragment *)item->data);
+		frag = item->data;
+		if (frag->msg_header.is_ccs)
+			tls12_record_layer_write_epoch_done(s->internal->rl,
+			    frag->msg_header.saved_retransmit_state.epoch);
+		dtls1_hm_fragment_free(frag);
 		pitem_free(item);
 	}
 }
