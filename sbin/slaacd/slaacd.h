@@ -1,4 +1,4 @@
-/*	$OpenBSD: slaacd.h,v 1.29 2021/02/27 10:28:12 florian Exp $	*/
+/*	$OpenBSD: slaacd.h,v 1.33 2021/03/21 18:25:24 florian Exp $	*/
 
 /*
  * Copyright (c) 2017 Florian Obser <florian@openbsd.org>
@@ -55,7 +55,6 @@ enum imsg_type {
 	IMSG_CTL_SHOW_INTERFACE_INFO_RDNS_PROPOSAL,
 	IMSG_CTL_END,
 	IMSG_UPDATE_ADDRESS,
-	IMSG_UPDATE_LINK_STATE,
 	IMSG_PROPOSE_RDNS,
 	IMSG_REPROPOSE_RDNS,
 #endif	/* SMALL */
@@ -88,7 +87,8 @@ enum rpref {
 struct ctl_engine_info {
 	uint32_t		if_index;
 	int			running;
-	int			autoconfprivacy;
+	int			autoconf;
+	int			temporary;
 	int			soii;
 	struct ether_addr	hw_address;
 	struct sockaddr_in6	ll_address;
@@ -136,7 +136,7 @@ struct ctl_engine_info_address_proposal {
 	struct timespec		 uptime;
 	struct sockaddr_in6	 addr;
 	struct in6_addr		 prefix;
-	int			 privacy;
+	int			 temporary;
 	uint8_t			 prefix_len;
 	uint32_t		 vltime;
 	uint32_t		 pltime;
@@ -169,18 +169,11 @@ struct ctl_engine_info_rdns_proposal {
 
 struct imsg_addrinfo {
 	uint32_t		if_index;
-	struct ether_addr	hw_address;
-	struct sockaddr_in6	ll_address;
 	struct sockaddr_in6	addr;
 	struct in6_addr		mask;
-	int			privacy;
+	int			temporary;
 	uint32_t		vltime;
 	uint32_t		pltime;
-};
-
-struct imsg_link_state {
-	uint32_t	if_index;
-	int		link_state;
 };
 
 struct imsg_propose_rdns {
@@ -196,7 +189,9 @@ struct imsg_ifinfo {
 	uint32_t		if_index;
 	int			rdomain;
 	int			running;
-	int			autoconfprivacy;
+	int			link_state;
+	int			autoconf;
+	int			temporary;
 	int			soii;
 	struct ether_addr	hw_address;
 	struct sockaddr_in6	ll_address;

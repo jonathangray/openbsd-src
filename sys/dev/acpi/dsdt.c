@@ -1,4 +1,4 @@
-/* $OpenBSD: dsdt.c,v 1.257 2020/12/17 17:57:19 kettenis Exp $ */
+/* $OpenBSD: dsdt.c,v 1.261 2021/03/18 00:17:26 yasuoka Exp $ */
 /*
  * Copyright (c) 2005 Jordan Hargrave <jordan@openbsd.org>
  *
@@ -1689,7 +1689,7 @@ int aml_fixup_node(struct aml_node *node, void *arg)
 	if (arg == NULL)
 		aml_fixup_node(node, node->value);
 	else if (val->type == AML_OBJTYPE_NAMEREF) {
-		node = aml_searchname(node, val->v_nameref);
+		node = aml_searchname(node, aml_getname(val->v_nameref));
 		if (node && node->value) {
 			_aml_setvalue(val, AML_OBJTYPE_OBJREF, AMLOP_NAMECHAR,
 			    node->value);
@@ -2966,6 +2966,10 @@ aml_store(struct aml_scope *scope, struct aml_value *lhs , int64_t ival,
 		aml_freevalue(lhs);
 
 	lhs = aml_gettgt(lhs, AMLOP_STORE);
+
+	/* Store to LocalX: free value again */
+	if (lhs->stack >= AMLOP_LOCAL0 && lhs->stack <= AMLOP_LOCAL7)
+		aml_freevalue(lhs);
 	switch (lhs->type) {
 	case AML_OBJTYPE_UNINITIALIZED:
 		aml_copyvalue(lhs, rhs);
@@ -3004,9 +3008,11 @@ aml_store(struct aml_scope *scope, struct aml_value *lhs , int64_t ival,
 		aml_copyvalue(lhs, rhs);
 		break;
 	case AML_OBJTYPE_NAMEREF:
-		node = __aml_searchname(scope->node, lhs->v_nameref, 1);
+		node = __aml_searchname(scope->node,
+		    aml_getname(lhs->v_nameref), 1);
 		if (node == NULL) {
-			aml_die("Could not create node %s", lhs->v_nameref);
+			aml_die("Could not create node %s",
+			    aml_getname(lhs->v_nameref));
 		}
 		aml_copyvalue(node->value, rhs);
 		break;
@@ -4616,10 +4622,20 @@ acpi_getdevlist(struct acpi_devlist_head *list, struct aml_node *root,
 {
 	struct acpi_devlist *dl;
 	struct aml_value *val;
+	struct aml_node *node;
 	int idx;
 
 	for (idx = off; idx < pkg->length; idx++) {
 		val = pkg->v_package[idx];
+		if (val->type == AML_OBJTYPE_NAMEREF) {
+			node = aml_searchrel(root, aml_getname(val->v_nameref));
+			if (node == NULL) {
+				printf("%s: device %s not found\n", __func__,
+				    aml_getname(val->v_nameref));
+				continue;
+			}
+			val = node->value;
+		}
 		if (val->type == AML_OBJTYPE_OBJREF)
 			val = val->v_objref.ref;
 		if (val->node) {

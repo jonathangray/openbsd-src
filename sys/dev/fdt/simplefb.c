@@ -1,4 +1,4 @@
-/*	$OpenBSD: simplefb.c,v 1.11 2020/05/28 20:24:26 fcambus Exp $	*/
+/*	$OpenBSD: simplefb.c,v 1.13 2021/03/13 14:02:02 kettenis Exp $	*/
 /*
  * Copyright (c) 2016 Mark Kettenis
  *
@@ -54,7 +54,9 @@ struct simplefb_format simplefb_formats[] = {
 	{ "x8r8g8b8", 32, 16, 8, 8, 8, 0, 8 },
 	{ "a8r8g8b8", 32, 16, 8, 8, 8, 0, 8 },
 	{ "x8b8g8r8", 32 },
-	{ "a8b8g8r8", 32 }
+	{ "a8b8g8r8", 32 },
+	{ "x2r10g10b10", 32, 20, 10, 10, 10, 0, 10 },
+	{ "a2r10g10b10", 32, 20, 10, 10, 10, 0, 10 },
 };
 
 struct simplefb_softc {
@@ -262,7 +264,10 @@ simplefb_wsioctl(void *v, u_long cmd, caddr_t data, int flag, struct proc *p)
 	case WSDISPLAYIO_GETSUPPORTEDDEPTH:
 		switch (ri->ri_depth) {
 		case 32:
-			*(u_int *)data = WSDISPLAYIO_DEPTH_24_32;
+			if (ri->ri_rnum == 10)
+				*(u_int *)data = WSDISPLAYIO_DEPTH_30;
+			else
+				*(u_int *)data = WSDISPLAYIO_DEPTH_24_32;
 			break;
 		case 24:
 			*(u_int *)data = WSDISPLAYIO_DEPTH_24_24;

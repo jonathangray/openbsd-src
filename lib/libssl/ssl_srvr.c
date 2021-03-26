@@ -1,4 +1,4 @@
-/* $OpenBSD: ssl_srvr.c,v 1.95 2021/02/20 14:16:56 tb Exp $ */
+/* $OpenBSD: ssl_srvr.c,v 1.99 2021/03/24 18:44:00 jsing Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -219,6 +219,14 @@ ssl3_accept(SSL *s)
 				goto end;
 			}
 
+			if (!ssl_supported_tls_version_range(s,
+			    &S3I(s)->hs.our_min_tls_version,
+			    &S3I(s)->hs.our_max_tls_version)) {
+				SSLerror(s, SSL_R_NO_PROTOCOLS_AVAILABLE);
+				ret = -1;
+				goto end;
+			}
+
 			s->internal->type = SSL_ST_ACCEPT;
 
 			if (!ssl3_setup_init_buffer(s)) {
@@ -282,9 +290,9 @@ ssl3_accept(SSL *s)
 			if (ret <= 0)
 				goto end;
 			if (SSL_is_dtls(s))
-				S3I(s)->hs.next_state = SSL3_ST_SR_CLNT_HELLO_A;
+				S3I(s)->hs.tls12.next_state = SSL3_ST_SR_CLNT_HELLO_A;
 			else
-				S3I(s)->hs.next_state = SSL3_ST_SW_HELLO_REQ_C;
+				S3I(s)->hs.tls12.next_state = SSL3_ST_SW_HELLO_REQ_C;
 			S3I(s)->hs.state = SSL3_ST_SW_FLUSH;
 			s->internal->init_num = 0;
 
@@ -357,7 +365,7 @@ ssl3_accept(SSL *s)
 			if (ret <= 0)
 				goto end;
 			S3I(s)->hs.state = SSL3_ST_SW_FLUSH;
-			S3I(s)->hs.next_state = SSL3_ST_SR_CLNT_HELLO_A;
+			S3I(s)->hs.tls12.next_state = SSL3_ST_SR_CLNT_HELLO_A;
 
 			/* HelloVerifyRequest resets Finished MAC. */
 			tls1_transcript_reset(s);
@@ -386,7 +394,7 @@ ssl3_accept(SSL *s)
 		case SSL3_ST_SW_CERT_A:
 		case SSL3_ST_SW_CERT_B:
 			/* Check if it is anon DH or anon ECDH. */
-			if (!(S3I(s)->hs.new_cipher->algorithm_auth &
+			if (!(S3I(s)->hs.cipher->algorithm_auth &
 			    SSL_aNULL)) {
 				if (SSL_is_dtls(s))
 					dtls1_start_timer(s);
@@ -406,7 +414,7 @@ ssl3_accept(SSL *s)
 
 		case SSL3_ST_SW_KEY_EXCH_A:
 		case SSL3_ST_SW_KEY_EXCH_B:
-			alg_k = S3I(s)->hs.new_cipher->algorithm_mkey;
+			alg_k = S3I(s)->hs.cipher->algorithm_mkey;
 
 			/*
 			 * Only send if using a DH key exchange.
@@ -451,7 +459,7 @@ ssl3_accept(SSL *s)
 			if (!(s->verify_mode & SSL_VERIFY_PEER) ||
 			    ((s->session->peer != NULL) &&
 			     (s->verify_mode & SSL_VERIFY_CLIENT_ONCE)) ||
-			    ((S3I(s)->hs.new_cipher->algorithm_auth &
+			    ((S3I(s)->hs.cipher->algorithm_auth &
 			     SSL_aNULL) && !(s->verify_mode &
 			     SSL_VERIFY_FAIL_IF_NO_PEER_CERT))) {
 				/* No cert request. */
@@ -480,7 +488,7 @@ ssl3_accept(SSL *s)
 			ret = ssl3_send_server_done(s);
 			if (ret <= 0)
 				goto end;
-			S3I(s)->hs.next_state = SSL3_ST_SR_CERT_A;
+			S3I(s)->hs.tls12.next_state = SSL3_ST_SR_CERT_A;
 			S3I(s)->hs.state = SSL3_ST_SW_FLUSH;
 			s->internal->init_num = 0;
 			break;
@@ -502,14 +510,14 @@ ssl3_accept(SSL *s)
 					/* If the write error was fatal, stop trying. */
 					if (!BIO_should_retry(s->wbio)) {
 						s->internal->rwstate = SSL_NOTHING;
-						S3I(s)->hs.state = S3I(s)->hs.next_state;
+						S3I(s)->hs.state = S3I(s)->hs.tls12.next_state;
 					}
 				}
 				ret = -1;
 				goto end;
 			}
 			s->internal->rwstate = SSL_NOTHING;
-			S3I(s)->hs.state = S3I(s)->hs.next_state;
+			S3I(s)->hs.state = S3I(s)->hs.tls12.next_state;
 			break;
 
 		case SSL3_ST_SR_CERT_A:
@@ -534,7 +542,7 @@ ssl3_accept(SSL *s)
 				s->internal->init_num = 0;
 			}
 
-			alg_k = S3I(s)->hs.new_cipher->algorithm_mkey;
+			alg_k = S3I(s)->hs.cipher->algorithm_mkey;
 			if (ret == 2) {
 				/*
 				 * For the ECDH ciphersuites when
@@ -633,7 +641,7 @@ ssl3_accept(SSL *s)
 
 		case SSL3_ST_SW_CHANGE_A:
 		case SSL3_ST_SW_CHANGE_B:
-			s->session->cipher = S3I(s)->hs.new_cipher;
+			s->session->cipher = S3I(s)->hs.cipher;
 			if (!tls1_setup_key_block(s)) {
 				ret = -1;
 				goto end;
@@ -666,10 +674,10 @@ ssl3_accept(SSL *s)
 				goto end;
 			S3I(s)->hs.state = SSL3_ST_SW_FLUSH;
 			if (s->internal->hit) {
-				S3I(s)->hs.next_state = SSL3_ST_SR_FINISHED_A;
+				S3I(s)->hs.tls12.next_state = SSL3_ST_SR_FINISHED_A;
 				tls1_transcript_free(s);
 			} else
-				S3I(s)->hs.next_state = SSL_ST_OK;
+				S3I(s)->hs.tls12.next_state = SSL_ST_OK;
 			s->internal->init_num = 0;
 			break;
 
@@ -791,7 +799,7 @@ ssl3_get_client_hello(SSL *s)
 	STACK_OF(SSL_CIPHER) *ciphers = NULL;
 	unsigned long alg_k;
 	const SSL_METHOD *method;
-	uint16_t max_version, shared_version;
+	uint16_t shared_version;
 
 	/*
 	 * We do this so that we will respond with our native type.
@@ -842,9 +850,7 @@ ssl3_get_client_hello(SSL *s)
 	 * Use version from inside client hello, not from record header.
 	 * (may differ: see RFC 2246, Appendix E, second paragraph)
 	 */
-	if (!ssl_downgrade_max_version(s, &max_version))
-		goto err;
-	if (ssl_max_shared_version(s, client_version, &shared_version) != 1) {
+	if (!ssl_max_shared_version(s, client_version, &shared_version)) {
 		if ((s->client_version >> 8) == SSL3_VERSION_MAJOR &&
 		    !tls12_record_layer_write_protected(s->internal->rl)) {
 			/*
@@ -859,6 +865,12 @@ ssl3_get_client_hello(SSL *s)
 	}
 	s->client_version = client_version;
 	s->version = shared_version;
+
+	S3I(s)->hs.negotiated_tls_version = ssl_tls_version(shared_version);
+	if (S3I(s)->hs.negotiated_tls_version == 0) {
+		SSLerror(s, ERR_R_INTERNAL_ERROR);
+		goto err;
+	}
 
 	if ((method = ssl_get_method(shared_version)) == NULL) {
 		SSLerror(s, ERR_R_INTERNAL_ERROR);
@@ -1037,8 +1049,8 @@ ssl3_get_client_hello(SSL *s)
 	 */
 	arc4random_buf(s->s3->server_random, SSL3_RANDOM_SIZE);
 
-	if (!SSL_is_dtls(s) && max_version >= TLS1_2_VERSION &&
-	    s->version < max_version) {
+	if (S3I(s)->hs.our_max_tls_version >= TLS1_2_VERSION &&
+	    S3I(s)->hs.negotiated_tls_version < S3I(s)->hs.our_max_tls_version) {
 		/*
 		 * RFC 8446 section 4.1.3. If we are downgrading from TLS 1.3
 		 * we must set the last 8 bytes of the server random to magical
@@ -1047,7 +1059,7 @@ ssl3_get_client_hello(SSL *s)
 		 */
 		size_t index = SSL3_RANDOM_SIZE - sizeof(tls13_downgrade_12);
 		uint8_t *magic = &s->s3->server_random[index];
-		if (s->version == TLS1_2_VERSION) {
+		if (S3I(s)->hs.negotiated_tls_version == TLS1_2_VERSION) {
 			/* Indicate we chose to downgrade to 1.2. */
 			memcpy(magic, tls13_downgrade_12,
 			    sizeof(tls13_downgrade_12));
@@ -1110,15 +1122,15 @@ ssl3_get_client_hello(SSL *s)
 			SSLerror(s, SSL_R_NO_SHARED_CIPHER);
 			goto fatal_err;
 		}
-		S3I(s)->hs.new_cipher = c;
+		S3I(s)->hs.cipher = c;
 	} else {
-		S3I(s)->hs.new_cipher = s->session->cipher;
+		S3I(s)->hs.cipher = s->session->cipher;
 	}
 
 	if (!tls1_transcript_hash_init(s))
 		goto err;
 
-	alg_k = S3I(s)->hs.new_cipher->algorithm_mkey;
+	alg_k = S3I(s)->hs.cipher->algorithm_mkey;
 	if (!(SSL_USE_SIGALGS(s) || (alg_k & SSL_kGOST)) ||
 	    !(s->verify_mode & SSL_VERIFY_PEER))
 		tls1_transcript_free(s);
@@ -1132,7 +1144,7 @@ ssl3_get_client_hello(SSL *s)
 	 * ssl version is set	- sslv3
 	 * s->session		- The ssl session has been setup.
 	 * s->internal->hit		- session reuse flag
-	 * s->hs.new_cipher	- the new cipher to use.
+	 * s->hs.cipher	- the new cipher to use.
 	 */
 
 	/* Handles TLS extensions that we couldn't check earlier */
@@ -1253,7 +1265,7 @@ ssl3_send_server_hello(SSL *s)
 
 		/* Cipher suite. */
 		if (!CBB_add_u16(&server_hello,
-		    ssl3_cipher_get_value(S3I(s)->hs.new_cipher)))
+		    ssl3_cipher_get_value(S3I(s)->hs.cipher)))
 			goto err;
 
 		/* Compression method (null). */
@@ -1324,7 +1336,7 @@ ssl3_send_server_kex_dhe(SSL *s, CBB *cbb)
 
 	if (dhp == NULL && s->cert->dh_tmp_cb != NULL)
 		dhp = s->cert->dh_tmp_cb(s, 0,
-		    SSL_C_PKEYLENGTH(S3I(s)->hs.new_cipher));
+		    SSL_C_PKEYLENGTH(S3I(s)->hs.cipher));
 
 	if (dhp == NULL) {
 		al = SSL_AD_HANDSHAKE_FAILURE;
@@ -1532,7 +1544,7 @@ ssl3_send_server_key_exchange(SSL *s)
 		if (!CBB_init(&cbb_params, 0))
 			goto err;
 
-		type = S3I(s)->hs.new_cipher->algorithm_mkey;
+		type = S3I(s)->hs.cipher->algorithm_mkey;
 		if (type & SSL_kDHE) {
 			if (ssl3_send_server_kex_dhe(s, &cbb_params) != 1)
 				goto err;
@@ -1552,8 +1564,8 @@ ssl3_send_server_key_exchange(SSL *s)
 			goto err;
 
 		/* Add signature unless anonymous. */
-		if (!(S3I(s)->hs.new_cipher->algorithm_auth & SSL_aNULL)) {
-			if ((pkey = ssl_get_sign_pkey(s, S3I(s)->hs.new_cipher,
+		if (!(S3I(s)->hs.cipher->algorithm_auth & SSL_aNULL)) {
+			if ((pkey = ssl_get_sign_pkey(s, S3I(s)->hs.cipher,
 			    &md, &sigalg)) == NULL) {
 				al = SSL_AD_DECODE_ERROR;
 				goto fatal_err;
@@ -1718,6 +1730,8 @@ ssl3_get_client_kex_rsa(SSL *s, CBS *cbs)
 	int al = -1;
 
 	arc4random_buf(fakekey, sizeof(fakekey));
+
+	/* XXX - peer max protocol version. */
 	fakekey[0] = s->client_version >> 8;
 	fakekey[1] = s->client_version & 0xff;
 
@@ -1754,6 +1768,7 @@ ssl3_get_client_kex_rsa(SSL *s, CBS *cbs)
 		/* SSLerror(s, SSL_R_BAD_RSA_DECRYPT); */
 	}
 
+	/* XXX - peer max version. */
 	if ((al == -1) && !((pms[0] == (s->client_version >> 8)) &&
 	    (pms[1] == (s->client_version & 0xff)))) {
 		/*
@@ -1987,7 +2002,7 @@ ssl3_get_client_kex_gost(SSL *s, CBS *cbs)
 	int ret = 0;
 
 	/* Get our certificate private key*/
-	alg_a = S3I(s)->hs.new_cipher->algorithm_auth;
+	alg_a = S3I(s)->hs.cipher->algorithm_auth;
 	if (alg_a & SSL_aGOST01)
 		pk = s->cert->pkeys[SSL_PKEY_GOST01].privatekey;
 
@@ -2066,7 +2081,7 @@ ssl3_get_client_key_exchange(SSL *s)
 
 	CBS_init(&cbs, s->internal->init_msg, n);
 
-	alg_k = S3I(s)->hs.new_cipher->algorithm_mkey;
+	alg_k = S3I(s)->hs.cipher->algorithm_mkey;
 
 	if (alg_k & SSL_kRSA) {
 		if (ssl3_get_client_kex_rsa(s, &cbs) != 1)

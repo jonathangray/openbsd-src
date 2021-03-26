@@ -1,4 +1,4 @@
-/*	$OpenBSD: proc.h,v 1.309 2021/02/15 09:35:59 mpi Exp $	*/
+/*	$OpenBSD: proc.h,v 1.311 2021/03/17 14:06:54 visa Exp $	*/
 /*	$NetBSD: proc.h,v 1.44 1996/04/22 01:23:21 christos Exp $	*/
 
 /*-
@@ -316,7 +316,7 @@ struct process {
      "\013WAITED" "\014COREDUMP" "\015SINGLEEXIT" "\016SINGLEUNWIND" \
      "\017NOZOMBIE" "\020STOPPED" "\021SYSTEM" "\022EMBRYO" "\023ZOMBIE" \
      "\024NOBROADCASTKILL" "\025PLEDGE" "\026WXNEEDED" "\027EXECPLEDGE" \
-     "\028ORPHAN")
+     "\030ORPHAN")
 
 
 struct kcov_dev;
@@ -600,7 +600,6 @@ refreshcreds(struct proc *p)
 
 enum single_thread_mode {
 	SINGLE_SUSPEND,		/* other threads to stop wherever they are */
-	SINGLE_PTRACE,		/* other threads to stop but don't wait */
 	SINGLE_UNWIND,		/* other threads to unwind and stop */
 	SINGLE_EXIT		/* other threads to unwind and then exit */
 };

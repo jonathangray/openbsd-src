@@ -1,4 +1,4 @@
-/* $OpenBSD: tlsexttest.c,v 1.45 2020/10/11 02:45:49 tb Exp $ */
+/* $OpenBSD: tlsexttest.c,v 1.49 2021/03/24 21:36:26 tb Exp $ */
 /*
  * Copyright (c) 2017 Joel Sing <jsing@openbsd.org>
  * Copyright (c) 2017 Doug Hogan <doug@openbsd.org>
@@ -1064,7 +1064,7 @@ test_tlsext_ecpf_server(void)
 		errx(1, "failed to create session");
 
 	/* Setup the state so we can call needs. */
-	if ((S3I(ssl)->hs.new_cipher =
+	if ((S3I(ssl)->hs.cipher =
 	    ssl3_get_cipher_by_id(TLS1_CK_ECDHE_ECDSA_CHACHA20_POLY1305))
 	    == NULL) {
 		FAIL("server cannot find cipher\n");
@@ -1531,7 +1531,7 @@ test_tlsext_sigalgs_client(void)
 	if ((ssl = SSL_new(ssl_ctx)) == NULL)
 		errx(1, "failed to create SSL");
 
-	ssl->client_version = TLS1_1_VERSION;
+	S3I(ssl)->hs.our_max_tls_version = TLS1_1_VERSION;
 
 	if (tlsext_sigalgs_client_needs(ssl, SSL_TLSEXT_MSG_CH)) {
 		fprintf(stderr, "FAIL: client should not need sigalgs\n");
@@ -1539,7 +1539,7 @@ test_tlsext_sigalgs_client(void)
 		goto done;
 	}
 
-	ssl->client_version = TLS1_2_VERSION;
+	S3I(ssl)->hs.our_max_tls_version = TLS1_2_VERSION;
 
 	if (!tlsext_sigalgs_client_needs(ssl, SSL_TLSEXT_MSG_CH)) {
 		fprintf(stderr, "FAIL: client should need sigalgs\n");
@@ -2745,6 +2745,9 @@ test_tlsext_clienthello_build(void)
 	if ((ssl = SSL_new(ssl_ctx)) == NULL)
 		errx(1, "failed to create SSL");
 
+	S3I(ssl)->hs.our_min_tls_version = TLS1_VERSION;
+	S3I(ssl)->hs.our_max_tls_version = TLS1_2_VERSION;
+
 	if (!tlsext_client_build(ssl, SSL_TLSEXT_MSG_CH, &cbb)) {
 		FAIL("failed to build clienthello extensions\n");
 		goto err;
@@ -2771,7 +2774,7 @@ test_tlsext_clienthello_build(void)
 	CBB_init(&cbb, 0);
 
 	/* Switch to TLSv1.1, disable EC ciphers and session tickets. */
-	ssl->client_version = TLS1_1_VERSION;
+	S3I(ssl)->hs.our_max_tls_version = TLS1_1_VERSION;
 	if (!SSL_set_cipher_list(ssl, "TLSv1.2:!ECDHE:!ECDSA")) {
 		FAIL("failed to set cipher list\n");
 		goto err;
@@ -2846,7 +2849,9 @@ test_tlsext_serverhello_build(void)
 	if ((ssl->session = SSL_SESSION_new()) == NULL)
 		errx(1, "failed to create session");
 
-	S3I(ssl)->hs.new_cipher =
+	S3I(ssl)->hs.our_max_tls_version = TLS1_3_VERSION;
+	S3I(ssl)->hs.negotiated_tls_version = TLS1_3_VERSION;
+	S3I(ssl)->hs.cipher =
 	    ssl3_get_cipher_by_id(TLS1_CK_RSA_WITH_AES_128_SHA256);
 
 	if (!tlsext_server_build(ssl, SSL_TLSEXT_MSG_SH, &cbb)) {
@@ -2876,7 +2881,7 @@ test_tlsext_serverhello_build(void)
 
 	/* Turn a few things on so we get extensions... */
 	S3I(ssl)->send_connection_binding = 1;
-	S3I(ssl)->hs.new_cipher =
+	S3I(ssl)->hs.cipher =
 	    ssl3_get_cipher_by_id(TLS1_CK_ECDHE_RSA_WITH_AES_128_SHA256);
 	ssl->internal->tlsext_status_expected = 1;
 	ssl->internal->tlsext_ticket_expected = 1;
@@ -2947,7 +2952,7 @@ test_tlsext_versions_client(void)
 	if ((ssl = SSL_new(ssl_ctx)) == NULL)
 		errx(1, "failed to create SSL");
 
-	S3I(ssl)->hs_tls13.max_version = 0;
+	S3I(ssl)->hs.our_max_tls_version = TLS1_1_VERSION;
 
 	if (tlsext_versions_client_needs(ssl, SSL_TLSEXT_MSG_CH)) {
 		FAIL("client should not need versions\n");
@@ -2955,7 +2960,7 @@ test_tlsext_versions_client(void)
 		goto done;
 	}
 
-	S3I(ssl)->hs_tls13.max_version = TLS1_2_VERSION;
+	S3I(ssl)->hs.our_max_tls_version = TLS1_2_VERSION;
 
 	if (tlsext_versions_client_needs(ssl, SSL_TLSEXT_MSG_CH)) {
 		FAIL("client should not need versions\n");
@@ -2963,7 +2968,7 @@ test_tlsext_versions_client(void)
 		goto done;
 	}
 
-	S3I(ssl)->hs_tls13.max_version = TLS1_3_VERSION;
+	S3I(ssl)->hs.our_max_tls_version = TLS1_3_VERSION;
 
 	if (!tlsext_versions_client_needs(ssl, SSL_TLSEXT_MSG_CH)) {
 		FAIL("client should need versions\n");
@@ -2971,16 +2976,9 @@ test_tlsext_versions_client(void)
 		goto done;
 	}
 
-	S3I(ssl)->hs_tls13.max_version = TLS1_3_VERSION;
-	S3I(ssl)->hs_tls13.min_version = 0;
-	if (tlsext_versions_client_build(ssl, SSL_TLSEXT_MSG_CH, &cbb)) {
-		FAIL("client should not have built versions\n");
-		failure = 1;
-		goto done;
-	}
+	S3I(ssl)->hs.our_min_tls_version = TLS1_VERSION;
+	S3I(ssl)->hs.our_max_tls_version = TLS1_3_VERSION;
 
-	S3I(ssl)->hs_tls13.max_version = TLS1_3_VERSION;
-	S3I(ssl)->hs_tls13.min_version = TLS1_VERSION;
 	if (!tlsext_versions_client_build(ssl, SSL_TLSEXT_MSG_CH, &cbb)) {
 		FAIL("client should have built versions\n");
 		failure = 1;
@@ -3040,7 +3038,7 @@ test_tlsext_versions_server(void)
 	if ((ssl = SSL_new(ssl_ctx)) == NULL)
 		errx(1, "failed to create SSL");
 
-	ssl->version = TLS1_2_VERSION;
+	S3I(ssl)->hs.negotiated_tls_version = TLS1_2_VERSION;
 
 	if (tlsext_versions_server_needs(ssl, SSL_TLSEXT_MSG_SH)) {
 		FAIL("server should not need versions\n");
@@ -3048,7 +3046,7 @@ test_tlsext_versions_server(void)
 		goto done;
 	}
 
-	ssl->version = TLS1_3_VERSION;
+	S3I(ssl)->hs.negotiated_tls_version = TLS1_3_VERSION;
 
 	if (!tlsext_versions_server_needs(ssl, SSL_TLSEXT_MSG_SH)) {
 		FAIL("server should need versions\n");
@@ -3130,35 +3128,27 @@ test_tlsext_keyshare_client(void)
 	if ((ssl = SSL_new(ssl_ctx)) == NULL)
 		errx(1, "failed to create SSL");
 
-	if ((S3I(ssl)->hs_tls13.key_share =
+	if ((S3I(ssl)->hs.tls13.key_share =
 	    tls13_key_share_new_nid(NID_X25519)) == NULL)
 		errx(1, "failed to create key share");
-	if (!tls13_key_share_generate(S3I(ssl)->hs_tls13.key_share))
+	if (!tls13_key_share_generate(S3I(ssl)->hs.tls13.key_share))
 		errx(1, "failed to generate key share");
 
-	S3I(ssl)->hs_tls13.max_version = 0;
-
+	S3I(ssl)->hs.our_max_tls_version = TLS1_2_VERSION;
 	if (tlsext_keyshare_client_needs(ssl, SSL_TLSEXT_MSG_CH)) {
 		FAIL("client should not need keyshare\n");
 		failure = 1;
 		goto done;
 	}
 
-	S3I(ssl)->hs_tls13.max_version = TLS1_2_VERSION;
-	if (tlsext_keyshare_client_needs(ssl, SSL_TLSEXT_MSG_CH)) {
-		FAIL("client should not need keyshare\n");
-		failure = 1;
-		goto done;
-	}
-
-	S3I(ssl)->hs_tls13.max_version = TLS1_3_VERSION;
+	S3I(ssl)->hs.our_max_tls_version = TLS1_3_VERSION;
 	if (!tlsext_keyshare_client_needs(ssl, SSL_TLSEXT_MSG_CH)) {
 		FAIL("client should need keyshare\n");
 		failure = 1;
 		goto done;
 	}
 
-	S3I(ssl)->hs_tls13.max_version = TLS1_3_VERSION;
+	S3I(ssl)->hs.our_max_tls_version = TLS1_3_VERSION;
 	if (!tlsext_keyshare_client_build(ssl, SSL_TLSEXT_MSG_CH, &cbb)) {
 		FAIL("client should have built keyshare\n");
 		failure = 1;
@@ -3228,21 +3218,14 @@ test_tlsext_keyshare_server(void)
 	if ((ssl = SSL_new(ssl_ctx)) == NULL)
 		errx(1, "failed to create SSL");
 
-	(ssl)->version = 0;
+	S3I(ssl)->hs.negotiated_tls_version = TLS1_2_VERSION;
 	if (tlsext_keyshare_server_needs(ssl, SSL_TLSEXT_MSG_SH)) {
 		FAIL("server should not need keyshare\n");
 		failure = 1;
 		goto done;
 	}
 
-	(ssl)->version = TLS1_2_VERSION;
-	if (tlsext_keyshare_server_needs(ssl, SSL_TLSEXT_MSG_SH)) {
-		FAIL("server should not need keyshare\n");
-		failure = 1;
-		goto done;
-	}
-
-	ssl->version = TLS1_3_VERSION;
+	S3I(ssl)->hs.negotiated_tls_version = TLS1_3_VERSION;
 	if (tlsext_keyshare_server_needs(ssl, SSL_TLSEXT_MSG_SH)) {
 		FAIL("client should not need keyshare\n");
 		failure = 1;
@@ -3268,14 +3251,14 @@ test_tlsext_keyshare_server(void)
 		goto done;
 	}
 
-	if ((S3I(ssl)->hs_tls13.key_share =
+	if ((S3I(ssl)->hs.tls13.key_share =
 	    tls13_key_share_new_nid(NID_X25519)) == NULL)
 		errx(1, "failed to create key share");
-	if (!tls13_key_share_generate(S3I(ssl)->hs_tls13.key_share))
+	if (!tls13_key_share_generate(S3I(ssl)->hs.tls13.key_share))
 		errx(1, "failed to generate key share");
 
 	CBS_init(&cbs, bogokey, sizeof(bogokey));
-	if (!tls13_key_share_peer_public(S3I(ssl)->hs_tls13.key_share,
+	if (!tls13_key_share_peer_public(S3I(ssl)->hs.tls13.key_share,
 	    0x001d, &cbs)) {
 		FAIL("failed to load peer public key\n");
 		failure = 1;
@@ -3301,10 +3284,10 @@ test_tlsext_keyshare_server(void)
 		goto done;
 	}
 
-	if ((S3I(ssl)->hs_tls13.key_share =
+	if ((S3I(ssl)->hs.tls13.key_share =
 	    tls13_key_share_new_nid(NID_X25519)) == NULL)
 		errx(1, "failed to create key share");
-	if (!tls13_key_share_generate(S3I(ssl)->hs_tls13.key_share))
+	if (!tls13_key_share_generate(S3I(ssl)->hs.tls13.key_share))
 		errx(1, "failed to generate key share");
 
 	CBS_init(&cbs, data, dlen);
@@ -3358,14 +3341,7 @@ test_tlsext_cookie_client(void)
 	if ((ssl = SSL_new(ssl_ctx)) == NULL)
 		errx(1, "failed to create SSL");
 
-	S3I(ssl)->hs_tls13.max_version = 0;
-	if (tlsext_cookie_client_needs(ssl, SSL_TLSEXT_MSG_CH)) {
-		FAIL("client should not need cookie\n");
-		failure = 1;
-		goto done;
-	}
-
-	S3I(ssl)->hs_tls13.max_version = TLS1_2_VERSION;
+	S3I(ssl)->hs.our_max_tls_version = TLS1_2_VERSION;
 	if (tlsext_cookie_client_needs(ssl, SSL_TLSEXT_MSG_CH)) {
 		FAIL("client should not need cookie\n");
 		failure = 1;
@@ -3373,7 +3349,7 @@ test_tlsext_cookie_client(void)
 	}
 
 
-	S3I(ssl)->hs_tls13.max_version = TLS1_3_VERSION;
+	S3I(ssl)->hs.our_max_tls_version = TLS1_3_VERSION;
 	if (tlsext_cookie_client_needs(ssl, SSL_TLSEXT_MSG_CH)) {
 		FAIL("client should not need cookie\n");
 		failure = 1;
@@ -3381,8 +3357,8 @@ test_tlsext_cookie_client(void)
 	}
 
 	/* Normally would be set by receiving a server cookie in an HRR */
-	S3I(ssl)->hs_tls13.cookie = strdup(cookie);
-	S3I(ssl)->hs_tls13.cookie_len = strlen(cookie);
+	S3I(ssl)->hs.tls13.cookie = strdup(cookie);
+	S3I(ssl)->hs.tls13.cookie_len = strlen(cookie);
 
 	if (!tlsext_cookie_client_needs(ssl, SSL_TLSEXT_MSG_CH)) {
 		FAIL("client should need cookie\n");
@@ -3412,7 +3388,7 @@ test_tlsext_cookie_client(void)
 
 	CBS_init(&cbs, data, dlen);
 
-	/* Checks cookie against what's in the hs_tls13 */
+	/* Checks cookie against what's in the hs.tls13 */
 	if (!tlsext_cookie_server_parse(ssl, SSL_TLSEXT_MSG_CH, &cbs, &alert)) {
 		FAIL("failed to parse client cookie\n");
 		failure = 1;
@@ -3453,22 +3429,14 @@ test_tlsext_cookie_server(void)
 	if ((ssl = SSL_new(ssl_ctx)) == NULL)
 		errx(1, "failed to create SSL");
 
-	S3I(ssl)->hs_tls13.max_version = 0;
+	S3I(ssl)->hs.our_max_tls_version = TLS1_2_VERSION;
 	if (tlsext_cookie_server_needs(ssl, SSL_TLSEXT_MSG_SH)) {
 		FAIL("server should not need cookie\n");
 		failure = 1;
 		goto done;
 	}
 
-	S3I(ssl)->hs_tls13.max_version = TLS1_2_VERSION;
-	if (tlsext_cookie_server_needs(ssl, SSL_TLSEXT_MSG_SH)) {
-		FAIL("server should not need cookie\n");
-		failure = 1;
-		goto done;
-	}
-
-
-	S3I(ssl)->hs_tls13.max_version = TLS1_3_VERSION;
+	S3I(ssl)->hs.our_max_tls_version = TLS1_3_VERSION;
 	if (tlsext_cookie_server_needs(ssl, SSL_TLSEXT_MSG_SH)) {
 		FAIL("server should not need cookie\n");
 		failure = 1;
@@ -3476,17 +3444,17 @@ test_tlsext_cookie_server(void)
 	}
 
 	/* Normally would be set by server before sending HRR */
-	S3I(ssl)->hs_tls13.cookie = strdup(cookie);
-	S3I(ssl)->hs_tls13.cookie_len = strlen(cookie);
+	S3I(ssl)->hs.tls13.cookie = strdup(cookie);
+	S3I(ssl)->hs.tls13.cookie_len = strlen(cookie);
 
-	if (!tlsext_cookie_server_needs(ssl, SSL_TLSEXT_MSG_SH)) {
+	if (!tlsext_cookie_server_needs(ssl, SSL_TLSEXT_MSG_HRR)) {
 		FAIL("server should need cookie\n");
 		failure = 1;
 		goto done;
 	}
 
-	if (!tlsext_cookie_server_build(ssl, SSL_TLSEXT_MSG_SH, &cbb)) {
-		FAIL("server have built a cookie response\n");
+	if (!tlsext_cookie_server_build(ssl, SSL_TLSEXT_MSG_HRR, &cbb)) {
+		FAIL("server should have built a cookie response\n");
 		failure = 1;
 		goto done;
 	}
@@ -3513,9 +3481,9 @@ test_tlsext_cookie_server(void)
 		goto done;
 	}
 
-	freezero(S3I(ssl)->hs_tls13.cookie, S3I(ssl)->hs_tls13.cookie_len);
-	S3I(ssl)->hs_tls13.cookie = NULL;
-	S3I(ssl)->hs_tls13.cookie_len = 0;
+	freezero(S3I(ssl)->hs.tls13.cookie, S3I(ssl)->hs.tls13.cookie_len);
+	S3I(ssl)->hs.tls13.cookie = NULL;
+	S3I(ssl)->hs.tls13.cookie_len = 0;
 
 	if (!tlsext_cookie_client_parse(ssl, SSL_TLSEXT_MSG_SH, &cbs, &alert)) {
 		FAIL("failed to parse server cookie\n");
@@ -3523,8 +3491,8 @@ test_tlsext_cookie_server(void)
 		goto done;
 	}
 
-	if (memcmp(cookie, S3I(ssl)->hs_tls13.cookie,
-		S3I(ssl)->hs_tls13.cookie_len) != 0) {
+	if (memcmp(cookie, S3I(ssl)->hs.tls13.cookie,
+		S3I(ssl)->hs.tls13.cookie_len) != 0) {
 		FAIL("parsed server cookie does not match sent cookie\n");
 		failure = 1;
 		goto done;

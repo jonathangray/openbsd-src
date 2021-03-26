@@ -1,4 +1,4 @@
-/* $OpenBSD: acpi.c,v 1.395 2020/12/27 23:06:34 deraadt Exp $ */
+/* $OpenBSD: acpi.c,v 1.397 2021/03/15 22:44:57 patrick Exp $ */
 /*
  * Copyright (c) 2005 Thorsten Lockert <tholo@sigmasoft.com>
  * Copyright (c) 2005 Jordan Hargrave <jordan@openbsd.org>
@@ -1202,6 +1202,7 @@ acpi_attach_common(struct acpi_softc *sc, paddr_t base)
 		memset(&aaa, 0, sizeof(aaa));
 		aaa.aaa_iot = sc->sc_iot;
 		aaa.aaa_memt = sc->sc_memt;
+		aaa.aaa_dmat = sc->sc_ci_dmat;
 		aaa.aaa_table = entry->q_table;
 		config_found_sm(&sc->sc_dev, &aaa, acpi_print, acpi_submatch);
 	}
@@ -3355,6 +3356,8 @@ acpi_foundhid(struct aml_node *node, void *arg)
 	if (acpi_matchhids(&aaa, acpi_skip_hids, "none") ||
 	    acpi_matchhids(&aaa, acpi_isa_hids, "none"))
 		return (0);
+
+	aaa.aaa_dmat = acpi_iommu_device_map(node->parent, aaa.aaa_dmat);
 
 	if (!node->parent->attached) {
 		node->parent->attached = 1;

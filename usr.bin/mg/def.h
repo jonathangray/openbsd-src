@@ -1,4 +1,4 @@
-/*	$OpenBSD: def.h,v 1.168 2021/03/01 10:51:14 lum Exp $	*/
+/*	$OpenBSD: def.h,v 1.171 2021/03/25 12:46:11 lum Exp $	*/
 
 /* This file is in the public domain. */
 
@@ -582,7 +582,7 @@ int		 evalexpr(int, int);
 int		 evalbuffer(int, int);
 int		 evalfile(int, int);
 int		 load(const char *);
-int		 excline(char *);
+int		 excline(char *, int);
 char		*skipwhite(char *);
 
 /* help.c X */
@@ -720,8 +720,8 @@ int		 dobeep_msg(const char *);
 void		 dobeep(void);
 
 /* interpreter.c */
-int		 foundparen(char *);
-int		 clearvars(void);
+int		 foundparen(char *, int);
+void		 cleanup(void);
 
 /*
  * Externals.
@@ -750,6 +750,7 @@ extern int		 doaudiblebell;
 extern int		 dovisiblebell;
 extern int		 dblspace;
 extern int		 allbro;
+extern int		 batch;
 extern char	 	 cinfo[];
 extern char		*keystrings[];
 extern char		 pat[NPAT];

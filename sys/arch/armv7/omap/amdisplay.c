@@ -1,4 +1,4 @@
-/* $OpenBSD: amdisplay.c,v 1.13 2021/01/19 18:04:43 kettenis Exp $ */
+/* $OpenBSD: amdisplay.c,v 1.15 2021/03/25 04:12:01 jsg Exp $ */
 /*
  * Copyright (c) 2016 Ian Sutton <ians@openbsd.org>
  *
@@ -20,10 +20,8 @@
 #include <sys/device.h>
 #include <sys/malloc.h>
 
-#include <dev/cons.h>
 #include <dev/wscons/wsconsio.h>
 #include <dev/wscons/wsdisplayvar.h>
-#include <dev/wscons/wscons_callbacks.h>
 #include <dev/rasops/rasops.h>
 #include <dev/videomode/videomode.h>
 #include <dev/videomode/edidvar.h>
@@ -290,7 +288,7 @@ amdisplay_attach(struct device *parent, struct device *self, void *args)
 	reg |= LCD_CTRL_MODESEL;
 	HWRITE4(sc, LCD_CTRL, reg);
 
-	/* set stn565 + active matrix + pallete loading only mode, delay */
+	/* set stn565 + active matrix + palette loading only mode, delay */
 	reg = HREAD4(sc, LCD_RASTER_CTRL);
 	reg &= 0xF8000C7C;
 	reg |= (LCD_RASTER_CTRL_LCDTFT)

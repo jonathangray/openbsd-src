@@ -1,4 +1,4 @@
-/* $OpenBSD: ssl_pkt.c,v 1.36 2021/02/20 14:14:16 tb Exp $ */
+/* $OpenBSD: ssl_pkt.c,v 1.39 2021/03/24 18:44:00 jsing Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -561,8 +561,9 @@ do_ssl3_write(SSL *s, int type, const unsigned char *buf, unsigned int len)
 	 * bytes and record version number > TLS 1.0.
 	 */
 	version = s->version;
-	if (S3I(s)->hs.state == SSL3_ST_CW_CLNT_HELLO_B && !s->internal->renegotiate &&
-	    TLS1_get_version(s) > TLS1_VERSION)
+	if (S3I(s)->hs.state == SSL3_ST_CW_CLNT_HELLO_B &&
+	    !s->internal->renegotiate &&
+	    S3I(s)->hs.our_max_tls_version > TLS1_VERSION)
 		version = TLS1_VERSION;
 
 	/*
@@ -1037,7 +1038,7 @@ ssl3_read_bytes(SSL *s, int type, unsigned char *buf, int len, int peek)
 		}
 
 		/* Check we have a cipher to change to */
-		if (S3I(s)->hs.new_cipher == NULL) {
+		if (S3I(s)->hs.cipher == NULL) {
 			al = SSL_AD_UNEXPECTED_MESSAGE;
 			SSLerror(s, SSL_R_CCS_RECEIVED_EARLY);
 			goto fatal_err;
@@ -1162,14 +1163,14 @@ ssl3_do_change_cipher_spec(SSL *s)
 	else
 		i = SSL3_CHANGE_CIPHER_CLIENT_READ;
 
-	if (S3I(s)->hs.key_block == NULL) {
+	if (S3I(s)->hs.tls12.key_block == NULL) {
 		if (s->session == NULL || s->session->master_key_length == 0) {
 			/* might happen if dtls1_read_bytes() calls this */
 			SSLerror(s, SSL_R_CCS_RECEIVED_EARLY);
 			return (0);
 		}
 
-		s->session->cipher = S3I(s)->hs.new_cipher;
+		s->session->cipher = S3I(s)->hs.cipher;
 		if (!tls1_setup_key_block(s))
 			return (0);
 	}

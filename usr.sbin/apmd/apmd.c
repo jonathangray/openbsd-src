@@ -1,4 +1,4 @@
-/*	$OpenBSD: apmd.c,v 1.99 2020/09/28 21:35:14 jca Exp $	*/
+/*	$OpenBSD: apmd.c,v 1.102 2021/03/25 20:46:55 kn Exp $	*/
 
 /*
  *  Copyright (c) 1995, 1996 John T. Kohl
@@ -72,7 +72,6 @@ void resumed(int ctl_fd);
 void setperfpolicy(char *policy);
 void sigexit(int signo);
 void do_etc_file(const char *file);
-void sockunlink(void);
 void error(const char *fmt, const char *arg);
 void set_driver_messages(int fd, int mode);
 
@@ -80,7 +79,6 @@ void set_driver_messages(int fd, int mode);
 void
 sigexit(int signo)
 {
-	sockunlink();
 	_exit(1);
 }
 
@@ -204,15 +202,6 @@ power_status(int fd, int force, struct apm_power_info *pinfo)
 	return acon;
 }
 
-char socketname[PATH_MAX];
-
-void
-sockunlink(void)
-{
-	if (socketname[0])
-		remove(socketname);
-}
-
 int
 bind_socket(const char *sockname)
 {
@@ -238,8 +227,6 @@ bind_socket(const char *sockname)
 		error("cannot set socket mode/owner/group to 660/0/0", NULL);
 
 	listen(sock, 1);
-	strlcpy(socketname, sockname, sizeof socketname);
-	atexit(sockunlink);
 
 	return sock;
 }
@@ -342,7 +329,8 @@ suspend(int ctl_fd)
 	do_etc_file(_PATH_APM_ETC_SUSPEND);
 	sync();
 	sleep(1);
-	ioctl(ctl_fd, APM_IOC_SUSPEND, 0);
+	if (ioctl(ctl_fd, APM_IOC_SUSPEND, 0) == -1)
+		logmsg(LOG_WARNING, "%s: %s", __func__, strerror(errno));
 }
 
 void
@@ -353,7 +341,8 @@ stand_by(int ctl_fd)
 	do_etc_file(_PATH_APM_ETC_STANDBY);
 	sync();
 	sleep(1);
-	ioctl(ctl_fd, APM_IOC_STANDBY, 0);
+	if (ioctl(ctl_fd, APM_IOC_STANDBY, 0) == -1)
+		logmsg(LOG_WARNING, "%s: %s", __func__, strerror(errno));
 }
 
 void
@@ -364,7 +353,8 @@ hibernate(int ctl_fd)
 	do_etc_file(_PATH_APM_ETC_HIBERNATE);
 	sync();
 	sleep(1);
-	ioctl(ctl_fd, APM_IOC_HIBERNATE, 0);
+	if (ioctl(ctl_fd, APM_IOC_HIBERNATE, 0) == -1)
+		logmsg(LOG_WARNING, "%s: %s", __func__, strerror(errno));
 }
 
 void
@@ -489,6 +479,11 @@ main(int argc, char *argv[])
 
 	if (statonly)
 		exit(0);
+
+	if (unveil(_PATH_APM_ETC_DIR, "rx") == -1)
+		err(1, "unveil");
+	if (unveil(NULL, NULL) == -1)
+		err(1, "unveil");
 
 	set_driver_messages(ctl_fd, APM_PRINT_OFF);
 

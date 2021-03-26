@@ -1,4 +1,4 @@
-/* $OpenBSD: if_cpsw.c,v 1.49 2020/07/10 13:26:36 patrick Exp $ */
+/* $OpenBSD: if_cpsw.c,v 1.51 2021/03/25 04:12:01 jsg Exp $ */
 /*	$NetBSD: if_cpsw.c,v 1.3 2013/04/17 14:36:34 bouyer Exp $	*/
 
 /*
@@ -61,10 +61,8 @@
 #include <sys/mbuf.h>
 #include <sys/pool.h>
 #include <sys/queue.h>
-#include <sys/kernel.h>
 #include <sys/device.h>
 #include <sys/timeout.h>
-#include <sys/socket.h>
 
 #include <machine/bus.h>
 #include <machine/fdt.h>
@@ -79,10 +77,8 @@
 #include <net/bpf.h>
 #endif
 
-#include <dev/mii/mii.h>
 #include <dev/mii/miivar.h>
 
-#include <arch/armv7/armv7/armv7var.h>
 #include <arch/armv7/omap/if_cpswreg.h>
 
 #include <dev/ofw/openfirm.h>
@@ -291,7 +287,7 @@ cpsw_mdio_init(struct cpsw_softc *sc)
 
 	sc->sc_active_port = 0;
 
-	/* Initialze MDIO - ENABLE, PREAMBLE=0, FAULTENB, CLKDIV=0xFF */
+	/* Initialize MDIO - ENABLE, PREAMBLE=0, FAULTENB, CLKDIV=0xFF */
 	/* TODO Calculate MDCLK=CLK/(CLKDIV+1) */
 	bus_space_write_4(sc->sc_bst, sc->sc_bsh, MDIOCONTROL,
 	    (1<<30) | (1<<18) | 0xFF);

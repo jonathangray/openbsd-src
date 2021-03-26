@@ -1,4 +1,4 @@
-/* $OpenBSD: ssl_locl.h,v 1.324 2021/02/27 14:20:50 jsing Exp $ */
+/* $OpenBSD: ssl_locl.h,v 1.330 2021/03/24 18:44:00 jsing Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -168,6 +168,10 @@ __BEGIN_HIDDEN_DECLS
 
 #define CTASSERT(x)	extern char  _ctassert[(x) ? 1 : -1 ]   \
 			    __attribute__((__unused__))
+
+#ifndef LIBRESSL_HAS_DTLS1_2
+#define LIBRESSL_HAS_DTLS1_2
+#endif
 
 #ifndef LIBRESSL_HAS_TLS1_3_CLIENT
 #define LIBRESSL_HAS_TLS1_3_CLIENT
@@ -406,39 +410,22 @@ typedef struct ssl_session_internal_st {
 } SSL_SESSION_INTERNAL;
 #define SSI(s) (s->session->internal)
 
-typedef struct ssl_handshake_st {
-	/* state contains one of the SSL3_ST_* values. */
-	int state;
-
-	/* used when SSL_ST_FLUSH_DATA is entered */
-	int next_state;
-
-	/*  new_cipher is the cipher being negotiated in this handshake. */
-	const SSL_CIPHER *new_cipher;
-
-	/* key_block is the record-layer key block for TLS 1.2 and earlier. */
-	size_t key_block_len;
-	unsigned char *key_block;
-
-	/* Extensions seen in this handshake. */
-	uint32_t extensions_seen;
-
-	/* sigalgs offered in this handshake in wire form */
-	size_t sigalgs_len;
-	uint8_t *sigalgs;
-} SSL_HANDSHAKE;
-
 typedef struct cert_pkey_st {
 	X509 *x509;
 	EVP_PKEY *privatekey;
 	STACK_OF(X509) *chain;
 } CERT_PKEY;
 
-typedef struct ssl_handshake_tls13_st {
-	uint16_t min_version;
-	uint16_t max_version;
-	uint16_t version;
+typedef struct ssl_handshake_tls12_st {
+	/* Used when SSL_ST_FLUSH_DATA is entered. */
+	int next_state;
 
+	/* Record-layer key block for TLS 1.2 and earlier. */
+	unsigned char *key_block;
+	size_t key_block_len;
+} SSL_HANDSHAKE_TLS12;
+
+typedef struct ssl_handshake_tls13_st {
 	int use_legacy;
 	int hrr;
 
@@ -468,8 +455,46 @@ typedef struct ssl_handshake_tls13_st {
 	EVP_MD_CTX *clienthello_md_ctx;
 	unsigned char *clienthello_hash;
 	unsigned int clienthello_hash_len;
-
 } SSL_HANDSHAKE_TLS13;
+
+typedef struct ssl_handshake_st {
+	/*
+	 * Minimum and maximum versions supported for this handshake. These are
+	 * initialised at the start of a handshake based on the method in use
+	 * and the current protocol version configuration.
+	 */
+	uint16_t our_min_tls_version;
+	uint16_t our_max_tls_version;
+
+	/*
+	 * Version negotiated for this session. For a client this is set once
+	 * the server selected version is parsed from the ServerHello (either
+	 * from the legacy version or supported versions extension). For a
+	 * server this is set once we select the version we will use with the
+	 * client.
+	 */
+	uint16_t negotiated_tls_version;
+
+	/*
+	 * Current handshake state - contains one of the SSL3_ST_* values and
+	 * is used by the TLSv1.2 state machine, as well as being updated by
+	 * the TLSv1.3 stack due to it being exposed externally.
+	 */
+	int state;
+
+	/* Cipher being negotiated in this handshake. */
+	const SSL_CIPHER *cipher;
+
+	/* Extensions seen in this handshake. */
+	uint32_t extensions_seen;
+
+	/* sigalgs offered in this handshake in wire form */
+	uint8_t *sigalgs;
+	size_t sigalgs_len;
+
+	SSL_HANDSHAKE_TLS12 tls12;
+	SSL_HANDSHAKE_TLS13 tls13;
+} SSL_HANDSHAKE;
 
 struct tls12_record_layer;
 
@@ -891,7 +916,6 @@ typedef struct ssl3_state_internal_st {
 	int in_read_app_data;
 
 	SSL_HANDSHAKE hs;
-	SSL_HANDSHAKE_TLS13 hs_tls13;
 
 	struct	{
 		unsigned char cert_verify_md[EVP_MAX_MD_SIZE];
@@ -1117,7 +1141,8 @@ int ssl_version_set_max(const SSL_METHOD *meth, uint16_t proto_ver,
     uint16_t min_tls_ver, uint16_t *out_tls_ver, uint16_t *out_proto_ver);
 int ssl_enabled_tls_version_range(SSL *s, uint16_t *min_ver, uint16_t *max_ver);
 int ssl_supported_tls_version_range(SSL *s, uint16_t *min_ver, uint16_t *max_ver);
-int ssl_downgrade_max_version(SSL *s, uint16_t *max_ver);
+uint16_t ssl_tls_version(uint16_t version);
+uint16_t ssl_effective_tls_version(SSL *s);
 int ssl_max_supported_version(SSL *s, uint16_t *max_ver);
 int ssl_max_shared_version(SSL *s, uint16_t peer_ver, uint16_t *max_ver);
 int ssl_check_version_from_server(SSL *s, uint16_t server_version);

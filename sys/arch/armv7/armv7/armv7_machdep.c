@@ -1,4 +1,4 @@
-/*	$OpenBSD: armv7_machdep.c,v 1.61 2020/05/31 06:23:57 dlg Exp $ */
+/*	$OpenBSD: armv7_machdep.c,v 1.63 2021/03/25 04:12:01 jsg Exp $ */
 /*	$NetBSD: lubbock_machdep.c,v 1.2 2003/07/15 00:25:06 lukem Exp $ */
 
 /*
@@ -109,8 +109,6 @@
 #include <sys/systm.h>
 #include <sys/proc.h>
 #include <sys/reboot.h>
-#include <sys/termios.h>
-#include <sys/socket.h>
 
 #include <machine/db_machdep.h>
 #include <machine/bootconfig.h>
@@ -494,7 +492,7 @@ initarm(void *arg0, void *arg1, void *arg2, paddr_t loadaddr)
 	 * array.
 	 *
 	 * The kernel page directory must be on a 16K boundary.  The page
-	 * tables must be on 4K bounaries.  What we do is allocate the
+	 * tables must be on 4K boundaries.  What we do is allocate the
 	 * page directory on the first 16K boundary that we encounter, and
 	 * the page tables on 4K boundaries otherwise.  Since we allocate
 	 * at least 3 L2 page tables, we are guaranteed to encounter at
@@ -729,7 +727,7 @@ initarm(void *arg0, void *arg1, void *arg2, paddr_t loadaddr)
 	 * Until then we will use a handler that just panics but tells us
 	 * why.
 	 * Initialisation of the vectors will just panic on a data abort.
-	 * This just fills in a slighly better one.
+	 * This just fills in a slightly better one.
 	 */
 
 	data_abort_handler_address = (u_int)data_abort_handler;
@@ -802,7 +800,7 @@ initarm(void *arg0, void *arg1, void *arg2, paddr_t loadaddr)
 			end = MIN(reg.addr + reg.size, (paddr_t)-PAGE_SIZE);
 
 			/*
-			 * The intial 32MB block is not excluded, so we need
+			 * The initial 32MB block is not excluded, so we need
 			 * to make sure we don't add it here.
 			 */
 			if (start < memend && end > memstart) {

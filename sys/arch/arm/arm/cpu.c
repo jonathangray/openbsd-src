@@ -1,4 +1,4 @@
-/*	$OpenBSD: cpu.c,v 1.53 2020/01/12 16:55:00 kettenis Exp $	*/
+/*	$OpenBSD: cpu.c,v 1.55 2021/03/25 04:12:00 jsg Exp $	*/
 /*	$NetBSD: cpu.c,v 1.56 2004/04/14 04:01:49 bsh Exp $	*/
 
 
@@ -47,21 +47,14 @@
 #include <sys/systm.h>
 #include <sys/malloc.h>
 #include <sys/device.h>
-#include <sys/user.h>
-#include <sys/proc.h>
-#include <sys/conf.h>
 #include <sys/sched.h>
 #include <sys/sysctl.h>
 #include <sys/task.h>
 
-#include <uvm/uvm_extern.h>
-
 #include <machine/cpu.h>
-#include <machine/intr.h>
 #include <machine/fdt.h>
 
-#include <arm/cpuconf.h>
-#include <arm/undefined.h>
+#include <arm/cpufunc.h>
 #include <arm/vfp.h>
 
 #include <dev/ofw/openfirm.h>
@@ -688,7 +681,7 @@ cpu_opp_init_legacy(struct cpu_info *ci)
 	cooling_device_register(cd);
 
 	/*
-	 * Do addional checks at mountroot when all the clocks and
+	 * Do additional checks at mountroot when all the clocks and
 	 * regulators are available.
 	 */
 	config_mountroot(ci->ci_dev, cpu_opp_mountroot);
@@ -776,7 +769,7 @@ cpu_opp_init(struct cpu_info *ci, uint32_t phandle)
 	cooling_device_register(cd);
 
 	/*
-	 * Do addional checks at mountroot when all the clocks and
+	 * Do additional checks at mountroot when all the clocks and
 	 * regulators are available.
 	 */
 	config_mountroot(ci->ci_dev, cpu_opp_mountroot);

@@ -1,4 +1,4 @@
-/*	$OpenBSD: acpi_machdep.c,v 1.11 2020/12/19 06:28:42 jmatthew Exp $	*/
+/*	$OpenBSD: acpi_machdep.c,v 1.14 2021/03/16 18:31:16 patrick Exp $	*/
 /*
  * Copyright (c) 2018 Mark Kettenis
  *
@@ -30,6 +30,8 @@
 
 #include <dev/acpi/acpivar.h>
 #include <dev/acpi/dsdt.h>
+
+#include <arm64/dev/acpiiort.h>
 
 int	lid_action;
 int	pwr_action = 1;
@@ -185,6 +187,7 @@ acpi_intr_disestablish(void *cookie)
 	struct interrupt_controller *ic = aih->ih_ic;
 
 	ic->ic_disestablish(aih->ih_ih);
+	free(aih, M_DEVBUF, sizeof(*aih));
 }
 
 void
@@ -216,3 +219,9 @@ acpi_resume_mp(void)
 }
 
 #endif
+
+bus_dma_tag_t
+acpi_iommu_device_map(struct aml_node *node, bus_dma_tag_t dmat)
+{
+	return acpiiort_device_map(node, dmat);
+}

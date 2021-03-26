@@ -1,4 +1,4 @@
-/*	$OpenBSD: rsync.c,v 1.19 2021/02/23 14:25:29 claudio Exp $ */
+/*	$OpenBSD: rsync.c,v 1.22 2021/03/18 15:47:10 claudio Exp $ */
 /*
  * Copyright (c) 2019 Kristaps Dzonsons <kristaps@bsd.lv>
  *
@@ -55,6 +55,7 @@ char *
 rsync_base_uri(const char *uri)
 {
 	const char *host, *module, *rest;
+	char *base_uri;
 
 	/* Case-insensitive rsync URI. */
 	if (strncasecmp(uri, "rsync://", 8) != 0) {
@@ -82,13 +83,17 @@ rsync_base_uri(const char *uri)
 
 	/* The path component is optional. */
 	if ((rest = strchr(module, '/')) == NULL) {
-		return strdup(uri);
+		if ((base_uri = strdup(uri)) == NULL)
+			err(1, NULL);
+		return base_uri;
 	} else if (rest == module) {
 		warnx("%s: zero-length module", uri);
 		return NULL;
 	}
 
-	return strndup(uri, rest - uri);
+	if ((base_uri = strndup(uri, rest - uri)) == NULL)
+		err(1, NULL);
+	return base_uri;
 }
 
 static void
@@ -141,13 +146,13 @@ proc_rsync(char *prog, char *bind_addr, int fd)
 		if (getenv("PATH") == NULL)
 			errx(1, "PATH is unset");
 		if ((path = strdup(getenv("PATH"))) == NULL)
-			err(1, "strdup");
+			err(1, NULL);
 		save = path;
 		while ((pp = strsep(&path, ":")) != NULL) {
 			if (*pp == '\0')
 				continue;
 			if (asprintf(&cmd, "%s/%s", pp, prog) == -1)
-				err(1, "asprintf");
+				err(1, NULL);
 			if (lstat(cmd, &stt) == -1) {
 				free(cmd);
 				continue;
@@ -309,5 +314,4 @@ proc_rsync(char *prog, char *bind_addr, int fd)
 	msgbuf_clear(&msgq);
 	free(ids);
 	exit(rc);
-	/* NOTREACHED */
 }

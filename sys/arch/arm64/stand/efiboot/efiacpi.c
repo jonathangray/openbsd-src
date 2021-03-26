@@ -1,4 +1,4 @@
-/*	$OpenBSD: efiacpi.c,v 1.9 2020/12/06 17:57:03 kettenis Exp $	*/
+/*	$OpenBSD: efiacpi.c,v 1.11 2021/03/23 09:41:12 patrick Exp $	*/
 
 /*
  * Copyright (c) 2018 Mark Kettenis <kettenis@openbsd.org>
@@ -132,7 +132,7 @@ struct acpi_fadt {
 	uint8_t		s4bios_req;	/* value for S4 */
 	uint8_t		pstate_cnt;	/* value for performance (hdr_revision > 2) */
 	uint32_t	pm1a_evt_blk;	/* power management 1a */
-	uint32_t	pm1b_evt_blk;	/* power mangement 1b */
+	uint32_t	pm1b_evt_blk;	/* power management 1b */
 	uint32_t	pm1a_cnt_blk;	/* pm control 1a */
 	uint32_t	pm1b_cnt_blk;	/* pm control 1b */
 	uint32_t	pm2_cnt_blk;	/* pm control 2 */
@@ -340,7 +340,7 @@ struct acpi_spcr {
 	uint32_t	pci_flags;
 	uint8_t		pci_segment;
 	uint32_t	reserved3;
-};
+} __packed;
 
 /* We'll never see ACPI 1.0 tables on ARM. */
 static EFI_GUID acpi_guid = ACPI_20_TABLE_GUID;

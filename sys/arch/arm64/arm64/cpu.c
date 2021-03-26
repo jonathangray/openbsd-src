@@ -1,4 +1,4 @@
-/*	$OpenBSD: cpu.c,v 1.48 2021/02/21 14:55:16 tobhe Exp $	*/
+/*	$OpenBSD: cpu.c,v 1.53 2021/03/17 12:03:40 kettenis Exp $	*/
 
 /*
  * Copyright (c) 2016 Dale Rahn <drahn@dalerahn.com>
@@ -79,6 +79,7 @@
 #define CPU_PART_X_GENE		0x000
 
 #define CPU_PART_ICESTORM	0x022
+#define CPU_PART_FIRESTORM	0x023
 
 #define CPU_IMPL(midr)  (((midr) >> 24) & 0xff)
 #define CPU_PART(midr)  (((midr) >> 4) & 0xfff)
@@ -134,6 +135,7 @@ struct cpu_cores cpu_cores_amcc[] = {
 
 struct cpu_cores cpu_cores_apple[] = {
 	{ CPU_PART_ICESTORM, "Icestorm" },
+	{ CPU_PART_FIRESTORM, "Firestorm" },
 	{ 0, NULL },
 };
 
@@ -400,6 +402,18 @@ cpu_identify(struct cpu_info *ci)
 	}
 
 	/*
+	 * ID_AA64MMFR0
+	 *
+	 * We only print ASIDBits for now.
+	 */
+	id = READ_SPECIALREG(id_aa64mmfr0_el1);
+
+	if (ID_AA64MMFR0_ASID_BITS(id) == ID_AA64MMFR0_ASID_BITS_16) {
+		printf("%sASID16", sep);
+		sep = ",";
+	}
+
+	/*
 	 * ID_AA64MMFR1
 	 *
 	 * We omit printing virtualization related fields like XNX, VH
@@ -531,7 +545,7 @@ cpu_attach(struct device *parent, struct device *dev, void *aux)
 		sched_init_cpu(ci);
 		if (cpu_hatch_secondary(ci, spinup_method, spinup_data)) {
 			atomic_setbits_int(&ci->ci_flags, CPUF_IDENTIFY);
-			__asm volatile("dsb sy; sev");
+			__asm volatile("dsb sy; sev" ::: "memory");
 
 			while ((ci->ci_flags & CPUF_IDENTIFIED) == 0 &&
 			    --timeout)
@@ -629,7 +643,7 @@ cpu_hatch_spin_table(struct cpu_info *ci, uint64_t start, uint64_t data)
 	pmap_kenter_cache(start_pg, pa, PROT_READ|PROT_WRITE, PMAP_CACHE_CI);
 
 	*startvec = start;
-	__asm volatile("dsb sy; sev");
+	__asm volatile("dsb sy; sev" ::: "memory");
 
 	pmap_kremove(start_pg, PAGE_SIZE);
 }
@@ -681,7 +695,7 @@ void
 cpu_boot_secondary(struct cpu_info *ci)
 {
 	atomic_setbits_int(&ci->ci_flags, CPUF_GO);
-	__asm volatile("dsb sy; sev");
+	__asm volatile("dsb sy; sev" ::: "memory");
 
 	while ((ci->ci_flags & CPUF_RUNNING) == 0)
 		__asm volatile("wfe");
@@ -695,23 +709,26 @@ cpu_start_secondary(struct cpu_info *ci)
 	int s;
 
 	ci->ci_flags |= CPUF_PRESENT;
-	__asm volatile("dsb sy");
+	__asm volatile("dsb sy" ::: "memory");
 
 	while ((ci->ci_flags & CPUF_IDENTIFY) == 0)
 		__asm volatile("wfe");
 
 	cpu_identify(ci);
 	atomic_setbits_int(&ci->ci_flags, CPUF_IDENTIFIED);
-	__asm volatile("dsb sy");
+	__asm volatile("dsb sy" ::: "memory");
 
 	while ((ci->ci_flags & CPUF_GO) == 0)
 		__asm volatile("wfe");
 
+	WRITE_SPECIALREG(ttbr0_el1, pmap_kernel()->pm_pt0pa);
+	__asm volatile("isb");
 	tcr = READ_SPECIALREG(tcr_el1);
 	tcr &= ~TCR_T0SZ(0x3f);
 	tcr |= TCR_T0SZ(64 - USER_SPACE_BITS);
 	tcr |= TCR_A1;
 	WRITE_SPECIALREG(tcr_el1, tcr);
+	cpu_tlb_flush();
 
 	/* Enable PAN. */
 	id_aa64mmfr1 = READ_SPECIALREG(id_aa64mmfr1_el1);
@@ -732,7 +749,7 @@ cpu_start_secondary(struct cpu_info *ci)
 	nanouptime(&ci->ci_schedstate.spc_runtime);
 
 	atomic_setbits_int(&ci->ci_flags, CPUF_RUNNING);
-	__asm volatile("dsb sy; sev");
+	__asm volatile("dsb sy; sev" ::: "memory");
 
 	spllower(IPL_NONE);
 
@@ -877,7 +894,7 @@ cpu_opp_init(struct cpu_info *ci, uint32_t phandle)
 	cooling_device_register(cd);
 
 	/*
-	 * Do addional checks at mountroot when all the clocks and
+	 * Do additional checks at mountroot when all the clocks and
 	 * regulators are available.
 	 */
 	config_mountroot(ci->ci_dev, cpu_opp_mountroot);

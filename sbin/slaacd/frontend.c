@@ -1,4 +1,4 @@
-/*	$OpenBSD: frontend.c,v 1.49 2021/01/19 16:49:56 florian Exp $	*/
+/*	$OpenBSD: frontend.c,v 1.55 2021/03/21 18:25:24 florian Exp $	*/
 
 /*
  * Copyright (c) 2017 Florian Obser <florian@openbsd.org>
@@ -88,7 +88,6 @@ void		 icmp6_receive(int, short, void *);
 int		 get_flags(char *);
 int		 get_xflags(char *);
 int		 get_ifrdomain(char *);
-void		 get_lladdr(char *, struct ether_addr *, struct sockaddr_in6 *);
 struct iface	*get_iface_by_id(uint32_t);
 void		 remove_iface(uint32_t);
 struct icmp6_ev	*get_icmp6ev_by_rdomain(int);
@@ -493,14 +492,17 @@ void
 update_iface(uint32_t if_index, char* if_name)
 {
 	struct iface		*iface;
+	struct ifaddrs		*ifap, *ifa;
 	struct imsg_ifinfo	 imsg_ifinfo;
+	struct sockaddr_dl	*sdl;
+	struct sockaddr_in6	*sin6;
 	int			 flags, xflags, ifrdomain;
 
 	if ((flags = get_flags(if_name)) == -1 || (xflags =
 	    get_xflags(if_name)) == -1)
 		return;
 
-	if (!(xflags & IFXF_AUTOCONF6))
+	if (!(xflags & (IFXF_AUTOCONF6 | IFXF_AUTOCONF6TEMP)))
 		return;
 
 	if((ifrdomain = get_ifrdomain(if_name)) == -1)
@@ -530,12 +532,52 @@ update_iface(uint32_t if_index, char* if_name)
 	imsg_ifinfo.rdomain = ifrdomain;
 	imsg_ifinfo.running = (flags & (IFF_UP | IFF_RUNNING)) == (IFF_UP |
 	    IFF_RUNNING);
-	imsg_ifinfo.autoconfprivacy = !(xflags & IFXF_INET6_NOPRIVACY);
+	imsg_ifinfo.autoconf = (xflags & IFXF_AUTOCONF6);
+	imsg_ifinfo.temporary = (xflags & IFXF_AUTOCONF6TEMP);
 	imsg_ifinfo.soii = !(xflags & IFXF_INET6_NOSOII);
-	get_lladdr(if_name, &imsg_ifinfo.hw_address, &imsg_ifinfo.ll_address);
 
-	memcpy(&iface->hw_address, &imsg_ifinfo.hw_address,
-	    sizeof(iface->hw_address));
+	if (getifaddrs(&ifap) != 0)
+		fatal("getifaddrs");
+
+	for (ifa = ifap; ifa != NULL; ifa = ifa->ifa_next) {
+		if (strcmp(if_name, ifa->ifa_name) != 0)
+			continue;
+		if (ifa->ifa_addr == NULL)
+			continue;
+
+		switch(ifa->ifa_addr->sa_family) {
+		case AF_LINK:
+			imsg_ifinfo.link_state =
+			    ((struct if_data *)ifa->ifa_data)->ifi_link_state;
+			sdl = (struct sockaddr_dl *)ifa->ifa_addr;
+			if (sdl->sdl_type != IFT_ETHER ||
+			    sdl->sdl_alen != ETHER_ADDR_LEN)
+				continue;
+			memcpy(iface->hw_address.ether_addr_octet,
+			    LLADDR(sdl), ETHER_ADDR_LEN);
+			memcpy(imsg_ifinfo.hw_address.ether_addr_octet,
+			    LLADDR(sdl), ETHER_ADDR_LEN);
+		case AF_INET6:
+			sin6 = (struct sockaddr_in6 *)ifa->ifa_addr;
+#ifdef __KAME__
+			if (IN6_IS_ADDR_LINKLOCAL(&sin6->sin6_addr) &&
+			    sin6->sin6_scope_id == 0) {
+				sin6->sin6_scope_id = ntohs(*(u_int16_t *)
+				    &sin6->sin6_addr.s6_addr[2]);
+				sin6->sin6_addr.s6_addr[2] =
+				    sin6->sin6_addr.s6_addr[3] = 0;
+			}
+#endif
+			if (IN6_IS_ADDR_LINKLOCAL(&sin6->sin6_addr))
+				memcpy(&imsg_ifinfo.ll_address, sin6,
+				    sizeof(imsg_ifinfo.ll_address));
+			break;
+		default:
+			break;
+		}
+	}
+
+	freeifaddrs(ifap);
 
 	frontend_imsg_compose_main(IMSG_UPDATE_IF, 0, &imsg_ifinfo,
 	    sizeof(imsg_ifinfo));
@@ -550,23 +592,17 @@ update_autoconf_addresses(uint32_t if_index, char* if_name)
 	struct ifaddrs		*ifap, *ifa;
 	struct in6_addrlifetime *lifetime;
 	struct sockaddr_in6	*sin6;
-	struct imsg_link_state	 imsg_link_state;
 	time_t			 t;
 	int			 xflags;
 
 	if ((xflags = get_xflags(if_name)) == -1)
 		return;
 
-	if (!(xflags & IFXF_AUTOCONF6))
+	if (!(xflags & (IFXF_AUTOCONF6 | IFXF_AUTOCONF6TEMP)))
 		return;
 
 	memset(&imsg_addrinfo, 0, sizeof(imsg_addrinfo));
 	imsg_addrinfo.if_index = if_index;
-	get_lladdr(if_name, &imsg_addrinfo.hw_address,
-	    &imsg_addrinfo.ll_address);
-
-	memset(&imsg_link_state, 0, sizeof(imsg_link_state));
-	imsg_link_state.if_index = if_index;
 
 	if (getifaddrs(&ifap) != 0)
 		fatal("getifaddrs");
@@ -576,10 +612,6 @@ update_autoconf_addresses(uint32_t if_index, char* if_name)
 			continue;
 		if (ifa->ifa_addr == NULL)
 			continue;
-
-		if (ifa->ifa_addr->sa_family == AF_LINK)
-			imsg_link_state.link_state =
-			    ((struct if_data *)ifa->ifa_data)->ifi_link_state;
 
 		if (ifa->ifa_addr->sa_family != AF_INET6)
 			continue;
@@ -603,7 +635,7 @@ update_autoconf_addresses(uint32_t if_index, char* if_name)
 		    IN6_IFF_TEMPORARY)))
 			continue;
 
-		imsg_addrinfo.privacy = ifr6.ifr_ifru.ifru_flags6 &
+		imsg_addrinfo.temporary = ifr6.ifr_ifru.ifru_flags6 &
 		    IN6_IFF_TEMPORARY ? 1 : 0;
 
 		memset(&ifr6, 0, sizeof(ifr6));
@@ -647,19 +679,13 @@ update_autoconf_addresses(uint32_t if_index, char* if_name)
 
 	}
 	freeifaddrs(ifap);
-
-	log_debug("%s: %s link state down? %s", __func__, if_name,
-	    imsg_link_state.link_state == LINK_STATE_DOWN ? "yes" : "no");
-
-	frontend_imsg_compose_main(IMSG_UPDATE_LINK_STATE, 0,
-	    &imsg_link_state, sizeof(imsg_link_state));
 }
 
 const char*
 flags_to_str(int flags)
 {
 	static char	buf[sizeof(" anycast tentative duplicated detached "
-			    "deprecated autoconf autoconfprivacy")];
+			    "deprecated autoconf temporary")];
 
 	buf[0] = '\0';
 	if (flags & IN6_IFF_ANYCAST)
@@ -675,7 +701,7 @@ flags_to_str(int flags)
 	if (flags & IN6_IFF_AUTOCONF)
 		strlcat(buf, " autoconf", sizeof(buf));
 	if (flags & IN6_IFF_TEMPORARY)
-		strlcat(buf, " autoconfprivacy", sizeof(buf));
+		strlcat(buf, " temporary", sizeof(buf));
 
 	return (buf);
 }
@@ -771,7 +797,8 @@ handle_route_message(struct rt_msghdr *rtm, struct sockaddr **rti_info)
 			    &if_index, sizeof(if_index));
 		} else {
 			xflags = get_xflags(if_name);
-			if (xflags == -1 || !(xflags & IFXF_AUTOCONF6)) {
+			if (xflags == -1 || !(xflags & (IFXF_AUTOCONF6 |
+			    IFXF_AUTOCONF6TEMP))) {
 				log_debug("RTM_IFINFO: %s(%d) no(longer) "
 				   "autoconf6", if_name, ifm->ifm_index);
 				if_index = ifm->ifm_index;
@@ -920,53 +947,6 @@ get_rtaddrs(int addrs, struct sockaddr *sa, struct sockaddr **rti_info)
 }
 
 void
-get_lladdr(char *if_name, struct ether_addr *mac, struct sockaddr_in6 *ll)
-{
-	struct ifaddrs		*ifap, *ifa;
-	struct sockaddr_dl	*sdl;
-	struct sockaddr_in6	*sin6;
-
-	if (getifaddrs(&ifap) != 0)
-		fatal("getifaddrs");
-
-	for (ifa = ifap; ifa != NULL; ifa = ifa->ifa_next) {
-		if (strcmp(if_name, ifa->ifa_name) != 0)
-			continue;
-		if (ifa->ifa_addr == NULL)
-			continue;
-
-		switch(ifa->ifa_addr->sa_family) {
-		case AF_LINK:
-			sdl = (struct sockaddr_dl *)ifa->ifa_addr;
-			if (sdl->sdl_type != IFT_ETHER ||
-			    sdl->sdl_alen != ETHER_ADDR_LEN)
-				continue;
-
-			memcpy(mac->ether_addr_octet, LLADDR(sdl),
-			    ETHER_ADDR_LEN);
-			break;
-		case AF_INET6:
-			sin6 = (struct sockaddr_in6 *)ifa->ifa_addr;
-#ifdef __KAME__
-			if (IN6_IS_ADDR_LINKLOCAL(&sin6->sin6_addr) &&
-			    sin6->sin6_scope_id == 0) {
-				sin6->sin6_scope_id = ntohs(*(u_int16_t *)
-				    &sin6->sin6_addr.s6_addr[2]);
-				sin6->sin6_addr.s6_addr[2] =
-				    sin6->sin6_addr.s6_addr[3] = 0;
-			}
-#endif
-			if (IN6_IS_ADDR_LINKLOCAL(&sin6->sin6_addr))
-				memcpy(ll, sin6, sizeof(*ll));
-			break;
-		default:
-			break;
-		}
-	}
-	freeifaddrs(ifap);
-}
-
-void
 icmp6_receive(int fd, short events, void *arg)
 {
 	struct imsg_ra		 ra;
@@ -976,7 +956,10 @@ icmp6_receive(int fd, short events, void *arg)
 	struct cmsghdr		*cm;
 	ssize_t			 len;
 	int			 if_index = 0, *hlimp = NULL;
-	char			 ntopbuf[INET6_ADDRSTRLEN], ifnamebuf[IFNAMSIZ];
+	char			 ntopbuf[INET6_ADDRSTRLEN];
+#ifndef SMALL
+	char			 ifnamebuf[IFNAMSIZ];
+#endif	/* SMALL */
 
 	icmp6ev = arg;
 	if ((len = recvmsg(fd, &icmp6ev->rcvmhdr, 0)) == -1) {

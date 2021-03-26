@@ -1,4 +1,4 @@
-/* $OpenBSD: machdep.c,v 1.58 2021/02/16 12:33:22 kettenis Exp $ */
+/* $OpenBSD: machdep.c,v 1.61 2021/03/17 12:03:40 kettenis Exp $ */
 /*
  * Copyright (c) 2014 Patrick Wildt <patrick@blueri.se>
  *
@@ -205,7 +205,7 @@ void
 cpu_idle_cycle(void)
 {
 	enable_irq_daif();
-	__asm volatile("dsb sy");
+	__asm volatile("dsb sy" ::: "memory");
 	__asm volatile("wfi");
 }
 
@@ -937,7 +937,8 @@ initarm(struct arm64_bootparams *abp)
 		int i;
 
 		/*
-		 * Load all memory marked as EfiConventionalMemory.
+		 * Load all memory marked as EfiConventionalMemory,
+		 * EfiBootServicesCode or EfiBootServicesData.
 		 * Don't bother with blocks smaller than 64KB.  The
 		 * initial 64MB memory block should be marked as
 		 * EfiLoaderData so it won't be added again here.
@@ -947,7 +948,9 @@ initarm(struct arm64_bootparams *abp)
 			    desc->Type, desc->PhysicalStart,
 			    desc->VirtualStart, desc->NumberOfPages,
 			    desc->Attribute);
-			if (desc->Type == EfiConventionalMemory &&
+			if ((desc->Type == EfiConventionalMemory ||
+			     desc->Type == EfiBootServicesCode ||
+			     desc->Type == EfiBootServicesData) &&
 			    desc->NumberOfPages >= 16) {
 				uvm_page_physload(atop(desc->PhysicalStart),
 				    atop(desc->PhysicalStart) +
@@ -977,7 +980,7 @@ initarm(struct arm64_bootparams *abp)
 			end = MIN(reg.addr + reg.size, (paddr_t)-PAGE_SIZE);
 
 			/*
-			 * The intial 64MB block is not excluded, so we need
+			 * The initial 64MB block is not excluded, so we need
 			 * to make sure we don't add it here.
 			 */
 			if (start < memend && end > memstart) {

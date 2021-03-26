@@ -1,4 +1,4 @@
-/*	$OpenBSD: pmap.c,v 1.172 2020/04/15 08:09:00 mpi Exp $ */
+/*	$OpenBSD: pmap.c,v 1.175 2021/03/15 15:49:22 deraadt Exp $ */
 
 /*
  * Copyright (c) 2015 Martin Pieuchot
@@ -32,7 +32,7 @@
  */
 
 /*
- * powerpc lazy icache managment.
+ * powerpc lazy icache management.
  * The icache does not snoop dcache accesses. The icache also will not load
  * modified data from the dcache, but the unmodified data in ram.
  * Before the icache is loaded, the dcache must be synced to ram to prevent
@@ -473,7 +473,7 @@ PTED_VALID(struct pte_desc *pted)
  * One issue of making this a single data structure is that two pointers are
  * wasted for every page which does not map ram (device mappings), this 
  * should be a low percentage of mapped pages in the system, so should not
- * have too noticable unnecessary ram consumption.
+ * have too noticeable unnecessary ram consumption.
  */
 
 void
@@ -1232,21 +1232,14 @@ void
 pmap_avail_setup(void)
 {
 	struct mem_region *mp;
-	int pmap_physmem;
 
 	ppc_mem_regions(&pmap_mem, &pmap_avail);
-	pmap_cnt_avail = 0;
-	pmap_physmem = 0;
 
-	ndumpmem = 0;
 	for (mp = pmap_mem; mp->size !=0; mp++, ndumpmem++) {
-		pmap_physmem += atop(mp->size);
+		physmem += atop(mp->size);
 		dumpmem[ndumpmem].start = atop(mp->start);
 		dumpmem[ndumpmem].end = atop(mp->start + mp->size);
 	}
-
-	if (physmem == 0)
-		physmem = pmap_physmem;
 
 	for (mp = pmap_avail; mp->size !=0 ; mp++) {
 		if (physmaxaddr <  mp->start + mp->size)
@@ -1468,6 +1461,7 @@ pmap_bootstrap(u_int kernelstart, u_int kernelend)
 	int i, k;
 	struct pmapvp *vp1;
 	struct pmapvp *vp2;
+	extern vaddr_t ppc_kvm_stolen;
 
 	/*
 	 * set the page size (default value is 4K which is ok)

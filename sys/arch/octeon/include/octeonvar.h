@@ -1,4 +1,4 @@
-/*	$OpenBSD: octeonvar.h,v 1.51 2021/02/04 16:16:11 visa Exp $	*/
+/*	$OpenBSD: octeonvar.h,v 1.53 2021/03/11 11:16:59 jsg Exp $	*/
 /*	$NetBSD: maltavar.h,v 1.3 2002/03/18 10:10:16 simonb Exp $	*/
 
 /*-
@@ -213,6 +213,7 @@ enum cnmac_stat {
  */
 enum octeon_board {
 	BOARD_UNKNOWN,
+	BOARD_CHECKPOINT_N100,
 	BOARD_CN3010_EVB_HS5,
 	BOARD_DLINK_DSR_500,
 	BOARD_NETGEAR_UTM25,
@@ -383,7 +384,7 @@ octeon_xkphys_write_8(paddr_t address, uint64_t value)
 
 	/*
 	 * XXX
-	 * This if would be better writen as:
+	 * This if would be better written as:
 	 * if ((address & 0xffffff0000000000ULL) == OCTEON_MIO_BOOT_BASE) {
 	 * but octeonreg.h can't be included here and we want this inlined
 	 *

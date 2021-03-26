@@ -1,4 +1,4 @@
-/*	$OpenBSD: subr_witness.c,v 1.45 2021/02/08 10:51:02 mpi Exp $	*/
+/*	$OpenBSD: subr_witness.c,v 1.47 2021/03/23 10:22:20 mpi Exp $	*/
 
 /*-
  * Copyright (c) 2008 Isilon Systems, Inc.
@@ -764,7 +764,7 @@ witness_checkorder(struct lock_object *lock, int flags,
 
 	if (witness_cold || witness_watch < 1 || panicstr != NULL || db_active)
 		return;
-	
+
 	if ((lock->lo_flags & LO_INITIALIZED) == 0) {
 		if (witness_uninitialized_report > 0) {
 			witness_uninitialized_report--;
@@ -1693,7 +1693,7 @@ isitmychild(struct witness *parent, struct witness *child)
 }
 
 /*
- * Checks if @descendant is a direct or inderect descendant of @ancestor.
+ * Checks if @descendant is a direct or indirect descendant of @ancestor.
  */
 static int
 isitmydescendant(struct witness *ancestor, struct witness *descendant)
@@ -2472,7 +2472,7 @@ witness_lock_order_add(struct witness *parent, struct witness *child)
 	data->wlod_key = key;
 	w_lohash.wloh_array[hash] = data;
 	w_lohash.wloh_count++;
-	stacktrace_save(&data->wlod_stack);
+	stacktrace_save_at(&data->wlod_stack, 1);
 	return (1);
 }
 

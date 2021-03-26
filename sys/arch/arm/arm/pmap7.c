@@ -1,4 +1,4 @@
-/*	$OpenBSD: pmap7.c,v 1.59 2019/12/19 17:53:27 mpi Exp $	*/
+/*	$OpenBSD: pmap7.c,v 1.61 2021/03/25 04:12:00 jsg Exp $	*/
 /*	$NetBSD: pmap.c,v 1.147 2004/01/18 13:03:50 scw Exp $	*/
 
 /*
@@ -176,18 +176,14 @@
  */
 
 #include <sys/param.h>
-#include <sys/kernel.h>
 #include <sys/systm.h>
 #include <sys/proc.h>
 #include <sys/malloc.h>
 #include <sys/user.h>
 #include <sys/pool.h>
-#include <sys/cdefs.h>
-#include <sys/sched.h>
  
 #include <uvm/uvm.h>
 
-#include <machine/bus.h>
 #include <machine/pmap.h>
 #include <machine/pcb.h>
 #include <machine/param.h>
@@ -1891,7 +1887,7 @@ pmap_reference(pmap_t pm)
  * pmap_zero_page()
  * 
  * Zero a given physical page by mapping it at a page hook point.
- * In doing the zero page op, the page we zero is mapped cachable, as with
+ * In doing the zero page op, the page we zero is mapped cacheable, as with
  * StrongARM accesses to non-cached pages are non-burst making writing
  * _any_ bulk data very slow.
  */
@@ -2500,7 +2496,7 @@ pmap_postinit(void)
  * find them as necessary.
  *
  * Note that the data on this list MUST remain valid after initarm() returns,
- * as pmap_bootstrap() uses it to contruct L2 table metadata.
+ * as pmap_bootstrap() uses it to construct L2 table metadata.
  */
 SLIST_HEAD(, pv_addr) kernel_pt_list = SLIST_HEAD_INITIALIZER(kernel_pt_list);
 

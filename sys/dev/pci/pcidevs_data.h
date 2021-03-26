@@ -2,7 +2,7 @@
  * THIS FILE AUTOMATICALLY GENERATED.  DO NOT EDIT.
  *
  * generated from:
- *	OpenBSD: pcidevs,v 1.1959 2021/02/27 03:00:54 jsg Exp 
+ *	OpenBSD: pcidevs,v 1.1962 2021/03/26 07:58:44 jan Exp 
  */
 
 /*	$NetBSD: pcidevs,v 1.30 1997/06/24 06:20:24 thorpej Exp $	*/
@@ -11304,6 +11304,10 @@ static const struct pci_known_product pci_known_products[] = {
 	    "Iris Graphics 5100",
 	},
 	{
+	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_NVME_5,
+	    "SSD DC",
+	},
+	{
 	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_GMA3600_0,
 	    "GMA 3600",
 	},
@@ -12246,6 +12250,10 @@ static const struct pci_known_product pci_known_products[] = {
 	{
 	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_ICH8_IGP_M,
 	    "ICH8 IGP M",
+	},
+	{
+	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_X710_10G_SFP_2,
+	    "X710 SFP+",
 	},
 	{
 	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_PRO_100_VE_4,
@@ -17358,6 +17366,10 @@ static const struct pci_known_product pci_known_products[] = {
 	{
 	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_495SERIES_LP_SRAM,
 	    "495 Series Shared SRAM",
+	},
+	{
+	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_WL_22500_4,
+	    "Wi-Fi 6 AX201",
 	},
 	{
 	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_495SERIES_LP_SDXC,

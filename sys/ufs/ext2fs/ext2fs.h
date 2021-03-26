@@ -1,4 +1,4 @@
-/*	$OpenBSD: ext2fs.h,v 1.24 2019/07/01 05:11:32 kevlo Exp $	*/
+/*	$OpenBSD: ext2fs.h,v 1.26 2021/03/11 13:31:35 jsg Exp $	*/
 /*	$NetBSD: ext2fs.h,v 1.10 2000/01/28 16:00:23 bouyer Exp $	*/
 
 /*
@@ -193,7 +193,7 @@ e2fs_overflow(struct m_ext2fs *fs, off_t lower, off_t value)
 #define E2FS_REV0	0	/* revision levels */
 #define E2FS_REV1	1	/* revision levels */
 
-/* compatible/imcompatible features */
+/* compatible/incompatible features */
 #define EXT2F_COMPAT_PREALLOC		0x0001
 #define EXT2F_COMPAT_IMAGIC_INODES	0x0002
 #define EXT2F_COMPAT_HAS_JOURNAL	0x0004
@@ -321,8 +321,7 @@ struct ext2_gd {
 
 static __inline__ int cg_has_sb(int) __attribute__((__unused__));
 static __inline int
-cg_has_sb(i)
-	int i;
+cg_has_sb(int i)
 {
 	int a3 ,a5 , a7;
 

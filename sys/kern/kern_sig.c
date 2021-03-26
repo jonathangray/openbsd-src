@@ -1,4 +1,4 @@
-/*	$OpenBSD: kern_sig.c,v 1.274 2021/03/04 09:02:37 mpi Exp $	*/
+/*	$OpenBSD: kern_sig.c,v 1.279 2021/03/21 10:24:36 mpi Exp $	*/
 /*	$NetBSD: kern_sig.c,v 1.54 1996/04/22 01:38:32 christos Exp $	*/
 
 /*
@@ -118,8 +118,8 @@ const int sigprop[NSIG + 1] = {
 	SA_IGNORE,		/* SIGTHR */
 };
 
-#define	contsigmask	(sigmask(SIGCONT))
-#define	stopsigmask	(sigmask(SIGSTOP) | sigmask(SIGTSTP) | \
+#define	CONTSIGMASK	(sigmask(SIGCONT))
+#define	STOPSIGMASK	(sigmask(SIGSTOP) | sigmask(SIGTSTP) | \
 			    sigmask(SIGTTIN) | sigmask(SIGTTOU))
 
 void setsigvec(struct proc *, int, struct sigaction *);
@@ -996,11 +996,11 @@ ptsignal(struct proc *p, int signum, enum signal_type type)
 	siglist = (type == SPROCESS) ? &pr->ps_siglist : &p->p_siglist;
 	if (prop & SA_CONT) {
 		siglist = &p->p_siglist;
-		atomic_clearbits_int(siglist, stopsigmask);
+		atomic_clearbits_int(siglist, STOPSIGMASK);
 	}
 	if (prop & SA_STOP) {
 		siglist = &p->p_siglist;
-		atomic_clearbits_int(siglist, contsigmask);
+		atomic_clearbits_int(siglist, CONTSIGMASK);
 		atomic_clearbits_int(&p->p_flag, P_CONTINUED);
 	}
 	atomic_setbits_int(siglist, mask);
@@ -1182,6 +1182,8 @@ cursig(struct proc *p)
 	int dolock = (p->p_flag & P_SINTR) == 0;
 	int s;
 
+	KERNEL_ASSERT_LOCKED();
+
 	sigpending = (p->p_siglist | pr->ps_siglist);
 	if (sigpending == 0)
 		return 0;
@@ -1192,7 +1194,7 @@ cursig(struct proc *p)
 	for (;;) {
 		mask = SIGPENDING(p);
 		if (pr->ps_flags & PS_PPWAIT)
-			mask &= ~stopsigmask;
+			mask &= ~STOPSIGMASK;
 		if (mask == 0)	 	/* no signal to send */
 			return (0);
 		signum = ffs((long)mask);
@@ -1217,7 +1219,7 @@ cursig(struct proc *p)
 		    signum != SIGKILL) {
 			pr->ps_xsig = signum;
 
-			single_thread_set(p, SINGLE_PTRACE, 0);
+			single_thread_set(p, SINGLE_SUSPEND, 0);
 
 			if (dolock)
 				SCHED_LOCK(s);
@@ -1225,11 +1227,7 @@ cursig(struct proc *p)
 			if (dolock)
 				SCHED_UNLOCK(s);
 
-			if (dolock)
-				KERNEL_LOCK();
 			single_thread_clear(p, 0);
-			if (dolock)
-				KERNEL_UNLOCK();
 
 			/*
 			 * If we are no longer being traced, or the parent
@@ -1490,7 +1488,7 @@ sigexit(struct proc *p, int signum)
 
 		/* if there are other threads, pause them */
 		if (P_HASSIBLING(p))
-			single_thread_set(p, SINGLE_SUSPEND, 0);
+			single_thread_set(p, SINGLE_SUSPEND, 1);
 
 		if (coredump(p) == 0)
 			signum |= WCOREFLAG;
@@ -2000,14 +1998,12 @@ single_thread_check(struct proc *p, int deep)
  * where the other threads should stop:
  *  - SINGLE_SUSPEND: stop wherever they are, will later either be told to exit
  *    (by setting to SINGLE_EXIT) or be released (via single_thread_clear())
- *  - SINGLE_PTRACE: stop wherever they are, will wait for them to stop
- *    later (via single_thread_wait()) and released as with SINGLE_SUSPEND
  *  - SINGLE_UNWIND: just unwind to kernel boundary, will be told to exit
  *    or released as with SINGLE_SUSPEND
  *  - SINGLE_EXIT: unwind to kernel boundary and exit
  */
 int
-single_thread_set(struct proc *p, enum single_thread_mode mode, int deep)
+single_thread_set(struct proc *p, enum single_thread_mode mode, int wait)
 {
 	struct process *pr = p->p_p;
 	struct proc *q;
@@ -2016,7 +2012,7 @@ single_thread_set(struct proc *p, enum single_thread_mode mode, int deep)
 	KASSERT(curproc == p);
 
 	SCHED_LOCK(s);
-	error = single_thread_check_locked(p, deep, s);
+	error = single_thread_check_locked(p, (mode == SINGLE_UNWIND), s);
 	if (error) {
 		SCHED_UNLOCK(s);
 		return error;
@@ -2024,7 +2020,6 @@ single_thread_set(struct proc *p, enum single_thread_mode mode, int deep)
 
 	switch (mode) {
 	case SINGLE_SUSPEND:
-	case SINGLE_PTRACE:
 		break;
 	case SINGLE_UNWIND:
 		atomic_setbits_int(&pr->ps_flags, PS_SINGLEUNWIND);
@@ -2063,8 +2058,7 @@ single_thread_set(struct proc *p, enum single_thread_mode mode, int deep)
 			/* if it's not interruptible, then just have to wait */
 			if (q->p_flag & P_SINTR) {
 				/* merely need to suspend?  just stop it */
-				if (mode == SINGLE_SUSPEND ||
-				    mode == SINGLE_PTRACE) {
+				if (mode == SINGLE_SUSPEND) {
 					q->p_stat = SSTOP;
 					break;
 				}
@@ -2089,7 +2083,7 @@ single_thread_set(struct proc *p, enum single_thread_mode mode, int deep)
 	}
 	SCHED_UNLOCK(s);
 
-	if (mode != SINGLE_PTRACE)
+	if (wait)
 		single_thread_wait(pr, 1);
 
 	return 0;
@@ -2128,7 +2122,6 @@ single_thread_clear(struct proc *p, int flag)
 
 	KASSERT(pr->ps_single == p);
 	KASSERT(curproc == p);
-	KERNEL_ASSERT_LOCKED();
 
 	SCHED_LOCK(s);
 	pr->ps_single = NULL;

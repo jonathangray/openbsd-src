@@ -1,4 +1,4 @@
-/*	$OpenBSD: rtsock.c,v 1.307 2021/02/27 11:44:48 mvs Exp $	*/
+/*	$OpenBSD: rtsock.c,v 1.309 2021/03/26 22:40:08 mvs Exp $	*/
 /*	$NetBSD: rtsock.c,v 1.18 1996/03/29 00:32:10 cgd Exp $	*/
 
 /*
@@ -1708,12 +1708,15 @@ rtm_miss(int type, struct rt_addrinfo *rtinfo, int flags, uint8_t prio,
 void
 rtm_ifchg(struct ifnet *ifp)
 {
+	struct rt_addrinfo	 info;
 	struct if_msghdr	*ifm;
 	struct mbuf		*m;
 
 	if (rtptable.rtp_count == 0)
 		return;
-	m = rtm_msg1(RTM_IFINFO, NULL);
+	memset(&info, 0, sizeof(info));
+	info.rti_info[RTAX_IFP] = sdltosa(ifp->if_sadl);
+	m = rtm_msg1(RTM_IFINFO, &info);
 	if (m == NULL)
 		return;
 	ifm = mtod(m, struct if_msghdr *);
@@ -1722,7 +1725,7 @@ rtm_ifchg(struct ifnet *ifp)
 	ifm->ifm_flags = ifp->if_flags;
 	ifm->ifm_xflags = ifp->if_xflags;
 	if_getdata(ifp, &ifm->ifm_data);
-	ifm->ifm_addrs = 0;
+	ifm->ifm_addrs = info.rti_addrs;
 	route_input(m, NULL, AF_UNSPEC);
 }
 
@@ -2291,6 +2294,7 @@ int
 rt_setsource(unsigned int rtableid, struct sockaddr *src)
 {
 	struct ifaddr	*ifa;
+	int		error;
 	/*
 	 * If source address is 0.0.0.0 or ::
 	 * use automatic source selection
@@ -2314,14 +2318,20 @@ rt_setsource(unsigned int rtableid, struct sockaddr *src)
 		return (EAFNOSUPPORT);
 	}
 
+	KERNEL_LOCK();
 	/*
 	 * Check if source address is assigned to an interface in the
 	 * same rdomain
 	 */
-	if ((ifa = ifa_ifwithaddr(src, rtableid)) == NULL)
+	if ((ifa = ifa_ifwithaddr(src, rtableid)) == NULL) {
+		KERNEL_UNLOCK();
 		return (EINVAL);
+	}
 
-	return (rtable_setsource(rtableid, src->sa_family, ifa->ifa_addr));
+	error = rtable_setsource(rtableid, src->sa_family, ifa->ifa_addr);
+	KERNEL_UNLOCK();
+
+	return (error);
 }
 
 /*

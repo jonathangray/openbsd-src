@@ -1,4 +1,4 @@
-/* $OpenBSD: smmuvar.h,v 1.2 2021/03/01 21:35:03 patrick Exp $ */
+/* $OpenBSD: smmuvar.h,v 1.4 2021/03/15 22:48:57 patrick Exp $ */
 /*
  * Copyright (c) 2021 Patrick Wildt <patrick@blueri.se>
  *
@@ -30,7 +30,8 @@ struct smmu_domain {
 		struct smmuvp0 *l0;	/* virtual to physical table 4 lvl */
 		struct smmuvp1 *l1;	/* virtual to physical table 3 lvl */
 	} sd_vp;
-	struct mutex			 sd_mtx;
+	struct mutex			 sd_iova_mtx;
+	struct mutex			 sd_pmap_mtx;
 	SIMPLEQ_ENTRY(smmu_domain)	 sd_list;
 };
 
@@ -78,5 +79,4 @@ struct smmu_softc {
 int smmu_attach(struct smmu_softc *);
 int smmu_global_irq(void *);
 int smmu_context_irq(void *);
-bus_dma_tag_t smmu_device_hook(struct smmu_softc *, uint32_t, bus_dma_tag_t);
-void smmu_pci_device_hook(void *, uint32_t, struct pci_attach_args *);
+bus_dma_tag_t smmu_device_map(void *, uint32_t, bus_dma_tag_t);

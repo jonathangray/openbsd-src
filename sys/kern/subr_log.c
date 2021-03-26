@@ -1,4 +1,4 @@
-/*	$OpenBSD: subr_log.c,v 1.72 2021/02/08 08:18:45 mpi Exp $	*/
+/*	$OpenBSD: subr_log.c,v 1.74 2021/03/18 08:43:38 mvs Exp $	*/
 /*	$NetBSD: subr_log.c,v 1.11 1996/03/30 22:24:44 christos Exp $	*/
 
 /*
@@ -86,7 +86,9 @@ int	log_open;			/* also used in log() */
 int	msgbufmapped;			/* is the message buffer mapped */
 struct	msgbuf *msgbufp;		/* the mapped buffer, itself. */
 struct	msgbuf *consbufp;		/* console message buffer. */
+
 struct	file *syslogf;
+struct	rwlock syslogf_rwlock = RWLOCK_INITIALIZER("syslogf");
 
 /*
  * Lock that serializes access to log message buffers.
@@ -215,8 +217,11 @@ logclose(dev_t dev, int flag, int mode, struct proc *p)
 {
 	struct file *fp;
 
+	rw_enter_write(&syslogf_rwlock);
 	fp = syslogf;
 	syslogf = NULL;
+	rw_exit(&syslogf_rwlock);
+
 	if (fp)
 		FRELE(fp, p);
 	log_open = 0;
@@ -407,7 +412,7 @@ out:
 int
 logioctl(dev_t dev, u_long com, caddr_t data, int flag, struct proc *p)
 {
-	struct file *fp;
+	struct file *fp, *newfp;
 	int error;
 
 	switch (com) {
@@ -441,9 +446,14 @@ logioctl(dev_t dev, u_long com, caddr_t data, int flag, struct proc *p)
 	case LIOCSFD:
 		if ((error = suser(p)) != 0)
 			return (error);
-		fp = syslogf;
-		if ((error = getsock(p, *(int *)data, &syslogf)) != 0)
+		if ((error = getsock(p, *(int *)data, &newfp)) != 0)
 			return (error);
+
+		rw_enter_write(&syslogf_rwlock);
+		fp = syslogf;
+		syslogf = newfp;
+		rw_exit(&syslogf_rwlock);
+
 		if (fp)
 			FRELE(fp, p);
 		break;
@@ -454,6 +464,149 @@ logioctl(dev_t dev, u_long com, caddr_t data, int flag, struct proc *p)
 	return (0);
 }
 
+/*
+ * If syslogd is not running, temporarily store a limited amount of messages
+ * in kernel.  After log stash is full, drop messages and count them.  When
+ * syslogd is available again, next log message will flush the stashed
+ * messages and insert a message with drop count.  Calls to malloc(9) and
+ * copyin(9) may sleep, protect data structures with rwlock.
+ */
+
+#define LOGSTASH_SIZE	100
+struct logstash_message {
+	char	*lgs_buffer;
+	size_t	 lgs_size;
+} logstash_messages[LOGSTASH_SIZE];
+
+struct	logstash_message *logstash_in = &logstash_messages[0];
+struct	logstash_message *logstash_out = &logstash_messages[0];
+
+struct	rwlock logstash_rwlock = RWLOCK_INITIALIZER("logstash");
+
+int	logstash_dropped, logstash_error, logstash_pid;
+
+int	logstash_insert(const char *, size_t, int, pid_t);
+void	logstash_remove(void);
+int	logstash_sendsyslog(struct proc *);
+
+static inline int
+logstash_full(void)
+{
+	rw_assert_anylock(&logstash_rwlock);
+
+	return logstash_out->lgs_buffer != NULL &&
+	    logstash_in == logstash_out;
+}
+
+static inline void
+logstash_increment(struct logstash_message **msg)
+{
+	rw_assert_wrlock(&logstash_rwlock);
+
+	KASSERT((*msg) >= &logstash_messages[0]);
+	KASSERT((*msg) < &logstash_messages[LOGSTASH_SIZE]);
+	if ((*msg) == &logstash_messages[LOGSTASH_SIZE - 1])
+		(*msg) = &logstash_messages[0];
+	else
+		(*msg)++;
+}
+
+int
+logstash_insert(const char *buf, size_t nbyte, int logerror, pid_t pid)
+{
+	int error;
+
+	rw_enter_write(&logstash_rwlock);
+
+	if (logstash_full()) {
+		if (logstash_dropped == 0) {
+			logstash_error = logerror;
+			logstash_pid = pid;
+		}
+		logstash_dropped++;
+
+		rw_exit(&logstash_rwlock);
+		return (0);
+	}
+
+	logstash_in->lgs_buffer = malloc(nbyte, M_LOG, M_WAITOK);
+	error = copyin(buf, logstash_in->lgs_buffer, nbyte);
+	if (error) {
+		free(logstash_in->lgs_buffer, M_LOG, nbyte);
+		logstash_in->lgs_buffer = NULL;
+
+		rw_exit(&logstash_rwlock);
+		return (error);
+	}
+	logstash_in->lgs_size = nbyte;
+	logstash_increment(&logstash_in);
+
+	rw_exit(&logstash_rwlock);
+	return (0);
+}
+
+void
+logstash_remove(void)
+{
+	rw_assert_wrlock(&logstash_rwlock);
+
+	KASSERT(logstash_out->lgs_buffer != NULL);
+	free(logstash_out->lgs_buffer, M_LOG, logstash_out->lgs_size);
+	logstash_out->lgs_buffer = NULL;
+	logstash_increment(&logstash_out);
+
+	/* Insert dropped message in sequence where messages were dropped. */
+	if (logstash_dropped) {
+		size_t l, nbyte;
+		char buf[80];
+
+		l = snprintf(buf, sizeof(buf),
+		    "<%d>sendsyslog: dropped %d message%s, error %d, pid %d",
+		    LOG_KERN|LOG_WARNING, logstash_dropped,
+		    logstash_dropped == 1 ? "" : "s",
+		    logstash_error, logstash_pid);
+		logstash_dropped = 0;
+		logstash_error = 0;
+		logstash_pid = 0;
+
+		/* Cannot fail, we have just freed a slot. */
+		KASSERT(!logstash_full());
+		nbyte = ulmin(l, sizeof(buf) - 1);
+		logstash_in->lgs_buffer = malloc(nbyte, M_LOG, M_WAITOK);
+		memcpy(logstash_in->lgs_buffer, buf, nbyte);
+		logstash_in->lgs_size = nbyte;
+		logstash_increment(&logstash_in);
+	}
+}
+
+int
+logstash_sendsyslog(struct proc *p)
+{
+	int error;
+
+	rw_enter_write(&logstash_rwlock);
+
+	while (logstash_out->lgs_buffer != NULL) {
+		error = dosendsyslog(p, logstash_out->lgs_buffer,
+		    logstash_out->lgs_size, 0, UIO_SYSSPACE);
+		if (error) {
+			rw_exit(&logstash_rwlock);
+			return (error);
+		}
+		logstash_remove();
+	}
+
+	rw_exit(&logstash_rwlock);
+	return (0);
+}
+
+/*
+ * Send syslog(3) message from userland to socketpair(2) created by syslogd(8).
+ * Store message in kernel log stash for later if syslogd(8) is not available
+ * or sending fails.  Send to console if LOG_CONS is set and syslogd(8) socket
+ * does not exist.
+ */
+
 int
 sys_sendsyslog(struct proc *p, void *v, register_t *retval)
 {
@@ -462,32 +615,18 @@ sys_sendsyslog(struct proc *p, void *v, register_t *retval)
 		syscallarg(size_t) nbyte;
 		syscallarg(int) flags;
 	} */ *uap = v;
+	size_t nbyte;
 	int error;
-	static int dropped_count, orig_error, orig_pid;
 
-	if (dropped_count) {
-		size_t l;
-		char buf[80];
+	nbyte = SCARG(uap, nbyte);
+	if (nbyte > LOG_MAXLINE)
+		nbyte = LOG_MAXLINE;
 
-		l = snprintf(buf, sizeof(buf),
-		    "<%d>sendsyslog: dropped %d message%s, error %d, pid %d",
-		    LOG_KERN|LOG_WARNING, dropped_count,
-		    dropped_count == 1 ? "" : "s", orig_error, orig_pid);
-		error = dosendsyslog(p, buf, ulmin(l, sizeof(buf) - 1),
-		    0, UIO_SYSSPACE);
-		if (error == 0) {
-			dropped_count = 0;
-			orig_error = 0;
-			orig_pid = 0;
-		}
-	}
-	error = dosendsyslog(p, SCARG(uap, buf), SCARG(uap, nbyte),
-	    SCARG(uap, flags), UIO_USERSPACE);
-	if (error) {
-		dropped_count++;
-		orig_error = error;
-		orig_pid = p->p_p->ps_pid;
-	}
+	logstash_sendsyslog(p);
+	error = dosendsyslog(p, SCARG(uap, buf), nbyte, SCARG(uap, flags),
+	    UIO_USERSPACE);
+	if (error && error != EFAULT)
+		logstash_insert(SCARG(uap, buf), nbyte, error, p->p_p->ps_pid);
 	return (error);
 }
 
@@ -505,16 +644,16 @@ dosendsyslog(struct proc *p, const char *buf, size_t nbyte, int flags,
 	size_t i, len;
 	int error;
 
-	if (nbyte > LOG_MAXLINE)
-		nbyte = LOG_MAXLINE;
-
 	/* Global variable syslogf may change during sleep, use local copy. */
+	rw_enter_read(&syslogf_rwlock);
 	fp = syslogf;
 	if (fp)
 		FREF(fp);
-	else if (!ISSET(flags, LOG_CONS))
-		return (ENOTCONN);
-	else {
+	rw_exit(&syslogf_rwlock);
+
+	if (fp == NULL) {
+		if (!ISSET(flags, LOG_CONS))
+			return (ENOTCONN);
 		/*
 		 * Strip off syslog priority when logging to console.
 		 * LOG_PRIMASK | LOG_FACMASK is 0x03ff, so at most 4
@@ -564,41 +703,45 @@ dosendsyslog(struct proc *p, const char *buf, size_t nbyte, int flags,
 		error = sosend(fp->f_data, NULL, &auio, NULL, NULL, flags);
 		if (error == 0)
 			len -= auio.uio_resid;
-	} else if (constty || cn_devvp) {
-		error = cnwrite(0, &auio, 0);
-		if (error == 0)
-			len -= auio.uio_resid;
-		aiov.iov_base = "\r\n";
-		aiov.iov_len = 2;
-		auio.uio_iov = &aiov;
-		auio.uio_iovcnt = 1;
-		auio.uio_segflg = UIO_SYSSPACE;
-		auio.uio_rw = UIO_WRITE;
-		auio.uio_procp = p;
-		auio.uio_offset = 0;
-		auio.uio_resid = aiov.iov_len;
-		cnwrite(0, &auio, 0);
 	} else {
-		/* XXX console redirection breaks down... */
-		if (sflg == UIO_USERSPACE) {
-			kbuf = malloc(len, M_TEMP, M_WAITOK);
-			error = copyin(aiov.iov_base, kbuf, len);
+		KERNEL_LOCK();
+		if (constty || cn_devvp) {
+			error = cnwrite(0, &auio, 0);
+			if (error == 0)
+				len -= auio.uio_resid;
+			aiov.iov_base = "\r\n";
+			aiov.iov_len = 2;
+			auio.uio_iov = &aiov;
+			auio.uio_iovcnt = 1;
+			auio.uio_segflg = UIO_SYSSPACE;
+			auio.uio_rw = UIO_WRITE;
+			auio.uio_procp = p;
+			auio.uio_offset = 0;
+			auio.uio_resid = aiov.iov_len;
+			cnwrite(0, &auio, 0);
 		} else {
-			kbuf = aiov.iov_base;
-			error = 0;
-		}
-		if (error == 0)
-			for (i = 0; i < len; i++) {
-				if (kbuf[i] == '\0')
-					break;
-				cnputc(kbuf[i]);
-				auio.uio_resid--;
+			/* XXX console redirection breaks down... */
+			if (sflg == UIO_USERSPACE) {
+				kbuf = malloc(len, M_TEMP, M_WAITOK);
+				error = copyin(aiov.iov_base, kbuf, len);
+			} else {
+				kbuf = aiov.iov_base;
+				error = 0;
 			}
-		if (sflg == UIO_USERSPACE)
-			free(kbuf, M_TEMP, len);
-		if (error == 0)
-			len -= auio.uio_resid;
-		cnputc('\n');
+			if (error == 0)
+				for (i = 0; i < len; i++) {
+					if (kbuf[i] == '\0')
+						break;
+					cnputc(kbuf[i]);
+					auio.uio_resid--;
+				}
+			if (sflg == UIO_USERSPACE)
+				free(kbuf, M_TEMP, len);
+			if (error == 0)
+				len -= auio.uio_resid;
+			cnputc('\n');
+		}
+		KERNEL_UNLOCK();
 	}
 
 #ifdef KTRACE
@@ -607,7 +750,7 @@ dosendsyslog(struct proc *p, const char *buf, size_t nbyte, int flags,
 #endif
 	if (fp)
 		FRELE(fp, p);
-	else
+	else if (error != EFAULT)
 		error = ENOTCONN;
 	return (error);
 }

@@ -1,4 +1,4 @@
-/*	$OpenBSD: dhcpd.h,v 1.295 2021/02/24 16:18:59 krw Exp $	*/
+/*	$OpenBSD: dhcpd.h,v 1.298 2021/03/24 16:04:10 krw Exp $	*/
 
 /*
  * Copyright (c) 2004 Henning Brauer <henning@openbsd.org>
@@ -139,8 +139,10 @@ struct interface_info {
 	time_t			 expiry, rebind;
 	void			(*timeout_func)(struct interface_info *);
 	uint16_t		 secs;
-	time_t			 first_sending;
-	time_t			 startup_time;
+	struct timespec		 first_sending;
+	struct timespec		 link_timeout;
+	struct timespec		 offer_timeout;
+	struct timespec		 select_timeout;
 	enum dhcp_state		 state;
 	struct in_addr		 destination;
 	time_t			 interval;

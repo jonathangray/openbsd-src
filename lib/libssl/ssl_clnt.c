@@ -1,4 +1,4 @@
-/* $OpenBSD: ssl_clnt.c,v 1.84 2021/02/22 15:59:10 jsing Exp $ */
+/* $OpenBSD: ssl_clnt.c,v 1.88 2021/03/24 18:44:00 jsing Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -218,7 +218,14 @@ ssl3_connect(SSL *s)
 				goto end;
 			}
 
-			/* s->version=SSL3_VERSION; */
+			if (!ssl_supported_tls_version_range(s,
+			    &S3I(s)->hs.our_min_tls_version,
+			    &S3I(s)->hs.our_max_tls_version)) {
+				SSLerror(s, SSL_R_NO_PROTOCOLS_AVAILABLE);
+				ret = -1;
+				goto end;
+			}
+
 			s->internal->type = SSL_ST_CONNECT;
 
 			if (!ssl3_setup_init_buffer(s)) {
@@ -271,7 +278,7 @@ ssl3_connect(SSL *s)
 
 			if (SSL_is_dtls(s) && D1I(s)->send_cookie) {
 				S3I(s)->hs.state = SSL3_ST_CW_FLUSH;
-				S3I(s)->hs.next_state = SSL3_ST_CR_SRVR_HELLO_A;
+				S3I(s)->hs.tls12.next_state = SSL3_ST_CR_SRVR_HELLO_A;
 			} else
 				S3I(s)->hs.state = SSL3_ST_CR_SRVR_HELLO_A;
 
@@ -336,7 +343,7 @@ ssl3_connect(SSL *s)
 				break;
 			}
 			/* Check if it is anon DH/ECDH. */
-			if (!(S3I(s)->hs.new_cipher->algorithm_auth &
+			if (!(S3I(s)->hs.cipher->algorithm_auth &
 			    SSL_aNULL)) {
 				ret = ssl3_get_server_certificate(s);
 				if (ret <= 0)
@@ -470,7 +477,7 @@ ssl3_connect(SSL *s)
 			S3I(s)->hs.state = SSL3_ST_CW_FINISHED_A;
 			s->internal->init_num = 0;
 
-			s->session->cipher = S3I(s)->hs.new_cipher;
+			s->session->cipher = S3I(s)->hs.cipher;
 			if (!tls1_setup_key_block(s)) {
 				ret = -1;
 				goto end;
@@ -502,14 +509,14 @@ ssl3_connect(SSL *s)
 
 			/* clear flags */
 			if (s->internal->hit) {
-				S3I(s)->hs.next_state = SSL_ST_OK;
+				S3I(s)->hs.tls12.next_state = SSL_ST_OK;
 			} else {
 				/* Allow NewSessionTicket if ticket expected */
 				if (s->internal->tlsext_ticket_expected)
-					S3I(s)->hs.next_state =
+					S3I(s)->hs.tls12.next_state =
 					    SSL3_ST_CR_SESSION_TICKET_A;
 				else
-					S3I(s)->hs.next_state =
+					S3I(s)->hs.tls12.next_state =
 					    SSL3_ST_CR_FINISHED_A;
 			}
 			s->internal->init_num = 0;
@@ -560,14 +567,14 @@ ssl3_connect(SSL *s)
 					/* If the write error was fatal, stop trying */
 					if (!BIO_should_retry(s->wbio)) {
 						s->internal->rwstate = SSL_NOTHING;
-						S3I(s)->hs.state = S3I(s)->hs.next_state;
+						S3I(s)->hs.state = S3I(s)->hs.tls12.next_state;
 					}
 				}
 				ret = -1;
 				goto end;
 			}
 			s->internal->rwstate = SSL_NOTHING;
-			S3I(s)->hs.state = S3I(s)->hs.next_state;
+			S3I(s)->hs.state = S3I(s)->hs.tls12.next_state;
 			break;
 
 		case SSL_ST_OK:
@@ -852,7 +859,6 @@ ssl3_get_server_hello(SSL *s)
 {
 	CBS cbs, server_random, session_id;
 	uint16_t server_version, cipher_suite;
-	uint16_t max_version;
 	uint8_t compression_method;
 	const SSL_CIPHER *cipher;
 	const SSL_METHOD *method;
@@ -904,6 +910,12 @@ ssl3_get_server_hello(SSL *s)
 	}
 	s->version = server_version;
 
+	S3I(s)->hs.negotiated_tls_version = ssl_tls_version(server_version);
+	if (S3I(s)->hs.negotiated_tls_version == 0) {
+		SSLerror(s, ERR_R_INTERNAL_ERROR);
+		goto err;
+	}
+
 	if ((method = ssl_get_method(server_version)) == NULL) {
 		SSLerror(s, ERR_R_INTERNAL_ERROR);
 		goto err;
@@ -917,10 +929,8 @@ ssl3_get_server_hello(SSL *s)
 	    sizeof(s->s3->server_random), NULL))
 		goto err;
 
-	if (!ssl_downgrade_max_version(s, &max_version))
-		goto err;
-	if (!SSL_is_dtls(s) && max_version >= TLS1_2_VERSION &&
-	    s->version < max_version) {
+	if (S3I(s)->hs.our_max_tls_version >= TLS1_2_VERSION &&
+	    S3I(s)->hs.negotiated_tls_version < S3I(s)->hs.our_max_tls_version) {
 		/*
 		 * RFC 8446 section 4.1.3. We must not downgrade if the server
 		 * random value contains the TLS 1.2 or TLS 1.1 magical value.
@@ -928,7 +938,7 @@ ssl3_get_server_hello(SSL *s)
 		if (!CBS_skip(&server_random,
 		    CBS_len(&server_random) - sizeof(tls13_downgrade_12)))
 			goto err;
-		if (s->version == TLS1_2_VERSION &&
+		if (S3I(s)->hs.negotiated_tls_version == TLS1_2_VERSION &&
 		    CBS_mem_equal(&server_random, tls13_downgrade_12,
 		    sizeof(tls13_downgrade_12))) {
 			al = SSL_AD_ILLEGAL_PARAMETER;
@@ -1019,7 +1029,7 @@ ssl3_get_server_hello(SSL *s)
 
 	/* TLS v1.2 only ciphersuites require v1.2 or later. */
 	if ((cipher->algorithm_ssl & SSL_TLSV1_2) &&
-	    (TLS1_get_version(s) < TLS1_2_VERSION)) {
+	    S3I(s)->hs.negotiated_tls_version < TLS1_2_VERSION) {
 		al = SSL_AD_ILLEGAL_PARAMETER;
 		SSLerror(s, SSL_R_WRONG_CIPHER_RETURNED);
 		goto fatal_err;
@@ -1044,7 +1054,7 @@ ssl3_get_server_hello(SSL *s)
 		SSLerror(s, SSL_R_OLD_SESSION_CIPHER_NOT_RETURNED);
 		goto fatal_err;
 	}
-	S3I(s)->hs.new_cipher = cipher;
+	S3I(s)->hs.cipher = cipher;
 
 	if (!tls1_transcript_hash_init(s))
 		goto err;
@@ -1053,7 +1063,7 @@ ssl3_get_server_hello(SSL *s)
 	 * Don't digest cached records if no sigalgs: we may need them for
 	 * client authentication.
 	 */
-	alg_k = S3I(s)->hs.new_cipher->algorithm_mkey;
+	alg_k = S3I(s)->hs.cipher->algorithm_mkey;
 	if (!(SSL_USE_SIGALGS(s) || (alg_k & SSL_kGOST)))
 		tls1_transcript_free(s);
 
@@ -1266,7 +1276,7 @@ ssl3_get_server_kex_dhe(SSL *s, EVP_PKEY **pkey, CBS *cbs)
 	long alg_a;
 	int al;
 
-	alg_a = S3I(s)->hs.new_cipher->algorithm_auth;
+	alg_a = S3I(s)->hs.cipher->algorithm_auth;
 	sc = SSI(s)->sess_cert;
 
 	if ((dh = DH_new()) == NULL) {
@@ -1394,7 +1404,7 @@ ssl3_get_server_kex_ecdhe(SSL *s, EVP_PKEY **pkey, CBS *cbs)
 	int nid;
 	int al;
 
-	alg_a = S3I(s)->hs.new_cipher->algorithm_auth;
+	alg_a = S3I(s)->hs.cipher->algorithm_auth;
 	sc = SSI(s)->sess_cert;
 
 	/* Only named curves are supported. */
@@ -1473,8 +1483,8 @@ ssl3_get_server_key_exchange(SSL *s)
 
 	EVP_MD_CTX_init(&md_ctx);
 
-	alg_k = S3I(s)->hs.new_cipher->algorithm_mkey;
-	alg_a = S3I(s)->hs.new_cipher->algorithm_auth;
+	alg_k = S3I(s)->hs.cipher->algorithm_mkey;
+	alg_a = S3I(s)->hs.cipher->algorithm_auth;
 
 	/*
 	 * Use same message size as in ssl3_get_certificate_request()
@@ -1672,7 +1682,7 @@ ssl3_get_certificate_request(SSL *s)
 	}
 
 	/* TLS does not like anon-DH with client cert */
-	if (S3I(s)->hs.new_cipher->algorithm_auth & SSL_aNULL) {
+	if (S3I(s)->hs.cipher->algorithm_auth & SSL_aNULL) {
 		ssl3_send_alert(s, SSL3_AL_FATAL, SSL_AD_UNEXPECTED_MESSAGE);
 		SSLerror(s, SSL_R_TLS_CLIENT_CERT_REQ_WITH_ANON_CIPHER);
 		goto err;
@@ -1982,6 +1992,7 @@ ssl3_send_client_kex_rsa(SSL *s, SESS_CERT *sess_cert, CBB *cbb)
 		goto err;
 	}
 
+	/* XXX - our max protocol version. */
 	pms[0] = s->client_version >> 8;
 	pms[1] = s->client_version & 0xff;
 	arc4random_buf(&pms[2], sizeof(pms) - 2);
@@ -2240,7 +2251,7 @@ ssl3_send_client_kex_gost(SSL *s, SESS_CERT *sess_cert, CBB *cbb)
 	}
 
 	/* XXX check handshake hash instead. */
-	if (S3I(s)->hs.new_cipher->algorithm2 & SSL_HANDSHAKE_MAC_GOST94)
+	if (S3I(s)->hs.cipher->algorithm2 & SSL_HANDSHAKE_MAC_GOST94)
 		nid = NID_id_GostR3411_94;
 	else
 		nid = NID_id_tc26_gost3411_2012_256;
@@ -2303,7 +2314,7 @@ ssl3_send_client_key_exchange(SSL *s)
 	memset(&cbb, 0, sizeof(cbb));
 
 	if (S3I(s)->hs.state == SSL3_ST_CW_KEY_EXCH_A) {
-		alg_k = S3I(s)->hs.new_cipher->algorithm_mkey;
+		alg_k = S3I(s)->hs.cipher->algorithm_mkey;
 
 		if ((sess_cert = SSI(s)->sess_cert) == NULL) {
 			ssl3_send_alert(s, SSL3_AL_FATAL,
@@ -2715,8 +2726,8 @@ ssl3_check_cert_and_algorithm(SSL *s)
 	SESS_CERT	*sc;
 	DH		*dh;
 
-	alg_k = S3I(s)->hs.new_cipher->algorithm_mkey;
-	alg_a = S3I(s)->hs.new_cipher->algorithm_auth;
+	alg_k = S3I(s)->hs.cipher->algorithm_mkey;
+	alg_a = S3I(s)->hs.cipher->algorithm_auth;
 
 	/* We don't have a certificate. */
 	if (alg_a & SSL_aNULL)

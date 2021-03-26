@@ -1,4 +1,4 @@
-/* $OpenBSD: smmu.c,v 1.4 2021/03/02 01:34:43 patrick Exp $ */
+/* $OpenBSD: smmu.c,v 1.11 2021/03/22 20:34:45 patrick Exp $ */
 /*
  * Copyright (c) 2008-2009,2014-2016 Dale Rahn <drahn@dalerahn.com>
  * Copyright (c) 2021 Patrick Wildt <patrick@blueri.se>
@@ -32,6 +32,13 @@
 #include <arm64/dev/smmuvar.h>
 #include <arm64/dev/smmureg.h>
 
+struct smmu_map_state {
+	struct extent_region	sms_er;
+	bus_addr_t		sms_dva;
+	bus_size_t		sms_len;
+	bus_size_t		sms_loaded;
+};
+
 struct smmuvp0 {
 	uint64_t l0[VP_IDX0_CNT];
 	struct smmuvp1 *vp[VP_IDX0_CNT];
@@ -57,9 +64,7 @@ CTASSERT(sizeof(struct smmuvp0) == sizeof(struct smmuvp2));
 CTASSERT(sizeof(struct smmuvp0) == sizeof(struct smmuvp3));
 
 struct pte_desc {
-	LIST_ENTRY(pte_desc) pted_pv_list;
 	uint64_t pted_pte;
-	struct smmu_domain *pted_dom;
 	vaddr_t pted_va;
 };
 
@@ -89,12 +94,13 @@ int smmu_vp_enter(struct smmu_domain *, vaddr_t, struct pte_desc *, int);
 
 void smmu_fill_pte(struct smmu_domain *, vaddr_t, paddr_t, struct pte_desc *,
     vm_prot_t, int, int);
-void smmu_pte_update(struct pte_desc *, uint64_t *);
-void smmu_pte_insert(struct pte_desc *);
-void smmu_pte_remove(struct pte_desc *);
+void smmu_pte_update(struct smmu_domain *, struct pte_desc *, uint64_t *);
+void smmu_pte_insert(struct smmu_domain *, struct pte_desc *);
+void smmu_pte_remove(struct smmu_domain *, struct pte_desc *, int);
 
-int smmu_prepare(struct smmu_domain *, vaddr_t, paddr_t, vm_prot_t, int, int);
 int smmu_enter(struct smmu_domain *, vaddr_t, paddr_t, vm_prot_t, int, int);
+void smmu_map(struct smmu_domain *, vaddr_t, paddr_t, vm_prot_t, int, int);
+void smmu_unmap(struct smmu_domain *, vaddr_t);
 void smmu_remove(struct smmu_domain *, vaddr_t);
 
 int smmu_load_map(struct smmu_domain *, bus_dmamap_t);
@@ -112,17 +118,6 @@ int smmu_dmamap_load_uio(bus_dma_tag_t , bus_dmamap_t,
 int smmu_dmamap_load_raw(bus_dma_tag_t , bus_dmamap_t,
      bus_dma_segment_t *, int, bus_size_t, int);
 void smmu_dmamap_unload(bus_dma_tag_t , bus_dmamap_t);
-void smmu_dmamap_sync(bus_dma_tag_t , bus_dmamap_t,
-     bus_addr_t, bus_size_t, int);
-
-int smmu_dmamem_alloc(bus_dma_tag_t, bus_size_t, bus_size_t,
-     bus_size_t, bus_dma_segment_t *, int, int *, int);
-void smmu_dmamem_free(bus_dma_tag_t, bus_dma_segment_t *, int);
-int smmu_dmamem_map(bus_dma_tag_t, bus_dma_segment_t *,
-     int, size_t, caddr_t *, int);
-void smmu_dmamem_unmap(bus_dma_tag_t, caddr_t, size_t);
-paddr_t smmu_dmamem_mmap(bus_dma_tag_t, bus_dma_segment_t *,
-     int, off_t, int, int);
 
 struct cfdriver smmu_cd = {
 	NULL, "smmu", DV_DULL
@@ -505,8 +500,9 @@ smmu_cb_write_8(struct smmu_softc *sc, int idx, bus_size_t off, uint64_t val)
 }
 
 bus_dma_tag_t
-smmu_device_hook(struct smmu_softc *sc, uint32_t sid, bus_dma_tag_t dmat)
+smmu_device_map(void *cookie, uint32_t sid, bus_dma_tag_t dmat)
 {
+	struct smmu_softc *sc = cookie;
 	struct smmu_domain *dom;
 
 	dom = smmu_domain_lookup(sc, sid);
@@ -526,20 +522,10 @@ smmu_device_hook(struct smmu_softc *sc, uint32_t sid, bus_dma_tag_t dmat)
 		dom->sd_dmat->_dmamap_load_uio = smmu_dmamap_load_uio;
 		dom->sd_dmat->_dmamap_load_raw = smmu_dmamap_load_raw;
 		dom->sd_dmat->_dmamap_unload = smmu_dmamap_unload;
-		dom->sd_dmat->_dmamap_sync = smmu_dmamap_sync;
-		dom->sd_dmat->_dmamem_map = smmu_dmamem_map;
+		dom->sd_dmat->_flags |= BUS_DMA_COHERENT;
 	}
 
 	return dom->sd_dmat;
-}
-
-void
-smmu_pci_device_hook(void *cookie, uint32_t rid, struct pci_attach_args *pa)
-{
-	struct smmu_softc *sc = cookie;
-
-	printf("%s: rid %x\n", sc->sc_dev.dv_xname, rid);
-	pa->pa_dmat = smmu_device_hook(sc, rid, pa->pa_dmat);
 }
 
 struct smmu_domain *
@@ -567,7 +553,8 @@ smmu_domain_create(struct smmu_softc *sc, uint32_t sid)
 
 	printf("%s: creating for %x\n", sc->sc_dev.dv_xname, sid);
 	dom = malloc(sizeof(*dom), M_DEVBUF, M_WAITOK | M_ZERO);
-	mtx_init(&dom->sd_mtx, IPL_TTY);
+	mtx_init(&dom->sd_iova_mtx, IPL_VM);
+	mtx_init(&dom->sd_pmap_mtx, IPL_VM);
 	dom->sd_sc = sc;
 	dom->sd_sid = sid;
 
@@ -767,23 +754,13 @@ smmu_domain_create(struct smmu_softc *sc, uint32_t sid)
 	    M_DEVBUF, NULL, 0, EX_WAITOK | EX_NOCOALESCE);
 
 #if 0
-	/* FIXME MSI map on */
+	/* FIXME PCIe address space */
 	{
-		paddr_t msi_pa = 0x78020000; /* Ampere */
-		paddr_t msi_pa = 0x6020000; /* LX2K */
-		size_t msi_len = 0x20000;
-		paddr_t msi_pa = 0xf0280000; /* 8040 GICv2 */
-		size_t msi_len = 0x40000;
-		while (msi_len) {
-			smmu_enter(dom, msi_pa, msi_pa, PROT_READ | PROT_WRITE,
-			    PROT_READ | PROT_WRITE, PMAP_CACHE_WB);
-			msi_pa += PAGE_SIZE;
-			msi_len -= PAGE_SIZE;
-		}
-		msi_pa = 0xf03f0000; /* 8040 GICP */
-		msi_len = 0x1000;
-		smmu_enter(dom, msi_pa, msi_pa, PROT_READ | PROT_WRITE,
-		    PROT_READ | PROT_WRITE, PMAP_CACHE_WB);
+#if 1
+		/* Reserve 8040 PCI address space */
+		extent_alloc_region(dom->sd_iovamap, 0xc0000000, 0x20000000,
+		    EX_WAITOK);
+#endif
 	}
 #endif
 
@@ -939,14 +916,18 @@ smmu_vp_enter(struct smmu_domain *dom, vaddr_t va, struct pte_desc *pted,
 	if (dom->sd_4level) {
 		vp1 = dom->sd_vp.l0->vp[VP_IDX0(va)];
 		if (vp1 == NULL) {
-			vp1 = pool_get(&sc->sc_vp_pool, PR_NOWAIT | PR_ZERO);
+			mtx_enter(&dom->sd_pmap_mtx);
+			vp1 = dom->sd_vp.l0->vp[VP_IDX0(va)];
 			if (vp1 == NULL) {
-				if ((flags & PMAP_CANFAIL) == 0)
-					panic("%s: unable to allocate L1",
-					    __func__);
-				return ENOMEM;
+				vp1 = pool_get(&sc->sc_vp_pool,
+				    PR_NOWAIT | PR_ZERO);
+				if (vp1 == NULL) {
+					mtx_leave(&dom->sd_pmap_mtx);
+					return ENOMEM;
+				}
+				smmu_set_l1(dom, va, vp1);
 			}
-			smmu_set_l1(dom, va, vp1);
+			mtx_leave(&dom->sd_pmap_mtx);
 		}
 	} else {
 		vp1 = dom->sd_vp.l1;
@@ -954,24 +935,32 @@ smmu_vp_enter(struct smmu_domain *dom, vaddr_t va, struct pte_desc *pted,
 
 	vp2 = vp1->vp[VP_IDX1(va)];
 	if (vp2 == NULL) {
-		vp2 = pool_get(&sc->sc_vp_pool, PR_NOWAIT | PR_ZERO);
+		mtx_enter(&dom->sd_pmap_mtx);
+		vp2 = vp1->vp[VP_IDX1(va)];
 		if (vp2 == NULL) {
-			if ((flags & PMAP_CANFAIL) == 0)
-				panic("%s: unable to allocate L2", __func__);
-			return ENOMEM;
+			vp2 = pool_get(&sc->sc_vp_pool, PR_NOWAIT | PR_ZERO);
+			if (vp2 == NULL) {
+				mtx_leave(&dom->sd_pmap_mtx);
+				return ENOMEM;
+			}
+			smmu_set_l2(dom, va, vp1, vp2);
 		}
-		smmu_set_l2(dom, va, vp1, vp2);
+		mtx_leave(&dom->sd_pmap_mtx);
 	}
 
 	vp3 = vp2->vp[VP_IDX2(va)];
 	if (vp3 == NULL) {
-		vp3 = pool_get(&sc->sc_vp_pool, PR_NOWAIT | PR_ZERO);
+		mtx_enter(&dom->sd_pmap_mtx);
+		vp3 = vp2->vp[VP_IDX2(va)];
 		if (vp3 == NULL) {
-			if ((flags & PMAP_CANFAIL) == 0)
-				panic("%s: unable to allocate L3", __func__);
-			return ENOMEM;
+			vp3 = pool_get(&sc->sc_vp_pool, PR_NOWAIT | PR_ZERO);
+			if (vp3 == NULL) {
+				mtx_leave(&dom->sd_pmap_mtx);
+				return ENOMEM;
+			}
+			smmu_set_l3(dom, va, vp2, vp3);
 		}
-		smmu_set_l3(dom, va, vp2, vp3);
+		mtx_leave(&dom->sd_pmap_mtx);
 	}
 
 	vp3->vp[VP_IDX3(va)] = pted;
@@ -983,7 +972,6 @@ smmu_fill_pte(struct smmu_domain *dom, vaddr_t va, paddr_t pa,
     struct pte_desc *pted, vm_prot_t prot, int flags, int cache)
 {
 	pted->pted_va = va;
-	pted->pted_dom = dom;
 
 	switch (cache) {
 	case PMAP_CACHE_WB:
@@ -1008,9 +996,8 @@ smmu_fill_pte(struct smmu_domain *dom, vaddr_t va, paddr_t pa,
 }
 
 void
-smmu_pte_update(struct pte_desc *pted, uint64_t *pl3)
+smmu_pte_update(struct smmu_domain *dom, struct pte_desc *pted, uint64_t *pl3)
 {
-	struct smmu_domain *dom = pted->pted_dom;
 	uint64_t pte, access_bits;
 	uint64_t attr = 0;
 
@@ -1076,9 +1063,8 @@ smmu_pte_update(struct pte_desc *pted, uint64_t *pl3)
 }
 
 void
-smmu_pte_insert(struct pte_desc *pted)
+smmu_pte_insert(struct smmu_domain *dom, struct pte_desc *pted)
 {
-	struct smmu_domain *dom = pted->pted_dom;
 	uint64_t *pl3;
 
 	if (smmu_vp_lookup(dom, pted->pted_va, &pl3) == NULL) {
@@ -1086,19 +1072,18 @@ smmu_pte_insert(struct pte_desc *pted)
 		    " for %lx va domain %p", __func__, pted->pted_va, dom);
 	}
 
-	smmu_pte_update(pted, pl3);
+	smmu_pte_update(dom, pted, pl3);
 	membar_producer(); /* XXX bus dma sync? */
 }
 
 void
-smmu_pte_remove(struct pte_desc *pted)
+smmu_pte_remove(struct smmu_domain *dom, struct pte_desc *pted, int remove_pted)
 {
 	/* put entry into table */
 	/* need to deal with ref/change here */
 	struct smmuvp1 *vp1;
 	struct smmuvp2 *vp2;
 	struct smmuvp3 *vp3;
-	struct smmu_domain *dom = pted->pted_dom;
 
 	if (dom->sd_4level)
 		vp1 = dom->sd_vp.l0->vp[VP_IDX0(pted->pted_va)];
@@ -1119,11 +1104,12 @@ smmu_pte_remove(struct pte_desc *pted)
 		    pted->pted_va, dom);
 	}
 	vp3->l3[VP_IDX3(pted->pted_va)] = 0;
-	vp3->vp[VP_IDX3(pted->pted_va)] = NULL;
+	if (remove_pted)
+		vp3->vp[VP_IDX3(pted->pted_va)] = NULL;
 }
 
 int
-smmu_prepare(struct smmu_domain *dom, vaddr_t va, paddr_t pa, vm_prot_t prot,
+smmu_enter(struct smmu_domain *dom, vaddr_t va, paddr_t pa, vm_prot_t prot,
     int flags, int cache)
 {
 	struct smmu_softc *sc = dom->sd_sc;
@@ -1136,16 +1122,12 @@ smmu_prepare(struct smmu_domain *dom, vaddr_t va, paddr_t pa, vm_prot_t prot,
 	if (pted == NULL) {
 		pted = pool_get(&sc->sc_pted_pool, PR_NOWAIT | PR_ZERO);
 		if (pted == NULL) {
-			if ((flags & PMAP_CANFAIL) == 0)
-				panic("%s: failed to allocate pted", __func__);
 			error = ENOMEM;
 			goto out;
 		}
 		if (smmu_vp_enter(dom, va, pted, flags)) {
-			if ((flags & PMAP_CANFAIL) == 0)
-				panic("%s: failed to allocate L2/L3", __func__);
-			error = ENOMEM;
 			pool_put(&sc->sc_pted_pool, pted);
+			error = ENOMEM;
 			goto out;
 		}
 	}
@@ -1157,31 +1139,48 @@ out:
 	return error;
 }
 
-int
-smmu_enter(struct smmu_domain *dom, vaddr_t va, paddr_t pa, vm_prot_t prot,
+void
+smmu_map(struct smmu_domain *dom, vaddr_t va, paddr_t pa, vm_prot_t prot,
     int flags, int cache)
 {
 	struct pte_desc *pted;
-	int error;
 
 	/* printf("%s: 0x%lx -> 0x%lx\n", __func__, va, pa); */
 
+	/* IOVA must already be allocated */
 	pted = smmu_vp_lookup(dom, va, NULL);
-	if (pted == NULL) {
-		error = smmu_prepare(dom, va, pa, prot, PROT_NONE, cache);
-		if (error)
-			goto out;
-		pted = smmu_vp_lookup(dom, va, NULL);
-		KASSERT(pted != NULL);
-	}
+	KASSERT(pted != NULL);
 
-	pted->pted_pte |=
-	    (pted->pted_va & (PROT_READ|PROT_WRITE|PROT_EXEC));
-	smmu_pte_insert(pted);
+	/* Update PTED information for physical address */
+	smmu_fill_pte(dom, va, pa, pted, prot, flags, cache);
 
-	error = 0;
-out:
-	return error;
+	/* Insert updated information */
+	smmu_pte_insert(dom, pted);
+}
+
+void
+smmu_unmap(struct smmu_domain *dom, vaddr_t va)
+{
+	struct smmu_softc *sc = dom->sd_sc;
+	struct pte_desc *pted;
+
+	/* printf("%s: 0x%lx\n", __func__, va); */
+
+	/* IOVA must already be allocated */
+	pted = smmu_vp_lookup(dom, va, NULL);
+	KASSERT(pted != NULL);
+
+	/* Remove mapping from pagetable, keep it alive */
+	smmu_pte_remove(dom, pted, 0);
+	membar_producer(); /* XXX bus dma sync? */
+
+	/* Invalidate IOTLB */
+	if (dom->sd_stage == 1)
+		smmu_cb_write_8(sc, dom->sd_cb_idx, SMMU_CB_TLBIVAL,
+		    (uint64_t)dom->sd_cb_idx << 48 | va >> PAGE_SHIFT);
+	else
+		smmu_cb_write_8(sc, dom->sd_cb_idx, SMMU_CB_TLBIIPAS2L,
+		    va >> PAGE_SHIFT);
 }
 
 void
@@ -1192,42 +1191,54 @@ smmu_remove(struct smmu_domain *dom, vaddr_t va)
 
 	/* printf("%s: 0x%lx\n", __func__, va); */
 
+	/* IOVA must already be allocated */
 	pted = smmu_vp_lookup(dom, va, NULL);
-	if (pted == NULL) /* XXX really? */
-		return;
+	KASSERT(pted != NULL);
 
-	smmu_pte_remove(pted);
+	/* Mapping already removed, remove pted as well */
+	smmu_pte_remove(dom, pted, 1);
+
+	/* Destroy pted */
 	pted->pted_pte = 0;
 	pted->pted_va = 0;
 	pool_put(&sc->sc_pted_pool, pted);
-
-	membar_producer(); /* XXX bus dma sync? */
-	if (dom->sd_stage == 1)
-		smmu_cb_write_8(sc, dom->sd_cb_idx, SMMU_CB_TLBIVAL,
-		    (uint64_t)dom->sd_cb_idx << 48 | va >> PAGE_SHIFT);
-	else
-		smmu_cb_write_8(sc, dom->sd_cb_idx, SMMU_CB_TLBIIPAS2L,
-		    va >> PAGE_SHIFT);
 }
 
 int
 smmu_load_map(struct smmu_domain *dom, bus_dmamap_t map)
 {
-	bus_addr_t addr, end;
+	struct smmu_map_state *sms = map->_dm_cookie;
+	u_long dva, maplen;
 	int seg;
 
-	mtx_enter(&dom->sd_mtx); /* XXX necessary ? */
+	maplen = 0;
 	for (seg = 0; seg < map->dm_nsegs; seg++) {
-		addr = trunc_page(map->dm_segs[seg].ds_addr);
-		end = round_page(map->dm_segs[seg].ds_addr +
-		    map->dm_segs[seg].ds_len);
-		while (addr < end) {
-			smmu_enter(dom, addr, addr, PROT_READ | PROT_WRITE,
+		paddr_t pa = map->dm_segs[seg]._ds_paddr;
+		psize_t off = pa - trunc_page(pa);
+		maplen += round_page(map->dm_segs[seg].ds_len + off);
+	}
+	KASSERT(maplen <= sms->sms_len);
+
+	dva = sms->sms_dva;
+	for (seg = 0; seg < map->dm_nsegs; seg++) {
+		paddr_t pa = map->dm_segs[seg]._ds_paddr;
+		psize_t off = pa - trunc_page(pa);
+		u_long len = round_page(map->dm_segs[seg].ds_len + off);
+
+		map->dm_segs[seg].ds_addr = dva + off;
+
+		pa = trunc_page(pa);
+		while (len > 0) {
+			smmu_map(dom, dva, pa,
+			    PROT_READ | PROT_WRITE,
 			    PROT_READ | PROT_WRITE, PMAP_CACHE_WB);
-			addr += PAGE_SIZE;
+
+			dva += PAGE_SIZE;
+			pa += PAGE_SIZE;
+			len -= PAGE_SIZE;
+			sms->sms_loaded += PAGE_SIZE;
 		}
 	}
-	mtx_leave(&dom->sd_mtx);
 
 	return 0;
 }
@@ -1235,40 +1246,108 @@ smmu_load_map(struct smmu_domain *dom, bus_dmamap_t map)
 void
 smmu_unload_map(struct smmu_domain *dom, bus_dmamap_t map)
 {
-	bus_addr_t addr, end;
-	int curseg;
+	struct smmu_map_state *sms = map->_dm_cookie;
+	u_long len, dva;
 
-	mtx_enter(&dom->sd_mtx); /* XXX necessary ? */
-	for (curseg = 0; curseg < map->dm_nsegs; curseg++) {
-		addr = trunc_page(map->dm_segs[curseg].ds_addr);
-		end = round_page(map->dm_segs[curseg].ds_addr +
-		    map->dm_segs[curseg].ds_len);
-		while (addr < end) {
-			smmu_remove(dom, addr);
-			addr += PAGE_SIZE;
-		}
+	if (sms->sms_loaded == 0)
+		return;
+
+	dva = sms->sms_dva;
+	len = sms->sms_loaded;
+
+	while (len > 0) {
+		smmu_unmap(dom, dva);
+
+		dva += PAGE_SIZE;
+		len -= PAGE_SIZE;
 	}
-	mtx_leave(&dom->sd_mtx);
+
+	sms->sms_loaded = 0;
 
 	smmu_tlb_sync_context(dom);
 }
 
 int
 smmu_dmamap_create(bus_dma_tag_t t, bus_size_t size, int nsegments,
-    bus_size_t maxsegsz, bus_size_t boundary, int flags, bus_dmamap_t *dmamp)
+    bus_size_t maxsegsz, bus_size_t boundary, int flags, bus_dmamap_t *dmamap)
 {
 	struct smmu_domain *dom = t->_cookie;
+	struct smmu_softc *sc = dom->sd_sc;
+	struct smmu_map_state *sms;
+	bus_dmamap_t map;
+	u_long dva, len;
+	int error;
 
-	return dom->sd_sc->sc_dmat->_dmamap_create(dom->sd_sc->sc_dmat, size,
-	    nsegments, maxsegsz, boundary, flags, dmamp);
+	error = sc->sc_dmat->_dmamap_create(sc->sc_dmat, size,
+	    nsegments, maxsegsz, boundary, flags, &map);
+	if (error)
+		return error;
+
+	sms = malloc(sizeof(*sms), M_DEVBUF, (flags & BUS_DMA_NOWAIT) ?
+	     (M_NOWAIT|M_ZERO) : (M_WAITOK|M_ZERO));
+	if (sms == NULL) {
+		sc->sc_dmat->_dmamap_destroy(sc->sc_dmat, map);
+		return ENOMEM;
+	}
+
+	/* Approximation of maximum pages needed. */
+	len = round_page(size) + nsegments * PAGE_SIZE;
+
+	mtx_enter(&dom->sd_iova_mtx);
+	error = extent_alloc_with_descr(dom->sd_iovamap, len,
+	    PAGE_SIZE, 0, 0, EX_NOWAIT, &sms->sms_er, &dva);
+	mtx_leave(&dom->sd_iova_mtx);
+	if (error) {
+		sc->sc_dmat->_dmamap_destroy(sc->sc_dmat, map);
+		free(sms, M_DEVBUF, sizeof(*sms));
+		return error;
+	}
+
+	sms->sms_dva = dva;
+	sms->sms_len = len;
+
+	while (len > 0) {
+		error = smmu_enter(dom, dva, dva, PROT_READ | PROT_WRITE,
+		    PROT_NONE, PMAP_CACHE_WB);
+		KASSERT(error == 0); /* FIXME: rollback smmu_enter() */
+		dva += PAGE_SIZE;
+		len -= PAGE_SIZE;
+	}
+
+	map->_dm_cookie = sms;
+	*dmamap = map;
+	return 0;
 }
 
 void
 smmu_dmamap_destroy(bus_dma_tag_t t, bus_dmamap_t map)
 {
 	struct smmu_domain *dom = t->_cookie;
+	struct smmu_softc *sc = dom->sd_sc;
+	struct smmu_map_state *sms = map->_dm_cookie;
+	u_long dva, len;
+	int error;
 
-	dom->sd_sc->sc_dmat->_dmamap_destroy(dom->sd_sc->sc_dmat, map);
+	if (sms->sms_loaded)
+		smmu_dmamap_unload(t, map);
+
+	dva = sms->sms_dva;
+	len = sms->sms_len;
+
+	while (len > 0) {
+		smmu_remove(dom, dva);
+		dva += PAGE_SIZE;
+		len -= PAGE_SIZE;
+	}
+
+	mtx_enter(&dom->sd_iova_mtx);
+	error = extent_free(dom->sd_iovamap, sms->sms_dva,
+	    sms->sms_len, EX_NOWAIT);
+	mtx_leave(&dom->sd_iova_mtx);
+	KASSERT(error == 0);
+
+	free(sms, M_DEVBUF, sizeof(*sms));
+	sc->sc_dmat->_dmamap_destroy(sc->sc_dmat, map);
 }
 
 int
@@ -1276,16 +1355,17 @@ smmu_dmamap_load(bus_dma_tag_t t, bus_dmamap_t map, void *buf,
     bus_size_t buflen, struct proc *p, int flags)
 {
 	struct smmu_domain *dom = t->_cookie;
+	struct smmu_softc *sc = dom->sd_sc;
 	int error;
 
-	error = dom->sd_sc->sc_dmat->_dmamap_load(dom->sd_sc->sc_dmat, map,
+	error = sc->sc_dmat->_dmamap_load(sc->sc_dmat, map,
 	    buf, buflen, p, flags);
 	if (error)
 		return error;
 
 	error = smmu_load_map(dom, map);
 	if (error)
-		dom->sd_sc->sc_dmat->_dmamap_unload(dom->sd_sc->sc_dmat, map);
+		sc->sc_dmat->_dmamap_unload(sc->sc_dmat, map);
 
 	return error;
 }
@@ -1295,16 +1375,17 @@ smmu_dmamap_load_mbuf(bus_dma_tag_t t, bus_dmamap_t map, struct mbuf *m0,
     int flags)
 {
 	struct smmu_domain *dom = t->_cookie;
+	struct smmu_softc *sc = dom->sd_sc;
 	int error;
 
-	error = dom->sd_sc->sc_dmat->_dmamap_load_mbuf(dom->sd_sc->sc_dmat, map,
+	error = sc->sc_dmat->_dmamap_load_mbuf(sc->sc_dmat, map,
 	    m0, flags);
 	if (error)
 		return error;
 
 	error = smmu_load_map(dom, map);
 	if (error)
-		dom->sd_sc->sc_dmat->_dmamap_unload(dom->sd_sc->sc_dmat, map);
+		sc->sc_dmat->_dmamap_unload(sc->sc_dmat, map);
 
 	return error;
 }
@@ -1314,16 +1395,17 @@ smmu_dmamap_load_uio(bus_dma_tag_t t, bus_dmamap_t map, struct uio *uio,
     int flags)
 {
 	struct smmu_domain *dom = t->_cookie;
+	struct smmu_softc *sc = dom->sd_sc;
 	int error;
 
-	error = dom->sd_sc->sc_dmat->_dmamap_load_uio(dom->sd_sc->sc_dmat, map,
+	error = sc->sc_dmat->_dmamap_load_uio(sc->sc_dmat, map,
 	    uio, flags);
 	if (error)
 		return error;
 
 	error = smmu_load_map(dom, map);
 	if (error)
-		dom->sd_sc->sc_dmat->_dmamap_unload(dom->sd_sc->sc_dmat, map);
+		sc->sc_dmat->_dmamap_unload(sc->sc_dmat, map);
 
 	return error;
 }
@@ -1333,16 +1415,17 @@ smmu_dmamap_load_raw(bus_dma_tag_t t, bus_dmamap_t map, bus_dma_segment_t *segs,
     int nsegs, bus_size_t size, int flags)
 {
 	struct smmu_domain *dom = t->_cookie;
+	struct smmu_softc *sc = dom->sd_sc;
 	int error;
 
-	error = dom->sd_sc->sc_dmat->_dmamap_load_raw(dom->sd_sc->sc_dmat, map,
+	error = sc->sc_dmat->_dmamap_load_raw(sc->sc_dmat, map,
 	    segs, nsegs, size, flags);
 	if (error)
 		return error;
 
 	error = smmu_load_map(dom, map);
 	if (error)
-		dom->sd_sc->sc_dmat->_dmamap_unload(dom->sd_sc->sc_dmat, map);
+		sc->sc_dmat->_dmamap_unload(sc->sc_dmat, map);
 
 	return error;
 }
@@ -1351,48 +1434,8 @@ void
 smmu_dmamap_unload(bus_dma_tag_t t, bus_dmamap_t map)
 {
 	struct smmu_domain *dom = t->_cookie;
+	struct smmu_softc *sc = dom->sd_sc;
 
 	smmu_unload_map(dom, map);
-	dom->sd_sc->sc_dmat->_dmamap_unload(dom->sd_sc->sc_dmat, map);
-}
-
-void
-smmu_dmamap_sync(bus_dma_tag_t t, bus_dmamap_t map, bus_addr_t addr,
-    bus_size_t size, int op)
-{
-	struct smmu_domain *dom = t->_cookie;
-	dom->sd_sc->sc_dmat->_dmamap_sync(dom->sd_sc->sc_dmat, map,
-	    addr, size, op);
-}
-
-int
-smmu_dmamem_map(bus_dma_tag_t t, bus_dma_segment_t *segs, int nsegs,
-    size_t size, caddr_t *kvap, int flags)
-{
-	struct smmu_domain *dom = t->_cookie;
-	bus_addr_t addr, end;
-	int cache, seg, error;
-
-	error = dom->sd_sc->sc_dmat->_dmamem_map(dom->sd_sc->sc_dmat, segs,
-	    nsegs, size, kvap, flags);
-	if (error)
-		return error;
-
-	cache = PMAP_CACHE_WB;
-	if (((t->_flags & BUS_DMA_COHERENT) == 0 &&
-	   (flags & BUS_DMA_COHERENT)) || (flags & BUS_DMA_NOCACHE))
-		cache = PMAP_CACHE_CI;
-	mtx_enter(&dom->sd_mtx); /* XXX necessary ? */
-	for (seg = 0; seg < nsegs; seg++) {
-		addr = trunc_page(segs[seg].ds_addr);
-		end = round_page(segs[seg].ds_addr + segs[seg].ds_len);
-		while (addr < end) {
-			smmu_prepare(dom, addr, addr, PROT_READ | PROT_WRITE,
-			    PROT_NONE, cache);
-			addr += PAGE_SIZE;
-		}
-	}
-	mtx_leave(&dom->sd_mtx);
-
-	return error;
+	sc->sc_dmat->_dmamap_unload(sc->sc_dmat, map);
 }

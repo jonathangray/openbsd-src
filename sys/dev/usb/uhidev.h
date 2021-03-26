@@ -1,4 +1,4 @@
-/*	$OpenBSD: uhidev.h,v 1.27 2021/02/11 06:55:10 anton Exp $	*/
+/*	$OpenBSD: uhidev.h,v 1.29 2021/03/18 09:21:53 anton Exp $	*/
 /*	$NetBSD: uhidev.h,v 1.3 2002/10/08 09:56:17 dan Exp $	*/
 
 /*
@@ -81,7 +81,9 @@ struct uhidev_attach_arg {
 	struct usb_attach_arg	*uaa;
 	struct uhidev_softc	*parent;
 	uint8_t			 reportid;
-#define	UHIDEV_CLAIM_ALLREPORTID	255
+#define	UHIDEV_CLAIM_MULTIPLE_REPORTID	255
+	uint8_t			 nreports;
+	uint8_t			 *claimed;
 };
 
 int uhidev_report_type_conv(int);
@@ -96,4 +98,3 @@ int uhidev_get_report_async(struct uhidev_softc *, int, int, void *, int,
     void *, void (*)(void *, int, void *, int));
 usbd_status uhidev_write(struct uhidev_softc *, void *, int);
 int uhidev_set_report_dev(struct uhidev_softc *, struct uhidev *, int);
-int uhidev_unset_report_dev(struct uhidev_softc *, int);

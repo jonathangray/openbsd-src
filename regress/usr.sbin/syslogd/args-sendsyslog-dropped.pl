@@ -10,20 +10,25 @@ use strict;
 use warnings;
 use Errno ':POSIX';
 
+use constant LOGSTASH_SIZE => 100;
+
 my $errno = ENOTCONN;
 my $kerngrep = qr/sendsyslog: dropped \d+ messages?, error $errno, pid \d+$/;
 
 our %args = (
     client => {
 	early => 1,
-	func => sub { write_between2logs(shift, sub {
+	func => sub {
 	    my $self = shift;
-	    ${$self->{syslogd}}->loggrep(qr/syslogd: started/, 5)
-		or die ref($self), " syslogd started not in syslogd.log";
+	    write_message($self, "stash $_") foreach (1..LOGSTASH_SIZE);
+	    write_between2logs($self, sub {
+		my $self = shift;
+		${$self->{syslogd}}->loggrep(qr/syslogd: started/, 5)
+		    or die ref($self), " syslogd started not in syslogd.log";
 	})},
 	ktrace => {
-	    qr/CALL  sendsyslog\(/ => '>=2',
-	    qr/RET   sendsyslog -1 errno $errno / => '>=1',
+	    qr/CALL  sendsyslog\(/ => '>=103',
+	    qr/RET   sendsyslog -1 errno $errno / => 101,
 	},
     },
     syslogd => {
@@ -35,15 +40,19 @@ our %args = (
     },
     server => {
 	loggrep => {
+	    qr/syslogd\[\d+\]: start/ => 1,
 	    get_firstlog() => 0,
 	    $kerngrep => 1,
+	    qr/syslogd\[\d+\]: running/ => 1,
 	    get_testgrep() => 1,
 	},
     },
     file => {
 	loggrep => {
+	    qr/syslogd\[\d+\]: start/ => 1,
 	    get_firstlog() => 0,
 	    $kerngrep => 1,
+	    qr/syslogd\[\d+\]: running/ => 1,
 	    get_testgrep() => 1,
 	},
     },

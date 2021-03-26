@@ -1,4 +1,4 @@
-/*	$OpenBSD: uvm_map.c,v 1.271 2021/02/23 11:22:20 jsg Exp $	*/
+/*	$OpenBSD: uvm_map.c,v 1.274 2021/03/26 13:40:05 mpi Exp $	*/
 /*	$NetBSD: uvm_map.c,v 1.86 2000/11/27 08:40:03 chs Exp $	*/
 
 /*
@@ -667,7 +667,7 @@ uvm_map_sel_limits(vaddr_t *min, vaddr_t *max, vsize_t sz, int guardpg,
 
 		/*
 		 * Fixup: it's possible that pmap_min and pmap_max
-		 * cross eachother. In this case, try to find one
+		 * cross each other. In this case, try to find one
 		 * address that is allowed.
 		 * (This usually happens in biased case.)
 		 */
@@ -1000,7 +1000,7 @@ uvm_mapanon(struct vm_map *map, vaddr_t *addr, vsize_t sz,
 	 */
 	new = uvm_mapent_alloc(map, flags);
 	if (new == NULL)
-		return(ENOMEM);
+		return ENOMEM;
 
 	vm_map_lock(map);
 	first = last = NULL;
@@ -1229,7 +1229,7 @@ uvm_map(struct vm_map *map, vaddr_t *addr, vsize_t sz,
 	 */
 	new = uvm_mapent_alloc(map, flags);
 	if (new == NULL)
-		return(ENOMEM);
+		return ENOMEM;
 
 	if (flags & UVM_FLAG_TRYLOCK) {
 		if (vm_map_lock_try(map) == FALSE) {
@@ -1473,14 +1473,14 @@ uvm_mapent_isjoinable(struct vm_map *map, struct vm_map_entry *e1,
 	if (e2->aref.ar_amap && amap_refs(e2->aref.ar_amap) != 1)
 		return 0;
 
-	/* Apprently, e1 and e2 match. */
+	/* Apparently, e1 and e2 match. */
 	return 1;
 }
 
 /*
  * Join support function.
  *
- * Returns the merged entry on succes.
+ * Returns the merged entry on success.
  * Returns NULL if the merge failed.
  */
 struct vm_map_entry*
@@ -1759,7 +1759,7 @@ uvm_mapent_alloc(struct vm_map *map, int flags)
 
 	RBT_POISON(uvm_map_addr, me, UVMMAP_DEADBEEF);
 out:
-	return(me);
+	return me;
 }
 
 /*
@@ -3154,10 +3154,8 @@ print_uaddr:
  * uvm_object_printit: actually prints the object
  */
 void
-uvm_object_printit(uobj, full, pr)
-	struct uvm_object *uobj;
-	boolean_t full;
-	int (*pr)(const char *, ...);
+uvm_object_printit(struct uvm_object *uobj, boolean_t full,
+    int (*pr)(const char *, ...))
 {
 	struct vm_page *pg;
 	int cnt = 0;
@@ -3194,10 +3192,8 @@ static const char page_flagbits[] =
 	"\27ENCRYPT\31PMAP0\32PMAP1\33PMAP2\34PMAP3\35PMAP4\36PMAP5";
 
 void
-uvm_page_printit(pg, full, pr)
-	struct vm_page *pg;
-	boolean_t full;
-	int (*pr)(const char *, ...);
+uvm_page_printit(struct vm_page *pg, boolean_t full,
+    int (*pr)(const char *, ...))
 {
 	struct vm_page *tpg;
 	struct uvm_object *uobj;
@@ -4233,7 +4229,7 @@ uvm_map_submap(struct vm_map *map, vaddr_t start, vaddr_t end,
 		result = EINVAL;
 
 	vm_map_unlock(map);
-	return(result);
+	return result;
 }
 
 /*

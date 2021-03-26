@@ -1,4 +1,4 @@
-/*	$OpenBSD: validate.c,v 1.11 2020/09/12 15:46:48 claudio Exp $ */
+/*	$OpenBSD: validate.c,v 1.13 2021/03/05 17:15:19 claudio Exp $ */
 /*
  * Copyright (c) 2019 Kristaps Dzonsons <kristaps@bsd.lv>
  *
@@ -19,7 +19,9 @@
 
 #include <arpa/inet.h>
 #include <assert.h>
+#include <ctype.h>
 #include <err.h>
+#include <fcntl.h>
 #include <inttypes.h>
 #include <stdarg.h>
 #include <stdlib.h>
@@ -237,6 +239,66 @@ valid_roa(const char *fn, struct auth_tree *auths, struct roa *roa)
 		tracewarn(a);
 		return 0;
 	}
+
+	return 1;
+}
+
+/*
+ * Validate a file by verifying the SHA256 hash of that file.
+ * Returns 1 if valid, 0 otherwise.
+ */
+int
+valid_filehash(const char *fn, const char *hash, size_t hlen)
+{
+	SHA256_CTX ctx;
+	char	filehash[SHA256_DIGEST_LENGTH];
+	char	buffer[8192];
+	ssize_t	nr;
+	int	fd;
+
+	if (hlen != sizeof(filehash))
+		errx(1, "bad hash size");
+
+	if ((fd = open(fn, O_RDONLY)) == -1)
+		return 0;
+
+	SHA256_Init(&ctx);
+	while ((nr = read(fd, buffer, sizeof(buffer))) > 0)
+		SHA256_Update(&ctx, buffer, nr);
+	close(fd);
+
+	SHA256_Final(filehash, &ctx);
+	if (memcmp(hash, filehash, sizeof(filehash)) != 0)
+		return 0;
+
+	return 1;
+}
+
+/*
+ * Validate a URI to make sure it is pure ASCII and does not point backwards
+ * or doing some other silly tricks. To enforce the protocol pass either
+ * https:// or rsync:// as proto, if NULL is passed no protocol is enforced.
+ * Returns 1 if valid, 0 otherwise.
+ */
+int
+valid_uri(const char *uri, size_t usz, const char *proto)
+{
+	size_t s;
+
+	for (s = 0; s < usz; s++)
+		if (!isalnum((unsigned char)uri[s]) &&
+		    !ispunct((unsigned char)uri[s]))
+			return 0;
+
+	if (proto != NULL) {
+		s = strlen(proto);
+		if (strncasecmp(uri, proto, s) != 0)
+			return 0;
+	}
+
+	/* do not allow files or directories to start with a '.' */
+	if (strstr(uri, "/.") != NULL)
+		return 0;
 
 	return 1;
 }

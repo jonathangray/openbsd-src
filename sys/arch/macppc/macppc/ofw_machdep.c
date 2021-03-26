@@ -1,4 +1,4 @@
-/*	$OpenBSD: ofw_machdep.c,v 1.62 2020/11/02 18:35:38 tobhe Exp $	*/
+/*	$OpenBSD: ofw_machdep.c,v 1.64 2021/03/11 11:16:59 jsg Exp $	*/
 /*	$NetBSD: ofw_machdep.c,v 1.1 1996/09/30 16:34:50 ws Exp $	*/
 
 /*
@@ -137,7 +137,6 @@ ofw_read_mem_regions(int phandle, int address_cells, int size_cells)
 {
 	int nreg, navail;
 	int i, j;
-	uint physpages;
 
 	switch (address_cells) {
 	default:
@@ -173,11 +172,9 @@ ofw_read_mem_regions(int phandle, int address_cells, int size_cells)
 		}
 		break;
 	case 2:
-		physpages = 0;
 		for (i = 0, j = 0; i < nreg; i++) {
 			if (OFmem64[i].size == 0)
 				continue;
-			physpages += atop(OFmem64[i].size);
 			if (OFmem64[i].start >= 1ULL << 32)
 				continue;
 			OFmem[j].start = OFmem64[i].start;
@@ -187,7 +184,6 @@ ofw_read_mem_regions(int phandle, int address_cells, int size_cells)
 				OFmem[j].size = OFmem64[i].size;
 			j++;
 		}
-		physmem = physpages;
 		break;
 	}
 }
@@ -345,7 +341,7 @@ ofw_recurse_keyboard(int pnode)
 			} else if (ofw_devtree == DEVTREE_ADB) {
 				ofw_have_kbd |= OFW_HAVE_ADBKBD;
 			} else {
-				/* hid or some other keyboard? igore */
+				/* hid or some other keyboard? ignore */
 			}
 			continue;
 		}
