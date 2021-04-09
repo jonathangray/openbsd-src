@@ -1,4 +1,4 @@
-/*	$OpenBSD: x509.c,v 1.16 2021/02/18 16:23:17 claudio Exp $ */
+/*	$OpenBSD: x509.c,v 1.21 2021/04/01 06:43:23 claudio Exp $ */
 /*
  * Copyright (c) 2019 Kristaps Dzonsons <kristaps@bsd.lv>
  *
@@ -20,7 +20,6 @@
 #include <assert.h>
 #include <err.h>
 #include <stdarg.h>
-#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -32,7 +31,7 @@
 /*
  * Parse X509v3 authority key identifier (AKI), RFC 6487 sec. 4.8.3.
  * Returns the AKI or NULL if it could not be parsed.
- * The AKI is formatted as aa:bb:cc:dd, with each being a hex value.
+ * The AKI is formatted as a hex string.
  */
 char *
 x509_get_aki(X509 *x, int ta, const char *fn)
@@ -40,8 +39,7 @@ x509_get_aki(X509 *x, int ta, const char *fn)
 	const unsigned char	*d;
 	AUTHORITY_KEYID		*akid;
 	ASN1_OCTET_STRING	*os;
-	int			 i, dsz, crit;
-	char			 buf[4];
+	int			 dsz, crit;
 	char			*res = NULL;
 
 	akid = X509_get_ext_d2i(x, NID_authority_key_identifier, &crit, NULL);
@@ -80,16 +78,7 @@ x509_get_aki(X509 *x, int ta, const char *fn)
 		goto out;
 	}
 
-	/* Make room for [hex1, hex2, ":"]*, NUL. */
-
-	if ((res = calloc(dsz * 3 + 1, 1)) == NULL)
-		err(1, NULL);
-
-	for (i = 0; i < dsz; i++) {
-		snprintf(buf, sizeof(buf), "%02X:", d[i]);
-		strlcat(res, buf, dsz * 3 + 1);
-	}
-	res[dsz * 3 - 1] = '\0';
+	res = hex_encode(d, dsz);
 out:
 	AUTHORITY_KEYID_free(akid);
 	return res;
@@ -98,15 +87,14 @@ out:
 /*
  * Parse X509v3 subject key identifier (SKI), RFC 6487 sec. 4.8.2.
  * Returns the SKI or NULL if it could not be parsed.
- * The SKI is formatted as aa:bb:cc:dd, with each being a hex value.
+ * The SKI is formatted as a hex string.
  */
 char *
 x509_get_ski(X509 *x, const char *fn)
 {
 	const unsigned char	*d;
 	ASN1_OCTET_STRING	*os;
-	int			 i, dsz, crit;
-	char			 buf[4];
+	int			 dsz, crit;
 	char			*res = NULL;
 
 	os = X509_get_ext_d2i(x, NID_subject_key_identifier, &crit, NULL);
@@ -130,16 +118,7 @@ x509_get_ski(X509 *x, const char *fn)
 		goto out;
 	}
 
-	/* Make room for [hex1, hex2, ":"]*, NUL. */
-
-	if ((res = calloc(dsz * 3 + 1, 1)) == NULL)
-		err(1, NULL);
-
-	for (i = 0; i < dsz; i++) {
-		snprintf(buf, sizeof(buf), "%02X:", d[i]);
-		strlcat(res, buf, dsz * 3 + 1);
-	}
-	res[dsz * 3 - 1] = '\0';
+	res = hex_encode(d, dsz);
 out:
 	ASN1_OCTET_STRING_free(os);
 	return res;
@@ -197,33 +176,6 @@ x509_get_aia(X509 *x, const char *fn)
 out:
 	AUTHORITY_INFO_ACCESS_free(info);
 	return aia;
-}
-
-/*
- * Wraps around x509_get_aia, x509_get_aki, and x509_get_ski.
- * Returns zero on failure (out pointers are NULL) or non-zero on
- * success (out pointers must be freed).
- */
-int
-x509_get_extensions(X509 *x, const char *fn, char **aia, char **aki, char **ski)
-{
-	*aia = *aki = *ski = NULL;
-
-	*aia = x509_get_aia(x, fn);
-	*aki = x509_get_aki(x, 0, fn);
-	*ski = x509_get_ski(x, fn);
-
-	if (*aia == NULL || *aki == NULL || *ski == NULL) {
-		warnx("%s: RFC 6487 section 4.8: "
-		    "missing AIA, AKI or SKI X509 extension", fn);
-		free(*aia);
-		free(*aki);
-		free(*ski);
-		*aia = *aki = *ski = NULL;
-		return 0;
-	}
-
-	return 1;
 }
 
 /*
@@ -297,14 +249,19 @@ out:
 	return crl;
 }
 
+/*
+ * Parse X509v3 authority key identifier (AKI) from the CRL.
+ * This is matched against the string from x509_get_ski() above.
+ * Returns the AKI or NULL if it could not be parsed.
+ * The AKI is formatted as a hex string.
+ */
 char *
 x509_crl_get_aki(X509_CRL *crl, const char *fn)
 {
 	const unsigned char	*d;
 	AUTHORITY_KEYID		*akid;
 	ASN1_OCTET_STRING	*os;
-	int			 i, dsz, crit;
-	char			 buf[4];
+	int			 dsz, crit;
 	char			*res = NULL;
 
 	akid = X509_CRL_get_ext_d2i(crl, NID_authority_key_identifier, &crit,
@@ -342,16 +299,7 @@ x509_crl_get_aki(X509_CRL *crl, const char *fn)
 		goto out;
 	}
 
-	/* Make room for [hex1, hex2, ":"]*, NUL. */
-
-	if ((res = calloc(dsz * 3 + 1, 1)) == NULL)
-		err(1, NULL);
-
-	for (i = 0; i < dsz; i++) {
-		snprintf(buf, sizeof(buf), "%02X:", d[i]);
-		strlcat(res, buf, dsz * 3 + 1);
-	}
-	res[dsz * 3 - 1] = '\0';
+	res = hex_encode(d, dsz);
 out:
 	AUTHORITY_KEYID_free(akid);
 	return res;

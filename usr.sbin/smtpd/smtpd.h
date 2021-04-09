@@ -1,4 +1,4 @@
-/*	$OpenBSD: smtpd.h,v 1.662 2021/03/05 12:37:32 eric Exp $	*/
+/*	$OpenBSD: smtpd.h,v 1.664 2021/03/31 19:09:19 eric Exp $	*/
 
 /*
  * Copyright (c) 2008 Gilles Chehade <gilles@poolp.org>
@@ -1192,6 +1192,8 @@ struct dispatcher_remote {
 	char	*auth;
 	int	 tls_required;
 	int	 tls_noverify;
+	char	*tls_protocols;
+	char	*tls_ciphers;
 
 	int	 backup;
 	char	*backupmx;
@@ -1747,8 +1749,9 @@ int base64_encode_rfc3548(unsigned char const *, size_t,
 		      char *, size_t);
 
 void log_trace_verbose(int);
-void log_trace(int, const char *, ...)
-    __attribute__((format (printf, 2, 3)));
+void log_trace0(const char *, ...)
+    __attribute__((format (printf, 1, 2)));
+#define log_trace(m, ...)  do { if (tracing & (m)) log_trace0(__VA_ARGS__); } while (0)
 
 /* waitq.c */
 int  waitq_wait(void *, void (*)(void *, void *, void *), void *);

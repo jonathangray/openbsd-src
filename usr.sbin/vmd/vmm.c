@@ -1,4 +1,4 @@
-/*	$OpenBSD: vmm.c,v 1.97 2021/03/02 02:56:22 jsg Exp $	*/
+/*	$OpenBSD: vmm.c,v 1.99 2021/04/01 11:05:47 dv Exp $	*/
 
 /*
  * Copyright (c) 2015 Mike Larkin <mlarkin@openbsd.org>
@@ -109,6 +109,7 @@ vmm_dispatch_parent(int fd, struct privsep_proc *p, struct imsg *imsg)
 	struct vmop_id		 vid;
 	struct vmop_result	 vmr;
 	struct vmop_create_params vmc;
+	struct vmop_addr_result  var;
 	uint32_t		 id = 0, peerid = imsg->hdr.peerid;
 	pid_t			 pid = 0;
 	unsigned int		 mode, flags;
@@ -272,7 +273,6 @@ vmm_dispatch_parent(int fd, struct privsep_proc *p, struct imsg *imsg)
 		IMSG_SIZE_CHECK(imsg, &vid);
 		memcpy(&vid, imsg->data, sizeof(vid));
 		id = vid.vid_id;
-		vm = vm_getbyvmid(id);
 		if ((vm = vm_getbyvmid(id)) == NULL) {
 			res = ENOENT;
 			cmd = IMSG_VMDOP_PAUSE_VM_RESPONSE;
@@ -331,6 +331,18 @@ vmm_dispatch_parent(int fd, struct privsep_proc *p, struct imsg *imsg)
 		if ((id = vm_id2vmid(id, NULL)) == 0)
 			res = ENOENT;
 		cmd = IMSG_VMDOP_START_VM_RESPONSE;
+		break;
+	case IMSG_VMDOP_PRIV_GET_ADDR_RESPONSE:
+		IMSG_SIZE_CHECK(imsg, &var);
+		memcpy(&var, imsg->data, sizeof(var));
+		if ((vm = vm_getbyvmid(var.var_vmid)) == NULL) {
+			res = ENOENT;
+			break;
+		}
+		/* Forward hardware address details to the guest vm */
+		imsg_compose_event(&vm->vm_iev,
+		    imsg->hdr.type, imsg->hdr.peerid, imsg->hdr.pid,
+		    imsg->fd, &var, sizeof(var));
 		break;
 	default:
 		return (-1);

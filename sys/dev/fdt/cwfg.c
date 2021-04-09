@@ -1,4 +1,4 @@
-/* $OpenBSD: cwfg.c,v 1.3 2021/03/25 12:18:27 kn Exp $ */
+/* $OpenBSD: cwfg.c,v 1.6 2021/04/01 12:06:00 kn Exp $ */
 /* $NetBSD: cwfg.c,v 1.1 2020/01/03 18:00:05 jmcneill Exp $ */
 /*-
  * Copyright (c) 2020 Jared McNeill <jmcneill@invisible.ca>
@@ -58,8 +58,6 @@
 #define	 RTT_LO_MASK			0xff
 #define	 RTT_LO_SHIFT			0
 #define	CONFIG_REG		0x08
-#define	 CONFIG_ATHD_MASK		0x1f
-#define	 CONFIG_ATHD_SHIFT		3
 #define	 CONFIG_UFG			(1 << 1)
 #define	MODE_REG		0x0a
 #define	 MODE_SLEEP_MASK		(0x3 << 6)
@@ -91,17 +89,9 @@ struct cwfg_softc {
 
 	uint8_t		sc_batinfo[BATINFO_SIZE];
 
-	uint32_t	sc_alert_level;
-	uint32_t	sc_monitor_interval;
-	uint32_t	sc_design_capacity;
-
 	struct ksensor	sc_sensor[CWFG_NSENSORS];
 	struct ksensordev sc_sensordev;
 };
-
-#define	CWFG_MONITOR_INTERVAL_DEFAULT	5000
-#define	CWFG_DESIGN_CAPACITY_DEFAULT	2000
-#define	CWFG_ALERT_LEVEL_DEFAULT	0
 
 int cwfg_match(struct device *, void *, void *);
 void cwfg_attach(struct device *, struct device *, void *);
@@ -185,13 +175,6 @@ cwfg_attach(struct device *parent, struct device *self, void *aux)
 	}
 	free(batinfo, M_TEMP, len);
 
-	sc->sc_monitor_interval = OF_getpropint(sc->sc_node,
-	    "cellwise,monitor-interval-ms", CWFG_MONITOR_INTERVAL_DEFAULT);
-	sc->sc_design_capacity = OF_getpropint(sc->sc_node,
-	    "cellwise,design-capacity", CWFG_DESIGN_CAPACITY_DEFAULT);
-	sc->sc_alert_level = OF_getpropint(sc->sc_node,
-	    "cellwise,alert-level", CWFG_ALERT_LEVEL_DEFAULT);
-
 	if (cwfg_init(sc) != 0) {
 		printf(": failed to initialize device\n");
 		return;
@@ -271,25 +254,11 @@ done:
 int
 cwfg_set_config(struct cwfg_softc *sc)
 {
-	uint32_t alert_level;
 	uint8_t config, mode, val;
 	int need_update;
 	int error, n;
 
 	/* Read current config */
-	if ((error = cwfg_read(sc, CONFIG_REG, &config)) != 0)
-		return error;
-
-	/* Update alert level, if necessary */
-	alert_level = (config >> CONFIG_ATHD_SHIFT) & CONFIG_ATHD_MASK;
-	if (alert_level != sc->sc_alert_level) {
-		config &= ~(CONFIG_ATHD_MASK << CONFIG_ATHD_SHIFT);
-		config |= (sc->sc_alert_level << CONFIG_ATHD_SHIFT);
-		if ((error = cwfg_write(sc, CONFIG_REG, config)) != 0)
-			return error;
-	}
-
-	/* Re-read current config */
 	if ((error = cwfg_read(sc, CONFIG_REG, &config)) != 0)
 		return error;
 
@@ -348,9 +317,13 @@ cwfg_update_sensors(void *arg)
 	uint8_t val;
 	int error, n;
 
-#if NAPM > 0
-	/* reset previous reads so apm(4) never gets stale values
+	/* invalidate all previous reads to avoid stale/incoherent values
 	 * in case of transient cwfg_read() failures below */
+	sc->sc_sensor[CWFG_SENSOR_VCELL].flags |= SENSOR_FINVALID;
+	sc->sc_sensor[CWFG_SENSOR_SOC].flags |= SENSOR_FINVALID;
+	sc->sc_sensor[CWFG_SENSOR_RTT].flags |= SENSOR_FINVALID;
+
+#if NAPM > 0
 	cwfg_power.battery_state = APM_BATT_UNKNOWN;
 	cwfg_power.ac_state = APM_AC_UNKNOWN;
 	cwfg_power.battery_life = 0;
@@ -383,9 +356,13 @@ cwfg_update_sensors(void *arg)
 		sc->sc_sensor[CWFG_SENSOR_SOC].value = val * 1000;
 		sc->sc_sensor[CWFG_SENSOR_SOC].flags &= ~SENSOR_FINVALID;
 #if NAPM > 0
-		cwfg_power.battery_state = val > sc->sc_alert_level ?
-		    APM_BATT_HIGH : APM_BATT_LOW;
 		cwfg_power.battery_life = val;
+		if (val > 50)
+			cwfg_power.battery_state = APM_BATT_HIGH;
+		else if (val > 25)
+			cwfg_power.battery_state = APM_BATT_LOW;
+		else
+			cwfg_power.battery_state = APM_BATT_CRITICAL;
 #endif
 	}
 

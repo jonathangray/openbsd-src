@@ -1,4 +1,4 @@
-/* $OpenBSD: apps.h,v 1.25 2021/03/24 12:07:39 inoguchi Exp $ */
+/* $OpenBSD: apps.h,v 1.27 2021/03/31 17:13:54 tb Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *

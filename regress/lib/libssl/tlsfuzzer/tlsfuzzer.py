@@ -1,4 +1,4 @@
-#   $OpenBSD: tlsfuzzer.py,v 1.25 2021/03/26 22:35:17 tb Exp $
+#   $OpenBSD: tlsfuzzer.py,v 1.28 2021/04/08 17:11:43 tb Exp $
 #
 # Copyright (c) 2020 Theo Buehler <tb@openbsd.org>
 #
@@ -256,9 +256,7 @@ tls13_failing_tests = TestGroup("failing TLSv1.3 tests", [
     # 3 failing rsa_pss_pss tests
     Test("test-tls13-rsa-signatures.py"),
 
-    # AssertionError: Unexpected message from peer: ChangeCipherSpec()
-    # Most failing tests expect the CCS right before finished.
-    # What's up with that?
+    # The failing tests all expect an ri extension.  What's up with that?
     Test("test-tls13-version-negotiation.py"),
 ])
 
@@ -328,6 +326,7 @@ tls12_tests = TestGroup("TLSv1.2 tests", [
     Test("test-chacha20.py"),
     Test("test-conversation.py"),
     Test("test-cve-2016-2107.py"),
+    Test("test-cve-2016-6309.py"),
     Test("test-dhe-rsa-key-exchange.py"),
     Test("test-dhe-rsa-key-exchange-with-bad-messages.py"),
     Test("test-early-application-data.py"),
@@ -376,6 +375,11 @@ tls12_tests = TestGroup("TLSv1.2 tests", [
         tls13_args = ["--server-max-protocol", "TLSv1.3"],
     ),
     Test("test-fallback-scsv.py", tls13_args = ["--tls-1.3"] ),
+
+    # Without --sig-algs-drop-ok, two tests fail since we do not currently
+    # implement the signature_algorithms_cert extension (although we MUST).
+    Test("test-sig-algs-renegotiation-resumption.py", ["--sig-algs-drop-ok"]),
+
     Test("test-serverhello-random.py", args = tls12_exclude_legacy_protocols),
 ])
 
@@ -413,8 +417,6 @@ tls12_failing_tests = TestGroup("failing TLSv1.2 tests", [
     Test("test-client-hello-max-size.py"),
     # unknown signature algorithms
     Test("test-clienthello-md5.py"),
-    # abrupt closure
-    Test("test-cve-2016-6309.py"),
 
     # Tests expect an illegal_parameter alert
     Test("test-ecdhe-rsa-key-exchange-with-bad-messages.py"),
@@ -525,10 +527,6 @@ tls12_failing_tests = TestGroup("failing TLSv1.2 tests", [
     #   'rsa_pss_pss_sha384 only'
     #   'rsa_pss_pss_sha512 only'
     Test("test-sig-algs.py"),
-
-    # Without --sig-algs-drop-ok, two tests fail since we do not currently
-    # implement the signature_algorithms_cert extension (although we MUST).
-    Test("test-sig-algs-renegotiation-resumption.py", ["--sig-algs-drop-ok"]),
 
     # 13 failures:
     #   'duplicated n non-rsa schemes' for n in 202 2342 8119 23741 32744

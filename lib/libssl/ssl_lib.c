@@ -1,4 +1,4 @@
-/* $OpenBSD: ssl_lib.c,v 1.252 2021/03/24 18:44:00 jsing Exp $ */
+/* $OpenBSD: ssl_lib.c,v 1.255 2021/03/29 16:57:38 jsing Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -185,8 +185,6 @@ SSL_clear(SSL *s)
 		SSLerror(s, ERR_R_INTERNAL_ERROR);
 		return (0);
 	}
-
-	s->internal->type = 0;
 
 	s->version = s->method->internal->version;
 	s->client_version = s->version;
@@ -725,10 +723,10 @@ SSL_get_finished(const SSL *s, void *buf, size_t count)
 {
 	size_t	ret;
 
-	ret = S3I(s)->tmp.finish_md_len;
+	ret = S3I(s)->hs.finished_len;
 	if (count > ret)
 		count = ret;
-	memcpy(buf, S3I(s)->tmp.finish_md, count);
+	memcpy(buf, S3I(s)->hs.finished, count);
 	return (ret);
 }
 
@@ -738,10 +736,10 @@ SSL_get_peer_finished(const SSL *s, void *buf, size_t count)
 {
 	size_t	ret;
 
-	ret = S3I(s)->tmp.peer_finish_md_len;
+	ret = S3I(s)->hs.peer_finished_len;
 	if (count > ret)
 		count = ret;
-	memcpy(buf, S3I(s)->tmp.peer_finish_md, count);
+	memcpy(buf, S3I(s)->hs.peer_finished, count);
 	return (ret);
 }
 
@@ -1718,9 +1716,6 @@ void
 SSL_get0_alpn_selected(const SSL *ssl, const unsigned char **data,
     unsigned int *len)
 {
-	*data = NULL;
-	*len = 0;
-
 	*data = ssl->s3->internal->alpn_selected;
 	*len = ssl->s3->internal->alpn_selected_len;
 }
@@ -2494,7 +2489,6 @@ SSL_dup(SSL *s)
 		goto err;
 
 	ret->version = s->version;
-	ret->internal->type = s->internal->type;
 	ret->method = s->method;
 
 	if (s->session != NULL) {

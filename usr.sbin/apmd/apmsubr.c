@@ -1,4 +1,4 @@
-/*	$OpenBSD: apmsubr.c,v 1.9 2020/09/23 05:50:26 jca Exp $	*/
+/*	$OpenBSD: apmsubr.c,v 1.11 2021/04/06 22:10:12 jca Exp $	*/
 
 /*
  *  Copyright (c) 1995,1996 John T. Kohl
@@ -81,5 +81,22 @@ perf_mode(int mode)
 		return "auto";
 	default:
 		return "invalid";
+	}
+}
+
+const char *
+apm_state(int apm_state)
+{
+	switch (apm_state) {
+	case NORMAL:
+		return "normal";
+	case SUSPENDING:
+		return "suspend";
+	case STANDING_BY:
+		return "standby";
+	case HIBERNATING:
+		return "hibenate";
+	default:
+		return "unknown";
 	}
 }

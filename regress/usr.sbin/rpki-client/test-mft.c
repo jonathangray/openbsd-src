@@ -1,4 +1,4 @@
-/*	$Id: test-mft.c,v 1.11 2021/02/16 08:53:53 job Exp $ */
+/*	$Id: test-mft.c,v 1.13 2021/03/29 15:47:34 claudio Exp $ */
 /*
  * Copyright (c) 2019 Kristaps Dzonsons <kristaps@bsd.lv>
  *
@@ -34,6 +34,8 @@
 
 #include "extern.h"
 
+#include "test-common.c"
+
 #ifndef ASN1error
 void
 ASN1error(int err)
@@ -52,9 +54,10 @@ mft_print(const struct mft *p)
 
 	assert(p != NULL);
 
-	printf("Subject key identifier: %s\n", p->ski);
-	printf("Authority key identifier: %s\n", p->aki);
+	printf("Subject key identifier: %s\n", pretty_key_id(p->ski));
+	printf("Authority key identifier: %s\n", pretty_key_id(p->aki));
 	printf("Authority info access: %s\n", p->aia);
+	printf("Manifest Number: %s\n", p->seqnum);
 	for (i = 0; i < p->filesz; i++) {
 		b64_ntop(p->files[i].hash, sizeof(p->files[i].hash),
 		    hash, sizeof(hash));

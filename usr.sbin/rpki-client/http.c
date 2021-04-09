@@ -1,7 +1,7 @@
-/*      $OpenBSD: http.c,v 1.9 2021/03/25 12:18:45 claudio Exp $  */
+/*      $OpenBSD: http.c,v 1.26 2021/04/08 18:35:02 claudio Exp $  */
 /*
  * Copyright (c) 2020 Nils Fisher <nils_fisher@hotmail.com>
- * Copyright (c) 2020 Claudio Jeker <claudio@openbsd.com>
+ * Copyright (c) 2020 Claudio Jeker <claudio@openbsd.org>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -54,6 +54,7 @@
 #include <limits.h>
 #include <netdb.h>
 #include <poll.h>
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -106,9 +107,7 @@ struct http_connection {
 	size_t		bufsz;
 	size_t		bufpos;
 	size_t		id;
-	size_t		chunksz;
-	off_t		filesize;
-	off_t		bytes;
+	off_t		iosz;
 	int		status;
 	int		redirect_loop;
 	int		fd;
@@ -124,10 +123,6 @@ struct tls_config *tls_config;
 uint8_t *tls_ca_mem;
 size_t tls_ca_size;
 
-char *resp_buf[MAX_CONNECTIONS];
-size_t resp_bsz[MAX_CONNECTIONS];
-size_t resp_idx;
-
 /*
  * Return a string that can be used in error message to identify the
  * connection.
@@ -135,7 +130,7 @@ size_t resp_idx;
 static const char *
 http_info(const char *url)
 {
-	static char buf[64];
+	static char buf[80];
 
 	if (strnvis(buf, url, sizeof buf, VIS_SAFE) >= (int)sizeof buf) {
 		/* overflow, add indicator */
@@ -168,7 +163,7 @@ unsafe_char(const char *c0)
 	     * hexadecimal digits.
 	     */
 	    strchr(unsafe_chars, *c) != NULL ||
-	    (*c == '%' && (!isxdigit(*++c) || !isxdigit(*++c))));
+	    (*c == '%' && (!isxdigit(c[1]) || !isxdigit(c[2]))));
 }
 
 /*
@@ -232,7 +227,7 @@ http_setup(void)
 	tls_ca_mem = tls_load_file(tls_default_ca_cert_file(),
 	    &tls_ca_size, NULL);
 	if (tls_ca_mem == NULL)
-		err(1, "tls_load_file");
+		err(1, "tls_load_file: %s", tls_default_ca_cert_file());
 	tls_config_set_ca_mem(tls_config, tls_ca_mem, tls_ca_size);
 
 	/* TODO initalize proxy settings */
@@ -295,9 +290,6 @@ http_fail(size_t id)
 static void
 http_free(struct http_connection *conn)
 {
-	if (conn->state != STATE_DONE)
-		http_fail(conn->id);
-
 	free(conn->url);
 	free(conn->host);
 	free(conn->port);
@@ -315,24 +307,6 @@ http_free(struct http_connection *conn)
 		close(conn->fd);
 	close(conn->outfd);
 	free(conn);
-}
-
-static int
-http_close(struct http_connection *conn)
-{
-	if (conn->tls != NULL) {
-		switch (tls_close(conn->tls)) {
-		case TLS_WANT_POLLIN:
-			return WANT_POLLIN;
-		case TLS_WANT_POLLOUT:
-			return WANT_POLLOUT;
-		case 0:
-		case -1:
-			break;
-		}
-	}
-
-	return -1;
 }
 
 static int
@@ -402,6 +376,8 @@ http_new(size_t id, char *uri, char *modified_since, int outfd)
 	if (http_parse_uri(uri, &host, &port, &path) == -1) {
 		free(uri);
 		free(modified_since);
+		close(outfd);
+		http_fail(id);
 		return NULL;
 	}
 
@@ -421,6 +397,7 @@ http_new(size_t id, char *uri, char *modified_since, int outfd)
 	/* TODO proxy support (overload of host and port) */
 
 	if (http_resolv(conn, host, port) == -1) {
+		http_fail(conn->id);
 		http_free(conn);
 		return NULL;
 	}
@@ -429,50 +406,9 @@ http_new(size_t id, char *uri, char *modified_since, int outfd)
 }
 
 static int
-http_redirect(struct http_connection *conn, char *uri)
-{
-	char *host, *port, *path;
-
-	logx("redirect to %s", http_info(uri));
-
-	if (http_parse_uri(uri, &host, &port, &path) == -1) {
-		free(uri);
-		return -1;
-	}
-
-	free(conn->url);
-	conn->url = uri;
-	free(conn->host);
-	conn->host = host;
-	free(conn->port);
-	conn->port = port;
-	conn->path = path;
-	/* keep modified_since since that is part of the request */
-	free(conn->last_modified);
-	conn->last_modified = NULL;
-	free(conn->buf);
-	conn->buf = NULL;
-	conn->bufpos = 0;
-	conn->bufsz = 0;
-	tls_close(conn->tls);
-	tls_free(conn->tls);
-	conn->tls = NULL;
-	close(conn->fd);
-	conn->state = STATE_INIT;
-
-	/* TODO proxy support (overload of host and port) */
-
-	if (http_resolv(conn, host, port) == -1)
-		return -1;
-
-	return 0;
-}
-
-static int
 http_connect(struct http_connection *conn)
 {
-	char pbuf[NI_MAXSERV], hbuf[NI_MAXHOST];
-	char *cause = "unknown";
+	const char *cause = NULL;
 
 	if (conn->fd != -1) {
 		close(conn->fd);
@@ -486,12 +422,7 @@ http_connect(struct http_connection *conn)
 		conn->res = conn->res->ai_next;
 	for (; conn->res != NULL; conn->res = conn->res->ai_next) {
 		struct addrinfo *res = conn->res;
-		int fd, error, save_errno;
-
-		if (getnameinfo(res->ai_addr, res->ai_addrlen, hbuf,
-		    sizeof(hbuf), pbuf, sizeof(pbuf),
-		    NI_NUMERICHOST | NI_NUMERICSERV) != 0)
-			strlcpy(hbuf, "(unknown)", sizeof(hbuf));
+		int fd, save_errno;
 
 		fd = socket(res->ai_family,
 		    res->ai_socktype | SOCK_NONBLOCK, res->ai_protocol);
@@ -503,14 +434,19 @@ http_connect(struct http_connection *conn)
 
 		if (http_bindaddr.ss_family == res->ai_family) {
 			if (bind(conn->fd, (struct sockaddr *)&http_bindaddr,
-			    res->ai_addrlen) == -1)
-				warn("%s: bind", http_info(conn->url));
+			    res->ai_addrlen) == -1) {
+				save_errno = errno;
+				close(conn->fd);
+				conn->fd = -1;
+				errno = save_errno;
+				cause = "bind";
+				continue;
+			}
 		}
 
-		error = connect(conn->fd, res->ai_addr, res->ai_addrlen);
-		if (error == -1) {
+		if (connect(conn->fd, res->ai_addr, res->ai_addrlen) == -1) {
 			if (errno == EINPROGRESS) {
-				/* waiting for connect to finish. */
+				/* wait for async connect to finish. */
 				return WANT_POLLOUT;
 			} else {
 				save_errno = errno;
@@ -522,18 +458,27 @@ http_connect(struct http_connection *conn)
 			}
 		}
 
-		/* TODO proxy connect */
-#if 0
-		if (proxyenv)
-			proxy_connect(conn->fd, sslhost, proxy_credentials); */
-#endif
+		break;	/* okay we got one */
 	}
-	freeaddrinfo(conn->res0);
-	conn->res0 = NULL;
+
 	if (conn->fd == -1) {
-		warn("%s: %s", http_info(conn->url), cause);
+		if (cause != NULL)
+			warn("%s: %s", http_info(conn->url), cause);
+		freeaddrinfo(conn->res0);
+		conn->res0 = NULL;
+		conn->res = NULL;
 		return -1;
 	}
+
+	freeaddrinfo(conn->res0);
+	conn->res0 = NULL;
+	conn->res = NULL;
+
+#if 0
+	/* TODO proxy connect */
+	if (proxyenv)
+		proxy_connect(conn->fd, sslhost, proxy_credentials); */
+#endif
 	return 0;
 }
 
@@ -554,6 +499,16 @@ http_finish_connect(struct http_connection *conn)
 		warn("%s: connect", http_info(conn->url));
 		return -1;
 	}
+
+	freeaddrinfo(conn->res0);
+	conn->res0 = NULL;
+	conn->res = NULL;
+
+#if 0
+	/* TODO proxy connect */
+	if (proxyenv)
+		proxy_connect(conn->fd, sslhost, proxy_credentials); */
+#endif
 
 	return 0;
 }
@@ -654,29 +609,6 @@ http_request(struct http_connection *conn)
 }
 
 static int
-http_write(struct http_connection *conn)
-{
-	ssize_t s;
-
-	s = tls_write(conn->tls, conn->buf + conn->bufpos,
-	    conn->bufsz - conn->bufpos);
-	if (s == -1) {
-		warnx("%s: TLS write: %s", http_info(conn->url),
-		    tls_error(conn->tls));
-		return -1;
-	} else if (s == TLS_WANT_POLLIN) {
-		return WANT_POLLIN;
-	} else if (s == TLS_WANT_POLLOUT) {
-		return WANT_POLLOUT;
-	}
-
-	conn->bufpos += s;
-	if (conn->bufpos == conn->bufsz)
-		return 0;
-	return WANT_POLLOUT;
-}
-
-static int
 http_parse_status(struct http_connection *conn, char *buf)
 {
 	const char *errstr;
@@ -734,6 +666,46 @@ http_isredirect(struct http_connection *conn)
 }
 
 static int
+http_redirect(struct http_connection *conn, char *uri)
+{
+	char *host, *port, *path;
+
+	logx("redirect to %s", http_info(uri));
+
+	if (http_parse_uri(uri, &host, &port, &path) == -1) {
+		free(uri);
+		return -1;
+	}
+
+	free(conn->url);
+	conn->url = uri;
+	free(conn->host);
+	conn->host = host;
+	free(conn->port);
+	conn->port = port;
+	conn->path = path;
+	/* keep modified_since since that is part of the request */
+	free(conn->last_modified);
+	conn->last_modified = NULL;
+	free(conn->buf);
+	conn->buf = NULL;
+	conn->bufpos = 0;
+	conn->bufsz = 0;
+	tls_close(conn->tls);
+	tls_free(conn->tls);
+	conn->tls = NULL;
+	close(conn->fd);
+	conn->state = STATE_INIT;
+
+	/* TODO proxy support (overload of host and port) */
+
+	if (http_resolv(conn, host, port) == -1)
+		return -1;
+
+	return 0;
+}
+
+static int
 http_parse_header(struct http_connection *conn, char *buf)
 {
 #define CONTENTLEN "Content-Length: "
@@ -753,10 +725,10 @@ http_parse_header(struct http_connection *conn, char *buf)
 		cp += sizeof(CONTENTLEN) - 1;
 		if ((s = strcspn(cp, " \t")) != 0)
 			*(cp+s) = 0;
-		conn->filesize = strtonum(cp, 0, LLONG_MAX, &errstr);
+		conn->iosz = strtonum(cp, 0, LLONG_MAX, &errstr);
 		if (errstr != NULL) {
-			warnx("Improper response from %s",
-			    http_info(conn->url));
+			warnx("Content-Length of %s is %s",
+			    http_info(conn->url), errstr);
 			return -1;
 		}
 	} else if (http_isredirect(conn) &&
@@ -846,7 +818,7 @@ http_parse_chunked(struct http_connection *conn, char *buf)
 {
 	char *header = buf;
 	char *end;
-	int chunksize;
+	unsigned long chunksize;
 
 	/* ignore empty lines, used between chunk and next header */
 	if (*header == '\0')
@@ -856,14 +828,14 @@ http_parse_chunked(struct http_connection *conn, char *buf)
 	header[strcspn(header, ";\r\n")] = '\0';
 	errno = 0;
 	chunksize = strtoul(header, &end, 16);
-	if (errno != 0 || header[0] == '\0' || *end != '\0' ||
-	    chunksize > INT_MAX) {
+	if (header[0] == '\0' || *end != '\0' || (errno == ERANGE &&
+	    chunksize == ULONG_MAX) || chunksize > INT_MAX) {
 		warnx("%s: Invalid chunk size", http_info(conn->url));
 		return -1;
 	}
-	conn->chunksz = chunksize;
+	conn->iosz = chunksize;
 
-	if (conn->chunksz == 0) {
+	if (conn->iosz == 0) {
 		http_done(conn, HTTP_OK);
 		return 0;
 	}
@@ -921,11 +893,11 @@ http_read(struct http_connection *conn)
 		return WANT_POLLIN;
 	case STATE_RESPONSE_DATA:
 		if (conn->bufpos == conn->bufsz ||
-		    conn->filesize - conn->bytes <= (off_t)conn->bufpos)
+		    conn->iosz <= (off_t)conn->bufpos)
 			return 0;
 		return WANT_POLLIN;
 	case STATE_RESPONSE_CHUNKED:
-		while (conn->chunksz == 0) {
+		while (conn->iosz == 0) {
 			buf = http_get_line(conn);
 			if (buf == NULL)
 				return WANT_POLLIN;
@@ -941,7 +913,7 @@ http_read(struct http_connection *conn)
 		}
 
 		if (conn->bufpos == conn->bufsz ||
-		    conn->chunksz <= conn->bufpos)
+		    conn->iosz <= (off_t)conn->bufpos)
 			return 0;
 		return WANT_POLLIN;
 	default:
@@ -950,58 +922,76 @@ http_read(struct http_connection *conn)
 }
 
 static int
+http_write(struct http_connection *conn)
+{
+	ssize_t s;
+
+	s = tls_write(conn->tls, conn->buf + conn->bufpos,
+	    conn->bufsz - conn->bufpos);
+	if (s == -1) {
+		warnx("%s: TLS write: %s", http_info(conn->url),
+		    tls_error(conn->tls));
+		return -1;
+	} else if (s == TLS_WANT_POLLIN) {
+		return WANT_POLLIN;
+	} else if (s == TLS_WANT_POLLOUT) {
+		return WANT_POLLOUT;
+	}
+
+	conn->bufpos += s;
+	if (conn->bufpos == conn->bufsz)
+		return 0;
+	return WANT_POLLOUT;
+}
+
+static int
+http_close(struct http_connection *conn)
+{
+	if (conn->tls != NULL) {
+		switch (tls_close(conn->tls)) {
+		case TLS_WANT_POLLIN:
+			return WANT_POLLIN;
+		case TLS_WANT_POLLOUT:
+			return WANT_POLLOUT;
+		case 0:
+		case -1:
+			break;
+		}
+	}
+
+	return -1;
+}
+
+static int
 data_write(struct http_connection *conn)
 {
 	ssize_t s;
 	size_t bsz = conn->bufpos;
 
-	if (conn->filesize - conn->bytes < (off_t)bsz)
-		bsz = conn->filesize - conn->bytes;
+	if (conn->iosz < (off_t)bsz)
+		bsz = conn->iosz;
 
 	s = write(conn->outfd, conn->buf, bsz);
 	if (s == -1) {
-		warn("%s: Data write", http_info(conn->url));
+		warn("%s: data write", http_info(conn->url));
 		return -1;
 	}
 
 	conn->bufpos -= s;
-	conn->bytes += s;
+	conn->iosz -= s;
 	memmove(conn->buf, conn->buf + s, conn->bufpos);
 
-	if (conn->bytes == conn->filesize) {
+	/* check if regular file transfer is finished */
+	if (!conn->chunked && conn->iosz == 0) {
 		http_done(conn, HTTP_OK);
 		return 0;
 	}
 
-	if (conn->bufpos == 0)
+	/* all data written, switch back to read */
+	if (conn->bufpos == 0 || conn->iosz == 0)
 		return 0;
 
-	return WANT_POLLOUT;
-}
-
-static int
-chunk_write(struct http_connection *conn)
-{
-	ssize_t s;
-	size_t bsz = conn->bufpos;
-
-	if (bsz > conn->chunksz)
-		bsz = conn->chunksz;
-
-	s = write(conn->outfd, conn->buf, bsz);
-	if (s == -1) {
-		warn("%s: Chunk write", http_info(conn->url));
-		return -1;
-	}
-
-	conn->bufpos -= s;
-	conn->chunksz -= s;
-	conn->bytes += s;
-	memmove(conn->buf, conn->buf + s, conn->bufpos);
-
-	if (conn->bufpos == 0 || conn->chunksz == 0)
-		return 0;
-
+	/* still more data to write in buffer */
 	return WANT_POLLOUT;
 }
 
@@ -1026,10 +1016,7 @@ http_handle(struct http_connection *conn)
 	case STATE_RESPONSE_CHUNKED:
 		return http_read(conn);
 	case STATE_WRITE_DATA:
-		if (conn->chunked)
-			return chunk_write(conn);
-		else
-			return data_write(conn);
+		return data_write(conn);
 	case STATE_DONE:
 		return http_close(conn);
 	case STATE_FREE:
@@ -1100,6 +1087,8 @@ http_do(struct http_connection *conn)
 	switch (http_handle(conn)) {
 	case -1:
 		/* connection failure */
+		if (conn->state != STATE_DONE)
+			http_fail(conn->id);
 		http_free(conn);
 		return -1;
 	case 0:
@@ -1111,6 +1100,8 @@ http_do(struct http_connection *conn)
 			conn->events = POLLOUT;
 			break;
 		case -1:
+			if (conn->state != STATE_DONE)
+				http_fail(conn->id);
 			http_free(conn);
 			return -1;
 		}
@@ -1125,6 +1116,13 @@ http_do(struct http_connection *conn)
 	return 0;
 }
 
+static void
+gotpipe(int sig __attribute__((unused)))
+{
+	warnx("http: unexpected sigpipe\n");
+	kill(getpid(), SIGABRT);
+}
+
 void
 proc_http(char *bind_addr, int fd)
 {
@@ -1132,6 +1130,9 @@ proc_http(char *bind_addr, int fd)
 	struct pollfd pfds[MAX_CONNECTIONS + 1];
 	size_t i;
 	int active_connections;
+
+	/* XXX for now track possible SIGPIPE */
+	signal(SIGPIPE, gotpipe);
 
 	if (bind_addr != NULL) {
 		struct addrinfo hints, *res;
@@ -1161,6 +1162,7 @@ proc_http(char *bind_addr, int fd)
 		active_connections = 0;
 		for (i = 0; i < MAX_CONNECTIONS; i++) {
 			struct http_connection *conn = http_conns[i];
+
 			if (conn == NULL) {
 				pfds[i].fd = -1;
 				continue;
@@ -1184,32 +1186,6 @@ proc_http(char *bind_addr, int fd)
 
 		if (pfds[MAX_CONNECTIONS].revents & POLLHUP)
 			break;
-
-		if (pfds[MAX_CONNECTIONS].revents & POLLIN) {
-			struct http_connection *h;
-			size_t id;
-			int outfd;
-			char *uri;
-			char *mod;
-
-			outfd = io_recvfd(fd, &id, sizeof(id));
-			io_str_read(fd, &uri);
-			io_str_read(fd, &mod);
-
-			h = http_new(id, uri, mod, outfd);
-			if (h == NULL) {
-				close(outfd);
-				http_fail(id);
-			} else
-				for (i = 0; i < MAX_CONNECTIONS; i++) {
-					if (http_conns[i] != NULL)
-						continue;
-					http_conns[i] = h;
-					if (http_do(h) == -1)
-						http_conns[i] = NULL;
-					break;
-				}
-		}
 		if (pfds[MAX_CONNECTIONS].revents & POLLOUT) {
 			switch (msgbuf_write(&msgq)) {
 			case 0:
@@ -1229,6 +1205,29 @@ proc_http(char *bind_addr, int fd)
 
 			if (http_do(conn) == -1)
 				http_conns[i] = NULL;
+		}
+		if (pfds[MAX_CONNECTIONS].revents & POLLIN) {
+			struct http_connection *h;
+			size_t id;
+			int outfd;
+			char *uri;
+			char *mod;
+
+			outfd = io_recvfd(fd, &id, sizeof(id));
+			io_str_read(fd, &uri);
+			io_str_read(fd, &mod);
+
+			h = http_new(id, uri, mod, outfd);
+			if (h != NULL) {
+				for (i = 0; i < MAX_CONNECTIONS; i++) {
+					if (http_conns[i] != NULL)
+						continue;
+					http_conns[i] = h;
+					if (http_do(h) == -1)
+						http_conns[i] = NULL;
+					break;
+				}
+			}
 		}
 	}
 
