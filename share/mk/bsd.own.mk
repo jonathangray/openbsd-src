@@ -1,4 +1,4 @@
-#	$OpenBSD: bsd.own.mk,v 1.207 2021/01/29 16:38:20 kettenis Exp $
+#	$OpenBSD: bsd.own.mk,v 1.210 2021/05/02 22:32:31 naddy Exp $
 #	$NetBSD: bsd.own.mk,v 1.24 1996/04/13 02:08:09 thorpej Exp $
 
 # Host-specific overrides
@@ -15,18 +15,14 @@ SKEY?=		yes
 # Set `YP' to `yes' to build with support for NIS/YP.
 YP?=		yes
 
-CLANG_ARCH=aarch64 amd64 arm i386 mips64 mips64el powerpc powerpc64 sparc64
+CLANG_ARCH=aarch64 amd64 arm i386 mips64 mips64el powerpc powerpc64 riscv64 sparc64
 GCC4_ARCH=alpha hppa sh sparc64
 GCC3_ARCH=m88k
-LLD_ARCH=aarch64 amd64 arm i386 powerpc64
-
-.if ${MACHINE} == "sgi"
-GCC4_ARCH+=mips64
-.endif
+LLD_ARCH=aarch64 amd64 arm i386 powerpc64 riscv64
 
 # m88k: ?
-PIE_ARCH=aarch64 alpha amd64 arm hppa i386 mips64 mips64el powerpc powerpc64 sh sparc64
-STATICPIE_ARCH=aarch64 alpha amd64 arm hppa i386 mips64 mips64el powerpc powerpc64 sh sparc64
+PIE_ARCH=aarch64 alpha amd64 arm hppa i386 mips64 mips64el powerpc powerpc64 riscv64 sh sparc64
+STATICPIE_ARCH=aarch64 alpha amd64 arm hppa i386 mips64 mips64el powerpc powerpc64 riscv64 sh sparc64
 
 .for _arch in ${MACHINE_ARCH}
 .if !empty(GCC3_ARCH:M${_arch})
@@ -42,7 +38,7 @@ BUILD_GCC3?=yes
 .else
 BUILD_GCC3?=no
 .endif
-.if !empty(GCC4_ARCH:M${_arch}) || ${MACHINE_ARCH} == "amd64"
+.if !empty(GCC4_ARCH:M${_arch})
 BUILD_GCC4?=yes
 .else
 BUILD_GCC4?=no

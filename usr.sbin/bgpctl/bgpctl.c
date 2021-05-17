@@ -1,4 +1,4 @@
-/*	$OpenBSD: bgpctl.c,v 1.265 2021/02/16 08:30:21 claudio Exp $ */
+/*	$OpenBSD: bgpctl.c,v 1.267 2021/05/03 14:01:56 claudio Exp $ */
 
 /*
  * Copyright (c) 2003 Henning Brauer <henning@openbsd.org>
@@ -466,7 +466,7 @@ show(struct imsg *imsg, struct parse_result *res)
 			warnx("bad IMSG_CTL_SHOW_RIB_ATTR received");
 			break;
 		}
-		output->attr(imsg->data, ilen, res);
+		output->attr(imsg->data, ilen, res->flags);
 		break;
 	case IMSG_CTL_SHOW_RIB_MEM:
 		if (imsg->hdr.len < IMSG_HEADER_SIZE + sizeof(stats))
@@ -508,6 +508,20 @@ show(struct imsg *imsg, struct parse_result *res)
 	}
 
 	return (0);
+}
+
+time_t
+get_monotime(time_t t)
+{
+	struct timespec ts;
+
+	if (t == 0)
+		return -1;
+	if (clock_gettime(CLOCK_MONOTONIC, &ts) != 0)
+		err(1, "clock_gettime");
+	if (t > ts.tv_sec)	/* time in the future is not possible */
+		t = ts.tv_sec;
+	return (ts.tv_sec - t);
 }
 
 char *
@@ -596,16 +610,12 @@ fmt_timeframe(time_t t)
 const char *
 fmt_monotime(time_t t)
 {
-	struct timespec ts;
+	t = get_monotime(t);
 
-	if (t == 0)
+	if (t == -1)
 		return ("Never");
 
-	if (clock_gettime(CLOCK_MONOTONIC, &ts) != 0)
-		err(1, "clock_gettime");
-	if (t > ts.tv_sec)	/* time in the future is not possible */
-		t = ts.tv_sec;
-	return (fmt_timeframe(ts.tv_sec - t));
+	return (fmt_timeframe(t));
 }
 
 const char *
@@ -1181,7 +1191,7 @@ show_mrt_dump(struct mrt_rib *mr, struct mrt_peer *mp, void *arg)
 		if (req->flags & F_CTL_DETAIL) {
 			for (j = 0; j < mre->nattrs; j++)
 				output->attr(mre->attrs[j].attr,
-				    mre->attrs[j].attr_len, &res);
+				    mre->attrs[j].attr_len, req->flags);
 		}
 	}
 }
@@ -1565,7 +1575,7 @@ show_mrt_notification(u_char *p, u_int16_t len)
 
 /* XXX this function does not handle JSON output */
 static void
-show_mrt_update(u_char *p, u_int16_t len)
+show_mrt_update(u_char *p, u_int16_t len, int reqflags)
 {
 	struct bgpd_addr prefix;
 	int pos;
@@ -1634,7 +1644,7 @@ show_mrt_update(u_char *p, u_int16_t len)
 			attrlen += 1 + 2;
 		}
 
-		output->attr(p, attrlen, 0);
+		output->attr(p, attrlen, reqflags);
 		p += attrlen;
 		alen -= attrlen;
 		len -= attrlen;
@@ -1664,6 +1674,7 @@ show_mrt_msg(struct mrt_bgp_msg *mm, void *arg)
 	u_char *p;
 	u_int16_t len;
 	u_int8_t type;
+	struct ctl_show_rib_request *req = arg;
 
 	printf("%s %s[%u] -> ", fmt_time(&mm->time),
 	    log_addr(&mm->src), mm->src_as);
@@ -1717,7 +1728,7 @@ show_mrt_msg(struct mrt_bgp_msg *mm, void *arg)
 			printf("illegal length: %u byte\n", len);
 			return;
 		}
-		show_mrt_update(p, len - MSGSIZE_HEADER);
+		show_mrt_update(p, len - MSGSIZE_HEADER, req->flags);
 		break;
 	case KEEPALIVE:
 		printf("%s ", msgtypenames[type]);

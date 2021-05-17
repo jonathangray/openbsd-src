@@ -1,4 +1,4 @@
-/* $OpenBSD: clientloop.c,v 1.359 2021/03/19 02:22:34 djm Exp $ */
+/* $OpenBSD: clientloop.c,v 1.362 2021/05/04 22:53:52 dtucker Exp $ */
 /*
  * Author: Tatu Ylonen <ylo@cs.hut.fi>
  * Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
@@ -688,6 +688,8 @@ client_status_confirm(struct ssh *ssh, int type, Channel *c, void *ctx)
 		 * their stderr.
 		 */
 		if (tochan) {
+			debug3_f("channel %d: mux request: %s", c->self,
+			    cr->request_type);
 			if ((r = sshbuf_put(c->extended, errmsg,
 			    strlen(errmsg))) != 0)
 				fatal_fr(r, "sshbuf_put");
@@ -2138,11 +2140,14 @@ client_global_hostkeys_private_confirm(struct ssh *ssh, int type,
 		 */
 		use_kexsigtype = kexsigtype == KEY_RSA &&
 		    sshkey_type_plain(ctx->keys[i]->type) == KEY_RSA;
+		debug3_f("verify %s key %zu using %s sigalg",
+		    sshkey_type(ctx->keys[i]), i,
+		    use_kexsigtype ? ssh->kex->hostkey_alg : "default");
 		if ((r = sshkey_verify(ctx->keys[i], sig, siglen,
 		    sshbuf_ptr(signdata), sshbuf_len(signdata),
 		    use_kexsigtype ? ssh->kex->hostkey_alg : NULL, 0,
 		    NULL)) != 0) {
-			error_f("server gave bad signature for %s key %zu",
+			error_fr(r, "server gave bad signature for %s key %zu",
 			    sshkey_type(ctx->keys[i]), i);
 			goto out;
 		}

@@ -1,4 +1,4 @@
-/* $OpenBSD: syscall.c,v 1.6 2020/03/13 05:20:07 deraadt Exp $ */
+/* $OpenBSD: syscall.c,v 1.8 2021/05/16 03:30:33 jsg Exp $ */
 /*
  * Copyright (c) 2015 Dale Rahn <drahn@dalerahn.com>
  *
@@ -48,7 +48,7 @@ svc_handler(trapframe_t *frame)
 
 	/* Re-enable interrupts if they were enabled previously */
 	if (__predict_true((frame->tf_spsr & I_bit) == 0))
-		enable_interrupts();
+		intr_enable();
 
 	/* Skip over speculation-blocking barrier. */
 	frame->tf_elr += 8;
@@ -121,8 +121,7 @@ svc_handler(trapframe_t *frame)
 }
 
 void
-child_return(arg)
-	void *arg;
+child_return(void *arg)
 {
 	struct proc *p = arg;
 	struct trapframe *frame = p->p_addr->u_pcb.pcb_tf;

@@ -1,4 +1,4 @@
-/*	$OpenBSD: def.h,v 1.171 2021/03/25 12:46:11 lum Exp $	*/
+/*	$OpenBSD: def.h,v 1.176 2021/05/06 14:16:12 lum Exp $	*/
 
 /* This file is in the public domain. */
 
@@ -311,6 +311,18 @@ struct undo_rec {
 };
 
 /*
+ * Variable structure.
+ */
+struct varentry {
+	SLIST_ENTRY(varentry) entry;
+	char	 v_buf[BUFSIZE];
+	char	*v_name;
+	char	*v_vals;
+	int	 v_count;
+};
+SLIST_HEAD(vhead, varentry);
+
+/*
  * Previously from ttydef.h
  */
 #define STANDOUT_GLITCH			/* possible standout glitch	*/
@@ -363,6 +375,7 @@ int		 ask_makedir(void);
 
 /* dired.c */
 struct buffer	*dired_(char *);
+int		 dired_jump(int, int);
 int 		 do_dired(char *);
 
 /* file.c X */
@@ -582,7 +595,7 @@ int		 evalexpr(int, int);
 int		 evalbuffer(int, int);
 int		 evalfile(int, int);
 int		 load(const char *);
-int		 excline(char *, int);
+int		 excline(char *, int, int);
 char		*skipwhite(char *);
 
 /* help.c X */
@@ -672,6 +685,7 @@ int		 re_forwsearch(int, int);
 int		 re_backsearch(int, int);
 int		 re_searchagain(int, int);
 int		 re_queryrepl(int, int);
+int		 re_repl(int, int);
 int		 replstr(int, int);
 int		 setcasefold(int, int);
 int		 delmatchlines(int, int);
@@ -715,12 +729,13 @@ int		 compile(int, int);
 void		 bellinit(void);
 int		 toggleaudiblebell(int, int);
 int		 togglevisiblebell(int, int);
+int		 dobeep_num(const char *, int);
 int		 dobeep_msgs(const char *, const char *);
 int		 dobeep_msg(const char *);
 void		 dobeep(void);
 
 /* interpreter.c */
-int		 foundparen(char *, int);
+int		 foundparen(char *, int, int);
 void		 cleanup(void);
 
 /*
@@ -730,6 +745,7 @@ extern struct buffer	*bheadp;
 extern struct buffer	*curbp;
 extern struct mgwin	*curwp;
 extern struct mgwin	*wheadp;
+extern struct vhead	 varhead;
 extern int		 thisflag;
 extern int		 lastflag;
 extern int		 curgoal;

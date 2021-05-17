@@ -1,4 +1,4 @@
-/*	$OpenBSD: extern.h,v 1.62 2021/04/01 16:04:48 claudio Exp $ */
+/*	$OpenBSD: extern.h,v 1.64 2021/05/06 17:03:57 job Exp $ */
 /*
  * Copyright (c) 2019 Kristaps Dzonsons <kristaps@bsd.lv>
  *
@@ -188,6 +188,7 @@ struct roa {
 	char		*aki; /* AKI */
 	char		*ski; /* SKI */
 	char		*tal; /* basename of TAL for this cert */
+	time_t		 expires; /* do not use after */
 };
 
 /*
@@ -210,6 +211,7 @@ struct vrp {
 	char		*tal; /* basename of TAL for this cert */
 	enum afi	afi;
 	unsigned char	maxlength;
+	time_t		expires; /* transitive expiry moment */
 };
 /*
  * Tree of VRP sorted by afi, addr, maxlength and asid
@@ -541,6 +543,5 @@ int	mkpath(const char *);
 
 #define		RPKI_PATH_OUT_DIR	"/var/db/rpki-client"
 #define		RPKI_PATH_BASE_DIR	"/var/cache/rpki-client"
-#define		RPKI_VERSION		"OpenBSD"
 
 #endif /* ! EXTERN_H */

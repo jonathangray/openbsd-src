@@ -1,4 +1,4 @@
-/*	$OpenBSD: if_iwm.c,v 1.318 2021/03/12 16:27:10 stsp Exp $	*/
+/*	$OpenBSD: if_iwm.c,v 1.325 2021/05/16 15:10:20 deraadt Exp $	*/
 
 /*
  * Copyright (c) 2014, 2016 genua gmbh <info@genua.de>
@@ -144,6 +144,8 @@
 #include <net80211/ieee80211_amrr.h>
 #include <net80211/ieee80211_ra.h>
 #include <net80211/ieee80211_radiotap.h>
+#include <net80211/ieee80211_priv.h> /* for SEQ_LT */
+#undef DPRINTF /* defined in ieee80211_priv.h */
 
 #define DEVNAME(_s)	((_s)->sc_dev.dv_xname)
 
@@ -299,7 +301,8 @@ int	iwm_nic_rx_mq_init(struct iwm_softc *);
 int	iwm_nic_tx_init(struct iwm_softc *);
 int	iwm_nic_init(struct iwm_softc *);
 int	iwm_enable_ac_txq(struct iwm_softc *, int, int);
-int	iwm_enable_txq(struct iwm_softc *, int, int, int);
+int	iwm_enable_txq(struct iwm_softc *, int, int, int, int, uint8_t,
+	    uint16_t);
 int	iwm_post_alive(struct iwm_softc *);
 struct iwm_phy_db_entry *iwm_phy_db_get_section(struct iwm_softc *, uint16_t,
 	    uint16_t);
@@ -326,20 +329,25 @@ void	iwm_init_channel_map(struct iwm_softc *, const uint16_t * const,
 	    const uint8_t *nvm_channels, int nchan);
 int	iwm_mimo_enabled(struct iwm_softc *);
 void	iwm_setup_ht_rates(struct iwm_softc *);
-void	iwm_htprot_task(void *);
-void	iwm_update_htprot(struct ieee80211com *, struct ieee80211_node *);
+void	iwm_mac_ctxt_task(void *);
+void	iwm_updateprot(struct ieee80211com *);
+void	iwm_updateslot(struct ieee80211com *);
+void	iwm_updateedca(struct ieee80211com *);
+void	iwm_init_reorder_buffer(struct iwm_reorder_buffer *, uint16_t,
+	    uint16_t);
+void	iwm_clear_reorder_buffer(struct iwm_softc *, struct iwm_rxba_data *);
 int	iwm_ampdu_rx_start(struct ieee80211com *, struct ieee80211_node *,
 	    uint8_t);
 void	iwm_ampdu_rx_stop(struct ieee80211com *, struct ieee80211_node *,
 	    uint8_t);
-void	iwm_sta_rx_agg(struct iwm_softc *, struct ieee80211_node *, uint8_t,
-	    uint16_t, uint16_t, int);
-#ifdef notyet
+void	iwm_rx_ba_session_expired(void *);
+void	iwm_reorder_timer_expired(void *);
+int	iwm_sta_rx_agg(struct iwm_softc *, struct ieee80211_node *, uint8_t,
+	    uint16_t, uint16_t, int, int);
 int	iwm_ampdu_tx_start(struct ieee80211com *, struct ieee80211_node *,
 	    uint8_t);
 void	iwm_ampdu_tx_stop(struct ieee80211com *, struct ieee80211_node *,
 	    uint8_t);
-#endif
 void	iwm_ba_task(void *);
 
 int	iwm_parse_nvm_data(struct iwm_softc *, const uint16_t *,
@@ -372,13 +380,24 @@ int	iwm_rxmq_get_signal_strength(struct iwm_softc *, struct iwm_rx_mpdu_desc *);
 void	iwm_rx_rx_phy_cmd(struct iwm_softc *, struct iwm_rx_packet *,
 	    struct iwm_rx_data *);
 int	iwm_get_noise(const struct iwm_statistics_rx_non_phy *);
+int	iwm_rx_hwdecrypt(struct iwm_softc *, struct mbuf *, uint32_t,
+	    struct ieee80211_rxinfo *);
 int	iwm_ccmp_decap(struct iwm_softc *, struct mbuf *,
-	    struct ieee80211_node *);
+	    struct ieee80211_node *, struct ieee80211_rxinfo *);
 void	iwm_rx_frame(struct iwm_softc *, struct mbuf *, int, uint32_t, int, int,
 	    uint32_t, struct ieee80211_rxinfo *, struct mbuf_list *);
+void	iwm_ht_single_rate_control(struct iwm_softc *, struct ieee80211_node *,
+	    int, uint8_t, int);
 void	iwm_rx_tx_cmd_single(struct iwm_softc *, struct iwm_rx_packet *,
 	    struct iwm_node *, int, int);
+void	iwm_txd_done(struct iwm_softc *, struct iwm_tx_data *);
+void	iwm_txq_advance(struct iwm_softc *, struct iwm_tx_ring *, int);
 void	iwm_rx_tx_cmd(struct iwm_softc *, struct iwm_rx_packet *,
+	    struct iwm_rx_data *);
+void	iwm_clear_oactive(struct iwm_softc *, struct iwm_tx_ring *);
+void	iwm_ampdu_rate_control(struct iwm_softc *, struct ieee80211_node *,
+	    struct iwm_tx_ring *, int, uint16_t, uint16_t);
+void	iwm_rx_compressed_ba(struct iwm_softc *, struct iwm_rx_packet *,
 	    struct iwm_rx_data *);
 void	iwm_rx_bmiss(struct iwm_softc *, struct iwm_rx_packet *,
 	    struct iwm_rx_data *);
@@ -399,10 +418,12 @@ int	iwm_send_cmd_pdu_status(struct iwm_softc *, uint32_t, uint16_t,
 void	iwm_free_resp(struct iwm_softc *, struct iwm_host_cmd *);
 void	iwm_cmd_done(struct iwm_softc *, int, int, int);
 void	iwm_update_sched(struct iwm_softc *, int, int, uint8_t, uint16_t);
+void	iwm_reset_sched(struct iwm_softc *, int, int, uint8_t);
 const struct iwm_rate *iwm_tx_fill_cmd(struct iwm_softc *, struct iwm_node *,
 	    struct ieee80211_frame *, struct iwm_tx_cmd *);
 int	iwm_tx(struct iwm_softc *, struct mbuf *, struct ieee80211_node *, int);
 int	iwm_flush_tx_path(struct iwm_softc *, int);
+int	iwm_wait_tx_queues_empty(struct iwm_softc *);
 void	iwm_led_enable(struct iwm_softc *);
 void	iwm_led_disable(struct iwm_softc *);
 int	iwm_led_is_enabled(struct iwm_softc *);
@@ -422,6 +443,8 @@ int	iwm_enable_beacon_filter(struct iwm_softc *, struct iwm_node *);
 int	iwm_disable_beacon_filter(struct iwm_softc *);
 int	iwm_add_sta_cmd(struct iwm_softc *, struct iwm_node *, int);
 int	iwm_add_aux_sta(struct iwm_softc *);
+int	iwm_drain_sta(struct iwm_softc *sc, struct iwm_node *, int);
+int	iwm_flush_sta(struct iwm_softc *, struct iwm_node *);
 int	iwm_rm_sta_cmd(struct iwm_softc *, struct iwm_node *);
 uint16_t iwm_scan_rx_chain(struct iwm_softc *);
 uint32_t iwm_scan_rate_n_flags(struct iwm_softc *, int, int);
@@ -483,12 +506,27 @@ void	iwm_start(struct ifnet *);
 void	iwm_stop(struct ifnet *);
 void	iwm_watchdog(struct ifnet *);
 int	iwm_ioctl(struct ifnet *, u_long, caddr_t);
-#ifdef IWM_DEBUG
+#if 1
 const char *iwm_desc_lookup(uint32_t);
 void	iwm_nic_error(struct iwm_softc *);
+void	iwm_dump_driver_status(struct iwm_softc *);
 void	iwm_nic_umac_error(struct iwm_softc *);
 #endif
 void	iwm_rx_mpdu(struct iwm_softc *, struct mbuf *, void *, size_t,
+	    struct mbuf_list *);
+void	iwm_flip_address(uint8_t *);
+int	iwm_detect_duplicate(struct iwm_softc *, struct mbuf *,
+	    struct iwm_rx_mpdu_desc *, struct ieee80211_rxinfo *);
+int	iwm_is_sn_less(uint16_t, uint16_t, uint16_t);
+void	iwm_release_frames(struct iwm_softc *, struct ieee80211_node *,
+	    struct iwm_rxba_data *, struct iwm_reorder_buffer *, uint16_t,
+	    struct mbuf_list *);
+int	iwm_oldsn_workaround(struct iwm_softc *, struct ieee80211_node *,
+	    int, struct iwm_reorder_buffer *, uint32_t, uint32_t);
+int	iwm_rx_reorder(struct iwm_softc *, struct mbuf *, int,
+	    struct iwm_rx_mpdu_desc *, int, int, uint32_t,
+	    struct ieee80211_rxinfo *, struct mbuf_list *);
+void	iwm_rx_mpdu_mq(struct iwm_softc *, struct mbuf *, void *, size_t,
 	    struct mbuf_list *);
 int	iwm_rx_pkt_valid(struct iwm_rx_packet *);
 void	iwm_rx_pkt(struct iwm_softc *, struct iwm_rx_data *,
@@ -1306,17 +1344,17 @@ iwm_alloc_tx_ring(struct iwm_softc *sc, struct iwm_tx_ring *ring, int qid)
 	 * The command is queue 0 (sc->txq[0]), and 4 mgmt/data frame queues
 	 * are sc->tqx[IWM_DQA_MIN_MGMT_QUEUE + ac], i.e. sc->txq[5:8],
 	 * in order to provide one queue per EDCA category.
+	 * Tx aggregation requires additional queues, one queue per TID for
+	 * which aggregation is enabled. We map TID 0-7 to sc->txq[10:17].
 	 *
-	 * In non-DQA mode, we use rings 0 through 9 (0-3 are EDCA, 9 is cmd).
-	 *
-	 * Tx aggregation will require additional queues (one queue per TID
-	 * for which aggregation is enabled) but we do not implement this yet.
+	 * In non-DQA mode, we use rings 0 through 9 (0-3 are EDCA, 9 is cmd),
+	 * and Tx aggregation is not supported.
 	 *
 	 * Unfortunately, we cannot tell if DQA will be used until the
 	 * firmware gets loaded later, so just allocate sufficient rings
 	 * in order to satisfy both cases.
 	 */
-	if (qid > IWM_CMD_QUEUE)
+	if (qid > IWM_LAST_AGG_TX_QUEUE)
 		return 0;
 
 	size = IWM_TX_RING_COUNT * sizeof(struct iwm_device_cmd);
@@ -1380,6 +1418,7 @@ iwm_reset_tx_ring(struct iwm_softc *sc, struct iwm_tx_ring *ring)
 	bus_dmamap_sync(sc->sc_dmat, ring->desc_dma.map, 0,
 	    ring->desc_dma.size, BUS_DMASYNC_PREWRITE);
 	sc->qfullmsk &= ~(1 << ring->qid);
+	sc->qenablemsk &= ~(1 << ring->qid);
 	/* 7000 family NICs are locked while commands are in progress. */
 	if (ring->qid == sc->cmdqid && ring->queued > 0) {
 		if (sc->sc_device_family == IWM_DEVICE_FAMILY_7000)
@@ -2200,6 +2239,18 @@ iwm_nic_init(struct iwm_softc *sc)
 	return 0;
 }
 
+/* Map a TID to an ieee80211_edca_ac category. */
+const uint8_t iwm_tid_to_ac[IWM_MAX_TID_COUNT] = {
+	EDCA_AC_BE,
+	EDCA_AC_BK,
+	EDCA_AC_BK,
+	EDCA_AC_BE,
+	EDCA_AC_VI,
+	EDCA_AC_VI,
+	EDCA_AC_VO,
+	EDCA_AC_VO,
+};
+
 /* Map ieee80211_edca_ac categories to firmware Tx FIFO. */
 const uint8_t iwm_ac_to_tx_fifo[] = {
 	IWM_TX_FIFO_BE,
@@ -2250,21 +2301,41 @@ iwm_enable_ac_txq(struct iwm_softc *sc, int qid, int fifo)
 }
 
 int
-iwm_enable_txq(struct iwm_softc *sc, int sta_id, int qid, int fifo)
+iwm_enable_txq(struct iwm_softc *sc, int sta_id, int qid, int fifo,
+    int aggregate, uint8_t tid, uint16_t ssn)
 {
+	struct iwm_tx_ring *ring = &sc->txq[qid];
 	struct iwm_scd_txq_cfg_cmd cmd;
-	int err;
+	int err, idx, scd_bug;
 
 	iwm_nic_assert_locked(sc);
 
-	IWM_WRITE(sc, IWM_HBUS_TARG_WRPTR, qid << 8 | 0);
+	/*
+	 * If we need to move the SCD write pointer by steps of
+	 * 0x40, 0x80 or 0xc0, it gets stuck.
+	 * This is really ugly, but this is the easiest way out for
+	 * this sad hardware issue.
+	 * This bug has been fixed on devices 9000 and up.
+	 */
+	scd_bug = !sc->sc_mqrx_supported &&
+		!((ssn - ring->cur) & 0x3f) &&
+		(ssn != ring->cur);
+	if (scd_bug)
+		ssn = (ssn + 1) & 0xfff;
+
+	idx = IWM_AGG_SSN_TO_TXQ_IDX(ssn);
+	IWM_WRITE(sc, IWM_HBUS_TARG_WRPTR, qid << 8 | idx);
+	ring->cur = idx;
+	ring->tail = idx;
 
 	memset(&cmd, 0, sizeof(cmd));
+	cmd.tid = tid;
 	cmd.scd_queue = qid;
 	cmd.enable = 1;
 	cmd.sta_id = sta_id;
 	cmd.tx_fifo = fifo;
-	cmd.aggregate = 0;
+	cmd.aggregate = aggregate;
+	cmd.ssn = htole16(ssn);
 	cmd.window = IWM_FRAME_LIMIT;
 
 	err = iwm_send_cmd_pdu(sc, IWM_SCD_QUEUE_CFG, 0,
@@ -2272,6 +2343,7 @@ iwm_enable_txq(struct iwm_softc *sc, int sta_id, int qid, int fifo)
 	if (err)
 		return err;
 
+	sc->qenablemsk |= (1 << qid);
 	return 0;
 }
 
@@ -2902,11 +2974,139 @@ iwm_setup_ht_rates(struct iwm_softc *sc)
 		ic->ic_sup_mcs[1] = 0xff;	/* MCS 8-15 */
 }
 
-#define IWM_MAX_RX_BA_SESSIONS 16
+void
+iwm_init_reorder_buffer(struct iwm_reorder_buffer *reorder_buf,
+    uint16_t ssn, uint16_t buf_size)
+{
+	reorder_buf->head_sn = ssn;
+	reorder_buf->num_stored = 0;
+	reorder_buf->buf_size = buf_size;
+	reorder_buf->last_amsdu = 0;
+	reorder_buf->last_sub_index = 0;
+	reorder_buf->removed = 0;
+	reorder_buf->valid = 0;
+	reorder_buf->consec_oldsn_drops = 0;
+	reorder_buf->consec_oldsn_ampdu_gp2 = 0;
+	reorder_buf->consec_oldsn_prev_drop = 0;
+}
 
 void
+iwm_clear_reorder_buffer(struct iwm_softc *sc, struct iwm_rxba_data *rxba)
+{
+	int i;
+	struct iwm_reorder_buffer *reorder_buf = &rxba->reorder_buf;
+	struct iwm_reorder_buf_entry *entry;
+
+	for (i = 0; i < reorder_buf->buf_size; i++) {
+		entry = &rxba->entries[i];
+		ml_purge(&entry->frames);
+		timerclear(&entry->reorder_time);
+	}
+
+	reorder_buf->removed = 1;
+	timeout_del(&reorder_buf->reorder_timer);
+	timerclear(&rxba->last_rx);
+	timeout_del(&rxba->session_timer);
+	rxba->baid = IWM_RX_REORDER_DATA_INVALID_BAID;
+}
+
+#define RX_REORDER_BUF_TIMEOUT_MQ_USEC (100000ULL)
+
+void
+iwm_rx_ba_session_expired(void *arg)
+{
+	struct iwm_rxba_data *rxba = arg;
+	struct iwm_softc *sc = rxba->sc;
+	struct ieee80211com *ic = &sc->sc_ic;
+	struct ieee80211_node *ni = ic->ic_bss;
+	struct timeval now, timeout, expiry;
+	int s;
+
+	s = splnet();
+	if ((sc->sc_flags & IWM_FLAG_SHUTDOWN) == 0 &&
+	    ic->ic_state == IEEE80211_S_RUN &&
+	    rxba->baid != IWM_RX_REORDER_DATA_INVALID_BAID) {
+		getmicrouptime(&now);
+		USEC_TO_TIMEVAL(RX_REORDER_BUF_TIMEOUT_MQ_USEC, &timeout);
+		timeradd(&rxba->last_rx, &timeout, &expiry);
+		if (timercmp(&now, &expiry, <)) {
+			timeout_add_usec(&rxba->session_timer, rxba->timeout);
+		} else {
+			ic->ic_stats.is_ht_rx_ba_timeout++;
+			ieee80211_delba_request(ic, ni,
+			    IEEE80211_REASON_TIMEOUT, 0, rxba->tid);
+		}
+	}
+	splx(s);
+}
+
+void
+iwm_reorder_timer_expired(void *arg)
+{
+	struct mbuf_list ml = MBUF_LIST_INITIALIZER();
+	struct iwm_reorder_buffer *buf = arg;
+	struct iwm_rxba_data *rxba = iwm_rxba_data_from_reorder_buf(buf);
+	struct iwm_reorder_buf_entry *entries = &rxba->entries[0];
+	struct iwm_softc *sc = rxba->sc;
+	struct ieee80211com *ic = &sc->sc_ic;
+	struct ieee80211_node *ni = ic->ic_bss;
+	int i, s;
+	uint16_t sn = 0, index = 0;
+	int expired = 0;
+	int cont = 0;
+	struct timeval now, timeout, expiry;
+
+	if (!buf->num_stored || buf->removed)
+		return;
+
+	s = splnet();
+	getmicrouptime(&now);
+	USEC_TO_TIMEVAL(RX_REORDER_BUF_TIMEOUT_MQ_USEC, &timeout);
+
+	for (i = 0; i < buf->buf_size ; i++) {
+		index = (buf->head_sn + i) % buf->buf_size;
+
+		if (ml_empty(&entries[index].frames)) {
+			/*
+			 * If there is a hole and the next frame didn't expire
+			 * we want to break and not advance SN.
+			 */
+			cont = 0;
+			continue;
+		}
+		timeradd(&entries[index].reorder_time, &timeout, &expiry);
+		if (!cont && timercmp(&now, &expiry, <))
+			break;
+
+		expired = 1;
+		/* continue until next hole after this expired frame */
+		cont = 1;
+		sn = (buf->head_sn + (i + 1)) & 0xfff;
+	}
+
+	if (expired) {
+		/* SN is set to the last expired frame + 1 */
+		iwm_release_frames(sc, ni, rxba, buf, sn, &ml);
+		if_input(&sc->sc_ic.ic_if, &ml);
+		ic->ic_stats.is_ht_rx_ba_window_gap_timeout++;
+	} else {
+		/*
+		 * If no frame expired and there are stored frames, index is now
+		 * pointing to the first unexpired frame - modify reorder timeout
+		 * accordingly.
+		 */
+		timeout_add_usec(&buf->reorder_timer,
+		    RX_REORDER_BUF_TIMEOUT_MQ_USEC);
+	}
+
+	splx(s);
+}
+
+#define IWM_MAX_RX_BA_SESSIONS 16
+
+int
 iwm_sta_rx_agg(struct iwm_softc *sc, struct ieee80211_node *ni, uint8_t tid,
-    uint16_t ssn, uint16_t winsize, int start)
+    uint16_t ssn, uint16_t winsize, int timeout_val, int start)
 {
 	struct ieee80211com *ic = &sc->sc_ic;
 	struct iwm_add_sta_cmd cmd;
@@ -2914,10 +3114,15 @@ iwm_sta_rx_agg(struct iwm_softc *sc, struct ieee80211_node *ni, uint8_t tid,
 	int err, s;
 	uint32_t status;
 	size_t cmdsize;
+	struct iwm_rxba_data *rxba = NULL;
+	uint8_t baid = 0;
+
+	s = splnet();
 
 	if (start && sc->sc_rx_ba_sessions >= IWM_MAX_RX_BA_SESSIONS) {
 		ieee80211_addba_req_refuse(ic, ni, tid);
-		return;
+		splx(s);
+		return 0;
 	}
 
 	memset(&cmd, 0, sizeof(cmd));
@@ -2944,22 +3149,79 @@ iwm_sta_rx_agg(struct iwm_softc *sc, struct ieee80211_node *ni, uint8_t tid,
 		cmdsize = sizeof(struct iwm_add_sta_cmd_v7);
 	err = iwm_send_cmd_pdu_status(sc, IWM_ADD_STA, cmdsize, &cmd,
 	    &status);
+	if (!err && (status & IWM_ADD_STA_STATUS_MASK) != IWM_ADD_STA_SUCCESS)
+		err = EIO;
+	if (err) {
+		if (start)
+			ieee80211_addba_req_refuse(ic, ni, tid);
+		splx(s);
+		return err;
+	}
 
-	s = splnet();
-	if (!err && (status & IWM_ADD_STA_STATUS_MASK) == IWM_ADD_STA_SUCCESS) {
+	if (sc->sc_mqrx_supported) {
+		/* Deaggregation is done in hardware. */
 		if (start) {
-			sc->sc_rx_ba_sessions++;
-			ieee80211_addba_req_accept(ic, ni, tid);
-		} else if (sc->sc_rx_ba_sessions > 0)
-			sc->sc_rx_ba_sessions--;
-	} else if (start)
-		ieee80211_addba_req_refuse(ic, ni, tid);
+			if (!(status & IWM_ADD_STA_BAID_VALID_MASK)) {
+				ieee80211_addba_req_refuse(ic, ni, tid);
+				splx(s);
+				return EIO;
+			}
+			baid = (status & IWM_ADD_STA_BAID_MASK) >>
+			    IWM_ADD_STA_BAID_SHIFT;
+			if (baid == IWM_RX_REORDER_DATA_INVALID_BAID ||
+			    baid >= nitems(sc->sc_rxba_data)) {
+				ieee80211_addba_req_refuse(ic, ni, tid);
+				splx(s);
+				return EIO;
+			}
+			rxba = &sc->sc_rxba_data[baid];
+			if (rxba->baid != IWM_RX_REORDER_DATA_INVALID_BAID) {
+				ieee80211_addba_req_refuse(ic, ni, tid);
+				splx(s);
+				return 0;
+			}
+			rxba->sta_id = IWM_STATION_ID;
+			rxba->tid = tid;
+			rxba->baid = baid;
+			rxba->timeout = timeout_val;
+			getmicrouptime(&rxba->last_rx);
+			iwm_init_reorder_buffer(&rxba->reorder_buf, ssn,
+			    winsize);
+			if (timeout_val != 0) {
+				struct ieee80211_rx_ba *ba;
+				timeout_add_usec(&rxba->session_timer,
+				    timeout_val);
+				/* XXX disable net80211's BA timeout handler */
+				ba = &ni->ni_rx_ba[tid];
+				ba->ba_timeout_val = 0;
+			}
+		} else {
+			int i;
+			for (i = 0; i < nitems(sc->sc_rxba_data); i++) {
+				rxba = &sc->sc_rxba_data[i];
+				if (rxba->baid ==
+				    IWM_RX_REORDER_DATA_INVALID_BAID)
+					continue;
+				if (rxba->tid != tid)
+					continue;
+				iwm_clear_reorder_buffer(sc, rxba);
+				break;
+			}
+		}
+	}
+
+	if (start) {
+		sc->sc_rx_ba_sessions++;
+		ieee80211_addba_req_accept(ic, ni, tid);
+	} else if (sc->sc_rx_ba_sessions > 0)
+		sc->sc_rx_ba_sessions--;
 
 	splx(s);
+	return 0;
 }
 
 void
-iwm_htprot_task(void *arg)
+iwm_mac_ctxt_task(void *arg)
 {
 	struct iwm_softc *sc = arg;
 	struct ieee80211com *ic = &sc->sc_ic;
@@ -2972,27 +3234,162 @@ iwm_htprot_task(void *arg)
 		return;
 	}
 
-	/* This call updates HT protection based on in->in_ni.ni_htop1. */
 	err = iwm_mac_ctxt_cmd(sc, in, IWM_FW_CTXT_ACTION_MODIFY, 1);
 	if (err)
-		printf("%s: could not change HT protection: error %d\n",
-		    DEVNAME(sc), err);
+		printf("%s: failed to update MAC\n", DEVNAME(sc));
 
 	refcnt_rele_wake(&sc->task_refs);
 	splx(s);
 }
 
-/*
- * This function is called by upper layer when HT protection settings in
- * beacons have changed.
- */
 void
-iwm_update_htprot(struct ieee80211com *ic, struct ieee80211_node *ni)
+iwm_updateprot(struct ieee80211com *ic)
 {
 	struct iwm_softc *sc = ic->ic_softc;
 
-	/* assumes that ni == ic->ic_bss */
-	iwm_add_task(sc, systq, &sc->htprot_task);
+	if (ic->ic_state == IEEE80211_S_RUN)
+		iwm_add_task(sc, systq, &sc->mac_ctxt_task);
+}
+
+void
+iwm_updateslot(struct ieee80211com *ic)
+{
+	struct iwm_softc *sc = ic->ic_softc;
+
+	if (ic->ic_state == IEEE80211_S_RUN)
+		iwm_add_task(sc, systq, &sc->mac_ctxt_task);
+}
+
+void
+iwm_updateedca(struct ieee80211com *ic)
+{
+	struct iwm_softc *sc = ic->ic_softc;
+
+	if (ic->ic_state == IEEE80211_S_RUN)
+		iwm_add_task(sc, systq, &sc->mac_ctxt_task);
+}
+
+int
+iwm_sta_tx_agg(struct iwm_softc *sc, struct ieee80211_node *ni, uint8_t tid,
+    uint16_t ssn, uint16_t winsize, int start)
+{
+	struct iwm_add_sta_cmd cmd;
+	struct ieee80211com *ic = &sc->sc_ic;
+	struct iwm_node *in = (void *)ni;
+	int qid = IWM_FIRST_AGG_TX_QUEUE + tid;
+	struct iwm_tx_ring *ring;
+	struct ieee80211_tx_ba *ba;
+	enum ieee80211_edca_ac ac;
+	int fifo;
+	uint32_t status;
+	int err;
+	size_t cmdsize;
+
+	/* Ensure we can map this TID to an aggregation queue. */
+	if (tid >= IWM_MAX_TID_COUNT || qid > IWM_LAST_AGG_TX_QUEUE)
+		return ENOSPC;
+
+	if (start) {
+		if ((sc->tx_ba_queue_mask & (1 << qid)) != 0)
+			return 0;
+	} else {
+		if ((sc->tx_ba_queue_mask & (1 << qid)) == 0)
+			return 0;
+	}
+
+	ring = &sc->txq[qid];
+	ba = &ni->ni_tx_ba[tid];
+	ac = iwm_tid_to_ac[tid];
+	fifo = iwm_ac_to_tx_fifo[ac];
+
+	memset(&cmd, 0, sizeof(cmd));
+
+	cmd.sta_id = IWM_STATION_ID;
+	cmd.mac_id_n_color = htole32(IWM_FW_CMD_ID_AND_COLOR(in->in_id,
+	    in->in_color));
+	cmd.add_modify = IWM_STA_MODE_MODIFY;
+
+	if (start) {
+		/* Enable Tx aggregation for this queue. */
+		in->tid_disable_ampdu &= ~(1 << tid);
+		in->tfd_queue_msk |= (1 << qid);
+	} else {
+		in->tid_disable_ampdu |= (1 << tid);
+		/* Queue remains enabled in the TFD queue mask. */
+		err = iwm_flush_sta(sc, in);
+		if (err)
+			return err;
+	}
+
+	cmd.tfd_queue_msk |= htole32(in->tfd_queue_msk);
+	cmd.tid_disable_tx = htole16(in->tid_disable_ampdu);
+	cmd.modify_mask = (IWM_STA_MODIFY_QUEUES |
+	    IWM_STA_MODIFY_TID_DISABLE_TX);
+
+	if (start && (sc->qenablemsk & (1 << qid)) == 0) {
+		if (!iwm_nic_lock(sc)) {
+			if (start)
+				ieee80211_addba_resp_refuse(ic, ni, tid, 
+				    IEEE80211_STATUS_UNSPECIFIED);
+			return EBUSY;
+		}
+		err = iwm_enable_txq(sc, IWM_STATION_ID, qid, fifo, 1, tid,
+		    ssn);
+		iwm_nic_unlock(sc);
+		if (err) {
+			printf("%s: could not enable Tx queue %d (error %d)\n",
+			    DEVNAME(sc), qid, err);
+			if (start)
+				ieee80211_addba_resp_refuse(ic, ni, tid, 
+				    IEEE80211_STATUS_UNSPECIFIED);
+			return err;
+		}
+		/*
+		 * If iwm_enable_txq() employed the SCD hardware bug
+		 * workaround we must skip the frame with seqnum SSN.
+		 */
+		if (ring->cur != IWM_AGG_SSN_TO_TXQ_IDX(ssn)) {
+			ssn = (ssn + 1) & 0xfff;
+			KASSERT(ring->cur == IWM_AGG_SSN_TO_TXQ_IDX(ssn));
+			ieee80211_output_ba_move_window(ic, ni, tid, ssn);
+			ni->ni_qos_txseqs[tid] = ssn;
+		}
+	}
+
+	if (isset(sc->sc_ucode_api, IWM_UCODE_TLV_API_STA_TYPE))
+		cmdsize = sizeof(cmd);
+	else
+		cmdsize = sizeof(struct iwm_add_sta_cmd_v7);
+
+	status = 0;
+	err = iwm_send_cmd_pdu_status(sc, IWM_ADD_STA, cmdsize, &cmd, &status);
+	if (!err && (status & IWM_ADD_STA_STATUS_MASK) != IWM_ADD_STA_SUCCESS)
+		err = EIO;
+	if (err) {
+		printf("%s: could not update sta (error %d)\n",
+		    DEVNAME(sc), err);
+		if (start)
+			ieee80211_addba_resp_refuse(ic, ni, tid, 
+			    IEEE80211_STATUS_UNSPECIFIED);
+		return err;
+	}
+
+	if (start) {
+		sc->tx_ba_queue_mask |= (1 << qid);
+		ieee80211_addba_resp_accept(ic, ni, tid);
+	} else {
+		sc->tx_ba_queue_mask &= ~(1 << qid);
+
+		/*
+		 * Clear pending frames but keep the queue enabled.
+		 * Firmware panics if we disable the queue here.
+		 */
+		iwm_txq_advance(sc, ring,
+		    IWM_AGG_SSN_TO_TXQ_IDX(ba->ba_winend));
+		iwm_clear_oactive(sc, ring);
+	}
+
+	return 0;
 }
 
 void
@@ -3002,18 +3399,42 @@ iwm_ba_task(void *arg)
 	struct ieee80211com *ic = &sc->sc_ic;
 	struct ieee80211_node *ni = ic->ic_bss;
 	int s = splnet();
+	int tid, err = 0;
 
-	if (sc->sc_flags & IWM_FLAG_SHUTDOWN) {
-		refcnt_rele_wake(&sc->task_refs);
-		splx(s);
-		return;
+	for (tid = 0; tid < IWM_MAX_TID_COUNT && !err; tid++) {
+		if (sc->sc_flags & IWM_FLAG_SHUTDOWN)
+			break;
+		if (sc->ba_rx.start_tidmask & (1 << tid)) {
+			struct ieee80211_rx_ba *ba = &ni->ni_rx_ba[tid];
+			err = iwm_sta_rx_agg(sc, ni, tid, ba->ba_winstart,
+			    ba->ba_winsize, ba->ba_timeout_val, 1);
+			sc->ba_rx.start_tidmask &= ~(1 << tid);
+		} else if (sc->ba_rx.stop_tidmask & (1 << tid)) {
+			err = iwm_sta_rx_agg(sc, ni, tid, 0, 0, 0, 0);
+			sc->ba_rx.stop_tidmask &= ~(1 << tid);
+		}
 	}
-	
-	if (sc->ba_start)
-		iwm_sta_rx_agg(sc, ni, sc->ba_tid, sc->ba_ssn,
-		    sc->ba_winsize, 1);
-	else
-		iwm_sta_rx_agg(sc, ni, sc->ba_tid, 0, 0, 0);
+
+	for (tid = 0; tid < IWM_MAX_TID_COUNT && !err; tid++) {
+		if (sc->sc_flags & IWM_FLAG_SHUTDOWN)
+			break;
+		if (sc->ba_tx.start_tidmask & (1 << tid)) {
+			struct ieee80211_tx_ba *ba = &ni->ni_tx_ba[tid];
+			err = iwm_sta_tx_agg(sc, ni, tid, ba->ba_winstart,
+			    ba->ba_winsize, 1);
+			sc->ba_tx.start_tidmask &= ~(1 << tid);
+		} else if (sc->ba_tx.stop_tidmask & (1 << tid)) {
+			err = iwm_sta_tx_agg(sc, ni, tid, 0, 0, 0);
+			sc->ba_tx.stop_tidmask &= ~(1 << tid);
+		}
+	}
+
+	/*
+	 * We "recover" from failure to start or stop a BA session
+	 * by resetting the device.
+	 */
+	if (err && (sc->sc_flags & IWM_FLAG_SHUTDOWN) == 0)
+		task_add(systq, &sc->init_task);
 
 	refcnt_rele_wake(&sc->task_refs);
 	splx(s);
@@ -3027,16 +3448,16 @@ int
 iwm_ampdu_rx_start(struct ieee80211com *ic, struct ieee80211_node *ni,
     uint8_t tid)
 {
-	struct ieee80211_rx_ba *ba = &ni->ni_rx_ba[tid];
 	struct iwm_softc *sc = IC2IFP(ic)->if_softc;
 
-	if (sc->sc_rx_ba_sessions >= IWM_MAX_RX_BA_SESSIONS)
+	if (sc->sc_rx_ba_sessions >= IWM_MAX_RX_BA_SESSIONS ||
+	    tid > IWM_MAX_TID_COUNT)
 		return ENOSPC;
 
-	sc->ba_start = 1;
-	sc->ba_tid = tid;
-	sc->ba_ssn = htole16(ba->ba_winstart);
-	sc->ba_winsize = htole16(ba->ba_winsize);
+	if (sc->ba_rx.start_tidmask & (1 << tid))
+		return EBUSY;
+
+	sc->ba_rx.start_tidmask |= (1 << tid);
 	iwm_add_task(sc, systq, &sc->ba_task);
 
 	return EBUSY;
@@ -3052,8 +3473,62 @@ iwm_ampdu_rx_stop(struct ieee80211com *ic, struct ieee80211_node *ni,
 {
 	struct iwm_softc *sc = IC2IFP(ic)->if_softc;
 
-	sc->ba_start = 0;
-	sc->ba_tid = tid;
+	if (tid > IWM_MAX_TID_COUNT || sc->ba_rx.stop_tidmask & (1 << tid))
+		return;
+
+	sc->ba_rx.stop_tidmask |= (1 << tid);
+	iwm_add_task(sc, systq, &sc->ba_task);
+}
+
+int
+iwm_ampdu_tx_start(struct ieee80211com *ic, struct ieee80211_node *ni,
+    uint8_t tid)
+{
+	struct iwm_softc *sc = IC2IFP(ic)->if_softc;
+	struct ieee80211_tx_ba *ba = &ni->ni_tx_ba[tid];
+	int qid = IWM_FIRST_AGG_TX_QUEUE + tid;
+
+	/* We only implement Tx aggregation with DQA-capable firmware. */
+	if (!isset(sc->sc_enabled_capa, IWM_UCODE_TLV_CAPA_DQA_SUPPORT))
+		return ENOTSUP;
+
+	/* Ensure we can map this TID to an aggregation queue. */
+	if (tid >= IWM_MAX_TID_COUNT)
+		return EINVAL;
+
+	/* We only support a fixed Tx aggregation window size, for now. */
+	if (ba->ba_winsize != IWM_FRAME_LIMIT)
+		return ENOTSUP;
+
+	/* Is firmware already using Tx aggregation on this queue? */
+	if ((sc->tx_ba_queue_mask & (1 << qid)) != 0)
+		return ENOSPC;
+
+	/* Are we already processing an ADDBA request? */
+	if (sc->ba_tx.start_tidmask & (1 << tid))
+		return EBUSY;
+
+	sc->ba_tx.start_tidmask |= (1 << tid);
+	iwm_add_task(sc, systq, &sc->ba_task);
+
+	return EBUSY;
+}
+
+void
+iwm_ampdu_tx_stop(struct ieee80211com *ic, struct ieee80211_node *ni,
+    uint8_t tid)
+{
+	struct iwm_softc *sc = IC2IFP(ic)->if_softc;
+	int qid = IWM_FIRST_AGG_TX_QUEUE + tid;
+
+	if (tid > IWM_MAX_TID_COUNT || sc->ba_tx.stop_tidmask & (1 << tid))
+		return;
+
+	/* Is firmware currently using Tx aggregation on this queue? */
+	if ((sc->tx_ba_queue_mask & (1 << qid)) == 0)
+		return;
+
+	sc->ba_tx.stop_tidmask |= (1 << tid);
 	iwm_add_task(sc, systq, &sc->ba_task);
 }
 
@@ -3255,7 +3730,7 @@ iwm_parse_nvm_sections(struct iwm_softc *sc, struct iwm_nvm_section *sections)
 		phy_sku = (const uint16_t *)
 		    sections[IWM_NVM_SECTION_TYPE_PHY_SKU].data;
 	} else {
-		panic("unknown device family %d\n", sc->sc_device_family);
+		panic("unknown device family %d", sc->sc_device_family);
 	}
 
 	sw = (const uint16_t *)sections[IWM_NVM_SECTION_TYPE_SW].data;
@@ -3907,7 +4382,8 @@ iwm_get_noise(const struct iwm_statistics_rx_non_phy *stats)
 }
 
 int
-iwm_ccmp_decap(struct iwm_softc *sc, struct mbuf *m, struct ieee80211_node *ni)
+iwm_ccmp_decap(struct iwm_softc *sc, struct mbuf *m, struct ieee80211_node *ni,
+    struct ieee80211_rxinfo *rxi)
 {
 	struct ieee80211com *ic = &sc->sc_ic;
 	struct ieee80211_key *k = &ni->ni_pairwise_key;
@@ -3936,7 +4412,12 @@ iwm_ccmp_decap(struct iwm_softc *sc, struct mbuf *m, struct ieee80211_node *ni)
 	     (uint64_t)ivp[5] << 24 |
 	     (uint64_t)ivp[6] << 32 |
 	     (uint64_t)ivp[7] << 40;
-	if (pn <= *prsc) {
+	if (rxi->rxi_flags & IEEE80211_RXI_HWDEC_SAME_PN) {
+		if (pn < *prsc) {
+			ic->ic_stats.is_ccmp_replays++;
+			return 1;
+		}
+	} else if (pn <= *prsc) {
 		ic->ic_stats.is_ccmp_replays++;
 		return 1;
 	}
@@ -3953,6 +4434,60 @@ iwm_ccmp_decap(struct iwm_softc *sc, struct mbuf *m, struct ieee80211_node *ni)
 	return 0;
 }
 
+int
+iwm_rx_hwdecrypt(struct iwm_softc *sc, struct mbuf *m, uint32_t rx_pkt_status,
+    struct ieee80211_rxinfo *rxi)
+{
+	struct ieee80211com *ic = &sc->sc_ic;
+	struct ifnet *ifp = IC2IFP(ic);
+	struct ieee80211_frame *wh;
+	struct ieee80211_node *ni;
+	int ret = 0;
+	uint8_t type, subtype;
+
+	wh = mtod(m, struct ieee80211_frame *);
+
+	type = wh->i_fc[0] & IEEE80211_FC0_TYPE_MASK;
+	if (type == IEEE80211_FC0_TYPE_CTL)
+		return 0;
+
+	subtype = wh->i_fc[0] & IEEE80211_FC0_SUBTYPE_MASK;
+	if (ieee80211_has_qos(wh) && (subtype & IEEE80211_FC0_SUBTYPE_NODATA))
+		return 0;
+
+	if (IEEE80211_IS_MULTICAST(wh->i_addr1) ||
+	    !(wh->i_fc[1] & IEEE80211_FC1_PROTECTED))
+		return 0;
+
+	ni = ieee80211_find_rxnode(ic, wh);
+	/* Handle hardware decryption. */
+	if ((ni->ni_flags & IEEE80211_NODE_RXPROT) &&
+	    ni->ni_pairwise_key.k_cipher == IEEE80211_CIPHER_CCMP) {
+		if ((rx_pkt_status & IWM_RX_MPDU_RES_STATUS_SEC_ENC_MSK) !=
+		    IWM_RX_MPDU_RES_STATUS_SEC_CCM_ENC) {
+			ic->ic_stats.is_ccmp_dec_errs++;
+			ret = 1;
+			goto out;
+		}
+		/* Check whether decryption was successful or not. */
+		if ((rx_pkt_status &
+		    (IWM_RX_MPDU_RES_STATUS_DEC_DONE |
+		    IWM_RX_MPDU_RES_STATUS_MIC_OK)) !=
+		    (IWM_RX_MPDU_RES_STATUS_DEC_DONE |
+		    IWM_RX_MPDU_RES_STATUS_MIC_OK)) {
+			ic->ic_stats.is_ccmp_dec_errs++;
+			ret = 1;
+			goto out;
+		}
+		rxi->rxi_flags |= IEEE80211_RXI_HWDEC;
+	}
+out:
+	if (ret)
+		ifp->if_ierrors++;
+	ieee80211_release_node(ic, ni);
+	return ret;
+}
+
 void
 iwm_rx_frame(struct iwm_softc *sc, struct mbuf *m, int chanidx,
     uint32_t rx_pkt_status, int is_shortpre, int rate_n_flags,
@@ -3960,11 +4495,11 @@ iwm_rx_frame(struct iwm_softc *sc, struct mbuf *m, int chanidx,
     struct mbuf_list *ml)
 {
 	struct ieee80211com *ic = &sc->sc_ic;
+	struct ifnet *ifp = IC2IFP(ic);
 	struct ieee80211_frame *wh;
 	struct ieee80211_node *ni;
 	struct ieee80211_channel *bss_chan;
 	uint8_t saved_bssid[IEEE80211_ADDR_LEN] = { 0 };
-	struct ifnet *ifp = IC2IFP(ic);
 
 	if (chanidx < 0 || chanidx >= nitems(ic->ic_channels))	
 		chanidx = ieee80211_chan2ieee(ic, ic->ic_ibss_chan);
@@ -3981,39 +4516,12 @@ iwm_rx_frame(struct iwm_softc *sc, struct mbuf *m, int chanidx,
 	}
 	ni->ni_chan = &ic->ic_channels[chanidx];
 
-	/* Handle hardware decryption. */
-	if (((wh->i_fc[0] & IEEE80211_FC0_TYPE_MASK) != IEEE80211_FC0_TYPE_CTL)
-	    && (wh->i_fc[1] & IEEE80211_FC1_PROTECTED) &&
-	    !IEEE80211_IS_MULTICAST(wh->i_addr1) &&
-	    (ni->ni_flags & IEEE80211_NODE_RXPROT) &&
-	    ni->ni_pairwise_key.k_cipher == IEEE80211_CIPHER_CCMP) {
-		if ((rx_pkt_status & IWM_RX_MPDU_RES_STATUS_SEC_ENC_MSK) !=
-		    IWM_RX_MPDU_RES_STATUS_SEC_CCM_ENC) {
-			ic->ic_stats.is_ccmp_dec_errs++;
-			ifp->if_ierrors++;
-			m_freem(m);
-			ieee80211_release_node(ic, ni);
-			return;
-		}
-		/* Check whether decryption was successful or not. */
-		if ((rx_pkt_status &
-		    (IWM_RX_MPDU_RES_STATUS_DEC_DONE |
-		    IWM_RX_MPDU_RES_STATUS_MIC_OK)) !=
-		    (IWM_RX_MPDU_RES_STATUS_DEC_DONE |
-		    IWM_RX_MPDU_RES_STATUS_MIC_OK)) {
-			ic->ic_stats.is_ccmp_dec_errs++;
-			ifp->if_ierrors++;
-			m_freem(m);
-			ieee80211_release_node(ic, ni);
-			return;
-		}
-		if (iwm_ccmp_decap(sc, m, ni) != 0) {
-			ifp->if_ierrors++;
-			m_freem(m);
-			ieee80211_release_node(ic, ni);
-			return;
-		}
-		rxi->rxi_flags |= IEEE80211_RXI_HWDEC;
+	if ((rxi->rxi_flags & IEEE80211_RXI_HWDEC) &&
+	    iwm_ccmp_decap(sc, m, ni, rxi) != 0) {
+		ifp->if_ierrors++;
+		m_freem(m);
+		ieee80211_release_node(ic, ni);
+		return;
 	}
 
 #if NBPFILTER > 0
@@ -4089,6 +4597,8 @@ iwm_rx_mpdu(struct iwm_softc *sc, struct mbuf *m, void *pktdata,
 	uint32_t rx_pkt_status;
 	int rssi, chanidx, rate_n_flags;
 
+	memset(&rxi, 0, sizeof(rxi));
+
 	phy_info = &sc->sc_last_phy_info;
 	rx_res = (struct iwm_rx_mpdu_res_start *)pktdata;
 	len = le16toh(rx_res->byte_count);
@@ -4127,6 +4637,11 @@ iwm_rx_mpdu(struct iwm_softc *sc, struct mbuf *m, void *pktdata,
 	m->m_data = pktdata + sizeof(*rx_res);
 	m->m_pkthdr.len = m->m_len = len;
 
+	if (iwm_rx_hwdecrypt(sc, m, rx_pkt_status, &rxi)) {
+		m_freem(m);
+		return;
+	}
+
 	chanidx = letoh32(phy_info->channel);
 	device_timestamp = le32toh(phy_info->system_timestamp);
 	phy_flags = letoh16(phy_info->phy_flags);
@@ -4136,13 +4651,392 @@ iwm_rx_mpdu(struct iwm_softc *sc, struct mbuf *m, void *pktdata,
 	rssi = (0 - IWM_MIN_DBM) + rssi;	/* normalize */
 	rssi = MIN(rssi, ic->ic_max_rssi);	/* clip to max. 100% */
 
-	memset(&rxi, 0, sizeof(rxi));
 	rxi.rxi_rssi = rssi;
 	rxi.rxi_tstamp = device_timestamp;
 
 	iwm_rx_frame(sc, m, chanidx, rx_pkt_status,
 	    (phy_flags & IWM_PHY_INFO_FLAG_SHPREAMBLE),
 	    rate_n_flags, device_timestamp, &rxi, ml);
+}
+
+void
+iwm_flip_address(uint8_t *addr)
+{
+	int i;
+	uint8_t mac_addr[ETHER_ADDR_LEN];
+
+	for (i = 0; i < ETHER_ADDR_LEN; i++)
+		mac_addr[i] = addr[ETHER_ADDR_LEN - i - 1];
+	IEEE80211_ADDR_COPY(addr, mac_addr);
+}
+
+/*
+ * Drop duplicate 802.11 retransmissions
+ * (IEEE 802.11-2012: 9.3.2.10 "Duplicate detection and recovery")
+ * and handle pseudo-duplicate frames which result from deaggregation
+ * of A-MSDU frames in hardware.
+ */
+int
+iwm_detect_duplicate(struct iwm_softc *sc, struct mbuf *m,
+    struct iwm_rx_mpdu_desc *desc, struct ieee80211_rxinfo *rxi)
+{
+	struct ieee80211com *ic = &sc->sc_ic;
+	struct iwm_node *in = (void *)ic->ic_bss;
+	struct iwm_rxq_dup_data *dup_data = &in->dup_data;
+	uint8_t tid = IWM_MAX_TID_COUNT, subframe_idx;
+	struct ieee80211_frame *wh = mtod(m, struct ieee80211_frame *);
+	uint8_t type = wh->i_fc[0] & IEEE80211_FC0_TYPE_MASK;
+	uint8_t subtype = wh->i_fc[0] & IEEE80211_FC0_SUBTYPE_MASK;
+	int hasqos = ieee80211_has_qos(wh);
+	uint16_t seq;
+
+	if (type == IEEE80211_FC0_TYPE_CTL ||
+	    (hasqos && (subtype & IEEE80211_FC0_SUBTYPE_NODATA)) ||
+	    IEEE80211_IS_MULTICAST(wh->i_addr1))
+		return 0;
+
+	if (hasqos) {
+		tid = (ieee80211_get_qos(wh) & IEEE80211_QOS_TID);
+		if (tid > IWM_MAX_TID_COUNT)
+			tid = IWM_MAX_TID_COUNT;
+	}
+
+	/* If this wasn't a part of an A-MSDU the sub-frame index will be 0 */
+	subframe_idx = desc->amsdu_info &
+		IWM_RX_MPDU_AMSDU_SUBFRAME_IDX_MASK;
+
+	seq = letoh16(*(u_int16_t *)wh->i_seq) >> IEEE80211_SEQ_SEQ_SHIFT;
+	if ((wh->i_fc[1] & IEEE80211_FC1_RETRY) &&
+	    dup_data->last_seq[tid] == seq &&
+	    dup_data->last_sub_frame[tid] >= subframe_idx)
+		return 1;
+
+	/*
+	 * Allow the same frame sequence number for all A-MSDU subframes
+	 * following the first subframe.
+	 * Otherwise these subframes would be discarded as replays.
+	 */
+	if (dup_data->last_seq[tid] == seq &&
+	    subframe_idx > dup_data->last_sub_frame[tid] &&
+	    (desc->mac_flags2 & IWM_RX_MPDU_MFLG2_AMSDU)) {
+		rxi->rxi_flags |= IEEE80211_RXI_SAME_SEQ;
+	}
+
+	dup_data->last_seq[tid] = seq;
+	dup_data->last_sub_frame[tid] = subframe_idx;
+
+	return 0;
+}
+
+/*
+ * Returns true if sn2 - buffer_size < sn1 < sn2.
+ * To be used only in order to compare reorder buffer head with NSSN.
+ * We fully trust NSSN unless it is behind us due to reorder timeout.
+ * Reorder timeout can only bring us up to buffer_size SNs ahead of NSSN.
+ */
+int
+iwm_is_sn_less(uint16_t sn1, uint16_t sn2, uint16_t buffer_size)
+{
+	return SEQ_LT(sn1, sn2) && !SEQ_LT(sn1, sn2 - buffer_size);
+}
+
+void
+iwm_release_frames(struct iwm_softc *sc, struct ieee80211_node *ni,
+    struct iwm_rxba_data *rxba, struct iwm_reorder_buffer *reorder_buf,
+    uint16_t nssn, struct mbuf_list *ml)
+{
+	struct iwm_reorder_buf_entry *entries = &rxba->entries[0];
+	uint16_t ssn = reorder_buf->head_sn;
+
+	/* ignore nssn smaller than head sn - this can happen due to timeout */
+	if (iwm_is_sn_less(nssn, ssn, reorder_buf->buf_size))
+		goto set_timer;
+
+	while (iwm_is_sn_less(ssn, nssn, reorder_buf->buf_size)) {
+		int index = ssn % reorder_buf->buf_size;
+		struct mbuf *m;
+		int chanidx, is_shortpre;
+		uint32_t rx_pkt_status, rate_n_flags, device_timestamp;
+		struct ieee80211_rxinfo *rxi;
+
+		/* This data is the same for all A-MSDU subframes. */
+		chanidx = entries[index].chanidx;
+		rx_pkt_status = entries[index].rx_pkt_status;
+		is_shortpre = entries[index].is_shortpre;
+		rate_n_flags = entries[index].rate_n_flags;
+		device_timestamp = entries[index].device_timestamp;
+		rxi = &entries[index].rxi;
+
+		/*
+		 * Empty the list. Will have more than one frame for A-MSDU.
+		 * Empty list is valid as well since nssn indicates frames were
+		 * received.
+		 */
+		while ((m = ml_dequeue(&entries[index].frames)) != NULL) {
+			iwm_rx_frame(sc, m, chanidx, rx_pkt_status, is_shortpre,
+			    rate_n_flags, device_timestamp, rxi, ml);
+			reorder_buf->num_stored--;
+
+			/*
+			 * Allow the same frame sequence number and CCMP PN for
+			 * all A-MSDU subframes following the first subframe.
+			 * Otherwise they would be discarded as replays.
+			 */
+			rxi->rxi_flags |= IEEE80211_RXI_SAME_SEQ;
+			rxi->rxi_flags |= IEEE80211_RXI_HWDEC_SAME_PN;
+		}
+
+		ssn = (ssn + 1) & 0xfff;
+	}
+	reorder_buf->head_sn = nssn;
+
+set_timer:
+	if (reorder_buf->num_stored && !reorder_buf->removed) {
+		timeout_add_usec(&reorder_buf->reorder_timer,
+		    RX_REORDER_BUF_TIMEOUT_MQ_USEC);
+	} else
+		timeout_del(&reorder_buf->reorder_timer);
+}
+
+int
+iwm_oldsn_workaround(struct iwm_softc *sc, struct ieee80211_node *ni, int tid,
+    struct iwm_reorder_buffer *buffer, uint32_t reorder_data, uint32_t gp2)
+{
+	struct ieee80211com *ic = &sc->sc_ic;
+
+	if (gp2 != buffer->consec_oldsn_ampdu_gp2) {
+		/* we have a new (A-)MPDU ... */
+
+		/*
+		 * reset counter to 0 if we didn't have any oldsn in
+		 * the last A-MPDU (as detected by GP2 being identical)
+		 */
+		if (!buffer->consec_oldsn_prev_drop)
+			buffer->consec_oldsn_drops = 0;
+
+		/* either way, update our tracking state */
+		buffer->consec_oldsn_ampdu_gp2 = gp2;
+	} else if (buffer->consec_oldsn_prev_drop) {
+		/*
+		 * tracking state didn't change, and we had an old SN
+		 * indication before - do nothing in this case, we
+		 * already noted this one down and are waiting for the
+		 * next A-MPDU (by GP2)
+		 */
+		return 0;
+	}
+
+	/* return unless this MPDU has old SN */
+	if (!(reorder_data & IWM_RX_MPDU_REORDER_BA_OLD_SN))
+		return 0;
+
+	/* update state */
+	buffer->consec_oldsn_prev_drop = 1;
+	buffer->consec_oldsn_drops++;
+
+	/* if limit is reached, send del BA and reset state */
+	if (buffer->consec_oldsn_drops == IWM_AMPDU_CONSEC_DROPS_DELBA) {
+		ieee80211_delba_request(ic, ni, IEEE80211_REASON_UNSPECIFIED,
+		    0, tid);
+		buffer->consec_oldsn_prev_drop = 0;
+		buffer->consec_oldsn_drops = 0;
+		return 1;
+	}
+
+	return 0;
+}
+
+/*
+ * Handle re-ordering of frames which were de-aggregated in hardware.
+ * Returns 1 if the MPDU was consumed (buffered or dropped).
+ * Returns 0 if the MPDU should be passed to upper layer.
+ */
+int
+iwm_rx_reorder(struct iwm_softc *sc, struct mbuf *m, int chanidx,
+    struct iwm_rx_mpdu_desc *desc, int is_shortpre, int rate_n_flags,
+    uint32_t device_timestamp, struct ieee80211_rxinfo *rxi,
+    struct mbuf_list *ml)
+{
+	struct ieee80211com *ic = &sc->sc_ic;
+	struct ieee80211_frame *wh;
+	struct ieee80211_node *ni;
+	struct iwm_rxba_data *rxba;
+	struct iwm_reorder_buffer *buffer;
+	uint32_t reorder_data = le32toh(desc->reorder_data);
+	int is_amsdu = (desc->mac_flags2 & IWM_RX_MPDU_MFLG2_AMSDU);
+	int last_subframe =
+		(desc->amsdu_info & IWM_RX_MPDU_AMSDU_LAST_SUBFRAME);
+	uint8_t tid;
+	uint8_t subframe_idx = (desc->amsdu_info &
+	    IWM_RX_MPDU_AMSDU_SUBFRAME_IDX_MASK);
+	struct iwm_reorder_buf_entry *entries;
+	int index;
+	uint16_t nssn, sn;
+	uint8_t baid, type, subtype;
+	int hasqos;
+
+	wh = mtod(m, struct ieee80211_frame *);
+	hasqos = ieee80211_has_qos(wh);
+	tid = hasqos ? ieee80211_get_qos(wh) & IEEE80211_QOS_TID : 0;
+
+	type = wh->i_fc[0] & IEEE80211_FC0_TYPE_MASK;
+	subtype = wh->i_fc[0] & IEEE80211_FC0_SUBTYPE_MASK;
+	ni = ieee80211_find_rxnode(ic, wh);
+
+	/*
+	 * We are only interested in Block Ack requests and unicast QoS data.
+	 */
+	if (IEEE80211_IS_MULTICAST(wh->i_addr1))
+		return 0;
+	if (hasqos) {
+		if (subtype & IEEE80211_FC0_SUBTYPE_NODATA)
+			return 0;
+	} else {
+		if (type != IEEE80211_FC0_TYPE_CTL ||
+		    subtype != IEEE80211_FC0_SUBTYPE_BAR)
+			return 0;
+	}
+
+	baid = (reorder_data & IWM_RX_MPDU_REORDER_BAID_MASK) >>
+		IWM_RX_MPDU_REORDER_BAID_SHIFT;
+	if (baid == IWM_RX_REORDER_DATA_INVALID_BAID ||
+	    baid >= nitems(sc->sc_rxba_data))
+		return 0;
+
+	rxba = &sc->sc_rxba_data[baid];
+	if (rxba == NULL || tid != rxba->tid || rxba->sta_id != IWM_STATION_ID)
+		return 0;
+
+	/* Bypass A-MPDU re-ordering in net80211. */
+	rxi->rxi_flags |= IEEE80211_RXI_AMPDU_DONE;
+
+	nssn = reorder_data & IWM_RX_MPDU_REORDER_NSSN_MASK;
+	sn = (reorder_data & IWM_RX_MPDU_REORDER_SN_MASK) >>
+		IWM_RX_MPDU_REORDER_SN_SHIFT;
+
+	buffer = &rxba->reorder_buf;
+	entries = &rxba->entries[0];
+
+	if (!buffer->valid) {
+		if (reorder_data & IWM_RX_MPDU_REORDER_BA_OLD_SN)
+			return 0;
+		buffer->valid = 1;
+	}
+
+	if (type == IEEE80211_FC0_TYPE_CTL &&
+	    subtype == IEEE80211_FC0_SUBTYPE_BAR) {
+		iwm_release_frames(sc, ni, rxba, buffer, nssn, ml);
+		goto drop;
+	}
+
+	/*
+	 * If there was a significant jump in the nssn - adjust.
+	 * If the SN is smaller than the NSSN it might need to first go into
+	 * the reorder buffer, in which case we just release up to it and the
+	 * rest of the function will take care of storing it and releasing up to
+	 * the nssn.
+	 */
+	if (!iwm_is_sn_less(nssn, buffer->head_sn + buffer->buf_size,
+	    buffer->buf_size) ||
+	    !SEQ_LT(sn, buffer->head_sn + buffer->buf_size)) {
+		uint16_t min_sn = SEQ_LT(sn, nssn) ? sn : nssn;
+		ic->ic_stats.is_ht_rx_frame_above_ba_winend++;
+		iwm_release_frames(sc, ni, rxba, buffer, min_sn, ml);
+	}
+
+	if (iwm_oldsn_workaround(sc, ni, tid, buffer, reorder_data,
+	    device_timestamp)) {
+		 /* BA session will be torn down. */
+		ic->ic_stats.is_ht_rx_ba_window_jump++;
+		goto drop;
+
+	}
+
+	/* drop any outdated packets */
+	if (SEQ_LT(sn, buffer->head_sn)) {
+		ic->ic_stats.is_ht_rx_frame_below_ba_winstart++;
+		goto drop;
+	}
+
+	/* release immediately if allowed by nssn and no stored frames */
+	if (!buffer->num_stored && SEQ_LT(sn, nssn)) {
+		if (iwm_is_sn_less(buffer->head_sn, nssn, buffer->buf_size) &&
+		   (!is_amsdu || last_subframe))
+			buffer->head_sn = nssn;
+		return 0;
+	}
+
+	/*
+	 * release immediately if there are no stored frames, and the sn is
+	 * equal to the head.
+	 * This can happen due to reorder timer, where NSSN is behind head_sn.
+	 * When we released everything, and we got the next frame in the
+	 * sequence, according to the NSSN we can't release immediately,
+	 * while technically there is no hole and we can move forward.
+	 */
+	if (!buffer->num_stored && sn == buffer->head_sn) {
+		if (!is_amsdu || last_subframe)
+			buffer->head_sn = (buffer->head_sn + 1) & 0xfff;
+		return 0;
+	}
+
+	index = sn % buffer->buf_size;
+
+	/*
+	 * Check if we already stored this frame
+	 * As AMSDU is either received or not as whole, logic is simple:
+	 * If we have frames in that position in the buffer and the last frame
+	 * originated from AMSDU had a different SN then it is a retransmission.
+	 * If it is the same SN then if the subframe index is incrementing it
+	 * is the same AMSDU - otherwise it is a retransmission.
+	 */
+	if (!ml_empty(&entries[index].frames)) {
+		if (!is_amsdu) {
+			ic->ic_stats.is_ht_rx_ba_no_buf++;
+			goto drop;
+		} else if (sn != buffer->last_amsdu ||
+		    buffer->last_sub_index >= subframe_idx) {
+			ic->ic_stats.is_ht_rx_ba_no_buf++;
+			goto drop;
+		}
+	} else {
+		/* This data is the same for all A-MSDU subframes. */
+		entries[index].chanidx = chanidx;
+		entries[index].is_shortpre = is_shortpre;
+		entries[index].rate_n_flags = rate_n_flags;
+		entries[index].device_timestamp = device_timestamp;
+		memcpy(&entries[index].rxi, rxi, sizeof(entries[index].rxi));
+	}
+
+	/* put in reorder buffer */
+	ml_enqueue(&entries[index].frames, m);
+	buffer->num_stored++;
+	getmicrouptime(&entries[index].reorder_time);
+
+	if (is_amsdu) {
+		buffer->last_amsdu = sn;
+		buffer->last_sub_index = subframe_idx;
+	}
+
+	/*
+	 * We cannot trust NSSN for AMSDU sub-frames that are not the last.
+	 * The reason is that NSSN advances on the first sub-frame, and may
+	 * cause the reorder buffer to advance before all the sub-frames arrive.
+	 * Example: reorder buffer contains SN 0 & 2, and we receive AMSDU with
+	 * SN 1. NSSN for first sub frame will be 3 with the result of driver
+	 * releasing SN 0,1, 2. When sub-frame 1 arrives - reorder buffer is
+	 * already ahead and it will be dropped.
+	 * If the last sub-frame is not on this queue - we will get frame
+	 * release notification with up to date NSSN.
+	 */
+	if (!is_amsdu || last_subframe)
+		iwm_release_frames(sc, ni, rxba, buffer, nssn, ml);
+
+	return 1;
+
+drop:
+	m_freem(m);
+	return 1;
 }
 
 void
@@ -4156,6 +5050,8 @@ iwm_rx_mpdu_mq(struct iwm_softc *sc, struct mbuf *m, void *pktdata,
 	int rssi;
 	uint8_t chanidx;
 	uint16_t phy_info;
+
+	memset(&rxi, 0, sizeof(rxi));
 
 	desc = (struct iwm_rx_mpdu_desc *)pktdata;
 
@@ -4219,6 +5115,55 @@ iwm_rx_mpdu_mq(struct iwm_softc *sc, struct mbuf *m, void *pktdata,
 		m_adj(m, 2);
 	}
 
+	/*
+	 * Hardware de-aggregates A-MSDUs and copies the same MAC header
+	 * in place for each subframe. But it leaves the 'A-MSDU present'
+	 * bit set in the frame header. We need to clear this bit ourselves.
+	 *
+	 * And we must allow the same CCMP PN for subframes following the
+	 * first subframe. Otherwise they would be discarded as replays.
+	 */
+	if (desc->mac_flags2 & IWM_RX_MPDU_MFLG2_AMSDU) {
+		struct ieee80211_frame *wh = mtod(m, struct ieee80211_frame *);
+		uint8_t subframe_idx = (desc->amsdu_info &
+		    IWM_RX_MPDU_AMSDU_SUBFRAME_IDX_MASK);
+		if (subframe_idx > 0)
+			rxi.rxi_flags |= IEEE80211_RXI_HWDEC_SAME_PN;
+		if (ieee80211_has_qos(wh) && ieee80211_has_addr4(wh) &&
+		    m->m_len >= sizeof(struct ieee80211_qosframe_addr4)) {
+			struct ieee80211_qosframe_addr4 *qwh4 = mtod(m,
+			    struct ieee80211_qosframe_addr4 *);
+			qwh4->i_qos[0] &= htole16(~IEEE80211_QOS_AMSDU);
+
+			/* HW reverses addr3 and addr4. */
+			iwm_flip_address(qwh4->i_addr3);
+			iwm_flip_address(qwh4->i_addr4);
+		} else if (ieee80211_has_qos(wh) &&
+		    m->m_len >= sizeof(struct ieee80211_qosframe)) {
+			struct ieee80211_qosframe *qwh = mtod(m,
+			    struct ieee80211_qosframe *);
+			qwh->i_qos[0] &= htole16(~IEEE80211_QOS_AMSDU);
+
+			/* HW reverses addr3. */
+			iwm_flip_address(qwh->i_addr3);
+		}	
+	}
+
+	/*
+	 * Verify decryption before duplicate detection. The latter uses
+	 * the TID supplied in QoS frame headers and this TID is implicitly
+	 * verified as part of the CCMP nonce.
+	 */
+	if (iwm_rx_hwdecrypt(sc, m, le16toh(desc->status), &rxi)) {
+		m_freem(m);
+		return;
+	}
+
+	if (iwm_detect_duplicate(sc, m, desc, &rxi)) {
+		m_freem(m);
+		return;
+	}
+
 	phy_info = le16toh(desc->phy_info);
 	rate_n_flags = le32toh(desc->v1.rate_n_flags);
 	chanidx = desc->v1.channel;
@@ -4228,13 +5173,78 @@ iwm_rx_mpdu_mq(struct iwm_softc *sc, struct mbuf *m, void *pktdata,
 	rssi = (0 - IWM_MIN_DBM) + rssi;	/* normalize */
 	rssi = MIN(rssi, ic->ic_max_rssi);	/* clip to max. 100% */
 
-	memset(&rxi, 0, sizeof(rxi));
 	rxi.rxi_rssi = rssi;
 	rxi.rxi_tstamp = le64toh(desc->v1.tsf_on_air_rise);
+
+	if (iwm_rx_reorder(sc, m, chanidx, desc,
+	    (phy_info & IWM_RX_MPDU_PHY_SHORT_PREAMBLE),
+	    rate_n_flags, device_timestamp, &rxi, ml))
+		return;
 
 	iwm_rx_frame(sc, m, chanidx, le16toh(desc->status),
 	    (phy_info & IWM_RX_MPDU_PHY_SHORT_PREAMBLE),
 	    rate_n_flags, device_timestamp, &rxi, ml);
+}
+
+void
+iwm_ra_choose(struct iwm_softc *sc, struct ieee80211_node *ni)
+{
+	struct ieee80211com *ic = &sc->sc_ic;
+	struct iwm_node *in = (void *)ni;
+	int old_txmcs = ni->ni_txmcs;
+
+	ieee80211_ra_choose(&in->in_rn, ic, ni);
+
+	/* 
+	 * If RA has chosen a new TX rate we must update
+	 * the firmware's LQ rate table.
+	 */
+	if (ni->ni_txmcs != old_txmcs)
+		iwm_setrates(in, 1);
+}
+
+void
+iwm_ht_single_rate_control(struct iwm_softc *sc, struct ieee80211_node *ni,
+    int txmcs, uint8_t failure_frame, int txfail)
+{
+	struct ieee80211com *ic = &sc->sc_ic;
+	struct iwm_node *in = (void *)ni;
+
+	/* Ignore Tx reports which don't match our last LQ command. */
+	if (txmcs != ni->ni_txmcs) {
+		if (++in->lq_rate_mismatch > 15) {
+			/* Try to sync firmware with the driver... */
+			iwm_setrates(in, 1);
+			in->lq_rate_mismatch = 0;
+		}
+	} else {
+		int mcs = txmcs;
+		const struct ieee80211_ht_rateset *rs =
+		    ieee80211_ra_get_ht_rateset(txmcs,
+		    ieee80211_node_supports_ht_sgi20(ni));
+		unsigned int retries = 0, i;
+
+		in->lq_rate_mismatch = 0;
+
+		for (i = 0; i < failure_frame; i++) {
+			if (mcs > rs->min_mcs) {
+				ieee80211_ra_add_stats_ht(&in->in_rn,
+				    ic, ni, mcs, 1, 1);
+				mcs--;
+			} else
+				retries++;
+		}
+
+		if (txfail && failure_frame == 0) {
+			ieee80211_ra_add_stats_ht(&in->in_rn, ic, ni,
+			    txmcs, 1, 1);
+		} else {
+			ieee80211_ra_add_stats_ht(&in->in_rn, ic, ni,
+			    mcs, retries + 1, retries);
+		}
+
+		iwm_ra_choose(sc, ni);
+	}
 }
 
 void
@@ -4279,53 +5289,10 @@ iwm_rx_tx_cmd_single(struct iwm_softc *sc, struct iwm_rx_packet *pkt,
 		}
 	} else if (ic->ic_fixed_mcs == -1 && ic->ic_state == IEEE80211_S_RUN &&
 	    (le32toh(tx_resp->initial_rate) & IWM_RATE_MCS_HT_MSK)) {
-		uint32_t fw_txmcs = le32toh(tx_resp->initial_rate) &
-		   (IWM_RATE_HT_MCS_RATE_CODE_MSK | IWM_RATE_HT_MCS_NSS_MSK);
-		/* Ignore Tx reports which don't match our last LQ command. */
-		if (fw_txmcs != ni->ni_txmcs) {
-			if (++in->lq_rate_mismatch > 15) {
-				/* Try to sync firmware with the driver... */
-				iwm_setrates(in, 1);
-				in->lq_rate_mismatch = 0;
-			}
-		} else {
-			int mcs = fw_txmcs;
-			const struct ieee80211_ht_rateset *rs =
-			    ieee80211_ra_get_ht_rateset(fw_txmcs,
-			    ieee80211_node_supports_ht_sgi20(ni));
-			unsigned int retries = 0, i;
-			int old_txmcs = ni->ni_txmcs;
-
-			in->lq_rate_mismatch = 0;
-
-			for (i = 0; i < tx_resp->failure_frame; i++) {
-				if (mcs > rs->min_mcs) {
-					ieee80211_ra_add_stats_ht(&in->in_rn,
-					    ic, ni, mcs, 1, 1);
-					mcs--;
-				} else
-					retries++;
-			}
-
-			if (txfail && tx_resp->failure_frame == 0) {
-				ieee80211_ra_add_stats_ht(&in->in_rn, ic, ni,
-				    fw_txmcs, 1, 1);
-			} else {
-				ieee80211_ra_add_stats_ht(&in->in_rn, ic, ni,
-				    mcs, retries + 1, retries);
-			}
-
-			ieee80211_ra_choose(&in->in_rn, ic, ni);
-
-			/* 
-			 * If RA has chosen a new TX rate we must update
-			 * the firmware's LQ rate table.
-			 * ni_txmcs may change again before the task runs so
-			 * cache the chosen rate in the iwm_node structure.
-			 */
-			if (ni->ni_txmcs != old_txmcs)
-				iwm_setrates(in, 1);
-		}
+		int txmcs = le32toh(tx_resp->initial_rate) &
+		    (IWM_RATE_HT_MCS_RATE_CODE_MSK | IWM_RATE_HT_MCS_NSS_MSK);
+		iwm_ht_single_rate_control(sc, ni, txmcs,
+		    tx_resp->failure_frame, txfail);
 	}
 
 	if (txfail)
@@ -4346,49 +5313,193 @@ iwm_txd_done(struct iwm_softc *sc, struct iwm_tx_data *txd)
 	KASSERT(txd->in);
 	ieee80211_release_node(ic, &txd->in->in_ni);
 	txd->in = NULL;
+	txd->ampdu_nframes = 0;
+	txd->ampdu_txmcs = 0;
 }
 
 void
-iwm_rx_tx_cmd(struct iwm_softc *sc, struct iwm_rx_packet *pkt,
-    struct iwm_rx_data *data)
+iwm_txq_advance(struct iwm_softc *sc, struct iwm_tx_ring *ring, int idx)
 {
-	struct ieee80211com *ic = &sc->sc_ic;
-	struct ifnet *ifp = IC2IFP(ic);
-	struct iwm_cmd_header *cmd_hdr = &pkt->hdr;
-	int idx = cmd_hdr->idx;
-	int qid = cmd_hdr->qid;
-	struct iwm_tx_ring *ring = &sc->txq[qid];
 	struct iwm_tx_data *txd;
 
-	bus_dmamap_sync(sc->sc_dmat, data->map, 0, IWM_RBUF_SIZE,
-	    BUS_DMASYNC_POSTREAD);
-
-	sc->sc_tx_timer = 0;
-
-	txd = &ring->data[idx];
-	if (txd->m == NULL)
-		return;
-
-	iwm_rx_tx_cmd_single(sc, pkt, txd->in, txd->txmcs, txd->txrate);
-	iwm_txd_done(sc, txd);
-
-	/*
-	 * XXX Sometimes we miss Tx completion interrupts.
-	 * We cannot check Tx success/failure for affected frames; just free
-	 * the associated mbuf and release the associated node reference.
-	 */
 	while (ring->tail != idx) {
 		txd = &ring->data[ring->tail];
 		if (txd->m != NULL) {
-			DPRINTF(("%s: missed Tx completion: tail=%d idx=%d\n",
-			    __func__, ring->tail, idx));
+			if (ring->qid < IWM_FIRST_AGG_TX_QUEUE)
+				DPRINTF(("%s: missed Tx completion: tail=%d "
+				    "idx=%d\n", __func__, ring->tail, idx));
+			iwm_reset_sched(sc, ring->qid, ring->tail, IWM_STATION_ID);
 			iwm_txd_done(sc, txd);
 			ring->queued--;
 		}
 		ring->tail = (ring->tail + 1) % IWM_TX_RING_COUNT;
 	}
 
-	if (--ring->queued < IWM_TX_RING_LOMARK) {
+	wakeup(ring);
+}
+
+void
+iwm_ampdu_tx_done(struct iwm_softc *sc, struct iwm_cmd_header *cmd_hdr,
+    struct iwm_node *in, struct iwm_tx_ring *txq, uint32_t initial_rate,
+    uint8_t nframes, uint8_t failure_frame, uint16_t ssn, int status,
+    struct iwm_agg_tx_status *agg_status)
+{
+	struct ieee80211com *ic = &sc->sc_ic;
+	int tid = cmd_hdr->qid - IWM_FIRST_AGG_TX_QUEUE;
+	struct iwm_tx_data *txdata = &txq->data[cmd_hdr->idx];
+	struct ieee80211_node *ni = &in->in_ni;
+	struct ieee80211_tx_ba *ba;
+	int txfail = (status != IWM_TX_STATUS_SUCCESS &&
+	    status != IWM_TX_STATUS_DIRECT_DONE);
+	uint16_t seq;
+
+	sc->sc_tx_timer = 0;
+
+	if (ic->ic_state != IEEE80211_S_RUN)
+		return;
+
+	if (nframes > 1) {
+		int i;
+ 		/*
+		 * Collect information about this A-MPDU.
+		 */
+
+		for (i = 0; i < nframes; i++) {
+			uint8_t qid = agg_status[i].qid;
+			uint8_t idx = agg_status[i].idx;
+			uint16_t txstatus = (le16toh(agg_status[i].status) &
+			    IWM_AGG_TX_STATE_STATUS_MSK);
+
+			if (txstatus != IWM_AGG_TX_STATE_TRANSMITTED)
+				continue;
+
+			if (qid != cmd_hdr->qid)
+				continue;
+
+			txdata = &txq->data[idx];
+			if (txdata->m == NULL)
+				continue;
+
+			/* The Tx rate was the same for all subframes. */
+			txdata->ampdu_txmcs = initial_rate &
+			   (IWM_RATE_HT_MCS_RATE_CODE_MSK |
+			   IWM_RATE_HT_MCS_NSS_MSK);
+			txdata->ampdu_nframes = nframes;
+		}
+		return;
+	}
+
+	ba = &ni->ni_tx_ba[tid];
+	if (ba->ba_state != IEEE80211_BA_AGREED)
+		return;
+	if (SEQ_LT(ssn, ba->ba_winstart))
+		return;
+
+	/* This was a final single-frame Tx attempt for frame SSN-1. */
+	seq = (ssn - 1) & 0xfff;
+
+	/*
+	 * Skip rate control if our Tx rate is fixed.
+	 * Don't report frames to MiRA which were sent at a different
+	 * Tx rate than ni->ni_txmcs.
+	 */
+	if (ic->ic_fixed_mcs == -1) {
+		if (txdata->ampdu_nframes > 1) {
+			/*
+			 * This frame was once part of an A-MPDU.
+			 * Report one failed A-MPDU Tx attempt.
+			 * The firmware might have made several such
+			 * attempts but we don't keep track of this.
+			 */
+			ieee80211_ra_add_stats_ht(&in->in_rn, ic, ni,
+			    txdata->ampdu_txmcs, 1, 1);
+		}
+
+		/* Report the final single-frame Tx attempt. */
+		if (initial_rate & IWM_RATE_HT_MCS_RATE_CODE_MSK) {
+			int txmcs = initial_rate &
+			   (IWM_RATE_HT_MCS_RATE_CODE_MSK |
+			   IWM_RATE_HT_MCS_NSS_MSK);
+			iwm_ht_single_rate_control(sc, ni, txmcs,
+			    failure_frame, txfail);
+		}
+	}
+
+	if (txfail)
+		ieee80211_tx_compressed_bar(ic, ni, tid, ssn);
+
+	/*
+	 * SSN corresponds to the first (perhaps not yet transmitted) frame
+	 * in firmware's BA window. Firmware is not going to retransmit any
+	 * frames before its BA window so mark them all as done.
+	 */
+	ieee80211_output_ba_move_window(ic, ni, tid, ssn);
+	iwm_txq_advance(sc, txq, IWM_AGG_SSN_TO_TXQ_IDX(ssn));
+	iwm_clear_oactive(sc, txq);
+}
+
+void
+iwm_rx_tx_cmd(struct iwm_softc *sc, struct iwm_rx_packet *pkt,
+    struct iwm_rx_data *data)
+{
+	struct iwm_cmd_header *cmd_hdr = &pkt->hdr;
+	int idx = cmd_hdr->idx;
+	int qid = cmd_hdr->qid;
+	struct iwm_tx_ring *ring = &sc->txq[qid];
+	struct iwm_tx_data *txd;
+	struct iwm_tx_resp *tx_resp = (void *)pkt->data;
+	uint32_t ssn;
+	uint32_t len = iwm_rx_packet_len(pkt);
+
+	bus_dmamap_sync(sc->sc_dmat, data->map, 0, IWM_RBUF_SIZE,
+	    BUS_DMASYNC_POSTREAD);
+
+	sc->sc_tx_timer = 0;
+
+	/* Sanity checks. */
+	if (sizeof(*tx_resp) > len)
+		return;
+	if (qid < IWM_FIRST_AGG_TX_QUEUE && tx_resp->frame_count > 1)
+		return;
+	if (qid >= IWM_FIRST_AGG_TX_QUEUE && sizeof(*tx_resp) + sizeof(ssn) +
+	    tx_resp->frame_count * sizeof(tx_resp->status) > len)
+		return;
+
+	txd = &ring->data[idx];
+	if (txd->m == NULL)
+		return;
+
+	if (qid >= IWM_FIRST_AGG_TX_QUEUE) {
+		int status;
+		memcpy(&ssn, &tx_resp->status + tx_resp->frame_count, sizeof(ssn));
+		ssn = le32toh(ssn) & 0xfff;
+		status = le16toh(tx_resp->status.status) & IWM_TX_STATUS_MSK;
+		iwm_ampdu_tx_done(sc, cmd_hdr, txd->in, ring,
+		    le32toh(tx_resp->initial_rate), tx_resp->frame_count,
+		    tx_resp->failure_frame, ssn, status, &tx_resp->status);
+	} else {
+		iwm_rx_tx_cmd_single(sc, pkt, txd->in, txd->txmcs, txd->txrate);
+		iwm_txd_done(sc, txd);
+		ring->queued--;
+
+		/*
+		 * XXX Sometimes we miss Tx completion interrupts.
+		 * We cannot check Tx success/failure for affected frames;
+		 * just free the associated mbuf and release the associated
+		 * node reference.
+		 */
+		iwm_txq_advance(sc, ring, idx);
+		iwm_clear_oactive(sc, ring);
+	}
+}
+
+void
+iwm_clear_oactive(struct iwm_softc *sc, struct iwm_tx_ring *ring)
+{
+	struct ieee80211com *ic = &sc->sc_ic;
+	struct ifnet *ifp = IC2IFP(ic);
+
+	if (ring->queued < IWM_TX_RING_LOMARK) {
 		sc->qfullmsk &= ~(1 << ring->qid);
 		if (sc->qfullmsk == 0 && ifq_is_oactive(&ifp->if_snd)) {
 			ifq_clr_oactive(&ifp->if_snd);
@@ -4400,6 +5511,117 @@ iwm_rx_tx_cmd(struct iwm_softc *sc, struct iwm_rx_packet *pkt,
 			(*ifp->if_start)(ifp);
 		}
 	}
+}
+
+void
+iwm_ampdu_rate_control(struct iwm_softc *sc, struct ieee80211_node *ni,
+    struct iwm_tx_ring *txq, int tid, uint16_t seq, uint16_t ssn)
+{
+	struct ieee80211com *ic = &sc->sc_ic;
+	struct iwm_node *in = (void *)ni;
+	int idx, end_idx;
+
+	/*
+	 * Update Tx rate statistics for A-MPDUs before firmware's BA window.
+	 */
+	idx = IWM_AGG_SSN_TO_TXQ_IDX(seq);
+	end_idx = IWM_AGG_SSN_TO_TXQ_IDX(ssn);
+	while (idx != end_idx) {
+		struct iwm_tx_data *txdata = &txq->data[idx];
+		if (txdata->m != NULL && txdata->ampdu_nframes > 1) {
+			/*
+			 * We can assume that this subframe has been ACKed
+			 * because ACK failures come as single frames and
+			 * before failing an A-MPDU subframe the firmware
+			 * sends it as a single frame at least once.
+			 */
+			ieee80211_ra_add_stats_ht(&in->in_rn, ic, ni,
+			    txdata->ampdu_txmcs, 1, 0);
+
+			/* Report this frame only once. */
+			txdata->ampdu_nframes = 0;
+		}
+
+		idx = (idx + 1) % IWM_TX_RING_COUNT;
+	}
+
+	iwm_ra_choose(sc, ni);
+}
+
+void
+iwm_rx_compressed_ba(struct iwm_softc *sc, struct iwm_rx_packet *pkt,
+    struct iwm_rx_data *data)
+{
+	struct iwm_ba_notif *ban = (void *)pkt->data;
+	struct ieee80211com *ic = &sc->sc_ic;
+	struct ieee80211_node *ni;
+	struct ieee80211_tx_ba *ba;
+	struct iwm_node *in;
+	struct iwm_tx_ring *ring;
+	uint16_t seq, ssn;
+	int qid;
+
+	if (ic->ic_state != IEEE80211_S_RUN)
+		return;
+
+	if (iwm_rx_packet_payload_len(pkt) < sizeof(*ban))
+		return;
+
+	if (ban->sta_id != IWM_STATION_ID ||
+	    !IEEE80211_ADDR_EQ(ic->ic_bss->ni_macaddr, ban->sta_addr))
+		return;
+
+	ni = ic->ic_bss;
+	in = (void *)ni;
+
+	qid = le16toh(ban->scd_flow);
+	if (qid < IWM_FIRST_AGG_TX_QUEUE || qid > IWM_LAST_AGG_TX_QUEUE)
+		return;
+
+	/* Protect against a firmware bug where the queue/TID are off. */
+	if (qid != IWM_FIRST_AGG_TX_QUEUE + ban->tid)
+		return;
+
+	ba = &ni->ni_tx_ba[ban->tid];
+	if (ba->ba_state != IEEE80211_BA_AGREED)
+		return;
+
+	ring = &sc->txq[qid];
+
+	/*
+	 * The first bit in ban->bitmap corresponds to the sequence number
+	 * stored in the sequence control field ban->seq_ctl.
+	 * Multiple BA notifications in a row may be using this number, with
+	 * additional bits being set in cba->bitmap. It is unclear how the
+	 * firmware decides to shift this window forward.
+	 * We rely on ba->ba_winstart instead.
+	 */
+	seq = le16toh(ban->seq_ctl) >> IEEE80211_SEQ_SEQ_SHIFT;
+
+	/*
+	 * The firmware's new BA window starting sequence number
+	 * corresponds to the first hole in ban->scd_ssn, implying
+	 * that all frames between 'seq' and 'ssn' (non-inclusive)
+	 * have been acked.
+	 */
+	ssn = le16toh(ban->scd_ssn);
+
+	if (SEQ_LT(ssn, ba->ba_winstart))
+		return;
+
+	/* Skip rate control if our Tx rate is fixed. */
+	if (ic->ic_fixed_mcs == -1)
+		iwm_ampdu_rate_control(sc, ni, ring, ban->tid,
+		    ba->ba_winstart, ssn);
+
+	/*
+	 * SSN corresponds to the first (perhaps not yet transmitted) frame
+	 * in firmware's BA window. Firmware is not going to retransmit any
+	 * frames before its BA window so mark them all as done.
+	 */
+	ieee80211_output_ba_move_window(ic, ni, ban->tid, ssn);
+	iwm_txq_advance(sc, ring, IWM_AGG_SSN_TO_TXQ_IDX(ssn));
+	iwm_clear_oactive(sc, ring);
 }
 
 void
@@ -4671,9 +5893,8 @@ iwm_send_cmd(struct iwm_softc *sc, struct iwm_host_cmd *hcmd)
 		}
 	}
 
-#if 0
 	iwm_update_sched(sc, ring->qid, ring->cur, 0, 0);
-#endif
+
 	/* Kick command ring. */
 	ring->queued++;
 	ring->cur = (ring->cur + 1) % IWM_TX_RING_COUNT;
@@ -4804,41 +6025,53 @@ iwm_cmd_done(struct iwm_softc *sc, int qid, int idx, int code)
 	}
 }
 
-#if 0
-/*
- * necessary only for block ack mode
- */
 void
 iwm_update_sched(struct iwm_softc *sc, int qid, int idx, uint8_t sta_id,
     uint16_t len)
 {
 	struct iwm_agn_scd_bc_tbl *scd_bc_tbl;
-	uint16_t w_val;
+	uint16_t val;
 
 	scd_bc_tbl = sc->sched_dma.vaddr;
 
-	len += 8; /* magic numbers came naturally from paris */
+	len += IWM_TX_CRC_SIZE + IWM_TX_DELIMITER_SIZE;
 	if (sc->sc_capaflags & IWM_UCODE_TLV_FLAGS_DW_BC_TABLE)
 		len = roundup(len, 4) / 4;
 
-	w_val = htole16(sta_id << 12 | len);
+	val = htole16(sta_id << 12 | len);
+
+	bus_dmamap_sync(sc->sc_dmat, sc->sched_dma.map,
+	    0, sc->sched_dma.size, BUS_DMASYNC_PREWRITE);
 
 	/* Update TX scheduler. */
-	scd_bc_tbl[qid].tfd_offset[idx] = w_val;
+	scd_bc_tbl[qid].tfd_offset[idx] = val;
+	if (idx < IWM_TFD_QUEUE_SIZE_BC_DUP)
+		scd_bc_tbl[qid].tfd_offset[IWM_TFD_QUEUE_SIZE_MAX + idx] = val;
 	bus_dmamap_sync(sc->sc_dmat, sc->sched_dma.map,
-	    (char *)(void *)w - (char *)(void *)sc->sched_dma.vaddr,
-	    sizeof(uint16_t), BUS_DMASYNC_PREWRITE);
-
-	/* I really wonder what this is ?!? */
-	if (idx < IWM_TFD_QUEUE_SIZE_BC_DUP) {
-		scd_bc_tbl[qid].tfd_offset[IWM_TFD_QUEUE_SIZE_MAX + idx] = w_val;
-		bus_dmamap_sync(sc->sc_dmat, sc->sched_dma.map,
-		    (char *)(void *)(w + IWM_TFD_QUEUE_SIZE_MAX) -
-		    (char *)(void *)sc->sched_dma.vaddr,
-		    sizeof (uint16_t), BUS_DMASYNC_PREWRITE);
-	}
+	    0, sc->sched_dma.size, BUS_DMASYNC_POSTWRITE);
 }
-#endif
+
+void
+iwm_reset_sched(struct iwm_softc *sc, int qid, int idx, uint8_t sta_id)
+{
+	struct iwm_agn_scd_bc_tbl *scd_bc_tbl;
+	uint16_t val;
+
+	scd_bc_tbl = sc->sched_dma.vaddr;
+
+	val = htole16(1 | (sta_id << 12));
+
+	bus_dmamap_sync(sc->sc_dmat, sc->sched_dma.map,
+	    0, sc->sched_dma.size, BUS_DMASYNC_PREWRITE);
+
+	/* Update TX scheduler. */
+	scd_bc_tbl[qid].tfd_offset[idx] = val;
+	if (idx < IWM_TFD_QUEUE_SIZE_BC_DUP)
+		scd_bc_tbl[qid].tfd_offset[IWM_TFD_QUEUE_SIZE_MAX + idx] = val;
+
+	bus_dmamap_sync(sc->sc_dmat, sc->sched_dma.map,
+	    0, sc->sched_dma.size, BUS_DMASYNC_POSTWRITE);
+}
 
 /*
  * Fill in various bit for management frames, and leave them
@@ -4926,19 +6159,23 @@ iwm_tx(struct iwm_softc *sc, struct mbuf *m, struct ieee80211_node *ni, int ac)
 	uint32_t flags;
 	u_int hdrlen;
 	bus_dma_segment_t *seg;
-	uint8_t tid, type;
+	uint8_t tid, type, subtype;
 	int i, totlen, err, pad;
-	int hdrlen2;
+	int qid, hasqos;
 
 	wh = mtod(m, struct ieee80211_frame *);
-	hdrlen = ieee80211_get_hdrlen(wh);
 	type = wh->i_fc[0] & IEEE80211_FC0_TYPE_MASK;
+	subtype = wh->i_fc[0] & IEEE80211_FC0_SUBTYPE_MASK;
+	if (type == IEEE80211_FC0_TYPE_CTL)
+		hdrlen = sizeof(struct ieee80211_frame_min);
+	else
+		hdrlen = ieee80211_get_hdrlen(wh);
 
-	hdrlen2 = (ieee80211_has_qos(wh)) ?
-	    sizeof (struct ieee80211_qosframe) :
-	    sizeof (struct ieee80211_frame);
-
-	tid = 0;
+	hasqos = ieee80211_has_qos(wh);
+	if (type == IEEE80211_FC0_TYPE_DATA)
+		tid = IWM_TID_NON_QOS;
+	else
+		tid = IWM_MAX_TID_COUNT;
 
 	/*
 	 * Map EDCA categories to Tx data queues.
@@ -4947,14 +6184,32 @@ iwm_tx(struct iwm_softc *sc, struct mbuf *m, struct ieee80211_node *ni, int ac)
 	 * need to share Tx queues between stations because we only implement
 	 * client mode; the firmware's station table contains only one entry
 	 * which represents our access point.
-	 *
-	 * Tx aggregation will require additional queues (one queue per TID
-	 * for which aggregation is enabled) but we do not implement this yet.
 	 */
 	if (isset(sc->sc_enabled_capa, IWM_UCODE_TLV_CAPA_DQA_SUPPORT))
-		ring = &sc->txq[IWM_DQA_MIN_MGMT_QUEUE + ac];
+		qid = IWM_DQA_MIN_MGMT_QUEUE + ac;
 	else
-		ring = &sc->txq[ac];
+		qid = ac;
+
+	/* If possible, put this frame on an aggregation queue. */
+	if (hasqos) {
+		struct ieee80211_tx_ba *ba;
+		uint16_t qos = ieee80211_get_qos(wh);
+		int qostid = qos & IEEE80211_QOS_TID;
+		int agg_qid = IWM_FIRST_AGG_TX_QUEUE + qostid;
+
+		ba = &ni->ni_tx_ba[qostid];
+		if (!IEEE80211_IS_MULTICAST(wh->i_addr1) &&
+		    type == IEEE80211_FC0_TYPE_DATA &&
+		    subtype != IEEE80211_FC0_SUBTYPE_NODATA &&
+		    (sc->tx_ba_queue_mask & (1 << agg_qid)) &&
+		    ba->ba_state == IEEE80211_BA_AGREED) {
+			qid = agg_qid;
+			tid = qostid;
+			ac = ieee80211_up_to_ac(ic, qostid);
+		}
+	}
+
+	ring = &sc->txq[qid];
 	desc = &ring->desc[ring->cur];
 	memset(desc, 0, sizeof(*desc));
 	data = &ring->data[ring->cur];
@@ -5028,26 +6283,36 @@ iwm_tx(struct iwm_softc *sc, struct mbuf *m, struct ieee80211_node *ni, int ac)
 	tx->sta_id = IWM_STATION_ID;
 
 	if (type == IEEE80211_FC0_TYPE_MGT) {
-		uint8_t subtype = wh->i_fc[0] & IEEE80211_FC0_SUBTYPE_MASK;
-
 		if (subtype == IEEE80211_FC0_SUBTYPE_ASSOC_REQ ||
 		    subtype == IEEE80211_FC0_SUBTYPE_REASSOC_REQ)
 			tx->pm_frame_timeout = htole16(3);
 		else
 			tx->pm_frame_timeout = htole16(2);
 	} else {
+		if (type == IEEE80211_FC0_TYPE_CTL &&
+		    subtype == IEEE80211_FC0_SUBTYPE_BAR) {
+			struct ieee80211_frame_min *mwh;
+			uint8_t *barfrm;
+			uint16_t ctl;
+			mwh = mtod(m, struct ieee80211_frame_min *);
+			barfrm = (uint8_t *)&mwh[1];
+			ctl = LE_READ_2(barfrm);
+			tid = (ctl & IEEE80211_BA_TID_INFO_MASK) >>
+			    IEEE80211_BA_TID_INFO_SHIFT;
+			flags |= IWM_TX_CMD_FLG_ACK | IWM_TX_CMD_FLG_BAR;
+			tx->data_retry_limit = IWM_BAR_DFAULT_RETRY_LIMIT;
+		}
+
 		tx->pm_frame_timeout = htole16(0);
 	}
 
 	if (hdrlen & 3) {
 		/* First segment length must be a multiple of 4. */
 		flags |= IWM_TX_CMD_FLG_MH_PAD;
+		tx->offload_assist |= htole16(IWM_TX_CMD_OFFLD_PAD);
 		pad = 4 - (hdrlen & 3);
 	} else
 		pad = 0;
-
-	tx->driver_txop = 0;
-	tx->next_frame_len = 0;
 
 	tx->len = htole16(totlen);
 	tx->tid_tspec = tid;
@@ -5076,13 +6341,17 @@ iwm_tx(struct iwm_softc *sc, struct mbuf *m, struct ieee80211_node *ni, int ac)
 
 		tx->sec_ctl = IWM_TX_CMD_SEC_CCM;
 		memcpy(tx->key, k->k_key, MIN(sizeof(tx->key), k->k_len));
+		/* TX scheduler includes CCMP MIC length. */
+		totlen += IEEE80211_CCMP_MICLEN;
 	} else {
 		/* Trim 802.11 header. */
 		m_adj(m, hdrlen);
 		tx->sec_ctl = 0;
 	}
 
-	flags |= IWM_TX_CMD_FLG_BT_DIS | IWM_TX_CMD_FLG_SEQ_CTL;
+	flags |= IWM_TX_CMD_FLG_BT_DIS;
+	if (!hasqos)
+		flags |= IWM_TX_CMD_FLG_SEQ_CTL;
 
 	tx->tx_flags |= htole32(flags);
 
@@ -5112,6 +6381,7 @@ iwm_tx(struct iwm_softc *sc, struct mbuf *m, struct ieee80211_node *ni, int ac)
 	data->in = in;
 	data->txmcs = ni->ni_txmcs;
 	data->txrate = ni->ni_txrate;
+	data->ampdu_txmcs = ni->ni_txmcs; /* updated upon Tx interrupt */
 
 	/* Fill TX descriptor. */
 	desc->num_tbs = 2 + data->map->dm_nsegs;
@@ -5142,9 +6412,7 @@ iwm_tx(struct iwm_softc *sc, struct mbuf *m, struct ieee80211_node *ni, int ac)
 	    (char *)(void *)desc - (char *)(void *)ring->desc_dma.vaddr,
 	    sizeof (*desc), BUS_DMASYNC_PREWRITE);
 
-#if 0
-	iwm_update_sched(sc, ring->qid, ring->cur, tx->sta_id, le16toh(tx->len));
-#endif
+	iwm_update_sched(sc, ring->qid, ring->cur, tx->sta_id, totlen);
 
 	/* Kick TX ring. */
 	ring->cur = (ring->cur + 1) % IWM_TX_RING_COUNT;
@@ -5172,6 +6440,30 @@ iwm_flush_tx_path(struct iwm_softc *sc, int tfd_queue_msk)
 	if (err)
                 printf("%s: Flushing tx queue failed: %d\n", DEVNAME(sc), err);
 	return err;
+}
+
+#define IWM_FLUSH_WAIT_MS	2000
+
+int
+iwm_wait_tx_queues_empty(struct iwm_softc *sc)
+{
+	int i, err;
+
+	for (i = 0; i < IWM_MAX_QUEUES; i++) {
+		struct iwm_tx_ring *ring = &sc->txq[i];
+
+		if (i == sc->cmdqid)
+			continue;
+
+		while (ring->queued > 0) {
+			err = tsleep_nsec(ring, 0, "iwmflush",
+			    MSEC_TO_NSEC(IWM_FLUSH_WAIT_MS));
+			if (err)
+				return err;
+		}
+	}
+
+	return 0;
 }
 
 void
@@ -5385,24 +6677,34 @@ iwm_add_sta_cmd(struct iwm_softc *sc, struct iwm_node *in, int update)
 			qid = IWM_DQA_INJECT_MONITOR_QUEUE;
 		else
 			qid = IWM_AUX_QUEUE;
-		add_sta_cmd.tfd_queue_msk |= htole32(1 << qid);
-	} else if (!update) {
+		in->tfd_queue_msk |= (1 << qid);
+	} else {
 		int ac;
 		for (ac = 0; ac < EDCA_NUM_AC; ac++) {
 			int qid = ac;
 			if (isset(sc->sc_enabled_capa,
 			    IWM_UCODE_TLV_CAPA_DQA_SUPPORT))
 				qid += IWM_DQA_MIN_MGMT_QUEUE;
-			add_sta_cmd.tfd_queue_msk |= htole32(1 << qid);
+			in->tfd_queue_msk |= (1 << qid);
 		}
-		IEEE80211_ADDR_COPY(&add_sta_cmd.addr, in->in_ni.ni_bssid);
+	}
+	if (!update) {
+		if (ic->ic_opmode == IEEE80211_M_MONITOR)
+			IEEE80211_ADDR_COPY(&add_sta_cmd.addr,
+			    etherbroadcastaddr);
+		else
+			IEEE80211_ADDR_COPY(&add_sta_cmd.addr,
+			    in->in_ni.ni_bssid);
 	}
 	add_sta_cmd.add_modify = update ? 1 : 0;
 	add_sta_cmd.station_flags_msk
 	    |= htole32(IWM_STA_FLG_FAT_EN_MSK | IWM_STA_FLG_MIMO_EN_MSK);
-	add_sta_cmd.tid_disable_tx = htole16(0xffff);
-	if (update)
-		add_sta_cmd.modify_mask |= (IWM_STA_MODIFY_TID_DISABLE_TX);
+	if (update) {
+		add_sta_cmd.modify_mask |= (IWM_STA_MODIFY_QUEUES |
+		    IWM_STA_MODIFY_TID_DISABLE_TX);
+	}
+	add_sta_cmd.tid_disable_tx = htole16(in->tid_disable_ampdu);
+	add_sta_cmd.tfd_queue_msk = htole32(in->tfd_queue_msk);
 
 	if (in->in_ni.ni_flags & IEEE80211_NODE_HT) {
 		add_sta_cmd.station_flags_msk
@@ -5468,7 +6770,7 @@ iwm_add_aux_sta(struct iwm_softc *sc)
 	if (isset(sc->sc_enabled_capa, IWM_UCODE_TLV_CAPA_DQA_SUPPORT)) {
 		qid = IWM_DQA_AUX_QUEUE;
 		err = iwm_enable_txq(sc, IWM_AUX_STA_ID, qid,
-		    IWM_TX_FIFO_MCAST);
+		    IWM_TX_FIFO_MCAST, 0, IWM_MAX_TID_COUNT, 0);
 	} else {
 		qid = IWM_AUX_QUEUE;
 		err = iwm_enable_ac_txq(sc, qid, IWM_TX_FIFO_MCAST);
@@ -5495,6 +6797,83 @@ iwm_add_aux_sta(struct iwm_softc *sc)
 	if (!err && (status & IWM_ADD_STA_STATUS_MASK) != IWM_ADD_STA_SUCCESS)
 		err = EIO;
 
+	return err;
+}
+
+int
+iwm_drain_sta(struct iwm_softc *sc, struct iwm_node* in, int drain)
+{
+	struct iwm_add_sta_cmd cmd;
+	int err;
+	uint32_t status;
+	size_t cmdsize;
+
+	memset(&cmd, 0, sizeof(cmd));
+	cmd.mac_id_n_color = htole32(IWM_FW_CMD_ID_AND_COLOR(in->in_id,
+	    in->in_color));
+	cmd.sta_id = IWM_STATION_ID;
+	cmd.add_modify = IWM_STA_MODE_MODIFY;
+	cmd.station_flags = drain ? htole32(IWM_STA_FLG_DRAIN_FLOW) : 0;
+	cmd.station_flags_msk = htole32(IWM_STA_FLG_DRAIN_FLOW);
+
+	if (isset(sc->sc_ucode_api, IWM_UCODE_TLV_API_STA_TYPE))
+		cmdsize = sizeof(cmd);
+	else
+		cmdsize = sizeof(struct iwm_add_sta_cmd_v7);
+
+	status = IWM_ADD_STA_SUCCESS;
+	err = iwm_send_cmd_pdu_status(sc, IWM_ADD_STA,
+	    cmdsize, &cmd, &status);
+	if (err) {
+		printf("%s: could not update sta (error %d)\n",
+		    DEVNAME(sc), err);
+		return err;
+	}
+
+	switch (status & IWM_ADD_STA_STATUS_MASK) {
+	case IWM_ADD_STA_SUCCESS:
+		break;
+	default:
+		err = EIO;
+		printf("%s: Couldn't %s draining for station\n",
+		    DEVNAME(sc), drain ? "enable" : "disable");
+		break;
+	}
+
+	return err;
+}
+
+int
+iwm_flush_sta(struct iwm_softc *sc, struct iwm_node *in)
+{
+	int err;
+
+	sc->sc_flags |= IWM_FLAG_TXFLUSH;
+
+	err = iwm_drain_sta(sc, in, 1);
+	if (err)
+		goto done;
+
+	err = iwm_flush_tx_path(sc, in->tfd_queue_msk);
+	if (err) {
+		printf("%s: could not flush Tx path (error %d)\n",
+		    DEVNAME(sc), err);
+		goto done;
+	}
+
+	err = iwm_wait_tx_queues_empty(sc);
+	if (err) {
+		printf("%s: Could not empty Tx queues (error %d)\n",
+		    DEVNAME(sc), err);
+#if 1
+		iwm_dump_driver_status(sc);
+#endif
+		goto done;
+	}
+
+	err = iwm_drain_sta(sc, in, 0);
+done:
+	sc->sc_flags &= ~IWM_FLAG_TXFLUSH;
 	return err;
 }
 
@@ -6257,7 +7636,7 @@ iwm_mac_ctxt_cmd_common(struct iwm_softc *sc, struct iwm_node *in,
 	else if (ic->ic_opmode == IEEE80211_M_STA)
 		cmd->mac_type = htole32(IWM_FW_MAC_TYPE_BSS_STA);
 	else
-		panic("unsupported operating mode %d\n", ic->ic_opmode);
+		panic("unsupported operating mode %d", ic->ic_opmode);
 	cmd->tsf_id = htole32(IWM_TSF_ID_A);
 
 	IEEE80211_ADDR_COPY(cmd->node_addr, ic->ic_myaddr);
@@ -6635,6 +8014,7 @@ iwm_auth(struct iwm_softc *sc)
 	}
 	sc->sc_flags |= IWM_FLAG_BINDING_ACTIVE;
 
+	in->tid_disable_ampdu = 0xffff;
 	err = iwm_add_sta_cmd(sc, in, 0);
 	if (err) {
 		printf("%s: could not add sta (error %d)\n",
@@ -6676,36 +8056,30 @@ iwm_deauth(struct iwm_softc *sc)
 {
 	struct ieee80211com *ic = &sc->sc_ic;
 	struct iwm_node *in = (void *)ic->ic_bss;
-	int ac, tfd_queue_msk, err;
+	int err;
 
 	splassert(IPL_NET);
 
 	iwm_unprotect_session(sc, in);
 
 	if (sc->sc_flags & IWM_FLAG_STA_ACTIVE) {
+		err = iwm_flush_sta(sc, in);
+		if (err)
+			return err;
 		err = iwm_rm_sta_cmd(sc, in);
 		if (err) {
 			printf("%s: could not remove STA (error %d)\n",
 			    DEVNAME(sc), err);
 			return err;
 		}
+		in->tid_disable_ampdu = 0xffff;
 		sc->sc_flags &= ~IWM_FLAG_STA_ACTIVE;
 		sc->sc_rx_ba_sessions = 0;
-	}
-
-	tfd_queue_msk = 0;
-	for (ac = 0; ac < EDCA_NUM_AC; ac++) {
-		int qid = ac;
-		if (isset(sc->sc_enabled_capa, IWM_UCODE_TLV_CAPA_DQA_SUPPORT))
-			qid += IWM_DQA_MIN_MGMT_QUEUE;
-		tfd_queue_msk |= htole32(1 << qid);
-	}
-
-	err = iwm_flush_tx_path(sc, tfd_queue_msk);
-	if (err) {
-		printf("%s: could not flush Tx path (error %d)\n",
-		    DEVNAME(sc), err);
-		return err;
+		sc->ba_rx.start_tidmask = 0;
+		sc->ba_rx.stop_tidmask = 0;
+		sc->tx_ba_queue_mask = 0;
+		sc->ba_tx.start_tidmask = 0;
+		sc->ba_tx.stop_tidmask = 0;
 	}
 
 	if (sc->sc_flags & IWM_FLAG_BINDING_ACTIVE) {
@@ -6741,6 +8115,8 @@ iwm_assoc(struct iwm_softc *sc)
 
 	splassert(IPL_NET);
 
+	if (!update_sta)
+		in->tid_disable_ampdu = 0xffff;
 	err = iwm_add_sta_cmd(sc, in, update_sta);
 	if (err) {
 		printf("%s: could not %s STA (error %d)\n",
@@ -6761,14 +8137,23 @@ iwm_disassoc(struct iwm_softc *sc)
 	splassert(IPL_NET);
 
 	if (sc->sc_flags & IWM_FLAG_STA_ACTIVE) {
+		err = iwm_flush_sta(sc, in);
+		if (err)
+			return err;
 		err = iwm_rm_sta_cmd(sc, in);
 		if (err) {
 			printf("%s: could not remove STA (error %d)\n",
 			    DEVNAME(sc), err);
 			return err;
 		}
+		in->tid_disable_ampdu = 0xffff;
 		sc->sc_flags &= ~IWM_FLAG_STA_ACTIVE;
 		sc->sc_rx_ba_sessions = 0;
+		sc->ba_rx.start_tidmask = 0;
+		sc->ba_rx.stop_tidmask = 0;
+		sc->tx_ba_queue_mask = 0;
+		sc->ba_tx.start_tidmask = 0;
+		sc->ba_tx.stop_tidmask = 0;
 	}
 
 	return 0;
@@ -7179,11 +8564,7 @@ iwm_setrates(struct iwm_node *in, int async)
 
 	lqcmd.agg_time_limit = htole16(4000);	/* 4ms */
 	lqcmd.agg_disable_start_th = 3;
-#ifdef notyet
 	lqcmd.agg_frame_cnt_limit = 0x3f;
-#else
-	lqcmd.agg_frame_cnt_limit = 1; /* tx agg disabled */
-#endif
 
 	cmd.data[0] = &lqcmd;
 	iwm_send_cmd(sc, &cmd);
@@ -7327,11 +8708,16 @@ iwm_newstate(struct ieee80211com *ic, enum ieee80211_state nstate, int arg)
 {
 	struct ifnet *ifp = IC2IFP(ic);
 	struct iwm_softc *sc = ifp->if_softc;
+	int i;
 
 	if (ic->ic_state == IEEE80211_S_RUN) {
 		timeout_del(&sc->sc_calib_to);
 		iwm_del_task(sc, systq, &sc->ba_task);
-		iwm_del_task(sc, systq, &sc->htprot_task);
+		iwm_del_task(sc, systq, &sc->mac_ctxt_task);
+		for (i = 0; i < nitems(sc->sc_rxba_data); i++) {
+			struct iwm_rxba_data *rxba = &sc->sc_rxba_data[i];
+			iwm_clear_reorder_buffer(sc, rxba);
+		}
 	}
 
 	sc->ns_nstate = nstate;
@@ -7913,7 +9299,7 @@ iwm_init_hw(struct iwm_softc *sc)
 		else
 			qid = IWM_AUX_QUEUE;
 		err = iwm_enable_txq(sc, IWM_MONITOR_STA_ID, qid,
-		    iwm_ac_to_tx_fifo[EDCA_AC_BE]);
+		    iwm_ac_to_tx_fifo[EDCA_AC_BE], 0, IWM_MAX_TID_COUNT, 0);
 		if (err) {
 			printf("%s: could not enable monitor inject Tx queue "
 			    "(error %d)\n", DEVNAME(sc), err);
@@ -7927,7 +9313,7 @@ iwm_init_hw(struct iwm_softc *sc)
 			else
 				qid = ac;
 			err = iwm_enable_txq(sc, IWM_STATION_ID, qid,
-			    iwm_ac_to_tx_fifo[ac]);
+			    iwm_ac_to_tx_fifo[ac], 0, IWM_TID_NON_QOS, 0);
 			if (err) {
 				printf("%s: could not enable Tx queue %d "
 				    "(error %d)\n", DEVNAME(sc), ac, err);
@@ -8045,6 +9431,10 @@ iwm_start(struct ifnet *ifp)
 			break;
 		}
 
+		/* Don't queue additional frames while flushing Tx queues. */
+		if (sc->sc_flags & IWM_FLAG_TXFLUSH)
+			break;
+
 		/* need to send management frames even if we're not RUNning */
 		m = mq_dequeue(&ic->ic_mgtq);
 		if (m) {
@@ -8109,7 +9499,7 @@ iwm_stop(struct ifnet *ifp)
 	task_del(systq, &sc->init_task);
 	iwm_del_task(sc, sc->sc_nswq, &sc->newstate_task);
 	iwm_del_task(sc, systq, &sc->ba_task);
-	iwm_del_task(sc, systq, &sc->htprot_task);
+	iwm_del_task(sc, systq, &sc->mac_ctxt_task);
 	KASSERT(sc->task_refs.refs >= 1);
 	refcnt_finalize(&sc->task_refs, "iwmstop");
 
@@ -8127,6 +9517,8 @@ iwm_stop(struct ifnet *ifp)
 	ifq_clr_oactive(&ifp->if_snd);
 
 	in->in_phyctxt = NULL;
+	in->tid_disable_ampdu = 0xffff;
+	in->tfd_queue_msk = 0;
 
 	sc->sc_flags &= ~(IWM_FLAG_SCANNING | IWM_FLAG_BGSCAN);
 	sc->sc_flags &= ~IWM_FLAG_MAC_ACTIVE;
@@ -8135,12 +9527,22 @@ iwm_stop(struct ifnet *ifp)
 	sc->sc_flags &= ~IWM_FLAG_TE_ACTIVE;
 	sc->sc_flags &= ~IWM_FLAG_HW_ERR;
 	sc->sc_flags &= ~IWM_FLAG_SHUTDOWN;
+	sc->sc_flags &= ~IWM_FLAG_TXFLUSH;
 
 	sc->sc_rx_ba_sessions = 0;
+	sc->ba_rx.start_tidmask = 0;
+	sc->ba_rx.stop_tidmask = 0;
+	sc->tx_ba_queue_mask = 0;
+	sc->ba_tx.start_tidmask = 0;
+	sc->ba_tx.stop_tidmask = 0;
 
 	sc->sc_newstate(ic, IEEE80211_S_INIT, -1);
 
 	timeout_del(&sc->sc_calib_to); /* XXX refcount? */
+	for (i = 0; i < nitems(sc->sc_rxba_data); i++) {
+		struct iwm_rxba_data *rxba = &sc->sc_rxba_data[i];
+		iwm_clear_reorder_buffer(sc, rxba);
+	}
 	iwm_led_blink_stop(sc);
 	ifp->if_timer = sc->sc_tx_timer = 0;
 
@@ -8156,8 +9558,9 @@ iwm_watchdog(struct ifnet *ifp)
 	if (sc->sc_tx_timer > 0) {
 		if (--sc->sc_tx_timer == 0) {
 			printf("%s: device timeout\n", DEVNAME(sc));
-#ifdef IWM_DEBUG
+#if 1
 			iwm_nic_error(sc);
+			iwm_dump_driver_status(sc);
 #endif
 			if ((sc->sc_flags & IWM_FLAG_SHUTDOWN) == 0)
 				task_add(systq, &sc->init_task);
@@ -8223,7 +9626,7 @@ iwm_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data)
 	return err;
 }
 
-#ifdef IWM_DEBUG
+#if 1
 /*
  * Note: This structure is read from the device with IO accesses,
  * and the reading already does the endian conversion. As it is
@@ -8473,6 +9876,23 @@ iwm_nic_error(struct iwm_softc *sc)
 	if (sc->sc_uc.uc_umac_error_event_table)
 		iwm_nic_umac_error(sc);
 }
+
+void
+iwm_dump_driver_status(struct iwm_softc *sc)
+{
+	int i;
+
+	printf("driver status:\n");
+	for (i = 0; i < IWM_MAX_QUEUES; i++) {
+		struct iwm_tx_ring *ring = &sc->txq[i];
+		printf("  tx ring %2d: qid=%-2d cur=%-3d "
+		    "queued=%-3d\n",
+		    i, ring->qid, ring->cur, ring->queued);
+	}
+	printf("  rx ring: cur=%d\n", sc->rxq.cur);
+	printf("  802.11 state %s\n",
+	    ieee80211_state_name[sc->sc_ic.ic_state]);
+}
 #endif
 
 #define SYNC_RESP_STRUCT(_var_, _pkt_)					\
@@ -8591,6 +10011,10 @@ iwm_rx_pkt(struct iwm_softc *sc, struct iwm_rx_data *data, struct mbuf_list *ml)
 
 		case IWM_TX_CMD:
 			iwm_rx_tx_cmd(sc, pkt, data);
+			break;
+
+		case IWM_BA_NOTIF:
+			iwm_rx_compressed_ba(sc, pkt, data);
 			break;
 
 		case IWM_MISSED_BEACONS_NOTIFICATION:
@@ -8949,22 +10373,9 @@ iwm_intr(void *arg)
 	}
 
 	if (r1 & IWM_CSR_INT_BIT_SW_ERR) {
-#ifdef IWM_DEBUG
-		int i;
-
+#if 1
 		iwm_nic_error(sc);
-
-		/* Dump driver status (TX and RX rings) while we're here. */
-		DPRINTF(("driver status:\n"));
-		for (i = 0; i < IWM_MAX_QUEUES; i++) {
-			struct iwm_tx_ring *ring = &sc->txq[i];
-			DPRINTF(("  tx ring %2d: qid=%-2d cur=%-3d "
-			    "queued=%-3d\n",
-			    i, ring->qid, ring->cur, ring->queued));
-		}
-		DPRINTF(("  rx ring: cur=%d\n", sc->rxq.cur));
-		DPRINTF(("  802.11 state %s\n",
-		    ieee80211_state_name[sc->sc_ic.ic_state]));
+		iwm_dump_driver_status(sc);
 #endif
 
 		printf("%s: fatal firmware error\n", DEVNAME(sc));
@@ -9059,22 +10470,9 @@ iwm_intr_msix(void *arg)
 	if ((inta_fh & IWM_MSIX_FH_INT_CAUSES_FH_ERR) ||
 	    (inta_hw & IWM_MSIX_HW_INT_CAUSES_REG_SW_ERR) ||
 	    (inta_hw & IWM_MSIX_HW_INT_CAUSES_REG_SW_ERR_V2)) {
-#ifdef IWM_DEBUG
-		int i;
-
+#if 1
 		iwm_nic_error(sc);
-
-		/* Dump driver status (TX and RX rings) while we're here. */
-		DPRINTF(("driver status:\n"));
-		for (i = 0; i < IWM_MAX_QUEUES; i++) {
-			struct iwm_tx_ring *ring = &sc->txq[i];
-			DPRINTF(("  tx ring %2d: qid=%-2d cur=%-3d "
-			    "queued=%-3d\n",
-			    i, ring->qid, ring->cur, ring->queued));
-		}
-		DPRINTF(("  rx ring: cur=%d\n", sc->rxq.cur));
-		DPRINTF(("  802.11 state %s\n",
-		    ieee80211_state_name[sc->sc_ic.ic_state]));
+		iwm_dump_driver_status(sc);
 #endif
 
 		printf("%s: fatal firmware error\n", DEVNAME(sc));
@@ -9217,7 +10615,7 @@ iwm_attach(struct device *parent, struct device *self, void *aux)
 	struct ifnet *ifp = &ic->ic_if;
 	const char *intrstr;
 	int err;
-	int txq_i, i;
+	int txq_i, i, j;
 
 	sc->sc_pct = pa->pa_pc;
 	sc->sc_pcitag = pa->pa_tag;
@@ -9480,6 +10878,7 @@ iwm_attach(struct device *parent, struct device *self, void *aux)
 
 	/* Set device capabilities. */
 	ic->ic_caps =
+	    IEEE80211_C_QOS | IEEE80211_C_TX_AMPDU | /* A-MPDU */
 	    IEEE80211_C_WEP |		/* WEP */
 	    IEEE80211_C_RSN |		/* WPA/RSN */
 	    IEEE80211_C_SCANALL |	/* device scans all channels at once */
@@ -9528,10 +10927,21 @@ iwm_attach(struct device *parent, struct device *self, void *aux)
 #endif
 	timeout_set(&sc->sc_calib_to, iwm_calib_timeout, sc);
 	timeout_set(&sc->sc_led_blink_to, iwm_led_blink_timeout, sc);
+	for (i = 0; i < nitems(sc->sc_rxba_data); i++) {
+		struct iwm_rxba_data *rxba = &sc->sc_rxba_data[i];
+		rxba->baid = IWM_RX_REORDER_DATA_INVALID_BAID;
+		rxba->sc = sc;
+		timeout_set(&rxba->session_timer, iwm_rx_ba_session_expired,
+		    rxba);
+		timeout_set(&rxba->reorder_buf.reorder_timer,
+		    iwm_reorder_timer_expired, &rxba->reorder_buf);
+		for (j = 0; j < nitems(rxba->entries); j++)
+			ml_init(&rxba->entries[j].frames);
+	}
 	task_set(&sc->init_task, iwm_init_task, sc);
 	task_set(&sc->newstate_task, iwm_newstate_task, sc);
 	task_set(&sc->ba_task, iwm_ba_task, sc);
-	task_set(&sc->htprot_task, iwm_htprot_task, sc);
+	task_set(&sc->mac_ctxt_task, iwm_mac_ctxt_task, sc);
 
 	ic->ic_node_alloc = iwm_node_alloc;
 	ic->ic_bgscan_start = iwm_bgscan;
@@ -9541,13 +10951,13 @@ iwm_attach(struct device *parent, struct device *self, void *aux)
 	/* Override 802.11 state transition machine. */
 	sc->sc_newstate = ic->ic_newstate;
 	ic->ic_newstate = iwm_newstate;
-	ic->ic_update_htprot = iwm_update_htprot;
+	ic->ic_updateprot = iwm_updateprot;
+	ic->ic_updateslot = iwm_updateslot;
+	ic->ic_updateedca = iwm_updateedca;
 	ic->ic_ampdu_rx_start = iwm_ampdu_rx_start;
 	ic->ic_ampdu_rx_stop = iwm_ampdu_rx_stop;
-#ifdef notyet
 	ic->ic_ampdu_tx_start = iwm_ampdu_tx_start;
 	ic->ic_ampdu_tx_stop = iwm_ampdu_tx_stop;
-#endif
 	/*
 	 * We cannot read the MAC address without loading the
 	 * firmware from disk. Postpone until mountroot is done.

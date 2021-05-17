@@ -1,4 +1,4 @@
-/* $OpenBSD: monitor.c,v 1.224 2021/03/03 22:41:49 djm Exp $ */
+/* $OpenBSD: monitor.c,v 1.226 2021/04/30 04:02:52 dtucker Exp $ */
 /*
  * Copyright 2002 Niels Provos <provos@citi.umich.edu>
  * Copyright 2002 Markus Friedl <markus@openbsd.org>
@@ -105,8 +105,6 @@ int mm_answer_authserv(struct ssh *, int, struct sshbuf *);
 int mm_answer_authpassword(struct ssh *, int, struct sshbuf *);
 int mm_answer_bsdauthquery(struct ssh *, int, struct sshbuf *);
 int mm_answer_bsdauthrespond(struct ssh *, int, struct sshbuf *);
-int mm_answer_skeyquery(struct ssh *, int, struct sshbuf *);
-int mm_answer_skeyrespond(struct ssh *, int, struct sshbuf *);
 int mm_answer_keyallowed(struct ssh *, int, struct sshbuf *);
 int mm_answer_keyverify(struct ssh *, int, struct sshbuf *);
 int mm_answer_pty(struct ssh *, int, struct sshbuf *);
@@ -351,8 +349,8 @@ static int
 monitor_read_log(struct monitor *pmonitor)
 {
 	struct sshbuf *logmsg;
-	u_int len, level, line;
-	char *msg, *file, *func;
+	u_int len, level, forced;
+	char *msg;
 	u_char *p;
 	int r;
 
@@ -383,21 +381,17 @@ monitor_read_log(struct monitor *pmonitor)
 		fatal_fr(r, "reserve msg");
 	if (atomicio(read, pmonitor->m_log_recvfd, p, len) != len)
 		fatal_f("log fd read: %s", strerror(errno));
-	if ((r = sshbuf_get_cstring(logmsg, &file, NULL)) != 0 ||
-	    (r = sshbuf_get_cstring(logmsg, &func, NULL)) != 0 ||
-	    (r = sshbuf_get_u32(logmsg, &line)) != 0 ||
-	    (r = sshbuf_get_u32(logmsg, &level)) != 0 ||
+	if ((r = sshbuf_get_u32(logmsg, &level)) != 0 ||
+	    (r = sshbuf_get_u32(logmsg, &forced)) != 0 ||
 	    (r = sshbuf_get_cstring(logmsg, &msg, NULL)) != 0)
 		fatal_fr(r, "parse");
 
 	/* Log it */
 	if (log_level_name(level) == NULL)
 		fatal_f("invalid log level %u (corrupted message?)", level);
-	sshlog(file, func, line, 0, level, NULL, "%s [preauth]", msg);
+	sshlogdirect(level, forced, "%s [preauth]", msg);
 
 	sshbuf_free(logmsg);
-	free(file);
-	free(func);
 	free(msg);
 
 	return 0;

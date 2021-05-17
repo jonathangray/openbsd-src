@@ -1,4 +1,4 @@
-/*	$OpenBSD: kern_sysctl.c,v 1.389 2021/02/08 10:51:02 mpi Exp $	*/
+/*	$OpenBSD: kern_sysctl.c,v 1.394 2021/05/04 21:57:15 bluhm Exp $	*/
 /*	$NetBSD: kern_sysctl.c,v 1.17 1996/05/20 17:49:05 mrg Exp $	*/
 
 /*-
@@ -114,24 +114,21 @@
 #endif
 
 #include "audio.h"
-#include "video.h"
+#include "dt.h"
 #include "pf.h"
+#include "video.h"
 
 extern struct forkstat forkstat;
 extern struct nchstats nchstats;
 extern int nselcoll, fscale;
 extern struct disklist_head disklist;
 extern fixpt_t ccpu;
-extern  long numvnodes;
-#if NAUDIO > 0
+extern long numvnodes;
+extern int allowdt;
 extern int audio_record_enable;
-#endif
-#if NVIDEO > 0
 extern int video_record_enable;
-#endif
 
 int allowkmem;
-int allowdt;
 
 int sysctl_diskinit(int, struct proc *);
 int sysctl_proc_args(int *, u_int, void *, size_t *, struct proc *);
@@ -142,12 +139,8 @@ int sysctl_proc_vmmap(int *, u_int, void *, size_t *, struct proc *);
 int sysctl_intrcnt(int *, u_int, void *, size_t *);
 int sysctl_sensors(int *, u_int, void *, size_t *, void *, size_t);
 int sysctl_cptime2(int *, u_int, void *, size_t *, void *, size_t);
-#if NAUDIO > 0
 int sysctl_audio(int *, u_int, void *, size_t *, void *, size_t);
-#endif
-#if NVIDEO > 0
 int sysctl_video(int *, u_int, void *, size_t *, void *, size_t);
-#endif
 int sysctl_cpustats(int *, u_int, void *, size_t *, void *, size_t);
 int sysctl_utc_offset(void *, size_t *, void *, size_t);
 
@@ -299,54 +292,54 @@ extern int uvm_wxabort;
 extern int global_ptrace;
 
 const struct sysctl_bounded_args kern_vars[] = {
-	{KERN_OSREV, &openbsd, 1, 0},
+	{KERN_OSREV, &openbsd, SYSCTL_INT_READONLY},
 	{KERN_MAXVNODES, &maxvnodes, 0, INT_MAX},
 	{KERN_MAXPROC, &maxprocess, 0, INT_MAX},
 	{KERN_MAXFILES, &maxfiles, 0, INT_MAX},
-	{KERN_NFILES, &numfiles, 1, 0},
-	{KERN_TTYCOUNT, &tty_count, 1, 0},
-	{KERN_ARGMAX, &arg_max, 1, 0},
-	{KERN_NSELCOLL, &nselcoll, 1, 0},
-	{KERN_POSIX1, &posix_version, 1, 0},
-	{KERN_NGROUPS, &ngroups_max, 1, 0},
-	{KERN_JOB_CONTROL, &int_one, 1, 0},
-	{KERN_SAVED_IDS, &int_one, 1, 0},
-	{KERN_MAXPARTITIONS, &maxpartitions, 1, 0},
-	{KERN_RAWPARTITION, &raw_part, 1, 0},
+	{KERN_NFILES, &numfiles, SYSCTL_INT_READONLY},
+	{KERN_TTYCOUNT, &tty_count, SYSCTL_INT_READONLY},
+	{KERN_ARGMAX, &arg_max, SYSCTL_INT_READONLY},
+	{KERN_NSELCOLL, &nselcoll, SYSCTL_INT_READONLY},
+	{KERN_POSIX1, &posix_version, SYSCTL_INT_READONLY},
+	{KERN_NGROUPS, &ngroups_max, SYSCTL_INT_READONLY},
+	{KERN_JOB_CONTROL, &int_one, SYSCTL_INT_READONLY},
+	{KERN_SAVED_IDS, &int_one, SYSCTL_INT_READONLY},
+	{KERN_MAXPARTITIONS, &maxpartitions, SYSCTL_INT_READONLY},
+	{KERN_RAWPARTITION, &raw_part, SYSCTL_INT_READONLY},
 	{KERN_MAXTHREAD, &maxthread, 0, INT_MAX},
-	{KERN_NTHREADS, &nthreads, 1, 0},
+	{KERN_NTHREADS, &nthreads, SYSCTL_INT_READONLY},
 	{KERN_SOMAXCONN, &somaxconn, 0, SHRT_MAX},
 	{KERN_SOMINCONN, &sominconn, 0, SHRT_MAX},
 	{KERN_NOSUIDCOREDUMP, &nosuidcoredump, 0, 3},
-	{KERN_FSYNC, &int_one, 1, 0},
+	{KERN_FSYNC, &int_one, SYSCTL_INT_READONLY},
 	{KERN_SYSVMSG,
 #ifdef SYSVMSG
 	 &int_one,
 #else
 	 &int_zero,
 #endif
-	 1, 0},
+	 SYSCTL_INT_READONLY},
 	{KERN_SYSVSEM,
 #ifdef SYSVSEM
 	 &int_one,
 #else
 	 &int_zero,
 #endif
-	 1, 0},
+	 SYSCTL_INT_READONLY},
 	{KERN_SYSVSHM,
 #ifdef SYSVSHM
 	 &int_one,
 #else
 	 &int_zero,
 #endif
-	 1, 0},
-	{KERN_FSCALE, &fscale, 1, 0},
-	{KERN_CCPU, &ccpu, 1, 0},
-	{KERN_NPROCS, &nprocesses, 1, 0},
+	 SYSCTL_INT_READONLY},
+	{KERN_FSCALE, &fscale, SYSCTL_INT_READONLY},
+	{KERN_CCPU, &ccpu, SYSCTL_INT_READONLY},
+	{KERN_NPROCS, &nprocesses, SYSCTL_INT_READONLY},
 	{KERN_SPLASSERT, &splassert_ctl, 0, 3},
 	{KERN_MAXLOCKSPERUID, &maxlocksperuid, 0, INT_MAX},
 	{KERN_WXABORT, &uvm_wxabort, 0, 1},
-	{KERN_NETLIVELOCKS, &int_zero, 1, 0},
+	{KERN_NETLIVELOCKS, &int_zero, SYSCTL_INT_READONLY},
 #ifdef PTRACE
 	{KERN_GLOBAL_PTRACE, &global_ptrace, 0, 1},
 #endif
@@ -479,10 +472,12 @@ kern_sysctl(int *name, u_int namelen, void *oldp, size_t *oldlenp, void *newp,
 			return (EPERM);
 		securelevel = level;
 		return (0);
+#if NDT > 0
 	case KERN_ALLOWDT:
 		if (securelevel > 0)
 			return (sysctl_rdint(oldp, oldlenp, newp, allowdt));
 		return (sysctl_int(oldp, oldlenp, newp, newlen,  &allowdt));
+#endif
 	case KERN_ALLOWKMEM:
 		if (securelevel > 0)
 			return (sysctl_rdint(oldp, oldlenp, newp, allowkmem));
@@ -665,11 +660,11 @@ static int byte_order = BYTE_ORDER;
 static int page_size = PAGE_SIZE;
 
 const struct sysctl_bounded_args hw_vars[] = {
-	{HW_NCPU, &ncpus, 1, 0},
-	{HW_NCPUFOUND, &ncpusfound, 1, 0},
-	{HW_BYTEORDER, &byte_order, 1, 0},
-	{HW_PAGESIZE, &page_size, 1, 0},
-	{HW_DISKCOUNT, &disk_count, 1, 0},
+	{HW_NCPU, &ncpus, SYSCTL_INT_READONLY},
+	{HW_NCPUFOUND, &ncpusfound, SYSCTL_INT_READONLY},
+	{HW_BYTEORDER, &byte_order, SYSCTL_INT_READONLY},
+	{HW_PAGESIZE, &page_size, SYSCTL_INT_READONLY},
+	{HW_DISKCOUNT, &disk_count, SYSCTL_INT_READONLY},
 };
 
 int
@@ -823,13 +818,14 @@ debug_sysctl(int *name, u_int namelen, void *oldp, size_t *oldlenp, void *newp,
  * Reads, or writes that lower the value
  */
 int
-sysctl_int_lower(void *oldp, size_t *oldlenp, void *newp, size_t newlen, int *valp)
+sysctl_int_lower(void *oldp, size_t *oldlenp, void *newp, size_t newlen,
+    int *valp)
 {
 	unsigned int oval = *valp, val = *valp;
 	int error;
 
 	if (newp == NULL)
-		return (sysctl_rdint(oldp, oldlenp, newp, *valp));
+		return (sysctl_rdint(oldp, oldlenp, newp, val));
 
 	if ((error = sysctl_int(oldp, oldlenp, newp, newlen, &val)))
 		return (error);
@@ -846,32 +842,17 @@ sysctl_int_lower(void *oldp, size_t *oldlenp, void *newp, size_t newlen, int *va
 int
 sysctl_int(void *oldp, size_t *oldlenp, void *newp, size_t newlen, int *valp)
 {
-	return (sysctl_int_bounded(oldp, oldlenp, newp, newlen, valp, 0, 0));
-}
-
-int
-sysctl_int_bounded(void *oldp, size_t *oldlenp, void *newp, size_t newlen,
-    int *valp, int minimum, int maximum)
-{
 	int error = 0;
-	int val;
 
 	if (oldp && *oldlenp < sizeof(int))
 		return (ENOMEM);
 	if (newp && newlen != sizeof(int))
 		return (EINVAL);
 	*oldlenp = sizeof(int);
-	val = *valp;
 	if (oldp)
-		error = copyout(&val, oldp, sizeof(int));
+		error = copyout(valp, oldp, sizeof(int));
 	if (error == 0 && newp)
-		error = copyin(newp, &val, sizeof(int));
-	if (error)
-		return (error);
-	if (minimum == maximum || (minimum <= val && val <= maximum))
-		*valp = val;
-	else
-		error = EINVAL;
+		error = copyin(newp, valp, sizeof(int));
 	return (error);
 }
 
@@ -894,7 +875,30 @@ sysctl_rdint(void *oldp, size_t *oldlenp, void *newp, int val)
 }
 
 /*
- * Array of bounded integer values.
+ * Read-only or bounded integer values.
+ */
+int
+sysctl_int_bounded(void *oldp, size_t *oldlenp, void *newp, size_t newlen,
+    int *valp, int minimum, int maximum)
+{
+	int val = *valp;
+	int error;
+
+	/* read only */
+	if (newp == NULL || minimum > maximum)
+		return (sysctl_rdint(oldp, oldlenp, newp, val));
+
+	if ((error = sysctl_int(oldp, oldlenp, newp, newlen, &val)))
+		return (error);
+	/* outside limits */
+	if (val < minimum || maximum < val)
+		return (EINVAL);
+	*valp = val;
+	return (0);
+}
+
+/*
+ * Array of read-only or bounded integer values.
  */
 int
 sysctl_bounded_arr(const struct sysctl_bounded_args *valpp, u_int valplen,
@@ -906,14 +910,8 @@ sysctl_bounded_arr(const struct sysctl_bounded_args *valpp, u_int valplen,
 		return (ENOTDIR);
 	for (i = 0; i < valplen; ++i) {
 		if (valpp[i].mib == name[0]) {
-			if (valpp[i].minimum <= valpp[i].maximum) {
-				return (sysctl_int_bounded(oldp, oldlenp, newp,
-				    newlen, valpp[i].var, valpp[i].minimum,
-				    valpp[i].maximum));
-			} else {
-				return (sysctl_rdint(oldp, oldlenp, newp,
-				    *valpp[i].var));
-			}
+			return (sysctl_int_bounded(oldp, oldlenp, newp, newlen,
+			    valpp[i].var, valpp[i].minimum, valpp[i].maximum));
 		}
 	}
 	return (EOPNOTSUPP);

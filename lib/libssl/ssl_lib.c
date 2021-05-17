@@ -1,4 +1,4 @@
-/* $OpenBSD: ssl_lib.c,v 1.255 2021/03/29 16:57:38 jsing Exp $ */
+/* $OpenBSD: ssl_lib.c,v 1.259 2021/05/16 14:10:43 jsing Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -146,13 +146,12 @@
 
 #include <stdio.h>
 
-#include "ssl_locl.h"
-
 #include <openssl/bn.h>
 #include <openssl/dh.h>
 #include <openssl/lhash.h>
 #include <openssl/objects.h>
 #include <openssl/ocsp.h>
+#include <openssl/opensslconf.h>
 #include <openssl/x509v3.h>
 
 #ifndef OPENSSL_NO_ENGINE
@@ -160,6 +159,8 @@
 #endif
 
 #include "bytestring.h"
+#include "dtls_locl.h"
+#include "ssl_locl.h"
 #include "ssl_sigalgs.h"
 
 const char *SSL_version_str = OPENSSL_VERSION_TEXT;
@@ -3056,6 +3057,12 @@ SSL_set_max_proto_version(SSL *ssl, uint16_t version)
 	return ssl_version_set_max(ssl->method, version,
 	    ssl->internal->min_tls_version, &ssl->internal->max_tls_version,
 	    &ssl->internal->max_proto_version);
+}
+
+const SSL_METHOD *
+SSL_CTX_get_ssl_method(const SSL_CTX *ctx)
+{
+	return ctx->method;
 }
 
 static int

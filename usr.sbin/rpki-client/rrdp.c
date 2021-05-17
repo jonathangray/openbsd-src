@@ -1,4 +1,4 @@
-/*      $OpenBSD: rrdp.c,v 1.3 2021/04/07 16:29:14 claudio Exp $ */
+/*	$OpenBSD: rrdp.c,v 1.9 2021/04/21 09:36:06 claudio Exp $ */
 /*
  * Copyright (c) 2020 Nils Fisher <nils_fisher@hotmail.com>
  * Copyright (c) 2021 Claudio Jeker <claudio@openbsd.org>
@@ -272,6 +272,7 @@ rrdp_failed(struct rrdp *s)
 		s->sxml = new_snapshot_xml(s->parser, &s->current, s);
 		s->task = SNAPSHOT;
 		s->state = RRDP_STATE_REQ;
+		logx("%s: delta sync failed, fallback to snapshot", s->local);
 	} else {
 		/*
 		 * TODO: update state to track recurring failures
@@ -297,24 +298,23 @@ rrdp_finished(struct rrdp *s)
 		return;
 
 	if (s->state & RRDP_STATE_PARSE_ERROR) {
-		warnx("%s: failed after XML parse error", s->local);
 		rrdp_failed(s);
 		return;
 	}
 
 	if (s->res == HTTP_OK) {
+		XML_Parser p = s->parser;
+
 		/*
 		 * Finalize parsing on success to be sure that
 		 * all of the XML is correct. Needs to be done here
 		 * since the call would most probably fail for non
 		 * successful data fetches.
 		 */
-		if (XML_Parse(s->parser, NULL, 0, 1) != XML_STATUS_OK) {
-			warnx("%s: XML error at line %lu: %s",
-			    s->local,
-			    XML_GetCurrentLineNumber(s->parser),
-			    XML_ErrorString(XML_GetErrorCode(s->parser))
-			    );
+		if (XML_Parse(p, NULL, 0, 1) != XML_STATUS_OK) {
+			warnx("%s: XML error at line %llu: %s", s->local,
+			    (unsigned long long)XML_GetCurrentLineNumber(p),
+			    XML_ErrorString(XML_GetErrorCode(p)));
 			rrdp_failed(s);
 			return;
 		}
@@ -331,25 +331,20 @@ rrdp_finished(struct rrdp *s)
 			s->last_mod = NULL;
 			switch (s->task) {
 			case NOTIFICATION:
-				warnx("%s: repository not modified",
-				    s->local);
+				logx("%s: repository not modified", s->local);
 				rrdp_state_send(s);
 				rrdp_free(s);
 				rrdp_done(id, 1);
 				break;
 			case SNAPSHOT:
-				warnx("%s: downloading snapshot",
-				    s->local);
-				s->sxml = new_snapshot_xml(s->parser,
-				    &s->current, s);
+				logx("%s: downloading snapshot", s->local);
+				s->sxml = new_snapshot_xml(p, &s->current, s);
 				s->state = RRDP_STATE_REQ;
 				break;
 			case DELTA:
-				warnx("%s: downloading %lld deltas",
-				    s->local, s->repository.serial -
-				    s->current.serial);
-				s->dxml = new_delta_xml(s->parser,
-				    &s->current, s);
+				logx("%s: downloading %lld deltas", s->local,
+				    s->repository.serial - s->current.serial);
+				s->dxml = new_delta_xml(p, &s->current, s);
 				s->state = RRDP_STATE_REQ;
 				break;
 			}
@@ -368,19 +363,17 @@ rrdp_finished(struct rrdp *s)
 			} else {
 				/* reset delta parser for next delta */
 				free_delta_xml(s->dxml);
-				s->dxml = new_delta_xml(s->parser,
-				    &s->current, s);
+				s->dxml = new_delta_xml(p, &s->current, s);
 				s->state = RRDP_STATE_REQ;
 			}
 			break;
 		}
 	} else if (s->res == HTTP_NOT_MOD && s->task == NOTIFICATION) {
-		warnx("%s: notification file not modified", s->local);
+		logx("%s: notification file not modified", s->local);
 		/* no need to update state file */
 		rrdp_free(s);
 		rrdp_done(id, 1);
 	} else {
-		warnx("%s: HTTP request failed", s->local);
 		rrdp_failed(s);
 	}
 }
@@ -498,10 +491,10 @@ rrdp_data_handler(struct rrdp *s)
 		SHA256_Update(&s->ctx, buf, len);
 	if ((s->state & RRDP_STATE_PARSE_ERROR) == 0 &&
 	    XML_Parse(p, buf, len, 0) != XML_STATUS_OK) {
-		s->state |= RRDP_STATE_PARSE_ERROR;
-		warnx("%s: parse error at line %lu: %s", s->local,
-		    XML_GetCurrentLineNumber(p),
+		warnx("%s: parse error at line %llu: %s", s->local,
+		    (unsigned long long)XML_GetCurrentLineNumber(p),
 		    XML_ErrorString(XML_GetErrorCode(p)));
+		s->state |= RRDP_STATE_PARSE_ERROR;
 	}
 }
 
@@ -582,7 +575,7 @@ proc_rrdp(int fd)
 		TAILQ_FOREACH_SAFE(s, &states, entry, ns) {
 			if (s->pfd == NULL)
 				continue;
-			if (s->pfd->revents & POLLIN)
+			if (s->pfd->revents != 0)
 				rrdp_data_handler(s);
 		}
 	}

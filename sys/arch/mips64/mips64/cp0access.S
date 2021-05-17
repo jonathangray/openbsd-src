@@ -1,4 +1,4 @@
-/*	$OpenBSD: cp0access.S,v 1.21 2020/06/05 13:35:20 visa Exp $ */
+/*	$OpenBSD: cp0access.S,v 1.23 2021/05/01 16:11:11 visa Exp $ */
 
 /*
  * Copyright (c) 2001-2003 Opsycon AB  (www.opsycon.se / www.opsycon.com)
@@ -123,16 +123,6 @@ LEAF(updateimask, 0)
 	lw	t0, idle_mask
 	not	a0, a0			# 1 means masked so invert.
 	and	a0, t0			# never upgrade to higher than max
-#ifdef RM7000_ICR
-	cfc0	v0, COP_0_ICR
-	li	v1, ~IC_INT_MASK
-	and	v1, v0
-	sll	v0, a0, 8
-	and	v0, IC_INT_MASK
-	and	v0, a0, IC_INT_MASK
-	or	v1, v0
-	ctc0	v1, COP_0_ICR
-#endif
 	MFC0	v0, COP_0_STATUS_REG
 	MFC0_HAZARD
 	LI	v1, ~SR_INT_MASK
@@ -192,43 +182,19 @@ LEAF(cp0_get_count, 0)
 	NOP
 END(cp0_get_count)
 
-#ifndef CPU_R8000
 LEAF(cp0_set_compare, 0)
 	MTC0	a0, COP_0_COMPARE
 	MTC0_HAZARD
 	j	ra
 	NOP
 END(cp0_set_compare)
-#endif
-
-#ifdef CPU_R8000
-LEAF(cp0_reset_cause, 0)
-	DMFC0	v0, COP_0_CAUSE_REG
-	MFC0_HAZARD
-	or	v0, a0
-	xor	v0, a0
-	DMTC0	v0, COP_0_CAUSE_REG
-	MTC0_HAZARD
-	j	ra
-	 NOP
-END(cp0_reset_cause)
-
-LEAF(cp0_set_trapbase, 0)
-	DMTC0	a0, COP_0_TRAPBASE
-	MTC0_HAZARD
-	j	ra
-	 NOP
-END(cp0_set_trapbase)
-#endif
 
 LEAF(cpu_rnd_messybits, 0)
 	MFC0	v0, COP_0_COUNT
 	MFC0_HAZARD
-#ifndef CPU_R8000
 	MFC0	v1, COP_0_BAD_VADDR
 	MFC0_HAZARD
 	xor	v0, v1
-#endif
 	j	ra
 	 NOP
 END(cpu_rnd_messybits)

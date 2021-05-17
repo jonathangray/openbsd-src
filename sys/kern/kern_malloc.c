@@ -1,4 +1,4 @@
-/*	$OpenBSD: kern_malloc.c,v 1.144 2021/02/23 13:50:16 jsg Exp $	*/
+/*	$OpenBSD: kern_malloc.c,v 1.146 2021/05/16 15:10:20 deraadt Exp $	*/
 /*	$NetBSD: kern_malloc.c,v 1.15.4.2 1996/06/13 17:10:56 cgd Exp $	*/
 
 /*
@@ -196,7 +196,7 @@ malloc(size_t size, int type, int flags)
 			return (NULL);
 		} else
 			panic("malloc: allocation too large, "
-			    "type = %d, size = %lu\n", type, size);
+			    "type = %d, size = %lu", type, size);
 	}
 
 	indx = BUCKETINDX(size);
@@ -580,8 +580,8 @@ kmeminit(void)
 	    FALSE, &kmem_map_store);
 	kmembase = (char *)base;
 	kmemlimit = (char *)limit;
-	kmemusage = (struct kmemusage *) uvm_km_zalloc(kernel_map,
-		(vsize_t)(nkmempages * sizeof(struct kmemusage)));
+	kmemusage = km_alloc(round_page(nkmempages * sizeof(struct kmemusage)),
+	    &kv_any, &kp_zero, &kd_waitok);
 	for (indx = 0; indx < MINBUCKET + 16; indx++) {
 		XSIMPLEQ_INIT(&bucket[indx].kb_freelist);
 	}

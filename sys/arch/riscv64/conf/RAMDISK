@@ -1,0 +1,72 @@
+#	$OpenBSD: RAMDISK,v 1.12 2021/05/14 08:10:39 jsg Exp $
+
+machine		riscv64
+maxusers	4
+
+option		PCIVERBOSE
+option		USBVERBOSE
+option		SMALL_KERNEL
+option		NO_PROPOLICE
+option		BOOT_CONFIG
+
+option		RAMDISK_HOOKS
+option		MINIROOTSIZE=16384
+
+option		FFS
+option		FFS2
+option		MSDOSFS
+option		INET6
+option		EXT2FS
+option		NFSCLIENT
+option		CRYPTO
+
+makeoptions	KERNEL_BASE_PHYS="0x00200000"
+makeoptions	KERNEL_BASE_VIRT="0xffffffc000200000"
+
+config		bsd	root on rd0a swap on rd0b
+
+# mainbus
+mainbus0	at root
+
+# cpu0
+cpu0		at mainbus0
+intc0		at cpu0
+
+# NS16550 compatible serial ports
+com*		at fdt?
+
+virtio*		at fdt?
+vio*		at virtio?	# Network
+vioblk*		at virtio?
+vioscsi*	at virtio?	# Disk (SCSI)
+#viomb*		at virtio?	# Memory Ballooning
+viornd*		at virtio?	# Random Source
+
+# simplebus0
+simplebus*	at fdt?
+# Platform Level Interrupt Controller
+plic*		at fdt? early 1
+# L2 Cache Controller
+sfcc*		at fdt? early 1
+
+syscon*		at fdt? early 1
+gfrtc*		at fdt?
+
+dwge*		at fdt?
+ukphy*		at mii?
+
+dwmmc*		at fdt?
+sdmmc*		at dwmmc?
+
+scsibus*	at scsi?
+sd*		at scsibus?
+cd*		at scsibus?
+ch*		at scsibus?
+uk*		at scsibus?
+
+pseudo-device	loop 1
+pseudo-device	vlan
+pseudo-device	trunk
+pseudo-device	bpfilter 1
+pseudo-device	rd 1
+pseudo-device	bio 1

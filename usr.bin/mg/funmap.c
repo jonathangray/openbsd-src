@@ -1,4 +1,4 @@
-/*	$OpenBSD: funmap.c,v 1.60 2021/03/23 18:33:05 lum Exp $	*/
+/*	$OpenBSD: funmap.c,v 1.63 2021/04/22 19:50:55 lum Exp $	*/
 
 /* This file is in the public domain */
 
@@ -34,7 +34,7 @@ static struct funmap *funs;
  *  0 = a toggle, non-modifiable insert/delete, region modifier, etc
  *  1 = value can be string or number value (like: file/buf name, search string)
  *  2 = multiple type value required, see auto-execute, or global-set-key, etc
- * -1 = variable length # parameters (unused at moment)
+ * -1 = error: interactive commmand, unsuitable for interpreter
  *
  * Some functions when used interactively may ask for a 'y' or 'n' (or another
  * character) to continue, in excline, a 'y' is assumed. Functions like this
@@ -98,6 +98,7 @@ static struct funmap functnames[] = {
 	{desckey, "describe-key-briefly", 1},
 	{diffbuffer, "diff-buffer-with-file", 0},
 	{digit_argument, "digit-argument", 1},
+	{dired_jump, "dired-jump", 1},
 	{lowerregion, "downcase-region", 0},
 	{lowerword, "downcase-word", 1},
 	{showversion, "emacs-version", 0},
@@ -167,9 +168,9 @@ static struct funmap functnames[] = {
 	{prevwind, "previous-window", 0},
 	{spawncli, "push-shell", 0},
 	{showcwdir, "pwd", 0},
-	{queryrepl, "query-replace", 1},
+	{queryrepl, "query-replace", -1},
 #ifdef REGEX
-	{re_queryrepl, "query-replace-regexp", 1},
+	{re_queryrepl, "query-replace-regexp", -1},
 #endif /* REGEX */
 	{quote, "quoted-insert", 1},
 #ifdef REGEX
@@ -180,6 +181,7 @@ static struct funmap functnames[] = {
 	{reposition, "recenter", 0},
 	{redraw, "redraw-display", 0},
 #ifdef REGEX
+	{re_repl, "replace-regexp", 2},
 	{replstr, "replace-string", 2},
 #endif /* REGEX */
 	{revertbuffer, "revert-buffer", 0},

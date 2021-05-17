@@ -1,4 +1,4 @@
-/*	$OpenBSD: main.c,v 1.134 2021/04/08 17:07:55 claudio Exp $ */
+/*	$OpenBSD: main.c,v 1.141 2021/05/11 11:48:02 claudio Exp $ */
 /*
  * Copyright (c) 2019 Kristaps Dzonsons <kristaps@bsd.lv>
  *
@@ -40,6 +40,7 @@
 #include <imsg.h>
 
 #include "extern.h"
+#include "version.h"
 
 /*
  * Maximum number of TAL files we'll load.
@@ -144,13 +145,14 @@ entityq_flush(struct entityq *q, struct repo *rp)
 	struct entity	*p, *np;
 
 	TAILQ_FOREACH_SAFE(p, q, entries, np) {
+		char *file = p->file;
+
 		/*
 		 * XXX fixup path here since the repo may change
 		 * during load because of fallback. In that case
 		 * the file path changes as well since RRDP and RSYNC
 		 * can not share a common repo.
 		 */
-		char *file = p->file;
 		p->file = repo_filename(rp, file);
 		if (p->file == NULL)
 			err(1, "can't construct repo filename");
@@ -404,6 +406,7 @@ queue_add_tal(const char *file)
 			err(1, NULL);
 	} else {
 		char *tmp;
+
 		if (asprintf(&tmp, "%s %s", stats.talnames, file) == -1)
 			err(1, NULL);
 		free(stats.talnames);
@@ -674,7 +677,8 @@ main(int argc, char *argv[])
 			verbose++;
 			break;
 		case 'V':
-			errx(0, "version: %s", RPKI_VERSION);
+			fprintf(stderr, "rpki-client %s\n", RPKI_VERSION);
+			return 0;
 		default:
 			goto usage;
 		}
@@ -686,11 +690,7 @@ main(int argc, char *argv[])
 	else if (argc > 1)
 		goto usage;
 
-	if (timeout) {
-		signal(SIGALRM, suicide);
-		/* Commit suicide eventually - cron will normally start a new one */
-		alarm(timeout);
-	}
+	signal(SIGPIPE, SIG_IGN);
 
 	if (cachedir == NULL) {
 		warnx("cache directory required");
@@ -733,6 +733,9 @@ main(int argc, char *argv[])
 		if (fchdir(cachefd) == -1)
 			err(1, "fchdir");
 
+		if (timeout)
+			alarm(timeout);
+
 		/* Only allow access to the cache directory. */
 		if (unveil(".", "r") == -1)
 			err(1, "%s: unveil", cachedir);
@@ -766,6 +769,9 @@ main(int argc, char *argv[])
 			/* change working directory to the cache directory */
 			if (fchdir(cachefd) == -1)
 				err(1, "fchdir");
+
+			if (timeout)
+				alarm(timeout);
 
 			if (pledge("stdio rpath proc exec unveil", NULL) == -1)
 				err(1, "pledge");
@@ -802,6 +808,9 @@ main(int argc, char *argv[])
 			/* change working directory to the cache directory */
 			if (fchdir(cachefd) == -1)
 				err(1, "fchdir");
+
+			if (timeout)
+				alarm(timeout);
 
 			if (pledge("stdio rpath inet dns recvfd", NULL) == -1)
 				err(1, "pledge");
@@ -840,6 +849,9 @@ main(int argc, char *argv[])
 			if (fchdir(cachefd) == -1)
 				err(1, "fchdir");
 
+			if (timeout)
+				alarm(timeout);
+
 			if (pledge("stdio recvfd", NULL) == -1)
 				err(1, "pledge");
 
@@ -849,10 +861,21 @@ main(int argc, char *argv[])
 
 		close(fd[0]);
 		rrdp = fd[1];
-	} else
+	} else {
 		rrdp = -1;
+		rrdppid = -1;
+	}
 
-	/* TODO unveil chachedir and outputdir, no other access allowed */
+	if (timeout) {
+		/*
+		 * Commit suicide eventually
+		 * cron will normally start a new one
+		 */
+		alarm(timeout);
+		signal(SIGALRM, suicide);
+	}
+
+	/* TODO unveil cachedir and outputdir, no other access allowed */
 	if (pledge("stdio rpath wpath cpath fattr sendfd", NULL) == -1)
 		err(1, "pledge");
 
@@ -1021,6 +1044,7 @@ main(int argc, char *argv[])
 		}
 	}
 
+	signal(SIGALRM, SIG_DFL);
 	if (killme) {
 		syslog(LOG_CRIT|LOG_DAEMON,
 		    "excessive runtime (%d seconds), giving up", timeout);
@@ -1088,7 +1112,7 @@ main(int argc, char *argv[])
 		timeradd(&stats.system_time, &ru.ru_stime, &stats.system_time);
 	}
 
-	/* change working directory to the cache directory */
+	/* change working directory to the output directory */
 	if (fchdir(outdirfd) == -1)
 		err(1, "fchdir output dir");
 

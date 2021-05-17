@@ -1,8 +1,7 @@
-#	$OpenBSD: Makefile,v 1.2 2020/10/03 05:58:52 gkoehler Exp $
+#	$OpenBSD: Makefile,v 1.4 2021/04/13 21:16:01 deraadt Exp $
 
 FS=		install${OSrev}.img
 FSSIZE=		1032192
-FSTYPE=		install360
 CDROM=		install${OSrev}.iso
 
 MOUNT_POINT=	/mnt
@@ -17,7 +16,7 @@ BASE=		${RELDIR}/base${OSrev}.tgz ${RELDIR}/comp${OSrev}.tgz \
 XBASE=		${RELXDIR}/xbase${OSrev}.tgz ${RELXDIR}/xfont${OSrev}.tgz \
 		${RELXDIR}/xshare${OSrev}.tgz ${RELXDIR}/xserv${OSrev}.tgz
 
-MSDOSSTART=     64
+MSDOSSTART=	64
 MSDOSSIZE=	30000
 TOTALSIZE!=	expr ${FSSIZE} + ${MSDOSSIZE}
 

@@ -2053,6 +2053,7 @@
 ./usr/share/man/man3/SSL_CTX_set_verify.3
 ./usr/share/man/man3/SSL_CTX_use_certificate.3
 ./usr/share/man/man3/SSL_SESSION_free.3
+./usr/share/man/man3/SSL_SESSION_get0_cipher.3
 ./usr/share/man/man3/SSL_SESSION_get0_peer.3
 ./usr/share/man/man3/SSL_SESSION_get_compress_id.3
 ./usr/share/man/man3/SSL_SESSION_get_ex_new_index.3
@@ -2815,8 +2816,6 @@
 ./usr/share/man/man3/setmode.3
 ./usr/share/man/man3/setproctitle.3
 ./usr/share/man/man3/setvbuf.3
-./usr/share/man/man3/sgi/cacheflush.3
-./usr/share/man/man3/sgi/get_fpc_csr.3
 ./usr/share/man/man3/shm_open.3
 ./usr/share/man/man3/sigaddset.3
 ./usr/share/man/man3/sigblock.3

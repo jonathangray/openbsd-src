@@ -24,7 +24,7 @@ struct output {
 	void	(*fib_table)(struct ktable *);
 	void	(*nexthop)(struct ctl_show_nexthop *);
 	void	(*interface)(struct ctl_show_interface *);
-	void	(*attr)(u_char *, size_t, struct parse_result *);
+	void	(*attr)(u_char *, size_t, int);
 	void	(*communities)(u_char *, size_t, struct parse_result *);
 	void	(*rib)(struct ctl_show_rib *, u_char *, size_t,
 		    struct parse_result *);
@@ -41,6 +41,7 @@ extern const size_t pt_sizes[];
 
 #define EOL0(flag)	((flag & F_CTL_SSV) ? ';' : '\n')
 
+time_t		 get_monotime(time_t);
 char		*fmt_peer(const char *, const struct bgpd_addr *, int);
 const char	*fmt_timeframe(time_t);
 const char	*fmt_monotime(time_t);

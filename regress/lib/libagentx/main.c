@@ -1,4 +1,4 @@
-/*	$OpenBSD: main.c,v 1.5 2021/01/13 17:00:20 martijn Exp $	*/
+/*	$OpenBSD: main.c,v 1.7 2021/05/01 16:55:14 martijn Exp $	*/
 
 /*
  * Copyright (c) 2019 Martijn van Duren <martijn@openbsd.org>
@@ -39,7 +39,6 @@
 
 void regress_fd(struct agentx *, void *, int);
 void regress_tryconnect(int, short, void *);
-void regress_shutdown(void);
 void regress_read(int, short, void *);
 void regress_usr1(int, short, void *);
 void regress_usr2(int, short, void *);
@@ -288,7 +287,7 @@ main(int argc, char *argv[])
 
 	if ((regressidx_any = agentx_index_integer_any(regress,
 	    AGENTX_OID(AGENTX_ENTERPRISES, 30155, 100, 19, 1, 1))) == NULL)
-		fatal("agentx_index_oid_dynamic");
+		fatal("agentx_index_integer_any");
 	if ((regressobj_intindexstaticanyint = agentx_object(regress,
 	    AGENTX_OID(AGENTX_ENTERPRISES, 30155, 100, 19, 1, 1),
 	    &regressidx_any, 1, 0, regress_intindexstaticanyint)) == NULL)
@@ -300,7 +299,7 @@ main(int argc, char *argv[])
 
 	if ((regressidx_new = agentx_index_integer_new(regress,
 	    AGENTX_OID(AGENTX_ENTERPRISES, 30155, 100, 20, 1, 1))) == NULL)
-		fatal("agentx_index_oid_dynamic");
+		fatal("agentx_index_integer_new");
 	if ((regressobj_intindexstaticnewint = agentx_object(regress,
 	    AGENTX_OID(AGENTX_ENTERPRISES, 30155, 100, 20, 1, 1),
 	    &regressidx_new, 1, 0, regress_intindexstaticnewint)) == NULL)
@@ -316,7 +315,7 @@ main(int argc, char *argv[])
 		fatal("agentx_object");
 
 	if (!dflag) {
-		if (daemon(0, 0) == -1)
+		if (daemon(0, 1) == -1)
 			fatalx("daemon");
 	}
 
@@ -337,9 +336,12 @@ regress_fd(struct agentx *sa2, void *cookie, int close)
 	struct sockaddr_un sun;
 
 	/* For ease of cleanup we take the single run approach */
-	if (init)
-		regress_shutdown();
-	else {
+	if (init) {
+		if (!close)
+			agentx_free(sa);
+		else
+			evtimer_del(&rev);
+	} else {
 		sun.sun_family = AF_UNIX;
 		strlcpy(sun.sun_path, path, sizeof(sun.sun_path));
 
@@ -356,13 +358,6 @@ void
 regress_read(int fd, short event, void *cookie)
 {
 	agentx_read(sa);
-}
-
-void
-regress_shutdown(void)
-{
-	agentx_free(sa);
-	evtimer_del(&connev);
 }
 
 #ifdef notyet
@@ -458,8 +453,21 @@ regress_intindex(struct agentx_varbind *vb)
 	uint32_t idx;
 
 	idx = agentx_varbind_get_index_integer(vb, regressidx_int);
-	if (agentx_varbind_request(vb) == AGENTX_REQUEST_TYPE_GETNEXT)
+	switch (agentx_varbind_request(vb)) {
+	case AGENTX_REQUEST_TYPE_GET:
+		if (idx == 0) {
+			agentx_varbind_notfound(vb);
+			return;
+		}
+		break;
+	case AGENTX_REQUEST_TYPE_GETNEXTINCLUSIVE:
+		if (idx == 0)
+			idx++;
+		break;
+	case AGENTX_REQUEST_TYPE_GETNEXT:
 		idx++;
+		break;
+	}
 	if (idx > 0xf)
 		agentx_varbind_notfound(vb);
 	else {
@@ -472,16 +480,21 @@ void
 regress_intindex2(struct agentx_varbind *vb)
 {
 	uint32_t idx1, idx2;
+	enum agentx_request_type type;
 
 	idx1 = agentx_varbind_get_index_integer(vb, regressidx_int);
 	idx2 = agentx_varbind_get_index_integer(vb, regressidx_int2);
-	if (agentx_varbind_request(vb) == AGENTX_REQUEST_TYPE_GETNEXT) {
-		if (++idx2 > 1) {
+	type = agentx_varbind_request(vb);
+	if (type == AGENTX_REQUEST_TYPE_GETNEXT)
+		idx2++;
+	if (type == AGENTX_REQUEST_TYPE_GETNEXT ||
+	    type == AGENTX_REQUEST_TYPE_GETNEXTINCLUSIVE) {
+		if (idx2 > 1) {
 			idx1++;
 			idx2 = 0;
 		}
 	}
-	if (idx1 > 8)
+	if (idx2 > 1 || idx1 > 8)
 		agentx_varbind_notfound(vb);
 	else {
 		agentx_varbind_set_index_integer(vb, regressidx_int, idx1);
@@ -505,9 +518,12 @@ regress_strindex(struct agentx_varbind *vb)
 		fatalx("%s: string length should not be implied", __func__);
 
 	if (slen == 0) {
-		if (request == AGENTX_REQUEST_TYPE_GET)
-			fatalx("%s: 0 index should be handled in agentx.c",
+		if (request == AGENTX_REQUEST_TYPE_GET) {
+			log_warnx("%s: 0 index should be handled in agentx.c",
 			    __func__);
+			agentx_varbind_error(vb);
+			return;
+		}
 	}
 	/* !implied first needs a length check before content check */
 	if (slen > 1) {
@@ -524,8 +540,13 @@ regress_strindex(struct agentx_varbind *vb)
 			return;
 		}
 	}
-	if (idx == NULL || idx[0] < 'a')
+	if (idx == NULL || idx[0] < 'a') {
+		if (request == AGENTX_REQUEST_TYPE_GET) {
+			agentx_varbind_notfound(vb);
+			return;
+		}
 		idx = (unsigned char *)"a";
+	}
 
 	agentx_varbind_set_index_string(vb, regressidx_str,
 	    (const char *)idx);
@@ -634,6 +655,8 @@ regress_strindex2(struct agentx_varbind *vb)
 			match = 0;
 		break;
 	}
+	if (opt2i == opt2len)
+		match = 0;
 	if (request == AGENTX_REQUEST_TYPE_GET) {
 		if (!match) {
 			agentx_varbind_notfound(vb);
@@ -672,7 +695,7 @@ regress_oidimplindex(struct agentx_varbind *vb)
 		fatalx("%s: string length should be implied", __func__);
 
 	if (request == AGENTX_REQUEST_TYPE_GET)
-		obj = agentx_context_object_find(sac, idx, oidlen, 1, 0);
+		obj = agentx_context_object_find(sac, idx, oidlen, 1, 1);
 	else
 		obj = agentx_context_object_nfind(sac, idx, oidlen, 1,
 		    request == AGENTX_REQUEST_TYPE_GETNEXTINCLUSIVE);

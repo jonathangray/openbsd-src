@@ -1,4 +1,4 @@
-/* $OpenBSD: ec_lcl.h,v 1.13 2019/01/19 01:12:48 tb Exp $ */
+/* $OpenBSD: ec_lcl.h,v 1.17 2021/04/20 17:32:57 tb Exp $ */
 /*
  * Originally written by Bodo Moeller for the OpenSSL project.
  */
@@ -105,8 +105,7 @@ struct ec_method_st {
 	void (*group_clear_finish)(EC_GROUP *);
 	int (*group_copy)(EC_GROUP *, const EC_GROUP *);
 
-	/* used by EC_GROUP_set_curve_GFp, EC_GROUP_get_curve_GFp, */
-	/* EC_GROUP_set_curve_GF2m, and EC_GROUP_get_curve_GF2m: */
+	/* used by EC_GROUP_{get,set}_curve */
 	int (*group_set_curve)(EC_GROUP *, const BIGNUM *p, const BIGNUM *a, const BIGNUM *b, BN_CTX *);
 	int (*group_get_curve)(const EC_GROUP *, BIGNUM *p, BIGNUM *a, BIGNUM *b, BN_CTX *);
 
@@ -122,17 +121,18 @@ struct ec_method_st {
 	void (*point_clear_finish)(EC_POINT *);
 	int (*point_copy)(EC_POINT *, const EC_POINT *);
 
-	/* used by EC_POINT_set_to_infinity,
-	 * EC_POINT_set_Jprojective_coordinates_GFp,
-	 * EC_POINT_get_Jprojective_coordinates_GFp,
-	 * EC_POINT_set_affine_coordinates_GFp,     ..._GF2m,
-	 * EC_POINT_get_affine_coordinates_GFp,     ..._GF2m,
-	 * EC_POINT_set_compressed_coordinates_GFp, ..._GF2m:
+	/*
+	 * used by EC_POINT_set_to_infinity,
+	 * EC_POINT_set_Jprojective_coordinates,
+	 * EC_POINT_get_Jprojective_coordinates,
+	 * EC_POINT_set_affine_coordinates,
+	 * EC_POINT_get_affine_coordinates,
+	 * EC_POINT_set_compressed_coordinates:
 	 */
 	int (*point_set_to_infinity)(const EC_GROUP *, EC_POINT *);
-	int (*point_set_Jprojective_coordinates_GFp)(const EC_GROUP *, EC_POINT *,
+	int (*point_set_Jprojective_coordinates)(const EC_GROUP *, EC_POINT *,
 		const BIGNUM *x, const BIGNUM *y, const BIGNUM *z, BN_CTX *);
-	int (*point_get_Jprojective_coordinates_GFp)(const EC_GROUP *, const EC_POINT *,
+	int (*point_get_Jprojective_coordinates)(const EC_GROUP *, const EC_POINT *,
 		BIGNUM *x, BIGNUM *y, BIGNUM *z, BN_CTX *);
 	int (*point_set_affine_coordinates)(const EC_GROUP *, EC_POINT *,
 		const BIGNUM *x, const BIGNUM *y, BN_CTX *);
@@ -321,10 +321,10 @@ void ec_GFp_simple_point_finish(EC_POINT *);
 void ec_GFp_simple_point_clear_finish(EC_POINT *);
 int ec_GFp_simple_point_copy(EC_POINT *, const EC_POINT *);
 int ec_GFp_simple_point_set_to_infinity(const EC_GROUP *, EC_POINT *);
-int ec_GFp_simple_set_Jprojective_coordinates_GFp(const EC_GROUP *, EC_POINT *,
-	const BIGNUM *x, const BIGNUM *y, const BIGNUM *z, BN_CTX *);
-int ec_GFp_simple_get_Jprojective_coordinates_GFp(const EC_GROUP *, const EC_POINT *,
-	BIGNUM *x, BIGNUM *y, BIGNUM *z, BN_CTX *);
+int ec_GFp_simple_set_Jprojective_coordinates(const EC_GROUP *, EC_POINT *,
+    const BIGNUM *x, const BIGNUM *y, const BIGNUM *z, BN_CTX *);
+int ec_GFp_simple_get_Jprojective_coordinates(const EC_GROUP *,
+    const EC_POINT *, BIGNUM *x, BIGNUM *y, BIGNUM *z, BN_CTX *);
 int ec_GFp_simple_point_set_affine_coordinates(const EC_GROUP *, EC_POINT *,
 	const BIGNUM *x, const BIGNUM *y, BN_CTX *);
 int ec_GFp_simple_point_get_affine_coordinates(const EC_GROUP *, const EC_POINT *,

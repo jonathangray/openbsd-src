@@ -1,4 +1,4 @@
-/* $OpenBSD: d1_both.c,v 1.68 2021/02/27 14:20:50 jsing Exp $ */
+/* $OpenBSD: d1_both.c,v 1.72 2021/05/16 14:10:43 jsing Exp $ */
 /*
  * DTLS implementation written by Nagendra Modadugu
  * (nagendra@cs.stanford.edu) for the OpenSSL project 2005.
@@ -117,15 +117,15 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "ssl_locl.h"
-
 #include <openssl/buffer.h>
 #include <openssl/evp.h>
 #include <openssl/objects.h>
 #include <openssl/x509.h>
 
-#include "pqueue.h"
 #include "bytestring.h"
+#include "dtls_locl.h"
+#include "pqueue.h"
+#include "ssl_locl.h"
 
 #define RSMBLY_BITMASK_SIZE(msg_len) (((msg_len) + 7) / 8)
 
@@ -380,16 +380,16 @@ dtls1_get_message(SSL *s, int st1, int stn, int mt, long max, int *ok)
 	 * s3->internal->tmp is used to store messages that are unexpected, caused
 	 * by the absence of an optional handshake message
 	 */
-	if (S3I(s)->tmp.reuse_message) {
-		S3I(s)->tmp.reuse_message = 0;
-		if ((mt >= 0) && (S3I(s)->tmp.message_type != mt)) {
+	if (S3I(s)->hs.tls12.reuse_message) {
+		S3I(s)->hs.tls12.reuse_message = 0;
+		if ((mt >= 0) && (S3I(s)->hs.tls12.message_type != mt)) {
 			al = SSL_AD_UNEXPECTED_MESSAGE;
 			SSLerror(s, SSL_R_UNEXPECTED_MESSAGE);
 			goto fatal_err;
 		}
 		*ok = 1;
 		s->internal->init_msg = s->internal->init_buf->data + DTLS1_HM_HEADER_LENGTH;
-		s->internal->init_num = (int)S3I(s)->tmp.message_size;
+		s->internal->init_num = (int)S3I(s)->hs.tls12.message_size;
 		return s->internal->init_num;
 	}
 
@@ -466,9 +466,9 @@ dtls1_preprocess_fragment(SSL *s, struct hm_header_st *msg_hdr, int max)
 			return SSL_AD_INTERNAL_ERROR;
 		}
 
-		S3I(s)->tmp.message_size = msg_len;
+		S3I(s)->hs.tls12.message_size = msg_len;
 		D1I(s)->r_msg_hdr.msg_len = msg_len;
-		S3I(s)->tmp.message_type = msg_hdr->type;
+		S3I(s)->hs.tls12.message_type = msg_hdr->type;
 		D1I(s)->r_msg_hdr.type = msg_hdr->type;
 		D1I(s)->r_msg_hdr.seq = msg_hdr->seq;
 	} else if (msg_len != D1I(s)->r_msg_hdr.msg_len) {
@@ -972,7 +972,8 @@ dtls1_buffer_message(SSL *s, int is_ccs)
 
 	/* save current state*/
 	frag->msg_header.saved_retransmit_state.session = s->session;
-	frag->msg_header.saved_retransmit_state.epoch = D1I(s)->w_epoch;
+	frag->msg_header.saved_retransmit_state.epoch =
+	    tls12_record_layer_write_epoch(s->internal->rl);
 
 	memset(seq64be, 0, sizeof(seq64be));
 	seq64be[6] = (unsigned char)(dtls1_get_queue_priority(
@@ -1039,15 +1040,14 @@ dtls1_retransmit_message(SSL *s, unsigned short seq, unsigned long frag_off,
 
 	/* save current state */
 	saved_state.session = s->session;
-	saved_state.epoch = D1I(s)->w_epoch;
+	saved_state.epoch = tls12_record_layer_write_epoch(s->internal->rl);
 
 	D1I(s)->retransmitting = 1;
 
 	/* restore state in which the message was originally sent */
 	s->session = frag->msg_header.saved_retransmit_state.session;
-	D1I(s)->w_epoch = frag->msg_header.saved_retransmit_state.epoch;
-
-	if (!tls12_record_layer_use_write_epoch(s->internal->rl, D1I(s)->w_epoch))
+	if (!tls12_record_layer_use_write_epoch(s->internal->rl,
+	    frag->msg_header.saved_retransmit_state.epoch))
 		return 0;
 
 	ret = dtls1_do_write(s, frag->msg_header.is_ccs ?
@@ -1055,9 +1055,8 @@ dtls1_retransmit_message(SSL *s, unsigned short seq, unsigned long frag_off,
 
 	/* restore current state */
 	s->session = saved_state.session;
-	D1I(s)->w_epoch = saved_state.epoch;
-
-	if (!tls12_record_layer_use_write_epoch(s->internal->rl, D1I(s)->w_epoch))
+	if (!tls12_record_layer_use_write_epoch(s->internal->rl,
+	    saved_state.epoch))
 		return 0;
 
 	D1I(s)->retransmitting = 0;

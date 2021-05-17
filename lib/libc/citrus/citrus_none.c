@@ -1,4 +1,4 @@
-/*	$OpenBSD: citrus_none.c,v 1.9 2016/09/07 17:10:43 schwarze Exp $ */
+/*	$OpenBSD: citrus_none.c,v 1.11 2021/05/08 09:38:29 martijn Exp $ */
 /*	$NetBSD: citrus_none.c,v 1.18 2008/06/14 16:01:07 tnozaki Exp $	*/
 
 /*-

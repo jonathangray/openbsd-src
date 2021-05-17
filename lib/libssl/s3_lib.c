@@ -1,4 +1,4 @@
-/* $OpenBSD: s3_lib.c,v 1.206 2021/03/24 18:43:59 jsing Exp $ */
+/* $OpenBSD: s3_lib.c,v 1.210 2021/05/16 13:56:30 jsing Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -156,9 +156,11 @@
 #include <openssl/dh.h>
 #include <openssl/md5.h>
 #include <openssl/objects.h>
+#include <openssl/opensslconf.h>
 
-#include "ssl_locl.h"
 #include "bytestring.h"
+#include "dtls_locl.h"
+#include "ssl_locl.h"
 
 #define SSL3_NUM_CIPHERS	(sizeof(ssl3_ciphers) / sizeof(SSL_CIPHER))
 
@@ -1570,7 +1572,7 @@ ssl3_free(SSL *s)
 	freezero(S3I(s)->hs.tls13.cookie, S3I(s)->hs.tls13.cookie_len);
 	tls13_clienthello_hash_clear(&S3I(s)->hs.tls13);
 
-	sk_X509_NAME_pop_free(S3I(s)->tmp.ca_names, X509_NAME_free);
+	sk_X509_NAME_pop_free(S3I(s)->hs.tls12.ca_names, X509_NAME_free);
 
 	tls1_transcript_free(s);
 	tls1_transcript_hash_free(s);
@@ -1591,7 +1593,7 @@ ssl3_clear(SSL *s)
 	size_t		 rlen, wlen;
 
 	tls1_cleanup_key_block(s);
-	sk_X509_NAME_pop_free(S3I(s)->tmp.ca_names, X509_NAME_free);
+	sk_X509_NAME_pop_free(S3I(s)->hs.tls12.ca_names, X509_NAME_free);
 
 	DH_free(S3I(s)->tmp.dh);
 	S3I(s)->tmp.dh = NULL;
@@ -1627,6 +1629,7 @@ ssl3_clear(SSL *s)
 
 	free(S3I(s)->alpn_selected);
 	S3I(s)->alpn_selected = NULL;
+	S3I(s)->alpn_selected_len = 0;
 
 	memset(S3I(s), 0, sizeof(*S3I(s)));
 	internal = S3I(s);

@@ -1,4 +1,4 @@
-/*	$OpenBSD: trap.c,v 1.49 2021/01/09 13:14:02 kettenis Exp $	*/
+/*	$OpenBSD: trap.c,v 1.51 2021/05/11 18:21:12 kettenis Exp $	*/
 
 /*
  * Copyright (c) 2020 Mark Kettenis <kettenis@openbsd.org>
@@ -53,6 +53,7 @@ trap(struct trapframe *frame)
 	int type = frame->exc;
 	union sigval sv;
 	struct vm_map *map;
+	struct vm_map_entry *entry;
 	pmap_t pm;
 	vaddr_t va;
 	int access_type;
@@ -123,12 +124,10 @@ trap(struct trapframe *frame)
 			va = curpcb->pcb_userva | (va & SEGMENT_MASK);
 		}
 		if (frame->dsisr & DSISR_STORE)
-			access_type = PROT_READ | PROT_WRITE;
+			access_type = PROT_WRITE;
 		else
 			access_type = PROT_READ;
-		KERNEL_LOCK();
 		error = uvm_fault(map, trunc_page(va), 0, access_type);
-		KERNEL_UNLOCK();
 		if (error == 0)
 			return;
 
@@ -222,8 +221,33 @@ trap(struct trapframe *frame)
 		error = pmap_slbd_fault(pm, frame->dar);
 		if (error == 0)
 			break;
-		frame->dsisr = 0;
-		/* FALLTHROUGH */
+
+		if (!uvm_map_inentry(p, &p->p_spinentry, PROC_STACK(p),
+		    "[%s]%d/%d sp=%lx inside %lx-%lx: not MAP_STACK\n",
+		    uvm_map_inentry_sp, p->p_vmspace->vm_map.sserial))
+			goto out;
+
+		/*
+		 * Unfortunately, the hardware doesn't tell us whether
+		 * this was a read or a write fault.  So we check
+		 * whether there is a mapping at the fault address and
+		 * insert a new SLB entry.  Executing the faulting
+		 * instruction again should result in a Data Storage
+		 * Interrupt that does indicate whether we're dealing
+		 * with with a read or a write fault.
+		 */
+		map = &p->p_vmspace->vm_map;
+		vm_map_lock_read(map);
+		if (uvm_map_lookup_entry(map, frame->dar, &entry))
+			error = pmap_slbd_enter(pm, frame->dar);
+		else
+			error = EFAULT;
+		vm_map_unlock_read(map);
+		if (error) {
+			sv.sival_ptr = (void *)frame->dar;
+			trapsignal(p, SIGSEGV, 0, SEGV_MAPERR, sv);
+		}
+		break;
 
 	case EXC_DSI|EXC_USER:
 		if (!uvm_map_inentry(p, &p->p_spinentry, PROC_STACK(p),
@@ -234,12 +258,10 @@ trap(struct trapframe *frame)
 		map = &p->p_vmspace->vm_map;
 		va = frame->dar;
 		if (frame->dsisr & DSISR_STORE)
-			access_type = PROT_READ | PROT_WRITE;
+			access_type = PROT_WRITE;
 		else
 			access_type = PROT_READ;
-		KERNEL_LOCK();
 		error = uvm_fault(map, trunc_page(va), 0, access_type);
-		KERNEL_UNLOCK();
 		if (error == 0)
 			uvm_grow(p, va);
 
@@ -284,9 +306,7 @@ trap(struct trapframe *frame)
 		map = &p->p_vmspace->vm_map;
 		va = frame->srr0;
 		access_type = PROT_READ | PROT_EXEC;
-		KERNEL_LOCK();
 		error = uvm_fault(map, trunc_page(va), 0, access_type);
-		KERNEL_UNLOCK();
 		if (error == 0)
 			uvm_grow(p, va);
 

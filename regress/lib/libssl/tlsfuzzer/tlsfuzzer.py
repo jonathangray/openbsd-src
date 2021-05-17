@@ -1,4 +1,4 @@
-#   $OpenBSD: tlsfuzzer.py,v 1.28 2021/04/08 17:11:43 tb Exp $
+#   $OpenBSD: tlsfuzzer.py,v 1.39 2021/04/23 21:01:45 tb Exp $
 #
 # Copyright (c) 2020 Theo Buehler <tb@openbsd.org>
 #
@@ -68,13 +68,16 @@ tls13_unsupported_ciphers = [
     "-e", "TLS 1.3 with x448",
 ]
 
+def substitute_alert(want, got):
+    return f"Expected alert description \"{want}\" " \
+        + f"does not match received \"{got}\""
+
 # test-tls13-finished.py has 70 failing tests that expect a "decode_error"
 # instead of the "decrypt_error" sent by tls13_server_finished_recv().
 # Both alerts appear to be reasonable in this context, so work around this
 # in the test instead of the library.
 def generate_test_tls13_finished_args():
-    assertion = "Expected alert description \"decode_error\""
-    assertion += " does not match received \"decrypt_error\""
+    assertion = substitute_alert("decode_error", "decrypt_error");
     paddings = [
         ("TLS_AES_128_GCM_SHA256", 0, 1),
         ("TLS_AES_128_GCM_SHA256", 0, 2),
@@ -198,7 +201,9 @@ tls13_slow_tests = TestGroup("slow TLSv1.3 tests", [
     # correct decode_error while we send a decrypt_error (like fizz/boring).
     Test("test-tls13-record-layer-limits.py", [
         "-x", "max size payload (2**14) of Finished msg, with 16348 bytes of left padding, cipher TLS_AES_128_GCM_SHA256",
+        "-X", substitute_alert("decode_error", "decrypt_error"),
         "-x", "max size payload (2**14) of Finished msg, with 16348 bytes of left padding, cipher TLS_CHACHA20_POLY1305_SHA256",
+        "-X", substitute_alert("decode_error", "decrypt_error"),
     ]),
     # We don't accept an empty ECPF extension since it must advertise the
     # uncompressed point format. Exclude this extension type from the test.
@@ -264,7 +269,7 @@ tls13_slow_failing_tests = TestGroup("slow, failing TLSv1.3 tests", [
     # Other test failures bugs in keyshare/tlsext negotiation?
     Test("test-tls13-unrecognised-groups.py"),    # unexpected closure
 
-    # 5 failures:
+    # 5 occasional failures:
     #   'app data split, conversation with KeyUpdate msg'
     #   'fragmented keyupdate msg'
     #   'multiple KeyUpdate messages'
@@ -335,6 +340,7 @@ tls12_tests = TestGroup("TLSv1.2 tests", [
     Test("test-fuzzed-ciphertext.py"),
     Test("test-fuzzed-finished.py"),
     Test("test-fuzzed-padding.py"),
+    Test("test-fuzzed-plaintext.py"), # fails once in a while
     Test("test-hello-request-by-client.py"),
     Test("test-invalid-cipher-suites.py"),
     Test("test-invalid-content-type.py"),
@@ -343,6 +349,7 @@ tls12_tests = TestGroup("TLSv1.2 tests", [
     Test("test-lucky13.py"),
     Test("test-message-skipping.py"),
     Test("test-no-heartbeat.py"),
+    Test("test-record-layer-fragmentation.py"),
     Test("test-sessionID-resumption.py"),
     Test("test-sslv2-connection.py"),
     Test("test-truncating-of-finished.py"),
@@ -376,6 +383,19 @@ tls12_tests = TestGroup("TLSv1.2 tests", [
     ),
     Test("test-fallback-scsv.py", tls13_args = ["--tls-1.3"] ),
 
+    Test("test-invalid-compression-methods.py", [
+        "-x", "invalid compression methods",
+        "-X", substitute_alert("illegal_parameter", "decode_error"),
+        "-x", "only deflate compression method",
+        "-X", substitute_alert("illegal_parameter", "decode_error"),
+    ]),
+
+    # Skip extended_master_secret test. Since we don't support this
+    # extension, we don't notice that it was dropped.
+    Test("test-renegotiation-changed-clienthello.py", [
+        "-e", "drop extended_master_secret in renegotiation",
+    ]),
+
     # Without --sig-algs-drop-ok, two tests fail since we do not currently
     # implement the signature_algorithms_cert extension (although we MUST).
     Test("test-sig-algs-renegotiation-resumption.py", ["--sig-algs-drop-ok"]),
@@ -388,8 +408,7 @@ tls12_slow_tests = TestGroup("slow TLSv1.2 tests", [
     Test("test-dhe-no-shared-secret-padding.py", tls12_exclude_legacy_protocols),
     Test("test-ecdhe-padded-shared-secret.py", tls12_exclude_legacy_protocols),
     Test("test-ecdhe-rsa-key-share-random.py", tls12_exclude_legacy_protocols),
-    # This test has some failures once in a while.
-    Test("test-fuzzed-plaintext.py"),
+    Test("test-large-hello.py"),
 ])
 
 tls12_failing_tests = TestGroup("failing TLSv1.2 tests", [
@@ -418,26 +437,16 @@ tls12_failing_tests = TestGroup("failing TLSv1.2 tests", [
     # unknown signature algorithms
     Test("test-clienthello-md5.py"),
 
-    # Tests expect an illegal_parameter alert
+    # Tests expect an illegal_parameter or a decode_error alert.  Should be
+    # added to ssl3_get_client_key_exchange on kex function failure.
     Test("test-ecdhe-rsa-key-exchange-with-bad-messages.py"),
 
-    # We send a handshake_failure while the test expects to succeed
+    # We send a handshake_failure due to no shared ciphers while the
+    # test expects to succeed.
     Test("test-ecdhe-rsa-key-exchange.py"),
-
-    # unsupported?
-    Test("test-extended-master-secret-extension-with-client-cert.py"),
 
     # no shared cipher
     Test("test-ecdsa-sig-flexibility.py"),
-
-    # unsupported
-    Test("test-encrypt-then-mac-renegotiation.py"),
-    Test("test-encrypt-then-mac.py"),
-    Test("test-extended-master-secret-extension.py"),
-    Test("test-ffdhe-expected-params.py"),
-    Test("test-ffdhe-negotiation.py"),
-    # unsupported. Expects the server to send the heartbeat extension
-    Test("test-heartbeat.py"),
 
     # 29 succeed, 263 fail:
     #   'n extensions', 'n extensions last empty' n in 4086, 4096, 8192, 16383
@@ -462,10 +471,6 @@ tls12_failing_tests = TestGroup("failing TLSv1.2 tests", [
     # Lots of failures. abrupt closure
     Test("test-invalid-client-hello.py"),
 
-    # Test expects illegal_parameter, we send decode_error in ssl_srvr.c:1016
-    # Need to check that this is correct.
-    Test("test-invalid-compression-methods.py"),
-
     # abrupt closure
     # 'encrypted premaster set to all zero (n)' n in 256 384 512
     Test("test-invalid-rsa-key-exchange-messages.py"),
@@ -476,8 +481,6 @@ tls12_failing_tests = TestGroup("failing TLSv1.2 tests", [
     # let through some server names without sending an alert
     # again illegal_parameter vs unrecognized_name
     Test("test-invalid-server-name-extension.py"),
-
-    Test("test-large-hello.py"),
 
     # 14 pass
     # 7 fail
@@ -500,15 +503,6 @@ tls12_failing_tests = TestGroup("failing TLSv1.2 tests", [
 
     # unexpected closure
     Test("test-openssl-3712.py"),
-
-    # 3 failures:
-    # 'big, needs fragmentation: max fragment - 16336B extension'
-    # 'big, needs fragmentation: max fragment - 32768B extension'
-    # 'maximum size: max fragment - 65531B extension'
-    Test("test-record-layer-fragmentation.py"),
-
-    # wants --reply-AD-size
-    Test("test-record-size-limit.py"),
 
     # failed: 3 (expect an alert, we send AD)
     # 'try insecure (legacy) renegotiation with incomplete GET'
@@ -552,6 +546,19 @@ tls12_unsupported_tests = TestGroup("TLSv1.2 for unsupported features", [
     Test("test-SSLv3-padding.py"),
     # we don't do RSA key exchanges
     Test("test-bleichenbacher-timing.py"),
+    # no encrypt-then-mac
+    Test("test-encrypt-then-mac-renegotiation.py"),
+    Test("test-encrypt-then-mac.py"),
+    # no EME support
+    Test("test-extended-master-secret-extension-with-client-cert.py"),
+    Test("test-extended-master-secret-extension.py"),
+    # no ffdhe
+    Test("test-ffdhe-expected-params.py"),
+    Test("test-ffdhe-negotiation.py"),
+    # record_size_limit/max_fragment_length extension (RFC 8449)
+    Test("test-record-size-limit.py"),
+    # expects the server to send the heartbeat extension
+    Test("test-heartbeat.py"),
 ])
 
 # These tests take a ton of time to fail against an 1.3 server,

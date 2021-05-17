@@ -1,4 +1,4 @@
-/*	$OpenBSD: if_iwmvar.h,v 1.58 2021/03/12 16:27:10 stsp Exp $	*/
+/*	$OpenBSD: if_iwmvar.h,v 1.62 2021/05/10 08:28:00 stsp Exp $	*/
 
 /*
  * Copyright (c) 2014 genua mbh <info@genua.de>
@@ -250,6 +250,9 @@ struct iwm_fw_paging {
 #define IWM_TX_RING_LOMARK	192
 #define IWM_TX_RING_HIMARK	224
 
+/* For aggregation queues, index must be aligned to frame sequence number. */
+#define IWM_AGG_SSN_TO_TXQ_IDX(x)	((x) & (IWM_TX_RING_COUNT - 1))
+
 struct iwm_tx_data {
 	bus_dmamap_t	map;
 	bus_addr_t	cmd_paddr;
@@ -258,6 +261,10 @@ struct iwm_tx_data {
 	struct iwm_node *in;
 	int txmcs;
 	int txrate;
+
+	/* A-MPDU subframes */
+	int ampdu_txmcs;
+	int ampdu_nframes;
 };
 
 struct iwm_tx_ring {
@@ -303,6 +310,7 @@ struct iwm_rx_ring {
 #define IWM_FLAG_HW_ERR		0x80	/* hardware error occurred */
 #define IWM_FLAG_SHUTDOWN	0x100	/* shutting down; new tasks forbidden */
 #define IWM_FLAG_BGSCAN		0x200	/* background scan in progress */
+#define IWM_FLAG_TXFLUSH	0x400	/* Tx queue flushing in progress */
 
 struct iwm_ucode_status {
 	uint32_t uc_error_event_table;
@@ -361,6 +369,104 @@ struct iwm_bf_data {
 	int last_cqm_event;
 };
 
+/**
+ * struct iwm_reorder_buffer - per ra/tid/queue reorder buffer
+ * @head_sn: reorder window head sn
+ * @num_stored: number of mpdus stored in the buffer
+ * @buf_size: the reorder buffer size as set by the last addba request
+ * @queue: queue of this reorder buffer
+ * @last_amsdu: track last ASMDU SN for duplication detection
+ * @last_sub_index: track ASMDU sub frame index for duplication detection
+ * @reorder_timer: timer for frames are in the reorder buffer. For AMSDU
+ *	it is the time of last received sub-frame
+ * @removed: prevent timer re-arming
+ * @valid: reordering is valid for this queue
+ * @consec_oldsn_drops: consecutive drops due to old SN
+ * @consec_oldsn_ampdu_gp2: A-MPDU GP2 timestamp to track
+ *	when to apply old SN consecutive drop workaround
+ * @consec_oldsn_prev_drop: track whether or not an MPDU
+ *	that was single/part of the previous A-MPDU was
+ *	dropped due to old SN
+ */
+struct iwm_reorder_buffer {
+	uint16_t head_sn;
+	uint16_t num_stored;
+	uint16_t buf_size;
+	uint16_t last_amsdu;
+	uint8_t last_sub_index;
+	struct timeout reorder_timer;
+	int removed;
+	int valid;
+	unsigned int consec_oldsn_drops;
+	uint32_t consec_oldsn_ampdu_gp2;
+	unsigned int consec_oldsn_prev_drop;
+#define IWM_AMPDU_CONSEC_DROPS_DELBA	10
+};
+
+/**
+ * struct iwm_reorder_buf_entry - reorder buffer entry per frame sequence number
+ * @frames: list of mbufs stored (A-MSDU subframes share a sequence number)
+ * @reorder_time: time the packet was stored in the reorder buffer
+ */
+struct iwm_reorder_buf_entry {
+	struct mbuf_list frames;
+	struct timeval reorder_time;
+	uint32_t rx_pkt_status;
+	int chanidx;
+	int is_shortpre;
+	uint32_t rate_n_flags;
+	uint32_t device_timestamp;
+	struct ieee80211_rxinfo rxi;
+};
+
+/**
+ * struct iwm_rxba_data - BA session data
+ * @sta_id: station id
+ * @tid: tid of the session
+ * @baid: baid of the session
+ * @timeout: the timeout set in the addba request
+ * @entries_per_queue: # of buffers per queue
+ * @last_rx: last rx timestamp, updated only if timeout passed from last update
+ * @session_timer: timer to check if BA session expired, runs at 2 * timeout
+ * @sc: softc pointer, needed for timer context
+ * @reorder_buf: reorder buffer
+ * @reorder_buf_data: buffered frames, one entry per sequence number
+ */
+struct iwm_rxba_data {
+	uint8_t sta_id;
+	uint8_t tid;
+	uint8_t baid;
+	uint16_t timeout;
+	uint16_t entries_per_queue;
+	struct timeval last_rx;
+	struct timeout session_timer;
+	struct iwm_softc *sc;
+	struct iwm_reorder_buffer reorder_buf;
+	struct iwm_reorder_buf_entry entries[IEEE80211_BA_MAX_WINSZ];
+};
+
+static inline struct iwm_rxba_data *
+iwm_rxba_data_from_reorder_buf(struct iwm_reorder_buffer *buf)
+{
+	return (void *)((uint8_t *)buf -
+			offsetof(struct iwm_rxba_data, reorder_buf));
+}
+
+/**
+ * struct iwm_rxq_dup_data - per station per rx queue data
+ * @last_seq: last sequence per tid for duplicate packet detection
+ * @last_sub_frame: last subframe packet
+ */
+struct iwm_rxq_dup_data {
+	uint16_t last_seq[IWM_MAX_TID_COUNT + 1];
+	uint8_t last_sub_frame[IWM_MAX_TID_COUNT + 1];
+};
+
+struct iwm_ba_task_data {
+	uint32_t		start_tidmask;
+	uint32_t		stop_tidmask;
+};
+
 struct iwm_softc {
 	struct device sc_dev;
 	struct ieee80211com sc_ic;
@@ -379,13 +485,11 @@ struct iwm_softc {
 
 	/* Task for firmware BlockAck setup/teardown and its arguments. */
 	struct task		ba_task;
-	int			ba_start;
-	int			ba_tid;
-	uint16_t		ba_ssn;
-	uint16_t		ba_winsize;
+	struct iwm_ba_task_data	ba_rx;
+	struct iwm_ba_task_data	ba_tx;
 
-	/* Task for HT protection updates. */
-	struct task		htprot_task;
+	/* Task for ERP/HT prot/slot-time/EDCA updates. */
+	struct task		mac_ctxt_task;
 
 	bus_space_tag_t sc_st;
 	bus_space_handle_t sc_sh;
@@ -404,6 +508,7 @@ struct iwm_softc {
 	struct iwm_tx_ring txq[IWM_MAX_QUEUES];
 	struct iwm_rx_ring rxq;
 	int qfullmsk;
+	int qenablemsk;
 	int cmdqid;
 
 	int sc_sf_state;
@@ -479,6 +584,7 @@ struct iwm_softc {
 
 	int sc_tx_timer;
 	int sc_rx_ba_sessions;
+	int tx_ba_queue_mask;
 
 	int sc_scan_last_antenna;
 
@@ -495,6 +601,8 @@ struct iwm_softc {
 
 	struct iwm_rx_phy_info sc_last_phy_info;
 	int sc_ampdu_ref;
+#define IWM_MAX_BAID	32
+	struct iwm_rxba_data sc_rxba_data[IWM_MAX_BAID];
 
 	uint32_t sc_time_event_uid;
 
@@ -548,6 +656,12 @@ struct iwm_node {
 	struct ieee80211_amrr_node in_amn;
 	struct ieee80211_ra_node in_rn;
 	int lq_rate_mismatch;
+
+	struct iwm_rxq_dup_data dup_data;
+
+	/* For use with the ADD_STA command. */
+	uint32_t tfd_queue_msk;
+	uint16_t tid_disable_ampdu;
 };
 #define IWM_STATION_ID 0
 #define IWM_AUX_STA_ID 1

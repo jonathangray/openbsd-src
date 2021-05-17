@@ -1,4 +1,4 @@
-/*	$OpenBSD: gpt.c,v 1.12 2021/01/30 18:16:36 krw Exp $	*/
+/*	$OpenBSD: gpt.c,v 1.16 2021/05/15 22:06:43 krw Exp $	*/
 /*
  * Copyright (c) 2015 Markus Muller <mmu@grummel.net>
  * Copyright (c) 2015 Kenneth R Westerback <krw@openbsd.org>
@@ -192,33 +192,34 @@ GPT_get_partition_table(off_t where)
 }
 
 void
-GPT_get_gpt(int which)
+GPT_read(int which)
 {
-	int privalid, altvalid;
+	int valid;
 
-	/*
-	 * primary header && primary partition table ||
-	 * alt header && alt partition table
-	 */
-	privalid = GPT_get_header(GPTSECTOR);
-	if (privalid == 0)
-		privalid = GPT_get_partition_table(gh.gh_part_lba);
-	if (which == 1 || (which == 0 && privalid == 0))
+	switch (which) {
+	case PRIMARYGPT:
+		valid = GPT_get_header(GPTSECTOR);
+		break;
+	case SECONDARYGPT:
+		valid = GPT_get_header(DL_GETDSIZE(&dl) - 1);
+		break;
+	case ANYGPT:
+		valid = GPT_get_header(GPTSECTOR);
+		if (valid != 0 || GPT_get_partition_table(gh.gh_part_lba) != 0)
+			valid = GPT_get_header(DL_GETDSIZE(&dl) - 1);
+		break;
+	default:
 		return;
+	}
 
-	/* No valid GPT found. Zap any artifacts. */
-	memset(&gh, 0, sizeof(gh));
-	memset(&gp, 0, sizeof(gp));
+	if (valid == 0)
+		valid = GPT_get_partition_table(gh.gh_part_lba);
 
-	altvalid = GPT_get_header(DL_GETDSIZE(&dl) - 1);
-	if (altvalid == 0)
-		altvalid = GPT_get_partition_table(gh.gh_part_lba);
-	if (which == 2 || altvalid == 0)
-		return;
-
-	/* No valid GPT found. Zap any artifacts. */
-	memset(&gh, 0, sizeof(gh));
-	memset(&gp, 0, sizeof(gp));
+	if (valid != 0) {
+		/* No valid GPT found. Zap any artifacts. */
+		memset(&gh, 0, sizeof(gh));
+		memset(&gp, 0, sizeof(gp));
+	}
 }
 
 void
@@ -239,7 +240,7 @@ GPT_print(char *units, int verbosity)
 		printf("%d-byte ", secsize);
 	printf("%s]\n", unit_types[u].lname);
 
-	if (verbosity) {
+	if (verbosity == VERBOSE) {
 		printf("GUID: ");
 		uuid_dec_le(&gh.gh_guid, &guid);
 		uuid_to_string(&guid, &guidstr, &status);
@@ -264,7 +265,7 @@ GPT_print_parthdr(int verbosity)
 {
 	printf("   #: type                                "
 	    " [       start:         size ]\n");
-	if (verbosity)
+	if (verbosity == VERBOSE)
 		printf("      guid                                 name\n");
 	printf("--------------------------------------------------------"
 	    "----------------\n");
@@ -289,7 +290,7 @@ GPT_print_part(int n, char *units, int verbosity)
 	    PRT_uuid_to_typename(&guid), letoh64(partn->gp_lba_start),
 	    size, unit_types[u].abbr);
 
-	if (verbosity) {
+	if (verbosity == VERBOSE) {
 		uuid_dec_le(&partn->gp_guid, &guid);
 		uuid_to_string(&guid, &guidstr, &status);
 		if (status != uuid_s_ok)
@@ -304,7 +305,7 @@ GPT_print_part(int n, char *units, int verbosity)
 int
 GPT_init(void)
 {
-	extern u_int32_t b_arg;
+	extern uint32_t b_arg;
 	const int secsize = unit_types[SECTORS].conversion;
 	struct uuid guid;
 	int needed;
@@ -387,33 +388,31 @@ GPT_write(void)
 	const int secsize = unit_types[SECTORS].conversion;
 	ssize_t len;
 	off_t off;
-	u_int64_t altgh, altgp;
+	uint64_t altgh, altgp, prigh, prigp;
 
 	/* Assume we always write full-size partition table. XXX */
+	prigh = GPTSECTOR;
+	prigp = prigh + 1;
 	altgh = DL_GETDSIZE(&dl) - 1;
 	altgp = DL_GETDSIZE(&dl) - 1 - (sizeof(gp) / secsize);
 
-	/*
-	 * Place the new GPT header at the start of sectors 1 and
-	 * DL_GETDSIZE(lp)-1 and write the sectors back.
-	 */
-	gh.gh_lba_self = htole64(1);
+	gh.gh_lba_self = htole64(prigh);
 	gh.gh_lba_alt = htole64(altgh);
-	gh.gh_part_lba = htole64(2);
+	gh.gh_part_lba = htole64(prigp);
 	gh.gh_part_csum = crc32((unsigned char *)&gp, sizeof(gp));
 	gh.gh_csum = 0;
 	gh.gh_csum = crc32((unsigned char *)&gh, letoh32(gh.gh_size));
 
-	secbuf = DISK_readsector(1);
+	secbuf = DISK_readsector(prigh);
 	if (secbuf == NULL)
 		return (-1);
 
 	memcpy(secbuf, &gh, sizeof(gh));
-	DISK_writesector(secbuf, 1);
+	DISK_writesector(secbuf, prigh);
 	free(secbuf);
 
 	gh.gh_lba_self = htole64(altgh);
-	gh.gh_lba_alt = htole64(1);
+	gh.gh_lba_alt = htole64(prigh);
 	gh.gh_part_lba = htole64(altgp);
 	gh.gh_csum = 0;
 	gh.gh_csum = crc32((unsigned char *)&gh, letoh32(gh.gh_size));
@@ -427,14 +426,11 @@ GPT_write(void)
 	free(secbuf);
 
 	/*
-	 * Write partition table after primary header
-	 * (i.e. at sector 1) and before alt header
-	 * (i.e. ending in sector before alt header.
 	 * XXX ALWAYS NGPTPARTITIONS!
 	 * XXX ASSUME gp is multiple of sector size!
 	 */
-	off = lseek(disk.fd, secsize * 2, SEEK_SET);
-	if (off == secsize * 2)
+	off = lseek(disk.fd, secsize * prigp, SEEK_SET);
+	if (off == secsize * prigp)
 		len = write(disk.fd, &gp, sizeof(gp));
 	else
 		len = -1;
@@ -465,8 +461,8 @@ gp_lba_start_cmp(const void *e1, const void *e2)
 {
 	struct gpt_partition *p1 = *(struct gpt_partition **)e1;
 	struct gpt_partition *p2 = *(struct gpt_partition **)e2;
-	u_int64_t o1;
-	u_int64_t o2;
+	uint64_t o1;
+	uint64_t o2;
 
 	o1 = letoh64(p1->gp_lba_start);
 	o2 = letoh64(p2->gp_lba_start);

@@ -1,4 +1,4 @@
-/*	$OpenBSD: subr_disk.c,v 1.238 2021/01/19 19:36:48 mvs Exp $	*/
+/*	$OpenBSD: subr_disk.c,v 1.241 2021/05/14 21:11:15 krw Exp $	*/
 /*	$NetBSD: subr_disk.c,v 1.17 1996/03/16 23:17:08 christos Exp $	*/
 
 /*
@@ -105,7 +105,7 @@ void disk_attach_callback(void *);
 
 int spoofgptlabel(struct buf *, void (*)(struct buf *), struct disklabel *);
 
-int gpt_chk_mbr(struct dos_partition *, u_int64_t);
+int gpt_chk_mbr(struct dos_partition *, uint64_t);
 int gpt_chk_hdr(struct gpt_header *, struct disklabel *);
 int gpt_chk_parts(struct gpt_header *, struct gpt_partition *);
 int gpt_get_fstype(struct uuid *);
@@ -330,13 +330,13 @@ int
 readdoslabel(struct buf *bp, void (*strat)(struct buf *),
     struct disklabel *lp, daddr_t *partoffp, int spoofonly)
 {
+	struct dos_partition dp[NDOSPART], *dp2;
 	struct disklabel *gptlp;
 	u_int64_t dospartoff = 0, dospartend = DL_GETBEND(lp);
-	int i, ourpart = -1, wander = 1, n = 0, loop = 0, offset;
-	struct dos_partition dp[NDOSPART], *dp2;
 	u_int64_t sector = DOSBBSECTOR;
 	u_int32_t extoff = 0;
-	int error;
+	int ourpart = -1, wander = 1, n = 0, loop = 0;
+	int efi, error, i, offset;
 
 	if (lp->d_secpercyl == 0)
 		return (EINVAL);	/* invalid label */
@@ -374,7 +374,8 @@ readdoslabel(struct buf *bp, void (*strat)(struct buf *),
 			if (mbrtest != 0x55aa)
 				goto notmbr;
 
-			if (gpt_chk_mbr(dp, DL_GETDSIZE(lp)) != 0)
+			efi = gpt_chk_mbr(dp, DL_GETDSIZE(lp));
+			if (efi == -1)
 				goto notgpt;
 
 			gptlp = malloc(sizeof(struct disklabel), M_DEVBUF,
@@ -584,38 +585,37 @@ notfat:
 }
 
 /*
- * Returns 0 if the MBR with the provided partition array is a GPT protective
- * MBR, and returns 1 otherwise. A GPT protective MBR would have one and only
- * one MBR partition, an EFI partition that either covers the whole disk or as
- * much of it as is possible with a 32bit size field.
+ * Return the index into dp[] of the EFI GPT (0xEE) partition, or -1 if no such
+ * partition exists.
  *
- * NOTE: MS always uses a size of UINT32_MAX for the EFI partition!**
+ * Copied into sbin/fdisk/mbr.c.
  */
 int
-gpt_chk_mbr(struct dos_partition *dp, u_int64_t dsize)
+gpt_chk_mbr(struct dos_partition *dp, uint64_t dsize)
 {
 	struct dos_partition *dp2;
-	int efi, found, i;
-	u_int32_t psize;
+	int efi, eficnt, found, i;
+	uint32_t psize;
 
-	found = efi = 0;
-	for (dp2=dp, i=0; i < NDOSPART; i++, dp2++) {
+	found = efi = eficnt = 0;
+	for (dp2 = dp, i = 0; i < NDOSPART; i++, dp2++) {
 		if (dp2->dp_typ == DOSPTYP_UNUSED)
 			continue;
 		found++;
 		if (dp2->dp_typ != DOSPTYP_EFI)
 			continue;
+		if (letoh32(dp2->dp_start) != GPTSECTOR)
+			continue;
 		psize = letoh32(dp2->dp_size);
-		if (psize == (dsize - 1) ||
-		    psize == UINT32_MAX) {
-			if (letoh32(dp2->dp_start) == 1)
-				efi++;
+		if (psize == (dsize - 1) || psize == UINT32_MAX) {
+			efi = i;
+			eficnt++;
 		}
 	}
-	if (found == 1 && efi == 1)
-		return (0);
+	if (found == 1 && eficnt == 1)
+		return (efi);
 
-	return (1);
+	return (-1);
 }
 
 int
@@ -697,7 +697,7 @@ gpt_get_fstype(struct uuid *uuid_part)
 {
 	static int init = 0;
 	static struct uuid uuid_openbsd, uuid_msdos, uuid_chromefs,
-	    uuid_linux, uuid_hfs, uuid_unused, uuid_efi_system;
+	    uuid_linux, uuid_hfs, uuid_unused, uuid_efi_system, uuid_bios_boot;
 	static const uint8_t gpt_uuid_openbsd[] = GPT_UUID_OPENBSD;
 	static const uint8_t gpt_uuid_msdos[] = GPT_UUID_MSDOS;
 	static const uint8_t gpt_uuid_chromerootfs[] = GPT_UUID_CHROMEROOTFS;
@@ -705,6 +705,7 @@ gpt_get_fstype(struct uuid *uuid_part)
 	static const uint8_t gpt_uuid_hfs[] = GPT_UUID_APPLE_HFS;
 	static const uint8_t gpt_uuid_unused[] = GPT_UUID_UNUSED;
 	static const uint8_t gpt_uuid_efi_system[] = GPT_UUID_EFI_SYSTEM;
+	static const uint8_t gpt_uuid_bios_boot[] = GPT_UUID_BIOS_BOOT;
 
 	if (init == 0) {
 		uuid_dec_be(gpt_uuid_openbsd, &uuid_openbsd);
@@ -714,6 +715,7 @@ gpt_get_fstype(struct uuid *uuid_part)
 		uuid_dec_be(gpt_uuid_hfs, &uuid_hfs);
 		uuid_dec_be(gpt_uuid_unused, &uuid_unused);
 		uuid_dec_be(gpt_uuid_efi_system, &uuid_efi_system);
+		uuid_dec_be(gpt_uuid_bios_boot, &uuid_bios_boot);
 		init = 1;
 	}
 
@@ -731,6 +733,8 @@ gpt_get_fstype(struct uuid *uuid_part)
 		return FS_HFS;
 	else if (!memcmp(uuid_part, &uuid_efi_system, sizeof(struct uuid)))
 		return FS_MSDOS;
+	else if (!memcmp(uuid_part, &uuid_bios_boot, sizeof(struct uuid)))
+		return FS_BOOT;
 	else
 		return FS_OTHER;
 }

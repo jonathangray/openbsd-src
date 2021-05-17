@@ -1,4 +1,4 @@
-#	$OpenBSD: Makefile,v 1.3 2014/07/08 15:53:52 jsing Exp $
+#	$OpenBSD: Makefile,v 1.5 2021/05/10 20:41:44 tb Exp $
 
 PROG=	ecdhtest
 LDADD=	-lcrypto

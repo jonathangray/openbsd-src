@@ -1,4 +1,4 @@
-/* $OpenBSD: ssl_pkt.c,v 1.40 2021/03/29 16:46:09 jsing Exp $ */
+/* $OpenBSD: ssl_pkt.c,v 1.43 2021/05/16 14:10:43 jsing Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -112,12 +112,11 @@
 #include <errno.h>
 #include <stdio.h>
 
-#include "ssl_locl.h"
-
 #include <openssl/buffer.h>
 #include <openssl/evp.h>
 
 #include "bytestring.h"
+#include "ssl_locl.h"
 
 static int do_ssl3_write(SSL *s, int type, const unsigned char *buf,
     unsigned int len);
@@ -1154,15 +1153,6 @@ ssl3_read_bytes(SSL *s, int type, unsigned char *buf, int len, int peek)
 int
 ssl3_do_change_cipher_spec(SSL *s)
 {
-	int i;
-	const char *sender;
-	int slen;
-
-	if (S3I(s)->hs.state & SSL_ST_ACCEPT)
-		i = SSL3_CHANGE_CIPHER_SERVER_READ;
-	else
-		i = SSL3_CHANGE_CIPHER_CLIENT_READ;
-
 	if (S3I(s)->hs.tls12.key_block == NULL) {
 		if (s->session == NULL || s->session->master_key_length == 0) {
 			/* might happen if dtls1_read_bytes() calls this */
@@ -1175,27 +1165,15 @@ ssl3_do_change_cipher_spec(SSL *s)
 			return (0);
 	}
 
-	if (!tls1_change_cipher_state(s, i))
+	if (!tls1_change_read_cipher_state(s))
 		return (0);
 
-	/* we have to record the message digest at
-	 * this point so we can get it before we read
-	 * the finished message */
-	if (S3I(s)->hs.state & SSL_ST_CONNECT) {
-		sender = TLS_MD_SERVER_FINISH_CONST;
-		slen = TLS_MD_SERVER_FINISH_CONST_SIZE;
-	} else {
-		sender = TLS_MD_CLIENT_FINISH_CONST;
-		slen = TLS_MD_CLIENT_FINISH_CONST_SIZE;
-	}
-
-	i = tls1_final_finish_mac(s, sender, slen,
-	    S3I(s)->hs.peer_finished);
-	if (i == 0) {
-		SSLerror(s, ERR_R_INTERNAL_ERROR);
-		return 0;
-	}
-	S3I(s)->hs.peer_finished_len = i;
+	/*
+	 * We have to record the message digest at this point so we can get it
+	 * before we read the finished message.
+	 */
+	if (!tls12_derive_peer_finished(s))
+		return (0);
 
 	return (1);
 }

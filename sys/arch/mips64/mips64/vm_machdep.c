@@ -1,4 +1,4 @@
-/*	$OpenBSD: vm_machdep.c,v 1.39 2019/12/20 13:34:41 visa Exp $	*/
+/*	$OpenBSD: vm_machdep.c,v 1.41 2021/05/01 16:11:11 visa Exp $	*/
 /*
  * Copyright (c) 1988 University of Utah.
  * Copyright (c) 1992, 1993
@@ -72,19 +72,7 @@ cpu_fork(struct proc *p1, struct proc *p2, void *stack, void *tcb,
 	/* replace p_addr with a direct translation address */
 	p2->p_md.md_uarea = (vaddr_t)p2->p_addr;
 	pmap_extract(pmap_kernel(), p2->p_md.md_uarea, &pa);
-#ifdef __sgi__
-#ifndef CPU_R8000
-	/*
-	 * Return a CKSEG0 address whenever possible.
-	 */
-	if (pa < CKSEG_SIZE)
-		p2->p_addr = (void *)PHYS_TO_CKSEG0(pa);
-	else
-#endif
-		p2->p_addr = (void *)PHYS_TO_XKPHYS(pa, CCA_CACHED);
-#else
 	p2->p_addr = (void *)PHYS_TO_XKPHYS(pa, CCA_CACHED);
-#endif
 #endif
 	pcb = &p2->p_addr->u_pcb;
 
@@ -124,12 +112,9 @@ cpu_fork(struct proc *p1, struct proc *p2, void *stack, void *tcb,
 	/*
 	 * Copy the process control block to the new proc and
 	 * create a clean stack for exit through trampoline.
-	 * pcb_context has s0-s7, sp, s8, ra, sr, icr.
+	 * pcb_context has s0-s7, sp, s8, ra, sr.
 	 */
 	if (p1 != curproc) {
-#ifdef RM7000_ICR
-		pcb->pcb_context.val[12] = (idle_mask << 8) & IC_INT_MASK;
-#endif
 		pcb->pcb_context.val[11] = (pcb->pcb_regs.sr & ~SR_INT_MASK) |
 		    (idle_mask & SR_INT_MASK);
 	}

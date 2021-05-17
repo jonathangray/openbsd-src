@@ -1,4 +1,4 @@
-/*	$OpenBSD: mft.c,v 1.32 2021/03/29 06:50:44 tb Exp $ */
+/*	$OpenBSD: mft.c,v 1.34 2021/05/11 11:32:51 claudio Exp $ */
 /*
  * Copyright (c) 2019 Kristaps Dzonsons <kristaps@bsd.lv>
  *
@@ -70,6 +70,7 @@ generalizedtime_to_tm(const ASN1_GENERALIZEDTIME *gtime, struct tm *tm)
 	data = ASN1_STRING_get0_data(gtime);
 	len = ASN1_STRING_length(gtime);
 
+	memset(tm, 0, sizeof(*tm));
 	return ASN1_time_parse(data, len, tm, V_ASN1_GENERALIZEDTIME) ==
 	    V_ASN1_GENERALIZEDTIME;
 }
@@ -129,7 +130,7 @@ mft_parse_filehash(struct parse *p, const ASN1_OCTET_STRING *os)
 	const ASN1_TYPE		*file, *hash;
 	char			*fn = NULL;
 	const unsigned char	*d = os->data;
-	size_t			 dsz = os->length, sz;
+	size_t			 dsz = os->length;
 	int			 rc = 0;
 	struct mftfile		*fent;
 
@@ -169,7 +170,7 @@ mft_parse_filehash(struct parse *p, const ASN1_OCTET_STRING *os)
 		warnx("%s: path components disallowed in filename: %s",
 		    p->fn, fn);
 		goto out;
-	} else if ((sz = strlen(fn)) <= 4) {
+	} else if (strlen(fn) <= 4) {
 		warnx("%s: filename must be large enough for suffix part: %s",
 		    p->fn, fn);
 		goto out;

@@ -1,4 +1,4 @@
-/* $OpenBSD: x509_vpm.c,v 1.24 2021/04/05 07:02:50 tb Exp $ */
+/* $OpenBSD: x509_vpm.c,v 1.26 2021/04/24 18:10:12 tb Exp $ */
 /* Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL
  * project 2004.
  */

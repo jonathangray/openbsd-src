@@ -1,4 +1,4 @@
-/*	$OpenBSD: virtio.c,v 1.84 2021/03/29 23:37:01 dv Exp $	*/
+/*	$OpenBSD: virtio.c,v 1.86 2021/04/22 18:40:21 dv Exp $	*/
 
 /*
  * Copyright (c) 2015 Mike Larkin <mlarkin@openbsd.org>
@@ -30,6 +30,7 @@
 #include <net/if.h>
 #include <netinet/in.h>
 #include <netinet/if_ether.h>
+#include <netinet/ip.h>
 
 #include <errno.h>
 #include <event.h>
@@ -86,6 +87,8 @@ vioblk_cmd_name(uint32_t type)
 static void
 dump_descriptor_chain(struct vring_desc *desc, int16_t dxx)
 {
+	unsigned int cnt = 0;
+
 	log_debug("descriptor chain @ %d", dxx);
 	do {
 		log_debug("desc @%d addr/len/flags/next = 0x%llx / 0x%x "
@@ -96,6 +99,15 @@ dump_descriptor_chain(struct vring_desc *desc, int16_t dxx)
 		    desc[dxx].flags,
 		    desc[dxx].next);
 		dxx = desc[dxx].next;
+
+		/*
+		 * Dump up to the max number of descriptor for the largest
+		 * queue we support, which currently is VIONET_QUEUE_SIZE.
+		 */
+		if (++cnt >= VIONET_QUEUE_SIZE) {
+			log_warnx("%s: descriptor table invalid", __func__);
+			return;
+		}
 	} while (desc[dxx].flags & VRING_DESC_F_NEXT);
 
 	log_debug("desc @%d addr/len/flags/next = 0x%llx / 0x%x / 0x%x "
@@ -349,7 +361,7 @@ vioblk_free_info(struct ioinfo *info)
 }
 
 static struct ioinfo *
-vioblk_start_read(struct vioblk_dev *dev, off_t sector, ssize_t sz)
+vioblk_start_read(struct vioblk_dev *dev, off_t sector, size_t sz)
 {
 	struct ioinfo *info;
 
@@ -440,7 +452,7 @@ vioblk_notifyq(struct vioblk_dev *dev)
 	uint32_t vr_sz;
 	uint16_t idx, cmd_desc_idx, secdata_desc_idx, ds_desc_idx;
 	uint8_t ds;
-	int ret;
+	int cnt, ret;
 	off_t secbias;
 	char *vr;
 	struct vring_desc *desc, *cmd_desc, *secdata_desc, *ds_desc;
@@ -513,14 +525,14 @@ vioblk_notifyq(struct vioblk_dev *dev)
 				goto out;
 			}
 
+			cnt = 0;
 			secbias = 0;
 			do {
 				struct ioinfo *info;
 				const uint8_t *secdata;
 
 				info = vioblk_start_read(dev,
-				    cmd.sector + secbias,
-				    (ssize_t)secdata_desc->len);
+				    cmd.sector + secbias, secdata_desc->len);
 
 				/* read the data, use current data descriptor */
 				secdata = vioblk_finish_read(info);
@@ -549,6 +561,13 @@ vioblk_notifyq(struct vioblk_dev *dev)
 				secdata_desc_idx = secdata_desc->next &
 				    VIOBLK_QUEUE_MASK;
 				secdata_desc = &desc[secdata_desc_idx];
+
+				/* Guard against infinite chains */
+				if (++cnt >= VIOBLK_QUEUE_SIZE) {
+					log_warnx("%s: descriptor table "
+					    "invalid", __func__);
+					goto out;
+				}
 			} while (secdata_desc->flags & VRING_DESC_F_NEXT);
 
 			ds_desc_idx = secdata_desc_idx;
@@ -594,6 +613,7 @@ vioblk_notifyq(struct vioblk_dev *dev)
 				goto out;
 			}
 
+			cnt = 0;
 			secbias = 0;
 			do {
 				struct ioinfo *info;
@@ -626,6 +646,13 @@ vioblk_notifyq(struct vioblk_dev *dev)
 				secdata_desc_idx = secdata_desc->next &
 				    VIOBLK_QUEUE_MASK;
 				secdata_desc = &desc[secdata_desc_idx];
+
+				/* Guard against infinite chains */
+				if (++cnt >= VIOBLK_QUEUE_SIZE) {
+					log_warnx("%s: descriptor table "
+					    "invalid", __func__);
+					goto out;
+				}
 			} while (secdata_desc->flags & VRING_DESC_F_NEXT);
 
 			ds_desc_idx = secdata_desc_idx;
@@ -1075,7 +1102,7 @@ vionet_update_qs(struct vionet_dev *dev)
  * Must be called with dev->mutex acquired.
  */
 int
-vionet_enq_rx(struct vionet_dev *dev, char *pkt, ssize_t sz, int *spc)
+vionet_enq_rx(struct vionet_dev *dev, char *pkt, size_t sz, int *spc)
 {
 	uint64_t q_gpa;
 	uint32_t vr_sz;
@@ -1083,7 +1110,7 @@ vionet_enq_rx(struct vionet_dev *dev, char *pkt, ssize_t sz, int *spc)
 	ptrdiff_t off;
 	int ret;
 	char *vr;
-	ssize_t rem;
+	size_t rem;
 	struct vring_desc *desc, *pkt_desc, *hdr_desc;
 	struct vring_avail *avail;
 	struct vring_used *used;
@@ -1091,6 +1118,11 @@ vionet_enq_rx(struct vionet_dev *dev, char *pkt, ssize_t sz, int *spc)
 	struct virtio_net_hdr hdr;
 
 	ret = 0;
+
+	if (sz < 1) {
+		log_warn("%s: invalid packet size", __func__);
+		return (0);
+	}
 
 	if (!(dev->cfg.device_status & VIRTIO_CONFIG_DEVICE_STATUS_DRIVER_OK))
 		return ret;
@@ -1162,7 +1194,7 @@ vionet_enq_rx(struct vionet_dev *dev, char *pkt, ssize_t sz, int *spc)
 		}
 	} else {
 		/* Fallback to pkt_desc descriptor */
-		if ((uint64_t)pkt_desc->len >= (uint64_t)sz) {
+		if (pkt_desc->len >= sz) {
 			/* Must be not readable */
 			if ((pkt_desc->flags & VRING_DESC_F_WRITE) == 0) {
 				log_warnx("unexpected readable rx desc %d",
@@ -1231,7 +1263,7 @@ vionet_rx(struct vionet_dev *dev)
 			if (errno != EAGAIN)
 				log_warn("unexpected read error on vionet "
 				    "device");
-		} else if (sz != 0) {
+		} else if (sz > 0) {
 			eh = (struct ether_header *)buf;
 			if (!dev->lockedmac || sz < ETHER_HDR_LEN ||
 			    ETHER_IS_MULTICAST(eh->ether_dhost) ||
@@ -1392,7 +1424,7 @@ vionet_notify_tx(struct vionet_dev *dev)
 {
 	uint64_t q_gpa;
 	uint32_t vr_sz;
-	uint16_t idx, pkt_desc_idx, hdr_desc_idx, dxx;
+	uint16_t idx, pkt_desc_idx, hdr_desc_idx, dxx, cnt;
 	size_t pktsz;
 	ssize_t dhcpsz;
 	int ret, num_enq, ofs, spc;
@@ -1402,6 +1434,7 @@ vionet_notify_tx(struct vionet_dev *dev)
 	struct vring_used *used;
 	struct ether_header *eh;
 
+	dhcpsz = 0;
 	vr = pkt = dhcppkt = NULL;
 	ret = spc = 0;
 
@@ -1439,10 +1472,23 @@ vionet_notify_tx(struct vionet_dev *dev)
 		hdr_desc = &desc[hdr_desc_idx];
 		pktsz = 0;
 
+		cnt = 0;
 		dxx = hdr_desc_idx;
 		do {
 			pktsz += desc[dxx].len;
 			dxx = desc[dxx].next;
+
+			/*
+			 * Virtio 1.0, cs04, section 2.4.5:
+			 *  "The number of descriptors in the table is defined
+			 *   by the queue size for this virtqueue: this is the
+			 *   maximum possible descriptor chain length."
+			 */
+			if (++cnt >= VIONET_QUEUE_SIZE) {
+				log_warnx("%s: descriptor table invalid",
+				    __func__);
+				goto out;
+			}
 		} while (desc[dxx].flags & VRING_DESC_F_NEXT);
 
 		pktsz += desc[dxx].len;
@@ -1450,11 +1496,12 @@ vionet_notify_tx(struct vionet_dev *dev)
 		/* Remove virtio header descriptor len */
 		pktsz -= hdr_desc->len;
 
-		/*
-		 * XXX check sanity pktsz
-		 * XXX too long and  > PAGE_SIZE checks
-		 *     (PAGE_SIZE can be relaxed to 16384 later)
-		 */
+		/* Only allow buffer len < max IP packet + Ethernet header */
+		if (pktsz > IP_MAXPACKET + ETHER_HDR_LEN) {
+			log_warnx("%s: invalid packet size %lu", __func__,
+			    pktsz);
+			goto out;
+		}
 		pkt = malloc(pktsz);
 		if (pkt == NULL) {
 			log_warn("malloc error alloc packet buf");

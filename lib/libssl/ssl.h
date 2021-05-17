@@ -1,4 +1,4 @@
-/* $OpenBSD: ssl.h,v 1.186 2021/03/31 16:59:32 tb Exp $ */
+/* $OpenBSD: ssl.h,v 1.191 2021/05/16 15:49:01 jsing Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -377,7 +377,7 @@ typedef int (*tls_session_ticket_ext_cb_fn)(SSL *s, const unsigned char *data,
 typedef int (*tls_session_secret_cb_fn)(SSL *s, void *secret, int *secret_len,
     STACK_OF(SSL_CIPHER) *peer_ciphers, SSL_CIPHER **cipher, void *arg);
 
-#ifndef OPENSSL_NO_SSL_INTERN
+#ifdef LIBRESSL_INTERNAL
 
 /* used to hold info on the particular ciphers used */
 struct ssl_cipher_st {
@@ -614,8 +614,10 @@ void SSL_set_msg_callback(SSL *ssl, void (*cb)(int write_p, int version,
 #define SSL_CTX_set_msg_callback_arg(ctx, arg) SSL_CTX_ctrl((ctx), SSL_CTRL_SET_MSG_CALLBACK_ARG, 0, (arg))
 #define SSL_set_msg_callback_arg(ssl, arg) SSL_ctrl((ssl), SSL_CTRL_SET_MSG_CALLBACK_ARG, 0, (arg))
 
+#ifndef LIBRESSL_INTERNAL
 struct ssl_aead_ctx_st;
 typedef struct ssl_aead_ctx_st SSL_AEAD_CTX;
+#endif
 
 #define SSL_MAX_CERT_LIST_DEFAULT 1024*100 /* 100k max cert list :-) */
 
@@ -639,7 +641,7 @@ typedef int (*GEN_SESSION_CB)(const SSL *ssl, unsigned char *id,
 
 typedef struct ssl_comp_st SSL_COMP;
 
-#ifndef OPENSSL_NO_SSL_INTERN
+#ifdef LIBRESSL_INTERNAL
 
 struct ssl_comp_st {
 	int id;
@@ -1218,6 +1220,8 @@ int SSL_get_max_proto_version(SSL *ssl);
 int SSL_set_min_proto_version(SSL *ssl, uint16_t version);
 int SSL_set_max_proto_version(SSL *ssl, uint16_t version);
 
+const SSL_METHOD *SSL_CTX_get_ssl_method(const SSL_CTX *ctx);
+
 #ifndef LIBRESSL_INTERNAL
 #define SSL_CTRL_SET_CURVES			SSL_CTRL_SET_GROUPS
 #define SSL_CTRL_SET_CURVES_LIST		SSL_CTRL_SET_GROUPS_LIST
@@ -1313,6 +1317,7 @@ const char *	SSL_CIPHER_get_version(const SSL_CIPHER *c);
 const char *	SSL_CIPHER_get_name(const SSL_CIPHER *c);
 unsigned long 	SSL_CIPHER_get_id(const SSL_CIPHER *c);
 uint16_t SSL_CIPHER_get_value(const SSL_CIPHER *c);
+const SSL_CIPHER *SSL_CIPHER_find(SSL *ssl, const unsigned char *ptr);
 int SSL_CIPHER_get_cipher_nid(const SSL_CIPHER *c);
 int SSL_CIPHER_get_digest_nid(const SSL_CIPHER *c);
 int SSL_CIPHER_get_kx_nid(const SSL_CIPHER *c);
@@ -1370,6 +1375,7 @@ const char *SSL_state_string(const SSL *s);
 const char *SSL_rstate_string(const SSL *s);
 const char *SSL_state_string_long(const SSL *s);
 const char *SSL_rstate_string_long(const SSL *s);
+const SSL_CIPHER *SSL_SESSION_get0_cipher(const SSL_SESSION *ss);
 size_t	SSL_SESSION_get_master_key(const SSL_SESSION *ss,
 	    unsigned char *out, size_t max_out);
 int	SSL_SESSION_get_protocol_version(const SSL_SESSION *s);

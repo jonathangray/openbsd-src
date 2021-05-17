@@ -1,4 +1,4 @@
-/*	$OpenBSD: rde.c,v 1.516 2021/03/02 09:45:07 claudio Exp $ */
+/*	$OpenBSD: rde.c,v 1.520 2021/05/06 09:18:54 claudio Exp $ */
 
 /*
  * Copyright (c) 2003, 2004 Henning Brauer <henning@openbsd.org>
@@ -666,6 +666,10 @@ badnetdel:
 				rde_dump_ctx_throttle(imsg.hdr.pid, 1);
 			}
 			break;
+		case IMSG_RECONF_DRAIN:
+			imsg_compose(ibuf_se, IMSG_RECONF_DRAIN, 0, 0,
+			    -1, NULL, 0);
+			break;
 		default:
 			break;
 		}
@@ -681,6 +685,7 @@ rde_dispatch_imsg_parent(struct imsgbuf *ibuf)
 	static struct l3vpn	*vpn;
 	struct imsg		 imsg;
 	struct mrt		 xmrt;
+	struct roa		 roa;
 	struct rde_rib		 rr;
 	struct filterstate	 state;
 	struct imsgbuf		*i;
@@ -889,6 +894,12 @@ rde_dispatch_imsg_parent(struct imsgbuf *ibuf)
 				    entry);
 			}
 			last_prefixset = ps;
+			break;
+		case IMSG_RECONF_ROA_ITEM:
+			if (imsg.hdr.len - IMSG_HEADER_SIZE != sizeof(roa))
+				fatalx("IMSG_RECONF_ROA_ITEM bad len");
+			memcpy(&roa, imsg.data, sizeof(roa));
+			rv = trie_roa_add(&last_prefixset->th, &roa);
 			break;
 		case IMSG_RECONF_PREFIX_SET_ITEM:
 			if (imsg.hdr.len - IMSG_HEADER_SIZE != sizeof(psi))
@@ -1703,7 +1714,7 @@ bad_flags:
 		 */
 		tmp32 = ntohl(nexthop.v4.s_addr);
 		if (IN_MULTICAST(tmp32) || IN_BADCLASS(tmp32)) {
-			rde_update_err(peer, ERR_UPDATE, ERR_UPD_NETWORK,
+			rde_update_err(peer, ERR_UPDATE, ERR_UPD_NEXTHOP,
 			    op, len);
 			return (-1);
 		}
@@ -2129,7 +2140,7 @@ rde_update_log(const char *message, u_int16_t rid,
 	char		*p = NULL;
 
 	if (!((conf->log & BGPD_LOG_UPDATES) ||
-	    (peer->conf.flags & PEERFLAG_LOG_UPDATES)))
+	    (peer->flags & PEERFLAG_LOG_UPDATES)))
 		return;
 
 	if (next != NULL)
@@ -2587,8 +2598,6 @@ rde_dump_ctx_new(struct ctl_show_rib_request *req, pid_t pid,
 
 		peer = peer_match(&req->neighbor, 0);
 		if (peer == NULL) {
-			log_warnx("%s: no peer found for adj-rib-out",
-			    __func__);
 			error = CTL_RES_NOSUCHPEER;
 			imsg_compose(ibuf_se_ctl, IMSG_CTL_RESULT, 0, pid, -1,
 			    &error, sizeof(error));
@@ -2914,7 +2923,7 @@ rde_generate_updates(struct rib *rib, struct prefix *new, struct prefix *old,
 		if (peer->state != PEER_UP)
 			continue;
 		/* handle evaluate all, keep track if it is needed */
-		if (peer->conf.flags & PEERFLAG_EVALUATE_ALL)
+		if (peer->flags & PEERFLAG_EVALUATE_ALL)
 			rde_eval_all = 1;
 		else if (eval_all)
 			/* skip default peers if the best path didn't change */
@@ -2926,8 +2935,8 @@ rde_generate_updates(struct rib *rib, struct prefix *new, struct prefix *old,
 		if (peer->capa.mp[aid] == 0)
 			continue;
 		/* skip peers with special export types */
-		if (peer->conf.export_type == EXPORT_NONE ||
-		    peer->conf.export_type == EXPORT_DEFAULT_ROUTE)
+		if (peer->export_type == EXPORT_NONE ||
+		    peer->export_type == EXPORT_DEFAULT_ROUTE)
 			continue;
 
 		up_generate_updates(out_rules, peer, new, old);
@@ -3284,13 +3293,34 @@ rde_reload_done(void)
 			continue;
 		peer->reconf_out = 0;
 		peer->reconf_rib = 0;
+		if (peer->export_type != peer->conf.export_type) {
+			log_peer_info(&peer->conf, "export type change, "
+			    "reloading");
+			peer->reconf_rib = 1;
+		}
+		if ((peer->flags & PEERFLAG_EVALUATE_ALL) !=
+		    (peer->conf.flags & PEERFLAG_EVALUATE_ALL)) {
+			log_peer_info(&peer->conf, "rde evaluate change, "
+			    "reloading");
+			peer->reconf_rib = 1;
+		}
+		if ((peer->flags & PEERFLAG_TRANS_AS) !=
+		    (peer->conf.flags & PEERFLAG_TRANS_AS)) {
+			log_peer_info(&peer->conf, "transparent-as change, "
+			    "reloading");
+			peer->reconf_rib = 1;
+		}
 		if (peer->loc_rib_id != rib_find(peer->conf.rib)) {
 			log_peer_info(&peer->conf, "rib change, reloading");
 			peer->loc_rib_id = rib_find(peer->conf.rib);
 			if (peer->loc_rib_id == RIB_NOTFOUND)
 				fatalx("King Bula's peer met an unknown RIB");
 			peer->reconf_rib = 1;
-			softreconfig++;
+		}
+		peer->export_type = peer->conf.export_type;
+		peer->flags = peer->conf.flags;
+
+		if (peer->reconf_rib) {
 			if (prefix_dump_new(peer, AID_UNSPEC,
 			    RDE_RUNNER_ROUNDS, NULL, rde_up_flush_upcall,
 			    rde_softreconfig_in_done, NULL) == -1)
@@ -3357,15 +3387,15 @@ rde_reload_done(void)
 
 	log_info("RDE reconfigured");
 
+	softreconfig++;
 	if (reload > 0) {
-		softreconfig++;
 		if (rib_dump_new(RIB_ADJ_IN, AID_UNSPEC, RDE_RUNNER_ROUNDS,
-		    rib_byid(RIB_ADJ_IN), rde_softreconfig_in,
-		    rde_softreconfig_in_done, NULL) == -1)
+		    NULL, rde_softreconfig_in, rde_softreconfig_in_done,
+		    NULL) == -1)
 			fatal("%s: rib_dump_new", __func__);
 		log_info("running softreconfig in");
 	} else {
-		rde_softreconfig_in_done(NULL, AID_UNSPEC);
+		rde_softreconfig_in_done((void *)1, AID_UNSPEC);
 	}
 }
 
@@ -3375,14 +3405,13 @@ rde_softreconfig_in_done(void *arg, u_int8_t dummy)
 	struct rde_peer	*peer;
 	u_int16_t	 i;
 
-	if (arg != NULL) {
-		softreconfig--;
-		/* one guy done but other dumps are still running */
-		if (softreconfig > 0)
-			return;
+	softreconfig--;
+	/* one guy done but other dumps are still running */
+	if (softreconfig > 0)
+		return;
 
+	if (arg == NULL)
 		log_info("softreconfig in done");
-	}
 
 	/* now do the Adj-RIB-Out sync and a possible FIB sync */
 	softreconfig = 0;
@@ -3414,11 +3443,10 @@ rde_softreconfig_in_done(void *arg, u_int8_t dummy)
 		u_int8_t aid;
 
 		if (peer->reconf_out) {
-			if (peer->conf.export_type == EXPORT_NONE) {
+			if (peer->export_type == EXPORT_NONE) {
 				/* nothing to do here */
 				peer->reconf_out = 0;
-			} else if (peer->conf.export_type ==
-			    EXPORT_DEFAULT_ROUTE) {
+			} else if (peer->export_type == EXPORT_DEFAULT_ROUTE) {
 				/* just resend the default route */
 				for (aid = 0; aid < AID_MAX; aid++) {
 					if (peer->capa.mp[aid])
@@ -3734,7 +3762,7 @@ rde_as4byte(struct rde_peer *peer)
 static int
 rde_no_as_set(struct rde_peer *peer)
 {
-	return (peer->conf.flags & PEERFLAG_NO_AS_SET);
+	return (peer->flags & PEERFLAG_NO_AS_SET);
 }
 
 /* End-of-RIB marker, RFC 4724 */

@@ -1,4 +1,4 @@
-/*	$OpenBSD: fdisk.c,v 1.103 2018/04/26 15:55:14 guenther Exp $	*/
+/*	$OpenBSD: fdisk.c,v 1.107 2021/05/14 15:31:01 krw Exp $	*/
 
 /*
  * Copyright (c) 1997 Tobias Weingartner
@@ -41,7 +41,7 @@ static unsigned char builtin_mbr[] = {
 #include "mbrcode.h"
 };
 
-u_int32_t b_arg;
+uint32_t b_arg;
 int	y_flag;
 
 static void
@@ -71,11 +71,11 @@ int
 main(int argc, char *argv[])
 {
 	ssize_t len;
-	int ch, fd, error;
+	int ch, fd, efi, error;
 	int e_flag = 0, g_flag = 0, i_flag = 0, u_flag = 0;
-	int verbosity = 0;
+	int verbosity = TERSE;
 	int c_arg = 0, h_arg = 0, s_arg = 0;
-	u_int32_t l_arg = 0;
+	uint32_t l_arg = 0;
 	char *query;
 #ifdef HAS_MBR
 	char *mbrfile = _PATH_MBR;
@@ -146,7 +146,7 @@ main(int argc, char *argv[])
 			y_flag = 1;
 			break;
 		case 'v':
-			verbosity++;
+			verbosity = VERBOSE;
 			break;
 		default:
 			usage();
@@ -175,8 +175,9 @@ main(int argc, char *argv[])
 	MBR_parse(&dos_mbr, 0, 0, &mbr);
 
 	/* Get the GPT if present. Either primary or secondary is ok. */
-	if (MBR_protective_mbr(&mbr) == 0)
-		GPT_get_gpt(0);
+	efi = MBR_protective_mbr(&mbr);
+	if (efi != -1)
+		GPT_read(ANYGPT);
 
 	if (!(i_flag || u_flag || e_flag)) {
 		if (pledge("stdio", NULL) == -1)
@@ -214,6 +215,7 @@ main(int argc, char *argv[])
 			GPT_init();
 			query = "Do you wish to write new GPT?";
 		} else {
+			memset(&gh, 0, sizeof(gh));
 			MBR_init(&initial_mbr);
 			query = "Do you wish to write new MBR and "
 			    "partition table?";

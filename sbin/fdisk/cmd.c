@@ -1,4 +1,4 @@
-/*	$OpenBSD: cmd.c,v 1.99 2021/01/30 18:16:36 krw Exp $	*/
+/*	$OpenBSD: cmd.c,v 1.104 2021/05/15 15:59:15 krw Exp $	*/
 
 /*
  * Copyright (c) 1997 Tobias Weingartner
@@ -45,7 +45,9 @@ int
 Xreinit(char *args, struct mbr *mbr)
 {
 	struct dos_mbr dos_mbr;
-	int dogpt;
+	int efi, dogpt;
+
+	efi = MBR_protective_mbr(mbr);
 
 	if (strncasecmp(args, "gpt", 3) == 0)
 		dogpt = 1;
@@ -54,7 +56,7 @@ Xreinit(char *args, struct mbr *mbr)
 	else if (strlen(args) > 0) {
 		printf("Unrecognized modifier '%s'\n", args);
 		return (CMD_CONT);
-	} else if (MBR_protective_mbr(mbr) == 0)
+	} else if (efi != -1)
 		dogpt = 1;
 	else
 		dogpt = 0;
@@ -65,8 +67,9 @@ Xreinit(char *args, struct mbr *mbr)
 	if (dogpt) {
 		MBR_init_GPT(mbr);
 		GPT_init();
-		GPT_print("s", 0);
+		GPT_print("s", TERSE);
 	} else {
+		memset(&gh, 0, sizeof(gh));
 		MBR_init(mbr);
 		MBR_print(mbr, "s");
 	}
@@ -166,7 +169,7 @@ Xgedit(char *args)
 	const char *errstr;
 	struct gpt_partition *gg;
 	char *name;
-	u_int16_t *utf;
+	uint16_t *utf;
 	int i, pn;
 
 	pn = strtonum(args, 0, NGPTPARTITIONS - 1, &errstr);
@@ -296,8 +299,8 @@ Xgsetpid(char *args)
 	gg = &gp[pn];
 
 	/* Print out current table entry */
-	GPT_print_parthdr(0);
-	GPT_print_part(pn, "s", 0);
+	GPT_print_parthdr(TERSE);
+	GPT_print_part(pn, "s", TERSE);
 
 	/* Ask for partition type or GUID. */
 	uuid_dec_le(&gg->gp_type, &guid);
@@ -392,9 +395,11 @@ Xselect(char *args, struct mbr *mbr)
 int
 Xprint(char *args, struct mbr *mbr)
 {
+	int efi;
 
-	if (MBR_protective_mbr(mbr) == 0 && letoh64(gh.gh_sig) == GPTSIGNATURE)
-		GPT_print(args, 1);
+	efi = MBR_protective_mbr(mbr);
+	if (efi != -1 && letoh64(gh.gh_sig) == GPTSIGNATURE)
+		GPT_print(args, VERBOSE);
 	else
 		MBR_print(mbr, args);
 
@@ -405,7 +410,7 @@ int
 Xwrite(char *args, struct mbr *mbr)
 {
 	struct dos_mbr dos_mbr;
-	int i, n;
+	int efi, i, n;
 
 	for (i = 0, n = 0; i < NDOSPART; i++)
 		if (mbr->part[i].id == 0xA6)
@@ -426,12 +431,13 @@ Xwrite(char *args, struct mbr *mbr)
 
 	if (letoh64(gh.gh_sig) == GPTSIGNATURE) {
 		printf("Writing GPT.\n");
-		if (GPT_write() == -1) {
+		efi = MBR_protective_mbr(mbr);
+		if (efi == -1 || GPT_write() == -1) {
 			warn("error writing GPT");
 			return (CMD_CONT);
 		}
-	} else if (reinited) {
-		/* Make sure GPT doesn't get in the way. */
+	} else {
+		/* Ensure any on-disk GPT headers are zeroed. */
 		MBR_zapgpt(&dos_mbr, DL_GETDSIZE(&dl) - 1);
 	}
 

@@ -1,4 +1,4 @@
-/*	$OpenBSD: control.c,v 1.32 2020/09/23 19:18:18 martijn Exp $	*/
+/*	$OpenBSD: control.c,v 1.35 2021/04/26 22:58:27 dv Exp $	*/
 
 /*
  * Copyright (c) 2010-2015 Reyk Floeter <reyk@openbsd.org>
@@ -39,8 +39,15 @@
 
 #define	CONTROL_BACKLOG	5
 
-struct ctl_connlist ctl_conns;
+struct ctl_connlist ctl_conns = TAILQ_HEAD_INITIALIZER(ctl_conns);
 
+struct ctl_notify {
+	int			ctl_fd;
+	uint32_t		ctl_vmid;
+	TAILQ_ENTRY(ctl_notify)	entry;
+};
+TAILQ_HEAD(ctl_notify_q, ctl_notify) ctl_notify_q =
+	TAILQ_HEAD_INITIALIZER(ctl_notify_q);
 void
 	 control_accept(int, short, void *);
 struct ctl_conn
@@ -48,7 +55,6 @@ struct ctl_conn
 void	 control_close(int, struct control_sock *);
 void	 control_dispatch_imsg(int, short, void *);
 int	 control_dispatch_vmd(int, struct privsep_proc *, struct imsg *);
-void	 control_imsg_forward(struct imsg *);
 void	 control_run(struct privsep *, struct privsep_proc *, void *);
 
 static struct privsep_proc procs[] = {
@@ -79,7 +85,10 @@ int
 control_dispatch_vmd(int fd, struct privsep_proc *p, struct imsg *imsg)
 {
 	struct ctl_conn		*c;
+	struct ctl_notify	*notify = NULL, *notify_next;
 	struct privsep		*ps = p->p_ps;
+	struct vmop_result	 vmr;
+	int			 waiting = 0;
 
 	switch (imsg->hdr.type) {
 	case IMSG_VMDOP_START_VM_RESPONSE:
@@ -87,18 +96,72 @@ control_dispatch_vmd(int fd, struct privsep_proc *p, struct imsg *imsg)
 	case IMSG_VMDOP_SEND_VM_RESPONSE:
 	case IMSG_VMDOP_RECEIVE_VM_RESPONSE:
 	case IMSG_VMDOP_UNPAUSE_VM_RESPONSE:
-	case IMSG_VMDOP_TERMINATE_VM_RESPONSE:
 	case IMSG_VMDOP_GET_INFO_VM_DATA:
 	case IMSG_VMDOP_GET_INFO_VM_END_DATA:
 	case IMSG_CTL_FAIL:
 	case IMSG_CTL_OK:
+		/* Provide basic response back to a specific control client */
 		if ((c = control_connbyfd(imsg->hdr.peerid)) == NULL) {
 			log_warnx("%s: lost control connection: fd %d",
 			    __func__, imsg->hdr.peerid);
 			return (0);
 		}
 		imsg_compose_event(&c->iev, imsg->hdr.type,
-		    0, 0, imsg->fd, imsg->data, IMSG_DATA_SIZE(imsg));
+		    0, 0, -1, imsg->data, IMSG_DATA_SIZE(imsg));
+		break;
+	case IMSG_VMDOP_TERMINATE_VM_RESPONSE:
+		IMSG_SIZE_CHECK(imsg, &vmr);
+		memcpy(&vmr, imsg->data, sizeof(vmr));
+
+		if ((c = control_connbyfd(imsg->hdr.peerid)) == NULL) {
+			log_warnx("%s: lost control connection: fd %d",
+			    __func__, imsg->hdr.peerid);
+			return (0);
+		}
+
+		TAILQ_FOREACH(notify, &ctl_notify_q, entry) {
+			if (notify->ctl_fd == (int) imsg->hdr.peerid) {
+				/*
+				 * Update if waiting by vm name. This is only
+				 * supported when stopping a single vm. If
+				 * stopping all vms, vmctl(8) sends the request
+				 * using the vmid.
+				 */
+				if (notify->ctl_vmid < 1)
+					notify->ctl_vmid = vmr.vmr_id;
+				waiting = 1;
+				break;
+			}
+		}
+
+		/* An error needs to be relayed to the client immediately */
+		if (!waiting || vmr.vmr_result) {
+			imsg_compose_event(&c->iev, imsg->hdr.type,
+			    0, 0, -1, imsg->data, IMSG_DATA_SIZE(imsg));
+
+			if (notify) {
+				TAILQ_REMOVE(&ctl_notify_q, notify, entry);
+				free(notify);
+			}
+		}
+		break;
+	case IMSG_VMDOP_TERMINATE_VM_EVENT:
+		/* Notify any waiting clients that a VM terminated */
+		IMSG_SIZE_CHECK(imsg, &vmr);
+		memcpy(&vmr, imsg->data, sizeof(vmr));
+
+		TAILQ_FOREACH_SAFE(notify, &ctl_notify_q, entry, notify_next) {
+			if (notify->ctl_vmid != vmr.vmr_id)
+				continue;
+			if ((c = control_connbyfd(notify->ctl_fd)) != NULL) {
+				/* XXX vmctl expects *_RESPONSE, not *_EVENT */
+				imsg_compose_event(&c->iev,
+				    IMSG_VMDOP_TERMINATE_VM_RESPONSE,
+				    0, 0, -1, imsg->data, IMSG_DATA_SIZE(imsg));
+				TAILQ_REMOVE(&ctl_notify_q, notify, entry);
+				free(notify);
+			}
+		}
 		break;
 	case IMSG_VMDOP_CONFIG:
 		config_getconfig(ps->ps_env, imsg);
@@ -277,7 +340,8 @@ control_connbyfd(int fd)
 void
 control_close(int fd, struct control_sock *cs)
 {
-	struct ctl_conn	*c;
+	struct ctl_conn		*c;
+	struct ctl_notify	*notify, *notify_next;
 
 	if ((c = control_connbyfd(fd)) == NULL) {
 		log_warn("%s: fd %d: not found", __func__, fd);
@@ -286,6 +350,14 @@ control_close(int fd, struct control_sock *cs)
 
 	msgbuf_clear(&c->iev.ibuf.w);
 	TAILQ_REMOVE(&ctl_conns, c, entry);
+
+	TAILQ_FOREACH_SAFE(notify, &ctl_notify_q, entry, notify_next) {
+		if (notify->ctl_fd == fd) {
+			TAILQ_REMOVE(&ctl_notify_q, notify, entry);
+			free(notify);
+			break;
+		}
+	}
 
 	event_del(&c->iev.ev);
 	close(c->iev.ibuf.fd);
@@ -309,7 +381,8 @@ control_dispatch_imsg(int fd, short event, void *arg)
 	struct imsg			 imsg;
 	struct vmop_create_params	 vmc;
 	struct vmop_id			 vid;
-	int				 n, v, ret = 0;
+	struct ctl_notify		*notify;
+	int				 n, v, wait = 0, ret = 0;
 
 	if ((c = control_connbyfd(fd)) == NULL) {
 		log_warn("%s: fd %d: not found", __func__, fd);
@@ -357,19 +430,7 @@ control_dispatch_imsg(int fd, short event, void *arg)
 			break;
 		}
 
-		control_imsg_forward(&imsg);
-
 		switch (imsg.hdr.type) {
-		case IMSG_CTL_NOTIFY:
-			if (c->flags & CTL_CONN_NOTIFY) {
-				log_debug("%s: "
-				    "client requested notify more than once",
-				    __func__);
-				ret = EINVAL;
-				goto fail;
-			}
-			c->flags |= CTL_CONN_NOTIFY;
-			break;
 		case IMSG_CTL_VERBOSE:
 			if (IMSG_DATA_SIZE(&imsg) < sizeof(v))
 				goto fail;
@@ -401,11 +462,25 @@ control_dispatch_imsg(int fd, short event, void *arg)
 			}
 			break;
 		case IMSG_VMDOP_WAIT_VM_REQUEST:
+			wait = 1;
+			/* FALLTHROUGH */
 		case IMSG_VMDOP_TERMINATE_VM_REQUEST:
 			if (IMSG_DATA_SIZE(&imsg) < sizeof(vid))
 				goto fail;
 			memcpy(&vid, imsg.data, sizeof(vid));
 			vid.vid_uid = c->peercred.uid;
+
+			if (wait || vid.vid_flags & VMOP_WAIT) {
+				vid.vid_flags |= VMOP_WAIT;
+				notify = calloc(1, sizeof(struct ctl_notify));
+				if (notify == NULL)
+					fatal("%s: calloc", __func__);
+				notify->ctl_vmid = vid.vid_id;
+				notify->ctl_fd = fd;
+				TAILQ_INSERT_TAIL(&ctl_notify_q, notify, entry);
+				log_debug("%s: registered wait for peer %d",
+				    __func__, fd);
+			}
 
 			if (proc_compose_imsg(ps, PROC_PARENT, -1,
 			    imsg.hdr.type, fd, -1, &vid, sizeof(vid)) == -1) {
@@ -458,16 +533,4 @@ control_dispatch_imsg(int fd, short event, void *arg)
 	    0, 0, -1, &ret, sizeof(ret));
 	imsg_flush(&c->iev.ibuf);
 	control_close(fd, cs);
-}
-
-void
-control_imsg_forward(struct imsg *imsg)
-{
-	struct ctl_conn *c;
-
-	TAILQ_FOREACH(c, &ctl_conns, entry)
-		if (c->flags & CTL_CONN_NOTIFY)
-			imsg_compose_event(&c->iev, imsg->hdr.type,
-			    imsg->hdr.peerid, imsg->hdr.pid, -1, imsg->data,
-			    imsg->hdr.len - IMSG_HEADER_SIZE);
 }

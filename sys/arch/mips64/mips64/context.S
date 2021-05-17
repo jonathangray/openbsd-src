@@ -1,4 +1,4 @@
-/*	$OpenBSD: context.S,v 1.61 2019/08/21 16:14:34 visa Exp $ */
+/*	$OpenBSD: context.S,v 1.63 2021/05/01 16:11:11 visa Exp $ */
 
 /*
  * Copyright (c) 2002-2003 Opsycon AB  (www.opsycon.se / www.opsycon.com)
@@ -62,10 +62,6 @@ LEAF(savectx, 0)
 	REG_S	s8, PCB_CONTEXT+9*REGSZ(a0)
 	REG_S	ra, PCB_CONTEXT+10*REGSZ(a0)
 	REG_S	v0, PCB_CONTEXT+11*REGSZ(a0)
-#ifdef RM7000_ICR
-	cfc0	t1, COP_0_ICR
-	REG_S	t1, PCB_CONTEXT+12*REGSZ(a0)	# save status register
-#endif
 	j	ra
 	 move	v0, zero
 END(savectx)
@@ -91,28 +87,6 @@ LEAF(cpu_idle_cycle_wait, 0)
 	 NOP
 END(cpu_idle_cycle_wait)
 
-LEAF(cpu_idle_cycle_rm7k, 0)
-	/*
-	 * RM7000 errata #38: The R4600, R4640, R4700, R5000, RM52xx,
-	 * and RM7xxx processors do not handle bus signalling properly
-	 * in the standby mode, which can cause incorrect behaviour
-	 * upon leaving the mode. This can be avoided by flushing
-	 * any writes from the pipeline before the WAIT instruction
-	 * is executed.
-	 */
-	mfc0	a0, COP_0_STATUS_REG		# save status
-	ori	a1, a0, SR_INT_ENAB
-	xori	a1, SR_INT_ENAB
-	mtc0	a1, COP_0_STATUS_REG		# disable interrupts
-	sync					# flush pending writes
-	mtc0	a1, COP_0_STATUS_REG		# stall until W stage
-	wait					# enter standby mode
-	mtc0	a0, COP_0_STATUS_REG		# stall until W stage,
-						# and restore status
-	j	ra
-	 NOP
-END(cpu_idle_cycle_rm7k)
-
 /*
  * cpu_switchto_asm(struct proc *oldproc, struct proc *newproc)
  */
@@ -125,15 +99,8 @@ NON_LEAF(cpu_switchto_asm, FRAMESZ(CF_SZ), ra)
 	REG_S	ra, CF_RA_OFFS(sp)
 	.mask	0x80000000, (CF_RA_OFFS - FRAMESZ(CF_SZ))
 
-#ifdef CPU_R8000	/* XXX everywhere where MFC0_HAZARD is not empty */
-	MFC0	v0, COP_0_STATUS_REG
-	MFC0_HAZARD
-	beqz	a0, 1f
-	 NOP
-#else
 	beqz	a0, 1f
 	 MFC0	v0, COP_0_STATUS_REG
-#endif
 
 	REG_S	s0, PCB_CONTEXT+0*REGSZ(t3)	# do a 'savectx()'
 	REG_S	s1, PCB_CONTEXT+1*REGSZ(t3)
@@ -146,10 +113,6 @@ NON_LEAF(cpu_switchto_asm, FRAMESZ(CF_SZ), ra)
 	REG_S	s8, PCB_CONTEXT+9*REGSZ(t3)
 	REG_S	ra, PCB_CONTEXT+10*REGSZ(t3)
 	REG_S	v0, PCB_CONTEXT+11*REGSZ(t3)
-#ifdef RM7000_ICR
-	cfc0	t1, COP_0_ICR
-	REG_S	t1, PCB_CONTEXT+12*REGSZ(t3)
-#endif
 
 1:
 	/*
@@ -189,35 +152,8 @@ NON_LEAF(cpu_switchto_asm, FRAMESZ(CF_SZ), ra)
 	PTR_ADDU t1, t1, v0
 #endif
 	lw	v0, PM_ASID(t1)			# ->pm_asid[cpuid].pma_asid
-#ifdef CPU_R8000
-	PTR_L	t0, PCB_SEGTAB(t3)		# save pcb_segtab for
-	DMTC0	t0, COP_0_UBASE			# Utlbmiss handler
-	MTC0_HAZARD
-#endif
-
-#ifdef CPU_R4000
-	/*
-	 * Restore the number of wired TLB entries to the minimal possible
-	 * value, in case the EOP errata workaround has caused more wired
-	 * entries to be created.
-	 */
-	lw	a0, PCB_NWIRED(t3)
-	beqz	a0, 1f
-	sw	zero, PCB_NWIRED(t3)
-
-	li	a1, UPAGES / 2
-	move	s0, v0				# save asid
-	mtc0	a1, COP_0_TLB_WIRED
-	jal	tlb_flush			# clear formerly wired entries
-	addu	a0, a1, a0
-	move	v0, s0
-1:
-#endif
 
 #if UPAGES > 1	/* { */
-#ifdef CPU_R8000
-#error Your processor has just been eaten by a grue.
-#endif
 	or	v0, t3
 	dmtc0	v0, COP_0_TLB_HI		# init high entry (tlbid)
 
@@ -342,10 +278,6 @@ ctx3:
 	REG_L	s8, PCB_CONTEXT+9*REGSZ(t3)
 	REG_L	ra, PCB_CONTEXT+10*REGSZ(t3)
 	REG_L	v0, PCB_CONTEXT+11*REGSZ(t3)
-#ifdef RM7000_ICR
-	REG_L	v1, PCB_CONTEXT+12*REGSZ(t3)
-	ctc0	v1, COP_0_ICR		# XXX RM7000
-#endif
 	ori	v0, v0, SR_INT_ENAB
 	MTC0	v0, COP_0_STATUS_REG
 	MTC0_SR_IE_HAZARD
@@ -395,10 +327,6 @@ LEAF(proc_trampoline, 0)
 	PTR_L	k0, CI_CURPROCPADDR(k1)
 	RESTORE_CPU_SREG(k0, 0)
 	RESTORE_REG(a0, PC, k0, 0)
-#ifdef RM7000_ICR
-	RESTORE_REG(t0, IC, k0, 0)
-	ctc0	t0, COP_0_ICR
-#endif
 	RESTORE_CPU(k0, 0)
 	RESTORE_REG(sp, SP, k0, 0)
 	LI	k0, 0

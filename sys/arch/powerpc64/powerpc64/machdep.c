@@ -1,4 +1,4 @@
-/*	$OpenBSD: machdep.c,v 1.67 2021/01/09 13:14:02 kettenis Exp $	*/
+/*	$OpenBSD: machdep.c,v 1.69 2021/05/13 22:42:14 kettenis Exp $	*/
 
 /*
  * Copyright (c) 2020 Mark Kettenis <kettenis@openbsd.org>
@@ -355,6 +355,23 @@ init_powernv(void *fdt, void *tocbase)
 void
 memreg_add(const struct fdt_reg *reg)
 {
+	int i;
+
+	for (i = 0; i < nmemreg; i++) {
+		if (reg->addr == memreg[i].addr + memreg[i].size) {
+			memreg[i].size += reg->size;
+			return;
+		}
+		if (reg->addr + reg->size == memreg[i].addr) {
+			memreg[i].addr = reg->addr;
+			memreg[i].size += reg->size;
+			return;
+		}
+	}
+
+	if (nmemreg >= nitems(memreg))
+		return;
+
 	memreg[nmemreg++] = *reg;
 }
 
@@ -933,7 +950,7 @@ sendsig(sig_t catcher, int sig, sigset_t mask, const siginfo_t *ksip)
 	frame.sf_sc.sc_xer = tf->xer;
 	frame.sf_sc.sc_ctr = tf->ctr;
 	frame.sf_sc.sc_pc = tf->srr0;
-	frame.sf_sc.sc_ps = tf->srr1;
+	frame.sf_sc.sc_ps = PSL_USER;
 	frame.sf_sc.sc_vrsave = tf->vrsave;
 
 	/* Copy the saved FPU state into the frame if necessary. */

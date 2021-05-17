@@ -243,7 +243,9 @@ start_delta_elem(struct notification_xml *nxml, const char **attr)
 
 	/* optimisation, add only deltas that could be interesting */
 	if (nxml->repository->serial != 0 &&
-	    nxml->repository->serial < delta_serial) {
+	    nxml->repository->serial < delta_serial &&
+	    nxml->repository->session_id != NULL &&
+	    strcmp(nxml->session_id, nxml->repository->session_id) == 0) {
 		if (add_delta(nxml, delta_uri, delta_hash, delta_serial) == 0)
 			PARSE_FAIL(p, "parse failed - adding delta failed");
 	}
@@ -349,7 +351,7 @@ enum rrdp_task
 notification_done(struct notification_xml *nxml, char *last_mod)
 {
 	struct delta_item *d;
-	long long s, last_s;
+	long long s, last_s = 0;
 
 	nxml->current->last_mod = last_mod;
 	nxml->current->session_id = xstrdup(nxml->session_id);

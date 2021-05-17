@@ -1,4 +1,4 @@
-/* $OpenBSD: trap.c,v 1.35 2021/01/25 19:37:18 kettenis Exp $ */
+/* $OpenBSD: trap.c,v 1.38 2021/05/16 15:10:19 deraadt Exp $ */
 /*-
  * Copyright (c) 2014 Andrew Turner
  * All rights reserved.
@@ -120,9 +120,7 @@ udata_abort(struct trapframe *frame, uint64_t esr, uint64_t far, int exe)
 	if (pmap_fault_fixup(map->pmap, va, access_type))
 		return;
 
-	KERNEL_LOCK();
 	error = uvm_fault(map, va, 0, access_type);
-	KERNEL_UNLOCK();
 
 	if (error == 0) {
 		uvm_grow(p, va);
@@ -178,9 +176,7 @@ kdata_abort(struct trapframe *frame, uint64_t esr, uint64_t far, int exe)
 
 	/* Handle referenced/modified emulation */
 	if (!pmap_fault_fixup(map->pmap, va, access_type)) {
-		KERNEL_LOCK();
 		error = uvm_fault(map, va, 0, access_type);
-		KERNEL_UNLOCK();
 
 		if (error == 0 && map != kernel_map)
 			uvm_grow(p, va);
@@ -208,7 +204,7 @@ do_el1h_sync(struct trapframe *frame)
 	exception = ESR_ELx_EXCEPTION(esr);
 	far = READ_SPECIALREG(far_el1);
 
-	enable_interrupts();
+	intr_enable();
 
 	/*
 	 * Sanity check we are in an exception er can handle. The IL bit
@@ -241,7 +237,7 @@ do_el1h_sync(struct trapframe *frame)
 		db_trapper(frame->tf_elr, 0/*XXX*/, frame, exception);
 		}
 #else
-		panic("No debugger in kernel.\n");
+		panic("No debugger in kernel.");
 #endif
 		break;
 	default:
@@ -252,7 +248,7 @@ do_el1h_sync(struct trapframe *frame)
 		db_trapper(frame->tf_elr, 0/*XXX*/, frame, exception);
 		}
 #endif
-		panic("Unknown kernel exception %x esr_el1 %llx lr %lxpc %lx\n",
+		panic("Unknown kernel exception %x esr_el1 %llx lr %lxpc %lx",
 		    exception,
 		    esr, frame->tf_lr, frame->tf_elr);
 	}
@@ -270,7 +266,7 @@ do_el0_sync(struct trapframe *frame)
 	exception = ESR_ELx_EXCEPTION(esr);
 	far = READ_SPECIALREG(far_el1);
 
-	enable_interrupts();
+	intr_enable();
 
 	p->p_addr->u_pcb.pcb_tf = frame;
 	refreshcreds(p);
@@ -321,7 +317,7 @@ do_el0_sync(struct trapframe *frame)
 		trapsignal(p, SIGTRAP, 0, TRAP_TRACE, sv);
 		break;
 	default:
-		// panic("Unknown userland exception %x esr_el1 %lx\n", exception,
+		// panic("Unknown userland exception %x esr_el1 %lx", exception,
 		//    esr);
 		// USERLAND MUST NOT PANIC MACHINE
 		{

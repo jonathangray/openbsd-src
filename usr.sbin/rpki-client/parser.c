@@ -1,4 +1,4 @@
-/*	$OpenBSD: parser.c,v 1.7 2021/04/01 08:29:10 claudio Exp $ */
+/*	$OpenBSD: parser.c,v 1.10 2021/05/11 11:32:51 claudio Exp $ */
 /*
  * Copyright (c) 2019 Claudio Jeker <claudio@openbsd.org>
  * Copyright (c) 2019 Kristaps Dzonsons <kristaps@bsd.lv>
@@ -52,10 +52,13 @@ proc_parser_roa(struct entity *entp,
 {
 	struct roa		*roa;
 	X509			*x509;
-	int			 c;
+	int			 c, i;
 	struct auth		*a;
 	STACK_OF(X509)		*chain;
 	STACK_OF(X509_CRL)	*crls;
+	const ASN1_TIME		*at;
+	struct tm		 expires_tm;
+	time_t			 expires;
 
 	if ((roa = roa_parse(&x509, entp->file)) == NULL)
 		return NULL;
@@ -85,9 +88,58 @@ proc_parser_roa(struct entity *entp,
 		return NULL;
 	}
 	X509_STORE_CTX_cleanup(ctx);
-	sk_X509_free(chain);
-	sk_X509_CRL_free(crls);
-	X509_free(x509);
+
+	/*
+	 * Scan the stack of CRLs to figure out the soonest transitive
+	 * expiry moment
+	 */
+	for (i = 0; i < sk_X509_CRL_num(crls); i++) {
+		X509_CRL *ci = sk_X509_CRL_value(crls, i);
+
+		at = X509_CRL_get0_nextUpdate(ci);
+		if (at == NULL) {
+			err(1, "X509_CRL_get0_nextUpdate failed");
+			goto out;
+		}
+		memset(&expires_tm, 0, sizeof(expires_tm));
+		if (ASN1_time_parse(at->data, at->length, &expires_tm,
+		    V_ASN1_UTCTIME) != V_ASN1_UTCTIME) {
+			err(1, "ASN1_time_parse failed");
+			goto out;
+		}
+		if ((expires = mktime(&expires_tm)) == -1) {
+			err(1, "mktime failed");
+			goto out;
+		}
+		if (roa->expires > expires)
+			roa->expires = expires;
+	}
+
+	/*
+	 * Scan the stack of CAs to figure out the soonest transitive
+	 * expiry moment
+	 */
+	for (i = 0; i < sk_X509_num(chain); i++) {
+		X509 *xi = sk_X509_value(chain, i);
+
+		at = X509_get0_notAfter(xi);
+		if (at == NULL) {
+			err(1, "X509_get0_notafter failed");
+			goto out;
+		}
+		memset(&expires_tm, 0, sizeof(expires_tm));
+		if (ASN1_time_parse(at->data, at->length, &expires_tm,
+		    V_ASN1_UTCTIME) != V_ASN1_UTCTIME) {
+			err(1, "ASN1_time_parse failed");
+			goto out;
+		}
+		if ((expires = mktime(&expires_tm)) == -1) {
+			err(1, "mktime failed");
+			goto out;
+		}
+		if (roa->expires > expires)
+			roa->expires = expires;
+	}
 
 	/*
 	 * If the ROA isn't valid, we accept it anyway and depend upon
@@ -96,6 +148,11 @@ proc_parser_roa(struct entity *entp,
 
 	if (valid_roa(entp->file, auths, roa))
 		roa->valid = 1;
+
+out:
+	sk_X509_free(chain);
+	sk_X509_CRL_free(crls);
+	X509_free(x509);
 
 	return roa;
 }

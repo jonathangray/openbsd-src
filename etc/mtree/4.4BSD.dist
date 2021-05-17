@@ -1,4 +1,4 @@
-#	$OpenBSD: 4.4BSD.dist,v 1.316 2021/02/26 17:19:21 florian Exp $
+#	$OpenBSD: 4.4BSD.dist,v 1.318 2021/05/01 16:11:07 visa Exp $
 
 /set type=dir uname=root gname=wheel mode=0755
 
@@ -476,8 +476,6 @@ usr
                 ..
                 octeon
                 ..
-                sgi
-                ..
             ..
 
             # ./usr/share/man/man3p
@@ -510,7 +508,7 @@ usr
                 ..
                 powerpc64
                 ..
-                sgi
+                riscv64
                 ..
                 sparc64
                 ..
@@ -552,7 +550,7 @@ usr
                 ..
                 powerpc64
                 ..
-                sgi
+                riscv64
                 ..
                 sparc64
                 ..

@@ -1,4 +1,4 @@
-/*	$OpenBSD: btrace.c,v 1.30 2021/03/21 01:24:35 jmatthew Exp $ */
+/*	$OpenBSD: btrace.c,v 1.35 2021/04/22 09:36:39 mpi Exp $ */
 
 /*
  * Copyright (c) 2019 - 2020 Martin Pieuchot <mpi@openbsd.org>
@@ -68,8 +68,8 @@ struct dtioc_probe_info	*dtpi_get_by_value(const char *, const char *,
 /*
  * Main loop and rule evaluation.
  */
-void			 rules_do(int, int);
-void			 rules_setup(int, int);
+void			 rules_do(int);
+void			 rules_setup(int);
 void			 rules_apply(struct dt_evt *);
 void			 rules_teardown(int);
 void			 rule_eval(struct bt_rule *, struct dt_evt *);
@@ -92,6 +92,7 @@ void			 stmt_time(struct bt_stmt *, struct dt_evt *);
 void			 stmt_zero(struct bt_stmt *);
 struct bt_arg		*ba_read(struct bt_arg *);
 const char		*ba2hash(struct bt_arg *, struct dt_evt *);
+long			 baexpr2long(struct bt_arg *, struct dt_evt *);
 const char		*ba2bucket(struct bt_arg *, struct bt_arg *,
 			     struct dt_evt *, long *);
 int			 ba2dtflags(struct bt_arg *);
@@ -108,6 +109,10 @@ void			 debug_dump_filter(struct bt_rule *);
 struct dtioc_probe_info	*dt_dtpis;	/* array of available probes */
 size_t			 dt_ndtpi;	/* # of elements in the array */
 
+struct dt_evt		 bt_devt;	/* fake event for BEGIN/END */
+uint64_t		 bt_filtered;	/* # of events filtered out */
+
+int			 vargs[1];
 int			 verbose = 0;
 volatile sig_atomic_t	 quit_pending;
 
@@ -124,7 +129,7 @@ main(int argc, char *argv[])
 	int fd = -1, ch, error = 0;
 	const char *filename = NULL, *btscript = NULL;
 	const char *errstr;
-	int showprobes = 0, tracepid = -1, noaction = 0;
+	int showprobes = 0, noaction = 0;
 
 	setlocale(LC_ALL, "");
 
@@ -144,13 +149,6 @@ main(int argc, char *argv[])
 		case 'n':
 			noaction = 1;
 			break;
-		case 'p':
-			if (tracepid != -1)
-				usage();
-			tracepid =  strtonum(optarg, 1, INT_MAX, &errstr);
-			if (errstr != NULL)
-				errx(1, "invalid pid %s: %s", optarg, errstr);
-			break;
 		case 'v':
 			verbose++;
 			break;
@@ -168,6 +166,14 @@ main(int argc, char *argv[])
 
 		filename = argv[0];
 		btscript = read_btfile(filename);
+		argc--;
+		argv++;
+	}
+
+	if (argc == 1) {
+		vargs[0] = strtonum(*argv, 1, INT_MAX, &errstr);
+		if (errstr != NULL)
+			errx(1, "invalid argument %s: %s", *argv, errstr);
 		argc--;
 		argv++;
 	}
@@ -196,7 +202,7 @@ main(int argc, char *argv[])
 	}
 
 	if (!TAILQ_EMPTY(&g_rules))
-		rules_do(fd, tracepid);
+		rules_do(fd);
 
 	if (fd != -1)
 		close(fd);
@@ -207,7 +213,7 @@ main(int argc, char *argv[])
 __dead void
 usage(void)
 {
-	fprintf(stderr, "usage: %s [-lnv] [-p pid] [-e program | file]\n",
+	fprintf(stderr, "usage: %s [-lnv] [-e program | file]\n",
 	    getprogname());
 	exit(1);
 }
@@ -331,7 +337,7 @@ dtpi_get_by_value(const char *prov, const char *func, const char *name)
 }
 
 void
-rules_do(int fd, int tracepid)
+rules_do(int fd)
 {
 	struct sigaction sa;
 
@@ -342,7 +348,7 @@ rules_do(int fd, int tracepid)
 	if (sigaction(SIGINT, &sa, NULL))
 		err(1, "sigaction");
 
-	rules_setup(fd, tracepid);
+	rules_setup(fd);
 
 	while (!quit_pending && g_nprobes > 0) {
 		static struct dt_evt devtbuf[64];
@@ -376,36 +382,12 @@ rules_do(int fd, int tracepid)
 
 		printf("%llu events read\n", dtst.dtst_readevt);
 		printf("%llu events dropped\n", dtst.dtst_dropevt);
+		printf("%llu events filtered\n", bt_filtered);
 	}
 }
-
-static inline enum dt_operand
-dop2dt(enum bt_argtype op)
-{
-	switch (op) {
-	case B_AT_OP_EQ:	return DT_OP_EQ;
-	case B_AT_OP_NE:	return DT_OP_NE;
-	default:	break;
-	}
-	xabort("unknown operand %d", op);
-}
-
-
-static inline enum dt_filtervar
-dvar2dt(enum bt_filtervar var)
-{
-	switch (var) {
-	case B_FV_PID:	return DT_FV_PID;
-	case B_FV_TID:	return DT_FV_TID;
-	case B_FV_NONE:	return DT_FV_NONE;
-	default:	break;
-	}
-	xabort("unknown filter %d", var);
-}
-
 
 void
-rules_setup(int fd, int tracepid)
+rules_setup(int fd)
 {
 	struct dtioc_probe_info *dtpi;
 	struct dtioc_req *dtrq;
@@ -438,18 +420,6 @@ rules_setup(int fd, int tracepid)
 
 		r->br_pbn = dtpi->dtpi_pbn;
 		dtrq->dtrq_pbn = dtpi->dtpi_pbn;
-		if (r->br_filter != NULL &&
-		    r->br_filter->bf_condition == NULL) {
-			struct bt_evtfilter *df = &r->br_filter->bf_evtfilter;
-
-			dtrq->dtrq_filter.dtf_operand = dop2dt(df->bf_op);
-			dtrq->dtrq_filter.dtf_variable = dvar2dt(df->bf_var);
-			dtrq->dtrq_filter.dtf_value = df->bf_val;
-		} else if (tracepid != -1) {
-			dtrq->dtrq_filter.dtf_operand = DT_OP_EQ;
-			dtrq->dtrq_filter.dtf_variable = DT_FV_PID;
-			dtrq->dtrq_filter.dtf_value = tracepid;
-		}
 		dtrq->dtrq_rate = r->br_probe->bp_rate;
 
 		SLIST_FOREACH(bs, &r->br_action, bs_next) {
@@ -467,8 +437,14 @@ rules_setup(int fd, int tracepid)
 	if (dokstack)
 		kelf_open();
 
+	/* Initialize "fake" event for BEGIN/END */
+	bt_devt.dtev_pbn = -1;
+	memcpy(&bt_devt.dtev_comm, getprogname(), sizeof(bt_devt.dtev_comm));
+	bt_devt.dtev_pid = getpid();
+	bt_devt.dtev_tid = getthrid();
+
 	if (rbegin)
-		rule_eval(rbegin, NULL);
+		rule_eval(rbegin, &bt_devt);
 
 	/* Enable all probes */
 	TAILQ_FOREACH(r, &g_rules, br_next) {
@@ -527,7 +503,7 @@ rules_teardown(int fd)
 		kelf_close();
 
 	if (rend)
-		rule_eval(rend, NULL);
+		rule_eval(rend, &bt_devt);
 	else {
 		debug("eval default 'end' rule\n");
 
@@ -545,8 +521,10 @@ rule_eval(struct bt_rule *r, struct dt_evt *dtev)
 	debug_dump_filter(r);
 
 	if (r->br_filter != NULL && r->br_filter->bf_condition != NULL) {
-		if (stmt_test(r->br_filter->bf_condition, dtev) == false)
+		if (stmt_test(r->br_filter->bf_condition, dtev) == false) {
+			bt_filtered++;
 			return;
+		}
 	}
 
 	SLIST_FOREACH(bs, &r->br_action, bs_next) {
@@ -597,20 +575,21 @@ rule_printmaps(struct bt_rule *r)
 
 		SLIST_FOREACH(ba, &bs->bs_args, ba_next) {
 			struct bt_var *bv = ba->ba_value;
+			struct map *map;
 
 			if (ba->ba_type != B_AT_MAP && ba->ba_type != B_AT_HIST)
 				continue;
 
-			if (bv->bv_value != NULL) {
-				struct map *map = (struct map *)bv->bv_value;
+			map = (struct map *)bv->bv_value;
+			if (map == NULL)
+				continue;
 
-				if (ba->ba_type == B_AT_MAP)
-					map_print(map, SIZE_T_MAX, bv_name(bv));
-				else
-					hist_print((struct hist *)map, bv_name(bv));
-				map_clear(map);
-				bv->bv_value = NULL;
-			}
+			if (ba->ba_type == B_AT_MAP)
+				map_print(map, SIZE_T_MAX, bv_name(bv));
+			else
+				hist_print((struct hist *)map, bv_name(bv));
+			map_clear(map);
+			bv->bv_value = NULL;
 		}
 	}
 }
@@ -720,6 +699,7 @@ stmt_bucketize(struct bt_stmt *bs, struct dt_evt *dtev)
 
 	bv->bv_value = (struct bt_arg *)
 	    hist_increment((struct hist *)bv->bv_value, bucket, step);
+	bv->bv_type = B_VT_HIST;
 }
 
 
@@ -788,10 +768,11 @@ stmt_insert(struct bt_stmt *bs, struct dt_evt *dtev)
 
 	bv->bv_value = (struct bt_arg *)map_insert((struct map *)bv->bv_value,
 	    hash, bval, dtev);
+	bv->bv_type = B_VT_MAP;
 }
 
 /*
- * Print map entries:	{ print(@map[, 8]); }
+ * Print variables:	{ print(890); print(@map[, 8]); print(comm); }
  *
  * In this case the global variable 'map' is pointed at by `ba'
  * and '8' is represented by `btop'.
@@ -804,7 +785,6 @@ stmt_print(struct bt_stmt *bs, struct dt_evt *dtev)
 	size_t top = SIZE_T_MAX;
 
 	assert(bs->bs_var == NULL);
-	assert(ba->ba_type == B_AT_VAR);
 
 	/* Parse optional `top' argument. */
 	btop = SLIST_NEXT(ba, ba_next);
@@ -812,9 +792,26 @@ stmt_print(struct bt_stmt *bs, struct dt_evt *dtev)
 		assert(SLIST_NEXT(btop, ba_next) == NULL);
 		top = ba2long(btop, dtev);
 	}
+
+	/* Static argument. */
+	if (ba->ba_type != B_AT_VAR) {
+		assert(btop == NULL);
+		printf("%s\n", ba2str(ba, dtev));
+		return;
+	}
+
 	debug("map=%p '%s' print (top=%d)\n", bv->bv_value, bv_name(bv), top);
 
-	map_print((struct map *)bv->bv_value, top, bv_name(bv));
+	/* Empty? */
+	if (bv->bv_value == NULL)
+		return;
+
+	if (bv->bv_type == B_VT_MAP)
+		map_print((struct map *)bv->bv_value, top, bv_name(bv));
+	else if (bv->bv_type == B_VT_HIST)
+		hist_print((struct hist *)bv->bv_value, bv_name(bv));
+	else
+		printf("%s\n", ba2str(ba, dtev));
 }
 
 /*
@@ -835,14 +832,21 @@ stmt_store(struct bt_stmt *bs, struct dt_evt *dtev)
 	assert(SLIST_NEXT(ba, ba_next) == NULL);
 
 	switch (ba->ba_type) {
+	case B_AT_STR:
+		bv->bv_value = ba;
+		bv->bv_type = B_VT_STR;
+		break;
 	case B_AT_LONG:
 		bv->bv_value = ba;
+		bv->bv_type = B_VT_LONG;
 		break;
 	case B_AT_BI_NSECS:
 		bv->bv_value = ba_new(builtin_nsecs(dtev), B_AT_LONG);
+		bv->bv_type = B_VT_LONG;
 		break;
 	case B_AT_OP_PLUS ... B_AT_OP_LOR:
 		bv->bv_value = ba_new(ba2long(ba, dtev), B_AT_LONG);
+		bv->bv_type = B_VT_LONG;
 		break;
 	default:
 		xabort("store not implemented for type %d", ba->ba_type);
@@ -857,19 +861,15 @@ stmt_store(struct bt_stmt *bs, struct dt_evt *dtev)
 bool
 stmt_test(struct bt_stmt *bs, struct dt_evt *dtev)
 {
-	struct bt_arg *ba;
-	long val;
+	struct bt_arg *bop;
 
 	if (bs == NULL)
 		return true;
 
 	assert(bs->bs_var == NULL);
-	ba = SLIST_FIRST(&bs->bs_args);
-	val = ba2long(ba, dtev);
+	bop = SLIST_FIRST(&bs->bs_args);
 
-	debug("ba=%p test (%ld != 0)\n", ba, val);
-
-	return val != 0;
+	return baexpr2long(bop, dtev) != 0;
 }
 
 /*
@@ -1010,10 +1010,9 @@ ba2bucket(struct bt_arg *ba, struct bt_arg *brange, struct dt_evt *dtev,
 }
 
 /*
- * Helper to evaluate the operation encoded in `ba' and return its
- * result.
+ * Evaluate the operation encoded in `ba' and return its result.
  */
-static inline long
+long
 baexpr2long(struct bt_arg *ba, struct dt_evt *dtev)
 {
 	static long recursions;
@@ -1024,12 +1023,16 @@ baexpr2long(struct bt_arg *ba, struct dt_evt *dtev)
 		errx(1, "too many operands (>%d) in expression", __MAXOPERANDS);
 
 	a = ba->ba_value;
+	first = ba2long(a, dtev);
+
 	b = SLIST_NEXT(a, ba_next);
 
-	assert(SLIST_NEXT(b, ba_next) == NULL);
-
-	first = ba2long(a, dtev);
-	second = ba2long(b, dtev);
+	if (b == NULL) {
+		second = 0;
+	} else {
+		assert(SLIST_NEXT(b, ba_next) == NULL);
+		second = ba2long(b, dtev);
+	}
 
 	switch (ba->ba_type) {
 	case B_AT_OP_PLUS:
@@ -1084,6 +1087,9 @@ const char *
 ba_name(struct bt_arg *ba)
 {
 	switch (ba->ba_type) {
+	case B_AT_VAR:
+	case B_AT_MAP:
+		break;
 	case B_AT_BI_PID:
 		return "pid";
 	case B_AT_BI_TID:
@@ -1113,10 +1119,34 @@ ba_name(struct bt_arg *ba)
 	case B_AT_OP_LOR:
 		return "||";
 	default:
-		break;
+		xabort("unsuported type %d", ba->ba_type);
 	}
 
-	return ba2str(ba, NULL);
+	assert(ba->ba_type == B_AT_VAR || ba->ba_type == B_AT_MAP);
+
+	static char buf[64];
+	size_t sz;
+	int l;
+
+	buf[0] = '@';
+	buf[1] = '\0';
+	sz = sizeof(buf) - 1;
+	l = snprintf(buf+1, sz, "%s", bv_name(ba->ba_value));
+	if (l < 0 || (size_t)l > sz) {
+		warn("string too long %d > %zu", l, sz);
+		return buf;
+	}
+
+	if (ba->ba_type == B_AT_MAP) {
+		sz -= l;
+		l = snprintf(buf+1+l, sz, "[%s]", ba_name(ba->ba_key));
+		if (l < 0 || (size_t)l > sz) {
+			warn("string too long %d > %zu", l, sz);
+			return buf;
+		}
+	}
+
+	return buf;
 }
 
 /*
@@ -1143,6 +1173,12 @@ ba2long(struct bt_arg *ba, struct dt_evt *dtev)
 			return 0;
 		val = ba2long(map_get((struct map *)bv->bv_value,
 		    ba2str(ba->ba_key, dtev)), dtev);
+		break;
+	case B_AT_BI_PID:
+		val = dtev->dtev_pid;
+		break;
+	case B_AT_BI_TID:
+		val = dtev->dtev_tid;
 		break;
 	case B_AT_BI_NSECS:
 		val = builtin_nsecs(dtev);
@@ -1338,47 +1374,19 @@ debugx(const char *fmt, ...)
 	va_end(ap);
 }
 
-static inline const char *
-debug_getfiltervar(struct bt_evtfilter *df)
-{
-	switch (df->bf_var) {
-	case B_FV_PID:	return "pid";
-	case B_FV_TID:	return "tid";
-	case B_FV_NONE:	return "";
-	default:
-		xabort("invalid filtervar %d", df->bf_var);
-	}
-}
-
-static inline const char *
-debug_getfilterop(struct bt_evtfilter *df)
-{
-	switch (df->bf_op) {
-	case B_AT_OP_EQ:	return "==";
-	case B_AT_OP_NE:	return "!=";
-	default:
-		xabort("invalid operand %d", df->bf_op);
-	}
-}
-
 void
 debug_dump_filter(struct bt_rule *r)
 {
 	if (r->br_filter != NULL) {
 		struct bt_stmt *bs = r->br_filter->bf_condition;
+		struct bt_arg *bop = SLIST_FIRST(&bs->bs_args);
+		struct bt_arg *a, *b;
 
-		if (bs == NULL) {
-			struct bt_evtfilter *df = &r->br_filter->bf_evtfilter;
+		a = bop->ba_value;
+		b = SLIST_NEXT(a, ba_next);
 
-			debugx(" / %s %s %u /", debug_getfiltervar(df),
-			    debug_getfilterop(df), df->bf_val);
-		} else {
-			struct bt_arg *ba = SLIST_FIRST(&bs->bs_args);
-			struct bt_var *bv = ba->ba_value;
-
-			debugx(" / %s[%s] != 0 /.", bv_name(bv),
-			    ba_name(ba->ba_key));
-		}
+		debugx(" / %s %s %s /", ba_name(a), ba_name(bop),
+		    (b != NULL) ? ba_name(b) : "NULL");
 	}
 	debugx("\n");
 }

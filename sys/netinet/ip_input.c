@@ -1,4 +1,4 @@
-/*	$OpenBSD: ip_input.c,v 1.356 2021/03/30 08:37:10 sashan Exp $	*/
+/*	$OpenBSD: ip_input.c,v 1.360 2021/05/15 08:07:20 yasuoka Exp $	*/
 /*	$NetBSD: ip_input.c,v 1.30 1996/03/16 23:53:58 christos Exp $	*/
 
 /*
@@ -113,7 +113,7 @@ extern int ip_mrtproto;
 
 const struct sysctl_bounded_args ipctl_vars[] = {
 #ifdef MROUTING
-	{ IPCTL_MRTPROTO, &ip_mrtproto, 1, 0 },
+	{ IPCTL_MRTPROTO, &ip_mrtproto, SYSCTL_INT_READONLY },
 #endif
 	{ IPCTL_FORWARDING, &ipforwarding, 0, 2 },
 	{ IPCTL_SENDREDIRECTS, &ipsendredirects, 0, 1 },
@@ -126,7 +126,6 @@ const struct sysctl_bounded_args ipctl_vars[] = {
 	{ IPCTL_IPPORT_MAXQUEUE, &ip_maxqueue, 0, 10000 },
 	{ IPCTL_MFORWARDING, &ipmforwarding, 0, 1 },
 	{ IPCTL_MULTIPATH, &ipmultipath, 0, 1 },
-	{ IPCTL_ARPQUEUED, &la_hold_total, 0, 1000 },
 	{ IPCTL_ARPTIMEOUT, &arpt_keep, 0, INT_MAX },
 	{ IPCTL_ARPDOWN, &arpt_down, 0, INT_MAX },
 };
@@ -224,6 +223,7 @@ ip_init(void)
 	mq_init(&ipsend_mq, 64, IPL_SOFTNET);
 	mq_init(&ipsendraw_mq, 64, IPL_SOFTNET);
 
+	arpinit();
 #ifdef IPSEC
 	ipsec_init();
 #endif
@@ -1643,6 +1643,8 @@ ip_sysctl(int *name, u_int namelen, void *oldp, size_t *oldlenp, void *newp,
 	case IPCTL_ARPQUEUE:
 		return (sysctl_niq(name + 1, namelen - 1,
 		    oldp, oldlenp, newp, newlen, &arpinq));
+	case IPCTL_ARPQUEUED:
+		return (sysctl_rdint(oldp, oldlenp, newp, la_hold_total));
 	case IPCTL_STATS:
 		return (ip_sysctl_ipstat(oldp, oldlenp, newp));
 #ifdef MROUTING
@@ -1788,6 +1790,8 @@ ip_send_do_dispatch(void *xmq, int flags)
 	struct mbuf_queue *mq = xmq;
 	struct mbuf *m;
 	struct mbuf_list ml;
+	struct m_tag *mtag;
+	u_int32_t ipsecflowinfo = 0;
 
 	mq_delist(mq, &ml);
 	if (ml_empty(&ml))
@@ -1795,7 +1799,12 @@ ip_send_do_dispatch(void *xmq, int flags)
 
 	NET_LOCK();
 	while ((m = ml_dequeue(&ml)) != NULL) {
-		ip_output(m, NULL, NULL, flags, NULL, NULL, 0);
+		if ((mtag = m_tag_find(m, PACKET_TAG_IPSEC_FLOWINFO, NULL))
+		    != NULL) {
+			ipsecflowinfo = *(u_int32_t *)(mtag + 1);
+			m_tag_delete(m, mtag);
+		}
+		ip_output(m, NULL, NULL, flags, NULL, NULL, ipsecflowinfo);
 	}
 	NET_UNLOCK();
 }

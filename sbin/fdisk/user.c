@@ -1,4 +1,4 @@
-/*	$OpenBSD: user.c,v 1.52 2019/04/29 18:54:12 krw Exp $	*/
+/*	$OpenBSD: user.c,v 1.55 2021/05/15 15:20:17 krw Exp $	*/
 
 /*
  * Copyright (c) 1997 Tobias Weingartner
@@ -63,7 +63,7 @@ USER_edit(off_t offset, off_t reloff)
 	struct dos_mbr dos_mbr;
 	struct mbr mbr;
 	char *cmd, *args;
-	int i, st, error;
+	int i, st, efi, error;
 
 	/* One level deeper */
 	editlevel += 1;
@@ -79,8 +79,9 @@ USER_edit(off_t offset, off_t reloff)
 	if (editlevel == 1) {
 		memset(&gh, 0, sizeof(gh));
 		memset(&gp, 0, sizeof(gp));
-		if (MBR_protective_mbr(&mbr) == 0)
-			GPT_get_gpt(0);
+		efi = MBR_protective_mbr(&mbr);
+		if (efi != -1)
+			GPT_read(ANYGPT);
 	}
 
 	printf("Enter 'help' for information\n");
@@ -141,7 +142,7 @@ void
 USER_print_disk(int verbosity)
 {
 	off_t offset, firstoff;
-	int i, error;
+	int i, efi, error;
 	struct dos_mbr dos_mbr;
 	struct mbr mbr;
 
@@ -153,27 +154,36 @@ USER_print_disk(int verbosity)
 			break;
 		MBR_parse(&dos_mbr, offset, firstoff, &mbr);
 		if (offset == 0) {
-		       if (verbosity || MBR_protective_mbr(&mbr) == 0) {
-				if (verbosity) {
-					printf("Primary GPT:\n");
-					GPT_get_gpt(1); /* Get Primary */
+			efi = MBR_protective_mbr(&mbr);
+			if (efi == -1) {
+				/* No valid 0xEE partition means no GPT. */
+				if (verbosity == VERBOSE) {
+					printf("Primary GPT:\nNot Found\n");
+					printf("\nSecondary GPT:\nNot Found\n");
 				}
+			} else if (verbosity == TERSE) {
+				/* Should already have read one of Primary/Secondary GPT. */
+				if (letoh64(gh.gh_sig) == GPTSIGNATURE) {
+					GPT_print("s", verbosity);
+					return;
+				}
+			} else {
+				/*. Read & print both primary and secondary GPT. */
+				printf("Primary GPT:\n");
+				GPT_read(PRIMARYGPT);
 				if (letoh64(gh.gh_sig) == GPTSIGNATURE)
 					GPT_print("s", verbosity);
 				else
 					printf("\tNot Found\n");
-				if (verbosity) {
-					printf("\n");
-					printf("Secondary GPT:\n");
-					GPT_get_gpt(2); /* Get Secondary */
-					if (letoh64(gh.gh_sig) == GPTSIGNATURE)
-						GPT_print("s", verbosity);
-					else
-						printf("\tNot Found\n");
-					printf("\nMBR:\n");
-				} else
-					break;
-		       }
+				printf("\nSecondary GPT:\n");
+				GPT_read(SECONDARYGPT);
+				if (letoh64(gh.gh_sig) == GPTSIGNATURE)
+					GPT_print("s", verbosity);
+				else
+					printf("\tNot Found\n");
+			}
+			if (verbosity == VERBOSE)
+				printf("\nMBR:\n");
 		}
 
 		MBR_print(&mbr, NULL);

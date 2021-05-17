@@ -1,4 +1,4 @@
-/*	$OpenBSD: part.c,v 1.77 2017/03/26 00:22:49 sobrado Exp $	*/
+/*	$OpenBSD: part.c,v 1.80 2021/05/15 19:44:15 krw Exp $	*/
 
 /*
  * Copyright (c) 1997 Tobias Weingartner
@@ -20,6 +20,7 @@
 #include <sys/disklabel.h>
 
 #include <err.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -49,6 +50,7 @@ static const struct part_type {
 	{ 0x0A, "OS/2 Bootmgr"},   /* OS/2 Boot Manager or OPUS */
 	{ 0x0B, "FAT32       ", "ebd0a0a2-b9e5-4433-87c0-68b6b72699c7" },
 	{ 0x0C, "FAT32L      ", "ebd0a0a2-b9e5-4433-87c0-68b6b72699c7" },
+	{ 0x0D, "BIOS Boot   ", "21686148-6449-6e6f-744e-656564454649" },
 	{ 0x0E, "FAT16L      ", "ebd0a0a2-b9e5-4433-87c0-68b6b72699c7" },
 	{ 0x0F, "Extended LBA"},   /* Extended DOS LBA-mapped */
 	{ 0x10, "OPUS        "},   /* OPUS */
@@ -175,7 +177,7 @@ PRT_parse(struct dos_partition *prt, off_t offset, off_t reloff,
     struct prt *partn)
 {
 	off_t off;
-	u_int32_t t;
+	uint32_t t;
 
 	partn->flag = prt->dp_flag;
 	partn->shead = prt->dp_shd;
@@ -196,11 +198,15 @@ PRT_parse(struct dos_partition *prt, off_t offset, off_t reloff,
 #if 0 /* XXX */
 	partn->bs = letoh32(prt->dp_start) + off;
 	partn->ns = letoh32(prt->dp_size);
+	if (partn->id == DOSPTYP_EFI && partn == UINT32_MAX)
+		partn->ns = DL_GETDSIZE(&dl) - partn->bs;
 #else
-	memcpy(&t, &prt->dp_start, sizeof(u_int32_t));
+	memcpy(&t, &prt->dp_start, sizeof(uint32_t));
 	partn->bs = letoh32(t) + off;
-	memcpy(&t, &prt->dp_size, sizeof(u_int32_t));
+	memcpy(&t, &prt->dp_size, sizeof(uint32_t));
 	partn->ns = letoh32(t);
+	if (partn->id == DOSPTYP_EFI && partn->ns == UINT32_MAX)
+		partn->ns = DL_GETDSIZE(&dl) - partn->bs;
 #endif
 
 	PRT_fix_CHS(partn);
@@ -226,8 +232,8 @@ PRT_make(struct prt *partn, off_t offset, off_t reloff,
     struct dos_partition *prt)
 {
 	off_t off;
-	u_int32_t ecsave, scsave;
-	u_int64_t t;
+	uint32_t ecsave, scsave;
+	uint64_t t;
 
 	/* Save (and restore below) cylinder info we may fiddle with. */
 	scsave = partn->scyl;
@@ -259,9 +265,13 @@ PRT_make(struct prt *partn, off_t offset, off_t reloff,
 	prt->dp_typ = partn->id & 0xFF;
 
 	t = htole64(partn->bs - off);
-	memcpy(&prt->dp_start, &t, sizeof(u_int32_t));
-	t = htole64(partn->ns);
-	memcpy(&prt->dp_size, &t, sizeof(u_int32_t));
+	memcpy(&prt->dp_start, &t, sizeof(uint32_t));
+	if (partn->id == DOSPTYP_EFI && (partn->bs + partn->ns) >
+	    DL_GETDSIZE(&dl))
+		t = htole64(UINT32_MAX);
+	else
+		t = htole64(partn->ns);
+	memcpy(&prt->dp_size, &t, sizeof(uint32_t));
 
 	partn->scyl = scsave;
 	partn->ecyl = ecsave;
@@ -300,9 +310,9 @@ PRT_print(int num, struct prt *partn, char *units)
 void
 PRT_fix_BN(struct prt *part, int pn)
 {
-	u_int32_t spt, tpc, spc;
-	u_int32_t start = 0;
-	u_int32_t end = 0;
+	uint32_t spt, tpc, spc;
+	uint32_t start = 0;
+	uint32_t end = 0;
 
 	/* Zero out entry if not used */
 	if (part->id == DOSPTYP_UNUSED) {
@@ -334,9 +344,9 @@ PRT_fix_BN(struct prt *part, int pn)
 void
 PRT_fix_CHS(struct prt *part)
 {
-	u_int32_t spt, tpc, spc;
-	u_int32_t start, end, size;
-	u_int32_t cyl, head, sect;
+	uint32_t spt, tpc, spc;
+	uint32_t start, end, size;
+	uint32_t cyl, head, sect;
 
 	/* Zero out entry if not used */
 	if (part->id == DOSPTYP_UNUSED || part->ns == 0) {

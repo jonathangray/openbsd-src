@@ -1,4 +1,4 @@
-/* $OpenBSD: ssl_tlsext.c,v 1.89 2021/03/29 16:46:09 jsing Exp $ */
+/* $OpenBSD: ssl_tlsext.c,v 1.92 2021/05/16 14:10:43 jsing Exp $ */
 /*
  * Copyright (c) 2016, 2017, 2019 Joel Sing <jsing@openbsd.org>
  * Copyright (c) 2017 Doug Hogan <doug@openbsd.org>
@@ -20,10 +20,10 @@
 #include <ctype.h>
 
 #include <openssl/ocsp.h>
-
-#include "ssl_locl.h"
+#include <openssl/opensslconf.h>
 
 #include "bytestring.h"
+#include "ssl_locl.h"
 #include "ssl_sigalgs.h"
 #include "ssl_tlsext.h"
 
@@ -2105,16 +2105,16 @@ tlsext_parse(SSL *s, int is_server, uint16_t msg_type, CBS *cbs, int *alert)
 			    CBS_len(&extension_data),
 			    s->internal->tlsext_debug_arg);
 
+		/* Unknown extensions are ignored. */
+		if ((tlsext = tls_extension_find(type, &idx)) == NULL)
+			continue;
+
 		if (tls_version >= TLS1_3_VERSION && is_server &&
 		    msg_type == SSL_TLSEXT_MSG_CH) {
 			if (!tlsext_clienthello_hash_extension(s, type,
 			    &extension_data))
 				goto err;
 		}
-
-		/* Unknown extensions are ignored. */
-		if ((tlsext = tls_extension_find(type, &idx)) == NULL)
-			continue;
 
 		/* RFC 8446 Section 4.2 */
 		if (tls_version >= TLS1_3_VERSION &&

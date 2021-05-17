@@ -1,4 +1,4 @@
-/* $OpenBSD: pfkeyv2.c,v 1.208 2020/12/14 20:20:06 tobhe Exp $ */
+/* $OpenBSD: pfkeyv2.c,v 1.211 2021/05/04 09:28:04 mvs Exp $ */
 
 /*
  *	@(#)COPYRIGHT	1.1 (NRL) 17 January 1995
@@ -127,8 +127,6 @@ extern uint64_t sadb_exts_required_out[SADB_MAX+1];
 
 extern struct pool ipsec_policy_pool;
 
-extern struct radix_node_head **spd_tables;
-
 struct pool pkpcb_pool;
 #define PFKEY_MSG_MAXSZ 4096
 const struct sockaddr pfkey_addr = { 2, PF_KEY, };
@@ -254,6 +252,8 @@ pfkey_init(void)
 	SRPL_INIT(&pkptable.pkp_list);
 	pool_init(&pkpcb_pool, sizeof(struct pkpcb), 0,
 	    IPL_NONE, PR_WAITOK, "pkpcb", NULL);
+	pool_init(&ipsec_policy_pool, sizeof(struct ipsec_policy), 0,
+	    IPL_SOFTNET, 0, "ipsec policy", NULL);
 }
 
 
@@ -269,23 +269,19 @@ pfkeyv2_attach(struct socket *so, int proto)
 	if ((so->so_state & SS_PRIV) == 0)
 		return EACCES;
 
+	error = soreserve(so, PFKEYSNDQ, PFKEYRCVQ);
+	if (error)
+		return (error);
+
 	kp = pool_get(&pkpcb_pool, PR_WAITOK|PR_ZERO);
 	so->so_pcb = kp;
 	refcnt_init(&kp->kcb_refcnt);
-
-	error = soreserve(so, PFKEYSNDQ, PFKEYRCVQ);
-	if (error) {
-		pool_put(&pkpcb_pool, kp);
-		return (error);
-	}
-
 	kp->kcb_socket = so;
+	kp->kcb_pid = curproc->p_p->ps_pid;
+	kp->kcb_rdomain = rtable_l2(curproc->p_p->ps_rtableid);
 
 	so->so_options |= SO_USELOOPBACK;
 	soisconnected(so);
-
-	kp->kcb_pid = curproc->p_p->ps_pid;
-	kp->kcb_rdomain = rtable_l2(curproc->p_p->ps_rtableid);
 
 	rw_enter(&pkptable.pkp_lk, RW_WRITE);
 	SRPL_INSERT_HEAD_LOCKED(&pkptable.pkp_rc, &pkptable.pkp_list, kp, kcb_list);
@@ -1893,13 +1889,6 @@ pfkeyv2_send(struct socket *so, void *message, int len)
 		}
 
 		if (!exists) {
-			if (ipsec_policy_pool_initialized == 0) {
-				ipsec_policy_pool_initialized = 1;
-				pool_init(&ipsec_policy_pool,
-				    sizeof(struct ipsec_policy), 0,
-				    IPL_NONE, 0, "ipsec policy", NULL);
-			}
-
 			/* Allocate policy entry */
 			ipo = pool_get(&ipsec_policy_pool, PR_NOWAIT|PR_ZERO);
 			if (ipo == NULL) {

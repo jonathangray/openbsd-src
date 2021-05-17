@@ -1,4 +1,4 @@
-/*	$OpenBSD: session.c,v 1.411 2021/02/16 08:29:16 claudio Exp $ */
+/*	$OpenBSD: session.c,v 1.415 2021/05/16 09:09:11 claudio Exp $ */
 
 /*
  * Copyright (c) 2003, 2004, 2005 Henning Brauer <henning@openbsd.org>
@@ -1636,7 +1636,7 @@ session_neighbor_rrefresh(struct peer *p)
 {
 	u_int8_t	i;
 
-	if (!p->capa.peer.refresh)
+	if (!p->capa.neg.refresh)
 		return (-1);
 
 	for (i = 0; i < AID_MAX; i++) {
@@ -2179,6 +2179,16 @@ parse_open(struct peer *peer)
 		return (-1);
 	}
 
+	/* on iBGP sessions check for bgpid collision */
+	if (!peer->conf.ebgp && peer->remote_bgpid == conf->bgpid) {
+		log_peer_warnx(&peer->conf, "peer BGPID %u conflicts with ours",
+		    ntohl(bgpid));
+		session_notification(peer, ERR_OPEN, ERR_OPEN_BGPID,
+		    NULL, 0);
+		change_state(peer, STATE_IDLE, EVNT_RCVD_OPEN);
+		return (-1);
+	}
+
 	if (capa_neg_calc(peer) == -1) {
 		log_peer_warnx(&peer->conf,
 		    "capability negotiation calculation failed");
@@ -2244,6 +2254,11 @@ parse_refresh(struct peer *peer)
 	if (afi2aid(afi, safi, &aid) == -1) {
 		log_peer_warnx(&peer->conf, "peer sent bad refresh, "
 		    "invalid afi/safi pair");
+		return (0);
+	}
+
+	if (!peer->capa.neg.refresh) {
+		log_peer_warnx(&peer->conf, "peer sent unexpected refresh");
 		return (0);
 	}
 
@@ -2536,40 +2551,43 @@ capa_neg_calc(struct peer *p)
 {
 	u_int8_t	i, hasmp = 0;
 
-	/* refresh: does not realy matter here, use peer setting */
-	p->capa.neg.refresh = p->capa.peer.refresh;
+	/* a capability is accepted only if both sides announced it */
 
-	/* as4byte: both side must announce capability */
-	if (p->capa.ann.as4byte && p->capa.peer.as4byte)
-		p->capa.neg.as4byte = 1;
-	else
-		p->capa.neg.as4byte = 0;
+	p->capa.neg.refresh =
+	    (p->capa.ann.refresh && p->capa.peer.refresh) != 0;
 
-	/* MP: both side must announce capability */
+	p->capa.neg.as4byte =
+	    (p->capa.ann.as4byte && p->capa.peer.as4byte) != 0;
+
+	/* MP: both side must agree on the AFI,SAFI pair */
 	for (i = 0; i < AID_MAX; i++) {
-		if (p->capa.ann.mp[i] && p->capa.peer.mp[i]) {
+		if (p->capa.ann.mp[i] && p->capa.peer.mp[i])
 			p->capa.neg.mp[i] = 1;
-			hasmp = 1;
-		} else
+		else
 			p->capa.neg.mp[i] = 0;
+		if (p->capa.ann.mp[i])
+			hasmp = 1;
 	}
 	/* if no MP capability present default to IPv4 unicast mode */
 	if (!hasmp)
 		p->capa.neg.mp[AID_INET] = 1;
 
 	/*
-	 * graceful restart: only the peer capabilities are of interest here.
+	 * graceful restart: the peer capabilities are of interest here.
 	 * It is necessary to compare the new values with the previous ones
 	 * and act acordingly. AFI/SAFI that are not part in the MP capability
 	 * are treated as not being present.
+	 * Also make sure that a flush happens if the session stopped
+	 * supporting graceful restart.
 	 */
 
 	for (i = 0; i < AID_MAX; i++) {
 		int8_t	negflags;
 
 		/* disable GR if the AFI/SAFI is not present */
-		if (p->capa.peer.grestart.flags[i] & CAPA_GR_PRESENT &&
-		    p->capa.neg.mp[i] == 0)
+		if (p->capa.ann.grestart.restart == 0 ||
+		    (p->capa.peer.grestart.flags[i] & CAPA_GR_PRESENT &&
+		    p->capa.neg.mp[i] == 0))
 			p->capa.peer.grestart.flags[i] = 0;	/* disable */
 		/* look at current GR state and decide what to do */
 		negflags = p->capa.neg.grestart.flags[i];
@@ -2589,6 +2607,8 @@ capa_neg_calc(struct peer *p)
 	}
 	p->capa.neg.grestart.timeout = p->capa.peer.grestart.timeout;
 	p->capa.neg.grestart.restart = p->capa.peer.grestart.restart;
+	if (p->capa.ann.grestart.restart == 0)
+		p->capa.neg.grestart.restart = 0;
 
 	return (0);
 }
@@ -2723,10 +2743,24 @@ session_dispatch_imsg(struct imsgbuf *ibuf, int idx, u_int *listener_cnt)
 			}
 			break;
 		case IMSG_RECONF_DRAIN:
-			if (idx != PFD_PIPE_MAIN)
-				fatalx("reconf request not from parent");
-			imsg_compose(ibuf_main, IMSG_RECONF_DRAIN, 0, 0,
-			    -1, NULL, 0);
+			switch (idx) {
+			case PFD_PIPE_ROUTE:
+				if (nconf != NULL)
+					fatalx("got unexpected %s from RDE",
+					    "IMSG_RECONF_DONE");
+				imsg_compose(ibuf_main, IMSG_RECONF_DONE, 0, 0,
+				    -1, NULL, 0);
+				break;
+			case PFD_PIPE_MAIN:
+				if (nconf == NULL)
+					fatalx("got unexpected %s from parent",
+					    "IMSG_RECONF_DONE");
+				imsg_compose(ibuf_main, IMSG_RECONF_DRAIN, 0, 0,
+				    -1, NULL, 0);
+				break;
+			default:
+				fatalx("reconf request not from parent or RDE");
+			}
 			break;
 		case IMSG_RECONF_DONE:
 			if (idx != PFD_PIPE_MAIN)
@@ -2760,8 +2794,10 @@ session_dispatch_imsg(struct imsgbuf *ibuf, int idx, u_int *listener_cnt)
 			nconf = NULL;
 			pending_reconf = 0;
 			log_info("SE reconfigured");
-			imsg_compose(ibuf_main, IMSG_RECONF_DONE, 0, 0,
-			    -1, NULL, 0);
+			/*
+			 * IMSG_RECONF_DONE is sent when the RDE drained
+			 * the peer config sent in merge_peers().
+			 */
 			break;
 		case IMSG_IFINFO:
 			if (idx != PFD_PIPE_MAIN)
@@ -3331,6 +3367,9 @@ merge_peers(struct bgpd_config *c, struct bgpd_config *nc)
 			}
 		}
 	}
+
+	if (imsg_rde(IMSG_RECONF_DRAIN, 0, NULL, 0) == -1)
+		fatalx("imsg_compose error");
 
 	/* pfkeys of new peers already loaded by the parent process */
 	RB_FOREACH_SAFE(np, peer_head, &nc->peers, next) {

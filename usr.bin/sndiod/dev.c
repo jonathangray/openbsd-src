@@ -1,4 +1,4 @@
-/*	$OpenBSD: dev.c,v 1.99 2021/03/10 08:22:25 ratchov Exp $	*/
+/*	$OpenBSD: dev.c,v 1.102 2021/05/03 04:29:50 ratchov Exp $	*/
 /*
  * Copyright (c) 2008-2012 Alexandre Ratchov <alex@caoua.org>
  *
@@ -41,7 +41,6 @@ void dev_sub_bcopy(struct dev *, struct slot *);
 void dev_onmove(struct dev *, int);
 void dev_master(struct dev *, unsigned int);
 void dev_cycle(struct dev *);
-int dev_getpos(struct dev *);
 struct dev *dev_new(char *, struct aparams *, unsigned int, unsigned int,
     unsigned int, unsigned int, unsigned int, unsigned int);
 void dev_adjpar(struct dev *, int, int, int);
@@ -301,7 +300,7 @@ mtc_midi_full(struct mtc *mtc)
 	struct sysex x;
 	unsigned int fps;
 
-	mtc->delta = MTC_SEC * dev_getpos(mtc->dev);
+	mtc->delta = -MTC_SEC * (int)mtc->dev->bufsz;
 	if (mtc->dev->rate % (30 * 4 * mtc->dev->round) == 0) {
 		mtc->fps_id = MTC_FPS_30;
 		mtc->fps = 30;
@@ -498,6 +497,14 @@ dev_mix_badd(struct dev *d, struct slot *s)
 		panic();
 	}
 #endif
+	if (!(s->opt->mode & MODE_PLAY)) {
+		/*
+		 * playback not allowed in opt structure, produce silence
+		 */
+		abuf_rdiscard(&s->mix.buf, s->round * s->mix.bpf);
+		return;
+	}
+
 
 	/*
 	 * Apply the following processing chain:
@@ -599,13 +606,6 @@ dev_sub_bcopy(struct dev *d, struct slot *s)
 	int i, vol, offs, nch;
 
 
-	if (s->mode & MODE_MON) {
-		moffs = d->poffs + d->round;
-		if (moffs == d->psize)
-			moffs = 0;
-		idata = d->pbuf + moffs * d->pchan;
-	} else
-		idata = d->rbuf;
 	odata = (adata_t *)abuf_wgetblk(&s->sub.buf, &ocount);
 #ifdef DEBUG
 	if (ocount < s->round * s->sub.bpf) {
@@ -613,6 +613,21 @@ dev_sub_bcopy(struct dev *d, struct slot *s)
 		panic();
 	}
 #endif
+	if (s->opt->mode & MODE_MON) {
+		moffs = d->poffs + d->round;
+		if (moffs == d->psize)
+			moffs = 0;
+		idata = d->pbuf + moffs * d->pchan;
+	} else if (s->opt->mode & MODE_REC) {
+		idata = d->rbuf;
+	} else {
+		/*
+		 * recording not allowed in opt structure, produce silence
+		 */
+		enc_sil_do(&s->sub.enc, odata, s->round);
+		abuf_wcommit(&s->sub.buf, s->round * s->sub.bpf);
+		return;
+	}
 
 	/*
 	 * Apply the following processing chain:
@@ -897,15 +912,6 @@ dev_master(struct dev *d, unsigned int master)
 			ctl_setval(c, v);
 		}
 	}
-}
-
-/*
- * return the latency that a stream would have if it's attached
- */
-int
-dev_getpos(struct dev *d)
-{
-	return (d->mode & MODE_PLAY) ? -d->bufsz : 0;
 }
 
 /*
@@ -1560,12 +1566,18 @@ slot_initconv(struct slot *s)
 		    s->opt->pmin, s->opt->pmin + s->mix.nch - 1,
 		    0, d->pchan - 1,
 		    s->opt->pmin, s->opt->pmax);
+		s->mix.decbuf = NULL;
+		s->mix.resampbuf = NULL;
 		if (!aparams_native(&s->par)) {
 			dec_init(&s->mix.dec, &s->par, s->mix.nch);
+			s->mix.decbuf =
+			    xmalloc(s->round * s->mix.nch * sizeof(adata_t));
 		}
 		if (s->rate != d->rate) {
 			resamp_init(&s->mix.resamp, s->round, d->round,
 			    s->mix.nch);
+			s->mix.resampbuf =
+			    xmalloc(d->round * s->mix.nch * sizeof(adata_t));
 		}
 		s->mix.join = 1;
 		s->mix.expand = 1;
@@ -1581,9 +1593,11 @@ slot_initconv(struct slot *s)
 	}
 
 	if (s->mode & MODE_RECMASK) {
-		unsigned int outchan = (s->mode & MODE_MON) ?
+		unsigned int outchan = (s->opt->mode & MODE_MON) ?
 		    d->pchan : d->rchan;
 
+		s->sub.encbuf = NULL;
+		s->sub.resampbuf = NULL;
 		cmap_init(&s->sub.cmap,
 		    0, outchan - 1,
 		    s->opt->rmin, s->opt->rmax,
@@ -1592,9 +1606,13 @@ slot_initconv(struct slot *s)
 		if (s->rate != d->rate) {
 			resamp_init(&s->sub.resamp, d->round, s->round,
 			    s->sub.nch);
+			s->sub.resampbuf =
+			    xmalloc(d->round * s->sub.nch * sizeof(adata_t));
 		}
 		if (!aparams_native(&s->par)) {
 			enc_init(&s->sub.enc, &s->par, s->sub.nch);
+			s->sub.encbuf =
+			    xmalloc(s->round * s->sub.nch * sizeof(adata_t));
 		}
 		s->sub.join = 1;
 		s->sub.expand = 1;
@@ -1633,41 +1651,15 @@ slot_initconv(struct slot *s)
 void
 slot_allocbufs(struct slot *s)
 {
-	struct dev *d = s->opt->dev;
-
 	if (s->mode & MODE_PLAY) {
 		s->mix.bpf = s->par.bps * s->mix.nch;
 		abuf_init(&s->mix.buf, s->appbufsz * s->mix.bpf);
-
-		s->mix.decbuf = NULL;
-		s->mix.resampbuf = NULL;
-		if (!aparams_native(&s->par)) {
-			s->mix.decbuf =
-			    xmalloc(s->round * s->mix.nch * sizeof(adata_t));
-		}
-		if (s->rate != d->rate) {
-			s->mix.resampbuf =
-			    xmalloc(d->round * s->mix.nch * sizeof(adata_t));
-		}
 	}
 
 	if (s->mode & MODE_RECMASK) {
 		s->sub.bpf = s->par.bps * s->sub.nch;
 		abuf_init(&s->sub.buf, s->appbufsz * s->sub.bpf);
-
-		s->sub.encbuf = NULL;
-		s->sub.resampbuf = NULL;
-		if (s->rate != d->rate) {
-			s->sub.resampbuf =
-			    xmalloc(d->round * s->sub.nch * sizeof(adata_t));
-		}
-		if (!aparams_native(&s->par)) {
-			s->sub.encbuf =
-			    xmalloc(s->round * s->sub.nch * sizeof(adata_t));
-		}
 	}
-
-	slot_initconv(s);
 
 #ifdef DEBUG
 	if (log_level >= 3) {
@@ -1689,18 +1681,10 @@ slot_freebufs(struct slot *s)
 {
 	if (s->mode & MODE_RECMASK) {
 		abuf_done(&s->sub.buf);
-		if (s->sub.encbuf)
-			xfree(s->sub.encbuf);
-		if (s->sub.resampbuf)
-			xfree(s->sub.resampbuf);
 	}
 
 	if (s->mode & MODE_PLAY) {
 		abuf_done(&s->mix.buf);
-		if (s->mix.decbuf)
-			xfree(s->mix.decbuf);
-		if (s->mix.resampbuf)
-			xfree(s->mix.resampbuf);
 	}
 }
 
@@ -1803,25 +1787,8 @@ slot_new(struct opt *opt, unsigned int id, char *who,
 	    NULL, -1, 127, s->vol);
 
 found:
-	if ((mode & MODE_REC) && (opt->mode & MODE_MON)) {
-		mode |= MODE_MON;
-		mode &= ~MODE_REC;
-	}
-	if ((mode & opt->mode) != mode) {
-		if (log_level >= 1) {
-			slot_log(s);
-			log_puts(": requested mode not allowed\n");
-		}
-		return NULL;
-	}
 	if (!dev_ref(opt->dev))
 		return NULL;
-	if ((mode & opt->dev->mode) != mode) {
-		if (log_level >= 1) {
-			slot_log(s);
-			log_puts(": requested mode not supported\n");
-		}
-	}
 	s->opt = opt;
 	s->ops = ops;
 	s->arg = arg;
@@ -1901,6 +1868,21 @@ slot_attach(struct slot *s)
 {
 	struct dev *d = s->opt->dev;
 	long long pos;
+
+	if (((s->mode & MODE_PLAY) && !(s->opt->mode & MODE_PLAY)) ||
+	    ((s->mode & MODE_RECMASK) && !(s->opt->mode & MODE_RECMASK))) {
+		if (log_level >= 1) {
+			slot_log(s);
+			log_puts(" at ");
+			log_puts(s->opt->name);
+			log_puts(": mode not allowed on this sub-device\n");
+		}
+	}
+
+	/*
+	 * setup converions layer
+	 */
+	slot_initconv(s);
 
 	/*
 	 * start the device if not started
@@ -2008,7 +1990,7 @@ slot_start(struct slot *s)
 		/*
 		 * N-th recorded block is the N-th played block
 		 */
-		s->sub.prime = -dev_getpos(d) / d->round;
+		s->sub.prime = d->bufsz / d->round;
 	}
 	s->skip = 0;
 
@@ -2016,7 +1998,7 @@ slot_start(struct slot *s)
 	 * get the current position, the origin is when the first sample
 	 * played and/or recorded
 	 */
-	s->delta = dev_getpos(d) * (int)s->round / (int)d->round;
+	s->delta = -(long long)d->bufsz * s->round / d->round;
 	s->delta_rem = 0;
 
 	if (s->mode & MODE_PLAY) {
@@ -2076,6 +2058,28 @@ slot_detach(struct slot *s)
 #endif
 	if (s->mode & MODE_PLAY)
 		dev_mix_adjvol(d);
+
+	if (s->mode & MODE_RECMASK) {
+		if (s->sub.encbuf) {
+			xfree(s->sub.encbuf);
+			s->sub.encbuf = NULL;
+		}
+		if (s->sub.resampbuf) {
+			xfree(s->sub.resampbuf);
+			s->sub.resampbuf = NULL;
+		}
+	}
+
+	if (s->mode & MODE_PLAY) {
+		if (s->mix.decbuf) {
+			xfree(s->mix.decbuf);
+			s->mix.decbuf = NULL;
+		}
+		if (s->mix.resampbuf) {
+			xfree(s->mix.resampbuf);
+			s->mix.resampbuf = NULL;
+		}
+	}
 }
 
 /*
