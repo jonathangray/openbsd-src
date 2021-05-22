@@ -538,12 +538,24 @@ static void kill_context(struct i915_gem_context *ctx)
 	bool ban = (!i915_gem_context_is_persistent(ctx) ||
 		    !ctx->i915->params.enable_hangcheck);
 	struct i915_gem_engines *pos, *next;
+	static int warn = 1;
 
 	spin_lock_irq(&ctx->stale.lock);
 	GEM_BUG_ON(!i915_gem_context_is_closed(ctx));
 	list_for_each_entry_safe(pos, next, &ctx->stale.engines, link) {
 		if (!i915_sw_fence_await(&pos->fence)) {
 			list_del_init(&pos->link);
+			continue;
+		}
+
+		/*
+		 * XXX don't incorrectly reset chip on vlv/ivb cause unknown
+		 */
+		if (IS_GEN(ctx->i915, 7)) {
+			if (warn) {
+				printf("%s XXX skipping reset pos %p\n", __func__, pos);
+				warn = 0;
+			}
 			continue;
 		}
 
