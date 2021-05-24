@@ -1,4 +1,4 @@
-/*	$Id: uploader.c,v 1.25 2021/05/06 07:35:22 claudio Exp $ */
+/*	$Id: uploader.c,v 1.28 2021/05/17 12:15:48 claudio Exp $ */
 /*
  * Copyright (c) 2019 Kristaps Dzonsons <kristaps@bsd.lv>
  * Copyright (c) 2019 Florian Obser <florian@openbsd.org>
@@ -79,7 +79,7 @@ log_dir(struct sess *sess, const struct flist *f)
  * operator that we're a link.
  */
 static void
-log_link(struct sess *sess, const struct flist *f)
+log_symlink(struct sess *sess, const struct flist *f)
 {
 
 	if (!sess->opts->server)
@@ -181,7 +181,7 @@ pre_link(struct upload *p, struct sess *sess)
 		return 0;
 	}
 	if (sess->opts->dry_run) {
-		log_link(sess, f);
+		log_symlink(sess, f);
 		return 0;
 	}
 
@@ -194,6 +194,11 @@ pre_link(struct upload *p, struct sess *sess)
 
 	assert(p->rootfd != -1);
 	rc = fstatat(p->rootfd, f->path, &st, AT_SYMLINK_NOFOLLOW);
+
+	if (rc == -1 && errno != ENOENT) {
+		ERR("%s: fstatat", f->path);
+		return -1;
+	}
 	if (rc != -1 && !S_ISLNK(st.st_mode)) {
 		if (S_ISDIR(st.st_mode) &&
 		    unlinkat(p->rootfd, f->path, AT_REMOVEDIR) == -1) {
@@ -201,9 +206,6 @@ pre_link(struct upload *p, struct sess *sess)
 			return -1;
 		}
 		rc = -1;
-	} else if (rc == -1 && errno != ENOENT) {
-		ERR("%s: fstatat", f->path);
-		return -1;
 	}
 
 	/*
@@ -259,7 +261,7 @@ pre_link(struct upload *p, struct sess *sess)
 		free(temp);
 	}
 
-	log_link(sess, f);
+	log_symlink(sess, f);
 	return 0;
 }
 
@@ -297,6 +299,10 @@ pre_dev(struct upload *p, struct sess *sess)
 	assert(p->rootfd != -1);
 	rc = fstatat(p->rootfd, f->path, &st, AT_SYMLINK_NOFOLLOW);
 
+	if (rc == -1 && errno != ENOENT) {
+		ERR("%s: fstatat", f->path);
+		return -1;
+	}
 	if (rc != -1 && !(S_ISBLK(st.st_mode) || S_ISCHR(st.st_mode))) {
 		if (S_ISDIR(st.st_mode) &&
 		    unlinkat(p->rootfd, f->path, AT_REMOVEDIR) == -1) {
@@ -304,9 +310,6 @@ pre_dev(struct upload *p, struct sess *sess)
 			return -1;
 		}
 		rc = -1;
-	} else if (rc == -1 && errno != ENOENT) {
-		ERR("%s: fstatat", f->path);
-		return -1;
 	}
 
 	/* Make sure existing device is of the correct type. */
@@ -385,6 +388,10 @@ pre_fifo(struct upload *p, struct sess *sess)
 	assert(p->rootfd != -1);
 	rc = fstatat(p->rootfd, f->path, &st, AT_SYMLINK_NOFOLLOW);
 
+	if (rc == -1 && errno != ENOENT) {
+		ERR("%s: fstatat", f->path);
+		return -1;
+	}
 	if (rc != -1 && !S_ISFIFO(st.st_mode)) {
 		if (S_ISDIR(st.st_mode) &&
 		    unlinkat(p->rootfd, f->path, AT_REMOVEDIR) == -1) {
@@ -392,9 +399,6 @@ pre_fifo(struct upload *p, struct sess *sess)
 			return -1;
 		}
 		rc = -1;
-	} else if (rc == -1 && errno != ENOENT) {
-		ERR("%s: fstatat", f->path);
-		return -1;
 	}
 
 	if (rc == -1) {
@@ -461,6 +465,10 @@ pre_sock(struct upload *p, struct sess *sess)
 	assert(p->rootfd != -1);
 	rc = fstatat(p->rootfd, f->path, &st, AT_SYMLINK_NOFOLLOW);
 
+	if (rc == -1 && errno != ENOENT) {
+		ERR("%s: fstatat", f->path);
+		return -1;
+	}
 	if (rc != -1 && !S_ISSOCK(st.st_mode)) {
 		if (S_ISDIR(st.st_mode) &&
 		    unlinkat(p->rootfd, f->path, AT_REMOVEDIR) == -1) {
@@ -468,9 +476,6 @@ pre_sock(struct upload *p, struct sess *sess)
 			return -1;
 		}
 		rc = -1;
-	} else if (rc == -1 && errno != ENOENT) {
-		ERR("%s: fstatat", f->path);
-		return -1;
 	}
 
 	if (rc == -1) {
@@ -533,7 +538,8 @@ pre_dir(const struct upload *p, struct sess *sess)
 	if (rc == -1 && errno != ENOENT) {
 		ERR("%s: fstatat", f->path);
 		return -1;
-	} else if (rc != -1 && !S_ISDIR(st.st_mode)) {
+	}
+	if (rc != -1 && !S_ISDIR(st.st_mode)) {
 		ERRX("%s: not a directory", f->path);
 		return -1;
 	} else if (rc != -1) {
@@ -645,6 +651,7 @@ pre_file(const struct upload *p, int *filefd, struct stat *st,
     struct sess *sess)
 {
 	const struct flist *f;
+	int rc;
 
 	f = &p->fl[p->idx];
 	assert(S_ISREG(f->st.mode));
@@ -661,49 +668,42 @@ pre_file(const struct upload *p, int *filefd, struct stat *st,
 	/*
 	 * For non dry-run cases, we'll write the acknowledgement later
 	 * in the rsync_uploader() function.
-	 * If the call to openat() fails with ENOENT, there's a
-	 * fast-path between here and the write function.
 	 */
 
-	*filefd = openat(p->rootfd, f->path,
-		O_RDONLY | O_NOFOLLOW, 0);
+	*filefd = -1;
+	rc = fstatat(p->rootfd, f->path, st, AT_SYMLINK_NOFOLLOW);
 
-	if (*filefd == -1 && errno != ENOENT) {
-		ERR("%s: openat", f->path);
+	if (rc == -1) {
+		if (errno == ENOENT)
+			return 1;
+
+		ERR("%s: fstatat", f->path);
 		return -1;
 	}
-	if (*filefd == -1)
+	if (!S_ISREG(st->st_mode)) {
+		if (S_ISDIR(st->st_mode) &&
+		    unlinkat(p->rootfd, f->path, AT_REMOVEDIR) == -1) {
+			ERR("%s: unlinkat", f->path);
+			return -1;
+		}
 		return 1;
-
-	/*
-	 * Check if the file is already up to date, in which case close it
-	 * and go to the next one.
-	 */
-
-	if (fstat(*filefd, st) == -1) {
-		ERR("%s: fstat", f->path);
-		close(*filefd);
-		*filefd = -1;
-		return -1;
-	} else if (!S_ISREG(st->st_mode)) {
-		ERRX("%s: not regular", f->path);
-		close(*filefd);
-		*filefd = -1;
-		return -1;
 	}
 
+	/* quick check if file is the same */
 	if (st->st_size == f->st.size &&
 	    st->st_mtime == f->st.mtime) {
 		LOG3("%s: skipping: up to date", f->path);
-		if (!rsync_set_metadata(sess, 0, *filefd, f, f->path)) {
+		if (!rsync_set_metadata_at(sess, 0, p->rootfd, f, f->path)) {
 			ERRX1("rsync_set_metadata");
-			close(*filefd);
-			*filefd = -1;
 			return -1;
 		}
-		close(*filefd);
-		*filefd = -1;
 		return 0;
+	}
+
+	*filefd = openat(p->rootfd, f->path, O_RDONLY | O_NOFOLLOW, 0);
+	if (*filefd == -1 && errno != ENOENT) {
+		ERR("%s: openat", f->path);
+		return -1;
 	}
 
 	/* file needs attention */
@@ -785,8 +785,7 @@ rsync_uploader(struct upload *u, int *fileinfd,
 	off_t		    offs;
 	int		    c;
 
-	/* This should never get called. */
-
+	/* Once finished this should never get called again. */
 	assert(u->state != UPLOAD_FINISHED);
 
 	/*
@@ -913,6 +912,7 @@ rsync_uploader(struct upload *u, int *fileinfd,
 			ERR("malloc");
 			close(*fileinfd);
 			*fileinfd = -1;
+			free(blk.blks);
 			return -1;
 		}
 
@@ -925,6 +925,7 @@ rsync_uploader(struct upload *u, int *fileinfd,
 				close(*fileinfd);
 				*fileinfd = -1;
 				free(mbuf);
+				free(blk.blks);
 				return -1;
 			}
 			init_blk(&blk.blks[i], &blk, offs, i, mbuf, sess);
@@ -967,6 +968,7 @@ rsync_uploader(struct upload *u, int *fileinfd,
 	if (u->bufsz > u->bufmax) {
 		if ((bufp = realloc(u->buf, u->bufsz)) == NULL) {
 			ERR("realloc");
+			free(blk.blks);
 			return -1;
 		}
 		u->buf = bufp;

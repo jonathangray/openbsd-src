@@ -1,5 +1,5 @@
 #!/usr/bin/env perl
-#	$OpenBSD: gen_ctype_utf8.pl,v 1.5 2020/02/20 02:51:56 afresh1 Exp $	#
+#	$OpenBSD: gen_ctype_utf8.pl,v 1.7 2021/05/16 22:48:05 afresh1 Exp $	#
 use 5.022;
 use warnings;
 
@@ -53,7 +53,7 @@ print <<'EOL';
 /*
  * COPYRIGHT AND PERMISSION NOTICE
  *
- * Copyright (c) 1991-2019 Unicode, Inc. All rights reserved.
+ * Copyright (c) 1991-2021 Unicode, Inc. All rights reserved.
  * Distributed under the Terms of Use in
  * https://www.unicode.org/copyright.html.
  *
@@ -402,8 +402,8 @@ sub codepoint_columns
 	my ( $code, $charinfo ) = @_;
 	return undef unless defined $code;
 
-	# Several fonts provide glyphs in this range
-	return 1 if $code >= 0xe000 and $code <= 0xf8ff;
+	# Private use areas are _most likely_ used by one column glyphs                                                 
+	return 1 if $charinfo->{category} eq 'Co';                                                                      
 
 	return 0 if $charinfo->{category} eq 'Mn';
 	return 0 if $charinfo->{category} eq 'Me';

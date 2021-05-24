@@ -1,4 +1,4 @@
-/* $OpenBSD: pciecam.c,v 1.14 2021/03/22 20:30:21 patrick Exp $ */
+/* $OpenBSD: pciecam.c,v 1.2 2021/05/19 20:10:38 kettenis Exp $ */
 /*
  * Copyright (c) 2013,2017 Patrick Wildt <patrick@blueri.se>
  *
@@ -89,13 +89,13 @@ struct pciecam_softc {
 	struct extent			*sc_memex;
 	char				 sc_ioex_name[32];
 	char				 sc_memex_name[32];
-	struct arm64_pci_chipset	 sc_pc;
+	struct machine_pci_chipset	 sc_pc;
 };
 
 struct pciecam_intr_handle {
-	struct arm_intr_handle	 pih_ih;
-	bus_dma_tag_t		 pih_dmat;
-	bus_dmamap_t		 pih_map;
+	struct machine_intr_handle	 pih_ih;
+	bus_dma_tag_t			 pih_dmat;
+	bus_dmamap_t			 pih_map;
 };
 
 int pciecam_match(struct device *, void *, void *);
@@ -262,7 +262,10 @@ pciecam_attach(struct device *parent, struct device *self, void *aux)
 	pba.pba_pc = &sc->sc_pc;
 	pba.pba_domain = pci_ndomains++;
 	pba.pba_bus = 0;
-	pba.pba_flags |= PCI_FLAGS_MSI_ENABLED;
+
+	if (OF_getproplen(sc->sc_node, "msi-map") > 0 ||
+	    OF_getproplen(sc->sc_node, "msi-parent") > 0)
+		pba.pba_flags |= PCI_FLAGS_MSI_ENABLED;
 
 	config_found(self, &pba, NULL);
 }

@@ -1,4 +1,4 @@
-/*	$OpenBSD: ftpd.c,v 1.229 2020/01/15 22:06:59 jan Exp $	*/
+/*	$OpenBSD: ftpd.c,v 1.232 2021/05/23 17:01:21 jan Exp $	*/
 /*	$NetBSD: ftpd.c,v 1.15 1995/06/03 22:46:47 mycroft Exp $	*/
 
 /*
@@ -191,28 +191,28 @@ char	proctitle[BUFSIZ];	/* initial part of title */
 			(long long)(cnt)); \
 	}
 
-static void	 ack(char *);
+static void	 ack(const char *);
 static void	 sigurg(int);
 static void	 myoob(void);
-static int	 checkuser(char *, char *);
-static FILE	*dataconn(char *, off_t, char *);
+static int	 checkuser(char *, const char *);
+static FILE	*dataconn(const char *, off_t, char *);
 static void	 dolog(struct sockaddr *);
 static char	*copy_dir(char *, struct passwd *);
 static char	*curdir(void);
 static void	 end_login(void);
 static FILE	*getdatasock(char *);
-static int	 guniquefd(char *, char **);
+static int	 guniquefd(const char *, char **);
 static void	 lostconn(int);
 static void	 sigquit(int);
 static int	 receive_data(FILE *, FILE *);
 static void	 replydirname(const char *, const char *);
 static int	 send_data(FILE *, FILE *, off_t, off_t, int);
 static struct passwd *
-		 sgetpwnam(char *, struct passwd *);
+		 sgetpwnam(const char *, struct passwd *);
 static void	 reapchild(int);
 static void	 usage(void);
 
-void	 logxfer(char *, off_t, time_t);
+void	 logxfer(const char *, off_t, time_t);
 void	 set_slave_signals(void);
 
 static char *
@@ -568,7 +568,6 @@ main(int argc, char *argv[])
 			line[strcspn(line, "\n")] = '\0';
 			lreply(530, "%s", line);
 		}
-		(void) fflush(stdout);
 		(void) fclose(fp);
 		reply(530, "System not available.");
 		exit(0);
@@ -578,7 +577,6 @@ main(int argc, char *argv[])
 			line[strcspn(line, "\n")] = '\0';
 			lreply(220, "%s", line);
 		}
-		(void) fflush(stdout);
 		(void) fclose(fp);
 		/* reply(220,) must follow */
 	}
@@ -638,7 +636,7 @@ sigquit(int signo)
  * (e.g., globbing).
  */
 static struct passwd *
-sgetpwnam(char *name, struct passwd *pw)
+sgetpwnam(const char *name, struct passwd *pw)
 {
 	static struct passwd *save;
 	struct passwd *old;
@@ -819,7 +817,7 @@ user(char *name)
  * Check if a user is in the file "fname"
  */
 static int
-checkuser(char *fname, char *name)
+checkuser(char *fname, const char *name)
 {
 	FILE *fp;
 	int found = 0;
@@ -1078,7 +1076,6 @@ pass(char *passwd)
 			line[strcspn(line, "\n")] = '\0';
 			lreply(230, "%s", line);
 		}
-		(void) fflush(stdout);
 		(void) fclose(fp);
 	}
 	free(motd);
@@ -1113,7 +1110,7 @@ bad:
 }
 
 void
-retrieve(enum ret_cmd cmd, char *name)
+retrieve(enum ret_cmd cmd, const char *name)
 {
 	FILE *fin, *dout;
 	struct stat st;
@@ -1189,7 +1186,7 @@ done:
 }
 
 void
-store(char *name, char *mode, int unique)
+store(const char *name, const char *mode, int unique)
 {
 	FILE *fout, *din;
 	int (*closefunc)(FILE *);
@@ -1335,7 +1332,7 @@ bad:
 }
 
 static FILE *
-dataconn(char *name, off_t size, char *mode)
+dataconn(const char *name, off_t size, char *mode)
 {
 	char sizebuf[32];
 	FILE *file = NULL;
@@ -1724,7 +1721,7 @@ got_oob:
 }
 
 void
-statfilecmd(char *filename)
+statfilecmd(const char *filename)
 {
 	FILE *fin;
 	int c;
@@ -1885,7 +1882,7 @@ printaddr:
 }
 
 void
-fatal(char *s)
+fatal(const char *s)
 {
 
 	reply(451, "Error in server: %s", s);
@@ -1968,14 +1965,14 @@ lreply(int n, const char *fmt, ...)
 }
 
 static void
-ack(char *s)
+ack(const char *s)
 {
 
 	reply(250, "%s command successful.", s);
 }
 
 void
-nack(char *s)
+nack(const char *s)
 {
 
 	reply(502, "%s command not implemented.", s);
@@ -1990,7 +1987,7 @@ yyerror(char *s)
 }
 
 void
-delete(char *name)
+delete(const char *name)
 {
 	struct stat st;
 
@@ -2029,7 +2026,6 @@ cwd(char *path)
 				line[strcspn(line, "\n")] = '\0';
 				lreply(250, "%s", line);
 			}
-			(void) fflush(stdout);
 			(void) fclose(message);
 		}
 		ack("CWD");
@@ -2061,7 +2057,7 @@ replydirname(const char *name, const char *message)
 }
 
 void
-makedir(char *name)
+makedir(const char *name)
 {
 
 	LOGCMD("mkdir", name);
@@ -2072,7 +2068,7 @@ makedir(char *name)
 }
 
 void
-removedir(char *name)
+removedir(const char *name)
 {
 
 	LOGCMD("rmdir", name);
@@ -2107,7 +2103,7 @@ renamefrom(char *name)
 }
 
 void
-renamecmd(char *from, char *to)
+renamecmd(const char *from, const char *to)
 {
 
 	LOGCMD2("rename", from, to);
@@ -2179,7 +2175,7 @@ myoob(void)
 	if (!transflag)
 		return;
 	cp = tmpline;
-	ret = get_line(cp, sizeof(tmpline)-1, stdin);
+	ret = get_line(cp, sizeof(tmpline)-1);
 	if (ret == -1) {
 		reply(221, "You could at least say goodbye.");
 		dologout(0);
@@ -2299,7 +2295,7 @@ af2epsvproto(int af)
  * 229 Entering Extended Passive Mode (|||port|)
  */
 void
-long_passive(char *cmd, int pf)
+long_passive(const char *cmd, int pf)
 {
 	socklen_t len;
 	int on = 1;
@@ -2534,7 +2530,7 @@ epsv_protounsupp(const char *message)
  * Generates failure reply on error.
  */
 static int
-guniquefd(char *local, char **nam)
+guniquefd(const char *local, char **nam)
 {
 	static char new[PATH_MAX];
 	struct stat st;
@@ -2573,7 +2569,7 @@ guniquefd(char *local, char **nam)
  * Format and send reply containing system error number.
  */
 void
-perror_reply(int code, char *string)
+perror_reply(int code, const char *string)
 {
 
 	reply(code, "%s: %s.", string, strerror(errno));
@@ -2737,7 +2733,7 @@ reapchild(int signo)
 }
 
 void
-logxfer(char *name, off_t size, time_t start)
+logxfer(const char *name, off_t size, time_t start)
 {
 	char buf[400 + (HOST_NAME_MAX+1)*4 + PATH_MAX*4];
 	char dir[PATH_MAX], path[PATH_MAX], rpath[PATH_MAX];

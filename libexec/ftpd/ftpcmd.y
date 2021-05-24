@@ -1,4 +1,4 @@
-/*	$OpenBSD: ftpcmd.y,v 1.69 2020/03/04 20:17:48 millert Exp $	*/
+/*	$OpenBSD: ftpcmd.y,v 1.72 2021/05/23 17:01:21 jan Exp $	*/
 /*	$NetBSD: ftpcmd.y,v 1.7 1996/04/08 19:03:11 jtc Exp $	*/
 
 /*
@@ -1065,8 +1065,8 @@ struct tab sitetab[] = {
 
 static void	 help(struct tab *, char *);
 static struct tab *
-		 lookup(struct tab *, char *);
-static void	 sizecmd(char *);
+		 lookup(struct tab *, const char *);
+static void	 sizecmd(const char *);
 static int	 yylex(void);
 
 extern int epsvall;
@@ -1074,7 +1074,7 @@ extern int epsvall;
 static struct tab *
 lookup(p, cmd)
 	struct tab *p;
-	char *cmd;
+	const char *cmd;
 {
 
 	for (; p->name != NULL; p++)
@@ -1089,10 +1089,9 @@ lookup(p, cmd)
  * get_line - a hacked up version of fgets to ignore TELNET escape codes.
  */
 int
-get_line(s, n, iop)
+get_line(s, n)
 	char *s;
 	int n;
-	FILE *iop;
 {
 	int c;
 	char *cs;
@@ -1111,21 +1110,21 @@ get_line(s, n, iop)
 		if (c == 0)
 			tmpline[0] = '\0';
 	}
-	while ((c = getc(iop)) != EOF) {
+	while ((c = getc(stdin)) != EOF) {
 		c &= 0377;
 		if (c == IAC) {
-		    if ((c = getc(iop)) != EOF) {
+		    if ((c = getc(stdin)) != EOF) {
 			c &= 0377;
 			switch (c) {
 			case WILL:
 			case WONT:
-				c = getc(iop);
+				c = getc(stdin);
 				printf("%c%c%c", IAC, DONT, 0377&c);
 				(void) fflush(stdout);
 				continue;
 			case DO:
 			case DONT:
-				c = getc(iop);
+				c = getc(stdin);
 				printf("%c%c%c", IAC, WONT, 0377&c);
 				(void) fflush(stdout);
 				continue;
@@ -1144,7 +1143,7 @@ get_line(s, n, iop)
 			 * This prevents the command to be split up into
 			 * multiple commands.
 			 */
-			while (c != '\n' && (c = getc(iop)) != EOF)
+			while (c != '\n' && (c = getc(stdin)) != EOF)
 				;
 			return (-2);
 		}
@@ -1204,7 +1203,7 @@ yylex()
 
 		case CMD:
 			(void) alarm((unsigned) timeout);
-			n = get_line(cbuf, sizeof(cbuf)-1, stdin);
+			n = get_line(cbuf, sizeof(cbuf)-1);
 			if (n == -1) {
 				reply(221, "You could at least say goodbye.");
 				dologout(0);
@@ -1435,10 +1434,8 @@ upper(s)
 {
 	char *p;
 
-	for (p = s; *p; p++) {
-		if (islower((unsigned char)*p))
-			*p = (char)toupper((unsigned char)*p);
-	}
+	for (p = s; *p; p++)
+		*p = (char)toupper((unsigned char)*p);
 }
 
 static void
@@ -1508,7 +1505,7 @@ help(ctab, s)
 
 static void
 sizecmd(filename)
-	char *filename;
+	const char *filename;
 {
 	switch (type) {
 	case TYPE_L:

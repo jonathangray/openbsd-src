@@ -1,4 +1,4 @@
-/*	$OpenBSD: smtpc.c,v 1.15 2021/04/10 10:19:19 eric Exp $	*/
+/*	$OpenBSD: smtpc.c,v 1.17 2021/05/23 15:57:32 eric Exp $	*/
 
 /*
  * Copyright (c) 2018 Eric Faurot <eric@openbsd.org>
@@ -48,14 +48,78 @@ static struct smtp_mail mail;
 static const char *servname = NULL;
 static struct tls_config *tls_config;
 
+static int nosni = 0;
+static const char *cafile = NULL;
+static const char *protocols = NULL;
+static const char *ciphers = NULL;
+
 static void
 usage(void)
 {
 	extern char *__progname;
 
 	fprintf(stderr, "usage: %s [-Chnv] [-a authfile] [-F from] [-H helo] "
-	    "[-s server] [recipient ...]\n", __progname);
+	    "[-s server] [-T params] [recipient ...]\n", __progname);
 	exit(1);
+}
+
+static void
+parse_tls_options(char *opt)
+{
+	static char * const tokens[] = {
+#define CAFILE 0
+		"cafile",
+#define CIPHERS 1
+		"ciphers",
+#define NOSNI 2
+		"nosni",
+#define NOVERIFY 3
+		"noverify",
+#define PROTOCOLS 4
+		"protocols",
+#define SERVERNAME 5
+		"servername",
+		NULL };
+	char *value;
+
+	while (*opt) {
+		switch (getsubopt(&opt, tokens, &value)) {
+		case CAFILE:
+			if (value == NULL)
+				fatalx("missing value for cafile");
+			cafile = value;
+			break;
+		case CIPHERS:
+			if (value == NULL)
+				fatalx("missing value for ciphers");
+			ciphers = value;
+			break;
+		case NOSNI:
+			if (value != NULL)
+				fatalx("no value expected for nosni");
+			nosni = 1;
+			break;
+		case NOVERIFY:
+			if (value != NULL)
+				fatalx("no value expected for noverify");
+			params.tls_verify = 0;
+			break;
+		case PROTOCOLS:
+			if (value == NULL)
+				fatalx("missing value for protocols");
+			protocols = value;
+			break;
+		case SERVERNAME:
+			if (value == NULL)
+				fatalx("missing value for servername");
+			servname = value;
+			break;
+		case -1:
+			if (suboptarg)
+				fatalx("invalid TLS option \"%s\"", suboptarg);
+			fatalx("missing TLS option");
+		}
+	}
 }
 
 int
@@ -64,6 +128,7 @@ main(int argc, char **argv)
 	char hostname[256];
 	FILE *authfile;
 	int ch, i;
+	uint32_t protos;
 	char *server = "localhost";
 	char *authstr = NULL;
 	size_t alloc = 0;
@@ -91,7 +156,7 @@ main(int argc, char **argv)
 	memset(&mail, 0, sizeof(mail));
 	mail.from = pw->pw_name;
 
-	while ((ch = getopt(argc, argv, "CF:H:S:a:hns:v")) != -1) {
+	while ((ch = getopt(argc, argv, "CF:H:S:T:a:hns:v")) != -1) {
 		switch (ch) {
 		case 'C':
 			params.tls_verify = 0;
@@ -104,6 +169,9 @@ main(int argc, char **argv)
 			break;
 		case 'S':
 			servname = optarg;
+			break;
+		case 'T':
+			parse_tls_options(optarg);
 			break;
 		case 'a':
 			if ((authfile = fopen(optarg, "r")) == NULL)
@@ -159,7 +227,21 @@ main(int argc, char **argv)
 	tls_config = tls_config_new();
 	if (tls_config == NULL)
 		fatal("tls_config_new");
-	if (tls_config_set_ca_file(tls_config, tls_default_ca_cert_file()) == -1)
+
+	if (protocols) {
+		if (tls_config_parse_protocols(&protos, protocols) == -1)
+			fatalx("failed to parse protocol '%s'", protocols);
+		if (tls_config_set_protocols(tls_config, protos) == -1)
+			fatalx("tls_config_set_protocols: %s",
+			    tls_config_error(tls_config));
+	}
+	if (ciphers && tls_config_set_ciphers(tls_config, ciphers) == -1)
+		fatalx("tls_config_set_ciphers: %s",
+		    tls_config_error(tls_config));
+
+	if (cafile == NULL)
+		cafile = tls_default_ca_cert_file();
+	if (tls_config_set_ca_file(tls_config, cafile) == -1)
 		fatal("tls_set_ca_file");
 	if (!params.tls_verify) {
 		tls_config_insecure_noverifycert(tls_config);
@@ -283,7 +365,8 @@ parse_server(char *server)
 
 	if (servname == NULL)
 		servname = host;
-	params.tls_servname = servname;
+	if (nosni == 0)
+		params.tls_servname = servname;
 
 	memset(&hints, 0, sizeof(hints));
 	hints.ai_family = AF_UNSPEC;
