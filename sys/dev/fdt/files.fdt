@@ -1,4 +1,4 @@
-#	$OpenBSD: files.fdt,v 1.151 2021/05/18 11:39:37 kettenis Exp $
+#	$OpenBSD: files.fdt,v 1.153 2021/05/28 15:52:11 visa Exp $
 #
 # Config file and device description for machine-independent FDT code.
 # Included by ports that need it.
@@ -276,6 +276,10 @@ device	amlusbphy
 attach	amlusbphy at fdt
 file	dev/fdt/amlusbphy.c		amlusbphy
 
+device	cad: ether, ifnet, mii, ifmedia
+attach	cad at fdt
+file	dev/fdt/if_cad.c		cad
+
 device	cduart
 attach	cduart at fdt
 file	dev/fdt/cduart.c		cduart
@@ -468,6 +472,10 @@ file	dev/fdt/imxanatop.c		imxanatop
 device	imxccm
 attach	imxccm at fdt
 file	dev/fdt/imxccm.c		imxccm
+
+device	imxdog
+attach	imxdog at fdt
+file	dev/fdt/imxdog.c		imxdog
 
 device	imxdwusb: fdt
 attach	imxdwusb at fdt

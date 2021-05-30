@@ -1,4 +1,4 @@
-# $OpenBSD: RAMDISK,v 1.149 2021/05/14 08:10:39 jsg Exp $
+# $OpenBSD: RAMDISK,v 1.153 2021/05/29 08:50:07 kettenis Exp $
 
 machine		arm64
 maxusers	4
@@ -98,16 +98,22 @@ wsdisplay*	at simplefb?
 # Apple
 apldart*	at fdt?
 apldog*		at fdt? early 1
+apldwusb*	at fdt?
 aplintc*	at fdt? early 1
 aplpcie*	at fdt?
 pci*		at aplpcie?
+aplspmi*	at fdt?
+aplpmu*		at aplspmi?
 exuart*		at fdt?
+aplns*		at fdt?			# Apple NVME Storage controllers
+nvme*		at aplns?
 
 # iMX
 imxccm*		at fdt? early 1
 imxiomuxc*	at fdt? early 1
 imxanatop*	at fdt? early 1
 imxsrc*		at fdt? early 1
+imxdog*		at fdt?
 imxdwusb*	at fdt?
 imxehci*	at fdt?
 usb*		at imxehci?

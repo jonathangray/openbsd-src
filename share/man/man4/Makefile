@@ -1,4 +1,4 @@
-#	$OpenBSD: Makefile,v 1.797 2021/05/01 16:11:09 visa Exp $
+#	$OpenBSD: Makefile,v 1.799 2021/05/28 15:52:11 visa Exp $
 
 MAN=	aac.4 abcrtc.4 abl.4 ac97.4 acphy.4 acrtc.4 \
 	acpi.4 acpiac.4 acpials.4 acpiasus.4 acpibat.4 \
@@ -23,7 +23,7 @@ MAN=	aac.4 abcrtc.4 abl.4 ac97.4 acphy.4 acrtc.4 \
 	bcmtmon.4 bdpmic.4 \
 	berkwdt.4 bge.4 bgw.4 bio.4 bpe.4 bktr.4 bmtphy.4 bnx.4 bnxt.4 \
 	boca.4 bpf.4 brgphy.4 bridge.4 brswphy.4 bse.4 bwfm.4 bwi.4 bytgpio.4 \
-	cac.4 cas.4 cardbus.4 carp.4 ccp.4 ccpmic.4 cd.4 cdce.4 \
+	cac.4 cad.4 cas.4 cardbus.4 carp.4 ccp.4 ccpmic.4 cd.4 cdce.4 \
 	cduart.4 cfxga.4 \
 	ch.4 chvgpio.4 ciphy.4 ciss.4 clcs.4 clct.4 cmpci.4 \
 	com.4 cue.4 cwfg.4 cy.4 cz.4 \
@@ -40,7 +40,7 @@ MAN=	aac.4 abcrtc.4 abl.4 ac97.4 acphy.4 acrtc.4 \
 	hireset.4 hitemp.4 hme.4 hotplug.4 hsq.4 \
 	hvn.4 hvs.4 hyperv.4 \
 	iatp.4 iavf.4 ichiic.4 ichwdt.4 icmp.4 icmp6.4 icsphy.4 ifmedia.4 \
-	iha.4 ihidev.4 iic.4 ikbd.4 ims.4 imt.4 imxanatop.4 \
+	iha.4 ihidev.4 iic.4 ikbd.4 ims.4 imt.4 imxanatop.4 imxdog.4 \
 	imxesdhc.4 imxgpc.4 imxgpio.4 imxiic.4 imxpciephy.4 imxpwm.4 imxrtc.4 \
 	imxspi.4 imxsrc.4 imxtmu.4 imxuart.4 inet.4 inet6.4 inphy.4 iophy.4 \
 	ip.4 ip6.4 ipcomp.4 ipgphy.4 ipmi.4 ips.4 ipsec.4 ipw.4 \

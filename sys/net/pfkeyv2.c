@@ -1,4 +1,4 @@
-/* $OpenBSD: pfkeyv2.c,v 1.211 2021/05/04 09:28:04 mvs Exp $ */
+/* $OpenBSD: pfkeyv2.c,v 1.214 2021/05/26 08:28:34 mvs Exp $ */
 
 /*
  *	@(#)COPYRIGHT	1.1 (NRL) 17 January 1995
@@ -122,15 +122,10 @@ static const struct sadb_alg calgs[] = {
 	{ SADB_X_CALG_LZS, 0, 0, 0}
 };
 
-extern uint64_t sadb_exts_allowed_out[SADB_MAX+1];
-extern uint64_t sadb_exts_required_out[SADB_MAX+1];
-
-extern struct pool ipsec_policy_pool;
-
 struct pool pkpcb_pool;
 #define PFKEY_MSG_MAXSZ 4096
 const struct sockaddr pfkey_addr = { 2, PF_KEY, };
-struct domain pfkeydomain;
+const struct domain pfkeydomain;
 
 /*
  * pfkey PCB
@@ -219,7 +214,7 @@ static struct protosw pfkeysw[] = {
 }
 };
 
-struct domain pfkeydomain = {
+const struct domain pfkeydomain = {
   .dom_family = PF_KEY,
   .dom_name = "PF_KEY",
   .dom_init = pfkey_init,
@@ -251,7 +246,7 @@ pfkey_init(void)
 	rw_init(&pkptable.pkp_lk, "pfkey");
 	SRPL_INIT(&pkptable.pkp_list);
 	pool_init(&pkpcb_pool, sizeof(struct pkpcb), 0,
-	    IPL_NONE, PR_WAITOK, "pkpcb", NULL);
+	    IPL_SOFTNET, PR_WAITOK, "pkpcb", NULL);
 	pool_init(&ipsec_policy_pool, sizeof(struct ipsec_policy), 0,
 	    IPL_SOFTNET, 0, "ipsec policy", NULL);
 }
@@ -320,8 +315,10 @@ pfkeyv2_detach(struct socket *so)
 	    kcb_list);
 	rw_exit(&pkptable.pkp_lk);
 
+	sounlock(so, SL_LOCKED);
 	/* wait for all references to drop */
 	refcnt_finalize(&kp->kcb_refcnt, "pfkeyrefs");
+	solock(so);
 
 	so->so_pcb = NULL;
 	KASSERT((so->so_state & SS_NOFDREF) == 0);
@@ -435,7 +432,14 @@ pfkeyv2_output(struct mbuf *mbuf, struct socket *so,
 
 	m_copydata(mbuf, 0, mbuf->m_pkthdr.len, message);
 
+	/*
+	 * The socket can't be closed concurrently because the file
+	 * descriptor reference is still held.
+	 */
+
+	sounlock(so, SL_LOCKED);
 	error = pfkeyv2_send(so, message, mbuf->m_pkthdr.len);
+	solock(so);
 
 ret:
 	m_freem(mbuf);

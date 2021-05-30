@@ -1,4 +1,4 @@
-# $OpenBSD: files.arm64,v 1.40 2021/05/18 11:39:37 kettenis Exp $
+# $OpenBSD: files.arm64,v 1.43 2021/05/28 04:36:33 dlg Exp $
 
 maxpartitions	16
 maxusers	2 8 128
@@ -144,6 +144,10 @@ device	apldog
 attach	apldog at fdt
 file	arch/arm64/dev/apldog.c			apldog
 
+device	apldwusb: fdt
+attach	apldwusb at fdt
+file	arch/arm64/dev/apldwusb.c		apldwusb
+
 device	aplintc
 attach	aplintc at fdt
 file	arch/arm64/dev/aplintc.c		aplintc
@@ -151,6 +155,21 @@ file	arch/arm64/dev/aplintc.c		aplintc
 device	aplpcie: pcibus
 attach	aplpcie at fdt
 file	arch/arm64/dev/aplpcie.c		aplpcie
+
+# Apple NVME Storage
+device	aplns {}
+attach	aplns at fdt
+attach	nvme at aplns with nvme_ans
+file	arch/arm64/dev/aplns.c			aplns | nvme_ans
+
+define	spmi {}
+device	aplpmu
+attach	aplpmu at spmi
+file	arch/arm64/dev/aplpmu.c			aplpmu
+
+device	aplspmi: spmi
+attach	aplspmi at fdt
+file	arch/arm64/dev/aplspmi.c		aplspmi
 
 device	bcmintc
 attach	bcmintc at fdt

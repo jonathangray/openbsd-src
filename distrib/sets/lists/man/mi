@@ -1232,7 +1232,10 @@
 ./usr/share/man/man4/arm64/apldart.4
 ./usr/share/man/man4/arm64/apldog.4
 ./usr/share/man/man4/arm64/aplintc.4
+./usr/share/man/man4/arm64/aplns.4
 ./usr/share/man/man4/arm64/aplpcie.4
+./usr/share/man/man4/arm64/aplpmu.4
+./usr/share/man/man4/arm64/aplspmi.4
 ./usr/share/man/man4/arm64/apm.4
 ./usr/share/man/man4/arm64/efi.4
 ./usr/share/man/man4/arm64/intro.4
@@ -1323,6 +1326,7 @@
 ./usr/share/man/man4/bwi.4
 ./usr/share/man/man4/bytgpio.4
 ./usr/share/man/man4/cac.4
+./usr/share/man/man4/cad.4
 ./usr/share/man/man4/cardbus.4
 ./usr/share/man/man4/carp.4
 ./usr/share/man/man4/cas.4
@@ -1504,6 +1508,7 @@
 ./usr/share/man/man4/ims.4
 ./usr/share/man/man4/imt.4
 ./usr/share/man/man4/imxanatop.4
+./usr/share/man/man4/imxdog.4
 ./usr/share/man/man4/imxesdhc.4
 ./usr/share/man/man4/imxgpc.4
 ./usr/share/man/man4/imxgpio.4

@@ -1,4 +1,4 @@
-.\"	$OpenBSD: nvme.4,v 1.2 2016/04/14 11:53:37 jmc Exp $
+.\"	$OpenBSD: nvme.4,v 1.3 2021/05/28 04:49:44 dlg Exp $
 .\"
 .\" Copyright (c) 2016 David Gwynne <dlg@openbsd.org>
 .\"
@@ -14,7 +14,7 @@
 .\" ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 .\" OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: April 14 2016 $
+.Dd $Mdocdate: May 28 2021 $
 .Dt NVME 4
 .Os
 .Sh NAME
@@ -22,6 +22,7 @@
 .Nd Non-Volatile Memory Host Controller Interface
 .Sh SYNOPSIS
 .Cd "nvme* at pci?"
+.Cd "nvme* at aplns?                # arm64"
 .Sh DESCRIPTION
 The
 .Nm
@@ -33,6 +34,7 @@ Although the NVMe specification provides its own command set, the
 .Nm
 driver provides access to the storage via a SCSI translation layer.
 .Sh SEE ALSO
+.Xr aplns 4 ,
 .Xr intro 4 ,
 .Xr pci 4 ,
 .Xr scsi 4

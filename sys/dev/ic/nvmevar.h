@@ -1,4 +1,4 @@
-/*	$OpenBSD: nvmevar.h,v 1.20 2020/07/22 13:16:04 krw Exp $ */
+/*	$OpenBSD: nvmevar.h,v 1.27 2021/05/28 04:39:54 dlg Exp $ */
 
 /*
  * Copyright (c) 2014 David Gwynne <dlg@openbsd.org>
@@ -56,6 +56,7 @@ struct nvme_queue {
 	struct mutex		q_cq_mtx;
 	struct nvme_dmamem	*q_sq_dmamem;
 	struct nvme_dmamem	*q_cq_dmamem;
+	struct nvme_dmamem	*q_nvmmu_dmamem; /* for aplns(4) */
 	bus_size_t 		q_sqtdbl; /* submission queue tail doorbell */
 	bus_size_t 		q_cqhdbl; /* completion queue head doorbell */
 	u_int16_t		q_id;
@@ -69,8 +70,31 @@ struct nvme_namespace {
 	struct nvm_identify_namespace *ident;
 };
 
+struct nvme_ops {
+	void		(*op_enable)(struct nvme_softc *);
+
+	int		(*op_q_alloc)(struct nvme_softc *,
+			      struct nvme_queue *);
+	void		(*op_q_free)(struct nvme_softc *,
+			      struct nvme_queue *);
+
+	uint32_t	(*op_sq_enter)(struct nvme_softc *,
+			      struct nvme_queue *, struct nvme_ccb *);
+	void		(*op_sq_leave)(struct nvme_softc *,
+			      struct nvme_queue *, struct nvme_ccb *);
+	uint32_t	(*op_sq_enter_locked)(struct nvme_softc *,
+			      struct nvme_queue *, struct nvme_ccb *);
+	void		(*op_sq_leave_locked)(struct nvme_softc *,
+			      struct nvme_queue *, struct nvme_ccb *);
+
+	void		(*op_cq_done)(struct nvme_softc *,
+			      struct nvme_queue *, struct nvme_ccb *);
+};
+
 struct nvme_softc {
 	struct device		sc_dev;
+
+	const struct nvme_ops	*sc_ops;
 
 	bus_space_tag_t		sc_iot;
 	bus_space_handle_t	sc_ioh;
@@ -102,9 +126,26 @@ struct nvme_softc {
 	struct scsi_iopool	sc_iopool;
 };
 
+#define DEVNAME(_sc) ((_sc)->sc_dev.dv_xname)
+
 int	nvme_attach(struct nvme_softc *);
 int	nvme_activate(struct nvme_softc *, int);
 int	nvme_intr(void *);
 int	nvme_intr_intx(void *);
 
-#define DEVNAME(_sc) ((_sc)->sc_dev.dv_xname)
+#define nvme_read4(_s, _r) \
+	bus_space_read_4((_s)->sc_iot, (_s)->sc_ioh, (_r))
+#define nvme_write4(_s, _r, _v) \
+	bus_space_write_4((_s)->sc_iot, (_s)->sc_ioh, (_r), (_v))
+
+u_int64_t
+	nvme_read8(struct nvme_softc *, bus_size_t);
+void	nvme_write8(struct nvme_softc *, bus_size_t, u_int64_t);
+
+#define nvme_barrier(_s, _r, _l, _f) \
+	bus_space_barrier((_s)->sc_iot, (_s)->sc_ioh, (_r), (_l), (_f))
+
+struct nvme_dmamem *
+	nvme_dmamem_alloc(struct nvme_softc *, size_t);
+void	nvme_dmamem_free(struct nvme_softc *, struct nvme_dmamem *);
+void	nvme_dmamem_sync(struct nvme_softc *, struct nvme_dmamem *, int);

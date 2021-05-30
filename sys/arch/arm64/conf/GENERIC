@@ -1,4 +1,4 @@
-# $OpenBSD: GENERIC,v 1.197 2021/05/18 14:25:59 kevlo Exp $
+# $OpenBSD: GENERIC,v 1.202 2021/05/29 08:50:07 kettenis Exp $
 #
 # GENERIC machine description file
 #
@@ -134,16 +134,22 @@ wsdisplay*	at amdgpu?
 # Apple
 apldart*	at fdt?
 apldog*		at fdt? early 1
+apldwusb*	at fdt?
 aplintc*	at fdt? early 1
 aplpcie*	at fdt?
 pci*		at aplpcie?
+aplspmi*	at fdt?
+aplpmu*		at aplspmi?
 exuart*		at fdt?
+aplns*		at fdt?			# Apple NVME Storage controllers
+nvme*		at aplns?
 
 # iMX
 imxccm*		at fdt? early 1
 imxiomuxc*	at fdt? early 1
 imxanatop*	at fdt? early 1
 imxsrc*		at fdt? early 1
+imxdog*		at fdt?
 imxdwusb*	at fdt?
 imxehci*	at fdt?
 usb*		at imxehci?
