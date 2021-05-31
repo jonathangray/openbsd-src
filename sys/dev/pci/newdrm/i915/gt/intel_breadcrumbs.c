@@ -354,11 +354,7 @@ void intel_breadcrumbs_park(struct intel_breadcrumbs *b)
 
 void intel_breadcrumbs_free(struct intel_breadcrumbs *b)
 {
-#ifdef notyet
 	irq_work_sync(&b->irq_work);
-#else
-	STUB();
-#endif
 	GEM_BUG_ON(!list_empty(&b->signalers));
 	GEM_BUG_ON(b->irq_armed);
 	kfree(b);
