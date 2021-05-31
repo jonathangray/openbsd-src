@@ -162,14 +162,20 @@ uobj_create_from_object(struct drm_i915_gem_object *obj)
 		return ERR_CAST(ptr);
 
 	uobj = uao_create(obj->base.size, 0);
+	if (uobj == NULL)
+		return ERR_PTR(-ENOMEM);
 
 	TAILQ_INIT(&from_plist);
-	if (uvm_objwire(obj->base.uao, 0, obj->base.size, &from_plist))
+	if (uvm_objwire(obj->base.uao, 0, obj->base.size, &from_plist)) {
+		uao_detach(uobj);
 		return ERR_PTR(-ENOMEM);
+	}
 
 	TAILQ_INIT(&to_plist);
-	if (uvm_objwire(uobj, 0, obj->base.size, &to_plist))
+	if (uvm_objwire(uobj, 0, obj->base.size, &to_plist)) {
+		uao_detach(uobj);
 		return ERR_PTR(-ENOMEM);
+	}
 
 	from_page = TAILQ_FIRST(&from_plist);
 	to_page = TAILQ_FIRST(&to_plist);
