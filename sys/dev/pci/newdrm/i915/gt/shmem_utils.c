@@ -147,6 +147,7 @@ uobj_create_from_object(struct drm_i915_gem_object *obj)
 	struct pglist from_plist, to_plist;
 	struct vm_page *from_page;
 	struct vm_page *to_page;
+	size_t len;
 	int i;
 
 #ifdef notyet
@@ -161,22 +162,23 @@ uobj_create_from_object(struct drm_i915_gem_object *obj)
 	if (IS_ERR(ptr))
 		return ERR_CAST(ptr);
 
-	uobj = uao_create(obj->base.size, 0);
+	len = PAGE_ALIGN(obj->base.size);
+	uobj = uao_create(len, 0);
 	if (uobj == NULL) {
 		i915_gem_object_unpin_map(obj);
 		return ERR_PTR(-ENOMEM);
 	}
 
 	TAILQ_INIT(&from_plist);
-	if (uvm_objwire(obj->base.uao, 0, obj->base.size, &from_plist)) {
+	if (uvm_objwire(obj->base.uao, 0, len, &from_plist)) {
 		uao_detach(uobj);
 		i915_gem_object_unpin_map(obj);
 		return ERR_PTR(-ENOMEM);
 	}
 
 	TAILQ_INIT(&to_plist);
-	if (uvm_objwire(uobj, 0, obj->base.size, &to_plist)) {
-		uvm_objunwire(obj->base.uao, 0, obj->base.size);
+	if (uvm_objwire(uobj, 0, len, &to_plist)) {
+		uvm_objunwire(obj->base.uao, 0, len);
 		uao_detach(uobj);
 		i915_gem_object_unpin_map(obj);
 		return ERR_PTR(-ENOMEM);
@@ -184,14 +186,14 @@ uobj_create_from_object(struct drm_i915_gem_object *obj)
 
 	from_page = TAILQ_FIRST(&from_plist);
 	to_page = TAILQ_FIRST(&to_plist);
-	for (i = 0; i < obj->base.size >> PAGE_SHIFT; ++i) {
+	for (i = 0; i < len >> PAGE_SHIFT; ++i) {
 		uvm_pagecopy(from_page, to_page);
 		to_page = TAILQ_NEXT(to_page, pageq);
 		from_page = TAILQ_NEXT(from_page, pageq);
 	}
 
-	uvm_objunwire(uobj, 0, obj->base.size);
-	uvm_objunwire(obj->base.uao, 0, obj->base.size);
+	uvm_objunwire(uobj, 0, len);
+	uvm_objunwire(obj->base.uao, 0, len);
 
 	i915_gem_object_unpin_map(obj);
 
