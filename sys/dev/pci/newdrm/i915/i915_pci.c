@@ -615,26 +615,10 @@ static const struct intel_device_info chv_info = {
 	.has_runtime_pm = 1,
 	.has_rc6 = 1,
 	.has_rps = true,
-#ifdef __linux__
 	.has_logical_ring_contexts = 1,
-#else
-	/*
-	 * avoid 'Resetting rcs0 for stopped heartbeat on rcs0' GPU hang
-	 * when starting X
-	 */
-	.has_logical_ring_contexts = 0,
-#endif
 	.display.has_gmch = 1,
 	.dma_mask_size = 39,
-#ifdef __linux__
 	.ppgtt_type = INTEL_PPGTT_FULL,
-#else
-	/*
-	 * Enabling ppgtt results in struct gen6_ppgtt
-	 * being overwritten.
-	 */
-	.ppgtt_type = INTEL_PPGTT_NONE,
-#endif
 	.ppgtt_size = 32,
 	.has_reset_engine = 1,
 	.has_snoop = true,
