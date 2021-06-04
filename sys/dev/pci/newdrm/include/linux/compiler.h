@@ -30,7 +30,7 @@
 
 #define barrier()	__asm __volatile("" : : : "memory")
 
-#define __printf(x, y)
+#define __printf(x, y)	__attribute__((__format__(__kprintf__,x,y)))
 
 /* The Linux code doesn't meet our usual standards! */
 #ifdef __clang__
