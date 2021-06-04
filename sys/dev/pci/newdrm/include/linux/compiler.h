@@ -41,7 +41,6 @@
 #pragma clang diagnostic ignored "-Wunneeded-internal-declaration"
 #pragma clang diagnostic ignored "-Wunused-function"
 #pragma clang diagnostic ignored "-Wunused-variable"
-#pragma clang diagnostic ignored "-Wmissing-braces"
 #else
 #pragma GCC diagnostic ignored "-Wformat-zero-length"
 #endif
