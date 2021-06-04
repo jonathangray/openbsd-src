@@ -626,7 +626,15 @@ static const struct intel_device_info chv_info = {
 #endif
 	.display.has_gmch = 1,
 	.dma_mask_size = 39,
+#ifdef __linux__
 	.ppgtt_type = INTEL_PPGTT_FULL,
+#else
+	/*
+	 * Enabling ppgtt results in struct gen6_ppgtt
+	 * being overwritten.
+	 */
+	.ppgtt_type = INTEL_PPGTT_NONE,
+#endif
 	.ppgtt_size = 32,
 	.has_reset_engine = 1,
 	.has_snoop = true,
