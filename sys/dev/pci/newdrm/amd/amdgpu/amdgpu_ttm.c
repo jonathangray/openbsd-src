@@ -266,7 +266,7 @@ static int amdgpu_ttm_map_buffer(struct ttm_buffer_object *bo,
 	*addr = adev->gmc.gart_start;
 	*addr += (u64)window * AMDGPU_GTT_MAX_TRANSFER_SIZE *
 		AMDGPU_GPU_PAGE_SIZE;
-	*addr += offset & PAGE_MASK;
+	*addr += offset & ~LINUX_PAGE_MASK;
 
 	num_dw = roundup2(adev->mman.buffer_funcs->copy_num_dw, 8);
 	num_bytes = num_pages * 8 * AMDGPU_GPU_PAGES_IN_CPU_PAGE;
@@ -390,8 +390,8 @@ int amdgpu_ttm_copy_mem_to_mem(struct amdgpu_device *adev,
 	mutex_lock(&adev->mman.gtt_window_lock);
 
 	while (size) {
-		uint32_t src_page_offset = src_offset & PAGE_MASK;
-		uint32_t dst_page_offset = dst_offset & PAGE_MASK;
+		uint32_t src_page_offset = src_offset & ~LINUX_PAGE_MASK;
+		uint32_t dst_page_offset = dst_offset & ~LINUX_PAGE_MASK;
 		struct dma_fence *next;
 		uint32_t cur_size;
 		uint64_t from, to;
@@ -2482,7 +2482,7 @@ static ssize_t amdgpu_ttm_gtt_read(struct file *f, char __user *buf,
 
 	while (size) {
 		loff_t p = *pos / PAGE_SIZE;
-		unsigned off = *pos & PAGE_MASK;
+		unsigned off = *pos & ~LINUX_PAGE_MASK;
 		size_t cur_size = min_t(size_t, size, PAGE_SIZE - off);
 		struct vm_page *page;
 		void *ptr;
@@ -2539,8 +2539,8 @@ static ssize_t amdgpu_iomem_read(struct file *f, char __user *buf,
 	dom = iommu_get_domain_for_dev(adev->dev);
 
 	while (size) {
-		phys_addr_t addr = *pos & ~PAGE_MASK;
-		loff_t off = *pos & PAGE_MASK;
+		phys_addr_t addr = *pos & LINUX_PAGE_MASK;
+		loff_t off = *pos & ~LINUX_PAGE_MASK;
 		size_t bytes = PAGE_SIZE - off;
 		unsigned long pfn;
 		struct vm_page *p;
@@ -2594,8 +2594,8 @@ static ssize_t amdgpu_iomem_write(struct file *f, const char __user *buf,
 	dom = iommu_get_domain_for_dev(adev->dev);
 
 	while (size) {
-		phys_addr_t addr = *pos & ~PAGE_MASK;
-		loff_t off = *pos & PAGE_MASK;
+		phys_addr_t addr = *pos & LINUX_PAGE_MASK;
+		loff_t off = *pos & ~LINUX_PAGE_MASK;
 		size_t bytes = PAGE_SIZE - off;
 		unsigned long pfn;
 		struct vm_page *p;

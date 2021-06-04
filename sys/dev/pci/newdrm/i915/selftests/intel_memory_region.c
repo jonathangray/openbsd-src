@@ -277,7 +277,7 @@ static int igt_mock_splintered_region(void *arg)
 	 * power-of-two.
 	 */
 
-	size = (SZ_4G - 1) & ~PAGE_MASK;
+	size = (SZ_4G - 1) & LINUX_PAGE_MASK;
 	mem = mock_region_create(i915, 0, size, PAGE_SIZE, 0);
 	if (IS_ERR(mem))
 		return PTR_ERR(mem);

@@ -1287,7 +1287,7 @@ uint64_t amdgpu_vm_map_gart(const dma_addr_t *pages_addr, uint64_t addr)
 	result = pages_addr[addr >> PAGE_SHIFT];
 
 	/* in case cpu page size != gpu page size*/
-	result |= addr & (PAGE_MASK);
+	result |= addr & (~LINUX_PAGE_MASK);
 
 	result &= 0xFFFFFFFFFFFFF000ULL;
 
@@ -2292,8 +2292,8 @@ int amdgpu_vm_bo_map(struct amdgpu_device *adev,
 	uint64_t eaddr;
 
 	/* validate the parameters */
-	if (saddr & PAGE_MASK || offset & PAGE_MASK ||
-	    size == 0 || size & PAGE_MASK)
+	if (saddr & ~LINUX_PAGE_MASK || offset & ~LINUX_PAGE_MASK ||
+	    size == 0 || size & ~LINUX_PAGE_MASK)
 		return -EINVAL;
 
 	/* make sure object fit at this offset */
@@ -2358,8 +2358,8 @@ int amdgpu_vm_bo_replace_map(struct amdgpu_device *adev,
 	int r;
 
 	/* validate the parameters */
-	if (saddr & PAGE_MASK || offset & PAGE_MASK ||
-	    size == 0 || size & PAGE_MASK)
+	if (saddr & ~LINUX_PAGE_MASK || offset & ~LINUX_PAGE_MASK ||
+	    size == 0 || size & ~LINUX_PAGE_MASK)
 		return -EINVAL;
 
 	/* make sure object fit at this offset */

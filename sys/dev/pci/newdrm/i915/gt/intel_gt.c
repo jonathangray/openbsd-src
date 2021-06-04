@@ -215,7 +215,7 @@ static void gen6_check_faults(struct intel_gt *gt)
 				"\tAddress space: %s\n"
 				"\tSource ID: %d\n"
 				"\tType: %d\n",
-				fault & ~PAGE_MASK,
+				fault & LINUX_PAGE_MASK,
 				fault & RING_FAULT_GTTSEL_MASK ?
 				"GGTT" : "PPGTT",
 				RING_FAULT_SRCID(fault),

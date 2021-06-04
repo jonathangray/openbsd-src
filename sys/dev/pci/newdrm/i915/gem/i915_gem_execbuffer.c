@@ -1017,12 +1017,12 @@ static void reloc_cache_init(struct reloc_cache *cache,
 
 static inline void *unmask_page(unsigned long p)
 {
-	return (void *)(uintptr_t)(p & ~PAGE_MASK);
+	return (void *)(uintptr_t)(p & LINUX_PAGE_MASK);
 }
 
 static inline unsigned int unmask_flags(unsigned long p)
 {
-	return p & PAGE_MASK;
+	return p & ~LINUX_PAGE_MASK;
 }
 
 #define KMAP 0x4 /* after CLFLUSH_FLAGS */
@@ -1132,7 +1132,7 @@ static void *reloc_kmap(struct drm_i915_gem_object *obj,
 			return ERR_PTR(err);
 
 		BUILD_BUG_ON(KMAP & CLFLUSH_FLAGS);
-		BUILD_BUG_ON((KMAP | CLFLUSH_FLAGS) & ~PAGE_MASK);
+		BUILD_BUG_ON((KMAP | CLFLUSH_FLAGS) & LINUX_PAGE_MASK);
 
 		cache->vaddr = flushes | KMAP;
 		cache->node.mm = (void *)obj;
