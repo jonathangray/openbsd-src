@@ -32,8 +32,6 @@
 
 #define __printf(x, y)
 
-#define uninitialized_var(x) x
-
 /* The Linux code doesn't meet our usual standards! */
 #ifdef __clang__
 #pragma clang diagnostic ignored "-Winitializer-overrides"
