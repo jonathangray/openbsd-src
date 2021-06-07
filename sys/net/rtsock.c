@@ -1,4 +1,4 @@
-/*	$OpenBSD: rtsock.c,v 1.316 2021/05/25 22:45:09 bluhm Exp $	*/
+/*	$OpenBSD: rtsock.c,v 1.318 2021/06/01 14:23:34 mvs Exp $	*/
 /*	$NetBSD: rtsock.c,v 1.18 1996/03/29 00:32:10 cgd Exp $	*/
 
 /*
@@ -463,6 +463,15 @@ rtm_senddesync(struct socket *so)
 	struct mbuf	*desync_mbuf;
 
 	soassertlocked(so);
+
+	/*
+	 * Dying socket is disconnected by upper layer and there is
+	 * no reason to send packet. Also we shouldn't reschedule
+	 * timeout(9), otherwise timeout_del_barrier(9) can't help us.
+	 */
+	if ((so->so_state & SS_ISCONNECTED) == 0 ||
+	    (so->so_state & SS_CANTRCVMORE))
+		return;
 
 	/* If we are in a DESYNC state, try to send a RTM_DESYNC packet */
 	if ((rop->rop_flags & ROUTECB_FLAG_DESYNC) == 0)
@@ -2356,7 +2365,7 @@ rt_setsource(unsigned int rtableid, struct sockaddr *src)
  * Definitions of protocols supported in the ROUTE domain.
  */
 
-struct protosw routesw[] = {
+const struct protosw routesw[] = {
 {
   .pr_type	= SOCK_RAW,
   .pr_domain	= &routedomain,

@@ -1,4 +1,4 @@
-/*	$OpenBSD: sysctl.c,v 1.12 2018/06/25 16:29:00 deraadt Exp $	*/
+/*	$OpenBSD: sysctl.c,v 1.14 2021/06/04 00:29:15 deraadt Exp $	*/
 
 /*
  * Copyright (c) 2009 Theo de Raadt <deraadt@openbsd.org>
@@ -19,6 +19,7 @@
 
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <sys/time.h>
 #include <sys/sysctl.h>
 #include <sys/uio.h>
 
@@ -29,6 +30,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+
+#include <machine/cpu.h>
 
 #define SOIIKEY_LEN 16
 
@@ -55,6 +58,10 @@ struct var vars[] = {
 	    { CTL_HW, HW_DISKNAMES }},
 	{ "hw.ncpufound", pint, 2,
 	    { CTL_HW, HW_NCPUFOUND }},
+#ifdef CPU_COMPATIBLE
+	{ "machdep.compatible", pstring, 2,
+	    { CTL_MACHDEP, CPU_COMPATIBLE }},
+#endif
 };
 
 int	nflag;

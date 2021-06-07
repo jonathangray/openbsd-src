@@ -1,4 +1,4 @@
-/*	$OpenBSD: nvme.c,v 1.97 2021/05/29 08:07:43 kettenis Exp $ */
+/*	$OpenBSD: nvme.c,v 1.100 2021/06/02 19:11:02 patrick Exp $ */
 
 /*
  * Copyright (c) 2014 David Gwynne <dlg@openbsd.org>
@@ -141,15 +141,9 @@ u_int64_t
 nvme_read8(struct nvme_softc *sc, bus_size_t r)
 {
 	u_int64_t v;
-	u_int32_t *a = (u_int32_t *)&v;
 
-#if _BYTE_ORDER == _LITTLE_ENDIAN
-	a[0] = nvme_read4(sc, r);
-	a[1] = nvme_read4(sc, r + 4);
-#else /* _BYTE_ORDER == _LITTLE_ENDIAN */
-	a[1] = nvme_read4(sc, r);
-	a[0] = nvme_read4(sc, r + 4);
-#endif
+	v = (u_int64_t)nvme_read4(sc, r) | 
+	    (u_int64_t)nvme_read4(sc, r + 4) << 32;
 
 	return (v);
 }
@@ -157,15 +151,8 @@ nvme_read8(struct nvme_softc *sc, bus_size_t r)
 void
 nvme_write8(struct nvme_softc *sc, bus_size_t r, u_int64_t v)
 {
-	u_int32_t *a = (u_int32_t *)&v;
-
-#if _BYTE_ORDER == _LITTLE_ENDIAN
-	nvme_write4(sc, r, a[0]);
-	nvme_write4(sc, r + 4, a[1]);
-#else /* _BYTE_ORDER == _LITTLE_ENDIAN */
-	nvme_write4(sc, r, a[1]);
-	nvme_write4(sc, r + 4, a[0]);
-#endif
+	nvme_write4(sc, r, v);
+	nvme_write4(sc, r + 4, v >> 32);
 }
 
 void
@@ -298,11 +285,11 @@ nvme_attach(struct nvme_softc *sc)
 
 	reg = nvme_read4(sc, NVME_VS);
 	if (reg == 0xffffffff) {
-		printf(", invalid mapping\n");
+		printf("invalid mapping\n");
 		return (1);
 	}
 
-	printf(", NVMe %d.%d\n", NVME_VS_MJR(reg), NVME_VS_MNR(reg));
+	printf("NVMe %d.%d\n", NVME_VS_MJR(reg), NVME_VS_MNR(reg));
 
 	cap = nvme_read8(sc, NVME_CAP);
 	sc->sc_dstrd = NVME_CAP_DSTRD(cap);
@@ -642,7 +629,7 @@ nvme_scsi_io(struct scsi_xfer *xs, int dir)
 		bus_dmamap_sync(sc->sc_dmat,
 		    NVME_DMA_MAP(sc->sc_ccb_prpls),
 		    ccb->ccb_prpl_off,
-		    sizeof(*ccb->ccb_prpl) * dmap->dm_nsegs - 1,
+		    sizeof(*ccb->ccb_prpl) * (dmap->dm_nsegs - 1),
 		    BUS_DMASYNC_PREWRITE);
 	}
 
@@ -704,7 +691,7 @@ nvme_scsi_io_done(struct nvme_softc *sc, struct nvme_ccb *ccb,
 		bus_dmamap_sync(sc->sc_dmat,
 		    NVME_DMA_MAP(sc->sc_ccb_prpls),
 		    ccb->ccb_prpl_off,
-		    sizeof(*ccb->ccb_prpl) * dmap->dm_nsegs - 1,
+		    sizeof(*ccb->ccb_prpl) * (dmap->dm_nsegs - 1),
 		    BUS_DMASYNC_POSTWRITE);
 	}
 

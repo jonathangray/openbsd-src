@@ -1,4 +1,4 @@
-/*	$OpenBSD: efidev.c,v 1.33 2021/03/17 05:41:34 yasuoka Exp $	*/
+/*	$OpenBSD: efidev.c,v 1.35 2021/06/07 00:04:20 krw Exp $	*/
 
 /*
  * Copyright (c) 1996 Michael Shalayeff
@@ -44,7 +44,6 @@
 #endif
 
 #include <efi.h>
-#include "eficall.h"
 
 extern int debug;
 
@@ -110,8 +109,7 @@ efid_io(int rw, efi_diskinfo_t ed, u_int off, int nsect, void *buf)
 
 	switch (rw) {
 	case F_READ:
-		status = EFI_CALL(ed->blkio->ReadBlocks,
-		    ed->blkio, ed->mediaid, start,
+		status = ed->blkio->ReadBlocks(ed->blkio, ed->mediaid, start,
 		    (end - start) * ed->blkio->Media->BlockSize, ibuf);
 		if (EFI_ERROR(status))
 			goto on_eio;
@@ -120,16 +118,15 @@ efid_io(int rw, efi_diskinfo_t ed, u_int off, int nsect, void *buf)
 		break;
 	case F_WRITE:
 		if (off % blks != 0 || nsect % blks != 0) {
-			status = EFI_CALL(ed->blkio->ReadBlocks,
-			    ed->blkio, ed->mediaid, start,
-			    (end - start) * ed->blkio->Media->BlockSize, ibuf);
+			status = ed->blkio->ReadBlocks(ed->blkio, ed->mediaid,
+			    start, (end - start) * ed->blkio->Media->BlockSize,
+			    ibuf);
 			if (EFI_ERROR(status))
 				goto on_eio;
 		}
 		memcpy(ibuf + DEV_BSIZE * (off - start * blks), buf,
 		    DEV_BSIZE * nsect);
-		status = EFI_CALL(ed->blkio->WriteBlocks,
-		    ed->blkio, ed->mediaid, start,
+		status = ed->blkio->WriteBlocks(ed->blkio, ed->mediaid, start,
 		    (end - start) * ed->blkio->Media->BlockSize, ibuf);
 		if (EFI_ERROR(status))
 			goto on_eio;
@@ -175,12 +172,11 @@ gpt_chk_mbr(struct dos_partition *dp, u_int64_t dsize)
 		found++;
 		if (dp2->dp_typ != DOSPTYP_EFI)
 			continue;
+		if (letoh32(dp2->dp_start) != GPTSECTOR)
+			continue;
 		psize = letoh32(dp2->dp_size);
-		if (psize == (dsize - 1) ||
-		    psize == UINT32_MAX) {
-			if (letoh32(dp2->dp_start) == 1)
-				efi++;
-		}
+		if (psize <= (dsize - GPTSECTOR) || psize == UINT32_MAX)
+			efi++;
 	}
 	if (found == 1 && efi == 1)
 		return (0);
@@ -308,8 +304,8 @@ findopenbsd_gpt(efi_diskinfo_t ed, const char **err)
 		return (-1);
 	}
 
-	/* LBA1: GPT Header */
-	lba = 1;
+	/* GPT Header */
+	lba = GPTSECTOR;
 	status = efid_io(F_READ, ed, EFI_SECTOBLK(ed, lba), EFI_BLKSPERSEC(ed),
 	    buf);
 	if (EFI_ERROR(status)) {
