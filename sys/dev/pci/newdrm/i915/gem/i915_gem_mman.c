@@ -21,8 +21,6 @@
 #include "i915_user_extensions.h"
 #include "i915_vma.h"
 
-#define DRM_FILE_PAGE_OFFSET (0x100000000ULL >> PAGE_SHIFT)
-
 #ifdef __linux__
 static inline bool
 __vma_matches(struct vm_area_struct *vma, struct file *filp,
@@ -1264,9 +1262,6 @@ i915_gem_mmap(struct file *filp, vm_prot_t accessprot,
 	struct drm_device *dev = priv->minor->dev;
 	struct drm_i915_gem_object *obj = NULL;
 	struct i915_mmap_offset *mmo = NULL;
-
-	if (unlikely(off < DRM_FILE_PAGE_OFFSET))
-		return NULL;
 
 	if (drm_dev_is_unplugged(dev))
 		return NULL;

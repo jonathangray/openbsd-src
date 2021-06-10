@@ -61,8 +61,6 @@
 #include <machine/efifbvar.h>
 #endif
 
-#define DRM_FILE_PAGE_OFFSET (0x100000000ULL >> PAGE_SHIFT)
-
 static int radeon_ttm_debugfs_init(struct radeon_device *rdev);
 static void radeon_ttm_debugfs_fini(struct radeon_device *rdev);
 
@@ -1026,9 +1024,6 @@ radeon_mmap(struct file *filp, vm_prot_t accessprot, voff_t off,
 	struct uvm_object *uobj;
 
 	if (rdev == NULL)
-		return NULL;
-
-	if (unlikely(off < DRM_FILE_PAGE_OFFSET))
 		return NULL;
 
 	uobj = ttm_bo_mmap(filp, off, size, &rdev->mman.bdev);

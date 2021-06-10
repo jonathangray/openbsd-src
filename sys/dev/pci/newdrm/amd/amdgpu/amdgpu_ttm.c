@@ -63,8 +63,6 @@
 
 #define AMDGPU_TTM_VRAM_MAX_DW_READ	(size_t)128
 
-#define DRM_FILE_PAGE_OFFSET (0x100000000ULL >> PAGE_SHIFT)
-
 static int amdgpu_ttm_backend_bind(struct ttm_bo_device *bdev,
 				   struct ttm_tt *ttm,
 				   struct ttm_resource *bo_mem);
@@ -2179,9 +2177,6 @@ amdgpu_mmap(struct file *filp, vm_prot_t accessprot, voff_t off, vsize_t size)
 	struct amdgpu_device *adev = drm_to_adev(file_priv->minor->dev);
 
 	if (adev == NULL)
-		return NULL;
-
-	if (unlikely(off < DRM_FILE_PAGE_OFFSET))
 		return NULL;
 
 	return ttm_bo_mmap(filp, off, size, &adev->mman.bdev);
