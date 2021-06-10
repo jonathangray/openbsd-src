@@ -27,6 +27,7 @@ drmm_kzalloc(struct drm_device *dev, size_t size, int flags)
 		free(node, M_DRM, sizeof(*node));
 		return NULL;
 	}
+	INIT_LIST_HEAD(&node->list);
 	node->p = p;
 	node->size = size;
 	mtx_enter(&dev->managed.lock);
@@ -47,6 +48,7 @@ drmm_kcalloc(struct drm_device *dev, size_t n, size_t size, int flags)
 		free(node, M_DRM, sizeof(*node));
 		return NULL;
 	}
+	INIT_LIST_HEAD(&node->list);
 	node->p = p;
 	node->size = n * size;
 	mtx_enter(&dev->managed.lock);
@@ -67,6 +69,7 @@ drmm_kstrdup(struct drm_device *dev, const char *s, int flags)
 		free(node, M_DRM, sizeof(*node));
 		return NULL;
 	}
+	INIT_LIST_HEAD(&node->list);
 	node->p = p;
 	node->size = strlen(s) + 1;
 	mtx_enter(&dev->managed.lock);
@@ -105,6 +108,7 @@ drmm_add_action(struct drm_device *dev, drmm_func_t f, void *cookie)
 	struct drmm_node *node = malloc(sizeof(*node), M_DRM, M_WAITOK | M_ZERO);
 	if (node == NULL)
 		return -ENOMEM;
+	INIT_LIST_HEAD(&node->list);
 	node->func = f;
 	node->p = cookie;
 	mtx_enter(&dev->managed.lock);
@@ -122,6 +126,7 @@ drmm_add_action_or_reset(struct drm_device *dev, drmm_func_t f, void *cookie)
 		f(dev, cookie);
 		return -ENOMEM;
 	}
+	INIT_LIST_HEAD(&node->list);
 	node->func = f;
 	node->p = cookie;
 	mtx_enter(&dev->managed.lock);
