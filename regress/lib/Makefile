@@ -1,4 +1,4 @@
-#	$OpenBSD: Makefile,v 1.21 2018/07/09 09:04:33 mpi Exp $
+#	$OpenBSD: Makefile,v 1.23 2021/06/10 23:40:46 jca Exp $
 
 SUBDIR+=	csu
 SUBDIR+=	libc

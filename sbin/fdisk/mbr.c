@@ -1,4 +1,4 @@
-/*	$OpenBSD: mbr.c,v 1.73 2021/06/02 22:44:26 krw Exp $	*/
+/*	$OpenBSD: mbr.c,v 1.75 2021/06/10 15:30:49 krw Exp $	*/
 
 /*
  * Copyright (c) 1997 Tobias Weingartner
@@ -79,7 +79,10 @@ MBR_init(struct mbr *mbr)
 {
 	extern uint32_t b_arg;
 	uint64_t adj;
-	daddr_t i;
+	daddr_t daddr;
+
+	memset(&gh, 0, sizeof(gh));
+	memset(&gp, 0, sizeof(gp));
 
 	/*
 	 * XXX Do *NOT* zap all MBR parts! Some archs still read initmbr
@@ -89,9 +92,6 @@ MBR_init(struct mbr *mbr)
 	mbr->part[0].flag = 0;
 	mbr->part[1].flag = 0;
 	mbr->part[2].flag = 0;
-
-	memset(&gh, 0, sizeof(gh));
-	memset(&gp, 0, sizeof(gp));
 
 	mbr->part[3].flag = DOSACTIVE;
 	mbr->signature = DOSMBR_SIGNATURE;
@@ -148,10 +148,10 @@ MBR_init(struct mbr *mbr)
 #endif
 
 	/* Start OpenBSD MBR partition on a power of 2 block number. */
-	i = 1;
-	while (i < DL_SECTOBLK(&dl, mbr->part[3].bs))
-		i *= 2;
-	adj = DL_BLKTOSEC(&dl, i) - mbr->part[3].bs;
+	daddr = 1;
+	while (daddr < DL_SECTOBLK(&dl, mbr->part[3].bs))
+		daddr *= 2;
+	adj = DL_BLKTOSEC(&dl, daddr) - mbr->part[3].bs;
 	mbr->part[3].bs += adj;
 	mbr->part[3].ns -= adj;
 	PRT_fix_CHS(&mbr->part[3]);

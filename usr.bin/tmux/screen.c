@@ -1,4 +1,4 @@
-/* $OpenBSD: screen.c,v 1.70 2021/03/12 08:39:17 nicm Exp $ */
+/* $OpenBSD: screen.c,v 1.73 2021/06/10 07:43:44 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -81,7 +81,7 @@ screen_init(struct screen *s, u_int sx, u_int sy, u_int hlimit)
 	s->titles = NULL;
 	s->path = NULL;
 
-	s->cstyle = 0;
+	s->cstyle = SCREEN_CURSOR_DEFAULT;
 	s->ccolour = xstrdup("");
 	s->tabs = NULL;
 	s->sel = NULL;
@@ -101,7 +101,9 @@ screen_reinit(struct screen *s)
 	s->rupper = 0;
 	s->rlower = screen_size_y(s) - 1;
 
-	s->mode = MODE_CURSOR | MODE_WRAP;
+	s->mode = MODE_CURSOR|MODE_WRAP;
+	if (options_get_number(global_options, "extended-keys") == 2)
+		s->mode |= MODE_KEXTENDED;
 
 	if (s->saved_grid != NULL)
 		screen_alternate_off(s, NULL, 0);
@@ -154,9 +156,35 @@ screen_reset_tabs(struct screen *s)
 void
 screen_set_cursor_style(struct screen *s, u_int style)
 {
-	if (style <= 6) {
-		s->cstyle = style;
+	log_debug("%s: new %u, was %u", __func__, style, s->cstyle);
+	switch (style) {
+	case 0:
+		s->cstyle = SCREEN_CURSOR_DEFAULT;
+		break;
+	case 1:
+		s->cstyle = SCREEN_CURSOR_BLOCK;
+		s->mode |= MODE_BLINKING;
+		break;
+	case 2:
+		s->cstyle = SCREEN_CURSOR_BLOCK;
 		s->mode &= ~MODE_BLINKING;
+		break;
+	case 3:
+		s->cstyle = SCREEN_CURSOR_UNDERLINE;
+		s->mode |= MODE_BLINKING;
+		break;
+	case 4:
+		s->cstyle = SCREEN_CURSOR_UNDERLINE;
+		s->mode &= ~MODE_BLINKING;
+		break;
+	case 5:
+		s->cstyle = SCREEN_CURSOR_BAR;
+		s->mode |= MODE_BLINKING;
+		break;
+	case 6:
+		s->cstyle = SCREEN_CURSOR_BAR;
+		s->mode &= ~MODE_BLINKING;
+		break;
 	}
 }
 
@@ -624,4 +652,52 @@ screen_alternate_off(struct screen *s, struct grid_cell *gc, int cursor)
 		s->cx = screen_size_x(s) - 1;
 	if (s->cy > screen_size_y(s) - 1)
 		s->cy = screen_size_y(s) - 1;
+}
+
+/* Get mode as a string. */
+const char *
+screen_mode_to_string(int mode)
+{
+	static char	tmp[1024];
+
+	if (mode == 0)
+		return "NONE";
+	if (mode == ALL_MODES)
+		return "ALL";
+
+	*tmp = '\0';
+	if (mode & MODE_CURSOR)
+		strlcat(tmp, "CURSOR,", sizeof tmp);
+	if (mode & MODE_INSERT)
+		strlcat(tmp, "INSERT,", sizeof tmp);
+	if (mode & MODE_KCURSOR)
+		strlcat(tmp, "KCURSOR,", sizeof tmp);
+	if (mode & MODE_KKEYPAD)
+		strlcat(tmp, "KKEYPAD,", sizeof tmp);
+	if (mode & MODE_WRAP)
+		strlcat(tmp, "WRAP,", sizeof tmp);
+	if (mode & MODE_MOUSE_STANDARD)
+		strlcat(tmp, "STANDARD,", sizeof tmp);
+	if (mode & MODE_MOUSE_BUTTON)
+		strlcat(tmp, "BUTTON,", sizeof tmp);
+	if (mode & MODE_BLINKING)
+		strlcat(tmp, "BLINKING,", sizeof tmp);
+	if (mode & MODE_MOUSE_UTF8)
+		strlcat(tmp, "UTF8,", sizeof tmp);
+	if (mode & MODE_MOUSE_SGR)
+		strlcat(tmp, "SGR,", sizeof tmp);
+	if (mode & MODE_BRACKETPASTE)
+		strlcat(tmp, "BRACKETPASTE,", sizeof tmp);
+	if (mode & MODE_FOCUSON)
+		strlcat(tmp, "FOCUSON,", sizeof tmp);
+	if (mode & MODE_MOUSE_ALL)
+		strlcat(tmp, "ALL,", sizeof tmp);
+	if (mode & MODE_ORIGIN)
+		strlcat(tmp, "ORIGIN,", sizeof tmp);
+	if (mode & MODE_CRLF)
+		strlcat(tmp, "CRLF,", sizeof tmp);
+	if (mode & MODE_KEXTENDED)
+		strlcat(tmp, "KEXTENDED,", sizeof tmp);
+	tmp[strlen (tmp) - 1] = '\0';
+	return (tmp);
 }

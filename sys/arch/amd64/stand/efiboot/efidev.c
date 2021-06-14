@@ -1,4 +1,4 @@
-/*	$OpenBSD: efidev.c,v 1.35 2021/06/07 00:04:20 krw Exp $	*/
+/*	$OpenBSD: efidev.c,v 1.38 2021/06/10 18:05:20 krw Exp $	*/
 
 /*
  * Copyright (c) 1996 Michael Shalayeff
@@ -46,6 +46,7 @@
 #include <efi.h>
 
 extern int debug;
+extern EFI_BOOT_SERVICES *BS;
 
 #include "efidev.h"
 #include "biosdev.h"	/* for dklookup() */
@@ -83,12 +84,13 @@ efid_init(struct diskinfo *dip, void *handle)
 static EFI_STATUS
 efid_io(int rw, efi_diskinfo_t ed, u_int off, int nsect, void *buf)
 {
-	u_int		 blks, start, end;
-	EFI_STATUS	 status = EFI_SUCCESS;
-	static u_char	*ibuf = NULL;
-	static u_int	 ibufsz = 0;
+	u_int blks, start, end;
+	EFI_PHYSICAL_ADDRESS addr;
+	EFI_STATUS status;
+	caddr_t data;
+	size_t size;
 
-	/* block count of the intrisic block size in DEV_BSIZE */
+	/* block count of the intrinsic block size in DEV_BSIZE */
 	blks = EFI_BLKSPERSEC(ed);
 	if (blks == 0)
 		/* block size < 512.  HP Stream 13 actually has such a disk. */
@@ -96,45 +98,44 @@ efid_io(int rw, efi_diskinfo_t ed, u_int off, int nsect, void *buf)
 
 	start = off / blks;
 	end = (off + nsect + blks - 1) / blks;
+	size = (end - start) * ed->blkio->Media->BlockSize;
 
-	/* always use an aligned buffer as some media require this */
-	if (ibuf && ibufsz < (end - start) * ed->blkio->Media->BlockSize) {
-		free(ibuf, ibufsz);
-		ibuf = NULL;
-	}
-	if (ibuf == NULL) {
-		ibufsz = (end - start) * ed->blkio->Media->BlockSize;
-		ibuf = alloc(ibufsz);
-	}
+	status = BS->AllocatePages(AllocateAnyPages, EfiLoaderData,
+	    EFI_SIZE_TO_PAGES(size), &addr);
+	if (EFI_ERROR(status))
+		goto on_eio;
+	data = (caddr_t)(uintptr_t)addr;
 
 	switch (rw) {
 	case F_READ:
 		status = ed->blkio->ReadBlocks(ed->blkio, ed->mediaid, start,
-		    (end - start) * ed->blkio->Media->BlockSize, ibuf);
+		    size, data);
 		if (EFI_ERROR(status))
 			goto on_eio;
-		memcpy(buf, ibuf + DEV_BSIZE * (off - start * blks),
+		memcpy(buf, data + DEV_BSIZE * (off - start * blks),
 		    DEV_BSIZE * nsect);
 		break;
 	case F_WRITE:
+		if (ed->blkio->Media->ReadOnly)
+			goto on_eio;
 		if (off % blks != 0 || nsect % blks != 0) {
 			status = ed->blkio->ReadBlocks(ed->blkio, ed->mediaid,
-			    start, (end - start) * ed->blkio->Media->BlockSize,
-			    ibuf);
+			    start, size, data);
 			if (EFI_ERROR(status))
 				goto on_eio;
 		}
-		memcpy(ibuf + DEV_BSIZE * (off - start * blks), buf,
+		memcpy(data + DEV_BSIZE * (off - start * blks), buf,
 		    DEV_BSIZE * nsect);
 		status = ed->blkio->WriteBlocks(ed->blkio, ed->mediaid, start,
-		    (end - start) * ed->blkio->Media->BlockSize, ibuf);
+		    size, data);
 		if (EFI_ERROR(status))
 			goto on_eio;
 		break;
 	}
-	return (EFI_SUCCESS);
 
 on_eio:
+	BS->FreePages(addr, EFI_SIZE_TO_PAGES(size));
+
 	return (status);
 }
 

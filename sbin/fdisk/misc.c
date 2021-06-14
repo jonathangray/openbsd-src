@@ -1,4 +1,4 @@
-/*	$OpenBSD: misc.c,v 1.65 2021/05/07 22:15:13 krw Exp $	*/
+/*	$OpenBSD: misc.c,v 1.67 2021/06/13 14:14:56 krw Exp $	*/
 
 /*
  * Copyright (c) 1997 Tobias Weingartner
@@ -324,7 +324,7 @@ getuint64(char *prompt, uint64_t oval, uint64_t minval, uint64_t maxval)
 char *
 ask_string(const char *prompt, const char *oval)
 {
-	static char buf[37];
+	static char buf[UUID_STR_LEN + 1];
 
 	buf[0] = '\0';
 	printf("%s: [%s] ", prompt, oval ? oval : "");
@@ -369,7 +369,7 @@ crc32(const u_char *buf, const uint32_t size)
 }
 
 char *
-utf16le_to_string(uint16_t *utf)
+utf16le_to_string(const uint16_t *utf)
 {
 	static char name[GPTPARTNAMESIZE];
 	int i;
@@ -386,7 +386,7 @@ utf16le_to_string(uint16_t *utf)
 }
 
 uint16_t *
-string_to_utf16le(char *ch)
+string_to_utf16le(const char *ch)
 {
 	static uint16_t utf[GPTPARTNAMESIZE];
 	int i;

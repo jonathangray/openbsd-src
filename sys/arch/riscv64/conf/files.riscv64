@@ -1,4 +1,4 @@
-#	$OpenBSD: files.riscv64,v 1.10 2021/05/19 19:32:25 kettenis Exp $
+#	$OpenBSD: files.riscv64,v 1.13 2021/06/14 03:50:23 deraadt Exp $
 
 # Standard stanzas config(8) can't run without
 maxpartitions 16
@@ -89,6 +89,11 @@ device	sfcc
 attach	sfcc at fdt
 file	arch/riscv64/dev/sfcc.c			sfcc
 
+# SiFive uart
+device	sfuart
+attach	sfuart at fdt
+file	arch/riscv64/dev/sfuart.c		sfuart
+
 # Paravirtual device bus and virtio
 include "dev/pv/files.pv"
 
@@ -117,6 +122,13 @@ include "dev/fdt/files.fdt"
 # Machine-independent SCSI drivers
 include "scsi/files.scsi"
 
+# Machine-independent ATA drivers
+include "dev/ata/files.ata"
+
 device	pciecam: pcibus
 attach	pciecam at fdt
 file	dev/fdt/pciecam.c			pciecam
+
+# Machine-independent USB drivers
+include "dev/usb/files.usb"
+

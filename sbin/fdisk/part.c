@@ -1,4 +1,4 @@
-/*	$OpenBSD: part.c,v 1.81 2021/06/03 15:05:55 krw Exp $	*/
+/*	$OpenBSD: part.c,v 1.85 2021/06/13 23:53:51 krw Exp $	*/
 
 /*
  * Copyright (c) 1997 Tobias Weingartner
@@ -30,12 +30,13 @@
 #include "misc.h"
 #include "part.h"
 
-int	PRT_check_chs(struct prt *partn);
+int		 check_chs(struct prt *partn);
+const char	*ascii_id(int);
 
 static const struct part_type {
 	int	type;
 	char	sname[14];
-	char	guid[37];
+	char	guid[UUID_STR_LEN + 1];
 } part_types[] = {
 	{ 0x00, "unused      ", "00000000-0000-0000-0000-000000000000" },
 	{ 0x01, "FAT12       ", "ebd0a0a2-b9e5-4433-87c0-68b6b72699c7" },
@@ -117,6 +118,8 @@ static const struct part_type {
 	{ 0xB0, "APFS        ", "7c3457ef-0000-11aa-aa11-00306543ecac" },
 	{ 0xB1, "APFS ISC    ", "69646961-6700-11aa-aa11-00306543ecac" },
 	{ 0xB2, "APFS Recovry", "52637672-7900-11aa-aa11-00306543ecac" },
+	{ 0xB3, "HiFive FSBL ", "5b193300-fc78-40cd-8002-e86c45580b47" },
+	{ 0xB4, "HiFive BBL  ", "2e54b353-1271-4842-806f-e436d6af6985" },
 	{ 0xB7, "BSDI filesy*"},   /* BSDI BSD/386 filesystem */
 	{ 0xB8, "BSDI swap   "},   /* BSDI BSD/386 swap */
 	{ 0xBF, "Solaris     ", "6a85cf4d-1dd2-11b2-99a6-080020736631" },
@@ -162,7 +165,7 @@ PRT_printall(void)
 }
 
 const char *
-PRT_ascii_id(int id)
+ascii_id(int id)
 {
 	static char unknown[] = "<Unknown ID>";
 	int i;
@@ -216,7 +219,7 @@ PRT_parse(struct dos_partition *prt, off_t offset, off_t reloff,
 }
 
 int
-PRT_check_chs(struct prt *partn)
+check_chs(struct prt *partn)
 {
 	if ( (partn->shead > 255) ||
 		(partn->ssect >63) ||
@@ -251,7 +254,7 @@ PRT_make(struct prt *partn, off_t offset, off_t reloff,
 	else
 		off = offset;
 
-	if (PRT_check_chs(partn)) {
+	if (check_chs(partn)) {
 		prt->dp_shd = partn->shead & 0xFF;
 		prt->dp_ssect = (partn->ssect & 0x3F) |
 		    ((partn->scyl & 0x300) >> 2);
@@ -306,7 +309,7 @@ PRT_print(int num, struct prt *partn, char *units)
 		    partn->ecyl, partn->ehead, partn->esect,
 		    partn->bs, size,
 		    unit_types[i].abbr,
-		    PRT_ascii_id(partn->id));
+		    ascii_id(partn->id));
 	}
 }
 
@@ -388,7 +391,7 @@ PRT_fix_CHS(struct prt *part)
 char *
 PRT_uuid_to_typename(struct uuid *uuid)
 {
-	static char partition_type[37];	/* Room for a GUID if needed. */
+	static char partition_type[UUID_STR_LEN + 1];
 	char *uuidstr = NULL;
 	int i, entries, status;
 
