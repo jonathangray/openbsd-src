@@ -477,19 +477,19 @@ static int i915_error_to_vmf_fault(int err)
 	switch (err) {
 	default:
 		WARN_ONCE(err, "unhandled error in %s: %i\n", __func__, err);
-		/* fallthrough */
+		fallthrough;
 	case -EIO: /* shmemfs failure from swap device */
 	case -EFAULT: /* purged object */
 	case -ENODEV: /* bad object, how did you get here! */
 	case -ENXIO: /* unable to access backing store (on device) */
 		return VM_PAGER_ERROR;
 
-	case -ENOSPC: /* shmemfs allocation failure */
 	case -ENOMEM: /* our allocation failure */
 		return VM_PAGER_ERROR;
 
 	case 0:
 	case -EAGAIN:
+	case -ENOSPC: /* transient failure to evict? */
 	case -ERESTART:
 	case -EINTR:
 	case -EBUSY:
@@ -596,39 +596,46 @@ vm_fault_gtt(struct i915_mmap_offset *mmo, struct uvm_faultinfo *ufi,
 	struct intel_runtime_pm *rpm = &i915->runtime_pm;
 	struct i915_ggtt *ggtt = &i915->ggtt;
 	int write = !!(access_type & PROT_WRITE);
+	struct i915_gem_ww_ctx ww;
 	intel_wakeref_t wakeref;
 	struct i915_vma *vma;
 	pgoff_t page_offset;
 	int srcu;
 	int ret;
 
-	/* Sanity check that we allow writing into this object */
-	if (i915_gem_object_is_readonly(obj) && write) {
-		uvmfault_unlockall(ufi, NULL, &obj->base.uobj);
-		return VM_PAGER_BAD;
-	}
-
 	/* We don't use vmf->pgoff since that has the fake offset */
 	page_offset = (vaddr - entry->start) >> PAGE_SHIFT;
 
 	trace_i915_gem_object_fault(obj, page_offset, true, write);
 
-	ret = i915_gem_object_pin_pages(obj);
-	if (ret)
-		goto err;
-
 	wakeref = intel_runtime_pm_get(rpm);
 
-	ret = intel_gt_reset_trylock(ggtt->vm.gt, &srcu);
+	i915_gem_ww_ctx_init(&ww, true);
+retry:
+	ret = i915_gem_object_lock(obj, &ww);
 	if (ret)
 		goto err_rpm;
 
+	/* Sanity check that we allow writing into this object */
+	if (i915_gem_object_is_readonly(obj) && write) {
+		ret = -EFAULT;
+		goto err_rpm;
+	}
+
+	ret = i915_gem_object_pin_pages(obj);
+	if (ret)
+		goto err_rpm;
+
+	ret = intel_gt_reset_trylock(ggtt->vm.gt, &srcu);
+	if (ret)
+		goto err_pages;
+
 	/* Now pin it into the GTT as needed */
-	vma = i915_gem_object_ggtt_pin(obj, NULL, 0, 0,
-				       PIN_MAPPABLE |
-				       PIN_NONBLOCK /* NOWARN */ |
-				       PIN_NOEVICT);
-	if (IS_ERR(vma)) {
+	vma = i915_gem_object_ggtt_pin_ww(obj, &ww, NULL, 0, 0,
+					  PIN_MAPPABLE |
+					  PIN_NONBLOCK /* NOWARN */ |
+					  PIN_NOEVICT);
+	if (IS_ERR(vma) && vma != ERR_PTR(-EDEADLK)) {
 		/* Use a partial view if it is bigger than available space */
 		struct i915_ggtt_view view =
 			compute_partial_view(obj, page_offset, MIN_CHUNK_PAGES);
@@ -643,11 +650,11 @@ vm_fault_gtt(struct i915_mmap_offset *mmo, struct uvm_faultinfo *ufi,
 		 * all hope that the hardware is able to track future writes.
 		 */
 
-		vma = i915_gem_object_ggtt_pin(obj, &view, 0, 0, flags);
-		if (IS_ERR(vma)) {
+		vma = i915_gem_object_ggtt_pin_ww(obj, &ww, &view, 0, 0, flags);
+		if (IS_ERR(vma) && vma != ERR_PTR(-EDEADLK)) {
 			flags = PIN_MAPPABLE;
 			view.type = I915_GGTT_VIEW_PARTIAL;
-			vma = i915_gem_object_ggtt_pin(obj, &view, 0, 0, flags);
+			vma = i915_gem_object_ggtt_pin_ww(obj, &ww, &view, 0, 0, flags);
 		}
 
 		/* The entire mappable GGTT is pinned? Unexpected! */
@@ -705,10 +712,16 @@ err_unpin:
 	__i915_vma_unpin(vma);
 err_reset:
 	intel_gt_reset_unlock(ggtt->vm.gt, srcu);
-err_rpm:
-	intel_runtime_pm_put(rpm, wakeref);
+err_pages:
 	i915_gem_object_unpin_pages(obj);
-err:
+err_rpm:
+	if (ret == -EDEADLK) {
+		ret = i915_gem_ww_ctx_backoff(&ww);
+		if (!ret)
+			goto retry;
+	}
+	i915_gem_ww_ctx_fini(&ww);
+	intel_runtime_pm_put(rpm, wakeref);
 	uvmfault_unlockall(ufi, NULL, &obj->base.uobj);
 	return i915_error_to_vmf_fault(ret);
 }
