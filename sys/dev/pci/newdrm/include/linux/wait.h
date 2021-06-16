@@ -31,7 +31,6 @@ struct wait_queue_entry {
 	unsigned int flags;
 	void *private;
 	int (*func)(struct wait_queue_entry *, unsigned, int, void *);
-	struct proc *proc;
 	struct list_head entry;
 };
 
@@ -63,9 +62,8 @@ static inline void
 init_wait_entry(wait_queue_entry_t *wqe, int flags)
 {
 	wqe->flags = flags;
-	wqe->private = NULL;
+	wqe->private = curproc;
 	wqe->func = autoremove_wake_function;
-	wqe->proc = NULL;
 	INIT_LIST_HEAD(&wqe->entry);
 }
 
@@ -85,7 +83,6 @@ static inline void
 add_wait_queue(wait_queue_head_t *head, wait_queue_entry_t *new)
 {
 	mtx_enter(&head->lock);
-	new->proc = curproc;
 	__add_wait_queue(head, new);
 	mtx_leave(&head->lock);
 }
@@ -101,7 +98,6 @@ remove_wait_queue(wait_queue_head_t *head, wait_queue_entry_t *old)
 {
 	mtx_enter(&head->lock);
 	__remove_wait_queue(head, old);
-	old->proc = NULL;
 	mtx_leave(&head->lock);
 }
 
@@ -204,10 +200,10 @@ wake_up(wait_queue_head_t *wqh)
 	mtx_enter(&wqh->lock);
 	
 	list_for_each_entry_safe(wqe, tmp, &wqh->head, entry) {
+		KASSERT(wqe->func != NULL);
 		if (wqe->func != NULL)
 			wqe->func(wqe, 0, wqe->flags, NULL);
 	}
-	wakeup(wqh);
 	mtx_leave(&wqh->lock);
 }
 
@@ -220,10 +216,10 @@ wake_up_all_locked(wait_queue_head_t *wqh)
 	wait_queue_entry_t *tmp;
 
 	list_for_each_entry_safe(wqe, tmp, &wqh->head, entry) {
+		KASSERT(wqe->func != NULL);
 		if (wqe->func != NULL)
 			wqe->func(wqe, 0, wqe->flags, NULL);
 	}
-	wakeup(wqh);
 }
 
 #define wake_up_interruptible(wq)		wake_up(wq)
@@ -231,7 +227,7 @@ wake_up_all_locked(wait_queue_head_t *wqh)
 
 #define	DEFINE_WAIT(name)				\
 	struct wait_queue_entry name = {		\
-		.private = NULL,			\
+		.private = curproc,			\
 		.func = autoremove_wake_function,	\
 		.entry = LIST_HEAD_INIT((name).entry),	\
 	}						
