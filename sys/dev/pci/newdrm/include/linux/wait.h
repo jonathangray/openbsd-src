@@ -54,7 +54,7 @@ init_waitqueue_head(wait_queue_head_t *wqh)
 	INIT_LIST_HEAD(&wqh->head);
 }
 
-#define __init_waitqueue_head(wq, name, key)	init_waitqueue_head(wq)
+#define __init_waitqueue_head(wqh, name, key)	init_waitqueue_head(wqh)
 
 int autoremove_wake_function(struct wait_queue_entry *, unsigned int, int, void *);
 
@@ -101,7 +101,7 @@ remove_wait_queue(wait_queue_head_t *head, wait_queue_entry_t *old)
 	mtx_leave(&head->lock);
 }
 
-#define __wait_event_intr_timeout(wq, condition, timo, prio)		\
+#define __wait_event_intr_timeout(wqh, condition, timo, prio)		\
 ({									\
 	long ret = timo;						\
 	do {								\
@@ -112,7 +112,7 @@ remove_wait_queue(wait_queue_head_t *head, wait_queue_entry_t *old)
 									\
 		mtx_enter(&sch_mtx);					\
 		deadline = jiffies + ret;				\
-		__error = msleep(&wq, &sch_mtx, prio, "drmweti", ret);	\
+		__error = msleep(&wqh, &sch_mtx, prio, "drmweti", ret);	\
 		ret = deadline - jiffies;				\
 		if (__error == ERESTART || __error == EINTR) {		\
 			ret = -ERESTARTSYS;				\
@@ -132,33 +132,33 @@ remove_wait_queue(wait_queue_head_t *head, wait_queue_entry_t *old)
 /*
  * Sleep until `condition' gets true.
  */
-#define wait_event(wq, condition) 		\
+#define wait_event(wqh, condition) 		\
 do {						\
 	if (!(condition))			\
-		__wait_event_intr_timeout(wq, condition, 0, 0); \
+		__wait_event_intr_timeout(wqh, condition, 0, 0); \
 } while (0)
 
-#define wait_event_killable(wq, condition) 		\
+#define wait_event_killable(wqh, condition) 		\
 ({						\
 	int __ret = 0;				\
 	if (!(condition))			\
-		__ret = __wait_event_intr_timeout(wq, condition, 0, PCATCH); \
+		__ret = __wait_event_intr_timeout(wqh, condition, 0, PCATCH); \
 	__ret;					\
 })
 
-#define wait_event_interruptible(wq, condition) 		\
+#define wait_event_interruptible(wqh, condition) 		\
 ({						\
 	int __ret = 0;				\
 	if (!(condition))			\
-		__ret = __wait_event_intr_timeout(wq, condition, 0, PCATCH); \
+		__ret = __wait_event_intr_timeout(wqh, condition, 0, PCATCH); \
 	__ret;					\
 })
 
-#define wait_event_interruptible_locked(wq, condition) 		\
+#define wait_event_interruptible_locked(wqh, condition) 		\
 ({						\
 	int __ret = 0;				\
 	if (!(condition))			\
-		__ret = __wait_event_intr_timeout(wq, condition, 0, PCATCH); \
+		__ret = __wait_event_intr_timeout(wqh, condition, 0, PCATCH); \
 	__ret;					\
 })
 
@@ -168,11 +168,11 @@ do {						\
  * Returns 0 if `condition' is still false when `timo' expires or
  * the remaining (>=1) jiffies otherwise.
  */
-#define wait_event_timeout(wq, condition, timo)	\
+#define wait_event_timeout(wqh, condition, timo)	\
 ({						\
 	long __ret = timo;			\
 	if (!(condition))			\
-		__ret = __wait_event_intr_timeout(wq, condition, timo, 0); \
+		__ret = __wait_event_intr_timeout(wqh, condition, timo, 0); \
 	__ret;					\
 })
 
@@ -184,11 +184,11 @@ do {						\
  * Returns 0 if `condition' is still false when `timo' expires or
  * the remaining (>=1) jiffies otherwise.
  */
-#define wait_event_interruptible_timeout(wq, condition, timo) \
+#define wait_event_interruptible_timeout(wqh, condition, timo) \
 ({						\
 	long __ret = timo;			\
 	if (!(condition))			\
-		__ret = __wait_event_intr_timeout(wq, condition, timo, PCATCH);\
+		__ret = __wait_event_intr_timeout(wqh, condition, timo, PCATCH);\
 	__ret;					\
 })
 
@@ -207,7 +207,7 @@ wake_up(wait_queue_head_t *wqh)
 	mtx_leave(&wqh->lock);
 }
 
-#define wake_up_all(wq)			wake_up(wq)
+#define wake_up_all(wqh)			wake_up(wqh)
 
 static inline void
 wake_up_all_locked(wait_queue_head_t *wqh)
@@ -222,8 +222,8 @@ wake_up_all_locked(wait_queue_head_t *wqh)
 	}
 }
 
-#define wake_up_interruptible(wq)		wake_up(wq)
-#define wake_up_interruptible_poll(wq, flags)	wake_up(wq)
+#define wake_up_interruptible(wqh)		wake_up(wqh)
+#define wake_up_interruptible_poll(wqh, flags)	wake_up(wqh)
 
 #define	DEFINE_WAIT(name)				\
 	struct wait_queue_entry name = {		\
