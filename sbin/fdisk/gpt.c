@@ -1,4 +1,4 @@
-/*	$OpenBSD: gpt.c,v 1.28 2021/06/13 13:48:00 krw Exp $	*/
+/*	$OpenBSD: gpt.c,v 1.31 2021/06/20 18:44:19 krw Exp $	*/
 /*
  * Copyright (c) 2015 Markus Muller <mmu@grummel.net>
  * Copyright (c) 2015 Kenneth R Westerback <krw@openbsd.org>
@@ -382,6 +382,7 @@ init_gh(void)
 	uint32_t		status;
 
 	memcpy(&oldgh, &gh, sizeof(oldgh));
+	memset(&gh, 0, sizeof(gh));
 
 	needed = sizeof(gp) / secsize + 2;
 
@@ -415,18 +416,19 @@ init_gh(void)
 int
 init_gp(void)
 {
-	extern uint32_t b_arg;
+	extern uint32_t b_sectors;
 	const uint8_t gpt_uuid_efi_system[] = GPT_UUID_EFI_SYSTEM;
 	const uint8_t gpt_uuid_openbsd[] = GPT_UUID_OPENBSD;
 	struct gpt_partition oldgp[NGPTPARTITIONS];
 	int rslt;
 
 	memcpy(&oldgp, &gp, sizeof(oldgp));
+	memset(&gp, 0, sizeof(gp));
 
 	rslt = 0;
-	if (b_arg > 0) {
+	if (b_sectors > 0) {
 		rslt = add_partition(gpt_uuid_efi_system, "EFI System Area",
-		    b_arg);
+		    b_sectors);
 	}
 	if (rslt == 0)
 		rslt = add_partition(gpt_uuid_openbsd, "OpenBSD Area", 0);
@@ -447,6 +449,35 @@ GPT_init(void)
 		rslt = init_gp();
 
 	return rslt;
+}
+
+void
+GPT_zap_headers(void)
+{
+	char *secbuf;
+	uint64_t sig;
+
+	secbuf = DISK_readsector(GPTSECTOR);
+	if (secbuf == NULL)
+		return;
+
+	memcpy(&sig, secbuf, sizeof(sig));
+	if (letoh64(sig) == GPTSIGNATURE) {
+		memset(secbuf, 0, dl.d_secsize);
+		DISK_writesector(secbuf, GPTSECTOR);
+	}
+	free(secbuf);
+
+	secbuf = DISK_readsector(DL_GETDSIZE(&dl) - 1);
+	if (secbuf == NULL)
+		return;
+
+	memcpy(&sig, secbuf, sizeof(sig));
+	if (letoh64(sig) == GPTSIGNATURE) {
+		memset(secbuf, 0, dl.d_secsize);
+		DISK_writesector(secbuf, DL_GETDSIZE(&dl) - 1);
+	}
+	free(secbuf);
 }
 
 int

@@ -1348,6 +1348,7 @@
 ./usr/share/man/man4/cwfg.4
 ./usr/share/man/man4/cy.4
 ./usr/share/man/man4/cz.4
+./usr/share/man/man4/dapmic.4
 ./usr/share/man/man4/dc.4
 ./usr/share/man/man4/dcphy.4
 ./usr/share/man/man4/ddb.4
@@ -1695,6 +1696,7 @@
 ./usr/share/man/man4/nvme.4
 ./usr/share/man/man4/nvt.4
 ./usr/share/man/man4/oce.4
+./usr/share/man/man4/ociic.4
 ./usr/share/man/man4/octeon/amdcf.4
 ./usr/share/man/man4/octeon/cnmac.4
 ./usr/share/man/man4/octeon/octboot.4
@@ -1798,6 +1800,9 @@
 ./usr/share/man/man4/rge.4
 ./usr/share/man/man4/rgephy.4
 ./usr/share/man/man4/ricohrtc.4
+./usr/share/man/man4/riscv64/plic.4
+./usr/share/man/man4/riscv64/sfcc.4
+./usr/share/man/man4/riscv64/sfclock.4
 ./usr/share/man/man4/riscv64/sfuart.4
 ./usr/share/man/man4/rkanxdp.4
 ./usr/share/man/man4/rkclock.4

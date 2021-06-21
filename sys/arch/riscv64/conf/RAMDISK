@@ -1,4 +1,4 @@
-#	$OpenBSD: RAMDISK,v 1.20 2021/06/14 06:09:28 jsg Exp $
+#	$OpenBSD: RAMDISK,v 1.23 2021/06/19 01:17:34 mlarkin Exp $
 
 machine		riscv64
 maxusers	4
@@ -34,6 +34,10 @@ intc0		at cpu0
 
 # NS16550 compatible serial ports
 com*		at fdt?
+
+# SiFive SOCs
+sfclock*	at fdt? early 1 # PRCI
+sfcc*		at fdt? early 1	# L2 Cache Controller
 sfuart*		at fdt?
 
 virtio*		at fdt?
@@ -48,8 +52,6 @@ viornd*		at virtio?	# Random Source
 simplebus*	at fdt?
 # Platform Level Interrupt Controller
 plic*		at fdt? early 1
-# L2 Cache Controller
-sfcc*		at fdt? early 1
 
 syscon*		at fdt? early 1
 gfrtc*		at fdt?
@@ -65,6 +67,10 @@ pci*		at dwpcie?
 pciecam*	at fdt?
 pci*		at pciecam?
 
+ociic*		at fdt?
+iic*		at ociic?
+dapmic*		at iic?
+
 # PCI
 ppb*		at pci?		# PCI-PCI bridges
 pci*		at ppb?
@@ -72,6 +78,7 @@ pci*		at ppb?
 # PCI Ethernet
 em*		at pci?		# Intel Pro/1000 Ethernet
 bge*		at pci?		# Broadcom BCM57xx (aka Tigon3)
+oce*            at pci?         # Emulex OneConnect 10Gb ethernet
 
 nvme*		at pci?		# NVMe controllers
 ahci*		at pci?		# AHCI SATA controllers

@@ -1,4 +1,4 @@
-/* $OpenBSD: tls12_record_layer.c,v 1.30 2021/05/16 15:49:01 jsing Exp $ */
+/* $OpenBSD: tls12_record_layer.c,v 1.32 2021/06/19 16:52:47 jsing Exp $ */
 /*
  * Copyright (c) 2020 Joel Sing <jsing@openbsd.org>
  *
@@ -161,6 +161,7 @@ tls12_record_protection_mac_len(struct tls12_record_protection *rp,
 
 struct tls12_record_layer {
 	uint16_t version;
+	uint16_t initial_epoch;
 	int dtls;
 
 	uint8_t alert_desc;
@@ -283,6 +284,19 @@ tls12_record_layer_set_version(struct tls12_record_layer *rl, uint16_t version)
 	rl->dtls = ((version >> 8) == DTLS1_VERSION_MAJOR);
 }
 
+void
+tls12_record_layer_set_initial_epoch(struct tls12_record_layer *rl,
+    uint16_t epoch)
+{
+	rl->initial_epoch = epoch;
+}
+
+uint16_t
+tls12_record_layer_initial_epoch(struct tls12_record_layer *rl)
+{
+	return rl->initial_epoch;
+}
+
 uint16_t
 tls12_record_layer_write_epoch(struct tls12_record_layer *rl)
 {
@@ -324,12 +338,14 @@ void
 tls12_record_layer_clear_read_state(struct tls12_record_layer *rl)
 {
 	tls12_record_protection_clear(rl->read);
+	rl->read->epoch = rl->initial_epoch;
 }
 
 void
 tls12_record_layer_clear_write_state(struct tls12_record_layer *rl)
 {
 	tls12_record_protection_clear(rl->write);
+	rl->write->epoch = rl->initial_epoch;
 
 	tls12_record_protection_free(rl->write_previous);
 	rl->write_previous = NULL;
@@ -780,12 +796,12 @@ tls12_record_layer_write_mac(struct tls12_record_layer *rl, CBB *cbb,
 
 static int
 tls12_record_layer_aead_concat_nonce(struct tls12_record_layer *rl,
-    struct tls12_record_protection *rp, const uint8_t *seq_num,
+    struct tls12_record_protection *rp, CBS *seq_num,
     uint8_t **out, size_t *out_len)
 {
 	CBB cbb;
 
-	if (rp->aead_variable_nonce_len > SSL3_SEQUENCE_SIZE)
+	if (rp->aead_variable_nonce_len > CBS_len(seq_num))
 		return 0;
 
 	/* Fixed nonce and variable nonce (sequence number) are concatenated. */
@@ -794,7 +810,8 @@ tls12_record_layer_aead_concat_nonce(struct tls12_record_layer *rl,
 	if (!CBB_add_bytes(&cbb, rp->aead_fixed_nonce,
 	    rp->aead_fixed_nonce_len))
 		goto err;
-	if (!CBB_add_bytes(&cbb, seq_num, rp->aead_variable_nonce_len))
+	if (!CBB_add_bytes(&cbb, CBS_data(seq_num),
+	    rp->aead_variable_nonce_len))
 		goto err;
 	if (!CBB_finish(&cbb, out, out_len))
 		goto err;
@@ -809,7 +826,7 @@ tls12_record_layer_aead_concat_nonce(struct tls12_record_layer *rl,
 
 static int
 tls12_record_layer_aead_xored_nonce(struct tls12_record_layer *rl,
-    struct tls12_record_protection *rp, const uint8_t *seq_num,
+    struct tls12_record_protection *rp, CBS *seq_num,
     uint8_t **out, size_t *out_len)
 {
 	uint8_t *nonce = NULL;
@@ -818,7 +835,7 @@ tls12_record_layer_aead_xored_nonce(struct tls12_record_layer *rl,
 	CBB cbb;
 	int i;
 
-	if (rp->aead_variable_nonce_len > SSL3_SEQUENCE_SIZE)
+	if (rp->aead_variable_nonce_len > CBS_len(seq_num))
 		return 0;
 	if (rp->aead_fixed_nonce_len < rp->aead_variable_nonce_len)
 		return 0;
@@ -832,7 +849,8 @@ tls12_record_layer_aead_xored_nonce(struct tls12_record_layer *rl,
 	if (!CBB_add_space(&cbb, &pad,
 	    rp->aead_fixed_nonce_len - rp->aead_variable_nonce_len))
 		goto err;
-	if (!CBB_add_bytes(&cbb, seq_num, rp->aead_variable_nonce_len))
+	if (!CBB_add_bytes(&cbb, CBS_data(seq_num),
+	    rp->aead_variable_nonce_len))
 		goto err;
 	if (!CBB_finish(&cbb, &nonce, &nonce_len))
 		goto err;
@@ -882,18 +900,18 @@ tls12_record_layer_open_record_protected_aead(struct tls12_record_layer *rl,
 	/* XXX - move to nonce allocated in record layer, matching TLSv1.3 */
 	if (rp->aead_xor_nonces) {
 		if (!tls12_record_layer_aead_xored_nonce(rl, rp,
-		    CBS_data(seq_num), &nonce, &nonce_len))
+		    seq_num, &nonce, &nonce_len))
 			goto err;
 	} else if (rp->aead_variable_nonce_in_record) {
 		if (!CBS_get_bytes(fragment, &var_nonce,
 		    rp->aead_variable_nonce_len))
 			goto err;
 		if (!tls12_record_layer_aead_concat_nonce(rl, rp,
-		    CBS_data(&var_nonce), &nonce, &nonce_len))
+		    &var_nonce, &nonce, &nonce_len))
 			goto err;
 	} else {
 		if (!tls12_record_layer_aead_concat_nonce(rl, rp,
-		    CBS_data(seq_num), &nonce, &nonce_len))
+		    seq_num, &nonce, &nonce_len))
 			goto err;
 	}
 
@@ -1145,16 +1163,17 @@ tls12_record_layer_seal_record_protected_aead(struct tls12_record_layer *rl,
 	/* XXX - move to nonce allocated in record layer, matching TLSv1.3 */
 	if (rp->aead_xor_nonces) {
 		if (!tls12_record_layer_aead_xored_nonce(rl, rp,
-		    CBS_data(seq_num), &nonce, &nonce_len))
+		    seq_num, &nonce, &nonce_len))
 			goto err;
 	} else {
 		if (!tls12_record_layer_aead_concat_nonce(rl, rp,
-		    CBS_data(seq_num), &nonce, &nonce_len))
+		    seq_num, &nonce, &nonce_len))
 			goto err;
 	}
 
 	if (rp->aead_variable_nonce_in_record) {
-		/* XXX - length check? */
+		if (rp->aead_variable_nonce_len > CBS_len(seq_num))
+			goto err;
 		if (!CBB_add_bytes(out, CBS_data(seq_num),
 		    rp->aead_variable_nonce_len))
 			goto err;

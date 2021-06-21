@@ -1,4 +1,4 @@
-/*	$OpenBSD: kern_tc.c,v 1.72 2021/04/30 13:52:48 bluhm Exp $ */
+/*	$OpenBSD: kern_tc.c,v 1.74 2021/06/19 13:49:39 cheloha Exp $ */
 
 /*
  * Copyright (c) 2000 Poul-Henning Kamp <phk@FreeBSD.org>
@@ -196,6 +196,21 @@ binuptime(struct bintime *bt)
 }
 
 void
+getbinuptime(struct bintime *bt)
+{
+	struct timehands *th;
+	u_int gen;
+
+	do {
+		th = timehands;
+		gen = th->th_generation;
+		membar_consumer();
+		*bt = th->th_offset;
+		membar_consumer();
+	} while (gen == 0 || gen != th->th_generation);
+}
+
+void
 nanouptime(struct timespec *tsp)
 {
 	struct bintime bt;
@@ -233,6 +248,24 @@ getuptime(void)
 
 	return now;
 #endif
+}
+
+uint64_t
+nsecuptime(void)
+{
+	struct bintime bt;
+
+	binuptime(&bt);
+	return BINTIME_TO_NSEC(&bt);
+}
+
+uint64_t
+getnsecuptime(void)
+{
+	struct bintime bt;
+
+	getbinuptime(&bt);
+	return BINTIME_TO_NSEC(&bt);
 }
 
 void
@@ -524,8 +557,7 @@ tc_setclock(const struct timespec *ts)
 #ifndef SMALL_KERNEL
 	/* convert the bintime to ticks */
 	bintimesub(&new_naptime, &old_naptime, &elapsed);
-	adj_ticks = (uint64_t)hz * elapsed.sec +
-	    (((uint64_t)1000000 * (uint32_t)(elapsed.frac >> 32)) >> 32) / tick;
+	adj_ticks = BINTIME_TO_NSEC(&elapsed) / tick_nsec;
 	if (adj_ticks > 0) {
 		if (adj_ticks > INT_MAX)
 			adj_ticks = INT_MAX;

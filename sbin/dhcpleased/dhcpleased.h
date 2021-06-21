@@ -1,4 +1,4 @@
-/*	$OpenBSD: dhcpleased.h,v 1.4 2021/04/10 17:22:34 florian Exp $	*/
+/*	$OpenBSD: dhcpleased.h,v 1.6 2021/06/20 08:31:45 florian Exp $	*/
 
 /*
  * Copyright (c) 2017, 2021 Florian Obser <florian@openbsd.org>
@@ -24,11 +24,19 @@
 #define	SERVER_PORT		67
 #define	CLIENT_PORT		68
 #define	_PATH_LEASE		"/var/db/dhcpleased/"
-#define	LEASE_PREFIX		"version: 1\nip: "
-#define	LEASE_SIZE		sizeof(LEASE_PREFIX"xxx.xxx.xxx.xxx\n")
+#define	LEASE_VERSION		"version: 2"
+#define	LEASE_IP_PREFIX		"ip: "
+#define	LEASE_NEXTSERVER_PREFIX	"next-server: "
+#define	LEASE_BOOTFILE_PREFIX	"filename: "
+#define	LEASE_HOSTNAME_PREFIX	"host-name: "
+#define	LEASE_DOMAIN_PREFIX	"domain-name: "
+#define	LEASE_SIZE		4096
 /* MAXDNAME from arpa/namesr.h */
 #define	DHCPLEASED_MAX_DNSSL	1025
 #define	MAX_RDNS_COUNT		8 /* max nameserver in a RTM_PROPOSAL */
+
+/* A 1500 bytes packet can hold less than 300 classless static routes */
+#define	MAX_DHCP_ROUTES		256
 
 #define	DHCP_COOKIE		{99, 130, 83, 99}
 
@@ -168,6 +176,12 @@ struct imsgev {
 	short		 events;
 };
 
+struct dhcp_route {
+	struct in_addr		 dst;
+	struct in_addr		 mask;
+	struct in_addr		 gw;
+};
+
 enum imsg_type {
 	IMSG_NONE,
 #ifndef	SMALL
@@ -207,7 +221,8 @@ struct ctl_engine_info {
 	struct in_addr		dhcp_server; /* for unicast */
 	struct in_addr		requested_ip;
 	struct in_addr		mask;
-	struct in_addr		router;
+	struct dhcp_route	routes[MAX_DHCP_ROUTES];
+	int			routes_len;
 	struct in_addr		nameservers[MAX_RDNS_COUNT];
 	uint32_t		lease_time;
 	uint32_t		renewal_time;
