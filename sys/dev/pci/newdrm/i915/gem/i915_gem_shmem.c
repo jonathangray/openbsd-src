@@ -699,15 +699,8 @@ static const struct intel_memory_region_ops shmem_region_ops = {
 
 struct intel_memory_region *i915_gem_shmem_setup(struct drm_i915_private *i915)
 {
-#ifdef __linux__
 	return intel_memory_region_create(i915, 0,
 					  totalram_pages() << PAGE_SHIFT,
 					  PAGE_SIZE, 0,
 					  &shmem_region_ops);
-#else
-	return intel_memory_region_create(i915, 0,
-					  ptoa(physmem),
-					  PAGE_SIZE, 0,
-					  &shmem_region_ops);
-#endif
 }
