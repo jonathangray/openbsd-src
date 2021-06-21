@@ -368,7 +368,7 @@ int ttm_tt_swapin(struct ttm_tt *ttm)
 	BUG_ON(swap_storage == NULL);
 
 	TAILQ_INIT(&plist);
-	if (uvm_objwire(swap_storage, 0, ttm->num_pages << PAGE_SHIFT, &plist))
+	if (uvm_obj_wire(swap_storage, 0, ttm->num_pages << PAGE_SHIFT, &plist))
 		goto out_err;
 
 	from_page = TAILQ_FIRST(&plist);
@@ -381,7 +381,7 @@ int ttm_tt_swapin(struct ttm_tt *ttm)
 		from_page = TAILQ_NEXT(from_page, pageq);
 	}
 
-	uvm_objunwire(swap_storage, 0, ttm->num_pages << PAGE_SHIFT);
+	uvm_obj_unwire(swap_storage, 0, ttm->num_pages << PAGE_SHIFT);
 
 	if (!(ttm->page_flags & TTM_PAGE_FLAG_PERSISTENT_SWAP))
 		uao_detach(swap_storage);
@@ -418,7 +418,7 @@ int ttm_tt_swapout(struct ttm_bo_device *bdev,
 	}
 
 	TAILQ_INIT(&plist);
-	if (uvm_objwire(swap_storage, 0, ttm->num_pages << PAGE_SHIFT, &plist))
+	if (uvm_obj_wire(swap_storage, 0, ttm->num_pages << PAGE_SHIFT, &plist))
 		goto out_err;
 
 	to_page = TAILQ_FIRST(&plist);
@@ -435,7 +435,7 @@ int ttm_tt_swapout(struct ttm_bo_device *bdev,
 		to_page = TAILQ_NEXT(to_page, pageq);
 	}
 
-	uvm_objunwire(swap_storage, 0, ttm->num_pages << PAGE_SHIFT);
+	uvm_obj_unwire(swap_storage, 0, ttm->num_pages << PAGE_SHIFT);
 
 	ttm_tt_unpopulate(bdev, ttm);
 	ttm->swap_storage = swap_storage;

@@ -186,7 +186,7 @@ static int __uobj_rw(struct uvm_object *uobj, loff_t off,
 	size_t olen = round_page(len);
 
 	TAILQ_INIT(&plist);
-	if (uvm_objwire(uobj, pgoff, olen, &plist))
+	if (uvm_obj_wire(uobj, pgoff, olen, &plist))
 		return -ENOMEM;
 
 	TAILQ_FOREACH(page, &plist, pageq) {
@@ -207,7 +207,7 @@ static int __uobj_rw(struct uvm_object *uobj, loff_t off,
 		off = 0;
 	}
 
-	uvm_objunwire(uobj, pgoff, olen);
+	uvm_obj_unwire(uobj, pgoff, olen);
 
 	return 0;
 }
