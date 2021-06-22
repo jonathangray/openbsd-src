@@ -297,7 +297,7 @@ int drm_crtc_init_with_planes(struct drm_device *dev, struct drm_crtc *crtc,
 	}
 
 	crtc->fence_context = dma_fence_context_alloc(1);
-	mtx_init(&crtc->fence_lock, IPL_NONE);
+	mtx_init(&crtc->fence_lock, IPL_TTY);
 	snprintf(crtc->timeline_name, sizeof(crtc->timeline_name),
 		 "CRTC:%d-%s", crtc->base.id, crtc->name);
 
