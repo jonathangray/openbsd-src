@@ -35,6 +35,7 @@
 #include <linux/acpi.h>
 #include <linux/pagevec.h>
 #include <linux/dma-fence-array.h>
+#include <linux/dma-fence-chain.h>
 #include <linux/interrupt.h>
 #include <linux/err.h>
 #include <linux/idr.h>
@@ -1817,14 +1818,16 @@ dma_fence_array_enable_signaling(struct dma_fence *fence)
 	return true;
 }
 
-static bool dma_fence_array_signaled(struct dma_fence *fence)
+static bool
+dma_fence_array_signaled(struct dma_fence *fence)
 {
 	struct dma_fence_array *dfa = to_dma_fence_array(fence);
 
 	return atomic_read(&dfa->num_pending) <= 0;
 }
 
-static void dma_fence_array_release(struct dma_fence *fence)
+static void
+dma_fence_array_release(struct dma_fence *fence)
 {
 	struct dma_fence_array *dfa = to_dma_fence_array(fence);
 	int i;
@@ -1864,6 +1867,73 @@ const struct dma_fence_ops dma_fence_array_ops = {
 	.enable_signaling = dma_fence_array_enable_signaling,
 	.signaled = dma_fence_array_signaled,
 	.release = dma_fence_array_release,
+};
+
+int
+dma_fence_chain_find_seqno(struct dma_fence **df, uint64_t seqno)
+{
+	if (seqno == 0)
+		return 0;
+	STUB();
+	return -ENOSYS;
+}
+
+void
+dma_fence_chain_init(struct dma_fence_chain *chain, struct dma_fence *prev,
+    struct dma_fence *fence, uint64_t seqno)
+{
+	struct dma_fence_chain *prev_chain = to_dma_fence_chain(prev);
+	uint64_t context = dma_fence_context_alloc(1);
+	if (prev_chain)
+		seqno = MAX(prev->seqno, seqno);
+
+	chain->fence = fence;
+	chain->prev = prev;
+	chain->prev_seqno = 0;
+	mtx_init(&chain->lock, IPL_TTY);
+
+	dma_fence_init(&chain->base, &dma_fence_chain_ops, &chain->lock,
+	    context, seqno);
+}
+
+static const char *
+dma_fence_chain_get_driver_name(struct dma_fence *fence)
+{
+	return "dma_fence_chain";
+}
+
+static const char *
+dma_fence_chain_get_timeline_name(struct dma_fence *fence)
+{
+	return "unbound";
+}
+
+static bool
+dma_fence_chain_enable_signaling(struct dma_fence *fence)
+{
+	STUB();
+	return false;
+}
+
+static bool
+dma_fence_chain_signaled(struct dma_fence *fence)
+{
+	STUB();
+	return false;
+}
+
+static void
+dma_fence_chain_release(struct dma_fence *fence)
+{
+	STUB();
+}
+
+const struct dma_fence_ops dma_fence_chain_ops = {
+	.get_driver_name = dma_fence_chain_get_driver_name,
+	.get_timeline_name = dma_fence_chain_get_timeline_name,
+	.enable_signaling = dma_fence_chain_enable_signaling,
+	.signaled = dma_fence_chain_signaled,
+	.release = dma_fence_chain_release,
 };
 
 int
