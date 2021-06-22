@@ -1883,14 +1883,19 @@ dma_fence_chain_init(struct dma_fence_chain *chain, struct dma_fence *prev,
     struct dma_fence *fence, uint64_t seqno)
 {
 	struct dma_fence_chain *prev_chain = to_dma_fence_chain(prev);
-	uint64_t context = dma_fence_context_alloc(1);
-	if (prev_chain)
-		seqno = MAX(prev->seqno, seqno);
+	uint64_t context;
 
 	chain->fence = fence;
 	chain->prev = prev;
-	chain->prev_seqno = 0;
 	mtx_init(&chain->lock, IPL_TTY);
+
+	if (prev_chain && seqno > prev->seqno) {
+		chain->prev_seqno = prev->seqno;
+		context = prev->context;
+	} else {
+		chain->prev_seqno = 0;
+		context = dma_fence_context_alloc(1);
+	}
 
 	dma_fence_init(&chain->base, &dma_fence_chain_ops, &chain->lock,
 	    context, seqno);
