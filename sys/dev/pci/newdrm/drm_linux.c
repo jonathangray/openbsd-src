@@ -2130,8 +2130,8 @@ autoremove_wake_function(struct wait_queue_entry *wqe, unsigned int mode,
     int sync, void *key)
 {
 	wakeup(wqe);
-	if (wqe->proc)
-		wake_up_process(wqe->proc);
+	if (wqe->private)
+		wake_up_process(wqe->private);
 	list_del_init(&wqe->entry);
 	return 0;
 }
