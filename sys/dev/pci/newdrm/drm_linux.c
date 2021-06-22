@@ -1928,6 +1928,21 @@ dma_fence_chain_release(struct dma_fence *fence)
 	STUB();
 }
 
+struct dma_fence *
+dma_fence_chain_next(struct dma_fence *fence)
+{
+	struct dma_fence_chain *chain = to_dma_fence_chain(fence);
+
+	if (chain == NULL) {
+		dma_fence_put(fence);
+		return NULL;
+	}
+
+	STUB();
+	dma_fence_put(fence);
+	return NULL;
+}
+
 const struct dma_fence_ops dma_fence_chain_ops = {
 	.get_driver_name = dma_fence_chain_get_driver_name,
 	.get_timeline_name = dma_fence_chain_get_timeline_name,
