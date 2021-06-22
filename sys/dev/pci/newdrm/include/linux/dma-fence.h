@@ -19,10 +19,12 @@ struct dma_fence {
 	uint64_t context;
 	uint64_t seqno;
 	struct mutex *lock;
-	struct list_head cb_list;
+	union {
+		struct list_head cb_list;
+		ktime_t timestamp;
+		struct rcu_head rcu;
+	};
 	int error;
-	struct rcu_head rcu;
-	ktime_t timestamp;
 };
 
 enum dma_fence_flag_bits {
