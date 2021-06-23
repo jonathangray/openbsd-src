@@ -959,6 +959,7 @@ sg_free_table(struct sg_table *table)
 {
 	free(table->sgl, M_DRM,
 	    table->orig_nents * sizeof(struct scatterlist));
+	table->orig_nents = 0;
 	table->sgl = NULL;
 }
 
