@@ -947,7 +947,7 @@ int
 sg_alloc_table(struct sg_table *table, unsigned int nents, gfp_t gfp_mask)
 {
 	table->sgl = mallocarray(nents, sizeof(struct scatterlist),
-	    M_DRM, gfp_mask);
+	    M_DRM, gfp_mask | M_ZERO);
 	if (table->sgl == NULL)
 		return -ENOMEM;
 	table->nents = table->orig_nents = nents;
