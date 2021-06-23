@@ -951,6 +951,7 @@ sg_alloc_table(struct sg_table *table, unsigned int nents, gfp_t gfp_mask)
 	if (table->sgl == NULL)
 		return -ENOMEM;
 	table->nents = table->orig_nents = nents;
+	sg_mark_end(&table->sgl[nents - 1]);
 	return 0;
 }
 
