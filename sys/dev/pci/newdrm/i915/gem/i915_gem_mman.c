@@ -85,10 +85,17 @@ i915_gem_mmap_ioctl(struct drm_device *dev, void *data,
 	/* prime objects have no backing filp to GEM mmap
 	 * pages from.
 	 */
+#ifdef __linux__
 	if (!obj->base.filp) {
 		addr = -ENXIO;
 		goto err;
 	}
+#else
+	if (!obj->base.uao) {
+		addr = -ENXIO;
+		goto err;
+	}
+#endif
 
 	if (range_overflows(args->offset, args->size, (u64)obj->base.size)) {
 		addr = -EINVAL;

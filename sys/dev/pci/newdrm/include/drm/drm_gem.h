@@ -227,7 +227,9 @@ struct drm_gem_object {
 	 * storage (contiguous CMA memory, special reserved blocks). In this
 	 * case @filp is NULL.
 	 */
+#ifdef __linux__
 	struct file *filp;
+#endif
 
 	/**
 	 * @vma_node:

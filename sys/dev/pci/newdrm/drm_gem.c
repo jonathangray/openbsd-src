@@ -313,8 +313,6 @@ int drm_gem_object_init(struct drm_device *dev,
 	obj->uao = uao_create(size, 0);
 	uvm_obj_init(&obj->uobj, &drm_pgops, 1);
 	
-	obj->filp = (void *)obj->uao;
-
 	return 0;
 }
 
@@ -336,7 +334,11 @@ void drm_gem_private_object_init(struct drm_device *dev,
 	BUG_ON((size & (PAGE_SIZE - 1)) != 0);
 
 	obj->dev = dev;
+#ifdef __linux__
 	obj->filp = NULL;
+#else
+	obj->uao = NULL;
+#endif
 
 	kref_init(&obj->refcount);
 	obj->handle_count = 0;
@@ -1153,10 +1155,10 @@ drm_gem_object_release(struct drm_gem_object *obj)
 {
 	WARN_ON(obj->dma_buf);
 
+#ifdef __linux__
 	if (obj->filp)
 		fput(obj->filp);
-
-#ifdef __OpenBSD__
+#else
 	if (obj->uao)
 		uao_detach(obj->uao);
 #endif
