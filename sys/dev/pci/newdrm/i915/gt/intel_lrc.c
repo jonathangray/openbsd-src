@@ -5357,7 +5357,7 @@ populate_lr_context(struct intel_context *ce,
 		shmem_read(engine->default_state, 0,
 			   vaddr, engine->context_size);
 #else
-		uobj_read(engine->default_state, 0,
+		uao_read(engine->default_state, 0,
 			   vaddr, engine->context_size);
 #endif
 		__set_bit(CONTEXT_VALID_BIT, &ce->flags);

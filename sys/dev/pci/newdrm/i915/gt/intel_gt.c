@@ -469,7 +469,7 @@ err:
 #ifdef __linux__
 		state = shmem_create_from_object(rq->context->state->obj);
 #else
-		state = uobj_create_from_object(rq->context->state->obj);
+		state = uao_create_from_object(rq->context->state->obj);
 #endif
 		if (IS_ERR(state)) {
 			err = PTR_ERR(state);

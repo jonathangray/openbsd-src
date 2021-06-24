@@ -136,29 +136,29 @@ int shmem_write(struct file *file, loff_t off, void *src, size_t len)
 #endif /* __linux__ */
 
 struct uvm_object *
-uobj_create_from_data(void *data, size_t len)
+uao_create_from_data(void *data, size_t len)
 {
-	struct uvm_object *uobj;
+	struct uvm_object *uao;
 	int err;
 
-	uobj = uao_create(PAGE_ALIGN(len), 0);
-	if (uobj == NULL) {
+	uao = uao_create(PAGE_ALIGN(len), 0);
+	if (uao == NULL) {
 		return ERR_PTR(-ENOMEM);
 	}
 
-	err = uobj_write(uobj, 0, data, len);
+	err = uao_write(uao, 0, data, len);
 	if (err) {
-		uao_detach(uobj);
+		uao_detach(uao);
 		return ERR_PTR(err);
 	}
 
-	return uobj;
+	return uao;
 }
 
 struct uvm_object *
-uobj_create_from_object(struct drm_i915_gem_object *obj)
+uao_create_from_object(struct drm_i915_gem_object *obj)
 {
-	struct uvm_object *uobj;
+	struct uvm_object *uao;
 	void *ptr;
 
 	if (obj->ops == &i915_gem_shmem_ops) {
@@ -170,13 +170,13 @@ uobj_create_from_object(struct drm_i915_gem_object *obj)
 	if (IS_ERR(ptr))
 		return ERR_CAST(ptr);
 
-	uobj = uobj_create_from_data(ptr, obj->base.size);
+	uao = uao_create_from_data(ptr, obj->base.size);
 	i915_gem_object_unpin_map(obj);
 
-	return uobj;
+	return uao;
 }
 
-static int __uobj_rw(struct uvm_object *uobj, loff_t off,
+static int __uao_rw(struct uvm_object *uao, loff_t off,
 		      void *ptr, size_t len,
 		      bool write)
 {
@@ -186,7 +186,7 @@ static int __uobj_rw(struct uvm_object *uobj, loff_t off,
 	size_t olen = round_page(len);
 
 	TAILQ_INIT(&plist);
-	if (uvm_obj_wire(uobj, pgoff, olen, &plist))
+	if (uvm_obj_wire(uao, pgoff, olen, &plist))
 		return -ENOMEM;
 
 	TAILQ_FOREACH(page, &plist, pageq) {
@@ -207,19 +207,19 @@ static int __uobj_rw(struct uvm_object *uobj, loff_t off,
 		off = 0;
 	}
 
-	uvm_obj_unwire(uobj, pgoff, olen);
+	uvm_obj_unwire(uao, pgoff, olen);
 
 	return 0;
 }
 
-int uobj_read(struct uvm_object *uobj, loff_t off, void *dst, size_t len)
+int uao_read(struct uvm_object *uao, loff_t off, void *dst, size_t len)
 {
-	return __uobj_rw(uobj, off, dst, len, false);
+	return __uao_rw(uao, off, dst, len, false);
 }
 
-int uobj_write(struct uvm_object *uobj, loff_t off, void *src, size_t len)
+int uao_write(struct uvm_object *uao, loff_t off, void *src, size_t len)
 {
-	return __uobj_rw(uobj, off, src, len, true);
+	return __uao_rw(uao, off, src, len, true);
 }
 
 #if IS_ENABLED(CONFIG_DRM_I915_SELFTEST)

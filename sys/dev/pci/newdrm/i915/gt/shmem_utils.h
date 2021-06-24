@@ -23,8 +23,8 @@ int shmem_write(struct file *file, loff_t off, void *src, size_t len);
 #endif /* __linux__ */
 
 struct uvm_object *
-uobj_create_from_object(struct drm_i915_gem_object *);
-int uobj_read(struct uvm_object *, loff_t, void *, size_t);
-int uobj_write(struct uvm_object *, loff_t, void *, size_t);
+uao_create_from_object(struct drm_i915_gem_object *);
+int uao_read(struct uvm_object *, loff_t, void *, size_t);
+int uao_write(struct uvm_object *, loff_t, void *, size_t);
 
 #endif /* SHMEM_UTILS_H */

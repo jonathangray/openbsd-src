@@ -553,7 +553,7 @@ alloc_context_vma(struct intel_engine_cs *engine)
 		shmem_read(engine->default_state, 0,
 			   vaddr, engine->context_size);
 #else
-		uobj_read(engine->default_state, 0,
+		uao_read(engine->default_state, 0,
 			   vaddr, engine->context_size);
 #endif
 
