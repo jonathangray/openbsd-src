@@ -603,6 +603,21 @@ vunmap(void *addr, size_t size)
 	uvm_km_free(kernel_map, va, size);
 }
 
+bool
+is_vmalloc_addr(const void *p)
+{
+	vaddr_t min, max, addr;
+
+	min = vm_map_min(kernel_map);
+	max = vm_map_max(kernel_map);
+	addr = (vaddr_t)p;
+
+	if (addr >= min && addr <= max)
+		return true;
+	else
+		return false;
+}
+
 void
 print_hex_dump(const char *level, const char *prefix_str, int prefix_type,
     int rowsize, int groupsize, const void *buf, size_t len, bool ascii)
