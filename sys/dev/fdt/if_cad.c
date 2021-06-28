@@ -1,4 +1,4 @@
-/*	$OpenBSD: if_cad.c,v 1.2 2021/06/13 02:56:48 drahn Exp $	*/
+/*	$OpenBSD: if_cad.c,v 1.7 2021/06/27 04:33:40 visa Exp $	*/
 
 /*
  * Copyright (c) 2021 Visa Hankala
@@ -81,6 +81,7 @@
 #define GEM_NETSR			0x0008
 #define  GEM_NETSR_PHY_MGMT_IDLE		(1 << 2)
 #define GEM_DMACR			0x0010
+#define  GEM_DMACR_DMA64			(1 << 30)
 #define  GEM_DMACR_AHBDISC			(1 << 24)
 #define  GEM_DMACR_RXBUF_MASK			(0xff << 16)
 #define  GEM_DMACR_RXBUF_SHIFT			16
@@ -125,6 +126,8 @@
 #define GEM_LADDRH(i)			(0x008c + (i) * 8)
 #define GEM_LADDRNUM			4
 #define GEM_MID				0x00fc
+#define  GEM_MID_VERSION_MASK			(0xfff << 16)
+#define  GEM_MID_VERSION_SHIFT			16
 #define GEM_OCTTXL			0x0100
 #define GEM_OCTTXH			0x0104
 #define GEM_TXCNT			0x0108
@@ -168,6 +171,10 @@
 #define GEM_RXIPCCNT			0x01a8
 #define GEM_RXTCPCCNT			0x01ac
 #define GEM_RXUDPCCNT			0x01b0
+#define GEM_CFG6			0x0294
+#define  GEM_CFG6_DMA64				(1 << 23)
+#define GEM_TXQBASEHI			0x04c8
+#define GEM_RXQBASEHI			0x04d4
 
 #define GEM_CLK_TX		"tx_clk"
 
@@ -183,9 +190,16 @@ struct cad_dmamem {
 	caddr_t			cdm_kva;
 };
 
-struct cad_desc {
+struct cad_desc32 {
 	uint32_t		d_addr;
 	uint32_t		d_status;
+};
+
+struct cad_desc64 {
+	uint32_t		d_addrlo;
+	uint32_t		d_status;
+	uint32_t		d_addrhi;
+	uint32_t		d_unused;
 };
 
 #define GEM_RXD_ADDR_WRAP	(1 << 1)
@@ -207,11 +221,6 @@ struct cad_desc {
 #define GEM_RXD_SOF		(1 << 14)
 #define GEM_RXD_BADFCS		(1 << 13)
 #define GEM_RXD_LEN_MASK	0x1fff
-
-struct cad_txdesc {
-	uint32_t		txd_addr;
-	uint32_t		txd_status;
-};
 
 #define GEM_TXD_USED		(1 << 31)
 #define GEM_TXD_WRAP		(1 << 30)
@@ -250,6 +259,8 @@ struct cad_softc {
 	enum cad_phy_mode	sc_phy_mode;
 	unsigned char		sc_rxhang_erratum;
 	unsigned char		sc_rxdone;
+	unsigned char		sc_dma64;
+	size_t			sc_descsize;
 
 	struct mii_data		sc_mii;
 #define sc_media	sc_mii.mii_media
@@ -257,14 +268,14 @@ struct cad_softc {
 
 	struct cad_dmamem	*sc_txring;
 	struct cad_buf		*sc_txbuf;
-	struct cad_desc		*sc_txdesc;
+	caddr_t			sc_txdesc;
 	unsigned int		sc_tx_prod;
 	unsigned int		sc_tx_cons;
 
 	struct if_rxring	sc_rx_ring;
 	struct cad_dmamem	*sc_rxring;
 	struct cad_buf		*sc_rxbuf;
-	struct cad_desc		*sc_rxdesc;
+	caddr_t			sc_rxdesc;
 	unsigned int		sc_rx_prod;
 	unsigned int		sc_rx_cons;
 	uint32_t		sc_netctl;
@@ -346,6 +357,7 @@ cad_match(struct device *parent, void *match, void *aux)
 	struct fdt_attach_args *faa = aux;
 
 	return (OF_is_compatible(faa->fa_node, "cdns,gem") ||
+	    OF_is_compatible(faa->fa_node, "sifive,fu540-c000-gem") ||
 	    OF_is_compatible(faa->fa_node, "sifive,fu740-c000-gem"));
 }
 
@@ -357,6 +369,7 @@ cad_attach(struct device *parent, struct device *self, void *aux)
 	struct cad_softc *sc = (struct cad_softc *)self;
 	struct ifnet *ifp = &sc->sc_ac.ac_if;
 	uint32_t hi, lo;
+	uint32_t rev, ver;
 	unsigned int i;
 	int node, phy;
 
@@ -409,6 +422,16 @@ cad_attach(struct device *parent, struct device *self, void *aux)
 		}
 	}
 
+	rev = HREAD4(sc, GEM_MID);
+	ver = (rev & GEM_MID_VERSION_MASK) >> GEM_MID_VERSION_SHIFT;
+
+	sc->sc_descsize = sizeof(struct cad_desc32);
+	/* Register CFG6 is not present on Zynq-7000 / GEM version 0x2. */
+	if (ver >= 0x7 && (HREAD4(sc, GEM_CFG6) & GEM_CFG6_DMA64)) {
+		sc->sc_descsize = sizeof(struct cad_desc64);
+		sc->sc_dma64 = 1;
+	}
+
 	if (OF_is_compatible(faa->fa_node, "cdns,zynq-gem"))
 		sc->sc_rxhang_erratum = 1;
 
@@ -446,7 +469,7 @@ cad_attach(struct device *parent, struct device *self, void *aux)
 		    IFCAP_CSUM_TCPv6 | IFCAP_CSUM_UDPv6;
 	}
 
-	printf(": rev 0x%x, address %s\n", HREAD4(sc, GEM_MID),
+	printf(": rev 0x%x, address %s\n", rev,
 	    ether_sprintf(sc->sc_ac.ac_enaddr));
 
 	sc->sc_mii.mii_ifp = ifp;
@@ -547,6 +570,10 @@ cad_reset(struct cad_softc *sc)
 	HWRITE4(sc, GEM_IDR, ~0U);
 	HWRITE4(sc, GEM_RXSR, 0);
 	HWRITE4(sc, GEM_TXSR, 0);
+	if (sc->sc_dma64) {
+		HWRITE4(sc, GEM_RXQBASEHI, 0);
+		HWRITE4(sc, GEM_TXQBASEHI, 0);
+	}
 	HWRITE4(sc, GEM_RXQBASE, 0);
 	HWRITE4(sc, GEM_TXQBASE, 0);
 
@@ -573,31 +600,47 @@ cad_up(struct cad_softc *sc)
 {
 	struct ifnet *ifp = &sc->sc_ac.ac_if;
 	struct cad_buf *rxb, *txb;
-	struct cad_desc *rxd, *txd;
+	struct cad_desc32 *desc32;
+	struct cad_desc64 *desc64;
+	uint64_t addr;
+	int flags = BUS_DMA_WAITOK | BUS_DMA_ALLOCNOW;
 	unsigned int i;
 	uint32_t val;
+
+	if (sc->sc_dma64)
+		flags |= BUS_DMA_64BIT;
 
 	/*
 	 * Set up Tx descriptor ring.
 	 */
 
 	sc->sc_txring = cad_dmamem_alloc(sc,
-	    CAD_NTXDESC * sizeof(struct cad_desc), sizeof(struct cad_desc));
-	sc->sc_txdesc = (struct cad_desc *)sc->sc_txring->cdm_kva;
+	    CAD_NTXDESC * sc->sc_descsize, sc->sc_descsize);
+	sc->sc_txdesc = sc->sc_txring->cdm_kva;
+
+	desc32 = (struct cad_desc32 *)sc->sc_txdesc;
+	desc64 = (struct cad_desc64 *)sc->sc_txdesc;
 
 	sc->sc_txbuf = malloc(sizeof(*sc->sc_txbuf) * CAD_NTXDESC,
 	    M_DEVBUF, M_WAITOK);
 	for (i = 0; i < CAD_NTXDESC; i++) {
 		txb = &sc->sc_txbuf[i];
 		bus_dmamap_create(sc->sc_dmat, MCLBYTES, CAD_NTXSEGS,
-		    MCLBYTES, 0, BUS_DMA_WAITOK, &txb->bf_map);
+		    MCLBYTES, 0, flags, &txb->bf_map);
 		txb->bf_m = NULL;
 
-		txd = &sc->sc_txdesc[i];
-		txd->d_addr = 0;
-		txd->d_status = GEM_TXD_USED;
-		if (i == CAD_NTXDESC - 1)
-			txd->d_status |= GEM_TXD_WRAP;
+		if (sc->sc_dma64) {
+			desc64[i].d_addrhi = 0;
+			desc64[i].d_addrlo = 0;
+			desc64[i].d_status = GEM_TXD_USED;
+			if (i == CAD_NTXDESC - 1)
+				desc64[i].d_status |= GEM_TXD_WRAP;
+		} else {
+			desc32[i].d_addr = 0;
+			desc32[i].d_status = GEM_TXD_USED;
+			if (i == CAD_NTXDESC - 1)
+				desc32[i].d_status |= GEM_TXD_WRAP;
+		}
 	}
 
 	sc->sc_tx_prod = 0;
@@ -607,29 +650,41 @@ cad_up(struct cad_softc *sc)
 	    0, sc->sc_txring->cdm_size,
 	    BUS_DMASYNC_PREREAD | BUS_DMASYNC_PREWRITE);
 
-	HWRITE4(sc, GEM_TXQBASE, sc->sc_txring->cdm_map->dm_segs[0].ds_addr);
+	addr = sc->sc_txring->cdm_map->dm_segs[0].ds_addr;
+	if (sc->sc_dma64)
+		HWRITE4(sc, GEM_TXQBASEHI, addr >> 32);
+	HWRITE4(sc, GEM_TXQBASE, addr);
 
 	/*
 	 * Set up Rx descriptor ring.
 	 */
 
 	sc->sc_rxring = cad_dmamem_alloc(sc,
-	    CAD_NRXDESC * sizeof(struct cad_desc), sizeof(struct cad_desc));
-	sc->sc_rxdesc = (struct cad_desc *)sc->sc_rxring->cdm_kva;
+	    CAD_NRXDESC * sc->sc_descsize, sc->sc_descsize);
+	sc->sc_rxdesc = sc->sc_rxring->cdm_kva;
+
+	desc32 = (struct cad_desc32 *)sc->sc_rxdesc;
+	desc64 = (struct cad_desc64 *)sc->sc_rxdesc;
 
 	sc->sc_rxbuf = malloc(sizeof(struct cad_buf) * CAD_NRXDESC,
 	    M_DEVBUF, M_WAITOK);
 	for (i = 0; i < CAD_NRXDESC; i++) {
 		rxb = &sc->sc_rxbuf[i];
 		bus_dmamap_create(sc->sc_dmat, MCLBYTES, 1,
-		    MCLBYTES, 0, BUS_DMA_WAITOK, &rxb->bf_map);
+		    MCLBYTES, 0, flags, &rxb->bf_map);
 		rxb->bf_m = NULL;
 
 		/* Mark all descriptors as used so that driver owns them. */
-		rxd = &sc->sc_rxdesc[i];
-		rxd->d_addr = GEM_RXD_ADDR_USED;
-		if (i == CAD_NRXDESC - 1)
-			rxd->d_addr |= GEM_RXD_ADDR_WRAP;
+		if (sc->sc_dma64) {
+			desc64[i].d_addrhi = 0;
+			desc64[i].d_addrlo = GEM_RXD_ADDR_USED;
+			if (i == CAD_NRXDESC - 1)
+				desc64[i].d_addrlo |= GEM_RXD_ADDR_WRAP;
+		} else {
+			desc32[i].d_addr = GEM_RXD_ADDR_USED;
+			if (i == CAD_NRXDESC - 1)
+				desc32[i].d_addr |= GEM_RXD_ADDR_WRAP;
+		}
 	}
 
 	if_rxr_init(&sc->sc_rx_ring, 2, CAD_NRXDESC);
@@ -642,7 +697,10 @@ cad_up(struct cad_softc *sc)
 	    0, sc->sc_rxring->cdm_size,
 	    BUS_DMASYNC_PREREAD | BUS_DMASYNC_PREWRITE);
 
-	HWRITE4(sc, GEM_RXQBASE, sc->sc_rxring->cdm_map->dm_segs[0].ds_addr);
+	addr = sc->sc_rxring->cdm_map->dm_segs[0].ds_addr;
+	if (sc->sc_dma64)
+		HWRITE4(sc, GEM_RXQBASEHI, addr >> 32);
+	HWRITE4(sc, GEM_RXQBASE, addr);
 
 	/*
 	 * Set MAC address filters.
@@ -683,6 +741,10 @@ cad_up(struct cad_softc *sc)
 
 	val = HREAD4(sc, GEM_DMACR);
 
+	if (sc->sc_dma64)
+		val |= GEM_DMACR_DMA64;
+	else
+		val &= ~GEM_DMACR_DMA64;
 	/* Use CPU's native byte order with descriptor words. */
 #if BYTE_ORDER == BIG_ENDIAN
 	val |= GEM_DMACR_ES_DESCR;
@@ -940,7 +1002,8 @@ cad_encap(struct cad_softc *sc, struct mbuf *m)
 {
 	bus_dmamap_t map;
 	struct cad_buf *txb;
-	struct cad_desc *txd;
+	struct cad_desc32 *desc32 = (struct cad_desc32 *)sc->sc_txdesc;
+	struct cad_desc64 *desc64 = (struct cad_desc64 *)sc->sc_txdesc;
 	unsigned int head, idx, nsegs;
 	uint32_t status;
 	int i;
@@ -985,19 +1048,28 @@ cad_encap(struct cad_softc *sc, struct mbuf *m)
 		if (idx == CAD_NTXDESC - 1)
 			status |= GEM_TXD_WRAP;
 
-		txd = &sc->sc_txdesc[idx];
-		txd->d_addr = map->dm_segs[i].ds_addr;
+		if (sc->sc_dma64) {
+			uint64_t addr = map->dm_segs[i].ds_addr;
+
+			desc64[idx].d_addrlo = addr;
+			desc64[idx].d_addrhi = addr >> 32;
+		} else {
+			desc32[idx].d_addr = map->dm_segs[i].ds_addr;
+		}
 
 		/* Make d_addr visible before GEM_TXD_USED is cleared
 		 * in d_status. */
 		bus_dmamap_sync(sc->sc_dmat, sc->sc_txring->cdm_map,
-		    idx * sizeof(*txd), sizeof(*txd),
+		    idx * sc->sc_descsize, sc->sc_descsize,
 		    BUS_DMASYNC_PREREAD | BUS_DMASYNC_PREWRITE);
 
-		txd->d_status = status;
+		if (sc->sc_dma64)
+			desc64[idx].d_status = status;
+		else
+			desc32[idx].d_status = status;
 
 		bus_dmamap_sync(sc->sc_dmat, sc->sc_txring->cdm_map,
-		    idx * sizeof(*txd), sizeof(*txd),
+		    idx * sc->sc_descsize, sc->sc_descsize,
 		    BUS_DMASYNC_PREREAD | BUS_DMASYNC_PREWRITE);
 	}
 
@@ -1053,28 +1125,35 @@ cad_rxeof(struct cad_softc *sc)
 	struct ifnet *ifp = &sc->sc_ac.ac_if;
 	struct mbuf *m;
 	struct cad_buf *rxb;
-	struct cad_desc *rxd;
+	struct cad_desc32 *desc32 = (struct cad_desc32 *)sc->sc_rxdesc;
+	struct cad_desc64 *desc64 = (struct cad_desc64 *)sc->sc_rxdesc;
 	size_t len;
 	unsigned int idx;
-	uint32_t status;
+	uint32_t addr, status;
 
 	idx = sc->sc_rx_cons;
 
 	while (if_rxr_inuse(&sc->sc_rx_ring) > 0) {
 		bus_dmamap_sync(sc->sc_dmat, sc->sc_rxring->cdm_map,
-		    idx * sizeof(*rxd), sizeof(*rxd),
+		    idx * sc->sc_descsize, sc->sc_descsize,
 		    BUS_DMASYNC_POSTREAD | BUS_DMASYNC_POSTWRITE);
 
-		rxd = &sc->sc_rxdesc[idx];
-		if ((rxd->d_addr & GEM_RXD_ADDR_USED) == 0)
+		if (sc->sc_dma64)
+			addr = desc64[idx].d_addrlo;
+		else
+			addr = desc32[idx].d_addr;
+		if ((addr & GEM_RXD_ADDR_USED) == 0)
 			break;
 
 		/* Prevent premature read of d_status. */
 		bus_dmamap_sync(sc->sc_dmat, sc->sc_rxring->cdm_map,
-		    idx * sizeof(*rxd), sizeof(*rxd),
+		    idx * sc->sc_descsize, sc->sc_descsize,
 		    BUS_DMASYNC_POSTREAD);
 
-		status = rxd->d_status;
+		if (sc->sc_dma64)
+			status = desc64[idx].d_status;
+		else
+			status = desc32[idx].d_status;
 		len = status & GEM_RXD_LEN_MASK;
 
 		rxb = &sc->sc_rxbuf[idx];
@@ -1129,8 +1208,9 @@ void
 cad_rxfill(struct cad_softc *sc)
 {
 	struct cad_buf *rxb;
-	struct cad_desc *rxd;
-	uint32_t addr;
+	struct cad_desc32 *desc32 = (struct cad_desc32 *)sc->sc_rxdesc;
+	struct cad_desc64 *desc64 = (struct cad_desc64 *)sc->sc_rxdesc;
+	uint64_t addr;
 	unsigned int idx;
 	u_int slots;
 
@@ -1148,19 +1228,26 @@ cad_rxfill(struct cad_softc *sc)
 		if (idx == CAD_NRXDESC - 1)
 			addr |= GEM_RXD_ADDR_WRAP;
 
-		rxd = &sc->sc_rxdesc[idx];
-		rxd->d_status = 0;
+		if (sc->sc_dma64) {
+			desc64[idx].d_addrhi = addr >> 32;
+			desc64[idx].d_status = 0;
+		} else {
+			desc32[idx].d_status = 0;
+		}
 
-		/* Make d_status visible before clearing GEM_RXD_ADDR_USED
-		 * in d_addr. */
+		/* Make d_addrhi and d_status visible before clearing
+		 * GEM_RXD_ADDR_USED in d_addr or d_addrlo. */
 		bus_dmamap_sync(sc->sc_dmat, sc->sc_rxring->cdm_map,
-		    idx * sizeof(*rxd), sizeof(*rxd),
+		    idx * sc->sc_descsize, sc->sc_descsize,
 		    BUS_DMASYNC_PREREAD | BUS_DMASYNC_PREWRITE);
 
-		rxd->d_addr = addr;
+		if (sc->sc_dma64)
+			desc64[idx].d_addrlo = addr;
+		else
+			desc32[idx].d_addr = addr;
 
 		bus_dmamap_sync(sc->sc_dmat, sc->sc_rxring->cdm_map,
-		    idx * sizeof(*rxd), sizeof(*rxd),
+		    idx * sc->sc_descsize, sc->sc_descsize,
 		    BUS_DMASYNC_PREREAD | BUS_DMASYNC_PREWRITE);
 
 		idx = (idx + 1) % CAD_NRXDESC;
@@ -1175,7 +1262,8 @@ cad_txeof(struct cad_softc *sc)
 {
 	struct ifnet *ifp = &sc->sc_ac.ac_if;
 	struct cad_buf *txb;
-	struct cad_desc *txd;
+	struct cad_desc32 *desc32 = (struct cad_desc32 *)sc->sc_txdesc;
+	struct cad_desc64 *desc64 = (struct cad_desc64 *)sc->sc_txdesc;
 	unsigned int free = 0;
 	unsigned int idx, nsegs;
 	uint32_t status;
@@ -1184,11 +1272,13 @@ cad_txeof(struct cad_softc *sc)
 
 	while (idx != sc->sc_tx_prod) {
 		bus_dmamap_sync(sc->sc_dmat, sc->sc_txring->cdm_map,
-		    idx * sizeof(*txd), sizeof(*txd),
+		    idx * sc->sc_descsize, sc->sc_descsize,
 		    BUS_DMASYNC_POSTREAD | BUS_DMASYNC_POSTWRITE);
 
-		txd = &sc->sc_txdesc[idx];
-		status = txd->d_status;
+		if (sc->sc_dma64)
+			status = desc64[idx].d_status;
+		else
+			status = desc32[idx].d_status;
 		if ((status & GEM_TXD_USED) == 0)
 			break;
 
@@ -1226,14 +1316,16 @@ cad_txeof(struct cad_softc *sc)
 			 */
 
 			bus_dmamap_sync(sc->sc_dmat, sc->sc_txring->cdm_map,
-			    idx * sizeof(*txd), sizeof(*txd),
+			    idx * sc->sc_descsize, sc->sc_descsize,
 			    BUS_DMASYNC_POSTREAD | BUS_DMASYNC_POSTWRITE);
 
-			txd = &sc->sc_txdesc[idx];
-			txd->d_status |= GEM_TXD_USED;
+			if (sc->sc_dma64)
+				desc64[idx].d_status |= GEM_TXD_USED;
+			else
+				desc32[idx].d_status |= GEM_TXD_USED;
 
 			bus_dmamap_sync(sc->sc_dmat, sc->sc_txring->cdm_map,
-			    idx * sizeof(*txd), sizeof(*txd),
+			    idx * sc->sc_descsize, sc->sc_descsize,
 			    BUS_DMASYNC_PREREAD | BUS_DMASYNC_PREWRITE);
 		}
 
@@ -1408,13 +1500,17 @@ struct cad_dmamem *
 cad_dmamem_alloc(struct cad_softc *sc, bus_size_t size, bus_size_t align)
 {
 	struct cad_dmamem *cdm;
+	int flags = BUS_DMA_WAITOK | BUS_DMA_ALLOCNOW;
 	int nsegs;
 
 	cdm = malloc(sizeof(*cdm), M_DEVBUF, M_WAITOK | M_ZERO);
 	cdm->cdm_size = size;
 
+	if (sc->sc_dma64)
+		flags |= BUS_DMA_64BIT;
+
 	if (bus_dmamap_create(sc->sc_dmat, size, 1, size, 0,
-	    BUS_DMA_WAITOK | BUS_DMA_ALLOCNOW, &cdm->cdm_map) != 0)
+	    flags, &cdm->cdm_map) != 0)
 		goto cdmfree;
 	if (bus_dmamem_alloc(sc->sc_dmat, size, align, 0, &cdm->cdm_seg, 1,
 	    &nsegs, BUS_DMA_WAITOK) != 0)
@@ -1682,39 +1778,78 @@ void
 cad_dump(struct cad_softc *sc)
 {
 	struct cad_buf *rxb, *txb;
-	struct cad_desc *rxd, *txd;
-	uint32_t rxqbase, txqbase;
+	struct cad_desc32 *desc32;
+	struct cad_desc64 *desc64;
 	int i;
-
-	rxqbase = HREAD4(sc, GEM_RXQBASE);
-	txqbase = HREAD4(sc, GEM_TXQBASE);
 
 	printf("isr 0x%x txsr 0x%x rxsr 0x%x\n", HREAD4(sc, GEM_ISR),
 	    HREAD4(sc, GEM_TXSR), HREAD4(sc, GEM_RXSR));
 
-	printf("tx q 0x%08x\n", txqbase);
+	if (sc->sc_dma64) {
+		printf("tx q 0x%08x%08x\n",
+		    HREAD4(sc, GEM_TXQBASEHI),
+		    HREAD4(sc, GEM_TXQBASE));
+	} else {
+		printf("tx q 0x%08x\n",
+		    HREAD4(sc, GEM_TXQBASE));
+	}
+	desc32 = (struct cad_desc32 *)sc->sc_txdesc;
+	desc64 = (struct cad_desc64 *)sc->sc_txdesc;
 	if (sc->sc_txbuf != NULL) {
 		for (i = 0; i < CAD_NTXDESC; i++) {
 			txb = &sc->sc_txbuf[i];
-			txd = &sc->sc_txdesc[i];
-			printf(" %3i %p 0x%08x 0x%08x %s%s m %p\n", i,
-			    txd, txd->d_addr, txd->d_status,
-			    sc->sc_tx_cons == i ? ">" : " ",
-			    sc->sc_tx_prod == i ? "<" : " ",
-			    txb->bf_m);
+			if (sc->sc_dma64) {
+				printf(" %3i %p 0x%08x%08x 0x%08x %s%s "
+				    "m %p\n", i,
+				    &desc64[i],
+				    desc64[i].d_addrhi, desc64[i].d_addrlo,
+				    desc64[i].d_status,
+				    sc->sc_tx_cons == i ? ">" : " ",
+				    sc->sc_tx_prod == i ? "<" : " ",
+				    txb->bf_m);
+			} else {
+				printf(" %3i %p 0x%08x 0x%08x %s%s m %p\n", i,
+				    &desc32[i],
+				    desc32[i].d_addr,
+				    desc32[i].d_status,
+				    sc->sc_tx_cons == i ? ">" : " ",
+				    sc->sc_tx_prod == i ? "<" : " ",
+				    txb->bf_m);
+			}
 		}
 	}
 
-	printf("rx q 0x%08x\n", rxqbase);
+	if (sc->sc_dma64) {
+		printf("rx q 0x%08x%08x\n",
+		    HREAD4(sc, GEM_RXQBASEHI),
+		    HREAD4(sc, GEM_RXQBASE));
+	} else {
+		printf("rx q 0x%08x\n",
+		    HREAD4(sc, GEM_RXQBASE));
+	}
+	desc32 = (struct cad_desc32 *)sc->sc_rxdesc;
+	desc64 = (struct cad_desc64 *)sc->sc_rxdesc;
 	if (sc->sc_rxbuf != NULL) {
 		for (i = 0; i < CAD_NRXDESC; i++) {
 			rxb = &sc->sc_rxbuf[i];
-			rxd = &sc->sc_rxdesc[i];
-			printf(" %3i %p 0x%08x 0x%08x %s%s m %p\n", i,
-			    rxd, rxd->d_addr, rxd->d_status,
-			    sc->sc_rx_cons == i ? ">" : " ",
-			    sc->sc_rx_prod == i ? "<" : " ",
-			    rxb->bf_m);
+			if (sc->sc_dma64) {
+				printf(" %3i %p 0x%08x%08x 0x%08x %s%s "
+				    "m %p\n", i,
+				    &desc64[i],
+				    desc64[i].d_addrhi, desc64[i].d_addrlo,
+				    desc64[i].d_status,
+				    sc->sc_rx_cons == i ? ">" : " ",
+				    sc->sc_rx_prod == i ? "<" : " ",
+				    rxb->bf_m);
+			} else {
+				printf(" %3i %p 0x%08x 0x%08x %s%s m %p\n", i,
+				    &desc32[i],
+				    desc32[i].d_addr,
+				    desc32[i].d_status,
+				    sc->sc_rx_cons == i ? ">" : " ",
+				    sc->sc_rx_prod == i ? "<" : " ",
+				    rxb->bf_m);
+			}
 		}
 	}
 }

@@ -1,4 +1,4 @@
-/* $OpenBSD: ssl_sigalgs.c,v 1.24 2021/05/16 08:24:21 jsing Exp $ */
+/* $OpenBSD: ssl_sigalgs.c,v 1.29 2021/06/27 18:15:35 jsing Exp $ */
 /*
  * Copyright (c) 2018-2020 Bob Beck <beck@openbsd.org>
  *
@@ -28,101 +28,101 @@
 const struct ssl_sigalg sigalgs[] = {
 	{
 		.value = SIGALG_RSA_PKCS1_SHA512,
-		.md = EVP_sha512,
 		.key_type = EVP_PKEY_RSA,
+		.md = EVP_sha512,
 	},
 	{
 		.value = SIGALG_ECDSA_SECP521R1_SHA512,
-		.md = EVP_sha512,
 		.key_type = EVP_PKEY_EC,
+		.md = EVP_sha512,
 		.curve_nid = NID_secp521r1,
 	},
 #ifndef OPENSSL_NO_GOST
 	{
 		.value = SIGALG_GOSTR12_512_STREEBOG_512,
-		.md = EVP_streebog512,
 		.key_type = EVP_PKEY_GOSTR12_512,
+		.md = EVP_streebog512,
 	},
 #endif
 	{
 		.value = SIGALG_RSA_PKCS1_SHA384,
-		.md = EVP_sha384,
 		.key_type = EVP_PKEY_RSA,
+		.md = EVP_sha384,
 	},
 	{
 		.value = SIGALG_ECDSA_SECP384R1_SHA384,
-		.md = EVP_sha384,
 		.key_type = EVP_PKEY_EC,
+		.md = EVP_sha384,
 		.curve_nid = NID_secp384r1,
 	},
 	{
 		.value = SIGALG_RSA_PKCS1_SHA256,
-		.md = EVP_sha256,
 		.key_type = EVP_PKEY_RSA,
+		.md = EVP_sha256,
 	},
 	{
 		.value = SIGALG_ECDSA_SECP256R1_SHA256,
-		.md = EVP_sha256,
 		.key_type = EVP_PKEY_EC,
+		.md = EVP_sha256,
 		.curve_nid = NID_X9_62_prime256v1,
 	},
 #ifndef OPENSSL_NO_GOST
 	{
 		.value = SIGALG_GOSTR12_256_STREEBOG_256,
-		.md = EVP_streebog256,
 		.key_type = EVP_PKEY_GOSTR12_256,
+		.md = EVP_streebog256,
 	},
 	{
 		.value = SIGALG_GOSTR01_GOST94,
-		.md = EVP_gostr341194,
 		.key_type = EVP_PKEY_GOSTR01,
+		.md = EVP_gostr341194,
 	},
 #endif
 	{
 		.value = SIGALG_RSA_PSS_RSAE_SHA256,
-		.md = EVP_sha256,
 		.key_type = EVP_PKEY_RSA,
+		.md = EVP_sha256,
 		.flags = SIGALG_FLAG_RSA_PSS,
 	},
 	{
 		.value = SIGALG_RSA_PSS_RSAE_SHA384,
-		.md = EVP_sha384,
 		.key_type = EVP_PKEY_RSA,
+		.md = EVP_sha384,
 		.flags = SIGALG_FLAG_RSA_PSS,
 	},
 	{
 		.value = SIGALG_RSA_PSS_RSAE_SHA512,
-		.md = EVP_sha512,
 		.key_type = EVP_PKEY_RSA,
+		.md = EVP_sha512,
 		.flags = SIGALG_FLAG_RSA_PSS,
 	},
 	{
 		.value = SIGALG_RSA_PSS_PSS_SHA256,
-		.md = EVP_sha256,
 		.key_type = EVP_PKEY_RSA,
+		.md = EVP_sha256,
 		.flags = SIGALG_FLAG_RSA_PSS,
 	},
 	{
 		.value = SIGALG_RSA_PSS_PSS_SHA384,
-		.md = EVP_sha384,
 		.key_type = EVP_PKEY_RSA,
+		.md = EVP_sha384,
 		.flags = SIGALG_FLAG_RSA_PSS,
 	},
 	{
 		.value = SIGALG_RSA_PSS_PSS_SHA512,
-		.md = EVP_sha512,
 		.key_type = EVP_PKEY_RSA,
+		.md = EVP_sha512,
 		.flags = SIGALG_FLAG_RSA_PSS,
 	},
 	{
 		.value = SIGALG_RSA_PKCS1_SHA224,
-		.md = EVP_sha224,
 		.key_type = EVP_PKEY_RSA,
+		.md = EVP_sha224,
 	},
 	{
 		.value = SIGALG_ECDSA_SECP224R1_SHA224,
-		.md = EVP_sha224,
 		.key_type = EVP_PKEY_EC,
+		.md = EVP_sha224,
 	},
 	{
 		.value = SIGALG_RSA_PKCS1_SHA1,
@@ -144,7 +144,7 @@ const struct ssl_sigalg sigalgs[] = {
 	},
 };
 
-/* Sigalgs for tls 1.3, in preference order, */
+/* Sigalgs for TLSv1.3, in preference order. */
 const uint16_t tls13_sigalgs[] = {
 	SIGALG_RSA_PSS_RSAE_SHA512,
 	SIGALG_RSA_PKCS1_SHA512,
@@ -158,7 +158,7 @@ const uint16_t tls13_sigalgs[] = {
 };
 const size_t tls13_sigalgs_len = (sizeof(tls13_sigalgs) / sizeof(tls13_sigalgs[0]));
 
-/* Sigalgs for tls 1.2, in preference order, */
+/* Sigalgs for TLSv1.2, in preference order. */
 const uint16_t tls12_sigalgs[] = {
 	SIGALG_RSA_PSS_RSAE_SHA512,
 	SIGALG_RSA_PKCS1_SHA512,
@@ -174,13 +174,26 @@ const uint16_t tls12_sigalgs[] = {
 };
 const size_t tls12_sigalgs_len = (sizeof(tls12_sigalgs) / sizeof(tls12_sigalgs[0]));
 
+static void
+ssl_sigalgs_for_version(uint16_t tls_version, const uint16_t **out_values,
+    size_t *out_len)
+{
+	if (tls_version >= TLS1_3_VERSION) {
+		*out_values = tls13_sigalgs;
+		*out_len = tls13_sigalgs_len;
+	} else {
+		*out_values = tls12_sigalgs;
+		*out_len = tls12_sigalgs_len;
+	}
+}
+
 const struct ssl_sigalg *
-ssl_sigalg_lookup(uint16_t sigalg)
+ssl_sigalg_lookup(uint16_t value)
 {
 	int i;
 
 	for (i = 0; sigalgs[i].value != SIGALG_NONE; i++) {
-		if (sigalgs[i].value == sigalg)
+		if (sigalgs[i].value == value)
 			return &sigalgs[i];
 	}
 
@@ -188,39 +201,39 @@ ssl_sigalg_lookup(uint16_t sigalg)
 }
 
 const struct ssl_sigalg *
-ssl_sigalg(uint16_t sigalg, const uint16_t *values, size_t len)
+ssl_sigalg_from_value(uint16_t tls_version, uint16_t value)
 {
+	const uint16_t *values;
+	size_t len;
 	int i;
 
+	ssl_sigalgs_for_version(tls_version, &values, &len);
+
 	for (i = 0; i < len; i++) {
-		if (values[i] == sigalg)
-			return ssl_sigalg_lookup(sigalg);
+		if (values[i] == value)
+			return ssl_sigalg_lookup(value);
 	}
 
 	return NULL;
 }
 
 int
-ssl_sigalgs_build(CBB *cbb, const uint16_t *values, size_t len)
+ssl_sigalgs_build(uint16_t tls_version, CBB *cbb)
 {
+	const uint16_t *values;
+	size_t len;
 	size_t i;
 
-	for (i = 0; sigalgs[i].value != SIGALG_NONE; i++);
-	if (len > i)
-		return 0;
-
-	/* XXX check for duplicates and other sanity BS? */
+	ssl_sigalgs_for_version(tls_version, &values, &len);
 
 	/* Add values in order as long as they are supported. */
 	for (i = 0; i < len; i++) {
-		/* Do not allow the legacy value for < 1.2 to be used */
+		/* Do not allow the legacy value for < 1.2 to be used. */
 		if (values[i] == SIGALG_RSA_PKCS1_MD5_SHA1)
 			return 0;
-
-		if (ssl_sigalg_lookup(values[i]) != NULL) {
-			if (!CBB_add_u16(cbb, values[i]))
-				return 0;
-		} else
+		if (ssl_sigalg_lookup(values[i]) == NULL)
+			return 0;
+		if (!CBB_add_u16(cbb, values[i]))
 			return 0;
 	}
 	return 1;
@@ -313,14 +326,14 @@ ssl_sigalg_select(SSL *s, EVP_PKEY *pkey)
 	 */
 	CBS_init(&cbs, S3I(s)->hs.sigalgs, S3I(s)->hs.sigalgs_len);
 	while (CBS_len(&cbs) > 0) {
-		uint16_t sig_alg;
 		const struct ssl_sigalg *sigalg;
+		uint16_t sigalg_value;
 
-		if (!CBS_get_u16(&cbs, &sig_alg))
+		if (!CBS_get_u16(&cbs, &sigalg_value))
 			return 0;
 
-		if ((sigalg = ssl_sigalg(sig_alg, tls_sigalgs,
-		    tls_sigalgs_len)) == NULL)
+		if ((sigalg = ssl_sigalg_from_value(
+		    S3I(s)->hs.negotiated_tls_version, sigalg_value)) == NULL)
 			continue;
 
 		/* RSA cannot be used without PSS in TLSv1.3. */

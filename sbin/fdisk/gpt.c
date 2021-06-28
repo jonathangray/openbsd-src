@@ -1,4 +1,4 @@
-/*	$OpenBSD: gpt.c,v 1.31 2021/06/20 18:44:19 krw Exp $	*/
+/*	$OpenBSD: gpt.c,v 1.33 2021/06/25 19:24:53 krw Exp $	*/
 /*
  * Copyright (c) 2015 Markus Muller <mmu@grummel.net>
  * Copyright (c) 2015 Kenneth R Westerback <krw@openbsd.org>
@@ -334,8 +334,8 @@ add_partition(const uint8_t *beuuid, const char *name, uint64_t sectors)
 	if (rslt == -1)
 		goto done;
 
-	if (start % 64)
-		start += (64 - start % 64);
+	if (start % BLOCKALIGNMENT)
+		start += (BLOCKALIGNMENT - start % BLOCKALIGNMENT);
 	if (start >= end)
 		goto done;
 
@@ -386,9 +386,8 @@ init_gh(void)
 
 	needed = sizeof(gp) / secsize + 2;
 
-	/* Start usable LBA area on 64 sector boundary. */
-	if (needed % 64)
-		needed += (64 - (needed % 64));
+	if (needed % BLOCKALIGNMENT)
+		needed += (needed - (needed % BLOCKALIGNMENT));
 
 	gh.gh_sig = htole64(GPTSIGNATURE);
 	gh.gh_rev = htole32(GPTREVISION);
@@ -417,13 +416,22 @@ int
 init_gp(void)
 {
 	extern uint32_t b_sectors;
+	extern int A_flag;
 	const uint8_t gpt_uuid_efi_system[] = GPT_UUID_EFI_SYSTEM;
 	const uint8_t gpt_uuid_openbsd[] = GPT_UUID_OPENBSD;
 	struct gpt_partition oldgp[NGPTPARTITIONS];
-	int rslt;
+	int pn, rslt;
 
 	memcpy(&oldgp, &gp, sizeof(oldgp));
-	memset(&gp, 0, sizeof(gp));
+	if (A_flag == 0)
+		memset(&gp, 0, sizeof(gp));
+	else {
+		for (pn = 0; pn < NGPTPARTITIONS; pn++) {
+			if (PRT_protected_guid(&gp[pn].gp_type))
+				continue;
+			memset(&gp[pn], 0, sizeof(gp[pn]));
+		}
+	}
 
 	rslt = 0;
 	if (b_sectors > 0) {

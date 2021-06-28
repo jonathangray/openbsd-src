@@ -58,6 +58,7 @@ BFD64_LIBS_CFILES = archive64.c
 # This list is alphabetized to make it easier to keep in sync
 # with the decls and initializer in archures.c.
 ALL_MACHINES = \
+	cpu-aarch64.lo \
 	cpu-alpha.lo \
 	cpu-arc.lo \
 	cpu-arm.lo \
@@ -101,6 +102,7 @@ ALL_MACHINES = \
 	cpu-pdp11.lo \
 	cpu-pj.lo \
 	cpu-powerpc.lo \
+	cpu-riscv64.lo \
 	cpu-rs6000.lo \
 	cpu-s390.lo \
 	cpu-sh.lo \
@@ -120,6 +122,7 @@ ALL_MACHINES = \
 	cpu-z8k.lo
 
 ALL_MACHINES_CFILES = \
+	cpu-aarch64.c \
 	cpu-alpha.c \
 	cpu-arc.c \
 	cpu-arm.c \
@@ -163,6 +166,7 @@ ALL_MACHINES_CFILES = \
 	cpu-pdp11.c \
 	cpu-pj.c \
 	cpu-powerpc.c \
+	cpu-riscv64.c \
 	cpu-rs6000.c \
 	cpu-s390.c \
 	cpu-sh.c \
@@ -1001,6 +1005,7 @@ simple.lo: simple.c $(INCDIR)/filenames.h $(INCDIR)/hashtab.h \
   $(INCDIR)/bfdlink.h
 archive64.lo: archive64.c $(INCDIR)/filenames.h $(INCDIR)/hashtab.h \
   $(INCDIR)/aout/ar.h
+cpu-aarch64.lo: cpu-aarch64.c $(INCDIR)/filenames.h $(INCDIR)/hashtab.h
 cpu-alpha.lo: cpu-alpha.c $(INCDIR)/filenames.h $(INCDIR)/hashtab.h
 cpu-arc.lo: cpu-arc.c $(INCDIR)/filenames.h $(INCDIR)/hashtab.h
 cpu-arm.lo: cpu-arm.c $(INCDIR)/filenames.h $(INCDIR)/hashtab.h \
@@ -1052,6 +1057,7 @@ cpu-pdp11.lo: cpu-pdp11.c $(INCDIR)/filenames.h $(INCDIR)/hashtab.h
 cpu-pj.lo: cpu-pj.c $(INCDIR)/filenames.h $(INCDIR)/hashtab.h
 cpu-powerpc.lo: cpu-powerpc.c $(INCDIR)/filenames.h \
   $(INCDIR)/hashtab.h
+cpu-riscv64.lo: cpu-riscv64.c $(INCDIR)/filenames.h $(INCDIR)/hashtab.h
 cpu-rs6000.lo: cpu-rs6000.c $(INCDIR)/filenames.h $(INCDIR)/hashtab.h
 cpu-s390.lo: cpu-s390.c $(INCDIR)/filenames.h $(INCDIR)/hashtab.h
 cpu-sh.lo: cpu-sh.c $(INCDIR)/filenames.h $(INCDIR)/hashtab.h \

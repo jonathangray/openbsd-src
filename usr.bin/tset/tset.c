@@ -1,4 +1,4 @@
-/*	$OpenBSD: tset.c,v 1.41 2019/06/28 13:35:05 deraadt Exp $	*/
+/*	$OpenBSD: tset.c,v 1.43 2021/06/22 18:33:48 tb Exp $	*/
 
 /****************************************************************************
  * Copyright (c) 1998-2007,2008 Free Software Foundation, Inc.              *
@@ -110,7 +110,7 @@ extern char **environ;
 #undef CTRL
 #define CTRL(x)	((x) & 0x1f)
 
-const char *_nc_progname = "tset";
+const char *_nc_progname;
 
 static TTY mode, oldmode, original;
 
@@ -1094,28 +1094,9 @@ obsolete(char **argv)
 static void
 usage(void)
 {
-    static const char *tbl[] =
-    {
-	""
-	,"Options:"
-	,"  -c          set control characters"
-	,"  -e ch       erase character"
-	,"  -I          no initialization strings"
-	,"  -i ch       interrupt character"
-	,"  -k ch       kill character"
-	,"  -m mapping  map identifier to type"
-	,"  -Q          do not output control key settings"
-	,"  -r          display term on stderr"
-	,"  -s          output TERM set command"
-	,"  -V          print curses-version"
-	,"  -w          set window-size"
-    };
-    unsigned n;
-    (void) fprintf(stderr, "Usage: %s [-cIQqrsVw] [-] "
-	"[-e ch] [-i ch] [-k ch] [-m mapping] [terminal]\n",
+    (void) fprintf(stderr, "usage: %s [-cIQqrsVw] [-] "
+	"[-e ch] [-i ch] [-k ch] [-m mapping] [terminal]",
 	_nc_progname);
-    for (n = 0; n < sizeof(tbl) / sizeof(tbl[0]); ++n)
-	fprintf(stderr, "%s\n", tbl[n]);
 
     exit_error();
     /* NOTREACHED */
@@ -1135,6 +1116,8 @@ main(int argc, char **argv)
     int ch, noinit, noset, quiet, Sflag, sflag, showterm;
     const char *p;
     const char *ttype;
+
+    _nc_progname = _nc_rootname(*argv);
 
     if (pledge("stdio rpath wpath tty", NULL) == -1)
 	err("pledge: %s", strerror(errno));
@@ -1198,8 +1181,6 @@ main(int argc, char **argv)
 	    usage();
 	}
     }
-
-    _nc_progname = _nc_rootname(*argv);
     argc -= optind;
     argv += optind;
 

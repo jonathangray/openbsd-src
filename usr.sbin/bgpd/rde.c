@@ -1,4 +1,4 @@
-/*	$OpenBSD: rde.c,v 1.527 2021/06/17 16:05:26 claudio Exp $ */
+/*	$OpenBSD: rde.c,v 1.530 2021/06/25 09:25:48 claudio Exp $ */
 
 /*
  * Copyright (c) 2003, 2004 Henning Brauer <henning@openbsd.org>
@@ -517,7 +517,7 @@ badnetdel:
 				break;
 			}
 			if (rib_dump_new(RIB_ADJ_IN, AID_UNSPEC,
-			    RDE_RUNNER_ROUNDS, peerself, network_flush_upcall,
+			    RDE_RUNNER_ROUNDS, NULL, network_flush_upcall,
 			    NULL, NULL) == -1)
 				log_warn("rde_dispatch: IMSG_NETWORK_FLUSH");
 			break;
@@ -1280,6 +1280,14 @@ rde_update_dispatch(struct rde_peer *peer, struct imsg *imsg)
 
 	/* withdraw prefix */
 	while (len > 0) {
+		if (peer->capa.mp[AID_INET] == 0) {
+			log_peer_warnx(&peer->conf,
+			    "bad withdraw, %s disabled", aid2str(AID_INET));
+			rde_update_err(peer, ERR_UPDATE, ERR_UPD_OPTATTR,
+			    NULL, 0);
+			goto done;
+		}
+
 		if ((pos = nlri_get_prefix(p, len, &prefix,
 		    &prefixlen)) == -1) {
 			/*
@@ -1293,14 +1301,6 @@ rde_update_dispatch(struct rde_peer *peer, struct imsg *imsg)
 		}
 		p += pos;
 		len -= pos;
-
-		if (peer->capa.mp[AID_INET] == 0) {
-			log_peer_warnx(&peer->conf,
-			    "bad withdraw, %s disabled", aid2str(AID_INET));
-			rde_update_err(peer, ERR_UPDATE, ERR_UPD_OPTATTR,
-			    NULL, 0);
-			goto done;
-		}
 
 		rde_update_withdraw(peer, &prefix, prefixlen);
 	}
@@ -1338,9 +1338,9 @@ rde_update_dispatch(struct rde_peer *peer, struct imsg *imsg)
 			rde_peer_recv_eor(peer, aid);
 		}
 
-		switch (aid) {
-		case AID_INET6:
-			while (mplen > 0) {
+		while (mplen > 0) {
+			switch (aid) {
+			case AID_INET6:
 				if ((pos = nlri_get_prefix6(mpp, mplen,
 				    &prefix, &prefixlen)) == -1) {
 					log_peer_warnx(&peer->conf,
@@ -1350,14 +1350,8 @@ rde_update_dispatch(struct rde_peer *peer, struct imsg *imsg)
 					    mpa.unreach, mpa.unreach_len);
 					goto done;
 				}
-				mpp += pos;
-				mplen -= pos;
-
-				rde_update_withdraw(peer, &prefix, prefixlen);
-			}
-			break;
-		case AID_VPN_IPv4:
-			while (mplen > 0) {
+				break;
+			case AID_VPN_IPv4:
 				if ((pos = nlri_get_vpn4(mpp, mplen,
 				    &prefix, &prefixlen, 1)) == -1) {
 					log_peer_warnx(&peer->conf,
@@ -1367,14 +1361,8 @@ rde_update_dispatch(struct rde_peer *peer, struct imsg *imsg)
 					    mpa.unreach, mpa.unreach_len);
 					goto done;
 				}
-				mpp += pos;
-				mplen -= pos;
-
-				rde_update_withdraw(peer, &prefix, prefixlen);
-			}
-			break;
-		case AID_VPN_IPv6:
-			while (mplen > 0) {
+				break;
+			case AID_VPN_IPv6:
 				if ((pos = nlri_get_vpn6(mpp, mplen,
 				    &prefix, &prefixlen, 1)) == -1) {
 					log_peer_warnx(&peer->conf,
@@ -1384,15 +1372,16 @@ rde_update_dispatch(struct rde_peer *peer, struct imsg *imsg)
 					    mpa.unreach_len);
 					goto done;
 				}
-				mpp += pos;
-				mplen -= pos;
-
-				rde_update_withdraw(peer, &prefix, prefixlen);
+				break;
+			default:
+				/* ignore unsupported multiprotocol AF */
+				break;
 			}
-			break;
-		default:
-			/* silently ignore unsupported multiprotocol AF */
-			break;
+
+			mpp += pos;
+			mplen -= pos;
+
+			rde_update_withdraw(peer, &prefix, prefixlen);
 		}
 
 		if ((state.aspath.flags & ~F_ATTR_MP_UNREACH) == 0)
@@ -1404,6 +1393,14 @@ rde_update_dispatch(struct rde_peer *peer, struct imsg *imsg)
 
 	/* parse nlri prefix */
 	while (nlri_len > 0) {
+		if (peer->capa.mp[AID_INET] == 0) {
+			log_peer_warnx(&peer->conf,
+			    "bad update, %s disabled", aid2str(AID_INET));
+			rde_update_err(peer, ERR_UPDATE, ERR_UPD_OPTATTR,
+			    NULL, 0);
+			goto done;
+		}
+
 		if ((pos = nlri_get_prefix(p, nlri_len, &prefix,
 		    &prefixlen)) == -1) {
 			log_peer_warnx(&peer->conf, "bad nlri prefix");
@@ -1413,14 +1410,6 @@ rde_update_dispatch(struct rde_peer *peer, struct imsg *imsg)
 		}
 		p += pos;
 		nlri_len -= pos;
-
-		if (peer->capa.mp[AID_INET] == 0) {
-			log_peer_warnx(&peer->conf,
-			    "bad update, %s disabled", aid2str(AID_INET));
-			rde_update_err(peer, ERR_UPDATE, ERR_UPD_OPTATTR,
-			    NULL, 0);
-			goto done;
-		}
 
 		if (rde_update_update(peer, &state, &prefix, prefixlen) == -1)
 			goto done;
@@ -1466,9 +1455,9 @@ rde_update_dispatch(struct rde_peer *peer, struct imsg *imsg)
 		mpp += pos;
 		mplen -= pos;
 
-		switch (aid) {
-		case AID_INET6:
-			while (mplen > 0) {
+		while (mplen > 0) {
+			switch (aid) {
+			case AID_INET6:
 				if ((pos = nlri_get_prefix6(mpp, mplen,
 				    &prefix, &prefixlen)) == -1) {
 					log_peer_warnx(&peer->conf,
@@ -1478,16 +1467,8 @@ rde_update_dispatch(struct rde_peer *peer, struct imsg *imsg)
 					    mpa.reach, mpa.reach_len);
 					goto done;
 				}
-				mpp += pos;
-				mplen -= pos;
-
-				if (rde_update_update(peer, &state, &prefix,
-				    prefixlen) == -1)
-					goto done;
-			}
-			break;
-		case AID_VPN_IPv4:
-			while (mplen > 0) {
+				break;
+			case AID_VPN_IPv4:
 				if ((pos = nlri_get_vpn4(mpp, mplen,
 				    &prefix, &prefixlen, 0)) == -1) {
 					log_peer_warnx(&peer->conf,
@@ -1497,16 +1478,8 @@ rde_update_dispatch(struct rde_peer *peer, struct imsg *imsg)
 					    mpa.reach, mpa.reach_len);
 					goto done;
 				}
-				mpp += pos;
-				mplen -= pos;
-
-				if (rde_update_update(peer, &state, &prefix,
-				    prefixlen) == -1)
-					goto done;
-			}
-			break;
-		case AID_VPN_IPv6:
-			while (mplen > 0) {
+				break;
+			case AID_VPN_IPv6:
 				if ((pos = nlri_get_vpn6(mpp, mplen,
 				    &prefix, &prefixlen, 0)) == -1) {
 					log_peer_warnx(&peer->conf,
@@ -1516,17 +1489,18 @@ rde_update_dispatch(struct rde_peer *peer, struct imsg *imsg)
 					    mpa.reach, mpa.reach_len);
 					goto done;
 				}
-				mpp += pos;
-				mplen -= pos;
-
-				if (rde_update_update(peer, &state, &prefix,
-				    prefixlen) == -1)
-					goto done;
+				break;
+			default:
+				/* ignore unsupported multiprotocol AF */
+				break;
 			}
-			break;
-		default:
-			/* silently ignore unsupported multiprotocol AF */
-			break;
+
+			mpp += pos;
+			mplen -= pos;
+
+			if (rde_update_update(peer, &state,
+			    &prefix, prefixlen) == -1)
+				goto done;
 		}
 	}
 
@@ -4091,13 +4065,12 @@ network_dump_upcall(struct rib_entry *re, void *ptr)
 static void
 network_flush_upcall(struct rib_entry *re, void *ptr)
 {
-	struct rde_peer *peer = ptr;
 	struct bgpd_addr addr;
 	struct prefix *p;
 	u_int32_t i;
 	u_int8_t prefixlen;
 
-	p = prefix_bypeer(re, peer);
+	p = prefix_bypeer(re, peerself);
 	if (p == NULL)
 		return;
 	if ((prefix_aspath(p)->flags & F_ANN_DYNAMIC) != F_ANN_DYNAMIC)
@@ -4110,14 +4083,14 @@ network_flush_upcall(struct rib_entry *re, void *ptr)
 		struct rib *rib = rib_byid(i);
 		if (rib == NULL)
 			continue;
-		if (prefix_withdraw(rib, peer, &addr, prefixlen) == 1)
-			rde_update_log("flush announce", i, peer,
+		if (prefix_withdraw(rib, peerself, &addr, prefixlen) == 1)
+			rde_update_log("flush announce", i, peerself,
 			    NULL, &addr, prefixlen);
 	}
 
-	if (prefix_withdraw(rib_byid(RIB_ADJ_IN), peer, &addr,
+	if (prefix_withdraw(rib_byid(RIB_ADJ_IN), peerself, &addr,
 	    prefixlen) == 1)
-		peer->prefix_cnt--;
+		peerself->prefix_cnt--;
 }
 
 /* clean up */

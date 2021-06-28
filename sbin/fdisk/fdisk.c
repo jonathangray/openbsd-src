@@ -1,4 +1,4 @@
-/*	$OpenBSD: fdisk.c,v 1.109 2021/06/20 18:44:19 krw Exp $	*/
+/*	$OpenBSD: fdisk.c,v 1.113 2021/06/25 19:24:53 krw Exp $	*/
 
 /*
  * Copyright (c) 1997 Tobias Weingartner
@@ -16,7 +16,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <sys/types.h>
+#include <sys/param.h>	/* DEV_BSIZE */
 #include <sys/disklabel.h>
 
 #include <err.h>
@@ -43,7 +43,7 @@ static unsigned char builtin_mbr[] = {
 
 uint32_t b_sectors, b_offset;
 uint8_t b_type;
-int y_flag;
+int	A_flag, y_flag;
 
 static void
 usage(void)
@@ -51,19 +51,8 @@ usage(void)
 	extern char * __progname;
 
 	fprintf(stderr, "usage: %s "
-	    "[-egvy] [-i|-u] [-b #] [-c # -h # -s #] "
-	    "[-f mbrfile] [-l # ] disk\n"
-	    "\t-b: specify special boot partition block count; requires -i\n"
-	    "\t-chs: specify disk geometry; all three must be specified\n"
-	    "\t-e: interactively edit MBR or GPT\n"
-	    "\t-f: specify non-standard MBR template\n"
-	    "\t-g: initialize disk with GPT; requires -i\n"
-	    "\t-i: initialize disk with MBR unless -g is also specified\n"
-	    "\t-l: specify LBA block count; cannot be used with -chs\n"
-	    "\t-u: update MBR code; preserve partition table\n"
-	    "\t-v: print the MBR, the Primary GPT and the Secondary GPT\n"
-	    "\t-y: do not ask questions\n"
-	    "`disk' may be of the forms: sd0 or /dev/rsd0c.\n",
+	    "[-evy] [-i [-g] | -u | -A ] [-b blocks[@offset[:type]]]\n"
+	    "\t[-l blocks | -c cylinders -h heads -s sectors] [-f mbrfile] disk\n",
 	    __progname);
 	exit(1);
 }
@@ -73,6 +62,7 @@ main(int argc, char *argv[])
 {
 	ssize_t len;
 	int ch, fd, efi, error;
+	unsigned int bps;
 	int e_flag = 0, g_flag = 0, i_flag = 0, u_flag = 0;
 	int verbosity = TERSE;
 	int c_arg = 0, h_arg = 0, s_arg = 0;
@@ -86,10 +76,13 @@ main(int argc, char *argv[])
 	struct dos_mbr dos_mbr;
 	struct mbr mbr;
 
-	while ((ch = getopt(argc, argv, "iegpuvf:c:h:s:l:b:y")) != -1) {
+	while ((ch = getopt(argc, argv, "Aiegpuvf:c:h:s:l:b:y")) != -1) {
 		const char *errstr;
 
 		switch(ch) {
+		case 'A':
+			A_flag = 1;
+			break;
 		case 'i':
 			i_flag = 1;
 			break;
@@ -131,13 +124,13 @@ main(int argc, char *argv[])
 			parse_b(optarg, &b_sectors, &b_offset, &b_type);
 			break;
 		case 'l':
-			l_arg = strtonum(optarg, 64, UINT32_MAX, &errstr);
+			l_arg = strtonum(optarg, BLOCKALIGNMENT, UINT32_MAX, &errstr);
 			if (errstr)
-				errx(1, "Block argument %s [64..%u].", errstr,
-				    UINT32_MAX);
-			disk.cylinders = l_arg / 64;
+				errx(1, "Block argument %s [%u..%u].", errstr,
+				    BLOCKALIGNMENT, UINT32_MAX);
+			disk.cylinders = l_arg / BLOCKALIGNMENT;
 			disk.heads = 1;
-			disk.sectors = 64;
+			disk.sectors = BLOCKALIGNMENT;
 			disk.size = l_arg;
 			break;
 		case 'y':
@@ -155,13 +148,32 @@ main(int argc, char *argv[])
 
 	/* Argument checking */
 	if (argc != 1 || (i_flag && u_flag) ||
-	    (i_flag == 0 && (b_sectors || g_flag)) ||
+	    (i_flag == 0 && g_flag) ||
+	    (b_sectors && !(i_flag || A_flag)) ||
 	    ((c_arg | h_arg | s_arg) && !(c_arg && h_arg && s_arg)) ||
 	    ((c_arg | h_arg | s_arg) && l_arg))
 		usage();
 
 	disk.name = argv[0];
-	DISK_open(i_flag || u_flag || e_flag);
+	DISK_open(A_flag || i_flag || u_flag || e_flag);
+	bps = DL_BLKSPERSEC(&dl);
+	if (b_sectors > 0) {
+		if (b_sectors % bps != 0)
+			b_sectors += bps - b_sectors % bps;
+		if (b_offset % bps != 0)
+			b_offset += bps - b_offset % bps;
+		b_sectors = DL_BLKTOSEC(&dl, b_sectors);
+		b_offset = DL_BLKTOSEC(&dl, b_offset);
+	}
+	if (l_arg > 0) {
+		if (l_arg % bps != 0)
+			l_arg += bps - l_arg % bps;
+		l_arg = DL_BLKTOSEC(&dl, l_arg);
+		disk.cylinders = l_arg / BLOCKALIGNMENT;
+		disk.heads = 1;
+		disk.sectors = BLOCKALIGNMENT;
+		disk.size = l_arg;
+	}
 
 	/* "proc exec" for man page display */
 	if (pledge("stdio rpath wpath disklabel proc exec", NULL) == -1)
@@ -177,7 +189,7 @@ main(int argc, char *argv[])
 	if (efi != -1)
 		GPT_read(ANYGPT);
 
-	if (!(i_flag || u_flag || e_flag)) {
+	if (!(A_flag || i_flag || u_flag || e_flag)) {
 		if (pledge("stdio", NULL) == -1)
 			err(1, "pledge");
 		USER_print_disk(verbosity);
@@ -206,7 +218,15 @@ main(int argc, char *argv[])
 	MBR_parse(&dos_mbr, 0, 0, &initial_mbr);
 
 	query = NULL;
-	if (i_flag) {
+	if (A_flag) {
+		if (letoh64(gh.gh_sig) != GPTSIGNATURE)
+			errx(1, "-A requires a valid GPT");
+		else {
+			MBR_init_GPT(&initial_mbr);
+			GPT_init();
+			query = "Do you wish to write new GPT?";
+		}
+	} else if (i_flag) {
 		if (g_flag) {
 			MBR_init_GPT(&initial_mbr);
 			GPT_init();

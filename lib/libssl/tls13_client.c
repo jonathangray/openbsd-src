@@ -1,4 +1,4 @@
-/* $OpenBSD: tls13_client.c,v 1.80 2021/06/08 18:13:50 tb Exp $ */
+/* $OpenBSD: tls13_client.c,v 1.83 2021/06/27 19:23:51 jsing Exp $ */
 /*
  * Copyright (c) 2018, 2019 Joel Sing <jsing@openbsd.org>
  *
@@ -671,8 +671,8 @@ tls13_server_certificate_verify_recv(struct tls13_ctx *ctx, CBS *cbs)
 	if (!CBS_get_u16_length_prefixed(cbs, &signature))
 		goto err;
 
-	if ((sigalg = ssl_sigalg(signature_scheme, tls13_sigalgs,
-	    tls13_sigalgs_len)) == NULL)
+	if ((sigalg = ssl_sigalg_from_value(ctx->hs->negotiated_tls_version,
+	    signature_scheme)) == NULL)
 		goto err;
 
 	if (!CBB_init(&cbb, 0))
@@ -697,6 +697,7 @@ tls13_server_certificate_verify_recv(struct tls13_ctx *ctx, CBS *cbs)
 		goto err;
 	if (!ssl_sigalg_pkey_ok(sigalg, pkey, 1))
 		goto err;
+	ctx->hs->peer_sigalg = sigalg;
 
 	if (CBS_len(&signature) > EVP_PKEY_size(pkey))
 		goto err;
@@ -898,7 +899,7 @@ tls13_client_certificate_send(struct tls13_ctx *ctx, CBB *cbb)
 		goto err;
 
 	ctx->hs->tls13.cpk = cpk;
-	ctx->hs->tls13.sigalg = sigalg;
+	ctx->hs->our_sigalg = sigalg;
 
 	if (!CBB_add_u8_length_prefixed(cbb, &cert_request_context))
 		goto err;
@@ -949,7 +950,7 @@ tls13_client_certificate_verify_send(struct tls13_ctx *ctx, CBB *cbb)
 
 	if ((cpk = ctx->hs->tls13.cpk) == NULL)
 		goto err;
-	if ((sigalg = ctx->hs->tls13.sigalg) == NULL)
+	if ((sigalg = ctx->hs->our_sigalg) == NULL)
 		goto err;
 	pkey = cpk->privatekey;
 

@@ -1,4 +1,4 @@
-/*	$OpenBSD: vroute.c,v 1.10 2021/06/01 20:57:12 tobhe Exp $	*/
+/*	$OpenBSD: vroute.c,v 1.12 2021/06/23 12:21:23 tobhe Exp $	*/
 
 /*
  * Copyright (c) 2021 Tobias Heider <tobhe@openbsd.org>
@@ -138,6 +138,53 @@ vroute_cleanup(struct iked *env)
 		TAILQ_REMOVE(&ivr->ivr_routes, route, vr_entry);
 		free(route);
 	}
+}
+
+int
+vroute_setaddr(struct iked *env, int add, struct sockaddr *addr,
+    int mask, unsigned int ifidx)
+{
+	struct iovec		 iov[4];
+	int			 iovcnt;
+	struct sockaddr_in	 mask4;
+	struct sockaddr_in6	 mask6;
+
+	iovcnt = 0;
+	iov[0].iov_base = addr;
+	iov[0].iov_len = addr->sa_len;
+	iovcnt++;
+
+	switch(addr->sa_family) {
+	case AF_INET:
+		bzero(&mask, sizeof(mask));
+		mask4.sin_addr.s_addr = prefixlen2mask(mask ? mask : 32);
+		mask4.sin_family = AF_INET;
+		mask4.sin_len = sizeof(mask4);
+
+		iov[1].iov_base = &mask4;
+		iov[1].iov_len = sizeof(mask4);
+		iovcnt++;
+		break;
+	case AF_INET6:
+		bzero(&mask6, sizeof(mask6));
+		prefixlen2mask6(mask ? mask : 128,
+		    (uint32_t *)&mask6.sin6_addr.s6_addr);
+		mask6.sin6_family = AF_INET6;
+		mask6.sin6_len = sizeof(mask6);
+		iov[1].iov_base = &mask6;
+		iov[1].iov_len = sizeof(mask6);
+		iovcnt++;
+		break;
+	default:
+		return -1;
+	}
+
+	iov[2].iov_base = &ifidx;
+	iov[2].iov_len = sizeof(ifidx);
+	iovcnt++;
+
+	return (proc_composev(&env->sc_ps, PROC_PARENT,
+	    add ? IMSG_IF_ADDADDR : IMSG_IF_DELADDR, iov, iovcnt));
 }
 
 int
@@ -547,9 +594,17 @@ vroute_doroute(struct iked *env, int flags, int addrs, int rdomain, uint8_t type
 	for (i = 0; i < iovcnt; i++)
 		rtm.rtm_msglen += iov[i].iov_len;
 
-	log_debug("%s: len: %u type: %s rdomain: %d flags %x addrs %x", __func__, rtm.rtm_msglen,
+	log_debug("%s: len: %u type: %s rdomain: %d flags %x (%s%s)"
+	    " addrs %x (dst %s mask %s gw %s)", __func__, rtm.rtm_msglen,
 	    type == RTM_ADD ? "RTM_ADD" : type == RTM_DELETE ? "RTM_DELETE" :
-	    type == RTM_GET ? "RTM_GET" : "unknown", rdomain, flags,  addrs);
+	    type == RTM_GET ? "RTM_GET" : "unknown", rdomain,
+	    flags,
+	    flags & RTF_HOST ? "H" : "",
+	    flags & RTF_GATEWAY ? "G" : "",
+	    addrs,
+	    addrs & RTA_DST ? print_host(dest, NULL, 0) : "<>",
+	    addrs & RTA_NETMASK ? print_host(mask, NULL, 0) : "<>",
+	    addrs & RTA_GATEWAY ? print_host(addr, NULL, 0) : "<>");
 
 	if (writev(ivr->ivr_rtsock, iov, iovcnt) == -1) {
 		if ((type == RTM_ADD && errno != EEXIST) ||
@@ -629,8 +684,6 @@ vroute_doaddr(struct iked *env, char *ifname, struct sockaddr *addr,
 	struct in6_aliasreq	 req6;
 	unsigned long		 ioreq;
 	int			 af;
-	char			 addr_buf[NI_MAXHOST];
-	char			 mask_buf[NI_MAXHOST];
 
 	af = addr->sa_family;
 	switch (af) {
@@ -641,12 +694,10 @@ vroute_doaddr(struct iked *env, char *ifname, struct sockaddr *addr,
 		if (add)
 			memcpy(&req.ifra_mask, mask, sizeof(req.ifra_addr));
 
-		inet_ntop(af, &((struct sockaddr_in *)addr)->sin_addr,
-		    addr_buf, sizeof(addr_buf));
-		inet_ntop(af, &((struct sockaddr_in *)mask)->sin_addr,
-		    mask_buf, sizeof(mask_buf));
 		log_debug("%s: %s inet %s netmask %s", __func__,
-		    add ? "add" : "del",addr_buf, mask_buf);
+		    add ? "add" : "del",
+		    print_host((struct sockaddr *)addr, NULL, 0),
+		    print_host((struct sockaddr *)mask, NULL, 0));
 
 		ioreq = add ? SIOCAIFADDR : SIOCDIFADDR;
 		if (ioctl(ivr->ivr_iosock, ioreq, &req) == -1) {
@@ -665,12 +716,10 @@ vroute_doaddr(struct iked *env, char *ifname, struct sockaddr *addr,
 			memcpy(&req6.ifra_prefixmask, mask,
 			    sizeof(req6.ifra_prefixmask));
 
-		inet_ntop(af, &((struct sockaddr_in6 *)addr)->sin6_addr,
-		    addr_buf, sizeof(addr_buf));
-		inet_ntop(af, &((struct sockaddr_in6 *)mask)->sin6_addr,
-		    mask_buf, sizeof(mask_buf));
 		log_debug("%s: %s inet6 %s netmask %s", __func__,
-		    add ? "add" : "del",addr_buf, mask_buf);
+		    add ? "add" : "del",
+		    print_host((struct sockaddr *)addr, NULL, 0),
+		    print_host((struct sockaddr *)mask, NULL, 0));
 
 		ioreq = add ? SIOCAIFADDR_IN6 : SIOCDIFADDR_IN6;
 		if (ioctl(ivr->ivr_iosock6, ioreq, &req6) == -1) {
