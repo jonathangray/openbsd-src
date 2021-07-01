@@ -309,6 +309,11 @@ int drm_gem_object_init(struct drm_device *dev,
 			struct drm_gem_object *obj, size_t size)
 {
 	drm_gem_private_object_init(dev, obj, size);
+
+	if (size > (512 * 1024 * 1024)) {
+		printf("%s size too big %lu\n", __func__, size);
+		return -ENOMEM;
+	}
 	
 	obj->uao = uao_create(size, 0);
 	uvm_obj_init(&obj->uobj, &drm_pgops, 1);
