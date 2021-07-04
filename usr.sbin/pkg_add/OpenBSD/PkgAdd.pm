@@ -1,7 +1,7 @@
 #! /usr/bin/perl
 
 # ex:ts=8 sw=4:
-# $OpenBSD: PkgAdd.pm,v 1.118 2019/12/08 10:35:17 espie Exp $
+# $OpenBSD: PkgAdd.pm,v 1.120 2021/06/28 14:17:01 espie Exp $
 #
 # Copyright (c) 2003-2014 Marc Espie <espie@openbsd.org>
 #
@@ -765,6 +765,9 @@ sub really_add
 		$replacing = 1;
 	}
 	$state->{replacing} = $replacing;
+	# XXX placeholder for optimization
+	$state->{simple_update} = 0;
+	#$state->{simple_update} = $set->{simple_update};
 
 	my $handler = sub {
 		$state->{received} = shift;
@@ -1024,14 +1027,17 @@ sub process_set
 		$state->tracker->cant($set);
 		return ();
 	}
+	# sets with only tags can be updated without temp files while skipping
+	# installing
 	if ($set->older_to_do) {
 		require OpenBSD::Replace;
-		if (!OpenBSD::Replace::is_set_safe($set, $state)) {
-			$state->{bad}++;
-			$set->cleanup(OpenBSD::Handle::CANT_INSTALL, "exec detected");
-			$state->tracker->cant($set);
-			return ();
-		}
+		$set->{simple_update} = 
+		    OpenBSD::Replace::set_has_no_exec($set, $state);
+	} else {
+		$set->{simple_update} = 1;
+	}
+	if ($state->verbose && !$set->{simple_update}) {
+		$state->say("Update Set #1 runs exec commands", $set->print);
 	}
 	may_tie_files($set, $state);
 	if ($set->newer > 0 || $set->older_to_do > 0) {

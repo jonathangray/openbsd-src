@@ -1,4 +1,4 @@
-#	$OpenBSD: genassym.cf,v 1.3 2021/05/16 10:39:22 jsg Exp $
+#	$OpenBSD: genassym.cf,v 1.6 2021/07/02 10:42:22 kettenis Exp $
 #
 # Copyright (c) 2020 Brian Bamsch <bbamsch@google.com>
 # All rights reserved.
@@ -62,7 +62,6 @@ member	pcb_tf
 member	pcb_sp
 member	pcb_onfault
 member	pcb_fpstate
-member	pcb_fpcpu
 
 struct	cpu_info
 member	ci_dev
@@ -84,6 +83,8 @@ member	ci_want_resched
 ifdef MULTIPROCESSOR
 member	ci_srp_hazards
 member	ci_flags
+member	ci_satp
+member	ci_initstack_end
 member	ci_ddb_paused
 endif
 ifdef GPROF
@@ -91,8 +92,8 @@ member	ci_gmon
 endif
 
 struct	riscv_bootparams
-member	kern_l1pt
-member	kern_delta
-member	kern_stack
-member	dtbp_virt
-member	dtbp_phys
+member	RISCV_BOOTPARAMS_KERN_L1PT	kern_l1pt
+member	RISCV_BOOTPARAMS_KERN_PHYS	kern_phys
+member	RISCV_BOOTPARAMS_KERN_STACK	kern_stack
+member	RISCV_BOOTPARAMS_DTBP_VIRT	dtbp_virt
+member	RISCV_BOOTPARAMS_DTBP_PHYS	dtbp_phys

@@ -1,4 +1,4 @@
-/*	$OpenBSD: if_iwx.c,v 1.59 2021/06/21 10:19:21 stsp Exp $	*/
+/*	$OpenBSD: if_iwx.c,v 1.62 2021/06/30 09:47:57 stsp Exp $	*/
 
 /*
  * Copyright (c) 2014, 2016 genua gmbh <info@genua.de>
@@ -2947,7 +2947,8 @@ iwx_mac_ctxt_task(void *arg)
 	struct iwx_node *in = (void *)ic->ic_bss;
 	int err, s = splnet();
 
-	if (sc->sc_flags & IWX_FLAG_SHUTDOWN) {
+	if ((sc->sc_flags & IWX_FLAG_SHUTDOWN) ||
+	    ic->ic_state != IEEE80211_S_RUN) {
 		refcnt_rele_wake(&sc->task_refs);
 		splx(s);
 		return;
@@ -2966,7 +2967,8 @@ iwx_updateprot(struct ieee80211com *ic)
 {
 	struct iwx_softc *sc = ic->ic_softc;
 
-	if (ic->ic_state == IEEE80211_S_RUN)
+	if (ic->ic_state == IEEE80211_S_RUN &&
+	    !task_pending(&sc->newstate_task))
 		iwx_add_task(sc, systq, &sc->mac_ctxt_task);
 }
 
@@ -2975,7 +2977,8 @@ iwx_updateslot(struct ieee80211com *ic)
 {
 	struct iwx_softc *sc = ic->ic_softc;
 
-	if (ic->ic_state == IEEE80211_S_RUN)
+	if (ic->ic_state == IEEE80211_S_RUN &&
+	    !task_pending(&sc->newstate_task))
 		iwx_add_task(sc, systq, &sc->mac_ctxt_task);
 }
 
@@ -2984,7 +2987,8 @@ iwx_updateedca(struct ieee80211com *ic)
 {
 	struct iwx_softc *sc = ic->ic_softc;
 
-	if (ic->ic_state == IEEE80211_S_RUN)
+	if (ic->ic_state == IEEE80211_S_RUN &&
+	    !task_pending(&sc->newstate_task))
 		iwx_add_task(sc, systq, &sc->mac_ctxt_task);
 }
 
@@ -4245,6 +4249,9 @@ iwx_rx_tx_cmd(struct iwx_softc *sc, struct iwx_rx_packet *pkt,
 	int qid = cmd_hdr->qid;
 	struct iwx_tx_ring *ring = &sc->txq[qid];
 	struct iwx_tx_data *txd;
+	struct iwx_tx_resp *tx_resp = (void *)pkt->data;
+	uint32_t ssn;
+	uint32_t len = iwx_rx_packet_len(pkt);
 
 	bus_dmamap_sync(sc->sc_dmat, data->map, 0, IWX_RBUF_SIZE,
 	    BUS_DMASYNC_POSTREAD);
@@ -4255,20 +4262,21 @@ iwx_rx_tx_cmd(struct iwx_softc *sc, struct iwx_rx_packet *pkt,
 	if (txd->m == NULL)
 		return;
 
+	if (sizeof(*tx_resp) + sizeof(ssn) +
+	    tx_resp->frame_count * sizeof(tx_resp->status) > len)
+		return;
+
 	iwx_rx_tx_cmd_single(sc, pkt, txd->in);
-	iwx_txd_done(sc, txd);
-	iwx_tx_update_byte_tbl(ring, idx, 0, 0);
 
 	/*
-	 * XXX Sometimes we miss Tx completion interrupts.
-	 * We cannot check Tx success/failure for affected frames; just free
-	 * the associated mbuf and release the associated node reference.
+	 * Even though this is not an agg queue, we must only free
+	 * frames before the firmware's starting sequence number.
 	 */
-	while (ring->tail != idx) {
+	memcpy(&ssn, &tx_resp->status + tx_resp->frame_count, sizeof(ssn));
+	ssn = le32toh(ssn) & 0xfff;
+	while (ring->tail != IWX_AGG_SSN_TO_TXQ_IDX(ssn)) {
 		txd = &ring->data[ring->tail];
 		if (txd->m != NULL) {
-			DPRINTF(("%s: missed Tx completion: tail=%d idx=%d\n",
-			    __func__, ring->tail, idx));
 			iwx_txd_done(sc, txd);
 			iwx_tx_update_byte_tbl(ring, idx, 0, 0);
 			ring->queued--;
@@ -5891,10 +5899,8 @@ iwx_mac_ctxt_cmd_common(struct iwx_softc *sc, struct iwx_node *in,
 		case IEEE80211_HTPROT_NONMEMBER:
 		case IEEE80211_HTPROT_NONHT_MIXED:
 			cmd->protection_flags |=
-			    htole32(IWX_MAC_PROT_FLG_HT_PROT);
-			if (ic->ic_protmode == IEEE80211_PROT_CTSONLY)
-				cmd->protection_flags |=
-				    htole32(IWX_MAC_PROT_FLG_SELF_CTS_EN);
+			    htole32(IWX_MAC_PROT_FLG_HT_PROT |
+			    IWX_MAC_PROT_FLG_FAT_PROT);
 			break;
 		case IEEE80211_HTPROT_20MHZ:
 			if (ic->ic_htcaps & IEEE80211_HTCAP_CBW20_40) {
@@ -5902,9 +5908,6 @@ iwx_mac_ctxt_cmd_common(struct iwx_softc *sc, struct iwx_node *in,
 				cmd->protection_flags |=
 				    htole32(IWX_MAC_PROT_FLG_HT_PROT |
 				    IWX_MAC_PROT_FLG_FAT_PROT);
-				if (ic->ic_protmode == IEEE80211_PROT_CTSONLY)
-					cmd->protection_flags |= htole32(
-					    IWX_MAC_PROT_FLG_SELF_CTS_EN);
 			}
 			break;
 		default:

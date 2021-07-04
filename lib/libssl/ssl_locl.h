@@ -1,4 +1,4 @@
-/* $OpenBSD: ssl_locl.h,v 1.352 2021/06/27 19:23:51 jsing Exp $ */
+/* $OpenBSD: ssl_locl.h,v 1.355 2021/07/03 16:06:45 jsing Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -319,19 +319,19 @@ __BEGIN_HIDDEN_DECLS
 
 /* See if we use signature algorithms extension. */
 #define SSL_USE_SIGALGS(s) \
-	(s->method->internal->enc_flags & SSL_ENC_FLAG_SIGALGS)
+	(s->method->enc_flags & SSL_ENC_FLAG_SIGALGS)
 
 /* See if we use SHA256 default PRF. */
 #define SSL_USE_SHA256_PRF(s) \
-	(s->method->internal->enc_flags & SSL_ENC_FLAG_SHA256_PRF)
+	(s->method->enc_flags & SSL_ENC_FLAG_SHA256_PRF)
 
 /* Allow TLS 1.2 ciphersuites: applies to DTLS 1.2 as well as TLS 1.2. */
 #define SSL_USE_TLS1_2_CIPHERS(s) \
-	(s->method->internal->enc_flags & SSL_ENC_FLAG_TLS1_2_CIPHERS)
+	(s->method->enc_flags & SSL_ENC_FLAG_TLS1_2_CIPHERS)
 
 /* Allow TLS 1.3 ciphersuites only. */
 #define SSL_USE_TLS1_3_CIPHERS(s) \
-	(s->method->internal->enc_flags & SSL_ENC_FLAG_TLS1_3_CIPHERS)
+	(s->method->enc_flags & SSL_ENC_FLAG_TLS1_3_CIPHERS)
 
 #define SSL_PKEY_RSA		0
 #define SSL_PKEY_ECC		1
@@ -361,7 +361,24 @@ __BEGIN_HIDDEN_DECLS
 #define EXPLICIT_CHAR2_CURVE_TYPE  2
 #define NAMED_CURVE_TYPE           3
 
-typedef struct ssl_method_internal_st {
+struct ssl_cipher_st {
+	int valid;
+	const char *name;		/* text name */
+	unsigned long id;		/* id, 4 bytes, first is version */
+
+	unsigned long algorithm_mkey;	/* key exchange algorithm */
+	unsigned long algorithm_auth;	/* server authentication */
+	unsigned long algorithm_enc;	/* symmetric encryption */
+	unsigned long algorithm_mac;	/* symmetric authentication */
+	unsigned long algorithm_ssl;	/* (major) protocol version */
+
+	unsigned long algo_strength;	/* strength and export flags */
+	unsigned long algorithm2;	/* Extra flags */
+	int strength_bits;		/* Number of bits really used */
+	int alg_bits;			/* Number of bits for algorithm */
+};
+
+struct ssl_method_st {
 	int dtls;
 	int server;
 	int version;
@@ -385,8 +402,11 @@ typedef struct ssl_method_internal_st {
 	    int peek);
 	int (*ssl_write_bytes)(SSL *s, int type, const void *buf_, int len);
 
+	int (*ssl_dispatch_alert)(SSL *s);
+	const SSL_CIPHER *(*get_cipher)(unsigned int ncipher);
+
 	unsigned int enc_flags;		/* SSL_ENC_FLAG_* */
-} SSL_METHOD_INTERNAL;
+};
 
 typedef struct ssl_session_internal_st {
 	CRYPTO_EX_DATA ex_data; /* application specific data */
@@ -409,6 +429,75 @@ typedef struct ssl_session_internal_st {
 	uint16_t *tlsext_supportedgroups; /* peer's list */
 } SSL_SESSION_INTERNAL;
 #define SSI(s) (s->session->internal)
+
+/* Lets make this into an ASN.1 type structure as follows
+ * SSL_SESSION_ID ::= SEQUENCE {
+ *	version 		INTEGER,	-- structure version number
+ *	SSLversion 		INTEGER,	-- SSL version number
+ *	Cipher 			OCTET STRING,	-- the 3 byte cipher ID
+ *	Session_ID 		OCTET STRING,	-- the Session ID
+ *	Master_key 		OCTET STRING,	-- the master key
+ *	KRB5_principal		OCTET STRING	-- optional Kerberos principal
+ *	Time [ 1 ] EXPLICIT	INTEGER,	-- optional Start Time
+ *	Timeout [ 2 ] EXPLICIT	INTEGER,	-- optional Timeout ins seconds
+ *	Peer [ 3 ] EXPLICIT	X509,		-- optional Peer Certificate
+ *	Session_ID_context [ 4 ] EXPLICIT OCTET STRING,   -- the Session ID context
+ *	Verify_result [ 5 ] EXPLICIT INTEGER,   -- X509_V_... code for `Peer'
+ *	HostName [ 6 ] EXPLICIT OCTET STRING,   -- optional HostName from servername TLS extension
+ *	PSK_identity_hint [ 7 ] EXPLICIT OCTET STRING, -- optional PSK identity hint
+ *	PSK_identity [ 8 ] EXPLICIT OCTET STRING,  -- optional PSK identity
+ *	Ticket_lifetime_hint [9] EXPLICIT INTEGER, -- server's lifetime hint for session ticket
+ *	Ticket [10]             EXPLICIT OCTET STRING, -- session ticket (clients only)
+ *	Compression_meth [11]   EXPLICIT OCTET STRING, -- optional compression method
+ *	SRP_username [ 12 ] EXPLICIT OCTET STRING -- optional SRP username
+ *	}
+ * Look in ssl/ssl_asn1.c for more details
+ * I'm using EXPLICIT tags so I can read the damn things using asn1parse :-).
+ */
+struct ssl_session_st {
+	int ssl_version;	/* what ssl version session info is
+				 * being kept in here? */
+
+	int master_key_length;
+	unsigned char master_key[SSL_MAX_MASTER_KEY_LENGTH];
+
+	/* session_id - valid? */
+	unsigned int session_id_length;
+	unsigned char session_id[SSL_MAX_SSL_SESSION_ID_LENGTH];
+
+	/* this is used to determine whether the session is being reused in
+	 * the appropriate context. It is up to the application to set this,
+	 * via SSL_new */
+	unsigned int sid_ctx_length;
+	unsigned char sid_ctx[SSL_MAX_SID_CTX_LENGTH];
+
+	/* This is the cert for the other end. */
+	X509 *peer;
+
+	/* when app_verify_callback accepts a session where the peer's certificate
+	 * is not ok, we must remember the error for session reuse: */
+	long verify_result; /* only for servers */
+
+	long timeout;
+	time_t time;
+	int references;
+
+	const SSL_CIPHER *cipher;
+	unsigned long cipher_id;	/* when ASN.1 loaded, this
+					 * needs to be used to load
+					 * the 'cipher' structure */
+
+	STACK_OF(SSL_CIPHER) *ciphers; /* shared ciphers? */
+
+	char *tlsext_hostname;
+
+	/* RFC4507 info */
+	unsigned char *tlsext_tick;	/* Session ticket */
+	size_t tlsext_ticklen;		/* Session ticket length */
+	long tlsext_tick_lifetime_hint;	/* Session lifetime hint in seconds */
+
+	struct ssl_session_internal_st *internal;
+};
 
 typedef struct cert_pkey_st {
 	X509 *x509;
@@ -985,6 +1074,15 @@ typedef struct ssl3_state_internal_st {
 } SSL3_STATE_INTERNAL;
 #define S3I(s) (s->s3->internal)
 
+typedef struct ssl3_state_st {
+	long flags;
+
+	unsigned char server_random[SSL3_RANDOM_SIZE];
+	unsigned char client_random[SSL3_RANDOM_SIZE];
+
+	struct ssl3_state_internal_st *internal;
+} SSL3_STATE;
+
 typedef struct cert_st {
 	/* Current active set */
 	CERT_PKEY *key; /* ALWAYS points to an element of the pkeys array
@@ -1128,7 +1226,6 @@ int ssl_verify_alarm_type(long type);
 int SSL_SESSION_ticket(SSL_SESSION *ss, unsigned char **out, size_t *out_len);
 
 const SSL_CIPHER *ssl3_get_cipher_by_char(const unsigned char *p);
-int ssl3_put_cipher_by_char(const SSL_CIPHER *c, unsigned char *p);
 int ssl3_send_server_certificate(SSL *s);
 int ssl3_send_newsession_ticket(SSL *s);
 int ssl3_send_cert_status(SSL *s);

@@ -1,4 +1,4 @@
-/* $OpenBSD: tls13_client.c,v 1.83 2021/06/27 19:23:51 jsing Exp $ */
+/* $OpenBSD: tls13_client.c,v 1.86 2021/06/29 19:20:39 jsing Exp $ */
 /*
  * Copyright (c) 2018, 2019 Joel Sing <jsing@openbsd.org>
  *
@@ -303,7 +303,16 @@ tls13_server_hello_process(struct tls13_ctx *ctx, CBS *cbs)
 		ctx->alert = TLS13_ALERT_ILLEGAL_PARAMETER;
 		goto err;
 	}
-	/* XXX - move this to hs.tls13? */
+	if (!(ctx->handshake_stage.hs_type & WITHOUT_HRR) && !ctx->hs->tls13.hrr) {
+		/*
+		 * A ServerHello following a HelloRetryRequest MUST use the same
+		 * cipher suite (RFC 8446 section 4.1.4).
+		 */
+		if (ctx->hs->cipher != cipher) {
+			ctx->alert = TLS13_ALERT_ILLEGAL_PARAMETER;
+			goto err;
+		}
+	}
 	ctx->hs->cipher = cipher;
 
 	if (compression_method != 0) {
@@ -671,10 +680,6 @@ tls13_server_certificate_verify_recv(struct tls13_ctx *ctx, CBS *cbs)
 	if (!CBS_get_u16_length_prefixed(cbs, &signature))
 		goto err;
 
-	if ((sigalg = ssl_sigalg_from_value(ctx->hs->negotiated_tls_version,
-	    signature_scheme)) == NULL)
-		goto err;
-
 	if (!CBB_init(&cbb, 0))
 		goto err;
 	if (!CBB_add_bytes(&cbb, tls13_cert_verify_pad,
@@ -695,7 +700,8 @@ tls13_server_certificate_verify_recv(struct tls13_ctx *ctx, CBS *cbs)
 		goto err;
 	if ((pkey = X509_get0_pubkey(cert)) == NULL)
 		goto err;
-	if (!ssl_sigalg_pkey_ok(sigalg, pkey, 1))
+	if ((sigalg = ssl_sigalg_for_peer(ctx->ssl, pkey,
+	    signature_scheme)) == NULL)
 		goto err;
 	ctx->hs->peer_sigalg = sigalg;
 

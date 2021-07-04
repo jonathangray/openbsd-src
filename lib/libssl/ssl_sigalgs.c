@@ -1,6 +1,7 @@
-/* $OpenBSD: ssl_sigalgs.c,v 1.29 2021/06/27 18:15:35 jsing Exp $ */
+/* $OpenBSD: ssl_sigalgs.c,v 1.37 2021/06/29 19:36:14 jsing Exp $ */
 /*
  * Copyright (c) 2018-2020 Bob Beck <beck@openbsd.org>
+ * Copyright (c) 2021 Joel Sing <jsing@openbsd.org>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -14,6 +15,7 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
+
 #include <string.h>
 #include <stdlib.h>
 
@@ -187,7 +189,7 @@ ssl_sigalgs_for_version(uint16_t tls_version, const uint16_t **out_values,
 	}
 }
 
-const struct ssl_sigalg *
+static const struct ssl_sigalg *
 ssl_sigalg_lookup(uint16_t value)
 {
 	int i;
@@ -200,14 +202,15 @@ ssl_sigalg_lookup(uint16_t value)
 	return NULL;
 }
 
-const struct ssl_sigalg *
-ssl_sigalg_from_value(uint16_t tls_version, uint16_t value)
+static const struct ssl_sigalg *
+ssl_sigalg_from_value(SSL *s, uint16_t value)
 {
 	const uint16_t *values;
 	size_t len;
 	int i;
 
-	ssl_sigalgs_for_version(tls_version, &values, &len);
+	ssl_sigalgs_for_version(S3I(s)->hs.negotiated_tls_version,
+	    &values, &len);
 
 	for (i = 0; i < len; i++) {
 		if (values[i] == value)
@@ -239,33 +242,56 @@ ssl_sigalgs_build(uint16_t tls_version, CBB *cbb)
 	return 1;
 }
 
-int
-ssl_sigalg_pkey_ok(const struct ssl_sigalg *sigalg, EVP_PKEY *pkey,
-    int check_curve)
+static const struct ssl_sigalg *
+ssl_sigalg_for_legacy(SSL *s, EVP_PKEY *pkey)
+{
+	/* Default signature algorithms used for TLSv1.2 and earlier. */
+	switch (pkey->type) {
+	case EVP_PKEY_RSA:
+		if (S3I(s)->hs.negotiated_tls_version < TLS1_2_VERSION)
+			return ssl_sigalg_lookup(SIGALG_RSA_PKCS1_MD5_SHA1);
+		return ssl_sigalg_lookup(SIGALG_RSA_PKCS1_SHA1);
+	case EVP_PKEY_EC:
+		return ssl_sigalg_lookup(SIGALG_ECDSA_SHA1);
+#ifndef OPENSSL_NO_GOST
+	case EVP_PKEY_GOSTR01:
+		return ssl_sigalg_lookup(SIGALG_GOSTR01_GOST94);
+#endif
+	}
+	SSLerror(s, SSL_R_UNKNOWN_PKEY_TYPE);
+	return (NULL);
+}
+
+static int
+ssl_sigalg_pkey_ok(SSL *s, const struct ssl_sigalg *sigalg, EVP_PKEY *pkey)
 {
 	if (sigalg == NULL || pkey == NULL)
 		return 0;
 	if (sigalg->key_type != pkey->type)
 		return 0;
 
+	/* RSA PSS must have a sufficiently large RSA key. */
 	if ((sigalg->flags & SIGALG_FLAG_RSA_PSS)) {
-		/*
-		 * RSA PSS Must have an RSA key that needs to be at
-		 * least as big as twice the size of the hash + 2
-		 */
 		if (pkey->type != EVP_PKEY_RSA ||
 		    EVP_PKEY_size(pkey) < (2 * EVP_MD_size(sigalg->md()) + 2))
 			return 0;
 	}
 
-	if (pkey->type == EVP_PKEY_EC && check_curve) {
-		/* Curve must match for EC keys. */
+	if (S3I(s)->hs.negotiated_tls_version < TLS1_3_VERSION)
+		return 1;
+
+	/* RSA cannot be used without PSS in TLSv1.3. */
+	if (sigalg->key_type == EVP_PKEY_RSA &&
+	    (sigalg->flags & SIGALG_FLAG_RSA_PSS) == 0)
+		return 0;
+
+	/* Ensure that curve matches for EC keys. */
+	if (pkey->type == EVP_PKEY_EC) {
 		if (sigalg->curve_nid == 0)
 			return 0;
-		if (EC_GROUP_get_curve_name(EC_KEY_get0_group
-		    (EVP_PKEY_get0_EC_KEY(pkey))) != sigalg->curve_nid) {
+		if (EC_GROUP_get_curve_name(EC_KEY_get0_group(
+		    EVP_PKEY_get0_EC_KEY(pkey))) != sigalg->curve_nid)
 			return 0;
-		}
 	}
 
 	return 1;
@@ -274,52 +300,18 @@ ssl_sigalg_pkey_ok(const struct ssl_sigalg *sigalg, EVP_PKEY *pkey,
 const struct ssl_sigalg *
 ssl_sigalg_select(SSL *s, EVP_PKEY *pkey)
 {
-	const uint16_t *tls_sigalgs = tls12_sigalgs;
-	size_t tls_sigalgs_len = tls12_sigalgs_len;
-	int check_curve = 0;
 	CBS cbs;
 
-	if (S3I(s)->hs.negotiated_tls_version >= TLS1_3_VERSION) {
-		tls_sigalgs = tls13_sigalgs;
-		tls_sigalgs_len = tls13_sigalgs_len;
-		check_curve = 1;
-	}
-
-	/* Pre TLS 1.2 defaults */
-	if (!SSL_USE_SIGALGS(s)) {
-		switch (pkey->type) {
-		case EVP_PKEY_RSA:
-			return ssl_sigalg_lookup(SIGALG_RSA_PKCS1_MD5_SHA1);
-		case EVP_PKEY_EC:
-			return ssl_sigalg_lookup(SIGALG_ECDSA_SHA1);
-#ifndef OPENSSL_NO_GOST
-		case EVP_PKEY_GOSTR01:
-			return ssl_sigalg_lookup(SIGALG_GOSTR01_GOST94);
-#endif
-		}
-		SSLerror(s, SSL_R_UNKNOWN_PKEY_TYPE);
-		return (NULL);
-	}
+	if (!SSL_USE_SIGALGS(s))
+		return ssl_sigalg_for_legacy(s, pkey);
 
 	/*
-	 * RFC 5246 allows a TLS 1.2 client to send no sigalgs, in
-	 * which case the server must use the the default.
+	 * RFC 5246 allows a TLS 1.2 client to send no sigalgs extension,
+	 * in which case the server must use the default.
 	 */
 	if (S3I(s)->hs.negotiated_tls_version < TLS1_3_VERSION &&
-	    S3I(s)->hs.sigalgs == NULL) {
-		switch (pkey->type) {
-		case EVP_PKEY_RSA:
-			return ssl_sigalg_lookup(SIGALG_RSA_PKCS1_SHA1);
-		case EVP_PKEY_EC:
-			return ssl_sigalg_lookup(SIGALG_ECDSA_SHA1);
-#ifndef OPENSSL_NO_GOST
-		case EVP_PKEY_GOSTR01:
-			return ssl_sigalg_lookup(SIGALG_GOSTR01_GOST94);
-#endif
-		}
-		SSLerror(s, SSL_R_UNKNOWN_PKEY_TYPE);
-		return (NULL);
-	}
+	    S3I(s)->hs.sigalgs == NULL)
+		return ssl_sigalg_for_legacy(s, pkey);
 
 	/*
 	 * If we get here, we have client or server sent sigalgs, use one.
@@ -332,20 +324,32 @@ ssl_sigalg_select(SSL *s, EVP_PKEY *pkey)
 		if (!CBS_get_u16(&cbs, &sigalg_value))
 			return 0;
 
-		if ((sigalg = ssl_sigalg_from_value(
-		    S3I(s)->hs.negotiated_tls_version, sigalg_value)) == NULL)
+		if ((sigalg = ssl_sigalg_from_value(s, sigalg_value)) == NULL)
 			continue;
-
-		/* RSA cannot be used without PSS in TLSv1.3. */
-		if (S3I(s)->hs.negotiated_tls_version >= TLS1_3_VERSION &&
-		    sigalg->key_type == EVP_PKEY_RSA &&
-		    (sigalg->flags & SIGALG_FLAG_RSA_PSS) == 0)
-			continue;
-
-		if (ssl_sigalg_pkey_ok(sigalg, pkey, check_curve))
+		if (ssl_sigalg_pkey_ok(s, sigalg, pkey))
 			return sigalg;
 	}
 
 	SSLerror(s, SSL_R_UNKNOWN_PKEY_TYPE);
 	return NULL;
+}
+
+const struct ssl_sigalg *
+ssl_sigalg_for_peer(SSL *s, EVP_PKEY *pkey, uint16_t sigalg_value)
+{
+	const struct ssl_sigalg *sigalg;
+
+	if (!SSL_USE_SIGALGS(s))
+		return ssl_sigalg_for_legacy(s, pkey);
+
+	if ((sigalg = ssl_sigalg_from_value(s, sigalg_value)) == NULL) {
+		SSLerror(s, SSL_R_UNKNOWN_DIGEST);
+		return (NULL);
+	}
+	if (!ssl_sigalg_pkey_ok(s, sigalg, pkey)) {
+		SSLerror(s, SSL_R_WRONG_SIGNATURE_TYPE);
+		return (NULL);
+	}
+
+	return sigalg;
 }

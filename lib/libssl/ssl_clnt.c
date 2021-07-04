@@ -1,4 +1,4 @@
-/* $OpenBSD: ssl_clnt.c,v 1.102 2021/06/27 19:16:59 jsing Exp $ */
+/* $OpenBSD: ssl_clnt.c,v 1.107 2021/06/30 09:59:07 jsing Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -1465,7 +1465,6 @@ int
 ssl3_get_server_key_exchange(SSL *s)
 {
 	CBS cbs, signature;
-	const EVP_MD *md = NULL;
 	EVP_PKEY *pkey = NULL;
 	EVP_MD_CTX md_ctx;
 	const unsigned char *param;
@@ -1535,49 +1534,21 @@ ssl3_get_server_key_exchange(SSL *s)
 	} else if (alg_k != 0) {
 		al = SSL_AD_UNEXPECTED_MESSAGE;
 		SSLerror(s, SSL_R_UNEXPECTED_MESSAGE);
-			goto fatal_err;
+		goto fatal_err;
 	}
 
 	param_len -= CBS_len(&cbs);
 
 	/* if it was signed, check the signature */
 	if (pkey != NULL) {
-		EVP_PKEY_CTX *pctx;
+		uint16_t sigalg_value = SIGALG_NONE;
 		const struct ssl_sigalg *sigalg;
+		EVP_PKEY_CTX *pctx;
 
 		if (SSL_USE_SIGALGS(s)) {
-			uint16_t sigalg_value;
-
 			if (!CBS_get_u16(&cbs, &sigalg_value))
 				goto decode_err;
-			if ((sigalg = ssl_sigalg_from_value(
-			    S3I(s)->hs.negotiated_tls_version,
-			    sigalg_value)) == NULL) {
-				SSLerror(s, SSL_R_UNKNOWN_DIGEST);
-				al = SSL_AD_DECODE_ERROR;
-				goto fatal_err;
-			}
-			if ((md = sigalg->md()) == NULL) {
-				SSLerror(s, SSL_R_UNKNOWN_DIGEST);
-				al = SSL_AD_DECODE_ERROR;
-				goto fatal_err;
-			}
-			if (!ssl_sigalg_pkey_ok(sigalg, pkey, 0)) {
-				SSLerror(s, SSL_R_WRONG_SIGNATURE_TYPE);
-				al = SSL_AD_DECODE_ERROR;
-				goto fatal_err;
-			}
-		} else if (pkey->type == EVP_PKEY_RSA) {
-			sigalg = ssl_sigalg_lookup(SIGALG_RSA_PKCS1_MD5_SHA1);
-		} else if (pkey->type == EVP_PKEY_EC) {
-			sigalg = ssl_sigalg_lookup(SIGALG_ECDSA_SHA1);
-		} else {
-			SSLerror(s, SSL_R_UNKNOWN_PKEY_TYPE);
-			al = SSL_AD_DECODE_ERROR;
-			goto fatal_err;
 		}
-		md = sigalg->md();
-
 		if (!CBS_get_u16_length_prefixed(&cbs, &signature))
 			goto decode_err;
 		if (CBS_len(&signature) > EVP_PKEY_size(pkey)) {
@@ -1586,7 +1557,15 @@ ssl3_get_server_key_exchange(SSL *s)
 			goto fatal_err;
 		}
 
-		if (!EVP_DigestVerifyInit(&md_ctx, &pctx, md, NULL, pkey))
+		if ((sigalg = ssl_sigalg_for_peer(s, pkey,
+		    sigalg_value)) == NULL) {
+			al = SSL_AD_DECODE_ERROR;
+			goto fatal_err;
+		}
+		S3I(s)->hs.peer_sigalg = sigalg;
+
+		if (!EVP_DigestVerifyInit(&md_ctx, &pctx, sigalg->md(),
+		    NULL, pkey))
 			goto err;
 		if (!EVP_DigestVerifyUpdate(&md_ctx, s->s3->client_random,
 		    SSL3_RANDOM_SIZE))
@@ -2338,13 +2317,12 @@ ssl3_send_client_key_exchange(SSL *s)
 }
 
 static int
-ssl3_send_client_verify_sigalgs(SSL *s, EVP_PKEY *pkey, CBB *cert_verify)
+ssl3_send_client_verify_sigalgs(SSL *s, EVP_PKEY *pkey,
+    const struct ssl_sigalg *sigalg, CBB *cert_verify)
 {
-	const struct ssl_sigalg *sigalg;
 	CBB cbb_signature;
 	EVP_PKEY_CTX *pctx = NULL;
 	EVP_MD_CTX mctx;
-	const EVP_MD *md;
 	const unsigned char *hdata;
 	unsigned char *signature = NULL;
 	size_t signature_len, hdata_len;
@@ -2352,20 +2330,11 @@ ssl3_send_client_verify_sigalgs(SSL *s, EVP_PKEY *pkey, CBB *cert_verify)
 
 	EVP_MD_CTX_init(&mctx);
 
-	if ((sigalg = ssl_sigalg_select(s, pkey)) == NULL) {
-		SSLerror(s, SSL_R_SIGNATURE_ALGORITHMS_ERROR);
-		goto err;
-	}
-	if ((md = sigalg->md()) == NULL) {
-		SSLerror(s, SSL_R_UNKNOWN_DIGEST);
-		goto err;
-	}
-
 	if (!tls1_transcript_data(s, &hdata, &hdata_len)) {
 		SSLerror(s, ERR_R_INTERNAL_ERROR);
 		goto err;
 	}
-	if (!EVP_DigestSignInit(&mctx, &pctx, md, NULL, pkey)) {
+	if (!EVP_DigestSignInit(&mctx, &pctx, sigalg->md(), NULL, pkey)) {
 		SSLerror(s, ERR_R_EVP_LIB);
 		goto err;
 	}
@@ -2552,6 +2521,7 @@ ssl3_send_client_verify_gost(SSL *s, EVP_PKEY *pkey, CBB *cert_verify)
 int
 ssl3_send_client_verify(SSL *s)
 {
+	const struct ssl_sigalg *sigalg;
 	CBB cbb, cert_verify;
 	EVP_PKEY *pkey;
 
@@ -2563,13 +2533,19 @@ ssl3_send_client_verify(SSL *s)
 			goto err;
 
 		pkey = s->cert->key->privatekey;
+		if ((sigalg = ssl_sigalg_select(s, pkey)) == NULL) {
+			SSLerror(s, SSL_R_SIGNATURE_ALGORITHMS_ERROR);
+			goto err;
+		}
+		S3I(s)->hs.our_sigalg = sigalg;
 
 		/*
 		 * For TLS v1.2 send signature algorithm and signature using
 		 * agreed digest and cached handshake records.
 		 */
 		if (SSL_USE_SIGALGS(s)) {
-			if (!ssl3_send_client_verify_sigalgs(s, pkey, &cert_verify))
+			if (!ssl3_send_client_verify_sigalgs(s, pkey, sigalg,
+			    &cert_verify))
 				goto err;
 		} else if (pkey->type == EVP_PKEY_RSA) {
 			if (!ssl3_send_client_verify_rsa(s, pkey, &cert_verify))

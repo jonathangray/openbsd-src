@@ -1,4 +1,4 @@
-/*	$OpenBSD: machdep.c,v 1.22 2021/06/21 15:05:51 kettenis Exp $	*/
+/*	$OpenBSD: machdep.c,v 1.25 2021/07/02 14:50:18 kettenis Exp $	*/
 
 /*
  * Copyright (c) 2014 Patrick Wildt <patrick@blueri.se>
@@ -294,30 +294,19 @@ void    cpu_switchto_asm(struct proc *, struct proc *);
 void
 cpu_switchto(struct proc *old, struct proc *new)
 {
-	struct cpu_info *ci = curcpu();
-	struct trapframe *tf;
-	struct pcb *pcb;
+	if (old) {
+		struct pcb *pcb = &old->p_addr->u_pcb;
+		struct trapframe *tf = pcb->pcb_tf;
 
-	/* old may be NULL, do not save context */
-	if (old != NULL) {
-		tf = old->p_addr->u_pcb.pcb_tf;
-		if ((tf->tf_sstatus & SSTATUS_FS_MASK) == SSTATUS_FS_DIRTY) {
+		if (pcb->pcb_flags & PCB_FPU)
 			fpu_save(old, tf);
-		}
+
+		/* drop FPU state */
 		tf->tf_sstatus &= ~SSTATUS_FS_MASK;
+		tf->tf_sstatus |= SSTATUS_FS_OFF;
 	}
 
 	cpu_switchto_asm(old, new);
-
-	pcb = ci->ci_curpcb;
-	tf = new->p_addr->u_pcb.pcb_tf;
-#if 0
-	/* XXX this optimization is subtly broken */	
-	if (pcb->pcb_fpcpu == ci && ci->ci_fpuproc == new) {
-		/* If fpu state is already loaded, allow it to be used */
-		tf->tf_sstatus |= SSTATUS_FS_CLEAN;
-	}
-#endif
 }
 
 /*
@@ -415,21 +404,19 @@ doreset:
 	/* NOTREACHED */
 }
 
-//Copied from ARM64, removed some registers. XXX
 void
 setregs(struct proc *p, struct exec_package *pack, u_long stack,
     register_t *retval)
 {
-	struct trapframe *tf;
+	struct trapframe *tf = p->p_addr->u_pcb.pcb_tf;
+	struct pcb *pcb = &p->p_addr->u_pcb;
 
 	/* If we were using the FPU, forget about it. */
-	if (p->p_addr->u_pcb.pcb_fpcpu != NULL)
-		fpu_discard(p);
-	p->p_addr->u_pcb.pcb_flags &= ~PCB_FPU;
+	pcb->pcb_flags &= ~PCB_FPU;
+	tf->tf_sstatus &= ~SSTATUS_FS_MASK;
+	tf->tf_sstatus |= SSTATUS_FS_OFF;
 
-	tf = p->p_addr->u_pcb.pcb_tf;
-
-	memset (tf,0, sizeof(*tf));
+	memset(tf, 0, sizeof(*tf));
 	tf->tf_a[0] = stack; // XXX Inherited from FreeBSD. Why?
 	tf->tf_sp = STACKALIGN(stack);
 	tf->tf_ra = pack->ep_entry;
@@ -479,7 +466,6 @@ cpu_dump_mempagecnt(void)
 	return 0;
 }
 
-//Copied from ARM64
 /*
  * These variables are needed by /sbin/savecore
  */
@@ -521,7 +507,6 @@ dumpconf(void)
 	dumpsize = cpu_dump_mempagecnt();
 }
 
-//copied from arm64/sys_machdep.h
 int
 sys_sysarch(struct proc *p, void *v, register_t *retval)
 {
@@ -556,36 +541,27 @@ int	pmap_bootstrap_bs_map(bus_space_tag_t, bus_addr_t,
 void
 initriscv(struct riscv_bootparams *rbp)
 {
-	long kernbase = (long)_start & ~PAGE_MASK;
-	long kvo = rbp->kern_delta;
 	paddr_t memstart, memend;
+	paddr_t ramstart, ramend;
+	paddr_t start, end;
 	vaddr_t vstart;
 	void *config = (void *)rbp->dtbp_virt;
 	void *fdt = NULL;
 	paddr_t fdt_start = (paddr_t)rbp->dtbp_phys;
 	size_t fdt_size;
+	struct fdt_reg reg;
+	void *node;
 	EFI_PHYSICAL_ADDRESS system_table = 0;
 	int (*map_func_save)(bus_space_tag_t, bus_addr_t, bus_size_t, int,
 	    bus_space_handle_t *);
-	paddr_t ramstart, ramend;
-	paddr_t start, end;
 	int i;
 
 	/* Set the per-CPU pointer. */
 	__asm volatile("mv tp, %0" :: "r"(&cpu_info_primary));
 
-	// NOTE that 1GB of ram is mapped in by default in
-	// the bootstrap memory config, so nothing is necessary
-	// until pmap_bootstrap_finalize is called??
-
-	//NOTE: FDT is already mapped (rbp->dtbp_virt => rbp->dtbp_phys)
-	// Initialize the Flattened Device Tree
 	if (!fdt_init(config) || fdt_get_size(config) == 0)
 		panic("initriscv: no FDT");
 	fdt_size = fdt_get_size(config);
-
-	struct fdt_reg reg;
-	void *node;
 
 	node = fdt_find_node("/cpus");
 	if (node != NULL) {
@@ -694,15 +670,12 @@ initriscv(struct riscv_bootparams *rbp)
 	}
 
 	/* The bootloader has loaded us into a 64MB block. */
-	memstart = KERNBASE + kvo;
+	memstart = rbp->kern_phys;
 	memend = memstart + 64 * 1024 * 1024;
 
-	/* XXX */
-	kernbase = KERNBASE;
-
 	/* Bootstrap enough of pmap to enter the kernel proper. */
-	vstart = pmap_bootstrap(kvo, rbp->kern_l1pt,
-	    kernbase, esym, memstart, memend, ramstart, ramend);
+	vstart = pmap_bootstrap(rbp->kern_phys - KERNBASE, rbp->kern_l1pt,
+	    KERNBASE, esym, memstart, memend, ramstart, ramend);
 
 	proc0paddr = (struct user *)rbp->kern_stack;
 

@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $OpenBSD: emacs.sh,v 1.11 2019/04/03 14:59:34 jca Exp $
+# $OpenBSD: emacs.sh,v 1.14 2021/07/01 10:22:16 schwarze Exp $
 #
 # Copyright (c) 2017 Anton Lindqvist <anton@openbsd.org>
 # Copyright (c) 2017 Ingo Schwarze <schwarze@openbsd.org>
@@ -30,6 +30,10 @@ PS1=' # '
 VISUAL=emacs
 export EDITOR ENV HISTFILE MAIL MALLOC_OPTIONS PS1 VISUAL
 
+# The function testseq() sets up a pseudo terminal and feeds its first
+# argument to a shell on standard input.  It then checks that output
+# from the shell to the pseudo terminal agrees with the second argument.
+
 # auto-insert
 testseq "abc" " # abc"
 
@@ -42,6 +46,10 @@ testseq "z\0002\0355\0200\0200" " # z\b\0355\0200\0200z\b"
 testseq "z\0002\0355\0237\0277" " # z\b\0355\0237\0277z\b"
 testseq "z\0002\0356\0200\0200" " # z\b\0356\0200\0200z\b"
 testseq "z\0002\0357\0277\0277" " # z\b\0357\0277\0277z\b"
+testseq "z\0002\0360\0220\0200\0200" " # z\b\0360\0220\0200\0200z\b"
+testseq "z\0002\0360\0277\0277\0277" " # z\b\0360\0277\0277\0277z\b"
+testseq "z\0002\0361\0200\0200\0200" " # z\b\0361\0200\0200\0200z\b"
+testseq "z\0002\0363\0277\0277\0277" " # z\b\0363\0277\0277\0277z\b"
 testseq "z\0002\0364\0200\0200\0200" " # z\b\0364\0200\0200\0200z\b"
 testseq "z\0002\0364\0217\0277\0277" " # z\b\0364\0217\0277\0277z\b"
 
@@ -58,6 +66,11 @@ testseq "z\0002\0355\0200\0006" " # z\b\0355\0200z\bz"
 testseq "z\0002\0355\0237\0006" " # z\b\0355\0237z\bz"
 testseq "z\0002\0356\0200\0006" " # z\b\0356\0200z\bz"
 testseq "z\0002\0357\0277\0006" " # z\b\0357\0277z\bz"
+testseq "z\0002\0360\0220\0200\0006" " # z\b\0360\0220\0200z\bz"
+testseq "z\0002\0360\0277\0277\0006" " # z\b\0360\0277\0277z\bz"
+testseq "z\0002\0361\0200\0200\0006" " # z\b\0361\0200\0200z\bz"
+testseq "z\0002\0363\0200\0200\0006" " # z\b\0363\0200\0200z\bz"
+testseq "z\0002\0363\0277\0277\0006" " # z\b\0363\0277\0277z\bz"
 testseq "z\0002\0364\0200\0200\0006" " # z\b\0364\0200\0200z\bz"
 testseq "z\0002\0364\0217\0277\0006" " # z\b\0364\0217\0277z\bz"
 
@@ -65,7 +78,6 @@ testseq "z\0002\0364\0217\0277\0006" " # z\b\0364\0217\0277z\bz"
 testseq "z\0002\0300\0277" " # z\b\0300z\b\b\0300\0277z\b"
 testseq "z\0002\0301\0277" " # z\b\0301z\b\b\0301\0277z\b"
 testseq "z\0002\0360\0217" " # z\b\0360z\b\b\0360\0217z\b"
-testseq "z\0002\0363\0217" " # z\b\0363z\b\b\0363\0217z\b"
 testseq "z\0002\0365\0217" " # z\b\0365z\b\b\0365\0217z\b"
 testseq "z\0002\0367\0217" " # z\b\0367z\b\b\0367\0217z\b"
 testseq "z\0002\0370\0217" " # z\b\0370z\b\b\0370\0217z\b"
@@ -80,6 +92,10 @@ testseq "z\0002\0340\0202\0200" \
 	" # z\b\0340z\b\b\0340\0202z\b\b\0340\0202\0200z\b"
 testseq "z\0002\0340\0237\0277" \
 	" # z\b\0340z\b\b\0340\0237z\b\b\0340\0237\0277z\b"
+testseq "z\0002\0360\0200\0200\0200" \
+  " # z\b\0360z\b\b\0360\0200z\b\b\0360\0200\0200z\b\b\0360\0200\0200\0200z\b"
+testseq "z\0002\0360\0217\0277\0277" \
+  " # z\b\0360z\b\b\0360\0217z\b\b\0360\0217\0277z\b\b\0360\0217\0277\0277z\b"
 
 # insertion of surrogates and execessive code points
 testseq "z\0002\0355\0240\0200" \
