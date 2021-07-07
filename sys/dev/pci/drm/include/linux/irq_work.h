@@ -46,4 +46,10 @@ irq_work_queue(struct irq_work *work)
 	return task_add(work->tq, &work->task);
 }
 
+static inline void
+irq_work_sync(struct irq_work *work)
+{
+	taskq_barrier(work->tq);
+}
+
 #endif

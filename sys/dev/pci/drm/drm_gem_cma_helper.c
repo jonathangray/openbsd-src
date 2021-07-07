@@ -152,7 +152,7 @@ drm_gem_cma_dumb_create(struct drm_file *file_priv, struct drm_device *ddev,
 		return -ENOMEM;
 
 	error = drm_gem_handle_create(file_priv, &obj->base, &handle);
-	drm_gem_object_put_unlocked(&obj->base);
+	drm_gem_object_put(&obj->base);
 	if (error) {
 		drm_gem_cma_obj_free(obj);
 		return error;

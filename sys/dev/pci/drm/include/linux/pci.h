@@ -337,6 +337,12 @@ enum pcie_link_width {
 	PCIE_LNK_WIDTH_UNKNOWN	= 0xff
 };
 
+typedef unsigned int pci_ers_result_t;
+typedef unsigned int pci_channel_state_t;
+
+#define PCI_ERS_RESULT_DISCONNECT	0
+#define PCI_ERS_RESULT_RECOVERED	1
+
 enum pci_bus_speed pcie_get_speed_cap(struct pci_dev *);
 enum pcie_link_width pcie_get_width_cap(struct pci_dev *);
 int pci_resize_resource(struct pci_dev *, int, int);
