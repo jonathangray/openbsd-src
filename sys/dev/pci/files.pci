@@ -850,4 +850,4 @@ attach	com at pci with com_pci
 file	dev/pci/com_pci.c		com_pci
 
 include "dev/pci/files.agp"
-include "dev/pci/newdrm/files.drm"
+include "dev/pci/drm/files.drm"

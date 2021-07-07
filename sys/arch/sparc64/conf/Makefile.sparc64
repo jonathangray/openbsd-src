@@ -22,8 +22,8 @@ _machdir?=	$S/arch/${_mach}
 _archdir?=	$S/arch/${_arch}
 
 INCLUDES=	-nostdinc -I$S -I${.OBJDIR} -I$S/arch \
-		-I$S/dev/pci/newdrm/include \
-		-I$S/dev/pci/newdrm/include/uapi
+		-I$S/dev/pci/drm/include \
+		-I$S/dev/pci/drm/include/uapi
 CPPFLAGS=	${INCLUDES} ${IDENT} ${PARAM} -D_KERNEL -MD -MP
 CWARNFLAGS=	-Werror -Wall -Wimplicit-function-declaration \
 		-Wno-uninitialized -Wno-pointer-sign \
