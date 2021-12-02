@@ -759,6 +759,7 @@ pledge_recvfd(struct proc *p, struct file *fp)
 	case DTYPE_SOCKET:
 	case DTYPE_PIPE:
 	case DTYPE_DMABUF:
+	case DTYPE_SYNC:
 		return (0);
 	case DTYPE_VNODE:
 		vp = fp->f_data;
@@ -786,6 +787,7 @@ pledge_sendfd(struct proc *p, struct file *fp)
 	case DTYPE_SOCKET:
 	case DTYPE_PIPE:
 	case DTYPE_DMABUF:
+	case DTYPE_SYNC:
 		return (0);
 	case DTYPE_VNODE:
 		vp = fp->f_data;

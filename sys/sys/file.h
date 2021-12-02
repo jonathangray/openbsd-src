@@ -45,6 +45,7 @@
 #define	DTYPE_PIPE	3	/* pipe */
 #define	DTYPE_KQUEUE	4	/* event queue */
 #define	DTYPE_DMABUF	5	/* DMA buffer (for DRM) */
+#define	DTYPE_SYNC	6	/* sync file (for DRM) */
 
 #ifdef _KERNEL
 struct proc;
