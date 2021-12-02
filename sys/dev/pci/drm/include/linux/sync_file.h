@@ -7,6 +7,7 @@
 #include <linux/ktime.h>
 
 struct sync_file {
+	struct file *file;
 };
 
 static inline struct dma_fence *

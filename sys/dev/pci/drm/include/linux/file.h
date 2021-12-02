@@ -9,13 +9,8 @@
 
 #define fput(a)
 #define fd_install(a, b)
-#define put_unused_fd(a)
 
-static inline int
-get_unused_fd_flags(unsigned int flags)
-{
-	printf("%s: stub\n", __func__);
-	return -1;
-}
+int get_unused_fd_flags(unsigned int);
+void put_unused_fd(int);
 
 #endif

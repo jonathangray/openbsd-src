@@ -50,6 +50,7 @@
 #include <linux/interval_tree.h>
 #include <linux/kthread.h>
 #include <linux/processor.h>
+#include <linux/sync_file.h>
 
 #include <drm/drm_device.h>
 #include <drm/drm_print.h>
@@ -2781,4 +2782,121 @@ interval_tree_insert(struct interval_tree_node *node,
 
 	rb_link_node(&node->rb, parent, iter);
 	rb_insert_color_cached(&node->rb, root, false);
+}
+
+int
+syncfile_read(struct file *fp, struct uio *uio, int fflags)
+{
+	return ENXIO;
+}
+
+int
+syncfile_write(struct file *fp, struct uio *uio, int fflags)
+{
+	return ENXIO;
+}
+
+int
+syncfile_ioctl(struct file *fp, u_long com, caddr_t data, struct proc *p)
+{
+	return ENOTTY;
+}
+
+int
+syncfile_poll(struct file *fp, int events, struct proc *p)
+{
+	return 0;
+}
+
+int
+syncfile_kqfilter(struct file *fp, struct knote *kn)
+{
+	return EINVAL;
+}
+
+int
+syncfile_stat(struct file *fp, struct stat *st, struct proc *p)
+{
+	struct sync_file *syncfile = fp->f_data;
+
+	memset(st, 0, sizeof(*st));
+	st->st_mode = S_IFIFO;	/* XXX */
+	return 0;
+}
+
+int
+syncfile_close(struct file *fp, struct proc *p)
+{
+	struct sync_file *syncfile = fp->f_data;
+
+	fp->f_data = NULL;
+	free(syncfile, M_DRM, sizeof(struct sync_file));
+	return 0;
+}
+
+int
+syncfile_seek(struct file *fp, off_t *offset, int whence, struct proc *p)
+{
+	struct sync_file *syncfile = fp->f_data;
+	off_t newoff;
+
+	if (*offset != 0)
+		return EINVAL;
+
+	switch (whence) {
+	case SEEK_SET:
+		newoff = 0;
+		break;
+	case SEEK_END:
+		newoff = 0;
+		break;
+	default:
+		return EINVAL;
+	}
+	mtx_enter(&fp->f_mtx);
+	fp->f_offset = newoff;
+	mtx_leave(&fp->f_mtx);
+	*offset = newoff;
+	return 0;
+}
+
+const struct fileops syncfileops = {
+	.fo_read	= syncfile_read,
+	.fo_write	= syncfile_write,
+	.fo_ioctl	= syncfile_ioctl,
+	.fo_poll	= syncfile_poll,
+	.fo_kqfilter	= syncfile_kqfilter,
+	.fo_stat	= syncfile_stat,
+	.fo_close	= syncfile_close,
+	.fo_seek	= syncfile_seek,
+};
+
+int
+get_unused_fd_flags(unsigned int flags)
+{
+	struct proc *p = curproc;
+	struct filedesc *fdp = p->p_fd;
+	struct file *fp;
+	int cloexec, error, fd;
+
+	cloexec = (flags & O_CLOEXEC) ? UF_EXCLOSE : 0;
+
+	fdplock(fdp);
+	if ((error = falloc(p, &fp, &fd)) != 0) {
+		fdpunlock(fdp);
+		return -1;
+	}
+	fdpunlock(fdp);
+
+	return fd;
+}
+
+void
+put_unused_fd(int fd)
+{
+	struct filedesc *fdp = curproc->p_fd;
+
+	fdplock(fdp);
+	/* fdrelease unlocks fdp. */
+	fdrelease(curproc, fd);
 }
