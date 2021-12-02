@@ -2900,3 +2900,45 @@ put_unused_fd(int fd)
 	/* fdrelease unlocks fdp. */
 	fdrelease(curproc, fd);
 }
+
+struct dma_fence *
+sync_file_get_fence(int fd)
+{
+	struct proc *p = curproc;
+	struct filedesc *fdp = p->p_fd;
+	struct file *fp;
+	struct sync_file *sf;
+
+	if ((fp = fd_getfile(fdp, fd)) == NULL)
+		return NULL;
+
+	if (fp->f_type != DTYPE_SYNC) {
+		FRELE(fp, p);
+		return NULL;
+	}
+	sf = fp->f_data;
+	if (sf == NULL) {
+		FRELE(fp, p);
+		return NULL;
+	}
+	return sf->fence;
+}
+
+struct sync_file *
+sync_file_create(struct dma_fence *fence)
+{
+	struct proc *p = curproc;
+	struct sync_file *sf;
+	struct file *fp;
+
+	fp = fnew(p);
+	if (fp == NULL)
+		return NULL;
+	fp->f_type = DTYPE_SYNC;
+	fp->f_ops = &syncfileops;
+	sf = malloc(sizeof(struct sync_file), M_DRM, M_WAITOK | M_ZERO);
+	sf->file = fp;
+	sf->fence = dma_fence_get(fence);
+	fp->f_data = sf;
+	return sf;
+}
