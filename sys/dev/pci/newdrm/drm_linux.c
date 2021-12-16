@@ -2901,6 +2901,10 @@ sync_file_get_fence(int fd)
 		return NULL;
 	}
 	sf = fp->f_data;
+	if (sf == NULL) {
+		FRELE(fp, p);
+		return NULL;
+	}
 	return sf->fence;
 }
 
