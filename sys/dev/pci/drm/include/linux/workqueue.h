@@ -137,6 +137,13 @@ INIT_DELAYED_WORK_ONSTACK(struct delayed_work *dwork, work_func_t func)
 	timeout_set(&dwork->to, __delayed_work_tick, &dwork->work);
 }
 
+#define __DELAYED_WORK_INITIALIZER(dw, fn, flags) {			\
+	.to = TIMEOUT_INITIALIZER(__delayed_work_tick, &(dw)),		\
+	.tq = NULL,							\
+	.work.tq = NULL,						\
+	.work.task = TASK_INITIALIZER((void (*)(void *))(fn), &(dw).work)	\
+}
+
 static inline bool
 schedule_work(struct work_struct *work)
 {

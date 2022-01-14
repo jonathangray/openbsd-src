@@ -60,8 +60,16 @@ set_pages_array_uc(struct vm_page **pages, int addrinarray)
 static inline int
 set_pages_wb(struct vm_page *page, int numpages)
 {
-	KASSERT(numpages == 1);
-	atomic_clearbits_int(&page->pg_flags, PG_PMAP_WC);
+	struct vm_page *pg;
+	paddr_t start = VM_PAGE_TO_PHYS(page);
+	int i;
+
+	for (i = 0; i < numpages; i++) {
+		pg = PHYS_TO_VM_PAGE(start + (i * PAGE_SIZE));
+		if (pg != NULL)
+			atomic_clearbits_int(&pg->pg_flags, PG_PMAP_WC);
+	}
+
 	return 0;
 }
 
