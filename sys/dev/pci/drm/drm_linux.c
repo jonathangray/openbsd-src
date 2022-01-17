@@ -2871,6 +2871,21 @@ const struct fileops syncfileops = {
 	.fo_seek	= syncfile_seek,
 };
 
+void
+fd_install(int fd, struct file *fp)
+{
+	struct proc *p = curproc;
+	struct filedesc *fdp = p->p_fd;
+
+	if (fp->f_type != DTYPE_SYNC)
+		return;
+
+	fdplock(fdp);
+	/* all callers use get_unused_fd_flags(O_CLOEXEC) */
+	fdinsert(fdp, fd, UF_EXCLOSE, fp);
+	fdpunlock(fdp);
+}
+
 int
 get_unused_fd_flags(unsigned int flags)
 {

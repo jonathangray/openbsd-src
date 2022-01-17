@@ -8,7 +8,8 @@
 #include <sys/systm.h>
 
 #define fput(a)
-#define fd_install(a, b)
+
+void fd_install(int, struct file *);
 
 int get_unused_fd_flags(unsigned int);
 void put_unused_fd(int);
