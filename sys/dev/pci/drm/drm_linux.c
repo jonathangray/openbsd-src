@@ -2925,6 +2925,7 @@ sync_file_get_fence(int fd)
 	struct filedesc *fdp = p->p_fd;
 	struct file *fp;
 	struct sync_file *sf;
+	struct dma_fence *f;
 
 	if ((fp = fd_getfile(fdp, fd)) == NULL)
 		return NULL;
@@ -2938,7 +2939,9 @@ sync_file_get_fence(int fd)
 		FRELE(fp, p);
 		return NULL;
 	}
-	return sf->fence;
+	f = dma_fence_get(sf->fence);
+	FRELE(sf->file, p);
+	return f;
 }
 
 struct sync_file *
