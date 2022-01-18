@@ -2817,8 +2817,6 @@ syncfile_kqfilter(struct file *fp, struct knote *kn)
 int
 syncfile_stat(struct file *fp, struct stat *st, struct proc *p)
 {
-	struct sync_file *syncfile = fp->f_data;
-
 	memset(st, 0, sizeof(*st));
 	st->st_mode = S_IFIFO;	/* XXX */
 	return 0;
@@ -2827,17 +2825,17 @@ syncfile_stat(struct file *fp, struct stat *st, struct proc *p)
 int
 syncfile_close(struct file *fp, struct proc *p)
 {
-	struct sync_file *syncfile = fp->f_data;
+	struct sync_file *sf = fp->f_data;
 
+	dma_fence_put(sf->fence);
 	fp->f_data = NULL;
-	free(syncfile, M_DRM, sizeof(struct sync_file));
+	free(sf, M_DRM, sizeof(struct sync_file));
 	return 0;
 }
 
 int
 syncfile_seek(struct file *fp, off_t *offset, int whence, struct proc *p)
 {
-	struct sync_file *syncfile = fp->f_data;
 	off_t newoff;
 
 	if (*offset != 0)
@@ -2891,13 +2889,17 @@ get_unused_fd_flags(unsigned int flags)
 {
 	struct proc *p = curproc;
 	struct filedesc *fdp = p->p_fd;
-	struct file *fp;
-	int cloexec, error, fd;
+	int error, fd;
 
-	cloexec = (flags & O_CLOEXEC) ? UF_EXCLOSE : 0;
+	KASSERT((flags & O_CLOEXEC) != 0);
 
 	fdplock(fdp);
-	if ((error = falloc(p, &fp, &fd)) != 0) {
+retryalloc:
+	if ((error = fdalloc(p, 0, &fd)) != 0) {
+		if (error == ENOSPC) {
+			fdexpand(p);
+			goto retryalloc;
+		}
 		fdpunlock(fdp);
 		return -1;
 	}
@@ -2912,8 +2914,8 @@ put_unused_fd(int fd)
 	struct filedesc *fdp = curproc->p_fd;
 
 	fdplock(fdp);
-	/* fdrelease unlocks fdp. */
-	fdrelease(curproc, fd);
+	fdremove(fdp, fd);
+	fdpunlock(fdp);
 }
 
 struct dma_fence *
