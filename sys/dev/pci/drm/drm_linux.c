@@ -2884,6 +2884,15 @@ fd_install(int fd, struct file *fp)
 	fdpunlock(fdp);
 }
 
+void
+fput(struct file *fp)
+{
+	if (fp->f_type != DTYPE_SYNC)
+		return;
+	
+	FRELE(fp, curproc);
+}
+
 int
 get_unused_fd_flags(unsigned int flags)
 {
