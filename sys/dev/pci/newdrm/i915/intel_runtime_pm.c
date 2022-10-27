@@ -657,6 +657,6 @@ void intel_runtime_pm_init_early(struct intel_runtime_pm *rpm)
 
 	init_intel_runtime_pm_wakeref(rpm);
 	INIT_LIST_HEAD(&rpm->lmem_userfault_list);
-	mutex_init(&rpm->lmem_userfault_lock);
+	mtx_init(&rpm->lmem_userfault_lock, IPL_NONE);
 	intel_wakeref_auto_init(&rpm->userfault_wakeref, rpm);
 }
