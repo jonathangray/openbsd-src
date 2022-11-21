@@ -10,7 +10,6 @@
 #include <linux/processor.h>
 #include <linux/preempt.h>
 #include <linux/compiler.h>
-#include <linux/ww_mutex.h>
 
 typedef struct {
 	unsigned int sequence;
@@ -148,11 +147,6 @@ read_seqretry(seqlock_t *sl, unsigned int pos)
 {
 	return sl->seq != pos;
 }
-
-typedef struct {
-	seqcount_t seq;
-	struct ww_mutex lock;
-} seqcount_ww_mutex_t;
 
 typedef struct {
 	seqcount_t seq;

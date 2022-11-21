@@ -3,7 +3,6 @@
 #ifndef _LINUX_SPINLOCK_H
 #define _LINUX_SPINLOCK_H
 
-#include <linux/kernel.h>
 #include <linux/spinlock_types.h>
 #include <linux/preempt.h>
 #include <linux/bottom_half.h>
