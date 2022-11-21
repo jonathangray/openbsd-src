@@ -423,7 +423,9 @@ void ttm_kmap_iter_linear_io_fini(struct ttm_kmap_iter_linear_io *iter_io,
 				  struct ttm_device *bdev,
 				  struct ttm_resource *mem);
 
+#ifdef __linux__
 void ttm_resource_manager_create_debugfs(struct ttm_resource_manager *man,
 					 struct dentry * parent,
 					 const char *name);
+#endif
 #endif

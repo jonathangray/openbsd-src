@@ -1170,7 +1170,9 @@ struct drm_connector_funcs {
 	 *
 	 * Allows connectors to create connector-specific debugfs files.
 	 */
+#ifdef __linux__
 	void (*debugfs_init)(struct drm_connector *connector, struct dentry *root);
+#endif
 };
 
 /**
