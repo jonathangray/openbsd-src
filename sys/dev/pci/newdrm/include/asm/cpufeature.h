@@ -5,6 +5,8 @@
 
 #if defined(__amd64__) || defined(__i386__)
 
+#include <sys/param.h>
+
 #define X86_FEATURE_CLFLUSH	1
 #define X86_FEATURE_XMM4_1	2
 #define X86_FEATURE_PAT		3
