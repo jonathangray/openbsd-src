@@ -187,7 +187,11 @@ struct drm_sched_entity {
 	/**
 	 * @last_user: last group leader pushing a job into the entity.
 	 */
+#ifdef __linux__
 	struct task_struct		*last_user;
+#else
+	struct process			*last_user;
+#endif
 
 	/**
 	 * @stopped:
@@ -460,7 +464,11 @@ struct drm_gpu_scheduler {
 	atomic64_t			job_id_count;
 	struct workqueue_struct		*timeout_wq;
 	struct delayed_work		work_tdr;
+#ifdef __linux__
 	struct task_struct		*thread;
+#else
+	struct proc			*thread;
+#endif
 	struct list_head		pending_list;
 	spinlock_t			job_list_lock;
 	int				hang_limit;

@@ -44,7 +44,7 @@ extern struct ttm_global {
 	 * @dummy_read_page: Pointer to a dummy page used for mapping requests
 	 * of unpopulated pages. Constant after init.
 	 */
-	struct page *dummy_read_page;
+	struct vm_page *dummy_read_page;
 
 	/**
 	 * @device_list: List of buffer object devices. Protected by
@@ -235,6 +235,10 @@ struct ttm_device {
 	 * @man_drv: An array of resource_managers, one per resource type.
 	 */
 	struct ttm_resource_manager *man_drv[TTM_NUM_MEM_TYPES];
+
+	bus_space_tag_t iot;
+	bus_space_tag_t memt;
+	bus_dma_tag_t dmat;
 
 	/**
 	 * @vma_manager: Address space manager for finding BOs to mmap.

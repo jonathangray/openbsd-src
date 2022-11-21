@@ -191,6 +191,7 @@ struct ttm_bus_placement {
 	phys_addr_t		offset;
 	bool			is_iomem;
 	enum ttm_caching	caching;
+	bus_space_handle_t	bsh;
 };
 
 /**

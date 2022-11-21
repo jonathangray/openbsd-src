@@ -38,6 +38,8 @@
 
 #include <drm/drm_prime.h>
 
+#include <sys/selinfo.h>
+
 struct dma_fence;
 struct drm_file;
 struct drm_device;
@@ -71,13 +73,15 @@ struct drm_minor {
 	/* private: */
 	int index;			/* Minor device number */
 	int type;                       /* Control or render */
+#ifdef __linux__
 	struct device *kdev;		/* Linux device */
+#endif
 	struct drm_device *dev;
 
 	struct dentry *debugfs_root;
 
 	struct list_head debugfs_list;
-	struct mutex debugfs_lock; /* Protects debugfs_list. */
+	struct rwlock debugfs_lock; /* Protects debugfs_list. */
 };
 
 /**
@@ -268,6 +272,8 @@ struct drm_file {
 	/** @minor: &struct drm_minor for this file. */
 	struct drm_minor *minor;
 
+	int fminor;
+
 	/**
 	 * @object_idr:
 	 *
@@ -307,7 +313,7 @@ struct drm_file {
 	struct list_head fbs;
 
 	/** @fbs_lock: Protects @fbs. */
-	struct mutex fbs_lock;
+	struct rwlock fbs_lock;
 
 	/**
 	 * @blobs:
@@ -353,7 +359,7 @@ struct drm_file {
 	int event_space;
 
 	/** @event_read_lock: Serializes drm_read(). */
-	struct mutex event_read_lock;
+	struct rwlock event_read_lock;
 
 	/**
 	 * @prime:
@@ -366,6 +372,9 @@ struct drm_file {
 #if IS_ENABLED(CONFIG_DRM_LEGACY)
 	unsigned long lock_count; /* DRI1 legacy lock count */
 #endif
+
+	struct selinfo rsel;
+	SPLAY_ENTRY(drm_file) link;
 };
 
 /**
@@ -397,12 +406,14 @@ static inline bool drm_is_render_client(const struct drm_file *file_priv)
 	return file_priv->minor->type == DRM_MINOR_RENDER;
 }
 
+#ifdef __linux__
 int drm_open(struct inode *inode, struct file *filp);
 ssize_t drm_read(struct file *filp, char __user *buffer,
 		 size_t count, loff_t *offset);
 int drm_release(struct inode *inode, struct file *filp);
 int drm_release_noglobal(struct inode *inode, struct file *filp);
 __poll_t drm_poll(struct file *filp, struct poll_table_struct *wait);
+#endif
 int drm_event_reserve_init_locked(struct drm_device *dev,
 				  struct drm_file *file_priv,
 				  struct drm_pending_event *p,

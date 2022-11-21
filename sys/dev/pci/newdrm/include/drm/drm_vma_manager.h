@@ -50,14 +50,14 @@ struct drm_vma_offset_file {
 };
 
 struct drm_vma_offset_node {
-	rwlock_t vm_lock;
+	struct mutex vm_lock;
 	struct drm_mm_node vm_node;
 	struct rb_root vm_files;
 	void *driver_private;
 };
 
 struct drm_vma_offset_manager {
-	rwlock_t vm_lock;
+	struct mutex vm_lock;
 	struct drm_mm vm_addr_space_mm;
 };
 
@@ -148,7 +148,7 @@ static inline void drm_vma_node_reset(struct drm_vma_offset_node *node)
 {
 	memset(node, 0, sizeof(*node));
 	node->vm_files = RB_ROOT;
-	rwlock_init(&node->vm_lock);
+	mtx_init(&node->vm_lock, IPL_NONE);
 }
 
 /**
@@ -216,6 +216,7 @@ static inline __u64 drm_vma_node_offset_addr(struct drm_vma_offset_node *node)
  * This call is unlocked. The caller must guarantee that drm_vma_offset_remove()
  * is not called on this node concurrently.
  */
+#ifdef __linux__
 static inline void drm_vma_node_unmap(struct drm_vma_offset_node *node,
 				      struct address_space *file_mapping)
 {
@@ -224,6 +225,7 @@ static inline void drm_vma_node_unmap(struct drm_vma_offset_node *node,
 				    drm_vma_node_offset_addr(node),
 				    drm_vma_node_size(node) << PAGE_SHIFT, 1);
 }
+#endif
 
 /**
  * drm_vma_node_verify_access() - Access verification helper for TTM

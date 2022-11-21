@@ -162,7 +162,11 @@ struct drm_gem_object_funcs {
 	 * drm_gem_prime_mmap().  When @mmap is present @vm_ops is not
 	 * used, the @mmap callback must set vma->vm_ops instead.
 	 */
+#ifdef __linux__
 	int (*mmap)(struct drm_gem_object *obj, struct vm_area_struct *vma);
+#else
+	int (*mmap)(struct drm_gem_object *, vm_prot_t, voff_t, vsize_t);
+#endif
 
 	/**
 	 * @vm_ops:
@@ -171,7 +175,11 @@ struct drm_gem_object_funcs {
 	 *
 	 * This is optional but necessary for mmap support.
 	 */
+#ifdef __linux__
 	const struct vm_operations_struct *vm_ops;
+#else
+	const struct uvm_pagerops *vm_ops;
+#endif
 };
 
 /**
@@ -218,6 +226,12 @@ struct drm_gem_lru {
  * Buffer objects are often abbreviated to BO.
  */
 struct drm_gem_object {
+	/*
+	 * This must be first as uobj is cast to ttm_buffer_object for
+	 * radeon_ttm_fault() the first member of that struct is drm_gem_object
+	 */
+	struct uvm_object uobj;
+
 	/**
 	 * @refcount:
 	 *
@@ -255,7 +269,9 @@ struct drm_gem_object {
 	 * storage (contiguous DMA memory, special reserved blocks). In this
 	 * case @filp is NULL.
 	 */
+#ifdef __linux__
 	struct file *filp;
+#endif
 
 	/**
 	 * @vma_node:
@@ -361,6 +377,9 @@ struct drm_gem_object {
 	 * The current LRU list that the GEM object is on.
 	 */
 	struct drm_gem_lru *lru;
+
+	SPLAY_ENTRY(drm_gem_object) entry;
+	struct uvm_object *uao;
 };
 
 /**
@@ -405,11 +424,15 @@ int drm_gem_object_init(struct drm_device *dev,
 			struct drm_gem_object *obj, size_t size);
 void drm_gem_private_object_init(struct drm_device *dev,
 				 struct drm_gem_object *obj, size_t size);
+#ifdef __linux__
 void drm_gem_vm_open(struct vm_area_struct *vma);
 void drm_gem_vm_close(struct vm_area_struct *vma);
 int drm_gem_mmap_obj(struct drm_gem_object *obj, unsigned long obj_size,
 		     struct vm_area_struct *vma);
 int drm_gem_mmap(struct file *filp, struct vm_area_struct *vma);
+#else
+struct uvm_object *drm_gem_mmap(struct file *, vm_prot_t, voff_t, vsize_t);
+#endif
 
 /**
  * drm_gem_object_get - acquire a GEM buffer object reference
@@ -453,8 +476,8 @@ void drm_gem_free_mmap_offset(struct drm_gem_object *obj);
 int drm_gem_create_mmap_offset(struct drm_gem_object *obj);
 int drm_gem_create_mmap_offset_size(struct drm_gem_object *obj, size_t size);
 
-struct page **drm_gem_get_pages(struct drm_gem_object *obj);
-void drm_gem_put_pages(struct drm_gem_object *obj, struct page **pages,
+struct vm_page **drm_gem_get_pages(struct drm_gem_object *obj);
+void drm_gem_put_pages(struct drm_gem_object *obj, struct vm_page **pages,
 		bool dirty, bool accessed);
 
 int drm_gem_objects_lookup(struct drm_file *filp, void __user *bo_handles,
@@ -474,5 +497,8 @@ void drm_gem_lru_remove(struct drm_gem_object *obj);
 void drm_gem_lru_move_tail(struct drm_gem_lru *lru, struct drm_gem_object *obj);
 unsigned long drm_gem_lru_scan(struct drm_gem_lru *lru, unsigned nr_to_scan,
 			       bool (*shrink)(struct drm_gem_object *obj));
+
+void drm_ref(struct uvm_object *);
+void drm_unref(struct uvm_object *);
 
 #endif /* __DRM_GEM_H__ */
