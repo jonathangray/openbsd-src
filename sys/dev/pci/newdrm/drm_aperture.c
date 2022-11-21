@@ -146,6 +146,9 @@
 int devm_aperture_acquire_from_firmware(struct drm_device *dev, resource_size_t base,
 					resource_size_t size)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct platform_device *pdev;
 
 	if (drm_WARN_ON(dev, !dev_is_platform(dev->dev)))
@@ -154,6 +157,7 @@ int devm_aperture_acquire_from_firmware(struct drm_device *dev, resource_size_t 
 	pdev = to_platform_device(dev->dev);
 
 	return devm_aperture_acquire_for_platform_device(pdev, base, size);
+#endif
 }
 EXPORT_SYMBOL(devm_aperture_acquire_from_firmware);
 
@@ -176,8 +180,6 @@ int drm_aperture_remove_conflicting_framebuffers(resource_size_t base, resource_
 	return aperture_remove_conflicting_devices(base, size, primary, req_driver->name);
 }
 EXPORT_SYMBOL(drm_aperture_remove_conflicting_framebuffers);
-
-#endif /* notyet */
 
 /**
  * drm_aperture_remove_conflicting_pci_framebuffers - remove existing framebuffers for PCI devices
