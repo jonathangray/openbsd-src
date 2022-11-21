@@ -53,12 +53,20 @@ static int drm_get_pci_domain(struct drm_device *dev)
 		return 0;
 #endif /* __alpha__ */
 
+#ifdef __linux__
 	return pci_domain_nr(to_pci_dev(dev->dev)->bus);
+#else
+	return pci_domain_nr(dev->pdev->bus);
+#endif
 }
 
 int drm_pci_set_busid(struct drm_device *dev, struct drm_master *master)
 {
+#ifdef __linux__
 	struct pci_dev *pdev = to_pci_dev(dev->dev);
+#else
+	struct pci_dev *pdev = dev->pdev;
+#endif
 
 	master->unique = kasprintf(GFP_KERNEL, "pci:%04x:%02x:%02x.%d",
 					drm_get_pci_domain(dev),

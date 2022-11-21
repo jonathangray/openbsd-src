@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 
+#ifdef __linux__
 #include <uapi/linux/sched/types.h>
+#endif
 
 #include <drm/drm_print.h>
 #include <drm/drm_vblank.h>
@@ -217,6 +219,7 @@ EXPORT_SYMBOL(drm_vblank_work_cancel_sync);
  */
 void drm_vblank_work_flush(struct drm_vblank_work *work)
 {
+#ifdef notyet
 	struct drm_vblank_crtc *vblank = work->vblank;
 	struct drm_device *dev = vblank->dev;
 
@@ -224,6 +227,9 @@ void drm_vblank_work_flush(struct drm_vblank_work *work)
 	wait_event_lock_irq(vblank->work_wait_queue, list_empty(&work->node),
 			    dev->event_lock);
 	spin_unlock_irq(&dev->event_lock);
+#else
+	STUB();
+#endif
 
 	kthread_flush_work(&work->base);
 }
@@ -260,6 +266,8 @@ int drm_vblank_worker_init(struct drm_vblank_crtc *vblank)
 
 	vblank->worker = worker;
 
+#ifdef notyet
 	sched_set_fifo(worker->task);
+#endif
 	return 0;
 }

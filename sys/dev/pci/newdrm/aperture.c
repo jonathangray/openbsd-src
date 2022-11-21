@@ -138,7 +138,7 @@ struct aperture_range {
 	void (*detach)(struct device *dev);
 };
 
-static LIST_HEAD(apertures);
+static DRM_LIST_HEAD(apertures);
 static DEFINE_MUTEX(apertures_lock);
 
 static bool overlap(resource_size_t base1, resource_size_t end1,
@@ -146,6 +146,8 @@ static bool overlap(resource_size_t base1, resource_size_t end1,
 {
 	return (base1 < end2) && (end1 > base2);
 }
+
+#ifdef notyet
 
 static void devm_aperture_acquire_release(void *data)
 {
@@ -216,6 +218,8 @@ static void aperture_detach_platform_device(struct device *dev)
 	platform_device_unregister(pdev);
 }
 
+#endif /* notyet */
+
 /**
  * devm_aperture_acquire_for_platform_device - Acquires ownership of an aperture
  *                                             on behalf of a platform device.
@@ -240,7 +244,11 @@ int devm_aperture_acquire_for_platform_device(struct platform_device *pdev,
 					      resource_size_t base,
 					      resource_size_t size)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	return devm_aperture_acquire(&pdev->dev, base, size, aperture_detach_platform_device);
+#endif
 }
 EXPORT_SYMBOL(devm_aperture_acquire_for_platform_device);
 
@@ -324,6 +332,8 @@ EXPORT_SYMBOL(aperture_remove_conflicting_devices);
  */
 int aperture_remove_conflicting_pci_devices(struct pci_dev *pdev, const char *name)
 {
+	return 0;
+#ifdef notyet
 	bool primary = false;
 	resource_size_t base, size;
 	int bar, ret;
@@ -352,6 +362,6 @@ int aperture_remove_conflicting_pci_devices(struct pci_dev *pdev, const char *na
 		return ret;
 
 	return 0;
-
+#endif
 }
 EXPORT_SYMBOL(aperture_remove_conflicting_pci_devices);

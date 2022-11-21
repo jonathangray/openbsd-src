@@ -177,6 +177,8 @@ int drm_aperture_remove_conflicting_framebuffers(resource_size_t base, resource_
 }
 EXPORT_SYMBOL(drm_aperture_remove_conflicting_framebuffers);
 
+#endif /* notyet */
+
 /**
  * drm_aperture_remove_conflicting_pci_framebuffers - remove existing framebuffers for PCI devices
  * @pdev: PCI device

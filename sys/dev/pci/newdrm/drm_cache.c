@@ -48,11 +48,11 @@
  * in the caller.
  */
 static void
-drm_clflush_page(struct page *page)
+drm_clflush_page(struct vm_page *page)
 {
 	uint8_t *page_virtual;
 	unsigned int i;
-	const int size = boot_cpu_data.x86_clflush_size;
+	const int size = curcpu()->ci_cflushsz;
 
 	if (unlikely(page == NULL))
 		return;
@@ -63,7 +63,7 @@ drm_clflush_page(struct page *page)
 	kunmap_atomic(page_virtual);
 }
 
-static void drm_cache_flush_clflush(struct page *pages[],
+static void drm_cache_flush_clflush(struct vm_page *pages[],
 				    unsigned long num_pages)
 {
 	unsigned long i;
@@ -84,7 +84,7 @@ static void drm_cache_flush_clflush(struct page *pages[],
  * to a page in the array.
  */
 void
-drm_clflush_pages(struct page *pages[], unsigned long num_pages)
+drm_clflush_pages(struct vm_page *pages[], unsigned long num_pages)
 {
 
 #if defined(CONFIG_X86)
@@ -96,11 +96,11 @@ drm_clflush_pages(struct page *pages[], unsigned long num_pages)
 	if (wbinvd_on_all_cpus())
 		pr_err("Timed out waiting for cache flush\n");
 
-#elif defined(__powerpc__)
+#elif defined(__powerpc__) && defined(__linux__)
 	unsigned long i;
 
 	for (i = 0; i < num_pages; i++) {
-		struct page *page = pages[i];
+		struct vm_page *page = pages[i];
 		void *page_virtual;
 
 		if (unlikely(page == NULL))
@@ -160,7 +160,7 @@ drm_clflush_virt_range(void *addr, unsigned long length)
 {
 #if defined(CONFIG_X86)
 	if (static_cpu_has(X86_FEATURE_CLFLUSH)) {
-		const int size = boot_cpu_data.x86_clflush_size;
+		const int size = curcpu()->ci_cflushsz;
 		void *end = addr + length;
 
 		addr = (void *)(((unsigned long)addr) & -size);
@@ -182,6 +182,8 @@ EXPORT_SYMBOL(drm_clflush_virt_range);
 
 bool drm_need_swiotlb(int dma_bits)
 {
+	return false;
+#ifdef notyet
 	struct resource *tmp;
 	resource_size_t max_iomem = 0;
 
@@ -208,6 +210,7 @@ bool drm_need_swiotlb(int dma_bits)
 		max_iomem = max(max_iomem,  tmp->end);
 
 	return max_iomem > ((u64)1 << dma_bits);
+#endif
 }
 EXPORT_SYMBOL(drm_need_swiotlb);
 
@@ -247,7 +250,26 @@ static void memcpy_fallback(struct iosys_map *dst,
 
 #ifdef CONFIG_X86
 
+#ifdef __linux__
 static DEFINE_STATIC_KEY_FALSE(has_movntdqa);
+#else
+static int has_movntdqa;
+
+#include <asm/fpu/api.h>
+
+static inline void
+static_branch_enable(int *x)
+{
+	*x = 1;
+}
+
+static inline int
+static_branch_likely(int *x)
+{
+	return (likely(*x == 1));
+}
+
+#endif
 
 static void __memcpy_ntdqa(void *dst, const void *src, unsigned long len)
 {

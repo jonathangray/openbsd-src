@@ -156,7 +156,9 @@ struct drm_file *drm_file_alloc(struct drm_minor *minor)
 	if (!file)
 		return ERR_PTR(-ENOMEM);
 
+#ifdef __linux__
 	file->pid = get_pid(task_pid(current));
+#endif
 	file->minor = minor;
 
 	/* for compatibility root is always authenticated */
@@ -164,15 +166,15 @@ struct drm_file *drm_file_alloc(struct drm_minor *minor)
 
 	INIT_LIST_HEAD(&file->lhead);
 	INIT_LIST_HEAD(&file->fbs);
-	mutex_init(&file->fbs_lock);
+	rw_init(&file->fbs_lock, "fbslk");
 	INIT_LIST_HEAD(&file->blobs);
 	INIT_LIST_HEAD(&file->pending_event_list);
 	INIT_LIST_HEAD(&file->event_list);
 	init_waitqueue_head(&file->event_wait);
 	file->event_space = 4096; /* set aside 4k for event buffer */
 
-	spin_lock_init(&file->master_lookup_lock);
-	mutex_init(&file->event_read_lock);
+	mtx_init(&file->master_lookup_lock, IPL_NONE);
+	rw_init(&file->event_read_lock, "evread");
 
 	if (drm_core_check_feature(dev, DRIVER_GEM))
 		drm_gem_open(dev, file);
@@ -245,10 +247,16 @@ void drm_file_free(struct drm_file *file)
 
 	dev = file->minor->dev;
 
+#ifdef __linux__
 	DRM_DEBUG("comm=\"%s\", pid=%d, dev=0x%lx, open_count=%d\n",
 		  current->comm, task_pid_nr(current),
 		  (long)old_encode_dev(file->minor->kdev->devt),
 		  atomic_read(&dev->open_count));
+#else
+	DRM_DEBUG("pid = %d, device = 0x%lx, open_count = %d\n",
+	    curproc->p_p->ps_pid, (long)&dev->dev,
+	    atomic_read(&dev->open_count));
+#endif
 
 #ifdef CONFIG_DRM_LEGACY
 	if (drm_core_check_feature(dev, DRIVER_LEGACY) &&
@@ -291,6 +299,8 @@ void drm_file_free(struct drm_file *file)
 	kfree(file);
 }
 
+#ifdef __linux__
+
 static void drm_close_helper(struct file *filp)
 {
 	struct drm_file *file_priv = filp->private_data;
@@ -316,6 +326,8 @@ static int drm_cpu_valid(void)
 	return 1;
 }
 
+#endif /* __linux__ */
+
 /*
  * Called whenever a process opens a drm node
  *
@@ -326,6 +338,7 @@ static int drm_cpu_valid(void)
  * Creates and initializes a drm_file structure for the file private data in \p
  * filp and add it into the double linked list in \p dev.
  */
+#ifdef __linux__
 static int drm_open_helper(struct file *filp, struct drm_minor *minor)
 {
 	struct drm_device *dev = minor->dev;
@@ -388,6 +401,7 @@ static int drm_open_helper(struct file *filp, struct drm_minor *minor)
 
 	return 0;
 }
+#endif /* __linux__ */
 
 /**
  * drm_open - open method for DRM file
@@ -402,6 +416,7 @@ static int drm_open_helper(struct file *filp, struct drm_minor *minor)
  *
  * 0 on success or negative errno value on failure.
  */
+#ifdef __linux__
 int drm_open(struct inode *inode, struct file *filp)
 {
 	struct drm_device *dev;
@@ -447,6 +462,7 @@ err_undo:
 	return retcode;
 }
 EXPORT_SYMBOL(drm_open);
+#endif
 
 void drm_lastclose(struct drm_device * dev)
 {
@@ -478,6 +494,9 @@ void drm_lastclose(struct drm_device * dev)
  */
 int drm_release(struct inode *inode, struct file *filp)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct drm_file *file_priv = filp->private_data;
 	struct drm_minor *minor = file_priv->minor;
 	struct drm_device *dev = minor->dev;
@@ -498,6 +517,7 @@ int drm_release(struct inode *inode, struct file *filp)
 	drm_minor_release(minor);
 
 	return 0;
+#endif
 }
 EXPORT_SYMBOL(drm_release);
 
@@ -518,6 +538,9 @@ EXPORT_SYMBOL(drm_release);
  */
 int drm_release_noglobal(struct inode *inode, struct file *filp)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct drm_file *file_priv = filp->private_data;
 	struct drm_minor *minor = file_priv->minor;
 	struct drm_device *dev = minor->dev;
@@ -532,6 +555,7 @@ int drm_release_noglobal(struct inode *inode, struct file *filp)
 	drm_minor_release(minor);
 
 	return 0;
+#endif
 }
 EXPORT_SYMBOL(drm_release_noglobal);
 
@@ -563,6 +587,9 @@ EXPORT_SYMBOL(drm_release_noglobal);
 ssize_t drm_read(struct file *filp, char __user *buffer,
 		 size_t count, loff_t *offset)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct drm_file *file_priv = filp->private_data;
 	struct drm_device *dev = file_priv->minor->dev;
 	ssize_t ret;
@@ -626,9 +653,11 @@ put_back_event:
 	mutex_unlock(&file_priv->event_read_lock);
 
 	return ret;
+#endif
 }
 EXPORT_SYMBOL(drm_read);
 
+#ifdef notyet
 /**
  * drm_poll - poll method for DRM file
  * @filp: file pointer
@@ -658,6 +687,7 @@ __poll_t drm_poll(struct file *filp, struct poll_table_struct *wait)
 	return mask;
 }
 EXPORT_SYMBOL(drm_poll);
+#endif
 
 /**
  * drm_event_reserve_init_locked - init a DRM event and reserve space for it
@@ -798,6 +828,9 @@ static void drm_send_event_helper(struct drm_device *dev,
 		      &e->file_priv->event_list);
 	wake_up_interruptible_poll(&e->file_priv->event_wait,
 		EPOLLIN | EPOLLRDNORM);
+#ifdef __OpenBSD__
+	selwakeup(&e->file_priv->rsel);
+#endif
 }
 
 /**
@@ -884,6 +917,9 @@ EXPORT_SYMBOL(drm_send_event);
  */
 struct file *mock_drm_getfile(struct drm_minor *minor, unsigned int flags)
 {
+	STUB();
+	return ERR_PTR(-ENOSYS);
+#ifdef notyet
 	struct drm_device *dev = minor->dev;
 	struct drm_file *priv;
 	struct file *file;
@@ -905,5 +941,6 @@ struct file *mock_drm_getfile(struct drm_minor *minor, unsigned int flags)
 	priv->filp = file;
 
 	return file;
+#endif
 }
 EXPORT_SYMBOL_FOR_TESTS_ONLY(mock_drm_getfile);
