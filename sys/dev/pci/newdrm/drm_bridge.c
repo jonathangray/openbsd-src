@@ -190,7 +190,12 @@ static void drm_bridge_remove_void(void *bridge)
 int devm_drm_bridge_add(struct device *dev, struct drm_bridge *bridge)
 {
 	drm_bridge_add(bridge);
+#ifdef notyet
 	return devm_add_action_or_reset(dev, drm_bridge_remove_void, bridge);
+#else
+	STUB();
+	return -ENOSYS;
+#endif
 }
 EXPORT_SYMBOL(devm_drm_bridge_add);
 
