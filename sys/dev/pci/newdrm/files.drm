@@ -64,8 +64,8 @@ file	dev/pci/newdrm/drm_plane.c			drm
 file	dev/pci/newdrm/drm_plane_helper.c		drm
 file	dev/pci/newdrm/drm_prime.c			drm
 file	dev/pci/newdrm/drm_print.c			drm
-file	dev/pci/newdrm/drm_privacy_screen.c	drm
-file	dev/pci/newdrm/drm_privacy_screen_x86.c	drm
+#file	dev/pci/newdrm/drm_privacy_screen.c	drm
+#file	dev/pci/newdrm/drm_privacy_screen_x86.c	drm
 file	dev/pci/newdrm/drm_probe_helper.c		drm
 file	dev/pci/newdrm/drm_property.c		drm
 file	dev/pci/newdrm/drm_rect.c			drm
