@@ -1,6 +1,6 @@
 # $OpenBSD: files.drm,v 1.58 2022/09/09 04:29:11 jsg Exp $
 
-file	dev/pci/newdrm/aperture.c		drm
+#file	dev/pci/newdrm/aperture.c		drm
 file	dev/pci/newdrm/dma-resv.c			drm
 file	dev/pci/newdrm/drm_agpsupport.c		drm & agp
 file	dev/pci/newdrm/drm_aperture.c		drm
