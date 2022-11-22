@@ -82,7 +82,7 @@ struct amdgpu_reset_domain {
 	struct kref refcount;
 	struct workqueue_struct *wq;
 	enum amdgpu_reset_domain_type type;
-	struct rw_semaphore sem;
+	struct rwlock sem;
 	atomic_t in_gpu_reset;
 	atomic_t reset_res;
 };

@@ -528,13 +528,17 @@ static inline uint64_t amdgpu_vm_tlb_seq(struct amdgpu_vm *vm)
 static inline void amdgpu_vm_eviction_lock(struct amdgpu_vm *vm)
 {
 	mutex_lock(&vm->eviction_lock);
+#ifdef notyet
 	vm->saved_flags = memalloc_noreclaim_save();
+#endif
 }
 
 static inline bool amdgpu_vm_eviction_trylock(struct amdgpu_vm *vm)
 {
 	if (mutex_trylock(&vm->eviction_lock)) {
+#ifdef notyet
 		vm->saved_flags = memalloc_noreclaim_save();
+#endif
 		return true;
 	}
 	return false;
@@ -542,7 +546,9 @@ static inline bool amdgpu_vm_eviction_trylock(struct amdgpu_vm *vm)
 
 static inline void amdgpu_vm_eviction_unlock(struct amdgpu_vm *vm)
 {
+#ifdef notyet
 	memalloc_noreclaim_restore(vm->saved_flags);
+#endif
 	mutex_unlock(&vm->eviction_lock);
 }
 
