@@ -333,6 +333,7 @@ out_err:
 	uao_detach(swap_storage);
 
 	return ret;
+#endif
 }
 
 int ttm_tt_populate(struct ttm_device *bdev,
