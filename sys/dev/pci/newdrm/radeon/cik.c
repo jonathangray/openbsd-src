@@ -1994,7 +1994,7 @@ static int cik_init_microcode(struct radeon_device *rdev)
 		mc_req_size = BONAIRE_MC_UCODE_SIZE * 4;
 		mc2_req_size = BONAIRE_MC2_UCODE_SIZE * 4;
 		sdma_req_size = CIK_SDMA_UCODE_SIZE * 4;
-		smc_req_size = ALIGN(BONAIRE_SMC_UCODE_SIZE, 4);
+		smc_req_size = roundup2(BONAIRE_SMC_UCODE_SIZE, 4);
 		num_fw = 8;
 		break;
 	case CHIP_HAWAII:
@@ -2010,7 +2010,7 @@ static int cik_init_microcode(struct radeon_device *rdev)
 		mc_req_size = HAWAII_MC_UCODE_SIZE * 4;
 		mc2_req_size = HAWAII_MC2_UCODE_SIZE * 4;
 		sdma_req_size = CIK_SDMA_UCODE_SIZE * 4;
-		smc_req_size = ALIGN(HAWAII_SMC_UCODE_SIZE, 4);
+		smc_req_size = roundup2(HAWAII_SMC_UCODE_SIZE, 4);
 		num_fw = 8;
 		break;
 	case CHIP_KAVERI:
@@ -5371,8 +5371,8 @@ static int cik_mc_init(struct radeon_device *rdev)
 	}
 	rdev->mc.vram_width = numchan * chansize;
 	/* Could aper size report 0 ? */
-	rdev->mc.aper_base = pci_resource_start(rdev->pdev, 0);
-	rdev->mc.aper_size = pci_resource_len(rdev->pdev, 0);
+	rdev->mc.aper_base = rdev->fb_aper_offset;
+	rdev->mc.aper_size = rdev->fb_aper_size;
 	/* size in MB on si */
 	rdev->mc.mc_vram_size = RREG32(CONFIG_MEMSIZE) * 1024ULL * 1024ULL;
 	rdev->mc.real_vram_size = RREG32(CONFIG_MEMSIZE) * 1024ULL * 1024ULL;
@@ -7555,6 +7555,8 @@ int cik_irq_process(struct radeon_device *rdev)
 
 	wptr = cik_get_ih_wptr(rdev);
 
+	if (wptr == rdev->ih.rptr)
+		return IRQ_NONE;
 restart_ih:
 	/* is somebody else already processing irqs? */
 	if (atomic_xchg(&rdev->ih.lock, 1))
@@ -8317,7 +8319,7 @@ static int cik_startup(struct radeon_device *rdev)
 		}
 	}
 	rdev->rlc.cs_data = ci_cs_data;
-	rdev->rlc.cp_table_size = ALIGN(CP_ME_TABLE_SIZE * 5 * 4, 2048); /* CP JT */
+	rdev->rlc.cp_table_size = roundup2(CP_ME_TABLE_SIZE * 5 * 4, 2048); /* CP JT */
 	rdev->rlc.cp_table_size += 64 * 1024; /* GDS */
 	r = sumo_rlc_init(rdev);
 	if (r) {
@@ -9588,7 +9590,7 @@ static void cik_pcie_gen3_enable(struct radeon_device *rdev)
 				tmp |= LC_REDO_EQ;
 				WREG32_PCIE_PORT(PCIE_LC_CNTL4, tmp);
 
-				msleep(100);
+				drm_msleep(100);
 
 				/* linkctl */
 				pcie_capability_read_word(root, PCI_EXP_LNKCTL,

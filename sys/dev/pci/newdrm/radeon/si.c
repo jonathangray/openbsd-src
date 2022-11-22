@@ -1691,7 +1691,7 @@ static int si_init_microcode(struct radeon_device *rdev)
 		rlc_req_size = SI_RLC_UCODE_SIZE * 4;
 		mc_req_size = SI_MC_UCODE_SIZE * 4;
 		mc2_req_size = TAHITI_MC_UCODE_SIZE * 4;
-		smc_req_size = ALIGN(TAHITI_SMC_UCODE_SIZE, 4);
+		smc_req_size = roundup2(TAHITI_SMC_UCODE_SIZE, 4);
 		break;
 	case CHIP_PITCAIRN:
 		chip_name = "PITCAIRN";
@@ -1706,7 +1706,7 @@ static int si_init_microcode(struct radeon_device *rdev)
 		rlc_req_size = SI_RLC_UCODE_SIZE * 4;
 		mc_req_size = SI_MC_UCODE_SIZE * 4;
 		mc2_req_size = PITCAIRN_MC_UCODE_SIZE * 4;
-		smc_req_size = ALIGN(PITCAIRN_SMC_UCODE_SIZE, 4);
+		smc_req_size = roundup2(PITCAIRN_SMC_UCODE_SIZE, 4);
 		break;
 	case CHIP_VERDE:
 		chip_name = "VERDE";
@@ -1727,7 +1727,7 @@ static int si_init_microcode(struct radeon_device *rdev)
 		rlc_req_size = SI_RLC_UCODE_SIZE * 4;
 		mc_req_size = SI_MC_UCODE_SIZE * 4;
 		mc2_req_size = VERDE_MC_UCODE_SIZE * 4;
-		smc_req_size = ALIGN(VERDE_SMC_UCODE_SIZE, 4);
+		smc_req_size = roundup2(VERDE_SMC_UCODE_SIZE, 4);
 		break;
 	case CHIP_OLAND:
 		chip_name = "OLAND";
@@ -1745,7 +1745,7 @@ static int si_init_microcode(struct radeon_device *rdev)
 		ce_req_size = SI_CE_UCODE_SIZE * 4;
 		rlc_req_size = SI_RLC_UCODE_SIZE * 4;
 		mc_req_size = mc2_req_size = OLAND_MC_UCODE_SIZE * 4;
-		smc_req_size = ALIGN(OLAND_SMC_UCODE_SIZE, 4);
+		smc_req_size = roundup2(OLAND_SMC_UCODE_SIZE, 4);
 		break;
 	case CHIP_HAINAN:
 		chip_name = "HAINAN";
@@ -1766,7 +1766,7 @@ static int si_init_microcode(struct radeon_device *rdev)
 		ce_req_size = SI_CE_UCODE_SIZE * 4;
 		rlc_req_size = SI_RLC_UCODE_SIZE * 4;
 		mc_req_size = mc2_req_size = OLAND_MC_UCODE_SIZE * 4;
-		smc_req_size = ALIGN(HAINAN_SMC_UCODE_SIZE, 4);
+		smc_req_size = roundup2(HAINAN_SMC_UCODE_SIZE, 4);
 		break;
 	default: BUG();
 	}
@@ -4246,8 +4246,8 @@ static int si_mc_init(struct radeon_device *rdev)
 	}
 	rdev->mc.vram_width = numchan * chansize;
 	/* Could aper size report 0 ? */
-	rdev->mc.aper_base = pci_resource_start(rdev->pdev, 0);
-	rdev->mc.aper_size = pci_resource_len(rdev->pdev, 0);
+	rdev->mc.aper_base = rdev->fb_aper_offset;
+	rdev->mc.aper_size = rdev->fb_aper_size;
 	/* size in MB on si */
 	tmp = RREG32(CONFIG_MEMSIZE);
 	/* some boards may have garbage in the upper 16 bits */
@@ -6257,6 +6257,8 @@ int si_irq_process(struct radeon_device *rdev)
 
 	wptr = si_get_ih_wptr(rdev);
 
+	if (wptr == rdev->ih.rptr)
+		return IRQ_NONE;
 restart_ih:
 	/* is somebody else already processing irqs? */
 	if (atomic_xchg(&rdev->ih.lock, 1))
@@ -7185,7 +7187,7 @@ static void si_pcie_gen3_enable(struct radeon_device *rdev)
 				tmp |= LC_REDO_EQ;
 				WREG32_PCIE_PORT(PCIE_LC_CNTL4, tmp);
 
-				msleep(100);
+				drm_msleep(100);
 
 				/* linkctl */
 				pcie_capability_read_word(root, PCI_EXP_LNKCTL,
