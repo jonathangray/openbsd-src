@@ -2741,7 +2741,7 @@ pci_resize_resource(struct pci_dev *pdev, int bar, int nsize)
 TAILQ_HEAD(, shrinker) shrinkers = TAILQ_HEAD_INITIALIZER(shrinkers);
 
 int
-register_shrinker(struct shrinker *shrinker)
+register_shrinker(struct shrinker *shrinker, const char *format, ...)
 {
 	TAILQ_INSERT_TAIL(&shrinkers, shrinker, next);
 	return 0;

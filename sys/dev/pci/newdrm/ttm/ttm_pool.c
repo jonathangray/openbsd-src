@@ -850,7 +850,7 @@ int ttm_pool_mgr_init(unsigned long num_pages)
 	if (!page_pool_size)
 		page_pool_size = num_pages;
 
-	spin_lock_init(&shrinker_lock);
+	mtx_init(&shrinker_lock, IPL_NONE);
 	INIT_LIST_HEAD(&shrinker_list);
 
 	for (i = 0; i < MAX_ORDER; ++i) {
