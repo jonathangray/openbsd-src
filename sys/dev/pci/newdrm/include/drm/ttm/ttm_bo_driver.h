@@ -293,7 +293,8 @@ void ttm_bo_tt_destroy(struct ttm_buffer_object *bo);
 void ttm_move_memcpy(bool clear,
 		     u32 num_pages,
 		     struct ttm_kmap_iter *dst_iter,
-		     struct ttm_kmap_iter *src_iter);
+		     struct ttm_kmap_iter *src_iter,
+		     bus_space_tag_t memt);
 
 struct ttm_kmap_iter *
 ttm_kmap_iter_iomap_init(struct ttm_kmap_iter_iomap *iter_io,
