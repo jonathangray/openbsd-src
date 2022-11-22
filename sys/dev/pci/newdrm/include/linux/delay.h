@@ -4,6 +4,7 @@
 #define _LINUX_DELAY_H
 
 #include <sys/param.h>
+#include <sys/systm.h>
 
 static inline void
 udelay(unsigned long usecs)
