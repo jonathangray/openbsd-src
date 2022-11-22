@@ -807,6 +807,7 @@ DEFINE_SHOW_ATTRIBUTE(ttm_resource_manager);
  * This function setups up a debugfs file that can be used to look
  * at debug statistics of the specified ttm_resource_manager.
  */
+struct dentry;
 void ttm_resource_manager_create_debugfs(struct ttm_resource_manager *man,
 					 struct dentry * parent,
 					 const char *name)
