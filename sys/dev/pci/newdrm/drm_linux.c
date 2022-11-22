@@ -53,6 +53,7 @@
 #include <linux/sync_file.h>
 
 #include <drm/drm_device.h>
+#include <drm/drm_connector.h>
 #include <drm/drm_print.h>
 
 #if defined(__amd64__) || defined(__i386__)
@@ -1521,6 +1522,12 @@ void
 drm_sysfs_hotplug_event(struct drm_device *dev)
 {
 	KNOTE(&dev->note, NOTE_CHANGE);
+}
+
+void
+drm_sysfs_connector_hotplug_event(struct drm_connector *connector)
+{
+	KNOTE(&connector->dev->note, NOTE_CHANGE);
 }
 
 struct dma_fence *
