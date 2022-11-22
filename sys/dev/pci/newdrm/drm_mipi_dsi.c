@@ -284,6 +284,9 @@ devm_mipi_dsi_device_register_full(struct device *dev,
 	if (IS_ERR(dsi))
 		return dsi;
 
+	STUB();
+	return ERR_PTR(-ENOSYS);
+#ifdef notyet
 	ret = devm_add_action_or_reset(dev,
 				       devm_mipi_dsi_device_unregister,
 				       dsi);
@@ -291,6 +294,7 @@ devm_mipi_dsi_device_register_full(struct device *dev,
 		return ERR_PTR(ret);
 
 	return dsi;
+#endif
 }
 EXPORT_SYMBOL_GPL(devm_mipi_dsi_device_register_full);
 
@@ -423,11 +427,15 @@ int devm_mipi_dsi_attach(struct device *dev,
 	if (ret)
 		return ret;
 
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	ret = devm_add_action_or_reset(dev, devm_mipi_dsi_detach, dsi);
 	if (ret)
 		return ret;
 
 	return 0;
+#endif
 }
 EXPORT_SYMBOL_GPL(devm_mipi_dsi_attach);
 
