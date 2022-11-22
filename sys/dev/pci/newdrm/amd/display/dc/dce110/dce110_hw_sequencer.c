@@ -3020,7 +3020,7 @@ void dce110_enable_lvds_link_output(struct dc_link *link,
 
 void dce110_enable_tmds_link_output(struct dc_link *link,
 		const struct link_resource *link_res,
-		enum signal_type signal,
+		enum amd_signal_type signal,
 		enum clock_source_id clock_source,
 		enum dc_color_depth color_depth,
 		uint32_t pixel_clock)
@@ -3037,7 +3037,7 @@ void dce110_enable_tmds_link_output(struct dc_link *link,
 void dce110_enable_dp_link_output(
 		struct dc_link *link,
 		const struct link_resource *link_res,
-		enum signal_type signal,
+		enum amd_signal_type signal,
 		enum clock_source_id clock_source,
 		const struct dc_link_settings *link_settings)
 {
@@ -3101,7 +3101,7 @@ void dce110_enable_dp_link_output(
 
 void dce110_disable_link_output(struct dc_link *link,
 		const struct link_resource *link_res,
-		enum signal_type signal)
+		enum amd_signal_type signal)
 {
 	struct dc *dc = link->ctx->dc;
 	const struct link_hwss *link_hwss = get_link_hwss(link, link_res);

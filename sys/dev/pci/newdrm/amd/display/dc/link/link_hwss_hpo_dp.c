@@ -158,7 +158,7 @@ static void setup_hpo_dp_stream_attribute(struct pipe_ctx *pipe_ctx)
 
 static void enable_hpo_dp_fpga_link_output(struct dc_link *link,
 		const struct link_resource *link_res,
-		enum signal_type signal,
+		enum amd_signal_type signal,
 		enum clock_source_id clock_source,
 		const struct dc_link_settings *link_settings)
 {
@@ -186,7 +186,7 @@ static void enable_hpo_dp_fpga_link_output(struct dc_link *link,
 
 static void enable_hpo_dp_link_output(struct dc_link *link,
 		const struct link_resource *link_res,
-		enum signal_type signal,
+		enum amd_signal_type signal,
 		enum clock_source_id clock_source,
 		const struct dc_link_settings *link_settings)
 {
@@ -204,7 +204,7 @@ static void enable_hpo_dp_link_output(struct dc_link *link,
 
 static void disable_hpo_dp_fpga_link_output(struct dc_link *link,
 		const struct link_resource *link_res,
-		enum signal_type signal)
+		enum amd_signal_type signal)
 {
 	const struct dc *dc = link->dc;
 
@@ -222,7 +222,7 @@ static void disable_hpo_dp_fpga_link_output(struct dc_link *link,
 
 static void disable_hpo_dp_link_output(struct dc_link *link,
 		const struct link_resource *link_res,
-		enum signal_type signal)
+		enum amd_signal_type signal)
 {
 	if (IS_FPGA_MAXIMUS_DC(link->dc->ctx->dce_environment)) {
 		disable_hpo_dp_fpga_link_output(link, link_res, signal);

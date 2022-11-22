@@ -293,7 +293,7 @@ struct hpo_dp_link_encoder_funcs {
 		enum hpd_source_id hpd_source);
 
 	void (*disable_link_phy)(struct hpo_dp_link_encoder *link_enc,
-		enum signal_type signal);
+		enum amd_signal_type signal);
 
 	void (*link_enable)(
 			struct hpo_dp_link_encoder *enc,
