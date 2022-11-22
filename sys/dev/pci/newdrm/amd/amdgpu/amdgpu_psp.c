@@ -271,7 +271,7 @@ static bool psp_get_runtime_db_entry(struct amdgpu_device *adev,
 
 	if (db_header.cookie != PSP_RUNTIME_DB_COOKIE_ID) {
 		/* runtime db doesn't exist, exit */
-		dev_warn(adev->dev, "PSP runtime database doesn't exist\n");
+		dev_info(adev->dev, "PSP runtime database doesn't exist\n");
 		return false;
 	}
 
@@ -1699,7 +1699,7 @@ static int psp_hdcp_initialize(struct psp_context *psp)
 	ret = psp_ta_load(psp, &psp->hdcp_context.context);
 	if (!ret) {
 		psp->hdcp_context.context.initialized = true;
-		mutex_init(&psp->hdcp_context.mutex);
+		rw_init(&psp->hdcp_context.mutex, "pspcp");
 	}
 
 	return ret;
@@ -1766,7 +1766,7 @@ static int psp_dtm_initialize(struct psp_context *psp)
 	ret = psp_ta_load(psp, &psp->dtm_context.context);
 	if (!ret) {
 		psp->dtm_context.context.initialized = true;
-		mutex_init(&psp->dtm_context.mutex);
+		rw_init(&psp->dtm_context.mutex, "pspdtm");
 	}
 
 	return ret;
@@ -1834,7 +1834,7 @@ static int psp_rap_initialize(struct psp_context *psp)
 	ret = psp_ta_load(psp, &psp->rap_context.context);
 	if (!ret) {
 		psp->rap_context.context.initialized = true;
-		mutex_init(&psp->rap_context.mutex);
+		rw_init(&psp->rap_context.mutex, "psprap");
 	} else
 		return ret;
 
@@ -1934,7 +1934,7 @@ static int psp_securedisplay_initialize(struct psp_context *psp)
 	ret = psp_ta_load(psp, &psp->securedisplay_context.context);
 	if (!ret) {
 		psp->securedisplay_context.context.initialized = true;
-		mutex_init(&psp->securedisplay_context.mutex);
+		rw_init(&psp->securedisplay_context.mutex, "pscm");
 	} else
 		return ret;
 
@@ -3399,6 +3399,9 @@ static ssize_t psp_usbc_pd_fw_sysfs_read(struct device *dev,
 					 struct device_attribute *attr,
 					 char *buf)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct drm_device *ddev = dev_get_drvdata(dev);
 	struct amdgpu_device *adev = drm_to_adev(ddev);
 	uint32_t fw_ver;
@@ -3475,6 +3478,7 @@ fail:
 
 	drm_dev_exit(idx);
 	return count;
+#endif
 }
 
 void psp_copy_fw(struct psp_context *psp, uint8_t *start_addr, uint32_t bin_size)

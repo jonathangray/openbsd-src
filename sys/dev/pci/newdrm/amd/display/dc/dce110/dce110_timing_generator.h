@@ -127,7 +127,7 @@ void dce110_timing_generator_construct(
 bool dce110_timing_generator_validate_timing(
 	struct timing_generator *tg,
 	const struct dc_crtc_timing *timing,
-	enum signal_type signal);
+	enum amd_signal_type signal);
 
 /******** HW programming ************/
 
@@ -261,7 +261,7 @@ void dce110_tg_program_timing(struct timing_generator *tg,
 	int vstartup_start,
 	int vupdate_offset,
 	int vupdate_width,
-	const enum signal_type signal,
+	const enum amd_signal_type signal,
 	bool use_vbios);
 
 bool dce110_tg_is_blanked(struct timing_generator *tg);

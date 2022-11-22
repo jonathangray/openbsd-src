@@ -72,7 +72,7 @@ static ssize_t amdgpu_pmu_event_show(struct device *dev,
 			amdgpu_pmu_attr->event_str, amdgpu_pmu_attr->type);
 }
 
-static LIST_HEAD(amdgpu_pmu_list);
+static DRM_LIST_HEAD(amdgpu_pmu_list);
 
 
 struct amdgpu_pmu_attr {

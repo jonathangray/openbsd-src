@@ -51,7 +51,7 @@
 #include "clock_source.h"
 #include "clk_mgr.h"
 #include "abm.h"
-#include "audio.h"
+#include <hw/audio.h>
 #include "reg_helper.h"
 #include "panel_cntl.h"
 #include "inc/link_dpcd.h"
@@ -758,7 +758,7 @@ void dce110_edp_wait_for_hpd_ready(
 		if (link->panel_config.pps.extra_t3_ms > 0) {
 			int extra_t3_in_ms = link->panel_config.pps.extra_t3_ms;
 
-			msleep(extra_t3_in_ms);
+			drm_msleep(extra_t3_in_ms);
 		}
 	}
 
@@ -776,7 +776,7 @@ void dce110_edp_wait_for_hpd_ready(
 			break;
 		}
 
-		msleep(HPD_CHECK_INTERVAL);
+		drm_msleep(HPD_CHECK_INTERVAL);
 
 		time_elapsed += HPD_CHECK_INTERVAL;
 	} while (time_elapsed < timeout);
@@ -856,7 +856,7 @@ void dce110_edp_power_control(
 				DC_LOG_HW_RESUME_S3(
 						"%s: remaining_min_edp_poweroff_time_ms=%llu: begin wait.\n",
 						__func__, remaining_min_edp_poweroff_time_ms);
-				msleep(remaining_min_edp_poweroff_time_ms);
+				drm_msleep(remaining_min_edp_poweroff_time_ms);
 				DC_LOG_HW_RESUME_S3(
 						"%s: remaining_min_edp_poweroff_time_ms=%llu: end wait.\n",
 						__func__, remaining_min_edp_poweroff_time_ms);
@@ -948,7 +948,7 @@ void dce110_edp_wait_for_T12(
 		t12_duration += link->panel_config.pps.extra_t12_ms; // Add extra T12
 
 		if (time_since_edp_poweroff_ms < t12_duration)
-			msleep(t12_duration - time_since_edp_poweroff_ms);
+			drm_msleep(t12_duration - time_since_edp_poweroff_ms);
 	}
 }
 
@@ -1046,7 +1046,7 @@ void dce110_edp_backlight_control(
 
 	if (enable && link->dpcd_sink_ext_caps.bits.oled) {
 		post_T7_delay += link->panel_config.pps.extra_post_t7_ms;
-		msleep(post_T7_delay);
+		drm_msleep(post_T7_delay);
 	}
 
 	if (link->dpcd_sink_ext_caps.bits.oled ||
@@ -1071,7 +1071,7 @@ void dce110_edp_backlight_control(
 
 	if (!enable && link->dpcd_sink_ext_caps.bits.oled) {
 		pre_T11_delay += link->panel_config.pps.extra_pre_t11_ms;
-		msleep(pre_T11_delay);
+		drm_msleep(pre_T11_delay);
 	}
 }
 
@@ -1247,7 +1247,7 @@ void dce110_blank_stream(struct pipe_ctx *pipe_ctx)
 			 * After output is idle pattern some sinks need time to recognize the stream
 			 * has changed or they enter protection state and hang.
 			 */
-			msleep(60);
+			drm_msleep(60);
 		} else if (pipe_ctx->stream->signal == SIGNAL_TYPE_EDP) {
 			if (!link->dc->config.edp_no_power_sequencing) {
 				/*
@@ -1617,7 +1617,7 @@ static void power_down_encoders(struct dc *dc)
 	int i;
 
 	for (i = 0; i < dc->link_count; i++) {
-		enum signal_type signal = dc->links[i]->connector_signal;
+		enum amd_signal_type signal = dc->links[i]->connector_signal;
 
 		dc_link_blank_dp_stream(dc->links[i], false);
 

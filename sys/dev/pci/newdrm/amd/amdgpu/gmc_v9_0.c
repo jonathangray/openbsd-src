@@ -1444,8 +1444,8 @@ static int gmc_v9_0_mc_init(struct amdgpu_device *adev)
 		if (r)
 			return r;
 	}
-	adev->gmc.aper_base = pci_resource_start(adev->pdev, 0);
-	adev->gmc.aper_size = pci_resource_len(adev->pdev, 0);
+	adev->gmc.aper_base = adev->fb_aper_offset;
+	adev->gmc.aper_size = adev->fb_aper_size;
 
 #ifdef CONFIG_X86_64
 	/*
@@ -1566,7 +1566,7 @@ static int gmc_v9_0_sw_init(void *handle)
 	if (adev->mca.funcs)
 		adev->mca.funcs->init(adev);
 
-	spin_lock_init(&adev->gmc.invalidate_lock);
+	mtx_init(&adev->gmc.invalidate_lock, IPL_NONE);
 
 	r = amdgpu_atomfirmware_get_vram_info(adev,
 		&vram_width, &vram_type, &vram_vendor);

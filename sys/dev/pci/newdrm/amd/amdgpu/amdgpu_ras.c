@@ -186,6 +186,8 @@ static int amdgpu_reserve_page_direct(struct amdgpu_device *adev, uint64_t addre
 	return 0;
 }
 
+#ifdef __linux__
+
 static ssize_t amdgpu_ras_debugfs_read(struct file *f, char __user *buf,
 					size_t size, loff_t *pos)
 {
@@ -568,6 +570,8 @@ static ssize_t amdgpu_ras_sysfs_read(struct device *dev,
 	return sysfs_emit(buf, "%s: %lu\n%s: %lu\n", "ue", info.ue_count,
 			  "ce", info.ce_count);
 }
+
+#endif /* __linux__ */
 
 /* obj begin */
 
@@ -1180,6 +1184,7 @@ int amdgpu_ras_query_error_count(struct amdgpu_device *adev,
 }
 /* query/inject/cure end */
 
+#ifdef __linux__
 
 /* sysfs begin */
 
@@ -1296,6 +1301,8 @@ static int amdgpu_ras_sysfs_remove_feature_node(struct amdgpu_device *adev)
 	return 0;
 }
 
+#endif /* __linux__ */
+
 int amdgpu_ras_sysfs_create(struct amdgpu_device *adev,
 		struct ras_common_if *head)
 {
@@ -1304,6 +1311,9 @@ int amdgpu_ras_sysfs_create(struct amdgpu_device *adev,
 	if (!obj || obj->attr_inuse)
 		return -EINVAL;
 
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	get_obj(obj);
 
 	snprintf(obj->fs_data.sysfs_name, sizeof(obj->fs_data.sysfs_name),
@@ -1328,6 +1338,7 @@ int amdgpu_ras_sysfs_create(struct amdgpu_device *adev,
 	obj->attr_inuse = 1;
 
 	return 0;
+#endif
 }
 
 int amdgpu_ras_sysfs_remove(struct amdgpu_device *adev,
@@ -1346,6 +1357,8 @@ int amdgpu_ras_sysfs_remove(struct amdgpu_device *adev,
 
 	return 0;
 }
+
+#ifdef __linux__
 
 static int amdgpu_ras_sysfs_remove_all(struct amdgpu_device *adev)
 {
@@ -1476,10 +1489,12 @@ void amdgpu_ras_debugfs_create_all(struct amdgpu_device *adev)
 /* ras fs */
 static BIN_ATTR(gpu_vram_bad_pages, S_IRUGO,
 		amdgpu_ras_sysfs_badpages_read, NULL, 0);
+#endif /* __linux__ */
 static DEVICE_ATTR(features, S_IRUGO,
 		amdgpu_ras_sysfs_features_read, NULL);
 static int amdgpu_ras_fs_init(struct amdgpu_device *adev)
 {
+#ifdef __linux__
 	struct amdgpu_ras *con = amdgpu_ras_get_context(adev);
 	struct attribute_group group = {
 		.name = RAS_FS_NAME,
@@ -1511,12 +1526,14 @@ static int amdgpu_ras_fs_init(struct amdgpu_device *adev)
 	r = sysfs_create_group(&adev->dev->kobj, &group);
 	if (r)
 		dev_err(adev->dev, "Failed to create RAS sysfs group!");
+#endif
 
 	return 0;
 }
 
 static int amdgpu_ras_fs_fini(struct amdgpu_device *adev)
 {
+#ifdef __linux__
 	struct amdgpu_ras *con = amdgpu_ras_get_context(adev);
 	struct ras_manager *con_obj, *ip_obj, *tmp;
 
@@ -1529,6 +1546,7 @@ static int amdgpu_ras_fs_fini(struct amdgpu_device *adev)
 	}
 
 	amdgpu_ras_sysfs_remove_all(adev);
+#endif
 	return 0;
 }
 /* ras fs end */
@@ -1747,7 +1765,7 @@ int amdgpu_ras_interrupt_add_handler(struct amdgpu_device *adev,
 
 	INIT_WORK(&data->ih_work, amdgpu_ras_interrupt_process_handler);
 
-	data->aligned_element_size = ALIGN(data->element_size, 8);
+	data->aligned_element_size = roundup2(data->element_size, 8);
 	/* the ring can store 64 iv entries. */
 	data->ring_size = 64 * data->aligned_element_size;
 	data->ring = kmalloc(data->ring_size, GFP_KERNEL);
@@ -1962,7 +1980,7 @@ static int amdgpu_ras_realloc_eh_data_space(struct amdgpu_device *adev,
 {
 	unsigned int old_space = data->count + data->space_left;
 	unsigned int new_space = old_space + pages;
-	unsigned int align_space = ALIGN(new_space, 512);
+	unsigned int align_space = roundup2(new_space, 512);
 	void *bps = kmalloc(align_space * sizeof(*data->bps), GFP_KERNEL);
 
 	if (!bps) {
@@ -2183,7 +2201,7 @@ int amdgpu_ras_recovery_init(struct amdgpu_device *adev)
 		goto out;
 	}
 
-	mutex_init(&con->recovery_lock);
+	rw_init(&con->recovery_lock, "rasrec");
 	INIT_WORK(&con->recovery_work, amdgpu_ras_do_recovery);
 	atomic_set(&con->in_recovery, 0);
 	con->eeprom_control.bad_channel_bitmap = 0;
@@ -2305,11 +2323,13 @@ static void amdgpu_ras_get_quirks(struct amdgpu_device *adev)
 	if (!ctx)
 		return;
 
+#ifdef notyet
 	if (strnstr(ctx->vbios_version, "D16406",
 		    sizeof(ctx->vbios_version)) ||
 		strnstr(ctx->vbios_version, "D36002",
 			sizeof(ctx->vbios_version)))
 		adev->ras_hw_enabled |= (1 << AMDGPU_RAS_BLOCK__GFX);
+#endif
 }
 
 /*

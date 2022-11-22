@@ -326,7 +326,7 @@ static const struct protection_properties dp_11_protection = {
 
 static const struct protection_properties *get_protection_properties_by_signal(
 	struct dc_link *link,
-	enum signal_type st,
+	enum amd_signal_type st,
 	enum hdcp_version version)
 {
 	switch (version) {
@@ -370,7 +370,7 @@ static const struct protection_properties *get_protection_properties_by_signal(
 }
 
 enum hdcp_message_status dc_process_hdcp_msg(
-	enum signal_type signal,
+	enum amd_signal_type signal,
 	struct dc_link *link,
 	struct hdcp_protection_message *message_info)
 {

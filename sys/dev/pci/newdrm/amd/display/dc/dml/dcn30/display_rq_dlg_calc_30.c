@@ -23,6 +23,8 @@
  *
  */
 
+#include <generated/autoconf.h>
+
 #ifdef CONFIG_DRM_AMD_DC_DCN
 
 #include "../display_mode_lib.h"

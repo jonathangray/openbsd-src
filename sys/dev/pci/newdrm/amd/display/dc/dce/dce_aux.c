@@ -833,7 +833,7 @@ bool dce_aux_transfer_with_retries(struct ddc_service *ddc,
 									"dce_aux_transfer_with_retries: payload->defer_delay=%u",
 									payload->defer_delay);
 						if (payload->defer_delay > 1) {
-							msleep(payload->defer_delay);
+							drm_msleep(payload->defer_delay);
 							defer_time_in_ms += payload->defer_delay;
 						} else if (payload->defer_delay <= 1) {
 							udelay(payload->defer_delay * 1000);
@@ -917,7 +917,7 @@ bool dce_aux_transfer_with_retries(struct ddc_service *ddc,
 								LOG_FLAG_I2cAux_DceAux,
 								"dce_aux_transfer_with_retries: payload->defer_delay=%u",
 								payload->defer_delay);
-					msleep(payload->defer_delay);
+					drm_msleep(payload->defer_delay);
 				}
 			} else {
 				if (++aux_timeout_retries >= AUX_MAX_TIMEOUT_RETRIES) {

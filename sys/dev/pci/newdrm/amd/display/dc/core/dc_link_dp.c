@@ -182,7 +182,7 @@ void dp_wait_for_training_aux_rd_interval(
 	uint32_t wait_in_micro_secs)
 {
 	if (wait_in_micro_secs > 1000)
-		msleep(wait_in_micro_secs/1000);
+		drm_msleep(wait_in_micro_secs/1000);
 	else
 		udelay(wait_in_micro_secs);
 
@@ -1088,7 +1088,7 @@ static bool perform_post_lt_adj_req_sequence(
 				break;
 			}
 
-			msleep(1);
+			drm_msleep(1);
 		}
 
 		if (!req_drv_setting_changed) {
@@ -1386,7 +1386,7 @@ static inline enum link_training_result dp_transition_to_video_idle(
 		 * DPCD 0202h.
 		 */
 		if (link->connector_signal != SIGNAL_TYPE_EDP && status == LINK_TRAINING_SUCCESS) {
-			msleep(5);
+			drm_msleep(5);
 			status = dp_check_link_loss_status(link, lt_settings);
 		}
 		return status;
@@ -2427,7 +2427,7 @@ static enum link_training_result dp_perform_fixed_vs_pe_training_sequence(
 						0);
 				/* Vendor specific: Disable intercept */
 				for (i = 0; i < max_vendor_dpcd_retries; i++) {
-					msleep(pre_disable_intercept_delay_ms);
+					drm_msleep(pre_disable_intercept_delay_ms);
 					dpcd_status = core_link_write_dpcd(
 							link,
 							vendor_lttpr_write_address,
@@ -2691,7 +2691,7 @@ bool perform_link_training_with_retries(
 	bool skip_video_pattern,
 	int attempts,
 	struct pipe_ctx *pipe_ctx,
-	enum signal_type signal,
+	enum amd_signal_type signal,
 	bool do_fallback)
 {
 	int j;
@@ -2735,7 +2735,7 @@ bool perform_link_training_with_retries(
 		if (stream->sink_patches.dppowerup_delay > 0) {
 			int delay_dp_power_up_in_ms = stream->sink_patches.dppowerup_delay;
 
-			msleep(delay_dp_power_up_in_ms);
+			drm_msleep(delay_dp_power_up_in_ms);
 		}
 
 #ifdef CONFIG_DRM_AMD_DC_HDCP
@@ -2851,7 +2851,7 @@ bool perform_link_training_with_retries(
 					__func__, link->link_index, req_bw, link_bw);
 		}
 
-		msleep(delay_between_attempts);
+		drm_msleep(delay_between_attempts);
 	}
 	return false;
 }
@@ -3339,7 +3339,7 @@ bool dp_verify_link_cap_with_retries(
 			success = true;
 			break;
 		}
-		msleep(10);
+		drm_msleep(10);
 	}
 
 	dp_trace_lt_fail_count_update(link, fail_count, true);
@@ -5389,7 +5389,7 @@ static bool retrieve_link_cap(struct dc_link *link)
 	/* Sink may need to configure internals based on vendor, so allow some
 	 * time before proceeding with possibly vendor specific transactions
 	 */
-	msleep(post_oui_delay);
+	drm_msleep(post_oui_delay);
 
 	for (i = 0; i < read_dpcd_retry_cnt; i++) {
 		status = core_link_read_dpcd(
@@ -6946,7 +6946,7 @@ bool dpcd_write_128b_132b_sst_payload_allocation_table(
 			}
 		}
 		retries++;
-		msleep(5);
+		drm_msleep(5);
 	}
 
 	if (!result && retries == max_retries) {
@@ -6996,7 +6996,7 @@ bool dpcd_poll_for_allocation_change_trigger(struct dc_link *link)
 			break;
 		}
 
-		msleep(5);
+		drm_msleep(5);
 	}
 
 	if (result == ACT_FAILED) {

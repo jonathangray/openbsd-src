@@ -44,7 +44,7 @@ struct hdcp_workqueue {
 	struct delayed_work watchdog_timer_dwork;
 	struct delayed_work property_validate_dwork;
 	struct amdgpu_dm_connector *aconnector;
-	struct mutex mutex;
+	struct rwlock mutex;
 
 	struct mod_hdcp hdcp;
 	struct mod_hdcp_output output;

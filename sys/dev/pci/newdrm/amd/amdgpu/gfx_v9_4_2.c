@@ -356,9 +356,9 @@ static int gfx_v9_4_2_run_shader(struct amdgpu_device *adev,
 	u64 gpu_addr;
 
 	total_size = (regs_size * 3 + 4 + 5 + 5) * 4;
-	total_size = ALIGN(total_size, 256);
+	total_size = roundup2(total_size, 256);
 	shader_offset = total_size;
-	total_size += ALIGN(shader_size, 256);
+	total_size += roundup2(shader_size, 256);
 
 	/* allocate an indirect buffer to put the commands in */
 	memset(ib, 0, sizeof(*ib));
@@ -433,14 +433,14 @@ static void gfx_v9_4_2_log_wave_assignment(struct amdgpu_device *adev, uint32_t 
 	for (se = 0; se < adev->gfx.config.max_shader_engines; se++) {
 		for (cu = 0; cu < CU_ID_MAX; cu++) {
 			memset(str, 0, 256);
-			size = sprintf(str, "SE[%02d]CU[%02d]: ", se, cu);
+			size = snprintf(str, 256, "SE[%02d]CU[%02d]: ", se, cu);
 			for (simd = 0; simd < SIMD_ID_MAX; simd++) {
-				size += sprintf(str + size, "[");
+				size += snprintf(str + size, 256 - size, "[");
 				for (wave = 0; wave < WAVE_ID_MAX; wave++) {
-					size += sprintf(str + size, "%x", wb_ptr[offset]);
+					size += snprintf(str + size, 256 - size, "%x", wb_ptr[offset]);
 					offset++;
 				}
-				size += sprintf(str + size, "]  ");
+				size += snprintf(str + size, 256 - size, "]  ");
 			}
 			dev_dbg(adev->dev, "%s\n", str);
 		}

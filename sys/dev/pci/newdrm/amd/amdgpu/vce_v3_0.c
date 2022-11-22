@@ -443,7 +443,7 @@ static int vce_v3_0_sw_init(void *handle)
 		enum amdgpu_ring_priority_level hw_prio = amdgpu_vce_get_ring_prio(i);
 
 		ring = &adev->vce.ring[i];
-		sprintf(ring->name, "vce%d", i);
+		snprintf(ring->name, sizeof(ring->name), "vce%d", i);
 		r = amdgpu_ring_init(adev, ring, 512, &adev->vce.irq, 0,
 				     hw_prio, NULL);
 		if (r)

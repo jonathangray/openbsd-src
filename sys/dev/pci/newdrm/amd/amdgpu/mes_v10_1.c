@@ -441,14 +441,14 @@ static int mes_v10_1_init_microcode(struct amdgpu_device *adev,
 		info->ucode_id = ucode;
 		info->fw = adev->mes.fw[pipe];
 		adev->firmware.fw_size +=
-			ALIGN(le32_to_cpu(mes_hdr->mes_ucode_size_bytes),
+			roundup2(le32_to_cpu(mes_hdr->mes_ucode_size_bytes),
 			      PAGE_SIZE);
 
 		info = &adev->firmware.ucode[ucode_data];
 		info->ucode_id = ucode_data;
 		info->fw = adev->mes.fw[pipe];
 		adev->firmware.fw_size +=
-			ALIGN(le32_to_cpu(mes_hdr->mes_ucode_data_size_bytes),
+			roundup2(le32_to_cpu(mes_hdr->mes_ucode_data_size_bytes),
 			      PAGE_SIZE);
 	}
 
@@ -936,7 +936,7 @@ static int mes_v10_1_ring_init(struct amdgpu_device *adev)
 	ring->doorbell_index = adev->doorbell_index.mes_ring0 << 1;
 	ring->eop_gpu_addr = adev->mes.eop_gpu_addr[AMDGPU_MES_SCHED_PIPE];
 	ring->no_scheduler = true;
-	sprintf(ring->name, "mes_%d.%d.%d", ring->me, ring->pipe, ring->queue);
+	snprintf(ring->name, sizeof(ring->name), "mes_%d.%d.%d", ring->me, ring->pipe, ring->queue);
 
 	return amdgpu_ring_init(adev, ring, 1024, NULL, 0,
 				AMDGPU_RING_PRIO_DEFAULT, NULL);

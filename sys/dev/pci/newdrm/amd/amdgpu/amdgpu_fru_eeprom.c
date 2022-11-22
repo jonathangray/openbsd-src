@@ -53,6 +53,7 @@ static bool is_fru_eeprom_supported(struct amdgpu_device *adev)
 	 */
 	switch (adev->asic_type) {
 	case CHIP_VEGA20:
+#ifdef notyet
 		/* D161 and D163 are the VG20 server SKUs */
 		if (strnstr(atom_ctx->vbios_version, "D161",
 			    sizeof(atom_ctx->vbios_version)) ||
@@ -60,6 +61,7 @@ static bool is_fru_eeprom_supported(struct amdgpu_device *adev)
 			    sizeof(atom_ctx->vbios_version)))
 			return true;
 		else
+#endif
 			return false;
 	case CHIP_ALDEBARAN:
 		/* All Aldebaran SKUs have the FRU */

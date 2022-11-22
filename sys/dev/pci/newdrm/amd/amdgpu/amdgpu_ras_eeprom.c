@@ -99,6 +99,9 @@ static bool __is_ras_eeprom_supported(struct amdgpu_device *adev)
 static bool __get_eeprom_i2c_addr_arct(struct amdgpu_device *adev,
 				       struct amdgpu_ras_eeprom_control *control)
 {
+	STUB();
+	return false;
+#ifdef notyet
 	struct atom_context *atom_ctx = adev->mode_info.atom_context;
 
 	if (!control || !atom_ctx)
@@ -112,6 +115,7 @@ static bool __get_eeprom_i2c_addr_arct(struct amdgpu_device *adev,
 		control->i2c_address = EEPROM_I2C_MADDR_ARCTURUS;
 
 	return true;
+#endif
 }
 
 static bool __get_eeprom_i2c_addr(struct amdgpu_device *adev,
@@ -798,6 +802,7 @@ uint32_t amdgpu_ras_eeprom_max_record_count(void)
 	return RAS_MAX_RECORD_COUNT;
 }
 
+#ifdef __linux__
 static ssize_t
 amdgpu_ras_debugfs_eeprom_size_read(struct file *f, char __user *buf,
 				    size_t size, loff_t *pos)
@@ -1020,6 +1025,11 @@ const struct file_operations amdgpu_ras_debugfs_eeprom_table_ops = {
 	.write = NULL,
 	.llseek = default_llseek,
 };
+#else /* !__linux__ */
+void amdgpu_ras_debugfs_set_ret_size(struct amdgpu_ras_eeprom_control *control)
+{
+}
+#endif
 
 /**
  * __verify_ras_table_checksum -- verify the RAS EEPROM table checksum
@@ -1090,7 +1100,7 @@ int amdgpu_ras_eeprom_init(struct amdgpu_ras_eeprom_control *control,
 	control->ras_header_offset = RAS_HDR_START;
 	control->ras_record_offset = RAS_RECORD_START;
 	control->ras_max_record_count  = RAS_MAX_RECORD_COUNT;
-	mutex_init(&control->ras_tbl_mutex);
+	rw_init(&control->ras_tbl_mutex, "rastbl");
 
 	/* Read the table header from EEPROM address */
 	res = amdgpu_eeprom_read(adev->pm.ras_eeprom_i2c_bus,

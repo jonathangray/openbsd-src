@@ -35,7 +35,7 @@ struct command_table_helper {
 	bool (*controller_id_to_atom)(enum controller_id id, uint8_t *atom_id);
 	uint8_t (*encoder_action_to_atom)(
 			enum bp_encoder_control_action action);
-	uint32_t (*encoder_mode_bp_to_atom)(enum signal_type s,
+	uint32_t (*encoder_mode_bp_to_atom)(enum amd_signal_type s,
 			bool enable_dp_audio);
 	bool (*engine_bp_to_atom)(enum engine_id engine_id,
 			uint32_t *atom_engine_id);
@@ -52,7 +52,7 @@ struct command_table_helper {
 	uint8_t (*encoder_id_to_atom)(enum encoder_id id);
 	uint8_t (*clock_source_id_to_atom_phy_clk_src_id)(
 			enum clock_source_id id);
-	uint8_t (*signal_type_to_atom_dig_mode)(enum signal_type s);
+	uint8_t (*signal_type_to_atom_dig_mode)(enum amd_signal_type s);
 	uint8_t (*hpd_sel_to_atom)(enum hpd_source_id id);
 	uint8_t (*dig_encoder_sel_to_atom)(enum engine_id engine_id);
 	uint8_t (*phy_id_to_atom)(enum transmitter t);

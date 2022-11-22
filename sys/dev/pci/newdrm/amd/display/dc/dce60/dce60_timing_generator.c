@@ -111,7 +111,7 @@ static void program_timing(struct timing_generator *tg,
 	int vstartup_start,
 	int vupdate_offset,
 	int vupdate_width,
-	const enum signal_type signal,
+	const enum amd_signal_type signal,
 	bool use_vbios)
 {
 	if (!use_vbios)

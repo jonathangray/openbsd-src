@@ -35,7 +35,7 @@ struct amdgpu_bo_list_entry {
 	struct ttm_validate_buffer	tv;
 	struct amdgpu_bo_va		*bo_va;
 	uint32_t			priority;
-	struct page			**user_pages;
+	struct vm_page			**user_pages;
 	bool				user_invalidated;
 };
 

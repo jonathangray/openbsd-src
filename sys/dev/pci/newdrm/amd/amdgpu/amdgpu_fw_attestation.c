@@ -57,6 +57,9 @@ static ssize_t amdgpu_fw_attestation_debugfs_read(struct file *f,
 						  size_t size,
 						  loff_t *pos)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct amdgpu_device *adev = (struct amdgpu_device *)file_inode(f)->i_private;
 	uint64_t records_addr = 0;
 	uint64_t vram_pos = 0;
@@ -110,14 +113,17 @@ static ssize_t amdgpu_fw_attestation_debugfs_read(struct file *f,
 	*pos += sizeof(FW_ATT_RECORD);
 
 	return sizeof(FW_ATT_RECORD);
+#endif
 }
 
+#ifdef notyet
 static const struct file_operations amdgpu_fw_attestation_debugfs_ops = {
 	.owner = THIS_MODULE,
 	.read = amdgpu_fw_attestation_debugfs_read,
 	.write = NULL,
 	.llseek = default_llseek
 };
+#endif
 
 static int amdgpu_is_fw_attestation_supported(struct amdgpu_device *adev)
 {

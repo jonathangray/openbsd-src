@@ -64,7 +64,7 @@ static uint8_t phy_id_to_atom(enum transmitter t)
 	return atom_phy_id;
 }
 
-static uint8_t signal_type_to_atom_dig_mode(enum signal_type s)
+static uint8_t signal_type_to_atom_dig_mode(enum amd_signal_type s)
 {
 	uint8_t atom_dig_mode = ATOM_TRANSMITTER_DIGMODE_V5_DP;
 

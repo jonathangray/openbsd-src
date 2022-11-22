@@ -313,7 +313,7 @@ struct config_table_setting
 };
 
 struct amdgpu_pm {
-	struct mutex		mutex;
+	struct rwlock		mutex;
 	u32                     current_sclk;
 	u32                     current_mclk;
 	u32                     default_sclk;

@@ -81,7 +81,7 @@
 #include "mxgpu_vi.h"
 #include "amdgpu_dm.h"
 
-#if IS_ENABLED(CONFIG_X86)
+#if IS_ENABLED(CONFIG_X86) && defined(__linux__)
 #include <asm/intel-family.h>
 #endif
 
@@ -650,7 +650,7 @@ static bool vi_read_bios_from_rom(struct amdgpu_device *adev,
 		return false;
 
 	dw_ptr = (u32 *)bios;
-	length_dw = ALIGN(length_bytes, 4) / 4;
+	length_dw = roundup2(length_bytes, 4) / 4;
 	/* take the smc lock since we are using the smc index */
 	spin_lock_irqsave(&adev->smc_idx_lock, flags);
 	/* set rom index to 0 */
@@ -1141,9 +1141,9 @@ static void vi_enable_aspm(struct amdgpu_device *adev)
 static bool aspm_support_quirk_check(void)
 {
 #if IS_ENABLED(CONFIG_X86)
-	struct cpuinfo_x86 *c = &cpu_data(0);
+	struct cpu_info *ci = curcpu();
 
-	return !(c->x86 == 6 && c->x86_model == INTEL_FAM6_ALDERLAKE);
+	return !(ci->ci_family == 6 && ci->ci_model == 0x97);
 #else
 	return true;
 #endif
@@ -1409,7 +1409,7 @@ static void vi_get_pcie_usage(struct amdgpu_device *adev, uint64_t *count0,
 	 */
 	WREG32_PCIE(ixPCIE_PERF_COUNT_CNTL, 0x00000005);
 
-	msleep(1000);
+	drm_msleep(1000);
 
 	/* Load the shadow and disable the perf counters
 	 * Write 0x2:
