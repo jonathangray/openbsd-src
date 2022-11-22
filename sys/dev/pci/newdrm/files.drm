@@ -42,7 +42,7 @@ file	dev/pci/newdrm/drm_gem_framebuffer_helper.c	drm
 file	dev/pci/newdrm/drm_hashtab.c		drm
 #file	dev/pci/newdrm/drm_ioc32.c			drm
 file	dev/pci/newdrm/drm_ioctl.c			drm
-file	dev/pci/newdrm/drm_irq.c			drm
+#file	dev/pci/newdrm/drm_irq.c			drm
 file	dev/pci/newdrm/drm_kms_helper_common.c	drm
 #file	dev/pci/newdrm/drm_legacy_misc.c		drm
 file	dev/pci/newdrm/drm_linux.c			drm
