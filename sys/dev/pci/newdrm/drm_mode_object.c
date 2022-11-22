@@ -22,6 +22,7 @@
 
 #include <linux/export.h>
 #include <linux/uaccess.h>
+#include <linux/backlight.h>
 
 #include <drm/drm_atomic.h>
 #include <drm/drm_drv.h>
