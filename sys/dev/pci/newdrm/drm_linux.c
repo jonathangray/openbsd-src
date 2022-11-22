@@ -1530,6 +1530,13 @@ drm_sysfs_connector_hotplug_event(struct drm_connector *connector)
 	KNOTE(&connector->dev->note, NOTE_CHANGE);
 }
 
+void
+drm_sysfs_connector_status_event(struct drm_connector *connector,
+    struct drm_property *property)
+{
+	STUB();
+}
+
 struct dma_fence *
 dma_fence_get(struct dma_fence *fence)
 {
