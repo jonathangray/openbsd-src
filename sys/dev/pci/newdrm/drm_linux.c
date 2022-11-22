@@ -901,6 +901,24 @@ ida_simple_remove(struct ida *ida, unsigned int id)
 }
 
 int
+ida_alloc_min(struct ida *ida, unsigned int min, gfp_t gfp)
+{
+	return idr_alloc(&ida->idr, NULL, min, INT_MAX, gfp);
+}
+
+int
+ida_alloc_max(struct ida *ida, unsigned int max, gfp_t gfp)
+{
+	return idr_alloc(&ida->idr, NULL, 0, max - 1, gfp);
+}
+
+void
+ida_free(struct ida *ida, unsigned int id)
+{
+	idr_remove(&ida->idr, id);
+}
+
+int
 xarray_cmp(struct xarray_entry *a, struct xarray_entry *b)
 {
 	return (a->id < b->id ? -1 : a->id > b->id);
