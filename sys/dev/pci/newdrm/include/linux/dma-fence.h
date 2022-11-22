@@ -75,6 +75,7 @@ void dma_fence_init(struct dma_fence *, const struct dma_fence_ops *,
 int dma_fence_add_callback(struct dma_fence *, struct dma_fence_cb *,
     dma_fence_func_t);
 bool dma_fence_remove_callback(struct dma_fence *, struct dma_fence_cb *);
+bool dma_fence_is_container(struct dma_fence *);
 
 struct dma_fence *dma_fence_get_stub(void);
 struct dma_fence *dma_fence_allocate_private_stub(void);

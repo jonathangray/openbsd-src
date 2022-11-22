@@ -2275,6 +2275,13 @@ const struct dma_fence_ops dma_fence_chain_ops = {
 	.use_64bit_seqno = true,
 };
 
+bool
+dma_fence_is_container(struct dma_fence *fence)
+{
+	return (fence->ops == &dma_fence_chain_ops) ||
+	    (fence->ops == &dma_fence_array_ops);
+}
+
 int
 dmabuf_read(struct file *fp, struct uio *uio, int fflags)
 {
