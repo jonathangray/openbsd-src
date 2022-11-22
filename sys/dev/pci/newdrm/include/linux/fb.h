@@ -9,6 +9,7 @@
 #include <linux/backlight.h>
 #include <linux/kgdb.h>
 #include <linux/fs.h>
+#include <linux/i2c.h> /* via uapi/linux/fb.h */
 
 struct fb_cmap;
 struct fb_fillrect;

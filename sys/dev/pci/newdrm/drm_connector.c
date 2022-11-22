@@ -75,7 +75,7 @@
  * take the connector_list_lock.
  */
 static DEFINE_MUTEX(connector_list_lock);
-static LIST_HEAD(connector_list);
+static DRM_LIST_HEAD(connector_list);
 
 struct drm_conn_prop_enum_list {
 	int type;
