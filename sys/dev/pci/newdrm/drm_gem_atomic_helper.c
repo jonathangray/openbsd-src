@@ -1,5 +1,7 @@
 /* Public domain. */
 
+#include <linux/kernel.h>
+
 #include <drm/drm_plane.h>
 #include <drm/drm_framebuffer.h>
 #include <drm/drm_atomic_uapi.h>
@@ -10,6 +12,9 @@ int
 drm_gem_plane_helper_prepare_fb(struct drm_plane *dp,
     struct drm_plane_state *dps)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	if (dps->fb != NULL) {
 		struct drm_gem_object *obj = dps->fb->obj[0];
 		drm_atomic_set_fence_for_plane(dps,
@@ -18,4 +23,5 @@ drm_gem_plane_helper_prepare_fb(struct drm_plane *dp,
 	}
 
 	return 0;
+#endif
 }
