@@ -13,4 +13,10 @@ acpi_video_unregister(void)
 {
 }
 
+static inline bool
+acpi_video_backlight_use_native(void)
+{
+	return true;
+}
+
 #endif
