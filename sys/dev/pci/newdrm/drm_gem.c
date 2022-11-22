@@ -1578,7 +1578,7 @@ EXPORT_SYMBOL(drm_gem_unlock_reservations);
  * @lock: The lock protecting the LRU
  */
 void
-drm_gem_lru_init(struct drm_gem_lru *lru, struct mutex *lock)
+drm_gem_lru_init(struct drm_gem_lru *lru, struct rwlock *lock)
 {
 	lru->lock = lock;
 	lru->count = 0;
