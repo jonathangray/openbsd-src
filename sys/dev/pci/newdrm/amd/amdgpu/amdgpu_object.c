@@ -1097,8 +1097,13 @@ void amdgpu_bo_fini(struct amdgpu_device *adev)
 	if (drm_dev_enter(adev_to_drm(adev), &idx)) {
 
 		if (!adev->gmc.xgmi.connected_to_cpu) {
+#ifdef __linux__
 			arch_phys_wc_del(adev->gmc.vram_mtrr);
 			arch_io_free_memtype_wc(adev->gmc.aper_base, adev->gmc.aper_size);
+#else
+			drm_mtrr_del(0, adev->gmc.aper_base, adev->gmc.aper_size, DRM_MTRR_WC);
+			
+#endif
 		}
 		drm_dev_exit(idx);
 	}
