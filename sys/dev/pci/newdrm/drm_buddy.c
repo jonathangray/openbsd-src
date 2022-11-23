@@ -777,7 +777,7 @@ void drm_buddy_print(struct drm_buddy *mm, struct drm_printer *p)
 }
 EXPORT_SYMBOL(drm_buddy_print);
 
-static void drm_buddy_module_exit(void)
+void drm_buddy_module_exit(void)
 {
 #ifdef __linux__
 	kmem_cache_destroy(slab_blocks);
@@ -786,7 +786,7 @@ static void drm_buddy_module_exit(void)
 #endif
 }
 
-static int __init drm_buddy_module_init(void)
+int __init drm_buddy_module_init(void)
 {
 #ifdef __linux__
 	slab_blocks = KMEM_CACHE(drm_buddy_block, 0);
