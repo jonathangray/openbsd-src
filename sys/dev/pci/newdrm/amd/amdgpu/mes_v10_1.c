@@ -946,7 +946,7 @@ static int mes_v10_1_kiq_ring_init(struct amdgpu_device *adev)
 {
 	struct amdgpu_ring *ring;
 
-	spin_lock_init(&adev->gfx.kiq.ring_lock);
+	mtx_init(&adev->gfx.kiq.ring_lock, IPL_TTY);
 
 	ring = &adev->gfx.kiq.ring;
 
