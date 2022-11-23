@@ -297,7 +297,7 @@ struct amdgpu_smu_i2c_bus {
 	struct i2c_adapter adapter;
 	struct amdgpu_device *adev;
 	int port;
-	struct mutex mutex;
+	struct rwlock mutex;
 };
 
 struct config_table_setting
