@@ -1993,6 +1993,8 @@ const struct drm_driver amdgpu_kms_driver;
 
 static void amdgpu_get_secondary_funcs(struct amdgpu_device *adev)
 {
+	STUB();
+#ifdef notyet
 	struct pci_dev *p = NULL;
 	int i;
 
@@ -2011,6 +2013,7 @@ static void amdgpu_get_secondary_funcs(struct amdgpu_device *adev)
 			pci_dev_put(p);
 		}
 	}
+#endif
 }
 
 #ifdef notyet

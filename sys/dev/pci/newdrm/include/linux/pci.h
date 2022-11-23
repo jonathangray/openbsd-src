@@ -73,6 +73,12 @@ struct pci_dev {
 };
 #define PCI_ANY_ID (uint16_t) (~0U)
 
+#define PCI_DEVICE(v, p)		\
+	.vendor = (v),			\
+	.device = (p),			\
+	.subvendor = PCI_ANY_ID,	\
+	.subdevice = PCI_ANY_ID
+
 #ifndef PCI_MEM_START
 #define PCI_MEM_START	0
 #endif
