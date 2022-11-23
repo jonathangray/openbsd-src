@@ -3515,10 +3515,13 @@ static int amdgpu_device_get_job_timeout_settings(struct amdgpu_device *adev)
  */
 static void amdgpu_device_check_iommu_direct_map(struct amdgpu_device *adev)
 {
+	STUB();
+#ifdef notyet
 	struct iommu_domain *domain;
 
 	domain = iommu_get_domain_for_dev(adev->dev);
 	if (!domain || domain->type == IOMMU_DOMAIN_IDENTITY)
+#endif
 		adev->ram_is_direct_mapped = true;
 }
 
@@ -3719,6 +3722,7 @@ int amdgpu_device_init(struct amdgpu_device *adev,
 	}
 
 	/* enable PCIE atomic ops */
+#ifdef notyet
 	if (amdgpu_sriov_vf(adev))
 		adev->have_atomics_support = ((struct amd_sriov_msg_pf2vf_info *)
 			adev->virt.fw_reserve.p_pf2vf)->pcie_atomic_ops_support_flags ==
@@ -3730,6 +3734,9 @@ int amdgpu_device_init(struct amdgpu_device *adev,
 					  PCI_EXP_DEVCAP2_ATOMIC_COMP64);
 	if (!adev->have_atomics_support)
 		dev_info(adev->dev, "PCIE atomic ops is not supported\n");
+#else
+	adev->have_atomics_support = false;
+#endif
 
 	/* doorbell bar mapping and doorbell index init*/
 	amdgpu_device_doorbell_init(adev);
@@ -3986,7 +3993,7 @@ failed:
 
 static void amdgpu_device_unmap_mmio(struct amdgpu_device *adev)
 {
-	STUB()
+	STUB();
 #ifdef notyet
 	/* Clear all CPU mappings pointing to this device */
 	unmap_mapping_range(adev->ddev.anon_inode->i_mapping, 0, 0, 1);
@@ -4115,9 +4122,16 @@ void amdgpu_device_fini_sw(struct amdgpu_device *adev)
 		vga_client_unregister(adev->pdev);
 
 	if (drm_dev_enter(adev_to_drm(adev), &idx)) {
-
+#ifdef __linux__
 		iounmap(adev->rmmio);
 		adev->rmmio = NULL;
+#else
+		if (adev->rmmio_size > 0)
+			bus_space_unmap(adev->rmmio_bst, adev->rmmio_bsh,
+			    adev->rmmio_size);
+		adev->rmmio_size = 0;
+		adev->rmmio = NULL;
+#endif
 		amdgpu_device_doorbell_fini(adev);
 		drm_dev_exit(idx);
 	}

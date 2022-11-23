@@ -415,6 +415,12 @@ pci_disable_device(struct pci_dev *pdev)
 {
 }
 
+static inline int
+pci_wait_for_pending_transaction(struct pci_dev *pdev)
+{
+	return 0;
+}
+
 static inline bool
 pci_is_thunderbolt_attached(struct pci_dev *pdev)
 {
