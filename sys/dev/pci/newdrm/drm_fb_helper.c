@@ -2452,7 +2452,10 @@ static void drm_fbdev_fb_imageblit(struct fb_info *info,
 		drm_fb_helper_sys_imageblit(info, image);
 }
 
+#endif /* __linux__ */
+
 static const struct fb_ops drm_fbdev_fb_ops = {
+#ifdef notyet
 	.owner		= THIS_MODULE,
 	DRM_FB_HELPER_DEFAULT_OPS,
 	.fb_open	= drm_fbdev_fb_open,
@@ -2464,12 +2467,17 @@ static const struct fb_ops drm_fbdev_fb_ops = {
 	.fb_fillrect	= drm_fbdev_fb_fillrect,
 	.fb_copyarea	= drm_fbdev_fb_copyarea,
 	.fb_imageblit	= drm_fbdev_fb_imageblit,
+#else
+	DRM_FB_HELPER_DEFAULT_OPS,
+#endif
 };
 
+#ifdef notyet
 static struct fb_deferred_io drm_fbdev_defio = {
 	.delay		= HZ / 20,
 	.deferred_io	= drm_fb_helper_deferred_io,
 };
+#endif
 
 /*
  * This function uses the client API to create a framebuffer backed by a dumb buffer.
@@ -2480,6 +2488,9 @@ static struct fb_deferred_io drm_fbdev_defio = {
 static int drm_fb_helper_generic_probe(struct drm_fb_helper *fb_helper,
 				       struct drm_fb_helper_surface_size *sizes)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct drm_client_dev *client = &fb_helper->client;
 	struct drm_device *dev = fb_helper->dev;
 	struct drm_client_buffer *buffer;
@@ -2548,6 +2559,7 @@ static int drm_fb_helper_generic_probe(struct drm_fb_helper *fb_helper,
 	}
 
 	return 0;
+#endif
 }
 
 static const struct drm_fb_helper_funcs drm_fb_helper_generic_funcs = {
@@ -2556,6 +2568,8 @@ static const struct drm_fb_helper_funcs drm_fb_helper_generic_funcs = {
 
 static void drm_fbdev_client_unregister(struct drm_client_dev *client)
 {
+	STUB();
+#ifdef notyet
 	struct drm_fb_helper *fb_helper = drm_fb_helper_from_client(client);
 
 	if (fb_helper->fbdev)
@@ -2563,6 +2577,7 @@ static void drm_fbdev_client_unregister(struct drm_client_dev *client)
 		drm_fb_helper_unregister_fbi(fb_helper);
 	else
 		drm_fbdev_release(fb_helper);
+#endif
 }
 
 static int drm_fbdev_client_restore(struct drm_client_dev *client)
@@ -2574,6 +2589,9 @@ static int drm_fbdev_client_restore(struct drm_client_dev *client)
 
 static int drm_fbdev_client_hotplug(struct drm_client_dev *client)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct drm_fb_helper *fb_helper = drm_fb_helper_from_client(client);
 	struct drm_device *dev = client->dev;
 	int ret;
@@ -2614,6 +2632,7 @@ err:
 	drm_err(dev, "fbdev: Failed to setup generic emulation (ret=%d)\n", ret);
 
 	return ret;
+#endif
 }
 
 static const struct drm_client_funcs drm_fbdev_client_funcs = {
@@ -2693,5 +2712,3 @@ void drm_fbdev_generic_setup(struct drm_device *dev,
 	drm_client_register(&fb_helper->client);
 }
 EXPORT_SYMBOL(drm_fbdev_generic_setup);
-
-#endif /* __linux__ */
