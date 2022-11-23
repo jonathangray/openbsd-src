@@ -738,7 +738,7 @@ int amdgpu_vm_update_pdes(struct amdgpu_device *adev,
 	struct amdgpu_vm_update_params params;
 	struct amdgpu_vm_bo_base *entry;
 	bool flush_tlb_needed = false;
-	LIST_HEAD(relocated);
+	DRM_LIST_HEAD(relocated);
 	int r, idx;
 
 	spin_lock(&vm->status_lock);
