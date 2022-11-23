@@ -2014,7 +2014,8 @@ static int gfx_v9_0_gpu_early_init(struct amdgpu_device *adev)
 			return err;
 		}
 
-		strcpy(adev->gfx.ras->ras_block.ras_comm.name, "gfx");
+		strlcpy(adev->gfx.ras->ras_block.ras_comm.name, "gfx",
+		    sizeof(adev->gfx.ras->ras_block.ras_comm.name));
 		adev->gfx.ras->ras_block.ras_comm.block = AMDGPU_RAS_BLOCK__GFX;
 		adev->gfx.ras->ras_block.ras_comm.type = AMDGPU_RAS_ERROR__MULTI_UNCORRECTABLE;
 		adev->gfx.ras_if = &adev->gfx.ras->ras_block.ras_comm;

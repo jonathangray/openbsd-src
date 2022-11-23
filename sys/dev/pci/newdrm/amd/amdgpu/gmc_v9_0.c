@@ -1238,7 +1238,8 @@ static void gmc_v9_0_set_umc_funcs(struct amdgpu_device *adev)
 	if (adev->umc.ras) {
 		amdgpu_ras_register_ras_block(adev, &adev->umc.ras->ras_block);
 
-		strcpy(adev->umc.ras->ras_block.ras_comm.name, "umc");
+		strlcpy(adev->umc.ras->ras_block.ras_comm.name, "umc",
+		    sizeof(adev->umc.ras->ras_block.ras_comm.name));
 		adev->umc.ras->ras_block.ras_comm.block = AMDGPU_RAS_BLOCK__UMC;
 		adev->umc.ras->ras_block.ras_comm.type = AMDGPU_RAS_ERROR__MULTI_UNCORRECTABLE;
 		adev->umc.ras_if = &adev->umc.ras->ras_block.ras_comm;
@@ -1288,7 +1289,8 @@ static void gmc_v9_0_set_mmhub_ras_funcs(struct amdgpu_device *adev)
 	if (adev->mmhub.ras) {
 		amdgpu_ras_register_ras_block(adev, &adev->mmhub.ras->ras_block);
 
-		strcpy(adev->mmhub.ras->ras_block.ras_comm.name, "mmhub");
+		strlcpy(adev->mmhub.ras->ras_block.ras_comm.name, "mmhub",
+		    sizeof(adev->mmhub.ras->ras_block.ras_comm.name));
 		adev->mmhub.ras->ras_block.ras_comm.block = AMDGPU_RAS_BLOCK__MMHUB;
 		adev->mmhub.ras->ras_block.ras_comm.type = AMDGPU_RAS_ERROR__MULTI_UNCORRECTABLE;
 		adev->mmhub.ras_if = &adev->mmhub.ras->ras_block.ras_comm;

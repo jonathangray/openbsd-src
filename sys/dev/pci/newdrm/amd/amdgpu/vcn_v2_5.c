@@ -2005,7 +2005,8 @@ static void vcn_v2_5_set_ras_funcs(struct amdgpu_device *adev)
 	if (adev->vcn.ras) {
 		amdgpu_ras_register_ras_block(adev, &adev->vcn.ras->ras_block);
 
-		strcpy(adev->vcn.ras->ras_block.ras_comm.name, "vcn");
+		strlcpy(adev->vcn.ras->ras_block.ras_comm.name, "vcn",
+		    sizeof(adev->vcn.ras->ras_block.ras_comm.name));
 		adev->vcn.ras->ras_block.ras_comm.block = AMDGPU_RAS_BLOCK__VCN;
 		adev->vcn.ras->ras_block.ras_comm.type = AMDGPU_RAS_ERROR__POISON;
 		adev->vcn.ras_if = &adev->vcn.ras->ras_block.ras_comm;

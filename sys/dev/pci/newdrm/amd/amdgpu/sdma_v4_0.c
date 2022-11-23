@@ -2728,7 +2728,8 @@ static void sdma_v4_0_set_ras_funcs(struct amdgpu_device *adev)
 	if (adev->sdma.ras) {
 		amdgpu_ras_register_ras_block(adev, &adev->sdma.ras->ras_block);
 
-		strcpy(adev->sdma.ras->ras_block.ras_comm.name, "sdma");
+		strlcpy(adev->sdma.ras->ras_block.ras_comm.name, "sdma",
+		    sizeof(adev->sdma.ras->ras_block.ras_comm.name));
 		adev->sdma.ras->ras_block.ras_comm.block = AMDGPU_RAS_BLOCK__SDMA;
 		adev->sdma.ras->ras_block.ras_comm.type = AMDGPU_RAS_ERROR__MULTI_UNCORRECTABLE;
 		adev->sdma.ras_if = &adev->sdma.ras->ras_block.ras_comm;
