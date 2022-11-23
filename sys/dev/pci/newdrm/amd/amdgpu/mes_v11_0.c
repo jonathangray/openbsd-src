@@ -511,14 +511,14 @@ static int mes_v11_0_init_microcode(struct amdgpu_device *adev,
 		info->ucode_id = ucode;
 		info->fw = adev->mes.fw[pipe];
 		adev->firmware.fw_size +=
-			ALIGN(le32_to_cpu(mes_hdr->mes_ucode_size_bytes),
+			roundup2(le32_to_cpu(mes_hdr->mes_ucode_size_bytes),
 			      PAGE_SIZE);
 
 		info = &adev->firmware.ucode[ucode_data];
 		info->ucode_id = ucode_data;
 		info->fw = adev->mes.fw[pipe];
 		adev->firmware.fw_size +=
-			ALIGN(le32_to_cpu(mes_hdr->mes_ucode_data_size_bytes),
+			roundup2(le32_to_cpu(mes_hdr->mes_ucode_data_size_bytes),
 			      PAGE_SIZE);
 	}
 

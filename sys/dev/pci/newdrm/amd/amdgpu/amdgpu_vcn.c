@@ -1116,7 +1116,7 @@ void amdgpu_vcn_setup_ucode(struct amdgpu_device *adev)
 			adev->firmware.ucode[idx].ucode_id = idx;
 			adev->firmware.ucode[idx].fw = adev->vcn.fw;
 			adev->firmware.fw_size +=
-				ALIGN(le32_to_cpu(hdr->ucode_size_bytes), PAGE_SIZE);
+				roundup2(le32_to_cpu(hdr->ucode_size_bytes), PAGE_SIZE);
 		}
 		dev_info(adev->dev, "Will use PSP to load VCN firmware\n");
 	}
