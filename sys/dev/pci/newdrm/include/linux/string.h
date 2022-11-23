@@ -9,6 +9,8 @@
 #include <sys/stdint.h>
 #include <sys/errno.h>
 
+#include <linux/compiler.h>
+
 void *memchr_inv(const void *, int, size_t);
 
 static inline void *
