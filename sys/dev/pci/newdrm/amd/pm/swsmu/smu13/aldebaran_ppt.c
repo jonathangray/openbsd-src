@@ -1922,7 +1922,7 @@ static int aldebaran_mode1_reset(struct smu_context *smu)
 	}
 
 	if (!ret)
-		msleep(SMU13_MODE1_RESET_WAIT_TIME_IN_MS);
+		drm_msleep(SMU13_MODE1_RESET_WAIT_TIME_IN_MS);
 
 	return ret;
 }

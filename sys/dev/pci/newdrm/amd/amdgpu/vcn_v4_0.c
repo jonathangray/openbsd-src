@@ -1097,7 +1097,7 @@ static int vcn_v4_0_start(struct amdgpu_device *adev)
 					break;
 				mdelay(10);
 				if (amdgpu_emu_mode==1)
-					msleep(1);
+					drm_msleep(1);
 			}
 
 			if (amdgpu_emu_mode==1) {

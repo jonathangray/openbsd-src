@@ -670,7 +670,7 @@ static int sdma_v6_0_load_microcode(struct amdgpu_device *adev)
 
 		for (j = 0; j < fw_size; j++) {
 			if (amdgpu_emu_mode == 1 && j % 500 == 0)
-				msleep(1);
+				drm_msleep(1);
 			WREG32(sdma_v6_0_get_reg_offset(adev, 0, regSDMA0_BROADCAST_UCODE_DATA), le32_to_cpup(fw_data++));
 		}
 
@@ -685,7 +685,7 @@ static int sdma_v6_0_load_microcode(struct amdgpu_device *adev)
 
 		for (j = 0; j < fw_size; j++) {
 			if (amdgpu_emu_mode == 1 && j % 500 == 0)
-				msleep(1);
+				drm_msleep(1);
 			WREG32(sdma_v6_0_get_reg_offset(adev, 0, regSDMA0_BROADCAST_UCODE_DATA), le32_to_cpup(fw_data++));
 		}
 	} else {
@@ -704,7 +704,7 @@ static int sdma_v6_0_load_microcode(struct amdgpu_device *adev)
 
 			for (j = 0; j < fw_size; j++) {
 				if (amdgpu_emu_mode == 1 && j % 500 == 0)
-					msleep(1);
+					drm_msleep(1);
 				WREG32(sdma_v6_0_get_reg_offset(adev, i, regSDMA0_UCODE_DATA), le32_to_cpup(fw_data++));
 			}
 
@@ -721,7 +721,7 @@ static int sdma_v6_0_load_microcode(struct amdgpu_device *adev)
 
 			for (j = 0; j < fw_size; j++) {
 				if (amdgpu_emu_mode == 1 && j % 500 == 0)
-					msleep(1);
+					drm_msleep(1);
 				WREG32(sdma_v6_0_get_reg_offset(adev, i, regSDMA0_UCODE_DATA), le32_to_cpup(fw_data++));
 			}
 
@@ -813,7 +813,7 @@ static int sdma_v6_0_start(struct amdgpu_device *adev)
 
 		/* The value of regSDMA_F32_CNTL is invalid the moment after loading fw */
 		if (amdgpu_emu_mode == 1)
-			msleep(1000);
+			drm_msleep(1000);
 	}
 
 	/* unhalt the MEs */
@@ -939,7 +939,7 @@ static int sdma_v6_0_ring_test_ring(struct amdgpu_ring *ring)
 		if (tmp == 0xDEADBEEF)
 			break;
 		if (amdgpu_emu_mode == 1)
-			msleep(1);
+			drm_msleep(1);
 		else
 			udelay(1);
 	}
