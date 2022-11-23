@@ -1975,7 +1975,7 @@ out:
 
 	adev->unique_id = ((uint64_t)upper32 << 32) | lower32;
 	if (adev->serial[0] == '\0')
-		sprintf(adev->serial, "%016llx", adev->unique_id);
+		snprintf(adev->serial, sizeof(adev->serial), "%016llx", adev->unique_id);
 }
 
 static int sienna_cichlid_get_uclk_dpm_states(struct smu_context *smu, uint32_t *clocks_in_khz, uint32_t *num_states)
@@ -3804,7 +3804,7 @@ static int sienna_cichlid_i2c_control_init(struct smu_context *smu)
 
 		smu_i2c->adev = adev;
 		smu_i2c->port = i;
-		mutex_init(&smu_i2c->mutex);
+		rw_init(&smu_i2c->mutex, "sciic");
 #ifdef __linux__
 		control->owner = THIS_MODULE;
 		control->class = I2C_CLASS_HWMON;
@@ -4187,7 +4187,7 @@ static void sienna_cichlid_stb_init(struct smu_context *smu)
 	if (!smu->stb_context.enabled)
 		return;
 
-	spin_lock_init(&smu->stb_context.lock);
+	mtx_init(&smu->stb_context.lock, IPL_NONE);
 
 	/* STB buffer size in bytes as function of FIFO depth */
 	reg = RREG32_PCIE(MP1_Public | smnMP1_PMI_3_FIFO);
