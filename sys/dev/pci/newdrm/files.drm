@@ -1169,7 +1169,7 @@ file	dev/pci/newdrm/amd/display/dc/link/link_dp_trace.c			amdgpu
 file	dev/pci/newdrm/amd/display/dc/link/link_hwss_dio.c			amdgpu
 file	dev/pci/newdrm/amd/display/dc/link/link_hwss_dpia.c		amdgpu
 file	dev/pci/newdrm/amd/display/dc/link/link_hwss_hpo_dp.c		amdgpu
-file	dev/pci/newdrm/amd/display/dc/link/link_hwss_hpo_frl.c		amdgpu
+#file	dev/pci/newdrm/amd/display/dc/link/link_hwss_hpo_frl.c		amdgpu
 file	dev/pci/newdrm/amd/display/dc/virtual/virtual_link_encoder.c	amdgpu
 file	dev/pci/newdrm/amd/display/dc/virtual/virtual_link_hwss.c		amdgpu
 file	dev/pci/newdrm/amd/display/dc/virtual/virtual_stream_encoder.c	amdgpu
