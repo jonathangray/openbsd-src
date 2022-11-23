@@ -238,7 +238,7 @@ int smu_v13_0_init_pptable_microcode(struct smu_context *smu)
 	ucode->ucode_id = AMDGPU_UCODE_ID_PPTABLE;
 	ucode->fw = &smu->pptable_firmware;
 	adev->firmware.fw_size +=
-		ALIGN(smu->pptable_firmware.size, PAGE_SIZE);
+		roundup2(smu->pptable_firmware.size, PAGE_SIZE);
 
 	return 0;
 }
