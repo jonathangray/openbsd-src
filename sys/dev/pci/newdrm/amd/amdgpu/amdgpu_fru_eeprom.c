@@ -67,6 +67,7 @@ static bool is_fru_eeprom_supported(struct amdgpu_device *adev)
 		/* All Aldebaran SKUs have the FRU */
 		return true;
 	case CHIP_SIENNA_CICHLID:
+#ifdef notyet
 		if (strnstr(atom_ctx->vbios_version, "D603",
 		    sizeof(atom_ctx->vbios_version))) {
 			if (strnstr(atom_ctx->vbios_version, "D603GLXE",
@@ -77,6 +78,9 @@ static bool is_fru_eeprom_supported(struct amdgpu_device *adev)
 		} else {
 			return false;
 		}
+#else
+		return false;
+#endif
 	default:
 		return false;
 	}
