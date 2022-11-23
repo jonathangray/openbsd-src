@@ -3399,9 +3399,6 @@ static ssize_t psp_usbc_pd_fw_sysfs_read(struct device *dev,
 					 struct device_attribute *attr,
 					 char *buf)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
 	struct drm_device *ddev = dev_get_drvdata(dev);
 	struct amdgpu_device *adev = drm_to_adev(ddev);
 	uint32_t fw_ver;
@@ -3478,7 +3475,6 @@ fail:
 
 	drm_dev_exit(idx);
 	return count;
-#endif
 }
 
 void psp_copy_fw(struct psp_context *psp, uint8_t *start_addr, uint32_t bin_size)
@@ -3507,6 +3503,9 @@ static ssize_t amdgpu_psp_vbflash_write(struct file *filp, struct kobject *kobj,
 					struct bin_attribute *bin_attr,
 					char *buffer, loff_t pos, size_t count)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct device *dev = kobj_to_dev(kobj);
 	struct drm_device *ddev = dev_get_drvdata(dev);
 	struct amdgpu_device *adev = drm_to_adev(ddev);
@@ -3537,12 +3536,16 @@ static ssize_t amdgpu_psp_vbflash_write(struct file *filp, struct kobject *kobj,
 	dev_info(adev->dev, "VBIOS flash write PSP done");
 
 	return count;
+#endif
 }
 
 static ssize_t amdgpu_psp_vbflash_read(struct file *filp, struct kobject *kobj,
 				       struct bin_attribute *bin_attr, char *buffer,
 				       loff_t pos, size_t count)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct device *dev = kobj_to_dev(kobj);
 	struct drm_device *ddev = dev_get_drvdata(dev);
 	struct amdgpu_device *adev = drm_to_adev(ddev);
@@ -3582,6 +3585,7 @@ rel_buf:
 
 	dev_info(adev->dev, "VBIOS flash to PSP done");
 	return 0;
+#endif
 }
 
 static ssize_t amdgpu_psp_vbflash_status(struct device *dev,
@@ -3601,12 +3605,14 @@ static ssize_t amdgpu_psp_vbflash_status(struct device *dev,
 	return sysfs_emit(buf, "0x%x\n", vbflash_status);
 }
 
+#ifdef notyet
 static const struct bin_attribute psp_vbflash_bin_attr = {
 	.attr = {.name = "psp_vbflash", .mode = 0664},
 	.size = 0,
 	.write = amdgpu_psp_vbflash_write,
 	.read = amdgpu_psp_vbflash_read,
 };
+#endif
 
 static DEVICE_ATTR(psp_vbflash_status, 0444, amdgpu_psp_vbflash_status, NULL);
 
