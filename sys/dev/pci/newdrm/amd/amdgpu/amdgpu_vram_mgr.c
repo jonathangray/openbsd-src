@@ -495,7 +495,7 @@ static int amdgpu_vram_mgr_new(struct ttm_resource_manager *man,
 		struct drm_buddy_block *block;
 		struct list_head *trim_list;
 		u64 original_size;
-		LIST_HEAD(temp);
+		DRM_LIST_HEAD(temp);
 
 		trim_list = &vres->blocks;
 		original_size = (u64)vres->base.num_pages << PAGE_SHIFT;
@@ -853,7 +853,7 @@ int amdgpu_vram_mgr_init(struct amdgpu_device *adev)
 	if (err)
 		return err;
 
-	mutex_init(&mgr->lock);
+	rw_init(&mgr->lock, "vrmgr");
 	INIT_LIST_HEAD(&mgr->reservations_pending);
 	INIT_LIST_HEAD(&mgr->reserved_pages);
 	mgr->default_page_size = PAGE_SIZE;

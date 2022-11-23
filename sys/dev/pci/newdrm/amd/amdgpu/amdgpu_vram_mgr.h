@@ -30,7 +30,7 @@ struct amdgpu_vram_mgr {
 	struct ttm_resource_manager manager;
 	struct drm_buddy mm;
 	/* protects access to buffer objects */
-	struct mutex lock;
+	struct rwlock lock;
 	struct list_head reservations_pending;
 	struct list_head reserved_pages;
 	atomic64_t vis_usage;
