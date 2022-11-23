@@ -556,6 +556,8 @@ void amdgpu_fence_driver_hw_fini(struct amdgpu_device *adev)
 /* Will either stop and flush handlers for amdgpu interrupt or reanble it */
 void amdgpu_fence_driver_isr_toggle(struct amdgpu_device *adev, bool stop)
 {
+	STUB();
+#ifdef notyet
 	int i;
 
 	for (i = 0; i < AMDGPU_MAX_RINGS; i++) {
@@ -569,6 +571,7 @@ void amdgpu_fence_driver_isr_toggle(struct amdgpu_device *adev, bool stop)
 		else
 			enable_irq(adev->irq.irq);
 	}
+#endif
 }
 
 void amdgpu_fence_driver_sw_fini(struct amdgpu_device *adev)
