@@ -684,8 +684,6 @@ void drm_fb_helper_fini(struct drm_fb_helper *fb_helper)
 }
 EXPORT_SYMBOL(drm_fb_helper_fini);
 
-#ifdef __linux__
-
 static bool drm_fbdev_use_shadow_fb(struct drm_fb_helper *fb_helper)
 {
 	struct drm_device *dev = fb_helper->dev;
@@ -695,6 +693,8 @@ static bool drm_fbdev_use_shadow_fb(struct drm_fb_helper *fb_helper)
 	       dev->mode_config.prefer_shadow ||
 	       fb->funcs->dirty;
 }
+
+#ifdef __linux__
 
 static void drm_fb_helper_damage(struct fb_info *info, u32 x, u32 y,
 				 u32 width, u32 height)
@@ -1825,6 +1825,8 @@ static void drm_fb_helper_fill_fix(struct fb_info *info, uint32_t pitch,
 	info->fix.line_length = pitch;
 }
 
+#endif /* __linux__ */
+
 static void drm_fb_helper_fill_var(struct fb_info *info,
 				   struct drm_fb_helper *fb_helper,
 				   uint32_t fb_width, uint32_t fb_height)
@@ -1845,6 +1847,7 @@ static void drm_fb_helper_fill_var(struct fb_info *info,
 		break;
 	}
 
+#ifdef notyet
 	info->pseudo_palette = fb_helper->pseudo_palette;
 	info->var.xres_virtual = fb->width;
 	info->var.yres_virtual = fb->height;
@@ -1855,12 +1858,11 @@ static void drm_fb_helper_fill_var(struct fb_info *info,
 	info->var.activate = FB_ACTIVATE_NOW;
 
 	drm_fb_helper_fill_pixel_fmt(&info->var, format);
+#endif
 
 	info->var.xres = fb_width;
 	info->var.yres = fb_height;
 }
-
-#endif /* __linux__ */
 
 /**
  * drm_fb_helper_fill_info - initializes fbdev information
@@ -1884,9 +1886,9 @@ void drm_fb_helper_fill_info(struct fb_info *info,
 
 	drm_fb_helper_fill_fix(info, fb->pitches[0],
 			       fb->format->is_color_indexed);
+#endif
 	drm_fb_helper_fill_var(info, fb_helper,
 			       sizes->fb_width, sizes->fb_height);
-#endif
 
 	info->par = fb_helper;
 #ifdef __linux__
@@ -2196,8 +2198,12 @@ static int drm_fbdev_fb_release(struct fb_info *info, int user)
 	return 0;
 }
 
+#endif /* __linux__ */
+
 static void drm_fbdev_cleanup(struct drm_fb_helper *fb_helper)
 {
+	STUB();
+#ifdef notyet
 	struct fb_info *fbi = fb_helper->fbdev;
 	void *shadow = NULL;
 
@@ -2219,6 +2225,7 @@ static void drm_fbdev_cleanup(struct drm_fb_helper *fb_helper)
 		drm_client_buffer_vunmap(fb_helper->buffer);
 
 	drm_client_framebuffer_delete(fb_helper->buffer);
+#endif
 }
 
 static void drm_fbdev_release(struct drm_fb_helper *fb_helper)
@@ -2236,6 +2243,8 @@ static void drm_fbdev_fb_destroy(struct fb_info *info)
 {
 	drm_fbdev_release(info->par);
 }
+
+#ifdef __linux__
 
 static int drm_fbdev_fb_mmap(struct fb_info *info, struct vm_area_struct *vma)
 {
@@ -2488,9 +2497,6 @@ static struct fb_deferred_io drm_fbdev_defio = {
 static int drm_fb_helper_generic_probe(struct drm_fb_helper *fb_helper,
 				       struct drm_fb_helper_surface_size *sizes)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
 	struct drm_client_dev *client = &fb_helper->client;
 	struct drm_device *dev = fb_helper->dev;
 	struct drm_client_buffer *buffer;
@@ -2520,19 +2526,24 @@ static int drm_fb_helper_generic_probe(struct drm_fb_helper *fb_helper,
 
 	fbi->fbops = &drm_fbdev_fb_ops;
 	fbi->screen_size = sizes->surface_height * fb->pitches[0];
+#ifdef __linux__
 	fbi->fix.smem_len = fbi->screen_size;
+#endif
 	fbi->flags = FBINFO_DEFAULT;
 
 	drm_fb_helper_fill_info(fbi, fb_helper, sizes);
 
 	if (drm_fbdev_use_shadow_fb(fb_helper)) {
+		printf("%s: use_shadow_fb\n", __func__);
 		fbi->screen_buffer = vzalloc(fbi->screen_size);
 		if (!fbi->screen_buffer)
 			return -ENOMEM;
 		fbi->flags |= FBINFO_VIRTFB | FBINFO_READS_FAST;
 
+#ifdef notyet
 		fbi->fbdefio = &drm_fbdev_defio;
 		fb_deferred_io_init(fbi);
+#endif
 	} else {
 		/* buffer is mapped for HW framebuffer */
 		ret = drm_client_buffer_vmap(fb_helper->buffer, &map);
@@ -2559,7 +2570,6 @@ static int drm_fb_helper_generic_probe(struct drm_fb_helper *fb_helper,
 	}
 
 	return 0;
-#endif
 }
 
 static const struct drm_fb_helper_funcs drm_fb_helper_generic_funcs = {
@@ -2589,9 +2599,6 @@ static int drm_fbdev_client_restore(struct drm_client_dev *client)
 
 static int drm_fbdev_client_hotplug(struct drm_client_dev *client)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
 	struct drm_fb_helper *fb_helper = drm_fb_helper_from_client(client);
 	struct drm_device *dev = client->dev;
 	int ret;
@@ -2632,7 +2639,6 @@ err:
 	drm_err(dev, "fbdev: Failed to setup generic emulation (ret=%d)\n", ret);
 
 	return ret;
-#endif
 }
 
 static const struct drm_client_funcs drm_fbdev_client_funcs = {

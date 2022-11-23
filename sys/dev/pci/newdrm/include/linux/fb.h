@@ -21,6 +21,8 @@ struct apertures_struct;
 
 struct fb_var_screeninfo {
 	int pixclock;
+	uint32_t xres;
+	uint32_t yres;
 	uint32_t width;
 	uint32_t height;
 };
@@ -33,6 +35,8 @@ struct fb_info {
 	struct fb_var_screeninfo var;
 	const struct fb_ops *fbops;
 	char *screen_buffer;
+	char *screen_base;
+	bus_size_t screen_size;
 	void *par;
 	int fbcon_rotate_hint;
 	bool skip_vt_switch;
@@ -49,6 +53,10 @@ struct fb_info {
 
 #define FBINFO_STATE_RUNNING	0
 #define FBINFO_STATE_SUSPENDED	1
+
+#define FBINFO_DEFAULT		0
+#define FBINFO_VIRTFB		1
+#define FBINFO_READS_FAST	2
 
 #define FBINFO_HIDE_SMEM_START	0
 

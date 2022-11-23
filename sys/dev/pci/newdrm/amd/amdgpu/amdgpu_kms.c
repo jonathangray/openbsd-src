@@ -2164,6 +2164,9 @@ amdgpu_attachhook(struct device *self)
 	struct amdgpu_device	*adev = (struct amdgpu_device *)self;
 	struct drm_device	*dev = &adev->ddev;
 	int r, acpi_status;
+	struct rasops_info *ri = &adev->ro;
+	struct drm_fb_helper *fb_helper;
+	struct drm_framebuffer *fb;
 
 	/* from amdgpu_driver_load_kms() */
 
@@ -2224,6 +2227,11 @@ amdgpu_attachhook(struct device *self)
 		DRM_WARN("smart shift update failed\n");
 
 	/*
+	 * in linux via amdgpu_pci_probe -> drm_dev_register
+	 */
+	drm_dev_register(dev, adev->flags);
+
+	/*
 	 * 1. don't init fbdev on hw without DCE
 	 * 2. don't init fbdev if there are no connectors
 	 */
@@ -2234,10 +2242,46 @@ amdgpu_attachhook(struct device *self)
 			drm_fbdev_generic_setup(adev_to_drm(adev), 8);
 		else
 			drm_fbdev_generic_setup(adev_to_drm(adev), 32);
+
+		fb_helper = adev_to_drm(adev)->fb_helper;
+		if (fb_helper == NULL) {
+			printf("fb_helper NULL\n");
+			return;
+		}
+		fb = fb_helper->fb;
+
+#if 0
+		if (drm_fbdev_use_iomem(fb_helper->fbdev))
+			ri->ri_bits = fb_helper->fbdev->screen_base;
+		else
+#endif
+			ri->ri_bits = fb_helper->fbdev->screen_buffer;
+		ri->ri_depth = fb->format->cpp[0] * 8;
+		ri->ri_stride = fb->pitches[0];
+		ri->ri_width = fb_helper->fbdev->var.xres;
+		ri->ri_height = fb_helper->fbdev->var.yres;;
+
+		switch (fb->format->format) {
+		case DRM_FORMAT_XRGB8888:
+			ri->ri_rnum = 8;
+			ri->ri_rpos = 16;
+			ri->ri_gnum = 8;
+			ri->ri_gpos = 8;
+			ri->ri_bnum = 8;
+			ri->ri_bpos = 0;
+			break;
+		case DRM_FORMAT_RGB565:
+			ri->ri_rnum = 5;
+			ri->ri_rpos = 11;
+			ri->ri_gnum = 6;
+			ri->ri_gpos = 5;
+			ri->ri_bnum = 5;
+			ri->ri_bpos = 0;
+			break;
+		}
 	}
 {
 	struct wsemuldisplaydev_attach_args aa;
-	struct rasops_info *ri = &adev->ro;
 
 	task_set(&adev->switchtask, amdgpu_doswitch, ri);
 	task_set(&adev->burner_task, amdgpu_burner_cb, adev);
@@ -2284,11 +2328,6 @@ amdgpu_attachhook(struct device *self)
 
 	config_found_sm(&adev->self, &aa, wsemuldisplaydevprint,
 	    wsemuldisplaydevsubmatch);
-
-	/*
-	 * in linux via amdgpu_pci_probe -> drm_dev_register
-	 */
-	drm_dev_register(dev, adev->flags);
 }
 
 out:
