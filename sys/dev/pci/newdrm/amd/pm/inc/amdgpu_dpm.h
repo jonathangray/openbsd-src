@@ -358,7 +358,7 @@ struct amdgpu_pm {
 
 	bool			pp_force_state_enabled;
 
-	struct mutex            stable_pstate_ctx_lock;
+	struct rwlock		stable_pstate_ctx_lock;
 	struct amdgpu_ctx       *stable_pstate_ctx;
 
 	struct config_table_setting config_table;
