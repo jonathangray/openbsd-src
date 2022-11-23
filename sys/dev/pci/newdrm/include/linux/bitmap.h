@@ -52,6 +52,16 @@ bitmap_zero(void *p, u_int n)
 }
 
 static inline void
+bitmap_fill(void *p, u_int n)
+{
+	u_int *ptr = p;
+	u_int b;
+
+	for (b = 0; b < n; b += 32)
+		ptr[b >> 5] = 0xffffffff;
+}
+
+static inline void
 bitmap_or(void *d, void *s1, void *s2, u_int n)
 {
 	u_int *dst = d;
