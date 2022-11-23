@@ -1906,7 +1906,6 @@ amdgpu_attach(struct device *parent, struct device *self, void *aux)
 		return;
 	}
 	adev->pdev = dev->pdev;
-	adev->is_fw_fb = adev->primary;
 
 	/* from amdgpu_pci_probe() */
 	if (amdgpu_aspm == -1 && !pcie_aspm_enabled(adev->pdev))
@@ -2137,7 +2136,7 @@ amdgpu_doswitch(void *v)
 	int i, crtc;
 
 	rasops_show_screen(ri, adev->switchcookie, 0, NULL, NULL);
-	drm_fb_helper_restore_fbdev_mode_unlocked((void *)adev->mode_info.rfbdev);
+	drm_fb_helper_restore_fbdev_mode_unlocked(adev_to_drm(adev)->fb_helper);
 
 	if (adev->switchcb)
 		(adev->switchcb)(adev->switchcbarg, 0, 0);
@@ -2148,7 +2147,7 @@ amdgpu_enter_ddb(void *v, void *cookie)
 {
 	struct rasops_info *ri = v;
 	struct amdgpu_device *adev = ri->ri_hw;
-	struct drm_fb_helper *fb_helper = (void *)adev->mode_info.rfbdev;
+	struct drm_fb_helper *fb_helper = adev_to_drm(adev)->fb_helper;
 
 	if (cookie == ri->ri_active)
 		return;
@@ -2165,6 +2164,8 @@ amdgpu_attachhook(struct device *self)
 	struct drm_device	*dev = &adev->ddev;
 	int r, acpi_status;
 
+	/* from amdgpu_driver_load_kms() */
+
 	/* amdgpu_device_init should report only fatal error
 	 * like memory allocation failure or iomapping failure,
 	 * or memory manager initialization failure, it must
@@ -2177,39 +2178,49 @@ amdgpu_attachhook(struct device *self)
 		goto out;
 	}
 
-	if (amdgpu_device_supports_boco(dev) &&
-	    (amdgpu_runtime_pm != 0)) /* enable runpm by default for boco */
-		adev->runpm = true;
-	else if (amdgpu_device_supports_baco(dev) &&
-		 (amdgpu_runtime_pm != 0) &&
-		 (adev->asic_type >= CHIP_TOPAZ) &&
-		 (adev->asic_type != CHIP_VEGA10) &&
-		 (adev->asic_type != CHIP_VEGA20) &&
-		 (adev->asic_type != CHIP_ARCTURUS)) /* enable runpm on VI+ */
-		adev->runpm = true;
-	else if (amdgpu_device_supports_baco(dev) &&
-		 (amdgpu_runtime_pm > 0))  /* enable runpm if runpm=1 on CI */
-		adev->runpm = true;
+	adev->pm.rpm_mode = AMDGPU_RUNPM_NONE;
+	if (amdgpu_device_supports_px(dev) &&
+	    (amdgpu_runtime_pm != 0)) { /* enable PX as runtime mode */
+		adev->pm.rpm_mode = AMDGPU_RUNPM_PX;
+		dev_info(adev->dev, "Using ATPX for runtime pm\n");
+	} else if (amdgpu_device_supports_boco(dev) &&
+		   (amdgpu_runtime_pm != 0)) { /* enable boco as runtime mode */
+		adev->pm.rpm_mode = AMDGPU_RUNPM_BOCO;
+		dev_info(adev->dev, "Using BOCO for runtime pm\n");
+	} else if (amdgpu_device_supports_baco(dev) &&
+		   (amdgpu_runtime_pm != 0)) {
+		switch (adev->asic_type) {
+		case CHIP_VEGA20:
+		case CHIP_ARCTURUS:
+			/* enable BACO as runpm mode if runpm=1 */
+			if (amdgpu_runtime_pm > 0)
+				adev->pm.rpm_mode = AMDGPU_RUNPM_BACO;
+			break;
+		case CHIP_VEGA10:
+			/* enable BACO as runpm mode if noretry=0 */
+			if (!adev->gmc.noretry)
+				adev->pm.rpm_mode = AMDGPU_RUNPM_BACO;
+			break;
+		default:
+			/* enable BACO as runpm mode on CI+ */
+			adev->pm.rpm_mode = AMDGPU_RUNPM_BACO;
+			break;
+		}
+
+		if (adev->pm.rpm_mode == AMDGPU_RUNPM_BACO)
+			dev_info(adev->dev, "Using BACO for runtime pm\n");
+	}
 
 	/* Call ACPI methods: require modeset init
 	 * but failure is not fatal
 	 */
-	if (!r) {
-		acpi_status = amdgpu_acpi_init(adev);
-		if (acpi_status)
-			dev_dbg(&dev->pdev->dev,
-				"Error during ACPI methods call\n");
-	}
 
-	if (adev->runpm) {
-		dev_pm_set_driver_flags(dev->dev, DPM_FLAG_NEVER_SKIP);
-		pm_runtime_use_autosuspend(dev->dev);
-		pm_runtime_set_autosuspend_delay(dev->dev, 5000);
-		pm_runtime_set_active(dev->dev);
-		pm_runtime_allow(dev->dev);
-		pm_runtime_mark_last_busy(dev->dev);
-		pm_runtime_put_autosuspend(dev->dev);
-	}
+	acpi_status = amdgpu_acpi_init(adev);
+	if (acpi_status)
+		dev_dbg(dev->dev, "Error during ACPI methods call\n");
+
+	if (amdgpu_acpi_smart_shift_update(dev, AMDGPU_SS_DRV_LOAD))
+		DRM_WARN("smart shift update failed\n");
 {
 	struct wsemuldisplaydev_attach_args aa;
 	struct rasops_info *ri = &adev->ro;
@@ -2267,9 +2278,6 @@ amdgpu_attachhook(struct device *self)
 
 out:
 	if (r) {
-		/* balance pm_runtime_get_sync in amdgpu_driver_unload_kms */
-		if (adev->runpm)
-			pm_runtime_put_noidle(dev->dev);
 		amdgpu_fatal_error = 1;
 		amdgpu_forcedetach(adev);
 	}
@@ -2293,11 +2301,6 @@ amdgpu_detach(struct device *self, int flags)
 	pci_intr_disestablish(adev->pc, adev->irqh);
 
 	amdgpu_unregister_gpu_instance(adev);
-
-	if (adev->runpm) {
-		pm_runtime_get_sync(dev->dev);
-		pm_runtime_forbid(dev->dev);
-	}
 
 	amdgpu_acpi_fini(adev);
 	amdgpu_device_fini_hw(adev);
