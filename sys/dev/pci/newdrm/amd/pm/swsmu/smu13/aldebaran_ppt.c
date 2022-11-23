@@ -1574,7 +1574,7 @@ static int aldebaran_i2c_control_init(struct smu_context *smu)
 
 	smu_i2c->adev = adev;
 	smu_i2c->port = 0;
-	mutex_init(&smu_i2c->mutex);
+	rw_init(&smu_i2c->mutex, "aldiic");
 #ifdef __linux__
 	control->owner = THIS_MODULE;
 	control->class = I2C_CLASS_SPD;
