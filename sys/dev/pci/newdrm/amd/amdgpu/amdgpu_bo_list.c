@@ -140,7 +140,7 @@ int amdgpu_bo_list_create(struct amdgpu_device *adev, struct drm_file *filp,
 
 	trace_amdgpu_cs_bo_status(list->num_entries, total_size);
 
-	mutex_init(&list->bo_list_mutex);
+	rw_init(&list->bo_list_mutex, "agbl");
 	*result = list;
 	return 0;
 
