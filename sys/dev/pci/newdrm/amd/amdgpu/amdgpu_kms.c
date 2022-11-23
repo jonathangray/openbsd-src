@@ -1994,6 +1994,7 @@ amdgpu_forcedetach(struct amdgpu_device *adev)
 }
 
 void amdgpu_burner(void *, u_int, u_int);
+void amdgpu_burner_cb(void *);
 int amdgpu_wsioctl(void *, u_long, caddr_t, int, struct proc *);
 paddr_t amdgpu_wsmmap(void *, off_t, int);
 int amdgpu_alloc_screen(void *, const struct wsscreen_descr *,
@@ -2226,6 +2227,7 @@ amdgpu_attachhook(struct device *self)
 	struct rasops_info *ri = &adev->ro;
 
 	task_set(&adev->switchtask, amdgpu_doswitch, ri);
+	task_set(&adev->burner_task, amdgpu_burner_cb, adev);
 
 	if (ri->ri_bits == NULL)
 		return;
@@ -2344,4 +2346,37 @@ amdgpu_activate(struct device *self, int act)
 	}
 
 	return (rv);
+}
+
+void
+amdgpu_burner(void *v, u_int on, u_int flags)
+{
+	struct rasops_info *ri = v;
+	struct amdgpu_device *adev = ri->ri_hw;
+
+	task_del(systq, &adev->burner_task);
+
+	if (on)
+		adev->burner_fblank = FB_BLANK_UNBLANK;
+	else {
+		if (flags & WSDISPLAY_BURN_VBLANK)
+			adev->burner_fblank = FB_BLANK_VSYNC_SUSPEND;
+		else
+			adev->burner_fblank = FB_BLANK_NORMAL;
+	}
+
+	/*
+	 * Setting the DPMS mode may sleep while waiting for vblank so
+	 * hand things off to a taskq.
+	 */
+	task_add(systq, &adev->burner_task);
+}
+
+void
+amdgpu_burner_cb(void *arg1)
+{
+	struct amdgpu_device *adev = arg1;
+	struct drm_fb_helper *helper = adev_to_drm(adev)->fb_helper;
+
+	drm_fb_helper_blank(adev->burner_fblank, helper->fbdev);
 }
