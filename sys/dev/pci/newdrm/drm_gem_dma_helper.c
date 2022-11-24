@@ -1,5 +1,5 @@
-/* $OpenBSD: drm_gem_cma_helper.c,v 1.6 2022/01/14 06:52:59 jsg Exp $ */
-/* $NetBSD: drm_gem_cma_helper.c,v 1.9 2019/11/05 23:29:28 jmcneill Exp $ */
+/* $OpenBSD: drm_gem_dma_helper.c,v 1.6 2022/01/14 06:52:59 jsg Exp $ */
+/* $NetBSD: drm_gem_dma_helper.c,v 1.9 2019/11/05 23:29:28 jmcneill Exp $ */
 /*-
  * Copyright (c) 2015-2017 Jared McNeill <jmcneill@invisible.ca>
  * All rights reserved.
@@ -27,31 +27,31 @@
  */
 
 #include <sys/param.h>
-#include <linux/dma-buf-map.h>
+#include <linux/iosys-map.h>
 
 #include <drm/drm_device.h>
-#include <drm/drm_gem_cma_helper.h>
+#include <drm/drm_gem_dma_helper.h>
 
 #include <uvm/uvm.h>
 
-static const struct drm_gem_object_funcs drm_gem_cma_default_funcs = {
-	.free = drm_gem_cma_free_object,
-	.get_sg_table = drm_gem_cma_get_sg_table,
-	.vmap = drm_gem_cma_vmap,
-//	.mmap = drm_gem_cma_mmap,
+static const struct drm_gem_object_funcs drm_gem_dma_default_funcs = {
+	.free = drm_gem_dma_free_object,
+	.get_sg_table = drm_gem_dma_get_sg_table,
+	.vmap = drm_gem_dma_vmap,
+//	.mmap = drm_gem_dma_mmap,
 };
 
-static struct drm_gem_cma_object *
-drm_gem_cma_create_internal(struct drm_device *ddev, size_t size,
+static struct drm_gem_dma_object *
+drm_gem_dma_create_internal(struct drm_device *ddev, size_t size,
     struct sg_table *sgt)
 {
-	struct drm_gem_cma_object *obj;
+	struct drm_gem_dma_object *obj;
 	int error, nsegs;
 
 	obj = malloc(sizeof(*obj), M_DRM, M_WAITOK | M_ZERO);
 	obj->dmat = ddev->dmat;
 	obj->dmasize = size;
-	obj->base.funcs = &drm_gem_cma_default_funcs;
+	obj->base.funcs = &drm_gem_dma_default_funcs;
 
 	if (sgt) {
 #ifdef notyet
@@ -110,15 +110,15 @@ failed:
 	return NULL;
 }
 
-struct drm_gem_cma_object *
-drm_gem_cma_create(struct drm_device *ddev, size_t size)
+struct drm_gem_dma_object *
+drm_gem_dma_create(struct drm_device *ddev, size_t size)
 {
 
-	return drm_gem_cma_create_internal(ddev, size, NULL);
+	return drm_gem_dma_create_internal(ddev, size, NULL);
 }
 
 static void
-drm_gem_cma_obj_free(struct drm_gem_cma_object *obj)
+drm_gem_dma_obj_free(struct drm_gem_dma_object *obj)
 {
 
 	bus_dmamap_unload(obj->dmat, obj->dmamap);
@@ -134,20 +134,20 @@ drm_gem_cma_obj_free(struct drm_gem_cma_object *obj)
 }
 
 void
-drm_gem_cma_free_object(struct drm_gem_object *gem_obj)
+drm_gem_dma_free_object(struct drm_gem_object *gem_obj)
 {
-	struct drm_gem_cma_object *obj = to_drm_gem_cma_obj(gem_obj);
+	struct drm_gem_dma_object *obj = to_drm_gem_dma_obj(gem_obj);
 
 	drm_gem_free_mmap_offset(gem_obj);
 	drm_gem_object_release(gem_obj);
-	drm_gem_cma_obj_free(obj);
+	drm_gem_dma_obj_free(obj);
 }
 
 int
-drm_gem_cma_dumb_create(struct drm_file *file_priv, struct drm_device *ddev,
+drm_gem_dma_dumb_create(struct drm_file *file_priv, struct drm_device *ddev,
     struct drm_mode_create_dumb *args)
 {
-	struct drm_gem_cma_object *obj;
+	struct drm_gem_dma_object *obj;
 	uint32_t handle;
 	int error;
 
@@ -156,14 +156,14 @@ drm_gem_cma_dumb_create(struct drm_file *file_priv, struct drm_device *ddev,
 	args->size = roundup(args->size, PAGE_SIZE);
 	args->handle = 0;
 
-	obj = drm_gem_cma_create(ddev, args->size);
+	obj = drm_gem_dma_create(ddev, args->size);
 	if (obj == NULL)
 		return -ENOMEM;
 
 	error = drm_gem_handle_create(file_priv, &obj->base, &handle);
 	drm_gem_object_put(&obj->base);
 	if (error) {
-		drm_gem_cma_obj_free(obj);
+		drm_gem_dma_obj_free(obj);
 		return error;
 	}
 
@@ -173,12 +173,12 @@ drm_gem_cma_dumb_create(struct drm_file *file_priv, struct drm_device *ddev,
 }
 
 int
-drm_gem_cma_fault(struct drm_gem_object *gem_obj, struct uvm_faultinfo *ufi,
+drm_gem_dma_fault(struct drm_gem_object *gem_obj, struct uvm_faultinfo *ufi,
     off_t offset, vaddr_t vaddr, vm_page_t *pps, int npages, int centeridx,
     vm_prot_t access_type, int flags)
 {
 	struct vm_map_entry *entry = ufi->entry;
-	struct drm_gem_cma_object *obj = to_drm_gem_cma_obj(gem_obj);
+	struct drm_gem_dma_object *obj = to_drm_gem_dma_obj(gem_obj);
 	struct uvm_object *uobj = &obj->base.uobj;
 	paddr_t paddr;
 	int lcv, retval;
@@ -208,7 +208,7 @@ drm_gem_cma_fault(struct drm_gem_object *gem_obj, struct uvm_faultinfo *ufi,
 			pmap_update(ufi->orig_map->pmap);
 			uvmfault_unlockall(ufi, ufi->entry->aref.ar_amap,
 			    uobj);
-			uvm_wait("drm_gem_cma_fault");
+			uvm_wait("drm_gem_dma_fault");
 			return VM_PAGER_REFAULT;
 		}
 	}
@@ -220,9 +220,9 @@ drm_gem_cma_fault(struct drm_gem_object *gem_obj, struct uvm_faultinfo *ufi,
 }
 
 struct sg_table *
-drm_gem_cma_get_sg_table(struct drm_gem_object *gem_obj)
+drm_gem_dma_get_sg_table(struct drm_gem_object *gem_obj)
 {
-	struct drm_gem_cma_object *obj = to_drm_gem_cma_obj(gem_obj);
+	struct drm_gem_dma_object *obj = to_drm_gem_dma_obj(gem_obj);
 
 	return NULL;
 #ifdef notyet
@@ -231,15 +231,15 @@ drm_gem_cma_get_sg_table(struct drm_gem_object *gem_obj)
 }
 
 struct drm_gem_object *
-drm_gem_cma_prime_import_sg_table(struct drm_device *ddev,
+drm_gem_dma_prime_import_sg_table(struct drm_device *ddev,
     struct dma_buf_attachment *attach, struct sg_table *sgt)
 {
 	return NULL;
 #ifdef notyet
 	size_t size = drm_prime_sg_size(sgt);
-	struct drm_gem_cma_object *obj;
+	struct drm_gem_dma_object *obj;
 
-	obj = drm_gem_cma_create_internal(ddev, size, sgt);
+	obj = drm_gem_dma_create_internal(ddev, size, sgt);
 	if (obj == NULL)
 		return ERR_PTR(-ENOMEM);
 
@@ -248,11 +248,11 @@ drm_gem_cma_prime_import_sg_table(struct drm_device *ddev,
 }
 
 int
-drm_gem_cma_vmap(struct drm_gem_object *gem_obj, struct dma_buf_map *map)
+drm_gem_dma_vmap(struct drm_gem_object *gem_obj, struct iosys_map *map)
 {
-	struct drm_gem_cma_object *obj = to_drm_gem_cma_obj(gem_obj);
+	struct drm_gem_dma_object *obj = to_drm_gem_dma_obj(gem_obj);
 
-	dma_buf_map_set_vaddr(map, obj->vaddr);
+	iosys_map_set_vaddr(map, obj->vaddr);
 
 	return 0;
 }

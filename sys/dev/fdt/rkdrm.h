@@ -33,9 +33,10 @@
 #include <dev/wscons/wsdisplayvar.h>
 #include <dev/rasops/rasops.h>
 
+#include <drm/drm_framebuffer.h>
 #include <drm/drm_fb_helper.h>
 #include <drm/drm_fourcc.h>
-#include <drm/drm_gem_cma_helper.h>
+#include <drm/drm_gem_dma_helper.h>
 
 #define DRIVER_AUTHOR		"Jared McNeill"
 
@@ -82,7 +83,7 @@ struct rkdrm_softc {
 
 struct rkdrm_framebuffer {
 	struct drm_framebuffer	base;
-	struct drm_gem_cma_object *obj;
+	struct drm_gem_dma_object *obj;
 };
 
 struct rkdrm_ports {
