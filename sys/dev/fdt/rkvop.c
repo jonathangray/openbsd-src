@@ -272,7 +272,7 @@ rkvop_plane_check(struct drm_plane *plane, struct drm_atomic_state *das)
 		return PTR_ERR(crtc_state);
 
 	return drm_atomic_helper_check_plane_state(state, crtc_state,
-	    DRM_PLANE_HELPER_NO_SCALING, DRM_PLANE_HELPER_NO_SCALING,
+	    DRM_PLANE_NO_SCALING, DRM_PLANE_NO_SCALING,
 	    false, true);
 }
 
