@@ -1129,18 +1129,18 @@ file	dev/pci/newdrm/amd/display/dc/gpio/dce120/hw_factory_dce120.c	amdgpu
 file	dev/pci/newdrm/amd/display/dc/gpio/dce120/hw_translate_dce120.c	amdgpu
 file	dev/pci/newdrm/amd/display/dc/gpio/dce80/hw_factory_dce80.c	amdgpu
 file	dev/pci/newdrm/amd/display/dc/gpio/dce80/hw_translate_dce80.c	amdgpu
-file	dev/pci/newdrm/amd/display/dc/gpio/dcn10/hw_factory_dcn10.c	amdgpu & bios
-file	dev/pci/newdrm/amd/display/dc/gpio/dcn10/hw_translate_dcn10.c	amdgpu & bios
-file	dev/pci/newdrm/amd/display/dc/gpio/dcn20/hw_factory_dcn20.c	amdgpu & bios
-file	dev/pci/newdrm/amd/display/dc/gpio/dcn20/hw_translate_dcn20.c	amdgpu & bios
-file	dev/pci/newdrm/amd/display/dc/gpio/dcn21/hw_factory_dcn21.c	amdgpu & bios
-file	dev/pci/newdrm/amd/display/dc/gpio/dcn21/hw_translate_dcn21.c	amdgpu & bios
-file	dev/pci/newdrm/amd/display/dc/gpio/dcn30/hw_factory_dcn30.c	amdgpu & bios
-file	dev/pci/newdrm/amd/display/dc/gpio/dcn30/hw_translate_dcn30.c	amdgpu & bios
-file	dev/pci/newdrm/amd/display/dc/gpio/dcn315/hw_factory_dcn315.c	amdgpu & bios
-file	dev/pci/newdrm/amd/display/dc/gpio/dcn315/hw_translate_dcn315.c	amdgpu & bios
-file	dev/pci/newdrm/amd/display/dc/gpio/dcn32/hw_factory_dcn32.c	amdgpu & bios
-file	dev/pci/newdrm/amd/display/dc/gpio/dcn32/hw_translate_dcn32.c	amdgpu & bios
+file	dev/pci/newdrm/amd/display/dc/gpio/dcn10/hw_factory_dcn10.c	amdgpu
+file	dev/pci/newdrm/amd/display/dc/gpio/dcn10/hw_translate_dcn10.c	amdgpu
+file	dev/pci/newdrm/amd/display/dc/gpio/dcn20/hw_factory_dcn20.c	amdgpu
+file	dev/pci/newdrm/amd/display/dc/gpio/dcn20/hw_translate_dcn20.c	amdgpu
+file	dev/pci/newdrm/amd/display/dc/gpio/dcn21/hw_factory_dcn21.c	amdgpu
+file	dev/pci/newdrm/amd/display/dc/gpio/dcn21/hw_translate_dcn21.c	amdgpu
+file	dev/pci/newdrm/amd/display/dc/gpio/dcn30/hw_factory_dcn30.c	amdgpu
+file	dev/pci/newdrm/amd/display/dc/gpio/dcn30/hw_translate_dcn30.c	amdgpu
+file	dev/pci/newdrm/amd/display/dc/gpio/dcn315/hw_factory_dcn315.c	amdgpu
+file	dev/pci/newdrm/amd/display/dc/gpio/dcn315/hw_translate_dcn315.c	amdgpu
+file	dev/pci/newdrm/amd/display/dc/gpio/dcn32/hw_factory_dcn32.c	amdgpu
+file	dev/pci/newdrm/amd/display/dc/gpio/dcn32/hw_translate_dcn32.c	amdgpu
 file	dev/pci/newdrm/amd/display/dc/gpio/gpio_base.c		amdgpu
 file	dev/pci/newdrm/amd/display/dc/gpio/gpio_service.c		amdgpu
 file	dev/pci/newdrm/amd/display/dc/gpio/hw_ddc.c		amdgpu
