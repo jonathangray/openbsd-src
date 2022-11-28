@@ -874,8 +874,10 @@ intel_display_power_put_mask_in_set(struct drm_i915_private *i915,
 {
 	enum intel_display_power_domain domain;
 
+#ifdef notyet
 	drm_WARN_ON(&i915->drm,
 		    !bitmap_subset(mask->bits, power_domain_set->mask.bits, POWER_DOMAIN_NUM));
+#endif
 
 	for_each_power_domain(domain, mask) {
 		intel_wakeref_t __maybe_unused wf = -1;
