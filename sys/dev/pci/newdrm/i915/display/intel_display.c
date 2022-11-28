@@ -7416,7 +7416,7 @@ static void intel_atomic_commit_fence_wait(struct intel_atomic_state *intel_stat
 
 
 		if (i915_sw_fence_done(&intel_state->commit_ready) ||
-		    test_bit(I915_RESET_MODESET, &dev_priv->gt.reset.flags))
+		    test_bit(I915_RESET_MODESET, &to_gt(dev_priv)->reset.flags))
 			break;
 
 		schedule();
@@ -9066,11 +9066,13 @@ bool intel_modeset_probe_defer(struct pci_dev *pdev)
 		return true;
 
 	/* If the LCD panel has a privacy-screen, wait for it */
+#ifdef notyet
 	privacy_screen = drm_privacy_screen_get(&pdev->dev, NULL);
 	if (IS_ERR(privacy_screen) && PTR_ERR(privacy_screen) == -EPROBE_DEFER)
 		return true;
 
 	drm_privacy_screen_put(privacy_screen);
+#endif
 
 	return false;
 }

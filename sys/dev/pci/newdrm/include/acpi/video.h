@@ -3,6 +3,8 @@
 #ifndef _ACPI_VIDEO_H
 #define _ACPI_VIDEO_H
 
+#include <linux/types.h>
+
 static inline void
 acpi_video_register(void)
 {
