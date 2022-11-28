@@ -3512,6 +3512,8 @@ void intel_mbus_dbox_update(struct intel_atomic_state *state)
 	}
 }
 
+#ifdef notyet
+
 static int skl_watermark_ipc_status_show(struct seq_file *m, void *data)
 {
 	struct drm_i915_private *i915 = m->private;
@@ -3561,6 +3563,8 @@ static const struct file_operations skl_watermark_ipc_status_fops = {
 	.release = single_release,
 	.write = skl_watermark_ipc_status_write
 };
+
+#endif /* notyet */
 
 void skl_watermark_ipc_debugfs_register(struct drm_i915_private *i915)
 {
