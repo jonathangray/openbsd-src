@@ -155,4 +155,10 @@ typedef struct {
 
 #define seqcount_mutex_init(s, l)	seqcount_init(&(s)->seq)
 
+static inline unsigned int
+seqprop_sequence(const seqcount_mutex_t *sm)
+{
+	return READ_ONCE(sm->seq.sequence);
+}
+
 #endif
