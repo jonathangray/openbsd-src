@@ -186,6 +186,9 @@ static int i915_ttm_tt_shmem_populate(struct ttm_device *bdev,
 				      struct ttm_tt *ttm,
 				      struct ttm_operation_ctx *ctx)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct drm_i915_private *i915 = container_of(bdev, typeof(*i915), bdev);
 	struct intel_memory_region *mr = i915->mm.regions[INTEL_MEMORY_SYSTEM];
 	struct i915_ttm_tt *i915_tt = container_of(ttm, typeof(*i915_tt), ttm);
@@ -194,7 +197,7 @@ static int i915_ttm_tt_shmem_populate(struct ttm_device *bdev,
 	struct file *filp = i915_tt->filp;
 	struct sgt_iter sgt_iter;
 	struct sg_table *st;
-	struct page *page;
+	struct vm_page *page;
 	unsigned long i;
 	int err;
 
@@ -239,6 +242,7 @@ err_free_st:
 	shmem_sg_free_table(st, filp->f_mapping, false, false);
 
 	return err;
+#endif
 }
 
 static void i915_ttm_tt_shmem_unpopulate(struct ttm_tt *ttm)
@@ -354,9 +358,6 @@ static void i915_ttm_tt_unpopulate(struct ttm_device *bdev, struct ttm_tt *ttm)
 
 static void i915_ttm_tt_destroy(struct ttm_device *bdev, struct ttm_tt *ttm)
 {
-	STUB();
-	return ERR_PTR(-ENOSYS);
-#ifdef notyet
 	struct i915_ttm_tt *i915_tt = container_of(ttm, typeof(*i915_tt), ttm);
 
 	if (i915_tt->filp)
@@ -454,8 +455,15 @@ int i915_ttm_purge(struct drm_i915_gem_object *obj)
 		 * pages(like by the shrinker) we should try to be more
 		 * aggressive and release the pages immediately.
 		 */
+#ifdef __linux__
 		shmem_truncate_range(file_inode(i915_tt->filp),
 				     0, (loff_t)-1);
+#else
+		rw_enter(obj->base.uao->vmobjlock, RW_WRITE);
+		obj->base.uao->pgops->pgo_flush(obj->base.uao, 0, obj->base.size,
+		    PGO_ALLPAGES | PGO_FREE);
+		rw_exit(obj->base.uao->vmobjlock);
+#endif
 		fput(fetch_and_zero(&i915_tt->filp));
 	}
 
@@ -510,16 +518,17 @@ static int i915_ttm_shrink(struct drm_i915_gem_object *obj, unsigned int flags)
 	}
 
 	if (flags & I915_GEM_OBJECT_SHRINK_WRITEBACK)
+#ifdef notyet
 		__shmem_writeback(obj->base.size, i915_tt->filp->f_mapping);
+#else
+		STUB();
+#endif
 
 	return 0;
 }
 
 static void i915_ttm_delete_mem_notify(struct ttm_buffer_object *bo)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
 	struct drm_i915_gem_object *obj = i915_ttm_to_gem(bo);
 	intel_wakeref_t wakeref = 0;
 
@@ -700,7 +709,6 @@ static int i915_ttm_io_mem_reserve(struct ttm_device *bdev, struct ttm_resource 
 	mem->bus.is_iomem = true;
 
 	return 0;
-#endif
 }
 
 static unsigned long i915_ttm_io_mem_pfn(struct ttm_buffer_object *bo,
