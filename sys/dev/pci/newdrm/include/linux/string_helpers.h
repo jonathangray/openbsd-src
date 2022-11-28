@@ -3,12 +3,22 @@
 #ifndef _LINUX_STRING_HELPERS_H
 #define _LINUX_STRING_HELPERS_H
 
+#include <linux/types.h>
+
 static inline const char *
 str_yes_no(bool x)
 {
 	if (x)
 		return "yes";
 	return "no";
+}
+
+static inline const char *
+str_on_off(bool x)
+{
+	if (x)
+		return "on";
+	return "off";
 }
 
 #endif
