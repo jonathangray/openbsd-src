@@ -727,7 +727,7 @@ static void intel_dsi_wait_panel_power_cycle(struct intel_dsi *intel_dsi)
 						  intel_dsi->panel_power_off_time);
 
 	if (panel_power_off_duration < (s64)intel_dsi->panel_pwr_cycle_delay)
-		msleep(intel_dsi->panel_pwr_cycle_delay - panel_power_off_duration);
+		drm_msleep(intel_dsi->panel_pwr_cycle_delay - panel_power_off_duration);
 }
 
 static void intel_dsi_prepare(struct intel_encoder *intel_encoder,
@@ -843,7 +843,7 @@ static void intel_dsi_pre_enable(struct intel_atomic_state *state,
 		intel_dsi_msleep(intel_dsi, intel_dsi->panel_on_delay);
 		intel_dsi_vbt_exec_sequence(intel_dsi, MIPI_SEQ_DEASSERT_RESET);
 	} else {
-		msleep(intel_dsi->panel_on_delay);
+		drm_msleep(intel_dsi->panel_on_delay);
 	}
 
 	if (IS_GEMINILAKE(dev_priv)) {
@@ -875,7 +875,7 @@ static void intel_dsi_pre_enable(struct intel_atomic_state *state,
 		intel_dsi_vbt_exec_sequence(intel_dsi, MIPI_SEQ_TEAR_ON);
 		intel_dsi_vbt_exec_sequence(intel_dsi, MIPI_SEQ_DISPLAY_ON);
 	} else {
-		msleep(20); /* XXX */
+		drm_msleep(20); /* XXX */
 		for_each_dsi_port(port, intel_dsi->ports)
 			dpi_send_cmd(intel_dsi, TURN_ON, false, port);
 		intel_dsi_msleep(intel_dsi, 100);
@@ -926,7 +926,7 @@ static void intel_dsi_disable(struct intel_atomic_state *state,
 		/* Send Shutdown command to the panel in LP mode */
 		for_each_dsi_port(port, intel_dsi->ports)
 			dpi_send_cmd(intel_dsi, SHUTDOWN, false, port);
-		msleep(10);
+		drm_msleep(10);
 	}
 }
 

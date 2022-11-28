@@ -2134,7 +2134,7 @@ out_unlock:
 			unsigned int max = min_t(unsigned int, 100,
 						 timeslice_shifted);
 
-			msleep(max_t(unsigned int, max, 1));
+			drm_msleep(max_t(unsigned int, max, 1));
 		}
 		intel_gt_retire_requests(guc_to_gt(guc));
 		goto try_again;

@@ -137,6 +137,15 @@ static const struct intel_step_info adlp_n_revids[] = {
 
 static void pvc_step_init(struct drm_i915_private *i915, int pci_revid);
 
+static const struct intel_step_info adls_rpls_revids[] = {
+	[0x4] = { .gt_step = STEP_D0, .display_step = STEP_D0 },
+	[0xC] = { .gt_step = STEP_D0, .display_step = STEP_C0 },
+};
+
+static const struct intel_step_info adlp_n_revids[] = {
+	[0x0] = { .gt_step = STEP_A0, .display_step = STEP_D0 },
+};
+
 void intel_step_init(struct drm_i915_private *i915)
 {
 	const struct intel_step_info *revids = NULL;

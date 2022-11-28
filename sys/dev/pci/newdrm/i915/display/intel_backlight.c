@@ -165,7 +165,7 @@ static u32 i9xx_get_backlight(struct intel_connector *connector, enum pipe unuse
 	if (panel->backlight.combination_mode) {
 		u8 lbpc;
 
-		pci_read_config_byte(to_pci_dev(dev_priv->drm.dev), LBPC, &lbpc);
+		pci_read_config_byte(dev_priv->drm.pdev, LBPC, &lbpc);
 		val *= lbpc;
 	}
 
@@ -193,11 +193,15 @@ static u32 bxt_get_backlight(struct intel_connector *connector, enum pipe unused
 
 static u32 ext_pwm_get_backlight(struct intel_connector *connector, enum pipe unused)
 {
+	STUB();
+	return 0;
+#ifdef notyet
 	struct intel_panel *panel = &connector->panel;
 	struct pwm_state state;
 
 	pwm_get_state(panel->backlight.pwm, &state);
 	return pwm_get_relative_duty_cycle(&state, 100);
+#endif
 }
 
 static void lpt_set_backlight(const struct drm_connector_state *conn_state, u32 level)
@@ -233,7 +237,7 @@ static void i9xx_set_backlight(const struct drm_connector_state *conn_state, u32
 
 		lbpc = level * 0xfe / panel->backlight.pwm_level_max + 1;
 		level /= lbpc;
-		pci_write_config_byte(to_pci_dev(dev_priv->drm.dev), LBPC, lbpc);
+		pci_write_config_byte(dev_priv->drm.pdev, LBPC, lbpc);
 	}
 
 	if (DISPLAY_VER(dev_priv) == 4) {
@@ -270,10 +274,13 @@ static void bxt_set_backlight(const struct drm_connector_state *conn_state, u32 
 
 static void ext_pwm_set_backlight(const struct drm_connector_state *conn_state, u32 level)
 {
+	STUB();
+#ifdef notyet
 	struct intel_panel *panel = &to_intel_connector(conn_state->connector)->panel;
 
 	pwm_set_relative_duty_cycle(&panel->backlight.pwm_state, level, 100);
 	pwm_apply_state(panel->backlight.pwm, &panel->backlight.pwm_state);
+#endif
 }
 
 static void
@@ -438,6 +445,8 @@ static void cnp_disable_backlight(const struct drm_connector_state *old_conn_sta
 
 static void ext_pwm_disable_backlight(const struct drm_connector_state *old_conn_state, u32 level)
 {
+	STUB();
+#ifdef notyet
 	struct intel_connector *connector = to_intel_connector(old_conn_state->connector);
 	struct intel_panel *panel = &connector->panel;
 
@@ -445,6 +454,7 @@ static void ext_pwm_disable_backlight(const struct drm_connector_state *old_conn
 
 	panel->backlight.pwm_state.enabled = false;
 	pwm_apply_state(panel->backlight.pwm, &panel->backlight.pwm_state);
+#endif
 }
 
 void intel_backlight_disable(const struct drm_connector_state *old_conn_state)
@@ -774,12 +784,15 @@ static void cnp_enable_backlight(const struct intel_crtc_state *crtc_state,
 static void ext_pwm_enable_backlight(const struct intel_crtc_state *crtc_state,
 				     const struct drm_connector_state *conn_state, u32 level)
 {
+	STUB();
+#ifdef notyet
 	struct intel_connector *connector = to_intel_connector(conn_state->connector);
 	struct intel_panel *panel = &connector->panel;
 
 	pwm_set_relative_duty_cycle(&panel->backlight.pwm_state, level, 100);
 	panel->backlight.pwm_state.enabled = true;
 	pwm_apply_state(panel->backlight.pwm, &panel->backlight.pwm_state);
+#endif
 }
 
 static void __intel_backlight_enable(const struct intel_crtc_state *crtc_state,
@@ -983,7 +996,9 @@ int intel_backlight_device_register(struct intel_connector *connector)
 
 	bd = backlight_device_get_by_name(name);
 	if (bd) {
+#ifdef __linux__
 		put_device(&bd->dev);
+#endif
 		/*
 		 * Using the same name independent of the drm device or connector
 		 * prevents registration of multiple backlight devices in the
@@ -1512,6 +1527,7 @@ static int ext_pwm_setup_backlight(struct intel_connector *connector,
 	panel->backlight.pwm_level_max = 100; /* 100% */
 	panel->backlight.pwm_level_min = get_backlight_min_vbt(connector);
 
+#ifdef notyet
 	if (pwm_is_enabled(panel->backlight.pwm)) {
 		/* PWM is already enabled, use existing settings */
 		pwm_get_state(panel->backlight.pwm, &panel->backlight.pwm_state);
@@ -1529,6 +1545,9 @@ static int ext_pwm_setup_backlight(struct intel_connector *connector,
 		panel->backlight.pwm_state.period =
 			NSEC_PER_SEC / get_vbt_pwm_freq(connector);
 	}
+#else
+	STUB();
+#endif
 
 	drm_info(&dev_priv->drm, "Using %s PWM for LCD backlight control\n",
 		 desc);

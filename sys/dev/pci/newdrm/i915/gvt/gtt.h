@@ -97,10 +97,10 @@ struct intel_gvt_gtt {
 	void (*mm_free_page_table)(struct intel_vgpu_mm *mm);
 	struct list_head oos_page_use_list_head;
 	struct list_head oos_page_free_list_head;
-	struct mutex ppgtt_mm_lock;
+	struct rwlock ppgtt_mm_lock;
 	struct list_head ppgtt_mm_lru_list_head;
 
-	struct page *scratch_page;
+	struct vm_page *scratch_page;
 	unsigned long scratch_mfn;
 };
 
@@ -204,7 +204,7 @@ static inline void intel_vgpu_destroy_mm(struct intel_vgpu_mm *mm)
 struct intel_vgpu_guest_page;
 
 struct intel_vgpu_scratch_pt {
-	struct page *page;
+	struct vm_page *page;
 	unsigned long page_mfn;
 };
 
@@ -250,7 +250,7 @@ struct intel_vgpu_ppgtt_spt {
 		enum intel_gvt_gtt_type type;
 		bool pde_ips; /* for 64KB PTEs */
 		void *vaddr;
-		struct page *page;
+		struct vm_page *page;
 		unsigned long mfn;
 	} shadow_page;
 

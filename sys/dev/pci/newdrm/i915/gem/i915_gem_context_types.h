@@ -253,7 +253,7 @@ struct i915_gem_context {
 	struct i915_gem_engines __rcu *engines;
 
 	/** @engines_mutex: guards writes to engines */
-	struct mutex engines_mutex;
+	struct rwlock engines_mutex;
 
 	/**
 	 * @syncobj: Shared timeline syncobj
@@ -288,7 +288,11 @@ struct i915_gem_context {
 	 * that should only affect the default context, all contexts created
 	 * explicitly by the client are expected to be isolated.
 	 */
+#ifdef __linux__
 	struct pid *pid;
+#else
+	pid_t pid;
+#endif
 
 	/** @link: place with &drm_i915_private.context_list */
 	struct list_head link;
@@ -366,7 +370,7 @@ struct i915_gem_context {
 	intel_wakeref_t pxp_wakeref;
 
 	/** @mutex: guards everything that isn't engines or handles_vma */
-	struct mutex mutex;
+	struct rwlock mutex;
 
 	/** @sched: scheduler parameters */
 	struct i915_sched_attr sched;
@@ -396,7 +400,7 @@ struct i915_gem_context {
 	struct radix_tree_root handles_vma;
 
 	/** @lut_mutex: Locks handles_vma */
-	struct mutex lut_mutex;
+	struct rwlock lut_mutex;
 
 	/**
 	 * @name: arbitrary name, used for user debug

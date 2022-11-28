@@ -80,6 +80,9 @@
 static struct platform_device *
 lpe_audio_platdev_create(struct drm_i915_private *dev_priv)
 {
+	STUB();
+	return NULL;
+#ifdef notyet
 	struct drm_device *dev = &dev_priv->drm;
 	struct pci_dev *pdev = to_pci_dev(dev->dev);
 	struct platform_device_info pinfo = {};
@@ -122,7 +125,7 @@ lpe_audio_platdev_create(struct drm_i915_private *dev_priv)
 	pdata->port[0].pipe = -1;
 	pdata->port[1].pipe = -1;
 	pdata->port[2].pipe = -1;
-	spin_lock_init(&pdata->lpe_audio_slock);
+	mtx_init(&pdata->lpe_audio_slock, IPL_TTY);
 
 	platdev = platform_device_register_full(&pinfo);
 	kfree(rsc);
@@ -137,6 +140,7 @@ lpe_audio_platdev_create(struct drm_i915_private *dev_priv)
 	pm_runtime_no_callbacks(&platdev->dev);
 
 	return platdev;
+#endif
 }
 
 static void lpe_audio_platdev_destroy(struct drm_i915_private *dev_priv)
@@ -149,9 +153,12 @@ static void lpe_audio_platdev_destroy(struct drm_i915_private *dev_priv)
 	 * than us fiddle with its internals.
 	 */
 
+#ifdef __linux__
 	platform_device_unregister(dev_priv->display.audio.lpe.platdev);
+#endif
 }
 
+#ifdef __linux__
 static void lpe_audio_irq_unmask(struct irq_data *d)
 {
 }
@@ -165,9 +172,13 @@ static struct irq_chip lpe_audio_irqchip = {
 	.irq_mask = lpe_audio_irq_mask,
 	.irq_unmask = lpe_audio_irq_unmask,
 };
+#endif
 
 static int lpe_audio_irq_init(struct drm_i915_private *dev_priv)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	int irq = dev_priv->display.audio.lpe.irq;
 
 	drm_WARN_ON(&dev_priv->drm, !intel_irqs_enabled(dev_priv));
@@ -177,10 +188,13 @@ static int lpe_audio_irq_init(struct drm_i915_private *dev_priv)
 				"hdmi_lpe_audio_irq_handler");
 
 	return irq_set_chip_data(irq, dev_priv);
+#endif
 }
 
 static bool lpe_audio_detect(struct drm_i915_private *dev_priv)
 {
+	return false;
+#ifdef notyet
 	int lpe_present = false;
 
 	if (IS_VALLEYVIEW(dev_priv) || IS_CHERRYVIEW(dev_priv)) {
@@ -199,10 +213,14 @@ static bool lpe_audio_detect(struct drm_i915_private *dev_priv)
 		}
 	}
 	return lpe_present;
+#endif
 }
 
 static int lpe_audio_setup(struct drm_i915_private *dev_priv)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	int ret;
 
 	dev_priv->display.audio.lpe.irq = irq_alloc_desc(0);
@@ -247,6 +265,7 @@ err:
 	dev_priv->display.audio.lpe.irq = -1;
 	dev_priv->display.audio.lpe.platdev = NULL;
 	return ret;
+#endif
 }
 
 /**
@@ -258,6 +277,8 @@ err:
  */
 void intel_lpe_audio_irq_handler(struct drm_i915_private *dev_priv)
 {
+	STUB();
+#ifdef notyet
 	int ret;
 
 	if (!HAS_LPE_AUDIO(dev_priv))
@@ -267,6 +288,7 @@ void intel_lpe_audio_irq_handler(struct drm_i915_private *dev_priv)
 	if (ret)
 		drm_err_ratelimited(&dev_priv->drm,
 				    "error handling LPE audio irq: %d\n", ret);
+#endif
 }
 
 /**
@@ -299,6 +321,8 @@ int intel_lpe_audio_init(struct drm_i915_private *dev_priv)
  */
 void intel_lpe_audio_teardown(struct drm_i915_private *dev_priv)
 {
+	STUB();
+#ifdef notyet
 	if (!HAS_LPE_AUDIO(dev_priv))
 		return;
 
@@ -308,6 +332,7 @@ void intel_lpe_audio_teardown(struct drm_i915_private *dev_priv)
 
 	dev_priv->display.audio.lpe.irq = -1;
 	dev_priv->display.audio.lpe.platdev = NULL;
+#endif
 }
 
 /**
@@ -326,6 +351,7 @@ void intel_lpe_audio_notify(struct drm_i915_private *dev_priv,
 			    enum pipe pipe, enum port port,
 			    const void *eld, int ls_clock, bool dp_output)
 {
+#ifdef notyet
 	unsigned long irqflags;
 	struct intel_hdmi_lpe_audio_pdata *pdata;
 	struct intel_hdmi_lpe_audio_port_pdata *ppdata;
@@ -365,4 +391,5 @@ void intel_lpe_audio_notify(struct drm_i915_private *dev_priv,
 		pdata->notify_audio_lpe(dev_priv->display.audio.lpe.platdev, port - PORT_B);
 
 	spin_unlock_irqrestore(&pdata->lpe_audio_slock, irqflags);
+#endif
 }

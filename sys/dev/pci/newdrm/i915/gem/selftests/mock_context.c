@@ -26,9 +26,9 @@ mock_context(struct drm_i915_private *i915,
 	ctx->i915 = i915;
 	INIT_WORK(&ctx->release_work, i915_gem_context_release_work);
 
-	mutex_init(&ctx->mutex);
+	rw_init(&ctx->mutex, "mkctx");
 
-	spin_lock_init(&ctx->stale.lock);
+	mtx_init(&ctx->stale.lock, IPL_TTY);
 	INIT_LIST_HEAD(&ctx->stale.engines);
 
 	i915_gem_context_set_persistence(ctx);
@@ -45,14 +45,14 @@ mock_context(struct drm_i915_private *i915,
 		ctx->vm = &ppgtt->vm;
 	}
 
-	mutex_init(&ctx->engines_mutex);
+	rw_init(&ctx->engines_mutex, "mkeng");
 	e = default_engines(ctx, null_sseu);
 	if (IS_ERR(e))
 		goto err_vm;
 	RCU_INIT_POINTER(ctx->engines, e);
 
 	INIT_RADIX_TREE(&ctx->handles_vma, GFP_KERNEL);
-	mutex_init(&ctx->lut_mutex);
+	rw_init(&ctx->lut_mutex, "lutmtx");
 
 	return ctx;
 

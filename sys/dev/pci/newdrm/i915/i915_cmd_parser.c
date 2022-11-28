@@ -1203,8 +1203,13 @@ static u32 *copy_batch(struct drm_i915_gem_object *dst_obj,
 		 */
 		remain = length;
 		if (dst_needs_clflush & CLFLUSH_BEFORE)
+#ifdef __linux__
 			remain = round_up(remain,
 					  boot_cpu_data.x86_clflush_size);
+#else
+			remain = round_up(remain,
+					  curcpu()->ci_cflushsz);
+#endif
 
 		ptr = dst;
 		x = offset_in_page(offset);

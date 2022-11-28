@@ -85,7 +85,7 @@ static void intel_restore_swf(struct drm_i915_private *dev_priv)
 
 void i915_save_display(struct drm_i915_private *dev_priv)
 {
-	struct pci_dev *pdev = to_pci_dev(dev_priv->drm.dev);
+	struct pci_dev *pdev = dev_priv->drm.pdev;
 
 	if (!HAS_DISPLAY(dev_priv))
 		return;
@@ -103,7 +103,7 @@ void i915_save_display(struct drm_i915_private *dev_priv)
 
 void i915_restore_display(struct drm_i915_private *dev_priv)
 {
-	struct pci_dev *pdev = to_pci_dev(dev_priv->drm.dev);
+	struct pci_dev *pdev = dev_priv->drm.pdev;
 
 	if (!HAS_DISPLAY(dev_priv))
 		return;

@@ -81,7 +81,9 @@ struct uc_css_header {
 	};
 	u32 header_info;
 } __packed;
+#ifdef notyet
 static_assert(sizeof(struct uc_css_header) == 128);
+#endif
 
 #define HUC_GSC_VERSION_HI_DW		44
 #define   HUC_GSC_MAJOR_VER_HI_MASK	(0xFF << 0)

@@ -33,7 +33,11 @@
 #define CI_BUG_ON(expr) BUILD_BUG_ON_INVALID(expr)
 #endif
 
+#ifdef __linux__
 static DEFINE_STATIC_KEY_FALSE(has_movntdqa);
+#else
+static bool has_movntdqa = false;
+#endif
 
 static void __memcpy_ntdqa(void *dst, const void *src, unsigned long len)
 {
@@ -115,7 +119,11 @@ bool i915_memcpy_from_wc(void *dst, const void *src, unsigned long len)
 	if (unlikely(((unsigned long)dst | (unsigned long)src | len) & 15))
 		return false;
 
+#ifdef __linux__
 	if (static_branch_likely(&has_movntdqa)) {
+#else
+	if (likely(has_movntdqa)) {
+#endif
 		if (likely(len))
 			__memcpy_ntdqa(dst, src, len >> 4);
 		return true;
@@ -139,11 +147,13 @@ void i915_unaligned_memcpy_from_wc(void *dst, const void *src, unsigned long len
 {
 	unsigned long addr;
 
+#ifdef notyet
 	CI_BUG_ON(!i915_has_memcpy_from_wc());
+#endif
 
 	addr = (unsigned long)src;
 	if (!IS_ALIGNED(addr, 16)) {
-		unsigned long x = min(ALIGN(addr, 16) - addr, len);
+		unsigned long x = min(roundup2(addr, 16) - addr, len);
 
 		memcpy(dst, src, x);
 
@@ -164,5 +174,9 @@ void i915_memcpy_init_early(struct drm_i915_private *dev_priv)
 	 */
 	if (static_cpu_has(X86_FEATURE_XMM4_1) &&
 	    !boot_cpu_has(X86_FEATURE_HYPERVISOR))
+#ifdef __linux__
 		static_branch_enable(&has_movntdqa);
+#else
+		has_movntdqa = true;
+#endif
 }

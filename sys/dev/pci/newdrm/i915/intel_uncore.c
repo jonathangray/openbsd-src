@@ -47,7 +47,7 @@ fw_domains_get(struct intel_uncore *uncore, enum forcewake_domains fw_domains)
 void
 intel_uncore_mmio_debug_init_early(struct drm_i915_private *i915)
 {
-	spin_lock_init(&i915->mmio_debug.lock);
+	mtx_init(&i915->mmio_debug.lock, IPL_TTY);
 	i915->mmio_debug.unclaimed_mmio_check = 1;
 
 	i915->uncore.debug = &i915->mmio_debug;
@@ -144,10 +144,14 @@ fw_domain_arm_timer(struct intel_uncore_forcewake_domain *d)
 	GEM_BUG_ON(d->uncore->fw_domains_timer & d->mask);
 	d->uncore->fw_domains_timer |= d->mask;
 	d->wake_count++;
+#ifdef __linux__
 	hrtimer_start_range_ns(&d->timer,
 			       NSEC_PER_MSEC,
 			       NSEC_PER_MSEC,
 			       HRTIMER_MODE_REL);
+#else
+	timeout_add_msec(&d->timer, 1);
+#endif
 }
 
 static inline int
@@ -406,6 +410,8 @@ static void __gen6_gt_wait_for_fifo(struct intel_uncore *uncore)
 	uncore->fifo_count = n - 1;
 }
 
+#ifdef __linux__
+
 static enum hrtimer_restart
 intel_uncore_fw_release_timer(struct hrtimer *timer)
 {
@@ -431,6 +437,33 @@ intel_uncore_fw_release_timer(struct hrtimer *timer)
 
 	return HRTIMER_NORESTART;
 }
+
+#else
+
+void
+intel_uncore_fw_release_timer(void *arg)
+{
+	struct intel_uncore_forcewake_domain *domain = arg;
+	struct intel_uncore *uncore = domain->uncore;
+	unsigned long irqflags;
+
+	assert_rpm_device_not_suspended(uncore->rpm);
+
+	if (xchg(&domain->active, false))
+		return;
+
+	spin_lock_irqsave(&uncore->lock, irqflags);
+
+	uncore->fw_domains_timer &= ~domain->mask;
+
+	GEM_BUG_ON(!domain->wake_count);
+	if (--domain->wake_count == 0)
+		uncore->funcs.force_wake_put(uncore, domain->mask);
+
+	spin_unlock_irqrestore(&uncore->lock, irqflags);
+}
+
+#endif
 
 /* Note callers must have acquired the PUNIT->PMIC bus, before calling this. */
 static unsigned int
@@ -2024,8 +2057,12 @@ static int __fw_domain_init(struct intel_uncore *uncore,
 
 	d->mask = BIT(domain_id);
 
+#ifdef __linux__
 	hrtimer_init(&d->timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
 	d->timer.function = intel_uncore_fw_release_timer;
+#else
+	timeout_set(&d->timer, intel_uncore_fw_release_timer, d);
+#endif
 
 	uncore->fw_domains |= BIT(domain_id);
 
@@ -2278,7 +2315,7 @@ int intel_uncore_setup_mmio(struct intel_uncore *uncore, phys_addr_t phys_addr)
 void intel_uncore_init_early(struct intel_uncore *uncore,
 			     struct intel_gt *gt)
 {
-	spin_lock_init(&uncore->lock);
+	mtx_init(&uncore->lock, IPL_TTY);
 	uncore->i915 = gt->i915;
 	uncore->gt = gt;
 	uncore->rpm = &gt->i915->runtime_pm;

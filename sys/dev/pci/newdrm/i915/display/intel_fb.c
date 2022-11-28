@@ -1060,7 +1060,7 @@ static int intel_fb_offset_to_xy(int *x, int *y,
 	}
 
 	height = drm_framebuffer_plane_height(fb->height, fb, color_plane);
-	height = ALIGN(height, intel_tile_height(fb, color_plane));
+	height = roundup2(height, intel_tile_height(fb, color_plane));
 
 	/* Catch potential overflows early */
 	if (add_overflows_t(u32, mul_u32_u32(height, fb->pitches[color_plane]),

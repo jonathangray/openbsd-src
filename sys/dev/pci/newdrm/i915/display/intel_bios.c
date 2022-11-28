@@ -2935,6 +2935,12 @@ static const struct bdb_header *get_bdb_header(const struct vbt_header *vbt)
 	return _vbt + vbt->bdb_offset;
 }
 
+#include <dev/isa/isareg.h>
+#include <dev/isa/isavar.h>
+
+#define VGA_BIOS_ADDR	0xc0000
+#define VGA_BIOS_LEN	0x10000
+
 /**
  * intel_bios_is_valid_vbt - does the given buffer contain a valid VBT
  * @buf:	pointer to a buffer to validate
@@ -3043,15 +3049,22 @@ err_not_found:
 
 static struct vbt_header *oprom_get_vbt(struct drm_i915_private *i915)
 {
+#ifdef __linux__
 	struct pci_dev *pdev = to_pci_dev(i915->drm.dev);
+#endif
 	void __iomem *p = NULL, *oprom;
 	struct vbt_header *vbt;
 	u16 vbt_size;
 	size_t i, size;
 
+#ifdef __linux__
 	oprom = pci_map_rom(pdev, &size);
 	if (!oprom)
 		return NULL;
+#else
+	oprom = (u8 *)ISA_HOLE_VADDR(VGA_BIOS_ADDR);
+	size = VGA_BIOS_LEN;
+#endif
 
 	/* Scour memory looking for the VBT signature. */
 	for (i = 0; i + 4 < size; i += 4) {
@@ -3088,7 +3101,9 @@ static struct vbt_header *oprom_get_vbt(struct drm_i915_private *i915)
 	if (!intel_bios_is_valid_vbt(vbt, vbt_size))
 		goto err_free_vbt;
 
+#ifdef __linux__
 	pci_unmap_rom(pdev, oprom);
+#endif
 
 	drm_dbg_kms(&i915->drm, "Found valid VBT in PCI ROM\n");
 
@@ -3097,7 +3112,9 @@ static struct vbt_header *oprom_get_vbt(struct drm_i915_private *i915)
 err_free_vbt:
 	kfree(vbt);
 err_unmap_oprom:
+#ifdef __linux__
 	pci_unmap_rom(pdev, oprom);
+#endif
 
 	return NULL;
 }
@@ -3352,6 +3369,17 @@ bool intel_bios_is_port_edp(struct drm_i915_private *i915, enum port port)
 {
 	const struct intel_bios_encoder_data *devdata =
 		intel_bios_encoder_data_lookup(i915, port);
+
+	/*
+	 * XXX on T14 Gen 3 resume
+	 * [drm] AUX A/DDI A/PHY A: timeout (status 0x7d4003ff)
+	 * [drm] AUX A/DDI A/PHY A: Too many retries, giving up. First error: -60
+	 * intel_edp_init_source_oui *ERROR* [drm] *ERROR* Failed to write source OUI
+	 * intel_dp_link_training_clock_recovery *ERROR* [drm] *ERROR* failed to enable link training
+	 * https://gitlab.freedesktop.org/drm/intel/-/issues/5531
+	 */
+	if (IS_ALDERLAKE_P(i915) && port == PORT_B)
+		return false;
 
 	return devdata && intel_bios_encoder_supports_edp(devdata);
 }

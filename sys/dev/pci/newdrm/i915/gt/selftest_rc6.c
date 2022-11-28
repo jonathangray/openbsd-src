@@ -56,13 +56,13 @@ int live_rc6_manual(void *arg)
 
 	/* Force RC6 off for starters */
 	__intel_rc6_disable(rc6);
-	msleep(1); /* wakeup is not immediate, takes about 100us on icl */
+	drm_msleep(1); /* wakeup is not immediate, takes about 100us on icl */
 
 	res[0] = rc6_residency(rc6);
 
 	dt = ktime_get();
 	rc0_power = librapl_energy_uJ();
-	msleep(250);
+	drm_msleep(250);
 	rc0_power = librapl_energy_uJ() - rc0_power;
 	dt = ktime_sub(ktime_get(), dt);
 	res[1] = rc6_residency(rc6);
@@ -90,7 +90,7 @@ int live_rc6_manual(void *arg)
 	intel_uncore_forcewake_flush(rc6_to_uncore(rc6), FORCEWAKE_ALL);
 	dt = ktime_get();
 	rc6_power = librapl_energy_uJ();
-	msleep(100);
+	drm_msleep(100);
 	rc6_power = librapl_energy_uJ() - rc6_power;
 	dt = ktime_sub(ktime_get(), dt);
 	res[1] = rc6_residency(rc6);

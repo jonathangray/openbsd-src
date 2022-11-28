@@ -186,7 +186,7 @@ i915_gem_object_fence_prepare(struct drm_i915_gem_object *obj,
 	struct drm_i915_private *i915 = to_i915(obj->base.dev);
 	struct i915_ggtt *ggtt = to_gt(i915)->ggtt;
 	struct i915_vma *vma, *vn;
-	LIST_HEAD(unbind);
+	DRM_LIST_HEAD(unbind);
 	int ret = 0;
 
 	if (tiling_mode == I915_TILING_NONE)

@@ -36,6 +36,11 @@
 
 #include <drm/ttm/ttm_device.h>
 
+#include "vga.h"
+
+struct inteldrm_softc;
+#define drm_i915_private inteldrm_softc
+
 #include "display/intel_display.h"
 #include "display/intel_display_core.h"
 
@@ -74,6 +79,20 @@ struct intel_encoder;
 struct intel_limit;
 struct intel_overlay_error_state;
 struct vlv_s0ix_state;
+
+#include "drm.h"
+#include "vga.h"
+
+#include <dev/ic/mc6845reg.h>
+#include <dev/ic/pcdisplayvar.h>
+#include <dev/ic/vgareg.h>
+#include <dev/ic/vgavar.h>
+
+#include <sys/task.h>
+#include <dev/pci/vga_pcivar.h>
+#include <dev/wscons/wsconsio.h>
+#include <dev/wscons/wsdisplayvar.h>
+#include <dev/rasops/rasops.h>
 
 /* Threshold == 5 for long IRQs, 50 for short */
 #define HPD_STORM_DEFAULT_THRESHOLD 50
@@ -116,7 +135,7 @@ struct i915_gem_mm {
 	struct drm_mm stolen;
 	/** Protects the usage of the GTT stolen memory allocator. This is
 	 * always the inner lock when overlapping with struct_mutex. */
-	struct mutex stolen_lock;
+	struct rwlock stolen_lock;
 
 	/* Protects bound_list/unbound_list and #drm_i915_gem_object.mm.link */
 	spinlock_t obj_lock;
@@ -180,7 +199,7 @@ i915_fence_timeout(const struct drm_i915_private *i915)
 #define HAS_HW_SAGV_WM(i915) (DISPLAY_VER(i915) >= 13 && !IS_DGFX(i915))
 
 struct i915_virtual_gpu {
-	struct mutex lock; /* serialises sending of g2v_notify command pkts */
+	struct rwlock lock; /* serialises sending of g2v_notify command pkts */
 	bool active;
 	u32 caps;
 	u32 *initial_mmio;
@@ -193,7 +212,18 @@ struct i915_selftest_stash {
 	struct ida mock_region_instances;
 };
 
-struct drm_i915_private {
+
+struct inteldrm_softc {
+#ifdef __OpenBSD__
+	struct device sc_dev;
+	bus_dma_tag_t dmat;
+	bus_space_tag_t bst;
+	struct agp_map *agph;
+	bus_space_handle_t opregion_ioh;
+	bus_space_handle_t opregion_rvda_ioh;
+	bus_size_t opregion_rvda_size;
+#endif
+
 	struct drm_device drm;
 
 	struct intel_display display;
@@ -232,6 +262,46 @@ struct drm_i915_private {
 	 */
 	resource_size_t stolen_usable_size;	/* Total size minus reserved ranges */
 
+#ifdef __OpenBSD__
+	pci_chipset_tag_t pc;
+	pcitag_t tag;
+	struct extent *memex;
+	pci_intr_handle_t ih;
+	irqreturn_t(*irq_handler) (int, void *);
+	void *irqh;
+
+	struct vga_pci_bar bar;
+	struct vga_pci_bar *vga_regs;
+
+	const struct pci_device_id *id;
+
+	int console;
+	int primary;
+	int nscreens;
+	void (*switchcb)(void *, int, int);
+	void *switchcbarg;
+	void *switchcookie;
+	struct task switchtask;
+	struct rasops_info ro;
+
+	struct task burner_task;
+	int burner_fblank;
+
+	struct backlight_device *backlight;
+
+	union flush {
+		struct {
+			bus_space_tag_t		bst;
+			bus_space_handle_t	bsh;
+		} i9xx;
+		struct {
+			bus_dma_segment_t	seg;
+			caddr_t			kva;
+		} i8xx;
+	}			 ifp;
+	struct vm_page *pgs;
+#endif
+
 	struct intel_uncore uncore;
 	struct intel_uncore_mmio_debug mmio_debug;
 
@@ -254,7 +324,7 @@ struct drm_i915_private {
 	bool display_irqs_enabled;
 
 	/* Sideband mailbox protection */
-	struct mutex sb_lock;
+	struct rwlock sb_lock;
 	struct pm_qos_request sb_qos;
 
 	/** Cached value of IMR to avoid reads in updating the bitfield */
@@ -424,7 +494,11 @@ static inline struct drm_i915_private *kdev_to_i915(struct device *kdev)
 
 static inline struct drm_i915_private *pdev_to_i915(struct pci_dev *pdev)
 {
+	STUB();
+	return NULL;
+#ifdef notyet
 	return pci_get_drvdata(pdev);
+#endif
 }
 
 static inline struct intel_gt *to_gt(struct drm_i915_private *i915)
@@ -483,7 +557,7 @@ static inline struct intel_gt *to_gt(struct drm_i915_private *i915)
 #define IS_DISPLAY_VER(i915, from, until) \
 	(DISPLAY_VER(i915) >= (from) && DISPLAY_VER(i915) <= (until))
 
-#define INTEL_REVID(dev_priv)	(to_pci_dev((dev_priv)->drm.dev)->revision)
+#define INTEL_REVID(dev_priv)	((dev_priv)->drm.pdev->revision)
 
 #define HAS_DSB(dev_priv)	(INTEL_INFO(dev_priv)->display.has_dsb)
 
@@ -547,7 +621,9 @@ IS_PLATFORM(const struct drm_i915_private *i915, enum intel_platform p)
 	const unsigned int pi = __platform_mask_index(info, p);
 	const unsigned int pb = __platform_mask_bit(info, p);
 
+#ifdef notyet
 	BUILD_BUG_ON(!__builtin_constant_p(p));
+#endif
 
 	return info->platform_mask[pi] & BIT(pb);
 }
@@ -562,9 +638,11 @@ IS_SUBPLATFORM(const struct drm_i915_private *i915,
 	const unsigned int msb = BITS_PER_TYPE(info->platform_mask[0]) - 1;
 	const u32 mask = info->platform_mask[pi];
 
+#ifdef notyet
 	BUILD_BUG_ON(!__builtin_constant_p(p));
 	BUILD_BUG_ON(!__builtin_constant_p(s));
 	BUILD_BUG_ON((s) >= INTEL_SUBPLATFORM_BITS);
+#endif
 
 	/* Shift and test on the MSB position so sign flag can be used. */
 	return ((mask << (msb - pb)) & (mask << (msb - s))) & BIT(msb);

@@ -8,7 +8,7 @@
 
 struct drm_i915_private;
 
-#ifdef CONFIG_ACPI
+#if defined(CONFIG_ACPI) && defined(__linux__)
 void intel_register_dsm_handler(void);
 void intel_unregister_dsm_handler(void);
 void intel_dsm_get_bios_data_funcs_supported(struct drm_i915_private *i915);

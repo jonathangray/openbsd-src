@@ -13,6 +13,7 @@
 
 void i915_gemfs_init(struct drm_i915_private *i915)
 {
+#ifdef __linux__
 	char huge_opt[] = "huge=within_size"; /* r/w */
 	struct file_system_type *type;
 	struct vfsmount *gemfs;
@@ -52,9 +53,12 @@ err:
 		   "Transparent Hugepage support is recommended for optimal performance%s\n",
 		   GRAPHICS_VER(i915) >= 11 ? " on this platform!" :
 					      " when IOMMU is enabled!");
+#endif
 }
 
 void i915_gemfs_fini(struct drm_i915_private *i915)
 {
+#ifdef __linux__
 	kern_unmount(i915->mm.gemfs);
+#endif
 }

@@ -11,6 +11,8 @@
 #include "intel_engine_heartbeat.h"
 #include "sysfs_engines.h"
 
+#ifdef __linux__
+
 struct kobj_engine {
 	struct kobject base;
 	struct intel_engine_cs *engine;
@@ -478,8 +480,11 @@ static void add_defaults(struct kobj_engine *parent)
 		return;
 }
 
+#endif /* __linux__ */
+
 void intel_engines_add_sysfs(struct drm_i915_private *i915)
 {
+#ifdef __linux__
 	static const struct attribute *files[] = {
 		&name_attr.attr,
 		&class_attr.attr,
@@ -532,4 +537,5 @@ err_engine:
 			break;
 		}
 	}
+#endif /* __linux__ */
 }

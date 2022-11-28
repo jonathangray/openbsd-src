@@ -244,7 +244,7 @@ intel_memory_region_create(struct drm_i915_private *i915,
 	mem->type = type;
 	mem->instance = instance;
 
-	mutex_init(&mem->objects.lock);
+	rw_init(&mem->objects.lock, "memobj");
 	INIT_LIST_HEAD(&mem->objects.list);
 
 	if (ops->init) {

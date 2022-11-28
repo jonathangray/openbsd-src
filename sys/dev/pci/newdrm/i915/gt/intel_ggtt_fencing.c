@@ -741,7 +741,7 @@ static void detect_bit_6_swizzle(struct i915_ggtt *ggtt)
  * bit 17 of its physical address and therefore being interpreted differently
  * by the GPU.
  */
-static void swizzle_page(struct page *page)
+static void swizzle_page(struct vm_page *page)
 {
 	char temp[64];
 	char *vaddr;
@@ -755,7 +755,11 @@ static void swizzle_page(struct page *page)
 		memcpy(&vaddr[i + 64], temp, 64);
 	}
 
+#ifdef __linux__
 	kunmap(page);
+#else
+	kunmap_va(vaddr);
+#endif
 }
 
 /**
@@ -776,7 +780,7 @@ i915_gem_object_do_bit_17_swizzle(struct drm_i915_gem_object *obj,
 				  struct sg_table *pages)
 {
 	struct sgt_iter sgt_iter;
-	struct page *page;
+	struct vm_page *page;
 	int i;
 
 	if (obj->bit_17 == NULL)
@@ -810,7 +814,7 @@ i915_gem_object_save_bit_17_swizzle(struct drm_i915_gem_object *obj,
 {
 	const unsigned int page_count = obj->base.size >> PAGE_SHIFT;
 	struct sgt_iter sgt_iter;
-	struct page *page;
+	struct vm_page *page;
 	int i;
 
 	if (obj->bit_17 == NULL) {

@@ -31,7 +31,7 @@ static void _release_bars(struct pci_dev *pdev)
 static void
 _resize_bar(struct drm_i915_private *i915, int resno, resource_size_t size)
 {
-	struct pci_dev *pdev = to_pci_dev(i915->drm.dev);
+	struct pci_dev *pdev = i915->drm.pdev;
 	int bar_size = pci_rebar_bytes_to_size(size);
 	int ret;
 
@@ -49,7 +49,7 @@ _resize_bar(struct drm_i915_private *i915, int resno, resource_size_t size)
 
 static void i915_resize_lmem_bar(struct drm_i915_private *i915, resource_size_t lmem_size)
 {
-	struct pci_dev *pdev = to_pci_dev(i915->drm.dev);
+	struct pci_dev *pdev = i915->drm.pdev;
 	struct pci_bus *root = pdev->bus;
 	struct resource *root_res;
 	resource_size_t rebar_size;
@@ -122,7 +122,10 @@ region_lmem_release(struct intel_memory_region *mem)
 	int ret;
 
 	ret = intel_region_ttm_fini(mem);
+	STUB();
+#ifdef notyet
 	io_mapping_fini(&mem->iomap);
+#endif
 
 	return ret;
 }
@@ -130,6 +133,9 @@ region_lmem_release(struct intel_memory_region *mem)
 static int
 region_lmem_init(struct intel_memory_region *mem)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	int ret;
 
 	if (!io_mapping_init_wc(&mem->iomap,
@@ -147,6 +153,7 @@ out_no_buddy:
 	io_mapping_fini(&mem->iomap);
 
 	return ret;
+#endif
 }
 
 static const struct intel_memory_region_ops intel_region_lmem_ops = {
@@ -191,7 +198,7 @@ static struct intel_memory_region *setup_lmem(struct intel_gt *gt)
 {
 	struct drm_i915_private *i915 = gt->i915;
 	struct intel_uncore *uncore = gt->uncore;
-	struct pci_dev *pdev = to_pci_dev(i915->drm.dev);
+	struct pci_dev *pdev = i915->drm.pdev;
 	struct intel_memory_region *mem;
 	resource_size_t min_page_size;
 	resource_size_t io_start;

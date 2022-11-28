@@ -34,6 +34,7 @@
  * for some reason.
  */
 
+#include <linux/kconfig.h>
 #include "i915_drv.h"
 #include "intel_backlight.h"
 #include "intel_display_types.h"

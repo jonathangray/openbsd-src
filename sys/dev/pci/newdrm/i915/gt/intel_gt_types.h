@@ -100,7 +100,7 @@ struct intel_gt {
 
 	struct {
 		/* Serialize global tlb invalidations */
-		struct mutex invalidate_lock;
+		struct rwlock invalidate_lock;
 
 		/*
 		 * Batch TLB invalidations
@@ -152,7 +152,7 @@ struct intel_gt {
 	 *  but instead has exclusive access by virtue of all other accesses requiring
 	 *  holding the runtime pm wakeref.
 	 */
-	struct mutex lmem_userfault_lock;
+	struct rwlock lmem_userfault_lock;
 	struct list_head lmem_userfault_list;
 
 	struct list_head closed_vma;

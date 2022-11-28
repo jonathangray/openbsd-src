@@ -385,11 +385,11 @@ i915_gem_object_get_sg_dma(struct drm_i915_gem_object *obj,
 	return __i915_gem_object_get_sg(obj, &obj->mm.get_dma_page, n, offset, true);
 }
 
-struct page *
+struct vm_page *
 i915_gem_object_get_page(struct drm_i915_gem_object *obj,
 			 unsigned int n);
 
-struct page *
+struct vm_page *
 i915_gem_object_get_dirty_page(struct drm_i915_gem_object *obj,
 			       unsigned int n);
 

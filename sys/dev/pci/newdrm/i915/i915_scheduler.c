@@ -10,8 +10,8 @@
 #include "i915_request.h"
 #include "i915_scheduler.h"
 
-static struct kmem_cache *slab_dependencies;
-static struct kmem_cache *slab_priorities;
+static struct pool slab_dependencies;
+static struct pool slab_priorities;
 
 static DEFINE_SPINLOCK(schedule_lock);
 
@@ -89,7 +89,11 @@ find_priolist:
 	if (prio == I915_PRIORITY_NORMAL) {
 		p = &sched_engine->default_priolist;
 	} else {
+#ifdef __linux__
 		p = kmem_cache_alloc(slab_priorities, GFP_ATOMIC);
+#else
+		p = pool_get(&slab_priorities, PR_NOWAIT);
+#endif
 		/* Convert an allocation failure to a priority bump */
 		if (unlikely(!p)) {
 			prio = I915_PRIORITY_NORMAL; /* recurses just once */
@@ -118,7 +122,11 @@ find_priolist:
 
 void __i915_priolist_free(struct i915_priolist *p)
 {
+#ifdef __linux__
 	kmem_cache_free(slab_priorities, p);
+#else
+	pool_put(&slab_priorities, p);
+#endif
 }
 
 struct sched_cache {
@@ -160,7 +168,7 @@ static void __i915_schedule(struct i915_sched_node *node,
 	struct i915_dependency *dep, *p;
 	struct i915_dependency stack;
 	struct sched_cache cache;
-	LIST_HEAD(dfs);
+	DRM_LIST_HEAD(dfs);
 
 	/* Needed in order to use the temporary link inside i915_dependency */
 	lockdep_assert_held(&schedule_lock);
@@ -316,13 +324,21 @@ void i915_sched_node_reinit(struct i915_sched_node *node)
 static struct i915_dependency *
 i915_dependency_alloc(void)
 {
+#ifdef __linux__
 	return kmem_cache_alloc(slab_dependencies, GFP_KERNEL);
+#else
+	return pool_get(&slab_dependencies, PR_WAITOK);
+#endif
 }
 
 static void
 i915_dependency_free(struct i915_dependency *dep)
 {
+#ifdef __linux__
 	kmem_cache_free(slab_dependencies, dep);
+#else
+	pool_put(&slab_dependencies, dep);
+#endif
 }
 
 bool __i915_sched_node_add_dependency(struct i915_sched_node *node,
@@ -467,7 +483,7 @@ i915_sched_engine_create(unsigned int subclass)
 	INIT_LIST_HEAD(&sched_engine->requests);
 	INIT_LIST_HEAD(&sched_engine->hold);
 
-	spin_lock_init(&sched_engine->lock);
+	mtx_init(&sched_engine->lock, IPL_TTY);
 	lockdep_set_subclass(&sched_engine->lock, subclass);
 
 	/*
@@ -487,12 +503,18 @@ i915_sched_engine_create(unsigned int subclass)
 
 void i915_scheduler_module_exit(void)
 {
+#ifdef __linux__
 	kmem_cache_destroy(slab_dependencies);
 	kmem_cache_destroy(slab_priorities);
+#else
+	pool_destroy(&slab_dependencies);
+	pool_destroy(&slab_priorities);
+#endif
 }
 
 int __init i915_scheduler_module_init(void)
 {
+#ifdef __linux__
 	slab_dependencies = KMEM_CACHE(i915_dependency,
 					      SLAB_HWCACHE_ALIGN |
 					      SLAB_TYPESAFE_BY_RCU);
@@ -508,4 +530,12 @@ int __init i915_scheduler_module_init(void)
 err_priorities:
 	kmem_cache_destroy(slab_priorities);
 	return -ENOMEM;
+#else
+	pool_init(&slab_dependencies, sizeof(struct i915_dependency),
+	    CACHELINESIZE, IPL_TTY, 0, "gsdep", NULL);
+	pool_init(&slab_priorities, sizeof(struct i915_priolist),
+	    CACHELINESIZE, IPL_TTY, 0, "gspri", NULL);
+
+	return 0;
+#endif
 }

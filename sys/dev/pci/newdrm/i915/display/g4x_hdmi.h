@@ -11,6 +11,7 @@
 #include "i915_reg_defs.h"
 
 enum port;
+#define drm_i915_private inteldrm_softc
 struct drm_i915_private;
 
 void g4x_hdmi_init(struct drm_i915_private *dev_priv,

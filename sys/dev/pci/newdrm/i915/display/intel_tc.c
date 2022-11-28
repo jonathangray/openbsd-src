@@ -917,7 +917,7 @@ void intel_tc_port_init(struct intel_digital_port *dig_port, bool is_legacy)
 	snprintf(dig_port->tc_port_name, sizeof(dig_port->tc_port_name),
 		 "%c/TC#%d", port_name(port), tc_port + 1);
 
-	mutex_init(&dig_port->tc_lock);
+	rw_init(&dig_port->tc_lock, "itcp");
 	INIT_DELAYED_WORK(&dig_port->tc_disconnect_phy_work, intel_tc_port_disconnect_phy_work);
 	dig_port->tc_legacy_port = is_legacy;
 	dig_port->tc_mode = TC_PORT_DISCONNECTED;

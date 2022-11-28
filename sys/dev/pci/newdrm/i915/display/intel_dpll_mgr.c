@@ -4232,7 +4232,7 @@ void intel_shared_dpll_init(struct drm_i915_private *dev_priv)
 
 	dev_priv->display.dpll.mgr = dpll_mgr;
 	dev_priv->display.dpll.num_shared_dpll = i;
-	mutex_init(&dev_priv->display.dpll.lock);
+	rw_init(&dev_priv->display.dpll.lock, "dplllk");
 }
 
 /**

@@ -1681,7 +1681,7 @@ static struct intel_fbc *intel_fbc_create(struct drm_i915_private *i915,
 	fbc->id = fbc_id;
 	fbc->i915 = i915;
 	INIT_WORK(&fbc->underrun_work, intel_fbc_underrun_work_fn);
-	mutex_init(&fbc->lock);
+	rw_init(&fbc->lock, "fbclk");
 
 	if (DISPLAY_VER(i915) >= 7)
 		fbc->funcs = &ivb_fbc_funcs;
