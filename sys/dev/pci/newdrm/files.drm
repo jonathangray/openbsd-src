@@ -405,7 +405,7 @@ file	dev/pci/newdrm/i915/i915_vma_resource.c		inteldrm
 file	dev/pci/newdrm/i915/intel_device_info.c		inteldrm
 file	dev/pci/newdrm/i915/intel_dram.c			inteldrm
 #file	dev/pci/newdrm/i915/intel_gvt.c			inteldrm
-file	dev/pci/newdrm/i915/intel_gvt_mmio_table.c		inteldrm
+#file	dev/pci/newdrm/i915/intel_gvt_mmio_table.c		inteldrm
 file	dev/pci/newdrm/i915/intel_memory_region.c		inteldrm
 file	dev/pci/newdrm/i915/intel_pch.c			inteldrm
 file	dev/pci/newdrm/i915/intel_pcode.c			inteldrm
