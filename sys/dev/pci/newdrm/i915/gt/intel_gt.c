@@ -1073,7 +1073,7 @@ static bool tlb_seqno_passed(const struct intel_gt *gt, u32 seqno)
 	u32 cur = intel_gt_tlb_seqno(gt);
 
 	/* Only skip if a *full* TLB invalidate barrier has passed */
-	return (s32)(cur - ALIGN(seqno, 2)) > 0;
+	return (s32)(cur - roundup2(seqno, 2)) > 0;
 }
 
 void intel_gt_invalidate_tlb(struct intel_gt *gt, u32 seqno)
