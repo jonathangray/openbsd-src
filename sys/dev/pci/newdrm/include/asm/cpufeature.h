@@ -29,6 +29,12 @@ static_cpu_has(uint16_t f)
 	}
 }
 
+static inline bool
+pat_enabled(void)
+{
+	return ((curcpu()->ci_feature_flags & CPUID_PAT) != 0);
+}
+
 #define boot_cpu_has(x) static_cpu_has(x)
 
 static inline void
