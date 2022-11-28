@@ -21,4 +21,12 @@ str_on_off(bool x)
 	return "off";
 }
 
+static inline const char *
+str_enabled_disabled(bool x)
+{
+	if (x)
+		return "enabled";
+	return "disabled";
+}
+
 #endif
