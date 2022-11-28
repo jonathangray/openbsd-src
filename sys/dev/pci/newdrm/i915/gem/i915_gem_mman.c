@@ -654,7 +654,7 @@ vm_fault_gtt(struct i915_mmap_offset *mmo, struct uvm_faultinfo *ufi,
 	struct drm_device *dev = obj->base.dev;
 	struct drm_i915_private *i915 = to_i915(dev);
 	struct intel_runtime_pm *rpm = &i915->runtime_pm;
-	struct i915_ggtt *ggtt = &i915->ggtt;
+	struct i915_ggtt *ggtt = to_gt(i915)->ggtt;
 	int write = !!(access_type & PROT_WRITE);
 	struct i915_gem_ww_ctx ww;
 	intel_wakeref_t wakeref;
@@ -697,12 +697,12 @@ retry:
 					  PIN_NOEVICT);
 	if (IS_ERR(vma) && vma != ERR_PTR(-EDEADLK)) {
 		/* Use a partial view if it is bigger than available space */
-		struct i915_ggtt_view view =
+		struct i915_gtt_view view =
 			compute_partial_view(obj, page_offset, MIN_CHUNK_PAGES);
 		unsigned int flags;
 
 		flags = PIN_MAPPABLE | PIN_NOSEARCH;
-		if (view.type == I915_GGTT_VIEW_NORMAL)
+		if (view.type == I915_GTT_VIEW_NORMAL)
 			flags |= PIN_NONBLOCK; /* avoid warnings for pinned */
 
 		/*
@@ -713,12 +713,25 @@ retry:
 		vma = i915_gem_object_ggtt_pin_ww(obj, &ww, &view, 0, 0, flags);
 		if (IS_ERR(vma) && vma != ERR_PTR(-EDEADLK)) {
 			flags = PIN_MAPPABLE;
-			view.type = I915_GGTT_VIEW_PARTIAL;
+			view.type = I915_GTT_VIEW_PARTIAL;
 			vma = i915_gem_object_ggtt_pin_ww(obj, &ww, &view, 0, 0, flags);
 		}
 
-		/* The entire mappable GGTT is pinned? Unexpected! */
-		GEM_BUG_ON(vma == ERR_PTR(-ENOSPC));
+		/*
+		 * The entire mappable GGTT is pinned? Unexpected!
+		 * Try to evict the object we locked too, as normally we skip it
+		 * due to lack of short term pinning inside execbuf.
+		 */
+		if (vma == ERR_PTR(-ENOSPC)) {
+			ret = mutex_lock_interruptible(&ggtt->vm.mutex);
+			if (!ret) {
+				ret = i915_gem_evict_vm(&ggtt->vm, &ww);
+				mutex_unlock(&ggtt->vm.mutex);
+			}
+			if (ret)
+				goto err_reset;
+			vma = i915_gem_object_ggtt_pin_ww(obj, &ww, &view, 0, 0, flags);
+		}
 	}
 	if (IS_ERR(vma)) {
 		ret = PTR_ERR(vma);
@@ -737,7 +750,7 @@ retry:
 
 	/* Finally, remap it using the new GTT offset */
 	ret = remap_io_mapping(ufi->orig_map->pmap, entry->protection,
-			       entry->start + (vma->ggtt_view.partial.offset << PAGE_SHIFT),
+			       entry->start + (vma->gtt_view.partial.offset << PAGE_SHIFT),
 			       (ggtt->gmadr.start + vma->node.start) >> PAGE_SHIFT,
 			       min_t(u64, vma->size, entry->end - entry->start));
 	if (ret)
@@ -746,16 +759,16 @@ retry:
 	assert_rpm_wakelock_held(rpm);
 
 	/* Mark as being mmapped into userspace for later revocation */
-	mutex_lock(&i915->ggtt.vm.mutex);
+	mutex_lock(&to_gt(i915)->ggtt->vm.mutex);
 	if (!i915_vma_set_userfault(vma) && !obj->userfault_count++)
-		list_add(&obj->userfault_link, &i915->ggtt.userfault_list);
-	mutex_unlock(&i915->ggtt.vm.mutex);
+		list_add(&obj->userfault_link, &to_gt(i915)->ggtt->userfault_list);
+	mutex_unlock(&to_gt(i915)->ggtt->vm.mutex);
 
 	/* Track the mmo associated with the fenced vma */
 	vma->mmo = mmo;
 
-	if (IS_ACTIVE(CONFIG_DRM_I915_USERFAULT_AUTOSUSPEND))
-		intel_wakeref_auto(&i915->ggtt.userfault_wakeref,
+	if (CONFIG_DRM_I915_USERFAULT_AUTOSUSPEND)
+		intel_wakeref_auto(&to_gt(i915)->userfault_wakeref,
 				   msecs_to_jiffies_timeout(CONFIG_DRM_I915_USERFAULT_AUTOSUSPEND));
 
 	if (write) {
@@ -879,7 +892,9 @@ void i915_gem_object_runtime_pm_release_mmap_offset(struct drm_i915_gem_object *
 	struct ttm_buffer_object *bo = i915_gem_to_ttm(obj);
 	struct ttm_device *bdev = bo->bdev;
 
+#ifdef __linux__
 	drm_vma_node_unmap(&bo->base.vma_node, bdev->dev_mapping);
+#endif
 
 	if (obj->userfault_count) {
 		/* rpm wakeref provide exclusive access */

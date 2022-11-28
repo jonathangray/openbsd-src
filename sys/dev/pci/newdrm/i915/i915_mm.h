@@ -13,6 +13,7 @@ struct vm_area_struct;
 struct io_mapping;
 struct scatterlist;
 
+#ifdef notyet
 #if IS_ENABLED(CONFIG_X86)
 int remap_io_mapping(struct vm_area_struct *vma,
 		     unsigned long addr, unsigned long pfn, unsigned long size,
@@ -27,6 +28,7 @@ int remap_io_mapping(struct vm_area_struct *vma,
 	return 0;
 }
 #endif
+#endif /* notyet */
 
 int remap_io_sg(struct vm_area_struct *vma,
 		unsigned long addr, unsigned long size,
