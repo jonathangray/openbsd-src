@@ -1054,6 +1054,8 @@ void intel_dmc_print_error_state(struct drm_i915_error_state_buf *m,
 			  DMC_VERSION_MINOR(dmc->version));
 }
 
+#ifdef notyet
+
 static int intel_dmc_debugfs_status_show(struct seq_file *m, void *unused)
 {
 	struct drm_i915_private *i915 = m->private;
@@ -1128,6 +1130,8 @@ out:
 }
 
 DEFINE_SHOW_ATTRIBUTE(intel_dmc_debugfs_status);
+
+#endif /* notyet */
 
 void intel_dmc_debugfs_register(struct drm_i915_private *i915)
 {
