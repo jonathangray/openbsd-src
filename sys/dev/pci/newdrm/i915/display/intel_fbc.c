@@ -90,7 +90,7 @@ struct intel_fbc {
 	 * struct_mutex and it's the outer lock when overlapping
 	 * with stolen_lock.
 	 */
-	struct mutex lock;
+	struct rwlock lock;
 	unsigned int busy_bits;
 
 	struct drm_mm_node compressed_fb;
@@ -1742,6 +1742,8 @@ void intel_fbc_sanitize(struct drm_i915_private *i915)
 	}
 }
 
+#ifdef notyet
+
 static int intel_fbc_debugfs_status_show(struct seq_file *m, void *unused)
 {
 	struct intel_fbc *fbc = m->private;
@@ -1814,6 +1816,8 @@ DEFINE_SIMPLE_ATTRIBUTE(intel_fbc_debugfs_false_color_fops,
 			intel_fbc_debugfs_false_color_get,
 			intel_fbc_debugfs_false_color_set,
 			"%llu\n");
+
+#endif /* notyet */
 
 static void intel_fbc_debugfs_add(struct intel_fbc *fbc,
 				  struct dentry *parent)
