@@ -137,7 +137,7 @@ int intel_region_ttm_fini(struct intel_memory_region *mem)
 		if (!ret)
 			break;
 
-		msleep(20);
+		drm_msleep(20);
 		flush_delayed_work(&mem->i915->bdev.wq);
 	}
 
