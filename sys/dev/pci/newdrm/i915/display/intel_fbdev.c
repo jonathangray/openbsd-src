@@ -64,7 +64,7 @@ struct intel_fbdev {
 	bool hpd_waiting: 1;
 
 	/* Protects hpd_suspended */
-	struct mutex hpd_lock;
+	struct rwlock hpd_lock;
 };
 
 static struct intel_frontbuffer *to_frontbuffer(struct intel_fbdev *ifbdev)
