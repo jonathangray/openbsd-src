@@ -29,4 +29,12 @@ str_enabled_disabled(bool x)
 	return "disabled";
 }
 
+static inline const char *
+str_enable_disable(bool x)
+{
+	if (x)
+		return "enable";
+	return "disable";
+}
+
 #endif
