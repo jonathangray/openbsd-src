@@ -14,6 +14,8 @@
 
 #define ARCH_KMALLOC_MINALIGN CACHELINESIZE
 
+#define ZERO_SIZE_PTR NULL
+
 static inline void *
 kmalloc(size_t size, int flags)
 {
