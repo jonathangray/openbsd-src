@@ -373,7 +373,7 @@ find_first_bit(volatile void *p, int max)
 }
 
 static inline int
-find_next_bit(volatile void *p, int max, int b)
+find_next_bit(const volatile void *p, int max, int b)
 {
 	volatile u_int *ptr = (volatile u_int *)p;
 
