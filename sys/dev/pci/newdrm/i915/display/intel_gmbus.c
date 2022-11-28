@@ -333,6 +333,19 @@ intel_gpio_pre_xfer(struct i2c_adapter *adapter)
 	return 0;
 }
 
+static void
+intel_gpio_post_xfer(struct i2c_adapter *adapter)
+{
+	struct intel_gmbus *bus = to_intel_gmbus(adapter);
+	struct drm_i915_private *i915 = bus->i915;
+
+	set_data(bus, 1);
+	set_clock(bus, 1);
+
+	if (IS_PINEVIEW(i915))
+		pnv_gmbus_clock_gating(i915, true);
+}
+
 void	intel_bb_set_bits(void *, uint32_t);
 void	intel_bb_set_dir(void *, uint32_t);
 uint32_t intel_bb_read_bits(void *);
@@ -425,19 +438,6 @@ int
 intel_write_byte(void *cookie, u_int8_t byte, int flags)
 {
 	return (i2c_bitbang_write_byte(cookie, byte, flags, &intel_bbops));
-}
-
-static void
-intel_gpio_post_xfer(struct i2c_adapter *adapter)
-{
-	struct intel_gmbus *bus = to_intel_gmbus(adapter);
-	struct drm_i915_private *i915 = bus->i915;
-
-	set_data(bus, 1);
-	set_clock(bus, 1);
-
-	if (IS_PINEVIEW(i915))
-		pnv_gmbus_clock_gating(i915, true);
 }
 
 static void
