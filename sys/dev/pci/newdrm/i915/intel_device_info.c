@@ -221,15 +221,6 @@ static const u16 subplatform_p_ids[] = {
 	INTEL_MTL_P_IDS(0),
 };
 
-static const u16 subplatform_n_ids[] = {
-	INTEL_ADLN_IDS(0),
-};
-
-static const u16 subplatform_rpl_ids[] = {
-	INTEL_RPLS_IDS(0),
-	INTEL_RPLP_IDS(0),
-};
-
 static bool find_devid(u16 id, const u16 *p, unsigned int num)
 {
 	for (; num; num--, p++) {
