@@ -65,6 +65,12 @@ ktime_get_raw_ns(void)
 	return ktime_to_ns(ktime_get_raw());
 }
 
+static inline int64_t
+ktime_get_raw_fast_ns(void)
+{
+	return ktime_to_ns(ktime_get_raw());
+}
+
 static inline struct timespec64
 ktime_to_timespec64(ktime_t k)
 {
