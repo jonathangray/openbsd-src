@@ -5,6 +5,7 @@
 #include "i915_drv.h"
 #include "i915_irq.h"
 #include "intel_crtc.h"
+#include "intel_display_types.h"
 
 #define trace_g4x_wm(a, b)
 #define trace_intel_cpu_fifo_underrun(a, b)
