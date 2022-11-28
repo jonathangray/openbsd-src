@@ -7,6 +7,7 @@
 #include <linux/kernel.h>
 
 struct pci_dev;
+struct sg_table;
 
 int intel_enable_gtt(void);
 void intel_gtt_chipset_flush(void);

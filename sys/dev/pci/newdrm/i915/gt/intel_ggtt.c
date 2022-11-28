@@ -83,24 +83,24 @@ static int ggtt_init_hw(struct i915_ggtt *ggtt)
 					      ggtt->mappable_end);
 #else
 		/* XXX would be a lot nicer to get agp info before now */
-		uvm_page_physload(atop(i915->ggtt.gmadr.start),
-		    atop(i915->ggtt.gmadr.start + i915->ggtt.mappable_end),
-		    atop(i915->ggtt.gmadr.start),
-		    atop(i915->ggtt.gmadr.start + i915->ggtt.mappable_end),
+		uvm_page_physload(atop(ggtt->gmadr.start),
+		    atop(ggtt->gmadr.start + ggtt->mappable_end),
+		    atop(ggtt->gmadr.start),
+		    atop(ggtt->gmadr.start + ggtt->mappable_end),
 		    PHYSLOAD_DEVICE);
 		/* array of vm pages that physload introduced. */
-		i915->pgs = PHYS_TO_VM_PAGE(i915->ggtt.gmadr.start);
+		i915->pgs = PHYS_TO_VM_PAGE(ggtt->gmadr.start);
 		KASSERT(i915->pgs != NULL);
 		/*
 		 * XXX mark all pages write combining so user mmaps get the
 		 * right bits. We really need a proper MI api for doing this,
 		 * but for now this allows us to use PAT where available.
 		 */
-		for (i = 0; i < atop(i915->ggtt.mappable_end); i++)
+		for (i = 0; i < atop(ggtt->mappable_end); i++)
 			atomic_setbits_int(&(i915->pgs[i].pg_flags),
 			    PG_PMAP_WC);
-		if (agp_init_map(i915->bst, i915->ggtt.gmadr.start,
-		    i915->ggtt.mappable_end,
+		if (agp_init_map(i915->bst, ggtt->gmadr.start,
+		    ggtt->mappable_end,
 		    BUS_SPACE_MAP_LINEAR | BUS_SPACE_MAP_PREFETCHABLE,
 		    &i915->agph))
 			panic("can't map aperture");
