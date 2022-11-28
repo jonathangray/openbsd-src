@@ -458,7 +458,7 @@ intel_uncore_fw_release_timer(void *arg)
 
 	GEM_BUG_ON(!domain->wake_count);
 	if (--domain->wake_count == 0)
-		uncore->funcs.force_wake_put(uncore, domain->mask);
+		fw_domains_put(uncore, domain->mask);
 
 	spin_unlock_irqrestore(&uncore->lock, irqflags);
 }
@@ -2278,7 +2278,9 @@ static int i915_pmic_bus_access_notifier(struct notifier_block *nb,
 
 static void uncore_unmap_mmio(struct drm_device *drm, void *regs)
 {
+#ifdef __linux__
 	iounmap(regs);
+#endif
 }
 
 int intel_uncore_setup_mmio(struct intel_uncore *uncore, phys_addr_t phys_addr)
@@ -2302,12 +2304,13 @@ int intel_uncore_setup_mmio(struct intel_uncore *uncore, phys_addr_t phys_addr)
 		mmio_size = 2 * 1024 * 1024;
 	else
 		mmio_size = 512 * 1024;
-
+#ifdef __linux__
 	uncore->regs = ioremap(phys_addr, mmio_size);
 	if (uncore->regs == NULL) {
 		drm_err(&i915->drm, "failed to map registers\n");
 		return -EIO;
 	}
+#endif
 
 	return drmm_add_action_or_reset(&i915->drm, uncore_unmap_mmio, uncore->regs);
 }
