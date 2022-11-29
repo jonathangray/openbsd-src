@@ -129,9 +129,9 @@ bitmap_to_arr32(void *d, unsigned long *src, u_int n)
 
 
 static inline int
-bitmap_weight(void *p, u_int n)
+bitmap_weight(const void *p, u_int n)
 {
-	u_int *ptr = p;
+	const u_int *ptr = p;
 	u_int b;
 	int sum = 0;
 
