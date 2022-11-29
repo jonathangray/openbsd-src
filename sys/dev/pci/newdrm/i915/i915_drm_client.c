@@ -28,6 +28,9 @@ void i915_drm_clients_init(struct i915_drm_clients *clients,
 
 struct i915_drm_client *i915_drm_client_add(struct i915_drm_clients *clients)
 {
+	STUB();
+	return ERR_PTR(-ENOSYS);
+#ifdef notyet
 	struct i915_drm_client *client;
 	struct xarray *xa = &clients->xarray;
 	int ret;
@@ -44,7 +47,7 @@ struct i915_drm_client *i915_drm_client_add(struct i915_drm_clients *clients)
 		goto err;
 
 	kref_init(&client->kref);
-	spin_lock_init(&client->ctx_lock);
+	mtx_init(&client->ctx_lock, IPL_NONE);
 	INIT_LIST_HEAD(&client->ctx_list);
 	client->clients = clients;
 
@@ -54,6 +57,7 @@ err:
 	kfree(client);
 
 	return ERR_PTR(ret);
+#endif
 }
 
 void __i915_drm_client_free(struct kref *kref)

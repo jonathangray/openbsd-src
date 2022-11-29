@@ -50,6 +50,14 @@ void *xa_get_next(struct xarray *, unsigned long *);
 		mtx_leave(&(_xa)->xa_lock);		\
 	} while (0)
 
+#define xa_lock_irq(_xa) do {				\
+		mtx_enter(&(_xa)->xa_lock);		\
+	} while (0)
+
+#define xa_unlock_irq(_xa) do {				\
+		mtx_leave(&(_xa)->xa_lock);		\
+	} while (0)
+
 #define xa_lock_irqsave(_xa, _flags) do {		\
 		_flags = 0;				\
 		mtx_enter(&(_xa)->xa_lock);		\
