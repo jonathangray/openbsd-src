@@ -31,6 +31,8 @@
 #include "i915_drv.h"
 #include "i915_trace.h"
 
+#ifdef notyet
+
 /**
  * DOC: GuC-based command submission
  *
@@ -5167,3 +5169,5 @@ bool intel_guc_virtual_engine_has_heartbeat(const struct intel_engine_cs *ve)
 #include "selftest_guc_multi_lrc.c"
 #include "selftest_guc_hangcheck.c"
 #endif
+
+#endif /* notyet */
