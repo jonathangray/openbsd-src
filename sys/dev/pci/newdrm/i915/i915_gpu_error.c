@@ -302,7 +302,7 @@ static void *compress_next_page(struct i915_vma_compress *c,
 				struct i915_vma_coredump *dst)
 {
 	void *page_addr;
-	struct page *page;
+	struct vm_page *page;
 
 	page_addr = pool_alloc(&c->pool, ALLOW_FAIL);
 	if (!page_addr)
@@ -415,6 +415,9 @@ static int compress_page(struct i915_vma_compress *c,
 			 struct i915_vma_coredump *dst,
 			 bool wc)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	void *ptr;
 
 	ptr = pool_alloc(&c->pool, ALLOW_FAIL);
@@ -427,6 +430,7 @@ static int compress_page(struct i915_vma_compress *c,
 	cond_resched();
 
 	return 0;
+#endif
 }
 
 static int compress_flush(struct i915_vma_compress *c,
@@ -631,7 +635,7 @@ void intel_gpu_error_print_vma(struct drm_i915_error_state_buf *m,
 	STUB();
 #ifdef notyet
 	char out[ASCII85_BUFSZ];
-	struct page *page;
+	struct vm_page *page;
 
 	if (!vma)
 		return;
@@ -1035,9 +1039,11 @@ ssize_t i915_gpu_coredump_copy_to_buffer(struct i915_gpu_coredump *error,
 
 static void i915_vma_coredump_free(struct i915_vma_coredump *vma)
 {
+	STUB();
+#ifdef notyet
 	while (vma) {
 		struct i915_vma_coredump *next = vma->next;
-		struct page *page, *n;
+		struct vm_page *page, *n;
 
 		list_for_each_entry_safe(page, n, &vma->page_list, lru) {
 			list_del_init(&page->lru);
@@ -1047,6 +1053,7 @@ static void i915_vma_coredump_free(struct i915_vma_coredump *vma)
 		kfree(vma);
 		vma = next;
 	}
+#endif
 }
 
 static void cleanup_params(struct i915_gpu_coredump *error)
@@ -1211,7 +1218,7 @@ i915_vma_coredump_create(const struct intel_gt *gt,
 	}
 
 	if (ret || compress_flush(compress, dst)) {
-		struct page *page, *n;
+		struct vm_page *page, *n;
 
 		list_for_each_entry_safe_reverse(page, n, &dst->page_list, lru) {
 			list_del_init(&page->lru);
