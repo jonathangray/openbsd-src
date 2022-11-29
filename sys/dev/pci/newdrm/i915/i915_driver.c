@@ -114,6 +114,9 @@ static void i915_release_bridge_dev(struct drm_device *dev,
 
 static int i915_get_bridge_dev(struct drm_i915_private *dev_priv)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	int domain = pci_domain_nr(to_pci_dev(dev_priv->drm.dev)->bus);
 
 	dev_priv->bridge_dev =
@@ -125,12 +128,16 @@ static int i915_get_bridge_dev(struct drm_i915_private *dev_priv)
 
 	return drmm_add_action_or_reset(&dev_priv->drm, i915_release_bridge_dev,
 					dev_priv->bridge_dev);
+#endif
 }
 
 /* Allocate space for the MCH regs if needed, return nonzero on error */
 static int
 intel_alloc_mchbar_resource(struct drm_i915_private *dev_priv)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	int reg = GRAPHICS_VER(dev_priv) >= 4 ? MCHBAR_I965 : MCHBAR_I915;
 	u32 temp_lo, temp_hi = 0;
 	u64 mchbar_addr;
@@ -170,6 +177,7 @@ intel_alloc_mchbar_resource(struct drm_i915_private *dev_priv)
 	pci_write_config_dword(dev_priv->bridge_dev, reg,
 			       lower_32_bits(dev_priv->mch_res.start));
 	return 0;
+#endif
 }
 
 /* Setup MCHBAR if possible, return true if we should disable it again */
@@ -215,6 +223,8 @@ intel_setup_mchbar(struct drm_i915_private *dev_priv)
 static void
 intel_teardown_mchbar(struct drm_i915_private *dev_priv)
 {
+	STUB();
+#ifdef notyet
 	int mchbar_reg = GRAPHICS_VER(dev_priv) >= 4 ? MCHBAR_I965 : MCHBAR_I915;
 
 	if (dev_priv->mchbar_need_disable) {
@@ -239,6 +249,7 @@ intel_teardown_mchbar(struct drm_i915_private *dev_priv)
 
 	if (dev_priv->mch_res.start)
 		release_resource(&dev_priv->mch_res);
+#endif
 }
 
 static int i915_workqueues_init(struct drm_i915_private *dev_priv)
@@ -342,18 +353,18 @@ static int i915_driver_early_probe(struct drm_i915_private *dev_priv)
 
 	intel_uncore_mmio_debug_init_early(dev_priv);
 
-	spin_lock_init(&dev_priv->irq_lock);
-	spin_lock_init(&dev_priv->gpu_error.lock);
-	mutex_init(&dev_priv->display.backlight.lock);
+	mtx_init(&dev_priv->irq_lock, IPL_TTY);
+	mtx_init(&dev_priv->gpu_error.lock, IPL_TTY);
+	rw_init(&dev_priv->display.backlight.lock, "blight");
 
-	mutex_init(&dev_priv->sb_lock);
+	rw_init(&dev_priv->sb_lock, "sb");
 	cpu_latency_qos_add_request(&dev_priv->sb_qos, PM_QOS_DEFAULT_VALUE);
 
-	mutex_init(&dev_priv->display.audio.mutex);
-	mutex_init(&dev_priv->display.wm.wm_mutex);
-	mutex_init(&dev_priv->display.pps.mutex);
-	mutex_init(&dev_priv->display.hdcp.comp_mutex);
-	spin_lock_init(&dev_priv->display.dkl.phy_lock);
+	rw_init(&dev_priv->display.audio.mutex, "daud");
+	rw_init(&dev_priv->display.wm.wm_mutex, "dwm");
+	rw_init(&dev_priv->display.pps.mutex, "dpps");
+	rw_init(&dev_priv->display.hdcp.comp_mutex, "dhdcp");
+	mtx_init(&dev_priv->display.dkl.phy_lock, IPL_NONE);
 
 	i915_memcpy_init_early(dev_priv);
 	intel_runtime_pm_init_early(&dev_priv->runtime_pm);
@@ -573,7 +584,10 @@ static int i915_pcode_init(struct drm_i915_private *i915)
  */
 static int i915_driver_hw_probe(struct drm_i915_private *dev_priv)
 {
-	struct pci_dev *pdev = to_pci_dev(dev_priv->drm.dev);
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
+	struct pci_dev *pdev = dev_priv->drm.pdev;
 	struct pci_dev *root_pdev;
 	int ret;
 
@@ -709,6 +723,7 @@ err_ggtt:
 err_perf:
 	i915_perf_fini(dev_priv);
 	return ret;
+#endif
 }
 
 /**
@@ -717,7 +732,9 @@ err_perf:
  */
 static void i915_driver_hw_remove(struct drm_i915_private *dev_priv)
 {
-	struct pci_dev *pdev = to_pci_dev(dev_priv->drm.dev);
+	STUB();
+#ifdef notyet
+	struct pci_dev *pdev = dev_priv->drm.pdev;
 	struct pci_dev *root_pdev;
 
 	i915_perf_fini(dev_priv);
@@ -728,6 +745,7 @@ static void i915_driver_hw_remove(struct drm_i915_private *dev_priv)
 	root_pdev = pcie_find_root_port(pdev);
 	if (root_pdev)
 		pci_d3cold_enable(root_pdev);
+#endif
 }
 
 /**
@@ -842,6 +860,8 @@ static void i915_welcome_messages(struct drm_i915_private *dev_priv)
 		drm_info(&dev_priv->drm,
 			 "DRM_I915_DEBUG_RUNTIME_PM enabled\n");
 }
+
+#ifdef __linux__
 
 static struct drm_i915_private *
 i915_driver_create(struct pci_dev *pdev, const struct pci_device_id *ent)
@@ -985,6 +1005,9 @@ out_fini:
 	i915_probe_error(i915, "Device initialization failed (%d)\n", ret);
 	return ret;
 }
+
+#else /* !__linux__ */
+#endif
 
 void i915_driver_remove(struct drm_i915_private *i915)
 {
@@ -1187,7 +1210,7 @@ static int i915_drm_prepare(struct drm_device *dev)
 static int i915_drm_suspend(struct drm_device *dev)
 {
 	struct drm_i915_private *dev_priv = to_i915(dev);
-	struct pci_dev *pdev = to_pci_dev(dev_priv->drm.dev);
+	struct pci_dev *pdev = dev_priv->drm.pdev;
 	pci_power_t opregion_target_state;
 
 	disable_rpm_wakeref_asserts(&dev_priv->runtime_pm);
@@ -1248,7 +1271,7 @@ get_suspend_mode(struct drm_i915_private *dev_priv, bool hibernate)
 static int i915_drm_suspend_late(struct drm_device *dev, bool hibernation)
 {
 	struct drm_i915_private *dev_priv = to_i915(dev);
-	struct pci_dev *pdev = to_pci_dev(dev_priv->drm.dev);
+	struct pci_dev *pdev = dev_priv->drm.pdev;
 	struct intel_runtime_pm *rpm = &dev_priv->runtime_pm;
 	struct intel_gt *gt;
 	int ret, i;
@@ -1297,6 +1320,7 @@ out:
 	return ret;
 }
 
+#ifdef __linux__
 int i915_driver_suspend_switcheroo(struct drm_i915_private *i915,
 				   pm_message_t state)
 {
@@ -1315,6 +1339,7 @@ int i915_driver_suspend_switcheroo(struct drm_i915_private *i915,
 
 	return i915_drm_suspend_late(&i915->drm, false);
 }
+#endif
 
 static int i915_drm_resume(struct drm_device *dev)
 {
@@ -1389,7 +1414,7 @@ static int i915_drm_resume(struct drm_device *dev)
 static int i915_drm_resume_early(struct drm_device *dev)
 {
 	struct drm_i915_private *dev_priv = to_i915(dev);
-	struct pci_dev *pdev = to_pci_dev(dev_priv->drm.dev);
+	struct pci_dev *pdev = dev_priv->drm.pdev;
 	struct intel_gt *gt;
 	int ret, i;
 
@@ -1472,6 +1497,8 @@ int i915_driver_resume_switcheroo(struct drm_i915_private *i915)
 
 	return i915_drm_resume(&i915->drm);
 }
+
+#ifdef __linux__
 
 static int i915_pm_prepare(struct device *kdev)
 {
@@ -1556,8 +1583,12 @@ static int i915_pm_resume(struct device *kdev)
 	 * then we must assume we lost the GGTT page table entries, since
 	 * they are not retained if IRST decided to enter S4.
 	 */
+#ifdef notyet
 	if (!IS_ENABLED(CONFIG_ACPI) || acpi_dev_present(irst_name, NULL, -1))
 		i915_ggtt_mark_pte_lost(i915, true);
+#else
+	STUB();
+#endif
 
 	return i915_drm_resume(&i915->drm);
 }
@@ -1825,6 +1856,8 @@ static const struct file_operations i915_driver_fops = {
 #endif
 };
 
+#endif /* __linux__ */
+
 static int
 i915_gem_reject_pin_ioctl(struct drm_device *dev, void *data,
 			  struct drm_file *file)
@@ -1929,9 +1962,16 @@ static const struct drm_driver i915_drm_driver = {
 	.dumb_create = i915_gem_dumb_create,
 	.dumb_map_offset = i915_gem_dumb_mmap_offset,
 
+#ifdef __OpenBSD__
+	.mmap = i915_gem_mmap,
+	.gem_fault = i915_gem_fault,
+#endif
+
 	.ioctls = i915_ioctls,
 	.num_ioctls = ARRAY_SIZE(i915_ioctls),
+#ifdef __linux__
 	.fops = &i915_driver_fops,
+#endif
 	.name = DRIVER_NAME,
 	.desc = DRIVER_DESC,
 	.date = DRIVER_DATE,

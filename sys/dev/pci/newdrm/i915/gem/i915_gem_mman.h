@@ -35,4 +35,8 @@ void i915_gem_object_release_mmap_gtt(struct drm_i915_gem_object *obj);
 void i915_gem_object_runtime_pm_release_mmap_offset(struct drm_i915_gem_object *obj);
 void i915_gem_object_release_mmap_offset(struct drm_i915_gem_object *obj);
 
+int i915_gem_fault(struct drm_gem_object *gem_obj, struct uvm_faultinfo *ufi,
+		   off_t offset, vaddr_t vaddr, vm_page_t *pps, int npages,
+		   int centeridx, vm_prot_t access_type, int flags);
+
 #endif
