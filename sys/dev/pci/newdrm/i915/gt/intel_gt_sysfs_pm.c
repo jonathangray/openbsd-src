@@ -18,6 +18,8 @@
 #include "intel_rc6.h"
 #include "intel_rps.h"
 
+#ifdef notyet
+
 enum intel_gt_sysfs_op {
 	INTEL_GT_SYSFS_MIN = 0,
 	INTEL_GT_SYSFS_MAX,
@@ -772,8 +774,12 @@ static int intel_sysfs_rps_init(struct intel_gt *gt, struct kobject *kobj,
 	return ret;
 }
 
+#endif /* notyet */
+
 void intel_gt_sysfs_pm_init(struct intel_gt *gt, struct kobject *kobj)
 {
+	STUB();
+#ifdef notyet
 	int ret;
 
 	intel_sysfs_rc6_init(gt, kobj);
@@ -817,4 +823,5 @@ void intel_gt_sysfs_pm_init(struct intel_gt *gt, struct kobject *kobj)
 		drm_warn(&gt->i915->drm,
 			 "failed to add gt%u rps defaults (%pe)\n",
 			 gt->info.id, ERR_PTR(ret));
+#endif
 }
