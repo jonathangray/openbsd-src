@@ -11,6 +11,8 @@
 #include "intel_gt_debugfs.h"
 #include "intel_gt_engines_debugfs.h"
 
+#ifdef notyet
+
 static int engines_show(struct seq_file *m, void *data)
 {
 	struct intel_gt *gt = m->private;
@@ -26,11 +28,15 @@ static int engines_show(struct seq_file *m, void *data)
 }
 DEFINE_INTEL_GT_DEBUGFS_ATTRIBUTE(engines);
 
+#endif
+
 void intel_gt_engines_debugfs_register(struct intel_gt *gt, struct dentry *root)
 {
+#ifdef notyet
 	static const struct intel_gt_debugfs_file files[] = {
 		{ "engines", &engines_fops },
 	};
 
 	intel_gt_debugfs_register_files(root, files, ARRAY_SIZE(files), gt);
+#endif
 }
