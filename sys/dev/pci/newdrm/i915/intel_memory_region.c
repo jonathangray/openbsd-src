@@ -62,6 +62,9 @@ static int iopagetest(struct intel_memory_region *mem,
 		      resource_size_t offset,
 		      const void *caller)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	const u8 val[] = { 0x0, 0xa5, 0xc3, 0xf0 };
 	void __iomem *va;
 	int err;
@@ -87,6 +90,7 @@ static int iopagetest(struct intel_memory_region *mem,
 
 	iounmap(va);
 	return err;
+#endif
 }
 
 static resource_size_t random_page(resource_size_t last)
@@ -298,7 +302,9 @@ void intel_memory_region_destroy(struct intel_memory_region *mem)
 	if (mem->ops->release)
 		ret = mem->ops->release(mem);
 
+#ifdef notyet
 	GEM_WARN_ON(!list_empty_careful(&mem->objects.list));
+#endif
 	mutex_destroy(&mem->objects.lock);
 	if (!ret)
 		kfree(mem);
