@@ -17,6 +17,8 @@
 #include "intel_uc.h"
 #include "i915_drv.h"
 
+#ifdef notyet
+
 /*
  * The Additional Data Struct (ADS) has pointers for different buffers used by
  * the GuC. One single gem object contains the ADS struct itself (guc_ads) and
@@ -903,3 +905,5 @@ struct iosys_map intel_guc_engine_usage_record_map(struct intel_engine_cs *engin
 
 	return IOSYS_MAP_INIT_OFFSET(&guc->ads_map, offset);
 }
+
+#endif /* notyet */
