@@ -7,6 +7,7 @@
 #include <linux/preempt.h>
 #include <linux/bottom_half.h>
 #include <linux/atomic.h>
+#include <linux/lockdep.h>
 
 #define spin_lock_irqsave(_mtxp, _flags) do {			\
 		_flags = 0;					\
