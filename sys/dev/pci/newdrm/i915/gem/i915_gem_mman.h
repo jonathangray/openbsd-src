@@ -13,6 +13,7 @@
 struct drm_device;
 struct drm_file;
 struct drm_i915_gem_object;
+struct drm_gem_object;
 struct file;
 struct i915_mmap_offset;
 struct rwlock;
