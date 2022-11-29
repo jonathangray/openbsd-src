@@ -118,4 +118,15 @@ dma_fence_set_error(struct dma_fence *fence, int error)
 	fence->error = error;
 }
 
+static inline bool
+dma_fence_begin_signalling(void)
+{
+	return true;
+}
+
+static inline void
+dma_fence_end_signalling(bool x)
+{
+}
+
 #endif
