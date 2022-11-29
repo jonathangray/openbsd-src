@@ -824,7 +824,10 @@ static int intel_gt_tile_setup(struct intel_gt *gt, phys_addr_t phys_addr)
 
 int intel_gt_probe_all(struct drm_i915_private *i915)
 {
-	struct pci_dev *pdev = to_pci_dev(i915->drm.dev);
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
+	struct pci_dev *pdev = i915->drm.pdev;
 	struct intel_gt *gt = &i915->gt0;
 	const struct intel_gt_definition *gtdef;
 	phys_addr_t phys_addr;
@@ -908,6 +911,7 @@ err:
 	intel_gt_release_all(i915);
 
 	return ret;
+#endif
 }
 
 int intel_gt_tiles_init(struct drm_i915_private *i915)
@@ -1096,7 +1100,11 @@ void intel_gt_invalidate_tlb(struct intel_gt *gt, u32 seqno)
 
 		mmio_invalidate_full(gt);
 
+#ifdef notyet
 		write_seqcount_invalidate(&gt->tlb.seqno);
+#else
+		STUB();
+#endif
 unlock:
 		mutex_unlock(&gt->tlb.invalidate_lock);
 	}
