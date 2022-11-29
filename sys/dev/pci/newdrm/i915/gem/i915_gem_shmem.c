@@ -35,9 +35,11 @@ static void check_release_pagevec(struct pagevec *pvec)
 void shmem_sg_free_table(struct sg_table *st, struct address_space *mapping,
 			 bool dirty, bool backup)
 {
+	STUB();
+#ifdef notyet
 	struct sgt_iter sgt_iter;
 	struct pagevec pvec;
-	struct page *page;
+	struct vm_page *page;
 
 #ifdef __linux__
 	mapping_clear_unevictable(mapping);
@@ -64,6 +66,7 @@ void shmem_sg_free_table(struct sg_table *st, struct address_space *mapping,
 #endif
 
 	sg_free_table(st);
+#endif
 }
 
 int shmem_sg_alloc_table(struct drm_i915_private *i915, struct sg_table *st,
@@ -71,6 +74,9 @@ int shmem_sg_alloc_table(struct drm_i915_private *i915, struct sg_table *st,
 			 struct address_space *mapping,
 			 unsigned int max_segment)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	const unsigned long page_count = size / PAGE_SIZE;
 	unsigned long i;
 	struct scatterlist *sg;
@@ -221,10 +227,14 @@ err_sg:
 		ret = -ENOMEM;
 
 	return ret;
+#endif
 }
 
 static int shmem_get_pages(struct drm_i915_gem_object *obj)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct drm_i915_private *i915 = to_i915(obj->base.dev);
 	struct intel_memory_region *mem = obj->mm.region;
 	struct address_space *mapping = obj->base.filp->f_mapping;
@@ -232,7 +242,7 @@ static int shmem_get_pages(struct drm_i915_gem_object *obj)
 	unsigned int max_segment = i915_sg_segment_size(i915->drm.dev);
 	struct sg_table *st;
 	struct sgt_iter sgt_iter;
-	struct page *page;
+	struct vm_page *page;
 	int ret;
 
 	/*
@@ -308,6 +318,7 @@ err_st:
 	kfree(st);
 
 	return ret;
+#endif
 }
 
 static int
@@ -355,7 +366,7 @@ void __shmem_writeback(size_t size, struct address_space *mapping)
 
 	/* Begin writeback on each dirty page */
 	for (i = 0; i < size >> PAGE_SHIFT; i++) {
-		struct page *page;
+		struct vm_page *page;
 
 		page = find_lock_page(mapping, i);
 		if (!page)
@@ -434,6 +445,8 @@ __i915_gem_object_release_shmem(struct drm_i915_gem_object *obj,
 
 void i915_gem_object_put_pages_shmem(struct drm_i915_gem_object *obj, struct sg_table *pages)
 {
+	STUB();
+#ifdef notyet
 	__i915_gem_object_release_shmem(obj, pages, true);
 
 	i915_gem_gtt_finish_pages(obj, pages);
@@ -445,6 +458,7 @@ void i915_gem_object_put_pages_shmem(struct drm_i915_gem_object *obj, struct sg_
 			    obj->mm.dirty, obj->mm.madv == I915_MADV_WILLNEED);
 	kfree(pages);
 	obj->mm.dirty = false;
+#endif
 }
 
 static void
@@ -460,6 +474,9 @@ static int
 shmem_pwrite(struct drm_i915_gem_object *obj,
 	     const struct drm_i915_gem_pwrite *arg)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 #ifdef __linux__
 	struct address_space *mapping = obj->base.filp->f_mapping;
 #endif
@@ -548,6 +565,7 @@ shmem_pwrite(struct drm_i915_gem_object *obj,
 	} while (remain);
 
 	return 0;
+#endif
 }
 
 static int
