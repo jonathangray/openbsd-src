@@ -24,6 +24,8 @@
 #include "intel_uncore.h"
 #include "vlv_sideband.h"
 
+#ifdef notyet
+
 void intel_gt_pm_debugfs_forcewake_user_open(struct intel_gt *gt)
 {
 	atomic_inc(&gt->user_wakeref);
@@ -655,8 +657,11 @@ static bool rps_eval(void *data)
 
 DEFINE_INTEL_GT_DEBUGFS_ATTRIBUTE(rps_boost);
 
+#endif /* notyet */
+
 void intel_gt_pm_debugfs_register(struct intel_gt *gt, struct dentry *root)
 {
+#ifdef notyet
 	static const struct intel_gt_debugfs_file files[] = {
 		{ "drpc", &drpc_fops, NULL },
 		{ "frequency", &frequency_fops, NULL },
@@ -667,4 +672,5 @@ void intel_gt_pm_debugfs_register(struct intel_gt *gt, struct dentry *root)
 	};
 
 	intel_gt_debugfs_register_files(root, files, ARRAY_SIZE(files), gt);
+#endif
 }
