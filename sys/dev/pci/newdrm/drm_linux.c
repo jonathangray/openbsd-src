@@ -3039,3 +3039,9 @@ sync_file_create(struct dma_fence *fence)
 	fp->f_data = sf;
 	return sf;
 }
+
+bool
+drm_firmware_drivers_only(void)
+{
+	return false;
+}
