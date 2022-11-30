@@ -590,8 +590,6 @@ static struct intel_engine_cs *find_engine_state(struct intel_gt *gt, u8 engine_
 
 static void guc_init_golden_context(struct intel_guc *guc)
 {
-	STUB();
-#ifdef notyet
 	struct intel_engine_cs *engine;
 	struct intel_gt *gt = guc_to_gt(guc);
 	unsigned long offset;
@@ -600,6 +598,10 @@ static void guc_init_golden_context(struct intel_guc *guc)
 
 	if (!intel_uc_uses_guc_submission(&gt->uc))
 		return;
+
+	STUB();
+	return;
+#ifdef notyet
 
 	GEM_BUG_ON(iosys_map_is_null(&guc->ads_map));
 
