@@ -2489,6 +2489,7 @@ inteldrm_attach(struct device *parent, struct device *self, void *aux)
 	struct pci_attach_args *pa = aux;
 	const struct pci_device_id *id;
 	struct intel_device_info *info, *device_info;
+	struct intel_runtime_info *runtime;
 	extern int vga_console_attached;
 	int mmio_bar, mmio_size, mmio_type;
 	int ret;
@@ -2541,7 +2542,11 @@ inteldrm_attach(struct device *parent, struct device *self, void *aux)
 	/* Setup the write-once "constant" device info */
 	device_info = mkwrite_device_info(dev_priv);
 	memcpy(device_info, info, sizeof(*device_info));
-	RUNTIME_INFO(dev_priv)->device_id = dev->pdev->device;
+
+	/* Initialize initial runtime info from static const data and pdev. */
+	runtime = RUNTIME_INFO(dev_priv);
+	memcpy(runtime, &INTEL_INFO(dev_priv)->__runtime, sizeof(*runtime));
+	runtime->device_id = dev->pdev->device;
 
 	mmio_bar = (GRAPHICS_VER(dev_priv) == 2) ? 0x14 : 0x10;
 	/* Before gen4, the registers and the GTT are behind different BARs.
