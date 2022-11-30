@@ -602,9 +602,6 @@ static int i915_pcode_init(struct drm_i915_private *i915)
  */
 static int i915_driver_hw_probe(struct drm_i915_private *dev_priv)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
 	struct pci_dev *pdev = dev_priv->drm.pdev;
 	struct pci_dev *root_pdev;
 	int ret;
@@ -723,9 +720,13 @@ static int i915_driver_hw_probe(struct drm_i915_private *dev_priv)
 	 * This should be totally removed when we handle the pci states properly
 	 * on runtime PM and on s2idle cases.
 	 */
+#ifdef notyet
 	root_pdev = pcie_find_root_port(pdev);
 	if (root_pdev)
 		pci_d3cold_disable(root_pdev);
+#else
+	STUB();
+#endif
 
 	return 0;
 
@@ -741,7 +742,6 @@ err_ggtt:
 err_perf:
 	i915_perf_fini(dev_priv);
 	return ret;
-#endif
 }
 
 /**
