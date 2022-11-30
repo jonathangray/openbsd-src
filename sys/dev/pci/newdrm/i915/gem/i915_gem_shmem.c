@@ -232,12 +232,11 @@ err_sg:
 
 static int shmem_get_pages(struct drm_i915_gem_object *obj)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
 	struct drm_i915_private *i915 = to_i915(obj->base.dev);
 	struct intel_memory_region *mem = obj->mm.region;
+#ifdef __linux__
 	struct address_space *mapping = obj->base.filp->f_mapping;
+#endif
 	const unsigned long page_count = obj->base.size / PAGE_SIZE;
 	unsigned int max_segment = i915_sg_segment_size(i915->drm.dev);
 	struct sg_table *st;
@@ -258,8 +257,13 @@ rebuild_st:
 	if (!st)
 		return -ENOMEM;
 
+#ifdef __linux__
 	ret = shmem_sg_alloc_table(i915, st, obj->base.size, mem, mapping,
 				   max_segment);
+#else
+	ret = shmem_sg_alloc_table(i915, st, obj->base.size, mem, NULL,
+				   max_segment);
+#endif
 	if (ret)
 		goto err_st;
 
@@ -301,7 +305,11 @@ rebuild_st:
 	return 0;
 
 err_pages:
+#ifdef __linux__
 	shmem_sg_free_table(st, mapping, false, false);
+#else
+	shmem_sg_free_table(st, NULL, false, false);
+#endif
 	/*
 	 * shmemfs first checks if there is enough memory to allocate the page
 	 * and reports ENOSPC should there be insufficient, along with the usual
@@ -318,7 +326,6 @@ err_st:
 	kfree(st);
 
 	return ret;
-#endif
 }
 
 static int
