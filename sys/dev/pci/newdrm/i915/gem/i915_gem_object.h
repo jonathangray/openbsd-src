@@ -624,10 +624,18 @@ bool i915_gem_object_placement_possible(struct drm_i915_gem_object *obj,
 
 bool i915_gem_object_needs_ccs_pages(struct drm_i915_gem_object *obj);
 
+#ifdef __linux__
 int shmem_sg_alloc_table(struct drm_i915_private *i915, struct sg_table *st,
 			 size_t size, struct intel_memory_region *mr,
 			 struct address_space *mapping,
 			 unsigned int max_segment);
+#else
+int shmem_sg_alloc_table(struct drm_i915_private *i915, struct sg_table *st,
+			 size_t size, struct intel_memory_region *mr,
+			 struct address_space *mapping,
+			 unsigned int max_segment,
+			 struct drm_i915_gem_object *obj);
+#endif
 void shmem_sg_free_table(struct sg_table *st, struct address_space *mapping,
 			 bool dirty, bool backup);
 void __shmem_writeback(size_t size, struct address_space *mapping);

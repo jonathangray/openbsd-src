@@ -72,11 +72,9 @@ void shmem_sg_free_table(struct sg_table *st, struct address_space *mapping,
 int shmem_sg_alloc_table(struct drm_i915_private *i915, struct sg_table *st,
 			 size_t size, struct intel_memory_region *mr,
 			 struct address_space *mapping,
-			 unsigned int max_segment)
+			 unsigned int max_segment,
+			 struct drm_i915_gem_object *obj)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
 	const unsigned long page_count = size / PAGE_SIZE;
 	unsigned long i;
 	struct scatterlist *sg;
@@ -84,8 +82,8 @@ int shmem_sg_alloc_table(struct drm_i915_private *i915, struct sg_table *st,
 	unsigned long last_pfn = 0;	/* suppress gcc warning */
 	gfp_t noreclaim;
 	int ret;
+	struct pglist plist;
 
-#ifdef __linux__
 	/*
 	 * If there's no chance of allocating enough pages for the whole
 	 * object, bail early.
@@ -95,6 +93,7 @@ int shmem_sg_alloc_table(struct drm_i915_private *i915, struct sg_table *st,
 
 	if (sg_alloc_table(st, page_count, GFP_KERNEL | __GFP_NOWARN))
 		return -ENOMEM;
+#ifdef __linux__
 
 	/*
 	 * Get the list of pages out of our struct file.  They'll be pinned
@@ -178,7 +177,6 @@ int shmem_sg_alloc_table(struct drm_i915_private *i915, struct sg_table *st,
 #else
 	sg = st->sgl;
 	st->nents = 0;
-	sg_page_sizes = 0;
 
 	TAILQ_INIT(&plist);
 	if (uvm_obj_wire(obj->base.uao, 0, obj->base.size, &plist)) {
@@ -189,10 +187,8 @@ int shmem_sg_alloc_table(struct drm_i915_private *i915, struct sg_table *st,
 
 	i = 0;
 	TAILQ_FOREACH(page, &plist, pageq) {
-		if (i) {
-			sg_page_sizes |= sg->length;
+		if (i)
 			sg = sg_next(sg);
-		}
 		st->nents++;
 		sg_set_page(sg, page, PAGE_SIZE, 0);
 		i++;
@@ -205,6 +201,7 @@ int shmem_sg_alloc_table(struct drm_i915_private *i915, struct sg_table *st,
 	i915_sg_trim(st);
 
 	return 0;
+#ifdef notyet
 err_sg:
 	sg_mark_end(sg);
 	if (sg != st->sgl) {
@@ -262,7 +259,7 @@ rebuild_st:
 				   max_segment);
 #else
 	ret = shmem_sg_alloc_table(i915, st, obj->base.size, mem, NULL,
-				   max_segment);
+				   max_segment, obj);
 #endif
 	if (ret)
 		goto err_st;
