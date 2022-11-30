@@ -20,7 +20,9 @@ struct drm_printer;
 
 extern const struct dev_pm_ops i915_pm_ops;
 
+#ifdef __linux__
 int i915_driver_probe(struct pci_dev *pdev, const struct pci_device_id *ent);
+#endif
 void i915_driver_remove(struct drm_i915_private *i915);
 void i915_driver_shutdown(struct drm_i915_private *i915);
 
