@@ -33,10 +33,9 @@ static void check_release_pagevec(struct pagevec *pvec)
 }
 
 void shmem_sg_free_table(struct sg_table *st, struct address_space *mapping,
-			 bool dirty, bool backup)
+			 bool dirty, bool backup,
+			 struct drm_i915_gem_object *obj)
 {
-	STUB();
-#ifdef notyet
 	struct sgt_iter sgt_iter;
 	struct pagevec pvec;
 	struct vm_page *page;
@@ -66,7 +65,6 @@ void shmem_sg_free_table(struct sg_table *st, struct address_space *mapping,
 #endif
 
 	sg_free_table(st);
-#endif
 }
 
 int shmem_sg_alloc_table(struct drm_i915_private *i915, struct sg_table *st,
@@ -305,7 +303,7 @@ err_pages:
 #ifdef __linux__
 	shmem_sg_free_table(st, mapping, false, false);
 #else
-	shmem_sg_free_table(st, NULL, false, false);
+	shmem_sg_free_table(st, NULL, false, false, obj);
 #endif
 	/*
 	 * shmemfs first checks if there is enough memory to allocate the page
@@ -449,8 +447,6 @@ __i915_gem_object_release_shmem(struct drm_i915_gem_object *obj,
 
 void i915_gem_object_put_pages_shmem(struct drm_i915_gem_object *obj, struct sg_table *pages)
 {
-	STUB();
-#ifdef notyet
 	__i915_gem_object_release_shmem(obj, pages, true);
 
 	i915_gem_gtt_finish_pages(obj, pages);
@@ -458,11 +454,15 @@ void i915_gem_object_put_pages_shmem(struct drm_i915_gem_object *obj, struct sg_
 	if (i915_gem_object_needs_bit17_swizzle(obj))
 		i915_gem_object_save_bit_17_swizzle(obj, pages);
 
+#ifdef __linux__
 	shmem_sg_free_table(pages, file_inode(obj->base.filp)->i_mapping,
 			    obj->mm.dirty, obj->mm.madv == I915_MADV_WILLNEED);
+#else
+	shmem_sg_free_table(pages, NULL,
+			    obj->mm.dirty, obj->mm.madv == I915_MADV_WILLNEED, obj);
+#endif
 	kfree(pages);
 	obj->mm.dirty = false;
-#endif
 }
 
 static void
