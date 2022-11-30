@@ -205,9 +205,6 @@ static int reserve_lowmem_region(struct intel_uncore *uncore,
 
 static struct intel_memory_region *setup_lmem(struct intel_gt *gt)
 {
-	STUB();
-	return ERR_PTR(-ENOSYS);
-#ifdef notyet
 	struct drm_i915_private *i915 = gt->i915;
 	struct intel_uncore *uncore = gt->uncore;
 	struct pci_dev *pdev = i915->drm.pdev;
@@ -221,8 +218,10 @@ static struct intel_memory_region *setup_lmem(struct intel_gt *gt)
 	if (!IS_DGFX(i915))
 		return ERR_PTR(-ENODEV);
 
+#ifdef notyet
 	if (!i915_pci_resource_valid(pdev, GEN12_LMEM_BAR))
 		return ERR_PTR(-ENXIO);
+#endif
 
 	if (HAS_FLAT_CCS(i915)) {
 		resource_size_t lmem_range;
@@ -258,8 +257,21 @@ static struct intel_memory_region *setup_lmem(struct intel_gt *gt)
 				  mul_u32_u32(i915->params.lmem_size, SZ_1M));
 	}
 
+#ifdef __linux__
 	io_start = pci_resource_start(pdev, GEN12_LMEM_BAR);
 	io_size = min(pci_resource_len(pdev, GEN12_LMEM_BAR), lmem_size);
+#else
+	{
+		pcireg_t type;
+		bus_size_t len;
+
+		type = pci_mapreg_type(i915->pc, i915->tag,
+		    0x10 + (4 * GEN12_LMEM_BAR));
+		err = -pci_mapreg_info(i915->pc, i915->tag,
+		    0x10 + (4 * GEN12_LMEM_BAR), type, &io_start, &len, NULL);
+		io_size = min(len, lmem_size);
+	}
+#endif
 	if (!io_size)
 		return ERR_PTR(-EIO);
 
@@ -298,7 +310,6 @@ static struct intel_memory_region *setup_lmem(struct intel_gt *gt)
 err_region_put:
 	intel_memory_region_destroy(mem);
 	return ERR_PTR(err);
-#endif
 }
 
 struct intel_memory_region *intel_gt_setup_lmem(struct intel_gt *gt)
