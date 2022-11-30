@@ -2858,8 +2858,6 @@ inteldrm_firmware_backlight(struct inteldrm_softc *dev_priv,
 void
 inteldrm_init_backlight(struct inteldrm_softc *dev_priv)
 {
-	STUB();
-#ifdef notyet
 	struct drm_device *dev = &dev_priv->drm;
 	struct wsdisplay_param dp;
 
@@ -2868,7 +2866,6 @@ inteldrm_init_backlight(struct inteldrm_softc *dev_priv)
 		inteldrm_firmware_backlight(dev_priv, &dp);
 	else
 		inteldrm_native_backlight(dev_priv);
-#endif
 }
 
 int
