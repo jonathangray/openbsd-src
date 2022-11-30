@@ -31,8 +31,6 @@
 #include "i915_drv.h"
 #include "i915_trace.h"
 
-#ifdef notyet
-
 /**
  * DOC: GuC-based command submission
  *
@@ -1200,6 +1198,8 @@ __extend_last_switch(struct intel_guc *guc, u64 *prev_start, u32 new_start)
 static void __get_engine_usage_record(struct intel_engine_cs *engine,
 				      u32 *last_in, u32 *id, u32 *total)
 {
+	STUB();
+#ifdef notyet
 	struct iosys_map rec_map = intel_guc_engine_usage_record_map(engine);
 	int i = 0;
 
@@ -1213,6 +1213,7 @@ static void __get_engine_usage_record(struct intel_engine_cs *engine,
 		    record_read(&rec_map, total_runtime) == *total)
 			break;
 	} while (++i < 6);
+#endif
 }
 
 static void guc_update_engine_gt_clks(struct intel_engine_cs *engine)
@@ -1978,6 +1979,9 @@ static void guc_submit_request(struct i915_request *rq)
 
 static int new_guc_id(struct intel_guc *guc, struct intel_context *ce)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	int ret;
 
 	GEM_BUG_ON(intel_context_is_child(ce));
@@ -1998,10 +2002,13 @@ static int new_guc_id(struct intel_guc *guc, struct intel_context *ce)
 
 	ce->guc_id.id = ret;
 	return 0;
+#endif
 }
 
 static void __release_guc_id(struct intel_guc *guc, struct intel_context *ce)
 {
+	STUB();
+#ifdef notyet
 	GEM_BUG_ON(intel_context_is_child(ce));
 
 	if (!context_guc_id_invalid(ce)) {
@@ -2018,6 +2025,7 @@ static void __release_guc_id(struct intel_guc *guc, struct intel_context *ce)
 	}
 	if (!list_empty(&ce->guc_id.link))
 		list_del_init(&ce->guc_id.link);
+#endif
 }
 
 static void release_guc_id(struct intel_guc *guc, struct intel_context *ce)
@@ -4225,7 +4233,7 @@ void intel_guc_submission_init_early(struct intel_guc *guc)
 {
 	xa_init_flags(&guc->context_lookup, XA_FLAGS_LOCK_IRQ);
 
-	spin_lock_init(&guc->submission_state.lock);
+	mtx_init(&guc->submission_state.lock, IPL_TTY);
 	INIT_LIST_HEAD(&guc->submission_state.guc_id_list);
 	ida_init(&guc->submission_state.guc_ids);
 	INIT_LIST_HEAD(&guc->submission_state.destroyed_contexts);
@@ -4234,7 +4242,7 @@ void intel_guc_submission_init_early(struct intel_guc *guc)
 	INIT_WORK(&guc->submission_state.reset_fail_worker,
 		  reset_fail_worker_func);
 
-	spin_lock_init(&guc->timestamp.lock);
+	mtx_init(&guc->timestamp.lock, IPL_TTY);
 	INIT_DELAYED_WORK(&guc->timestamp.work, guc_timestamp_ping);
 
 	guc->submission_state.num_guc_ids = GUC_MAX_CONTEXT_ID;
@@ -5169,5 +5177,3 @@ bool intel_guc_virtual_engine_has_heartbeat(const struct intel_engine_cs *ve)
 #include "selftest_guc_multi_lrc.c"
 #include "selftest_guc_hangcheck.c"
 #endif
-
-#endif /* notyet */
