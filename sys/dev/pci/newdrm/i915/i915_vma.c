@@ -1883,9 +1883,6 @@ int _i915_vma_move_to_active(struct i915_vma *vma,
 			     struct dma_fence *fence,
 			     unsigned int flags)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
 	struct drm_i915_gem_object *obj = vma->obj;
 	int err;
 
@@ -1949,7 +1946,6 @@ int _i915_vma_move_to_active(struct i915_vma *vma,
 
 	GEM_BUG_ON(!i915_vma_is_active(vma));
 	return 0;
-#endif
 }
 
 struct dma_fence *__i915_vma_evict(struct i915_vma *vma, bool async)

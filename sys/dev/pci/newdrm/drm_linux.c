@@ -2067,6 +2067,40 @@ dma_fence_array_create(int num_fences, struct dma_fence **fences, u64 context,
 	return dfa;
 }
 
+struct dma_fence *
+dma_fence_array_first(struct dma_fence *f)
+{
+	struct dma_fence_array *dfa;
+
+	if (f == NULL)
+		return NULL;
+
+	if ((dfa = to_dma_fence_array(f)) == NULL)
+		return f;
+
+	if (dfa->num_fences > 0)
+		return dfa->fences[0];
+
+	return NULL;
+}
+
+struct dma_fence *
+dma_fence_array_next(struct dma_fence *f, unsigned int i)
+{
+	struct dma_fence_array *dfa;
+
+	if (f == NULL)
+		return NULL;
+
+	if ((dfa = to_dma_fence_array(f)) == NULL)
+		return NULL;
+
+	if (i < dfa->num_fences)
+		return dfa->fences[i];
+
+	return NULL;
+}
+
 const struct dma_fence_ops dma_fence_array_ops = {
 	.get_driver_name = dma_fence_array_get_driver_name,
 	.get_timeline_name = dma_fence_array_get_timeline_name,
