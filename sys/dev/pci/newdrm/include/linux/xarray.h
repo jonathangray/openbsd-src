@@ -32,6 +32,7 @@ struct xarray {
 void xa_init_flags(struct xarray *, gfp_t);
 void xa_destroy(struct xarray *);
 int __xa_alloc(struct xarray *, u32 *, void *, int, gfp_t);
+int __xa_alloc_cyclic(struct xarray *, u32 *, void *, int, u32 *, gfp_t);
 void *__xa_load(struct xarray *, unsigned long);
 void *__xa_store(struct xarray *, unsigned long, void *, gfp_t);
 void *__xa_erase(struct xarray *, unsigned long);

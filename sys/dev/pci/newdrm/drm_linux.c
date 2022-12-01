@@ -957,6 +957,7 @@ xa_destroy(struct xarray *xa)
 	}
 }
 
+/* Don't wrap ids. */
 int
 __xa_alloc(struct xarray *xa, u32 *id, void *entry, int limit, gfp_t gfp)
 {
@@ -993,6 +994,20 @@ __xa_alloc(struct xarray *xa, u32 *id, void *entry, int limit, gfp_t gfp)
 	xid->ptr = entry;
 	*id = xid->id;
 	return 0;
+}
+
+/*
+ * Wrap ids and store next id.
+ * We walk the entire tree so don't special case wrapping.
+ * The only caller of this (i915_drm_client.c) doesn't use next id.
+ */
+int
+__xa_alloc_cyclic(struct xarray *xa, u32 *id, void *entry, int limit, u32 *next,
+    gfp_t gfp)
+{
+	int r = __xa_alloc(xa, id, entry, limit, gfp);
+	*next = *id + 1;
+	return r;
 }
 
 void *

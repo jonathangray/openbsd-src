@@ -37,14 +37,8 @@ struct i915_drm_client *i915_drm_client_add(struct i915_drm_clients *clients)
 		return ERR_PTR(-ENOMEM);
 
 	xa_lock_irq(xa);
-#ifdef notyet
 	ret = __xa_alloc_cyclic(xa, &client->id, client, xa_limit_32b,
 				&clients->next_id, GFP_KERNEL);
-#else
-	STUB();
-	ret = __xa_alloc(xa, &client->id, client, xa_limit_32b, GFP_KERNEL);
-	clients->next_id = client->id + 1;
-#endif
 	xa_unlock_irq(xa);
 	if (ret < 0)
 		goto err;
