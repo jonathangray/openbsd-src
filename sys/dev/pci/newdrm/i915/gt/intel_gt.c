@@ -1200,7 +1200,8 @@ void intel_gt_invalidate_tlb(struct intel_gt *gt, u32 seqno)
 #ifdef notyet
 		write_seqcount_invalidate(&gt->tlb.seqno);
 #else
-		STUB();
+		barrier();
+		gt->tlb.seqno.seq.sequence += 2;
 #endif
 unlock:
 		mutex_unlock(&gt->tlb.invalidate_lock);
