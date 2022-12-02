@@ -190,4 +190,15 @@ static const struct pci_matchid amdgpu_devices[] = {
 	{0x1002, 0x7423 },
 	{0x1002, 0x7424 },
 	{0x1002, 0x743F },
+
+	/* gfx1036 / GC 10.3.6 APU Ryzen 7000 "Raphael" */
+	{0x1002, 0x164e },
+
+	/* gfx1037 / GC 10.3.7 APU Ryzen 7020 "Mendocino" */
+	{0x1002, 0x1506 },
+
+	/* gfx1100 dGPU */
+	/* gfx1101 dGPU */
+	/* gfx1102 dGPU */
+	/* gfx1103 APU */
 };
