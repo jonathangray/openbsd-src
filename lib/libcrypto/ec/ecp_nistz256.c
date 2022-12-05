@@ -1,4 +1,4 @@
-/*	$OpenBSD: ecp_nistz256.c,v 1.12 2022/11/19 07:00:57 tb Exp $	*/
+/*	$OpenBSD: ecp_nistz256.c,v 1.14 2022/11/26 16:08:52 tb Exp $	*/
 /* Copyright (c) 2014, Intel Corporation.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
@@ -46,7 +46,7 @@
 #include <openssl/ec.h>
 #include <openssl/err.h>
 
-#include "ec_lcl.h"
+#include "ec_local.h"
 
 #if BN_BITS2 != 64
 #define	TOBN(hi,lo)	lo,hi
@@ -310,7 +310,7 @@ is_one(const BIGNUM *z)
 static int
 ecp_nistz256_set_words(BIGNUM *a, BN_ULONG words[P256_LIMBS])
 {
-	if (bn_wexpand(a, P256_LIMBS) == NULL) {
+	if (!bn_wexpand(a, P256_LIMBS)) {
 		ECerror(ERR_R_MALLOC_FAILURE);
 		return 0;
 	}

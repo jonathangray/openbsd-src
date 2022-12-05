@@ -1,4 +1,4 @@
-/*	$OpenBSD: aplsmc.c,v 1.18 2022/11/14 11:11:17 kettenis Exp $	*/
+/*	$OpenBSD: aplsmc.c,v 1.20 2022/11/26 17:23:15 tobhe Exp $	*/
 /*
  * Copyright (c) 2021 Mark Kettenis <kettenis@openbsd.org>
  *
@@ -36,6 +36,9 @@
 #include <arm64/dev/rtkit.h>
 
 #include "apm.h"
+
+extern int lid_action;
+extern void (*simplefb_burn_hook)(u_int);
 
 extern void (*cpuresetfn)(void);
 extern void (*powerdownfn)(void);
@@ -95,6 +98,10 @@ struct aplsmc_sensor {
 #define SMC_PWRBTN_SHORT	0x01
 #define SMC_PWRBTN_TOUCHID	0x06
 #define SMC_PWRBTN_LONG		0xfe
+
+/* Lid events */
+#define SMC_LID_OPEN		0x00
+#define SMC_LID_CLOSE		0x01
 
 #define APLSMC_BE		(1 << 0)
 #define APLSMC_HIDDEN		(1 << 1)
@@ -372,7 +379,28 @@ aplsmc_handle_notification(struct aplsmc_softc *sc, uint64_t data)
 		}
 		break;
 	case SMC_EV_TYPE_LID:
-		/* XXX Handle lid events. */
+		switch (SMC_EV_SUBTYPE(data)) {
+		case SMC_LID_OPEN:
+			if (simplefb_burn_hook)
+				simplefb_burn_hook(1);
+			break;
+		case SMC_LID_CLOSE:
+			if (simplefb_burn_hook)
+				simplefb_burn_hook(0);
+			break;
+		default:
+			printf("%s: SMV_EV_TYPE_LID 0x%016llx\n",
+			       sc->sc_dev.dv_xname, data);
+			break;
+		}
+		switch (lid_action) {
+		case 1: 
+			/* XXX: suspend */
+			break;
+		case 2:
+			/* XXX: hibernate */
+			break;
+		}
 		break;
 	default:
 #ifdef APLSMC_DEBUG

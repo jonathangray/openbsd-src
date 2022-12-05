@@ -1,4 +1,4 @@
-/*	$OpenBSD: constraints.c,v 1.13 2022/11/11 12:02:34 beck Exp $	*/
+/*	$OpenBSD: constraints.c,v 1.15 2022/11/28 07:24:03 tb Exp $	*/
 /*
  * Copyright (c) 2020 Bob Beck <beck@openbsd.org>
  *
@@ -254,9 +254,9 @@ test_invalid_hostnames(void)
 {
 	int i, failure = 0;
 	char *nulhost = "www.openbsd.org\0";
+	CBS cbs;
 
 	for (i = 0; invalid_hostnames[i] != NULL; i++) {
-		CBS cbs;
 		CBS_init(&cbs, invalid_hostnames[i],
 		    strlen(invalid_hostnames[i]));
 		if (x509_constraints_valid_host(&cbs)) {
@@ -266,7 +266,6 @@ test_invalid_hostnames(void)
 			goto done;
 		}
 	}
-	CBS cbs;
 	CBS_init(&cbs, nulhost, strlen(nulhost) + 1);
 	if (x509_constraints_valid_host(&cbs)) {
 		FAIL("hostname with NUL byte accepted\n");
@@ -467,6 +466,8 @@ test_constraints1(void)
 			char *hostpart = NULL;
 			error = 0;
 			if (!x509_constraints_uri_host(noauthority[j],
+			    strlen(noauthority[j]), NULL) ||
+			    !x509_constraints_uri_host(noauthority[j],
 			    strlen(noauthority[j]), &hostpart)) {
 				FAIL("name '%s' should parse as a URI",
 				    noauthority[j]);

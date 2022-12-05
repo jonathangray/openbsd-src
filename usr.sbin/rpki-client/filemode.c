@@ -1,4 +1,4 @@
-/*	$OpenBSD: filemode.c,v 1.16 2022/11/04 17:39:36 job Exp $ */
+/*	$OpenBSD: filemode.c,v 1.18 2022/11/29 10:33:09 claudio Exp $ */
 /*
  * Copyright (c) 2019 Claudio Jeker <claudio@openbsd.org>
  * Copyright (c) 2019 Kristaps Dzonsons <kristaps@bsd.lv>
@@ -141,6 +141,7 @@ parse_load_certchain(char *uri)
 	struct cert *cert;
 	struct crl *crl;
 	struct auth *a;
+	const char *errstr;
 	int i;
 
 	for (i = 0; i < MAX_CERT_DEPTH; i++) {
@@ -171,9 +172,12 @@ parse_load_certchain(char *uri)
 		uri = filestack[i];
 
 		crl = crl_get(&crlt, a);
-		if (!valid_x509(uri, ctx, cert->x509, a, crl, 0) ||
-		    !valid_cert(uri, a, cert))
+		if (!valid_x509(uri, ctx, cert->x509, a, crl, &errstr) ||
+		    !valid_cert(uri, a, cert)) {
+			if (errstr != NULL)
+				warnx("%s: %s", uri, errstr);
 			goto fail;
+		}
 		cert->talid = a->cert->talid;
 		a = auth_insert(&auths, cert, a);
 		stack[i] = NULL;
@@ -270,6 +274,7 @@ proc_parser_file(char *file, unsigned char *buf, size_t len)
 	struct rsc *rsc = NULL;
 	struct aspa *aspa = NULL;
 	struct tak *tak = NULL;
+	struct geofeed *geofeed = NULL;
 	char *aia = NULL, *aki = NULL;
 	char filehash[SHA256_DIGEST_LENGTH];
 	char *hash;
@@ -385,6 +390,14 @@ proc_parser_file(char *file, unsigned char *buf, size_t len)
 		aia = tak->aia;
 		aki = tak->aki;
 		break;
+	case RTYPE_GEOFEED:
+		geofeed = geofeed_parse(&x509, file, buf, len);
+		if (geofeed == NULL)
+			break;
+		geofeed_print(x509, geofeed);
+		aia = geofeed->aia;
+		aki = geofeed->aki;
+		break;
 	default:
 		printf("%s: unsupported file type\n", file);
 		break;
@@ -398,6 +411,7 @@ proc_parser_file(char *file, unsigned char *buf, size_t len)
 	if (aia != NULL) {
 		struct auth *a;
 		struct crl *c;
+		const char *errstr;
 		char *crl_uri;
 		int status;
 
@@ -409,7 +423,7 @@ proc_parser_file(char *file, unsigned char *buf, size_t len)
 		a = auth_find(&auths, aki);
 		c = crl_get(&crlt, a);
 
-		if ((status = valid_x509(file, ctx, x509, a, c, 0))) {
+		if ((status = valid_x509(file, ctx, x509, a, c, &errstr))) {
 			switch (type) {
 			case RTYPE_ROA:
 				status = roa->valid;
@@ -420,14 +434,20 @@ proc_parser_file(char *file, unsigned char *buf, size_t len)
 			case RTYPE_ASPA:
 				status = aspa->valid;
 				break;
+			case RTYPE_GEOFEED:
+				status = geofeed->valid;
+				break;
 			default:
 				break;
 			}
 		}
 		if (status)
 			printf("OK");
-		else
+		else {
 			printf("Failed");
+			if (errstr != NULL)
+				printf(", %s", errstr);
+		}
 	} else if (is_ta) {
 		if ((tal = find_tal(cert)) != NULL) {
 			cert = ta_parse(file, cert, tal->pkey, tal->pkeysz);
@@ -479,6 +499,7 @@ proc_parser_file(char *file, unsigned char *buf, size_t len)
 	rsc_free(rsc);
 	aspa_free(aspa);
 	tak_free(tak);
+	geofeed_free(geofeed);
 }
 
 /*

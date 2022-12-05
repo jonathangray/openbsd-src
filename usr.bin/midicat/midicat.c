@@ -1,3 +1,4 @@
+/*	$OpenBSD: midicat.c,v 1.7 2022/12/02 22:36:34 cheloha Exp $	*/
 /*
  * Copyright (c) 2015 Alexandre Ratchov <alex@caoua.org>
  *
@@ -21,8 +22,7 @@
 #include <unistd.h>
 #include <string.h>
 
-char usagestr[] = "usage: midicat [-d] [-i in-file] [-o out-file] "
-	"[-q in-port] [-q out-port]\n";
+void __dead usage(void);
 
 int
 main(int argc, char **argv)
@@ -49,10 +49,8 @@ main(int argc, char **argv)
 				port0 = optarg;
 			else if (port1 == NULL)
 				port1 = optarg;
-			else {
-				fputs("too many -q options\n", stderr);
-				return 1;
-			}
+			else
+				errx(1, "too many -q options");
 			break;
 		case 'i':
 			ifile = optarg;
@@ -61,32 +59,26 @@ main(int argc, char **argv)
 			ofile = optarg;
 			break;
 		default:
-			goto bad_usage;
+			usage();
 		}
 	}
 	argc -= optind;
 	argv += optind;
-	if (argc != 0) {
-	bad_usage:
-		fputs(usagestr, stderr);
-		return 1;
-	}
+
+	if (argc != 0)
+		usage();
 
 	/* we don't support more than one data flow */
-	if (ifile != NULL && ofile != NULL) {
-		fputs("-i and -o are exclusive\n", stderr);
-		return 1;
-	}
+	if (ifile != NULL && ofile != NULL)
+		errx(1, "-i and -o are exclusive");
 
 	/* second port makes sense only for port-to-port transfers */
-	if (port1 != NULL && !(ifile == NULL && ofile == NULL)) {
-		fputs("too many -q options\n", stderr);
-		return 1;
-	}
+	if (port1 != NULL && !(ifile == NULL && ofile == NULL))
+		errx(1, "too many -q options");
 
 	/* if there're neither files nor ports, then we've nothing to do */
 	if (port0 == NULL && ifile == NULL && ofile == NULL)
-		goto bad_usage;
+		usage();
 
 	/* if no port specified, use default one */
 	if (port0 == NULL)
@@ -94,24 +86,22 @@ main(int argc, char **argv)
 
 	/* open input or output file (if any) */
 	if (ifile) {
-		if (strcmp(ifile, "-") == 0)
+		if (strcmp(ifile, "-") == 0) {
+			ifile = "stdin";
 			ifd = STDIN_FILENO;
-		else {
+		} else {
 			ifd = open(ifile, O_RDONLY);
-			if (ifd == -1) {
-				perror(ifile);
-				return 1;
-			}
+			if (ifd == -1)
+				err(1, "%s", ifile);
 		}
 	} else if (ofile) {
-		if (strcmp(ofile, "-") == 0)
+		if (strcmp(ofile, "-") == 0) {
+			ofile = "stdout";
 			ofd = STDOUT_FILENO;
-		else {
+		} else {
 			ofd = open(ofile, O_WRONLY | O_CREAT | O_TRUNC, 0666);
-			if (ofd == -1) {
-				perror(ofile);
-				return 1;
-			}
+			if (ofd == -1)
+				err(1, "%s", ofile);
 		}
 	}
 
@@ -125,20 +115,16 @@ main(int argc, char **argv)
 	else
 		mode = MIO_IN;
 	ih = mio_open(port0, mode, 0);
-	if (ih == NULL) {
-		fprintf(stderr, "%s: couldn't open port\n", port0);
-		return 1;
-	}
+	if (ih == NULL)
+		errx(1, "%s: couldn't open port", port0);
 
 	/* open second port, output only */
 	if (port1 == NULL)
 		oh = ih;
 	else {
 		oh = mio_open(port1, MIO_OUT, 0);
-		if (oh == NULL) {
-			fprintf(stderr, "%s: couldn't open port\n", port1);
-			exit(1);
-		}
+		if (oh == NULL)
+			errx(1, "%s: couldn't open port", port1);
 	}
 
 	if (pledge("stdio", NULL) == -1)
@@ -151,26 +137,26 @@ main(int argc, char **argv)
 			if (len == 0)
 				break;
 			if (len == -1) {
-				perror("stdin");
+				warn("%s", ifile);
 				break;
 			}
 		} else {
 			len = mio_read(ih, buf, sizeof(buf));
 			if (len == 0) {
-				fprintf(stderr, "%s: disconnected\n", port0);
+				warnx("%s: disconnected", port0);
 				break;
 			}
 		}
 		if (ofile != NULL) {
 			n = write(ofd, buf, len);
 			if (n != len) {
-				fprintf(stderr, "%s: short write\n", ofile);
+				warn("%s: short write", ofile);
 				break;
 			}
 		} else {
 			n = mio_write(oh, buf, len);
 			if (n != len) {
-				fprintf(stderr, "%s: disconnected\n", port1);
+				warnx("%s: disconnected", port1);
 				break;
 			}
 		}
@@ -193,4 +179,12 @@ main(int argc, char **argv)
 	if (ofile)
 		close(ofd);
 	return 0;
+}
+
+void __dead
+usage(void)
+{
+	fprintf(stderr, "usage: midicat [-d] [-i in-file] [-o out-file] "
+	    "[-q in-port] [-q out-port]\n");
+	exit(1);
 }

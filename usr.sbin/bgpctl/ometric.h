@@ -1,4 +1,4 @@
-/*	$OpenBSD: ometric.h,v 1.1 2022/10/17 12:01:19 claudio Exp $ */
+/*	$OpenBSD: ometric.h,v 1.3 2022/12/01 09:14:40 claudio Exp $ */
 
 /*
  * Copyright (c) 2022 Claudio Jeker <claudio@openbsd.org>
@@ -36,14 +36,14 @@ void		 ometric_free_all(void);
 struct olabels	*olabels_new(const char * const *, const char **);
 void		 olabels_free(struct olabels *);
 
-void		 ometric_output_all(void);
+int		 ometric_output_all(FILE *);
 
-/* XXX how to pass attributes */
 /* functions to set gauge and counter metrics */
 void	ometric_set_int(struct ometric *, uint64_t, struct olabels *);
 void	ometric_set_float(struct ometric *, double, struct olabels *);
 void	ometric_set_info(struct ometric *, const char **, const char **,
 	    struct olabels *); 
 void	ometric_set_state(struct ometric *, const char *, struct olabels *); 
-void	ometric_set_int_with_label(struct ometric *, uint64_t, const char *,
-	    const char *, struct olabels *);
+void	ometric_set_int_with_labels(struct ometric *, uint64_t, const char **,
+	    const char **, struct olabels *);
+#define OKV(...)		(const char *[]){ __VA_ARGS__, NULL }

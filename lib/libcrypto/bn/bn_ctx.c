@@ -1,4 +1,4 @@
-/* $OpenBSD: bn_ctx.c,v 1.16 2019/08/20 10:59:09 schwarze Exp $ */
+/* $OpenBSD: bn_ctx.c,v 1.19 2022/11/30 01:47:19 jsing Exp $ */
 /* Written by Ulf Moeller for the OpenSSL project. */
 /* ====================================================================
  * Copyright (c) 1998-2004 The OpenSSL Project.  All rights reserved.
@@ -54,12 +54,6 @@
  *
  */
 
-#if !defined(BN_CTX_DEBUG) && !defined(BN_DEBUG)
-#ifndef NDEBUG
-#define NDEBUG
-#endif
-#endif
-
 #include <stdio.h>
 #include <string.h>
 
@@ -67,7 +61,7 @@
 
 #include <openssl/err.h>
 
-#include "bn_lcl.h"
+#include "bn_local.h"
 
 /* TODO list
  *
@@ -471,7 +465,6 @@ BN_POOL_release(BN_POOL *p, unsigned int num)
 
 	p->used -= num;
 	while (num--) {
-		bn_check_top(p->current->vals + offset);
 		if (!offset) {
 			offset = BN_CTX_POOL_SIZE - 1;
 			p->current = p->current->prev;

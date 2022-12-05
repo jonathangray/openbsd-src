@@ -1,4 +1,4 @@
-/*	$OpenBSD: mft.c,v 1.78 2022/11/07 16:23:32 job Exp $ */
+/*	$OpenBSD: mft.c,v 1.82 2022/12/01 10:24:28 claudio Exp $ */
 /*
  * Copyright (c) 2022 Theo Buehler <tb@openbsd.org>
  * Copyright (c) 2019 Kristaps Dzonsons <kristaps@bsd.lv>
@@ -17,10 +17,8 @@
  */
 
 #include <assert.h>
-#include <ctype.h>
 #include <err.h>
 #include <limits.h>
-#include <stdarg.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -170,6 +168,8 @@ rtype_from_file_extension(const char *fn)
 		return RTYPE_ASPA;
 	if (strcasecmp(fn + sz - 4, ".tak") == 0)
 		return RTYPE_TAK;
+	if (strcasecmp(fn + sz - 4, ".csv") == 0)
+		return RTYPE_GEOFEED;
 
 	return RTYPE_INVALID;
 }
@@ -195,8 +195,9 @@ valid_mft_filename(const char *fn, size_t len)
 }
 
 /*
- * Check that the file is an CER, CRL, GBR or a ROA.
- * Returns corresponding rtype or RTYPE_INVALID on error.
+ * Check that the file is allowed to be part of a manifest and the parser
+ * for this type is implemented in rpki-client.
+ * Returns corresponding rtype or RTYPE_INVALID to mark the file as unknown.
  */
 static enum rtype
 rtype_from_mftfile(const char *fn)

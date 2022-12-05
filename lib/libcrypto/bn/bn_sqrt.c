@@ -1,4 +1,4 @@
-/* $OpenBSD: bn_sqrt.c,v 1.12 2022/11/19 12:25:23 tb Exp $ */
+/* $OpenBSD: bn_sqrt.c,v 1.14 2022/11/26 16:08:51 tb Exp $ */
 /* Written by Lenka Fibikova <fibikova@exp-math.uni-essen.de>
  * and Bodo Moeller for the OpenSSL project. */
 /* ====================================================================
@@ -57,7 +57,7 @@
 
 #include <openssl/err.h>
 
-#include "bn_lcl.h"
+#include "bn_local.h"
 
 /*
  * Returns 'ret' such that ret^2 == a (mod p), if it exists, using the
@@ -87,7 +87,6 @@ BN_mod_sqrt(BIGNUM *in, const BIGNUM *a, const BIGNUM *p, BN_CTX *ctx)
 					BN_free(ret);
 				return NULL;
 			}
-			bn_check_top(ret);
 			return ret;
 		}
 
@@ -105,7 +104,6 @@ BN_mod_sqrt(BIGNUM *in, const BIGNUM *a, const BIGNUM *p, BN_CTX *ctx)
 				BN_free(ret);
 			return NULL;
 		}
-		bn_check_top(ret);
 		return ret;
 	}
 
@@ -407,6 +405,5 @@ end:
 		ret = NULL;
 	}
 	BN_CTX_end(ctx);
-	bn_check_top(ret);
 	return ret;
 }

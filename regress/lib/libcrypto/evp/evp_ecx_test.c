@@ -1,4 +1,4 @@
-/*	$OpenBSD: evp_ecx_test.c,v 1.1 2022/11/10 16:38:57 jsing Exp $ */
+/*	$OpenBSD: evp_ecx_test.c,v 1.4 2022/11/23 22:52:25 tb Exp $ */
 /*
  * Copyright (c) 2022 Joel Sing <jsing@openbsd.org>
  *
@@ -337,7 +337,7 @@ ecx_ed25519_raw_key_test(void)
 		goto failure;
 	}
 
-	BIO_reset(bio);
+	(void)BIO_reset(bio);
 	if (!PEM_write_bio_PUBKEY(bio, pkey)) {
 		fprintf(stderr, "FAIL: failed to write ED25519 public to PEM\n");
 		goto failure;
@@ -361,7 +361,7 @@ ecx_ed25519_raw_key_test(void)
 		fprintf(stderr, "FAIL: PKEY from raw public key failed");
 		goto failure;
 	}
-	BIO_reset(bio);
+	(void)BIO_reset(bio);
 	if (!PEM_write_bio_PUBKEY(bio, pkey)) {
 		fprintf(stderr, "FAIL: failed to write ED25519 public to PEM\n");
 		goto failure;
@@ -440,6 +440,7 @@ ecx_ed25519_sign_test(void)
 
  failure:
 	BIO_free(bio);
+	EVP_MD_CTX_free(md_ctx);
 	EVP_PKEY_free(pkey);
 	free(signature);
 
@@ -480,6 +481,7 @@ ecx_ed25519_verify_test(void)
 
  failure:
 	BIO_free(bio);
+	EVP_MD_CTX_free(md_ctx);
 	EVP_PKEY_free(pkey);
 
 	return failed;
@@ -723,7 +725,7 @@ ecx_x25519_raw_key_test(void)
 	if (pub_key_len != sizeof(x25519_raw_pub_key_1)) {
 		fprintf(stderr, "FAIL: raw public key length differs "
 		    "(%zu != %zu)\n", pub_key_len,
-		    sizeof(x25519_raw_pub_key_2));
+		    sizeof(x25519_raw_pub_key_1));
 		goto failure;
 	}
 	if ((pub_key = malloc(pub_key_len)) == NULL)
@@ -737,7 +739,7 @@ ecx_x25519_raw_key_test(void)
 		fprintf(stderr, "Got:\n");
 		hexdump(pub_key, pub_key_len);
 		fprintf(stderr, "Want:\n");
-		hexdump(x25519_raw_pub_key_2, sizeof(x25519_raw_pub_key_2));
+		hexdump(x25519_raw_pub_key_1, sizeof(x25519_raw_pub_key_1));
 		goto failure;
 	}
 
@@ -767,7 +769,7 @@ ecx_x25519_raw_key_test(void)
 		goto failure;
 	}
 
-	BIO_reset(bio);
+	(void)BIO_reset(bio);
 	if (!PEM_write_bio_PUBKEY(bio, pkey)) {
 		fprintf(stderr, "FAIL: failed to write X25519 public to PEM\n");
 		goto failure;
@@ -789,7 +791,7 @@ ecx_x25519_raw_key_test(void)
 		fprintf(stderr, "FAIL: PKEY from raw public key failed");
 		goto failure;
 	}
-	BIO_reset(bio);
+	(void)BIO_reset(bio);
 	if (!PEM_write_bio_PUBKEY(bio, pkey)) {
 		fprintf(stderr, "FAIL: failed to write X25519 public to PEM\n");
 		goto failure;

@@ -1,4 +1,4 @@
-/*	$OpenBSD: ometric.c,v 1.2 2022/11/01 13:35:09 claudio Exp $ */
+/*	$OpenBSD: ometric.c,v 1.4 2022/12/01 09:14:40 claudio Exp $ */
 
 /*
  * Copyright (c) 2022 Claudio Jeker <claudio@openbsd.org>
@@ -209,14 +209,9 @@ olabels_free(struct olabels *ol)
  * value needs to be freed with olabels_free().
  */
 static struct olabels *
-olabels_add_extra(struct olabels *ol, const char *key, const char *value)
+olabels_add_extras(struct olabels *ol, const char **keys, const char **values)
 {
-	const char *keys[2] = { key, NULL };
-	const char *values[2] = { value, NULL };
 	struct olabels *new;
-
-	if (value == NULL || *value == '\0')
-		return ol;
 
 	new = olabels_new(keys, values);
 	new->next = olabels_ref(ol);
@@ -246,66 +241,77 @@ ometric_type(enum ometric_type type)
 	}
 }
 
-static void
-ometric_output_labels(const struct olabels *ol)
+static int
+ometric_output_labels(FILE *out, const struct olabels *ol)
 {
 	struct olabel *l;
 	const char *comma = "";
 
-	if (ol == NULL) {
-		printf(" ");
-		return;
-	}
+	if (ol == NULL)
+		return fprintf(out, " ");
 
-	printf("{");
+	if (fprintf(out, "{") < 0)
+		return -1;
 
 	while (ol != NULL) {
 		STAILQ_FOREACH(l, &ol->labels, entry) {
-			printf("%s%s=\"%s\"", comma, l->key, l->value);
+			if (fprintf(out, "%s%s=\"%s\"", comma, l->key,
+			    l->value) < 0)
+				return -1;
 			comma = ",";
 		}
 		ol = ol->next;
 	}
 
-	printf("} ");
+	return fprintf(out, "} ");
 }
 
-static void
-ometric_output_value(const struct ovalue *ov)
+static int
+ometric_output_value(FILE *out, const struct ovalue *ov)
 {
 	switch (ov->valtype) {
 	case OVT_INTEGER:
-		printf("%llu", ov->value.i);
-		return;
+		return fprintf(out, "%llu", ov->value.i);
 	case OVT_DOUBLE:
-		printf("%g", ov->value.f);
-		return;
+		return fprintf(out, "%g", ov->value.f);
 	}
+	return -1;
 }
 
 /*
  * Output all metric values with TYPE and optional HELP strings.
  */
-void
-ometric_output_all(void)
+int
+ometric_output_all(FILE *out)
 {
 	struct ometric *om;
 	struct ovalue *ov;
 
 	STAILQ_FOREACH(om, &ometrics, entry) {
 		if (om->help)
-			printf("# HELP %s %s\n", om->name, om->help);
-		printf("# TYPE %s %s\n", om->name, ometric_type(om->type));
+			if (fprintf(out, "# HELP %s %s\n", om->name,
+			    om->help) < 0)
+				return -1;
+
+		if (fprintf(out, "# TYPE %s %s\n", om->name,
+		    ometric_type(om->type)) < 0)
+			return -1;
 
 		STAILQ_FOREACH(ov, &om->vals, entry) {
-			printf("%s", om->name);
-			ometric_output_labels(ov->labels);
-			ometric_output_value(ov);
-			printf("\n");
+			if (fprintf(out, "%s", om->name) < 0)
+				return -1;
+			if (ometric_output_labels(out, ov->labels) < 0)
+				return -1;
+			if (ometric_output_value(out, ov) < 0)
+				return -1;
+			if (fprintf(out, "\n") < 0)
+				return -1;
 		}
 	}
 
-	printf("# EOF\n");
+	if (fprintf(out, "# EOF\n") < 0)
+		return -1;
+	return 0;
 }
 
 /*
@@ -371,10 +377,8 @@ ometric_set_info(struct ometric *om, const char **keys, const char **values,
 	if (om->type != OMT_INFO)
 		errx(1, "%s incorrect ometric type", __func__);
 
-	if (keys != NULL) {
-		extra = olabels_new(keys, values);
-		extra->next = olabels_ref(ol);
-	}
+	if (keys != NULL)
+		extra = olabels_add_extras(ol, keys, values);
 
 	ometric_set_int_value(om, 1, extra != NULL ? extra : ol);
 	olabels_free(extra);
@@ -386,7 +390,6 @@ ometric_set_info(struct ometric *om, const char **keys, const char **values,
 void
 ometric_set_state(struct ometric *om, const char *state, struct olabels *ol)
 {
-	struct olabels *extra;
 	size_t i;
 	int val;
 
@@ -399,9 +402,8 @@ ometric_set_state(struct ometric *om, const char *state, struct olabels *ol)
 		else
 			val = 0;
 
-		extra = olabels_add_extra(ol, om->name, om->stateset[i]);
-		ometric_set_int_value(om, val, extra);
-		olabels_free(extra);
+		ometric_set_int_with_labels(om, val, OKV(om->name),
+		    OKV(om->stateset[i]), ol);
 	}
 }
 
@@ -410,12 +412,12 @@ ometric_set_state(struct ometric *om, const char *state, struct olabels *ol)
  * the value is copied into the extra label.
  */
 void
-ometric_set_int_with_label(struct ometric *om, uint64_t val, const char *key,
-    const char *value, struct olabels *ol)
+ometric_set_int_with_labels(struct ometric *om, uint64_t val,
+    const char **keys, const char **values, struct olabels *ol)
 {
 	struct olabels *extra;
 
-	extra = olabels_add_extra(ol, key, value);
+	extra = olabels_add_extras(ol, keys, values);
 	ometric_set_int(om, val, extra);
 	olabels_free(extra);
 }

@@ -1,4 +1,4 @@
-/* $OpenBSD: bn_mpi.c,v 1.9 2022/11/09 01:05:45 tobhe Exp $ */
+/* $OpenBSD: bn_mpi.c,v 1.11 2022/11/26 16:08:51 tb Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -60,7 +60,7 @@
 
 #include <openssl/err.h>
 
-#include "bn_lcl.h"
+#include "bn_local.h"
 
 int
 BN_bn2mpi(const BIGNUM *a, unsigned char *d)
@@ -131,6 +131,5 @@ BN_mpi2bn(const unsigned char *d, int n, BIGNUM *ain)
 	if (neg) {
 		BN_clear_bit(a, BN_num_bits(a) - 1);
 	}
-	bn_check_top(a);
 	return (a);
 }

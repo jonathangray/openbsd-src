@@ -1,4 +1,4 @@
-/* $OpenBSD: x509_vfy.c,v 1.106 2022/11/17 00:42:12 beck Exp $ */
+/* $OpenBSD: x509_vfy.c,v 1.109 2022/12/01 05:20:30 tb Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -73,7 +73,7 @@
 #include <openssl/objects.h>
 #include <openssl/x509.h>
 #include <openssl/x509v3.h>
-#include "asn1_locl.h"
+#include "asn1_local.h"
 #include "vpm_int.h"
 #include "x509_internal.h"
 
@@ -116,7 +116,7 @@
 #define CRL_SCORE_TIME_DELTA	0x002
 
 static int null_callback(int ok, X509_STORE_CTX *e);
-static int check_issued(X509_STORE_CTX *ctx, X509 *x, X509 *issuer);
+static int check_issued(X509_STORE_CTX *ctx, X509 *subject, X509 *issuer);
 static X509 *find_issuer(X509_STORE_CTX *ctx, STACK_OF(X509) *sk, X509 *x,
     int allow_expired);
 static int check_chain_extensions(X509_STORE_CTX *ctx);
@@ -695,21 +695,13 @@ find_issuer(X509_STORE_CTX *ctx, STACK_OF(X509) *sk, X509 *x,
 /* Given a possible certificate and issuer check them */
 
 static int
-check_issued(X509_STORE_CTX *ctx, X509 *x, X509 *issuer)
+check_issued(X509_STORE_CTX *ctx, X509 *subject, X509 *issuer)
 {
-	int ret;
-
-	ret = X509_check_issued(issuer, x);
-	if (ret == X509_V_OK)
-		return 1;
-	/* If we haven't asked for issuer errors don't set ctx */
-	if (!(ctx->param->flags & X509_V_FLAG_CB_ISSUER_CHECK))
-		return 0;
-
-	ctx->error = ret;
-	ctx->current_cert = x;
-	ctx->current_issuer = issuer;
-	return ctx->verify_cb(0, ctx);
+	/*
+	 * Yes, the arguments of X509_STORE_CTX_check_issued_fn were exposed in
+	 * reverse order compared to the already public X509_check_issued()...
+	 */
+	return X509_check_issued(issuer, subject) == X509_V_OK;
 }
 
 /* Alternative lookup method: look from a STACK stored in other_ctx */
@@ -2586,6 +2578,28 @@ X509_STORE_CTX_set_verify(X509_STORE_CTX *ctx, int (*verify)(X509_STORE_CTX *))
 	ctx->verify = verify;
 }
 LCRYPTO_ALIAS(X509_STORE_CTX_set_verify)
+
+X509_STORE_CTX_check_issued_fn
+X509_STORE_get_check_issued(X509_STORE *store)
+{
+	return store->check_issued;
+}
+LCRYPTO_ALIAS(X509_STORE_get_check_issued)
+
+void
+X509_STORE_set_check_issued(X509_STORE *store,
+    X509_STORE_CTX_check_issued_fn check_issued)
+{
+	store->check_issued = check_issued;
+}
+LCRYPTO_ALIAS(X509_STORE_set_check_issued)
+
+X509_STORE_CTX_check_issued_fn
+X509_STORE_CTX_get_check_issued(X509_STORE_CTX *ctx)
+{
+	return ctx->check_issued;
+}
+LCRYPTO_ALIAS(X509_STORE_CTX_get_check_issued)
 
 X509 *
 X509_STORE_CTX_get0_cert(X509_STORE_CTX *ctx)

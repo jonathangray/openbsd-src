@@ -1216,8 +1216,6 @@
 ./usr/include/rpcsvc/nfs_prot.x
 ./usr/include/rpcsvc/nlm_prot.h
 ./usr/include/rpcsvc/nlm_prot.x
-./usr/include/rpcsvc/rex.h
-./usr/include/rpcsvc/rex.x
 ./usr/include/rpcsvc/rnusers.h
 ./usr/include/rpcsvc/rnusers.x
 ./usr/include/rpcsvc/rquota.h
@@ -1820,6 +1818,7 @@
 ./usr/share/man/man3/BN_mod_mul_reciprocal.3
 ./usr/share/man/man3/BN_mod_sqrt.3
 ./usr/share/man/man3/BN_new.3
+./usr/share/man/man3/BN_nist_mod_521.3
 ./usr/share/man/man3/BN_num_bytes.3
 ./usr/share/man/man3/BN_rand.3
 ./usr/share/man/man3/BN_set_bit.3

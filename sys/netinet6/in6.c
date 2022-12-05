@@ -1,4 +1,4 @@
-/*	$OpenBSD: in6.c,v 1.251 2022/11/19 14:26:40 kn Exp $	*/
+/*	$OpenBSD: in6.c,v 1.258 2022/12/02 12:56:51 kn Exp $	*/
 /*	$KAME: in6.c,v 1.372 2004/06/14 08:14:21 itojun Exp $	*/
 
 /*
@@ -213,9 +213,7 @@ in6_control(struct socket *so, u_long cmd, caddr_t data, struct ifnet *ifp)
 		break;
 #endif /* MROUTING */
 	default:
-		KERNEL_LOCK();
 		error = in6_ioctl(cmd, data, ifp, privileged);
-		KERNEL_UNLOCK();
 		break;
 	}
 
@@ -296,6 +294,7 @@ in6_ioctl_change_ifaddr(u_long cmd, caddr_t data, struct ifnet *ifp)
 			return (error);
 	}
 
+	KERNEL_LOCK();
 	NET_LOCK();
 
 	if (sa6 != NULL) {
@@ -402,6 +401,7 @@ in6_ioctl_change_ifaddr(u_long cmd, caddr_t data, struct ifnet *ifp)
 
 err:
 	NET_UNLOCK();
+	KERNEL_UNLOCK();
 	return (error);
 }
 
@@ -959,7 +959,7 @@ in6_unlink_ifa(struct in6_ifaddr *ia6, struct ifnet *ifp)
 	ifa_del(ifp, ifa);
 
 	ia6->ia_ifp = NULL;
-	ifafree(&ia6->ia_ifa);
+	ifafree(ifa);
 }
 
 /*
@@ -1596,24 +1596,4 @@ in6if_do_dad(struct ifnet *ifp)
 
 		return (1);
 	}
-}
-
-void *
-in6_domifattach(struct ifnet *ifp)
-{
-	struct in6_ifextra *ext;
-
-	ext = malloc(sizeof(*ext), M_IFADDR, M_WAITOK | M_ZERO);
-
-	ext->nd_ifinfo = nd6_ifattach(ifp);
-	return ext;
-}
-
-void
-in6_domifdetach(struct ifnet *ifp, void *aux)
-{
-	struct in6_ifextra *ext = (struct in6_ifextra *)aux;
-
-	nd6_ifdetach(ext->nd_ifinfo);
-	free(ext, M_IFADDR, sizeof(*ext));
 }

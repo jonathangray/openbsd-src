@@ -1,4 +1,4 @@
-/* $OpenBSD: bn_sqr.c,v 1.12 2015/02/09 15:49:22 jsing Exp $ */
+/* $OpenBSD: bn_sqr.c,v 1.16 2022/11/26 16:08:51 tb Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -59,9 +59,8 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "bn_lcl.h"
+#include "bn_local.h"
 
-/* r must not be a */
 /* I've just gone over this and it is now %20 faster on x86 - eay - 27 Jun 96 */
 int
 BN_sqr(BIGNUM *r, const BIGNUM *a, BN_CTX *ctx)
@@ -73,7 +72,6 @@ BN_sqr(BIGNUM *r, const BIGNUM *a, BN_CTX *ctx)
 #ifdef BN_COUNT
 	fprintf(stderr, "BN_sqr %d * %d\n", a->top, a->top);
 #endif
-	bn_check_top(a);
 
 	al = a->top;
 	if (al <= 0) {
@@ -89,7 +87,7 @@ BN_sqr(BIGNUM *r, const BIGNUM *a, BN_CTX *ctx)
 		goto err;
 
 	max = 2 * al; /* Non-zero (from above) */
-	if (bn_wexpand(rr, max) == NULL)
+	if (!bn_wexpand(rr, max))
 		goto err;
 
 	if (al == 4) {
@@ -118,17 +116,17 @@ BN_sqr(BIGNUM *r, const BIGNUM *a, BN_CTX *ctx)
 			j = 1 << (j - 1);
 			k = j + j;
 			if (al == j) {
-				if (bn_wexpand(tmp, k * 2) == NULL)
+				if (!bn_wexpand(tmp, k * 2))
 					goto err;
 				bn_sqr_recursive(rr->d, a->d, al, tmp->d);
 			} else {
-				if (bn_wexpand(tmp, max) == NULL)
+				if (!bn_wexpand(tmp, max))
 					goto err;
 				bn_sqr_normal(rr->d, a->d, al, tmp->d);
 			}
 		}
 #else
-		if (bn_wexpand(tmp, max) == NULL)
+		if (!bn_wexpand(tmp, max))
 			goto err;
 		bn_sqr_normal(rr->d, a->d, al, tmp->d);
 #endif
@@ -146,8 +144,6 @@ BN_sqr(BIGNUM *r, const BIGNUM *a, BN_CTX *ctx)
 	ret = 1;
 
 err:
-	bn_check_top(rr);
-	bn_check_top(tmp);
 	BN_CTX_end(ctx);
 	return (ret);
 }

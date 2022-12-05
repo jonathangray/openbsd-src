@@ -1,4 +1,4 @@
-/* $OpenBSD: bn_add.c,v 1.13 2018/07/23 18:07:21 tb Exp $ */
+/* $OpenBSD: bn_add.c,v 1.16 2022/11/26 16:08:51 tb Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -60,15 +60,13 @@
 
 #include <openssl/err.h>
 
-#include "bn_lcl.h"
+#include "bn_local.h"
 
 int
 BN_add(BIGNUM *r, const BIGNUM *a, const BIGNUM *b)
 {
 	int ret, r_neg;
 
-	bn_check_top(a);
-	bn_check_top(b);
 
 	if (a->neg == b->neg) {
 		r_neg = a->neg;
@@ -90,7 +88,6 @@ BN_add(BIGNUM *r, const BIGNUM *a, const BIGNUM *b)
 	}
 
 	r->neg = r_neg;
-	bn_check_top(r);
 	return ret;
 }
 
@@ -101,8 +98,6 @@ BN_uadd(BIGNUM *r, const BIGNUM *a, const BIGNUM *b)
 	const BN_ULONG *ap, *bp;
 	BN_ULONG *rp, carry, t1, t2;
 
-	bn_check_top(a);
-	bn_check_top(b);
 
 	if (a->top < b->top) {
 		const BIGNUM *tmp;
@@ -115,7 +110,7 @@ BN_uadd(BIGNUM *r, const BIGNUM *a, const BIGNUM *b)
 	min = b->top;
 	dif = max - min;
 
-	if (bn_wexpand(r, max + 1) == NULL)
+	if (!bn_wexpand(r, max + 1))
 		return 0;
 
 	r->top = max;
@@ -139,7 +134,6 @@ BN_uadd(BIGNUM *r, const BIGNUM *a, const BIGNUM *b)
 	r->top += carry;
 
 	r->neg = 0;
-	bn_check_top(r);
 	return 1;
 }
 
@@ -150,8 +144,6 @@ BN_usub(BIGNUM *r, const BIGNUM *a, const BIGNUM *b)
 	const BN_ULONG *ap, *bp;
 	BN_ULONG t1, t2, borrow, *rp;
 
-	bn_check_top(a);
-	bn_check_top(b);
 
 	max = a->top;
 	min = b->top;
@@ -162,7 +154,7 @@ BN_usub(BIGNUM *r, const BIGNUM *a, const BIGNUM *b)
 		return 0;
 	}
 
-	if (bn_wexpand(r, max) == NULL)
+	if (!bn_wexpand(r, max))
 		return 0;
 
 	ap = a->d;
@@ -195,8 +187,6 @@ BN_sub(BIGNUM *r, const BIGNUM *a, const BIGNUM *b)
 {
 	int ret, r_neg;
 
-	bn_check_top(a);
-	bn_check_top(b);
 
 	if (a->neg != b->neg) {
 		r_neg = a->neg;
@@ -218,6 +208,5 @@ BN_sub(BIGNUM *r, const BIGNUM *a, const BIGNUM *b)
 	}
 
 	r->neg = r_neg;
-	bn_check_top(r);
 	return ret;
 }

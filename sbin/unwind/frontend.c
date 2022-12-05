@@ -1,4 +1,4 @@
-/*	$OpenBSD: frontend.c,v 1.73 2022/03/13 15:14:01 florian Exp $	*/
+/*	$OpenBSD: frontend.c,v 1.76 2022/11/27 14:31:22 tb Exp $	*/
 
 /*
  * Copyright (c) 2018 Florian Obser <florian@openbsd.org>
@@ -63,6 +63,7 @@
 #include "control.h"
 #include "dns64_synth.h"
 
+#define	MINIMUM(a, b)		(((a) < (b)) ? (a) : (b))
 #define	ROUTE_SOCKET_BUF_SIZE   16384
 
 /*
@@ -995,7 +996,8 @@ synthesize_dns64_answer(struct pending_query *pq)
 }
 
 void
-resend_dns64_query(struct pending_query *opq) {
+resend_dns64_query(struct pending_query *opq)
+{
 	struct pending_query	*pq;
 	struct query_imsg	 query_imsg;
 	int			 rcode;
@@ -1699,18 +1701,23 @@ tcp_request(int fd, short events, void *arg)
 
 	if (sldns_buffer_position(pq->qbuf) >= 2 && !pq->abuf) {
 		struct sldns_buffer	*tmp;
+		size_t			 rem;
 		uint16_t		 len;
 
 		sldns_buffer_flip(pq->qbuf);
 		len = sldns_buffer_read_u16(pq->qbuf);
 		tmp = sldns_buffer_new(len);
-		pq->abuf = sldns_buffer_new(len);
-
-		if (!tmp || !pq->abuf)
+		if (tmp == NULL)
 			goto fail;
+		pq->abuf = sldns_buffer_new(len);
+		if (pq->abuf == NULL) {
+			sldns_buffer_free(tmp);
+			goto fail;
+		}
 
+		rem = sldns_buffer_remaining(pq->qbuf);
 		sldns_buffer_write(tmp, sldns_buffer_current(pq->qbuf),
-		    sldns_buffer_remaining(pq->qbuf));
+		    MINIMUM(len, rem));
 		sldns_buffer_free(pq->qbuf);
 		pq->qbuf = tmp;
 	}

@@ -1,4 +1,4 @@
-/*	$OpenBSD: main.c,v 1.224 2022/11/18 14:38:34 tb Exp $ */
+/*	$OpenBSD: main.c,v 1.227 2022/11/30 08:16:10 job Exp $ */
 /*
  * Copyright (c) 2021 Claudio Jeker <claudio@openbsd.org>
  * Copyright (c) 2019 Kristaps Dzonsons <kristaps@bsd.lv>
@@ -25,7 +25,6 @@
 #include <sys/wait.h>
 
 #include <assert.h>
-#include <ctype.h>
 #include <err.h>
 #include <errno.h>
 #include <dirent.h>
@@ -33,6 +32,7 @@
 #include <fnmatch.h>
 #include <poll.h>
 #include <pwd.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <signal.h>
@@ -616,8 +616,6 @@ entity_process(struct ibuf *b, struct stats *st, struct vrp_tree *tree,
 	case RTYPE_GBR:
 		st->gbrs++;
 		break;
-	case RTYPE_FILE:
-		break;
 	case RTYPE_ASPA:
 		st->aspas++;
 		io_read_buf(b, &c, sizeof(c));
@@ -635,6 +633,8 @@ entity_process(struct ibuf *b, struct stats *st, struct vrp_tree *tree,
 		break;
 	case RTYPE_TAK:
 		st->taks++;
+		break;
+	case RTYPE_FILE:
 		break;
 	default:
 		errx(1, "unknown entity type %d", type);

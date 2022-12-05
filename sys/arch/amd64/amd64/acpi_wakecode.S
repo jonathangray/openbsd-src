@@ -1,4 +1,4 @@
-/* $OpenBSD: acpi_wakecode.S,v 1.47 2021/09/04 22:15:33 bluhm Exp $ */
+/* $OpenBSD: acpi_wakecode.S,v 1.49 2022/12/01 00:26:15 guenther Exp $ */
 /*
  * Copyright (c) 2001 Takanori Watanabe <takawata@jp.freebsd.org>
  * Copyright (c) 2001 Mitsuru IWASAKI <iwasaki@jp.freebsd.org>
@@ -58,12 +58,12 @@
 #define addr32
 #endif
 
-#define _ACPI_TRMP_LABEL(a) a = . - _C_LABEL(acpi_real_mode_resume) + \
+#define _ACPI_TRMP_LABEL(a) a = . - acpi_real_mode_resume + \
 	ACPI_TRAMPOLINE
-#define _ACPI_TRMP_OFFSET(a) a = . - _C_LABEL(acpi_real_mode_resume)
-#define _ACPI_TRMP_DATA_LABEL(a) a = . - _C_LABEL(acpi_tramp_data_start) + \
+#define _ACPI_TRMP_OFFSET(a) a = . - acpi_real_mode_resume
+#define _ACPI_TRMP_DATA_LABEL(a) a = . - acpi_tramp_data_start + \
 	ACPI_TRAMP_DATA
-#define _ACPI_TRMP_DATA_OFFSET(a) a = . - _C_LABEL(acpi_tramp_data_start)
+#define _ACPI_TRMP_DATA_OFFSET(a) a = . - acpi_tramp_data_start
 #define _ACPI_RM_CODE_SEG (ACPI_TRAMPOLINE >> 4)
 #define _ACPI_RM_DATA_SEG (ACPI_TRAMP_DATA >> 4)
 
@@ -85,18 +85,18 @@
  *     3. Reenable paging
  *     4. Enter long mode
  *     5. Restore saved CPU registers
+ *
+ * Initial copy of this code gets placed in .rodata, kernel makes
+ * RX copy of it in the ACPI trampoline page.
  */
-	.text
+	.section .rodata
 	.code16
 	.align 4, 0xcc
-	.global _C_LABEL(acpi_real_mode_resume)
-	.global _C_LABEL(acpi_protected_mode_resume)
-	.global _C_LABEL(acpi_long_mode_resume)
-	.global _C_LABEL(acpi_resume_end)
-	.global _C_LABEL(acpi_pdirpa)
-	.global _C_LABEL(acpi_tramp_data_start)
-	.global _C_LABEL(acpi_tramp_data_end)
-_C_LABEL(acpi_real_mode_resume):
+	.global acpi_resume_end
+	.global acpi_pdirpa
+	.global acpi_tramp_data_start
+	.global acpi_tramp_data_end
+GENTRY(acpi_real_mode_resume)
 _ACPI_TRMP_OFFSET(.Lacpi_s3_vector_real)
 	nop
 	cli
@@ -163,7 +163,7 @@ _ACPI_TRMP_OFFSET(.Lacpi_s3_vector_real)
 	.code32
 	.align 16, 0xcc
 _ACPI_TRMP_LABEL(.Lacpi_protected_mode_trampoline)
-_C_LABEL(acpi_protected_mode_resume):
+	/* acpi_protected_mode_resume: */
 	nop
 
 	/*
@@ -231,7 +231,6 @@ _C_LABEL(acpi_protected_mode_resume):
 	.code64
 	.align 16, 0xcc
 _ACPI_TRMP_LABEL(.Lacpi_long_mode_trampoline)
-_C_LABEL(acpi_long_mode_resume):
 
 	/* Reset stack */
 	movq	$(ACPI_TRAMP_DATA + 0x0FF8), %rsp
@@ -393,6 +392,9 @@ NENTRY(hibernate_resume_machdep)
 	/* Jump to the identity mapped version of ourself */
 	mov	$.Lhibernate_resume_vector_2, %rax
 	jmp	*%rax
+END(hibernate_resume_machdep)
+
+	.section .rodata
 _ACPI_TRMP_LABEL(.Lhibernate_resume_vector_2)
 
 	/* Get out of 64 bit CS */
@@ -435,6 +437,9 @@ NENTRY(hibernate_drop_to_real_mode)
 	/* Jump to the identity mapped version of ourself */
 	mov	$.Lhibernate_resume_vector_2b, %rax
 	jmp	*%rax
+END(hibernate_drop_to_real_mode)
+
+	.section .rodata
 _ACPI_TRMP_LABEL(.Lhibernate_resume_vector_2b)
 
 	/* Get out of 64 bit CS */
@@ -492,6 +497,7 @@ NENTRY(hibernate_activate_resume_pt_machdep)
 1:	RETGUARD_CHECK(hibernate_activate_resume_pt_machdep, r11)
 	ret
 	lfence
+END(hibernate_activate_resume_pt_machdep)
 
 	/*
 	 * Switch to the private resume-time hibernate stack
@@ -507,6 +513,7 @@ NENTRY(hibernate_switch_stack_machdep)
 	RETGUARD_CHECK(hibernate_switch_stack_machdep, r11)
 	ret
 	lfence
+END(hibernate_switch_stack_machdep)
 
 NENTRY(hibernate_flush)
 	RETGUARD_SETUP(hibernate_flush, r11)
@@ -514,19 +521,24 @@ NENTRY(hibernate_flush)
 	RETGUARD_CHECK(hibernate_flush, r11)
 	ret
 	lfence
+END(hibernate_flush)
 #endif /* HIBERNATE */
 
 	/*
 	 * End of resume code (code copied to ACPI_TRAMPOLINE)
 	 */
-_C_LABEL(acpi_resume_end):
+	.section .rodata
+	.type	acpi_resume_end,@object
+acpi_resume_end:
+END(acpi_real_mode_resume)
 
 	/*
 	 * Initial copy of this data gets placed in .rodata, kernel makes
 	 * RW copy of it in the tramp data page.
 	 */
 	.section .rodata
-_C_LABEL(acpi_tramp_data_start):
+	.type	acpi_tramp_data_start,@object
+acpi_tramp_data_start:
 _ACPI_TRMP_DATA_OFFSET(.Ltmp_gdt)
 	.word	.Ltmp_gdt_end - .Ltmp_gdtable
 	.long	.Ltmp_gdtable
@@ -689,8 +701,10 @@ _ACPI_TRMP_DATA_LABEL(.Lacpi_saved_apicbase)
 #endif
 
 	.align 4, 0xcc
+	.type	acpi_pdirpa,@object
 _ACPI_TRMP_DATA_LABEL(acpi_pdirpa)
 	.long 0
+	.size	acpi_pdirpa, 4
 #ifdef HIBERNATE
 _ACPI_TRMP_DATA_LABEL(.Lhibernate_indirect_16)
 	.long	.Lhibernate_resume_vector_3
@@ -700,7 +714,9 @@ _ACPI_TRMP_DATA_LABEL(.Lhibernate_indirect_16b)
 	.word	0x18
 #endif /* HIBERNATE */
 
-_C_LABEL(acpi_tramp_data_end):
+	.type	acpi_tramp_data_end,@object
+acpi_tramp_data_end:
+END(acpi_tramp_data_start)
 
 	/*
 	 * acpi_savecpu saves the processor's registers and flags
@@ -810,3 +826,4 @@ NENTRY(acpi_savecpu)
 	RETGUARD_CHECK(acpi_savecpu, r11)
 	ret
 	lfence
+END(acpi_savecpu)

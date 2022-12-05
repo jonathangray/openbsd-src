@@ -1,4 +1,4 @@
-/* $OpenBSD: bn_mont.c,v 1.28 2022/02/07 19:44:23 tb Exp $ */
+/* $OpenBSD: bn_mont.c,v 1.32 2022/11/26 16:08:51 tb Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -119,7 +119,7 @@
 #include <stdio.h>
 #include <stdint.h>
 
-#include "bn_lcl.h"
+#include "bn_local.h"
 
 #define MONT_WORD /* use the faster word-based algorithm */
 
@@ -137,7 +137,7 @@ BN_mod_mul_montgomery(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
 	int num = mont->N.top;
 
 	if (num > 1 && a->top == num && b->top == num) {
-		if (bn_wexpand(r, num) == NULL)
+		if (!bn_wexpand(r, num))
 			return (0);
 		if (bn_mul_mont(r->d, a->d, b->d, mont->N.d, mont->n0, num)) {
 			r->neg = a->neg^b->neg;
@@ -152,7 +152,6 @@ BN_mod_mul_montgomery(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
 	if ((tmp = BN_CTX_get(ctx)) == NULL)
 		goto err;
 
-	bn_check_top(tmp);
 	if (a == b) {
 		if (!BN_sqr(tmp, a, ctx))
 			goto err;
@@ -168,7 +167,6 @@ BN_mod_mul_montgomery(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
 	if (!BN_from_montgomery(r, tmp, mont, ctx))
 		goto err;
 #endif
-	bn_check_top(r);
 	ret = 1;
 err:
 	BN_CTX_end(ctx);
@@ -197,7 +195,7 @@ BN_from_montgomery_word(BIGNUM *ret, BIGNUM *r, BN_MONT_CTX *mont)
 	}
 
 	max = (2 * nl); /* carry is stored separately */
-	if (bn_wexpand(r, max) == NULL)
+	if (!bn_wexpand(r, max))
 		return (0);
 
 	r->neg ^= n->neg;
@@ -226,7 +224,7 @@ BN_from_montgomery_word(BIGNUM *ret, BIGNUM *r, BN_MONT_CTX *mont)
 		rp[nl] = v;
 	}
 
-	if (bn_wexpand(ret, nl) == NULL)
+	if (!bn_wexpand(ret, nl))
 		return (0);
 	ret->top = nl;
 	ret->neg = r->neg;
@@ -272,7 +270,6 @@ BN_from_montgomery_word(BIGNUM *ret, BIGNUM *r, BN_MONT_CTX *mont)
 #endif
 	bn_correct_top(r);
 	bn_correct_top(ret);
-	bn_check_top(ret);
 
 	return (1);
 }
@@ -318,7 +315,6 @@ BN_from_montgomery(BIGNUM *ret, const BIGNUM *a, BN_MONT_CTX *mont, BN_CTX *ctx)
 			goto err;
 	}
 	retn = 1;
-	bn_check_top(ret);
 
 err:
 	BN_CTX_end(ctx);
@@ -419,7 +415,7 @@ BN_MONT_CTX_set(BN_MONT_CTX *mont, const BIGNUM *mod, BN_CTX *ctx)
 		}
 		else /* if N mod word size == 1 */
 		{
-			if (bn_expand(Ri, (int)sizeof(BN_ULONG) * 2) == NULL)
+			if (!bn_wexpand(Ri, 2))
 				goto err;
 			/* Ri-- (mod double word size) */
 			Ri->neg = 0;

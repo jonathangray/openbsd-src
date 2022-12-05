@@ -1,4 +1,4 @@
-/*	$OpenBSD: nd6_nbr.c,v 1.133 2022/08/29 07:51:45 bluhm Exp $	*/
+/*	$OpenBSD: nd6_nbr.c,v 1.138 2022/12/02 15:35:35 kn Exp $	*/
 /*	$KAME: nd6_nbr.c,v 1.61 2001/02/10 16:06:14 jinmei Exp $	*/
 
 /*
@@ -62,7 +62,8 @@
 #include <netinet/ip_carp.h>
 #endif
 
-TAILQ_HEAD(dadq_head, dadq);
+static TAILQ_HEAD(, dadq) dadq =
+    TAILQ_HEAD_INITIALIZER(dadq);	/* list of addresses to run DAD on */
 struct dadq {
 	TAILQ_ENTRY(dadq) dad_list;
 	struct ifaddr *dad_ifa;
@@ -75,7 +76,7 @@ struct dadq {
 };
 
 struct dadq *nd6_dad_find(struct ifaddr *);
-void nd6_dad_starttimer(struct dadq *, int);
+void nd6_dad_starttimer(struct dadq *);
 void nd6_dad_stoptimer(struct dadq *);
 void nd6_dad_timer(void *);
 void nd6_dad_ns_output(struct dadq *, struct ifaddr *);
@@ -716,7 +717,7 @@ nd6_na_input(struct mbuf *m, int off, int icmp6len)
 			rtm_send(rt, RTM_RESOLVE, 0, ifp->if_rdomain);
 			if (!ND6_LLINFO_PERMANENT(ln)) {
 				nd6_llinfo_settimer(ln,
-				    ND_IFINFO(ifp)->reachable);
+				    ifp->if_nd->reachable);
 			}
 		} else {
 			ln->ln_state = ND6_LLINFO_STALE;
@@ -806,7 +807,7 @@ nd6_na_input(struct mbuf *m, int off, int icmp6len)
 				ln->ln_byhint = 0;
 				if (!ND6_LLINFO_PERMANENT(ln)) {
 					nd6_llinfo_settimer(ln,
-					    ND_IFINFO(ifp)->reachable);
+					    ifp->if_nd->reachable);
 				}
 			} else {
 				if (lladdr && llchange) {
@@ -1036,9 +1037,6 @@ nd6_ifptomac(struct ifnet *ifp)
 	}
 }
 
-static struct dadq_head dadq;
-static int dad_init = 0;
-
 struct dadq *
 nd6_dad_find(struct ifaddr *ifa)
 {
@@ -1052,17 +1050,15 @@ nd6_dad_find(struct ifaddr *ifa)
 }
 
 void
-nd6_dad_starttimer(struct dadq *dp, int msec)
+nd6_dad_starttimer(struct dadq *dp)
 {
-
 	timeout_set_proc(&dp->dad_timer_ch, nd6_dad_timer, dp->dad_ifa);
-	timeout_add_msec(&dp->dad_timer_ch, msec);
+	timeout_add_msec(&dp->dad_timer_ch, RETRANS_TIMER);
 }
 
 void
 nd6_dad_stoptimer(struct dadq *dp)
 {
-
 	timeout_del(&dp->dad_timer_ch);
 }
 
@@ -1077,11 +1073,6 @@ nd6_dad_start(struct ifaddr *ifa)
 	char addr[INET6_ADDRSTRLEN];
 
 	NET_ASSERT_LOCKED();
-
-	if (!dad_init) {
-		TAILQ_INIT(&dadq);
-		dad_init++;
-	}
 
 	/*
 	 * If we don't need DAD, don't do it.
@@ -1112,7 +1103,7 @@ nd6_dad_start(struct ifaddr *ifa)
 	}
 	bzero(&dp->dad_timer_ch, sizeof(dp->dad_timer_ch));
 
-	TAILQ_INSERT_TAIL(&dadq, (struct dadq *)dp, dad_list);
+	TAILQ_INSERT_TAIL(&dadq, dp, dad_list);
 	ip6_dad_pending++;
 
 	nd6log((LOG_DEBUG, "%s: starting DAD for %s\n", ifa->ifa_ifp->if_xname,
@@ -1129,7 +1120,7 @@ nd6_dad_start(struct ifaddr *ifa)
 	dp->dad_ns_icount = dp->dad_na_icount = 0;
 	dp->dad_ns_ocount = dp->dad_ns_tcount = 0;
 	nd6_dad_ns_output(dp, ifa);
-	nd6_dad_starttimer(dp, ND_IFINFO(ifa->ifa_ifp)->retrans);
+	nd6_dad_starttimer(dp);
 }
 
 /*
@@ -1140,8 +1131,6 @@ nd6_dad_stop(struct ifaddr *ifa)
 {
 	struct dadq *dp;
 
-	if (!dad_init)
-		return;
 	dp = nd6_dad_find(ifa);
 	if (!dp) {
 		/* DAD wasn't started yet */
@@ -1150,7 +1139,7 @@ nd6_dad_stop(struct ifaddr *ifa)
 
 	nd6_dad_stoptimer(dp);
 
-	TAILQ_REMOVE(&dadq, (struct dadq *)dp, dad_list);
+	TAILQ_REMOVE(&dadq, dp, dad_list);
 	free(dp, M_IP6NDP, sizeof(*dp));
 	dp = NULL;
 	ifafree(ifa);
@@ -1197,7 +1186,7 @@ nd6_dad_timer(void *xifa)
 		nd6log((LOG_INFO, "%s: could not run DAD, driver problem?\n",
 			ifa->ifa_ifp->if_xname));
 
-		TAILQ_REMOVE(&dadq, (struct dadq *)dp, dad_list);
+		TAILQ_REMOVE(&dadq, dp, dad_list);
 		free(dp, M_IP6NDP, sizeof(*dp));
 		dp = NULL;
 		ifafree(ifa);
@@ -1211,32 +1200,17 @@ nd6_dad_timer(void *xifa)
 		 * We have more NS to go.  Send NS packet for DAD.
 		 */
 		nd6_dad_ns_output(dp, ifa);
-		nd6_dad_starttimer(dp, ND_IFINFO(ifa->ifa_ifp)->retrans);
+		nd6_dad_starttimer(dp);
 	} else {
 		/*
 		 * We have transmitted sufficient number of DAD packets.
-		 * See what we've got.
 		 */
-		int duplicate;
-
-		duplicate = 0;
-
-		if (dp->dad_na_icount) {
-			duplicate++;
-		}
-
-		if (dp->dad_ns_icount) {
-			/* We've seen NS, means DAD has failed. */
-			duplicate++;
-		}
-
-		if (duplicate) {
+		if (dp->dad_na_icount || dp->dad_ns_icount) {
 			/* dp will be freed in nd6_dad_duplicated() */
 			nd6_dad_duplicated(dp);
 		} else {
 			/*
 			 * We are done with DAD.  No NA came, no NS came.
-			 * duplicated address found.
 			 */
 			ia6->ia6_flags &= ~IN6_IFF_TENTATIVE;
 
@@ -1248,7 +1222,7 @@ nd6_dad_timer(void *xifa)
 			    inet_ntop(AF_INET6, &ia6->ia_addr.sin6_addr,
 				addr, sizeof(addr))));
 
-			TAILQ_REMOVE(&dadq, (struct dadq *)dp, dad_list);
+			TAILQ_REMOVE(&dadq, dp, dad_list);
 			free(dp, M_IP6NDP, sizeof(*dp));
 			dp = NULL;
 			ifafree(ifa);
@@ -1321,12 +1295,10 @@ void
 nd6_dad_ns_input(struct ifaddr *ifa)
 {
 	struct dadq *dp;
-	int duplicate;
 
 	if (!ifa)
 		panic("%s: ifa == NULL", __func__);
 
-	duplicate = 0;
 	dp = nd6_dad_find(ifa);
 	if (dp == NULL) {
 		log(LOG_ERR, "%s: DAD structure not found\n", __func__);
@@ -1337,12 +1309,8 @@ nd6_dad_ns_input(struct ifaddr *ifa)
 	 * if I'm yet to start DAD, someone else started using this address
 	 * first.  I have a duplicate and you win.
 	 */
-	if (dp->dad_ns_ocount == 0)
-		duplicate++;
-
 	/* XXX more checks for loopback situation - see nd6_dad_timer too */
-
-	if (duplicate) {
+	if (dp->dad_ns_ocount == 0) {
 		/* dp will be freed in nd6_dad_duplicated() */
 		nd6_dad_duplicated(dp);
 	} else {

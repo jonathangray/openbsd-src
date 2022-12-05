@@ -1,4 +1,4 @@
-/* $OpenBSD: bn_print.c,v 1.33 2022/01/20 10:53:33 inoguchi Exp $ */
+/* $OpenBSD: bn_print.c,v 1.37 2022/11/26 16:08:51 tb Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -66,7 +66,7 @@
 #include <openssl/buffer.h>
 #include <openssl/err.h>
 
-#include "bn_lcl.h"
+#include "bn_local.h"
 
 static const char Hex[]="0123456789ABCDEF";
 
@@ -205,7 +205,7 @@ BN_hex2bn(BIGNUM **bn, const char *a)
 	for (i = 0; i <= (INT_MAX / 4) && isxdigit((unsigned char)a[i]); i++)
 		;
 	if (i > INT_MAX / 4)
-		goto err;
+		return (0);
 
 	num = i + neg;
 	if (bn == NULL)
@@ -221,7 +221,7 @@ BN_hex2bn(BIGNUM **bn, const char *a)
 	}
 
 	/* i is the number of hex digits */
-	if (bn_expand(ret, i * 4) == NULL)
+	if (!bn_expand(ret, i * 4))
 		goto err;
 
 	j = i; /* least significant 'hex' */
@@ -254,7 +254,6 @@ BN_hex2bn(BIGNUM **bn, const char *a)
 	ret->neg = neg;
 
 	*bn = ret;
-	bn_check_top(ret);
 	return (num);
 
 err:
@@ -281,7 +280,7 @@ BN_dec2bn(BIGNUM **bn, const char *a)
 	for (i = 0; i <= (INT_MAX / 4) && isdigit((unsigned char)a[i]); i++)
 		;
 	if (i > INT_MAX / 4)
-		goto err;
+		return (0);
 
 	num = i + neg;
 	if (bn == NULL)
@@ -298,7 +297,7 @@ BN_dec2bn(BIGNUM **bn, const char *a)
 	}
 
 	/* i is the number of digits, a bit of an over expand */
-	if (bn_expand(ret, i * 4) == NULL)
+	if (!bn_expand(ret, i * 4))
 		goto err;
 
 	j = BN_DEC_NUM - (i % BN_DEC_NUM);
@@ -322,7 +321,6 @@ BN_dec2bn(BIGNUM **bn, const char *a)
 
 	bn_correct_top(ret);
 	*bn = ret;
-	bn_check_top(ret);
 	return (num);
 
 err:
