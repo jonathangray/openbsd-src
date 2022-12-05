@@ -2202,8 +2202,6 @@ static int drm_fbdev_fb_release(struct fb_info *info, int user)
 
 static void drm_fbdev_cleanup(struct drm_fb_helper *fb_helper)
 {
-	STUB();
-#ifdef notyet
 	struct fb_info *fbi = fb_helper->fbdev;
 	void *shadow = NULL;
 
@@ -2211,8 +2209,10 @@ static void drm_fbdev_cleanup(struct drm_fb_helper *fb_helper)
 		return;
 
 	if (fbi) {
+#ifdef notyet
 		if (fbi->fbdefio)
 			fb_deferred_io_cleanup(fbi);
+#endif
 		if (drm_fbdev_use_shadow_fb(fb_helper))
 			shadow = fbi->screen_buffer;
 	}
@@ -2225,7 +2225,6 @@ static void drm_fbdev_cleanup(struct drm_fb_helper *fb_helper)
 		drm_client_buffer_vunmap(fb_helper->buffer);
 
 	drm_client_framebuffer_delete(fb_helper->buffer);
-#endif
 }
 
 static void drm_fbdev_release(struct drm_fb_helper *fb_helper)
@@ -2578,8 +2577,6 @@ static const struct drm_fb_helper_funcs drm_fb_helper_generic_funcs = {
 
 static void drm_fbdev_client_unregister(struct drm_client_dev *client)
 {
-	STUB();
-#ifdef notyet
 	struct drm_fb_helper *fb_helper = drm_fb_helper_from_client(client);
 
 	if (fb_helper->fbdev)
@@ -2587,7 +2584,6 @@ static void drm_fbdev_client_unregister(struct drm_client_dev *client)
 		drm_fb_helper_unregister_fbi(fb_helper);
 	else
 		drm_fbdev_release(fb_helper);
-#endif
 }
 
 static int drm_fbdev_client_restore(struct drm_client_dev *client)
