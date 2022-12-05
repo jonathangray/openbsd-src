@@ -2078,6 +2078,7 @@ amdgpu_wsioctl(void *v, u_long cmd, caddr_t data, int flag, struct proc *p)
 		case WSDISPLAYIO_PARAM_BRIGHTNESS:
 			bd->props.brightness = dp->curval;
 			backlight_update_status(bd);
+			KNOTE(&adev->ddev.note, NOTE_CHANGE);
 			return 0;
 		}
 		break;
@@ -2157,6 +2158,32 @@ amdgpu_enter_ddb(void *v, void *cookie)
 	drm_fb_helper_debug_enter(fb_helper->fbdev);
 }
 
+void
+amdgpu_init_backlight(struct amdgpu_device *adev)
+{
+	struct drm_device *dev = &adev->ddev;
+	struct backlight_device *bd = adev->dm.backlight_dev[0];
+	struct drm_connector_list_iter conn_iter;
+	struct drm_connector *connector;
+
+	if (bd == NULL)
+		return;
+		
+	drm_connector_list_iter_begin(dev, &conn_iter);
+	drm_for_each_connector_iter(connector, &conn_iter) {
+		if (connector->connector_type != DRM_MODE_CONNECTOR_LVDS &&
+		    connector->connector_type != DRM_MODE_CONNECTOR_eDP &&
+		    connector->connector_type != DRM_MODE_CONNECTOR_DSI)
+			continue;
+
+		connector->backlight_device = bd;
+		connector->backlight_property = drm_property_create_range(dev,
+		    0, "Backlight", 0, bd->props.max_brightness);
+		drm_object_attach_property(&connector->base,
+		    connector->backlight_property, bd->props.brightness);
+	}
+	drm_connector_list_iter_end(&conn_iter);
+}
 
 void
 amdgpu_attachhook(struct device *self)
@@ -2282,6 +2309,8 @@ amdgpu_attachhook(struct device *self)
 	}
 {
 	struct wsemuldisplaydev_attach_args aa;
+
+	amdgpu_init_backlight(adev);
 
 	task_set(&adev->switchtask, amdgpu_doswitch, ri);
 	task_set(&adev->burner_task, amdgpu_burner_cb, adev);
