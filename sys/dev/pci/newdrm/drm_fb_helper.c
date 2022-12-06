@@ -2533,7 +2533,6 @@ static int drm_fb_helper_generic_probe(struct drm_fb_helper *fb_helper,
 	drm_fb_helper_fill_info(fbi, fb_helper, sizes);
 
 	if (drm_fbdev_use_shadow_fb(fb_helper)) {
-		printf("%s: use_shadow_fb\n", __func__);
 		fbi->screen_buffer = vzalloc(fbi->screen_size);
 		if (!fbi->screen_buffer)
 			return -ENOMEM;
