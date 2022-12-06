@@ -1525,7 +1525,8 @@ drm_find_description(int vendor, int device, const struct pci_device_id *idlist)
 	
 	for (i = 0; idlist[i].vendor != 0; i++) {
 		if ((idlist[i].vendor == vendor) &&
-		    (idlist[i].device == device) &&
+		    (idlist[i].device == device ||
+		     idlist[i].device == PCI_ANY_ID) &&
 		    (idlist[i].subvendor == PCI_ANY_ID) &&
 		    (idlist[i].subdevice == PCI_ANY_ID))
 			return &idlist[i];
