@@ -2256,16 +2256,22 @@ amdgpu_attachhook(struct device *self)
 		DRM_WARN("smart shift update failed\n");
 
 	/*
-	 * in linux via amdgpu_pci_probe -> drm_dev_register
-	 */
-	drm_dev_register(dev, adev->flags);
-
-	/*
 	 * 1. don't init fbdev on hw without DCE
 	 * 2. don't init fbdev if there are no connectors
 	 */
 	if (adev->mode_info.mode_config_initialized &&
 	    !list_empty(&adev_to_drm(adev)->mode_config.connector_list)) {
+
+		/* OpenBSD specific backlight property on connector */
+		amdgpu_init_backlight(adev);
+
+		/*
+		 * in linux via amdgpu_pci_probe -> drm_dev_register
+		 * must be after (local) backlight property added not before
+		 * and before drm_fbdev_generic_setup()
+		 */
+		drm_dev_register(dev, adev->flags);
+
 		/* select 8 bpp console on low vram cards */
 		if (adev->gmc.real_vram_size <= (32*1024*1024))
 			drm_fbdev_generic_setup(adev_to_drm(adev), 8);
@@ -2308,8 +2314,6 @@ amdgpu_attachhook(struct device *self)
 	}
 {
 	struct wsemuldisplaydev_attach_args aa;
-
-	amdgpu_init_backlight(adev);
 
 	task_set(&adev->switchtask, amdgpu_doswitch, ri);
 	task_set(&adev->burner_task, amdgpu_burner_cb, adev);
