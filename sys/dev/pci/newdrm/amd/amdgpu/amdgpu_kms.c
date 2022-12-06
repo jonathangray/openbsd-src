@@ -2194,6 +2194,8 @@ amdgpu_attachhook(struct device *self)
 	struct rasops_info *ri = &adev->ro;
 	struct drm_fb_helper *fb_helper;
 	struct drm_framebuffer *fb;
+	struct drm_gem_object *obj;
+	struct amdgpu_bo *rbo;
 
 	/* from amdgpu_driver_load_kms() */
 
@@ -2276,17 +2278,14 @@ amdgpu_attachhook(struct device *self)
 			return;
 		}
 		fb = fb_helper->fb;
+		obj = fb->obj[0];
+		rbo = gem_to_amdgpu_bo(obj);
+		amdgpu_bo_kmap(rbo, (void **)(&ri->ri_bits));
 
-#if 0
-		if (drm_fbdev_use_iomem(fb_helper->fbdev))
-			ri->ri_bits = fb_helper->fbdev->screen_base;
-		else
-#endif
-			ri->ri_bits = fb_helper->fbdev->screen_buffer;
 		ri->ri_depth = fb->format->cpp[0] * 8;
 		ri->ri_stride = fb->pitches[0];
 		ri->ri_width = fb_helper->fbdev->var.xres;
-		ri->ri_height = fb_helper->fbdev->var.yres;;
+		ri->ri_height = fb_helper->fbdev->var.yres;
 
 		switch (fb->format->format) {
 		case DRM_FORMAT_XRGB8888:
