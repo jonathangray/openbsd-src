@@ -1719,29 +1719,6 @@ void amdgpu_debugfs_firmware_init(struct amdgpu_device *adev)
 #endif
 }
 
-int
-amdgpu_probe(struct device *parent, void *match, void *aux)
-{
-	struct pci_attach_args *pa = aux;
-	const struct pci_device_id *id_entry;
-	unsigned long flags = 0;
-
-	if (amdgpu_fatal_error)
-		return 0;
-
-	id_entry = drm_find_description(PCI_VENDOR(pa->pa_id),
-	    PCI_PRODUCT(pa->pa_id), amdgpu_pciidlist);
-	if (id_entry != NULL) {
-		flags = id_entry->driver_data;
-		if (flags & AMD_EXP_HW_SUPPORT)
-			return 0;
-		else
-			return 20;
-	}
-
-	return 0;
-}
-
 /*
  * some functions are only called once on init regardless of how many times
  * amdgpu attaches in linux this is handled via module_init()/module_exit()

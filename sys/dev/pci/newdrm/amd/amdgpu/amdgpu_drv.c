@@ -2871,3 +2871,37 @@ MODULE_AUTHOR(DRIVER_AUTHOR);
 MODULE_DESCRIPTION(DRIVER_DESC);
 MODULE_LICENSE("GPL and additional rights");
 #endif /* __linux__ */
+
+extern int amdgpu_fatal_error;
+
+int
+amdgpu_probe(struct device *parent, void *match, void *aux)
+{
+	struct pci_attach_args *pa = aux;
+	const struct pci_device_id *id_entry;
+	unsigned long flags = 0;
+	int i;
+
+	if (amdgpu_fatal_error)
+		return 0;
+
+	id_entry = drm_find_description(PCI_VENDOR(pa->pa_id),
+	    PCI_PRODUCT(pa->pa_id), amdgpu_pciidlist);
+	if (id_entry != NULL) {
+		flags = id_entry->driver_data;
+
+		/* skip devices which are owned by radeon */
+		for (i = 0; i < ARRAY_SIZE(amdgpu_unsupported_pciidlist); i++) {
+			if (amdgpu_unsupported_pciidlist[i] ==
+			    PCI_PRODUCT(pa->pa_id))
+				return 0;
+		}
+
+		if (flags & AMD_EXP_HW_SUPPORT)
+			return 0;
+		else
+			return 20;
+	}
+
+	return 0;
+}
