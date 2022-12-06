@@ -2890,6 +2890,14 @@ amdgpu_probe(struct device *parent, void *match, void *aux)
 	if (id_entry != NULL) {
 		flags = id_entry->driver_data;
 
+		if (id_entry->device == PCI_ANY_ID) {
+			if (PCI_CLASS(pa->pa_class) != PCI_CLASS_DISPLAY)
+				return 0;
+			if (PCI_SUBCLASS(pa->pa_class) != PCI_SUBCLASS_DISPLAY_VGA &&
+			    PCI_SUBCLASS(pa->pa_class) != PCI_SUBCLASS_DISPLAY_MISC)
+				return 0;
+		}
+
 		/* skip devices which are owned by radeon */
 		for (i = 0; i < ARRAY_SIZE(amdgpu_unsupported_pciidlist); i++) {
 			if (amdgpu_unsupported_pciidlist[i] ==
