@@ -1109,8 +1109,6 @@ static int amdgpu_ttm_tt_populate(struct ttm_device *bdev,
 #ifdef notyet
 	for (i = 0; i < ttm->num_pages; ++i)
 		ttm->pages[i]->mapping = bdev->dev_mapping;
-#else
-	STUB();
 #endif
 
 	return 0;
