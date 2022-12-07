@@ -3515,7 +3515,6 @@ static int amdgpu_device_get_job_timeout_settings(struct amdgpu_device *adev)
  */
 static void amdgpu_device_check_iommu_direct_map(struct amdgpu_device *adev)
 {
-	STUB();
 #ifdef notyet
 	struct iommu_domain *domain;
 
