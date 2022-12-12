@@ -192,6 +192,29 @@ do {						\
 	__ret;					\
 })
 
+#define __wait_event_lock_irq(wqh, condition, mtx)			\
+({									\
+	do {								\
+		KASSERT(!cold);						\
+									\
+		mtx_leave(&(mtx));					\
+		mtx_enter(&sch_mtx);					\
+		msleep(&wqh, &sch_mtx, 0, "drmweli", 0);		\
+		mtx_leave(&sch_mtx);					\
+		mtx_enter(&(mtx));					\
+	} while (!(condition));						\
+})
+
+/*
+ * Sleep until `condition' gets true.
+ * called locked, condition checked under lock
+ */
+#define wait_event_lock_irq(wqh, condition, mtx) 		\
+do {								\
+	if (!(condition))					\
+		__wait_event_lock_irq(wqh, condition, mtx); 	\
+} while (0)
+
 static inline void
 wake_up(wait_queue_head_t *wqh)
 {
