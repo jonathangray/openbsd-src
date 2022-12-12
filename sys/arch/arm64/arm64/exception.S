@@ -1,4 +1,4 @@
-/* $OpenBSD: exception.S,v 1.13 2022/01/01 18:52:36 kettenis Exp $ */
+/* $OpenBSD: exception.S,v 1.15 2022/12/10 10:13:58 patrick Exp $ */
 /*-
  * Copyright (c) 2014 Andrew Turner
  * All rights reserved.
@@ -133,7 +133,7 @@
 
 	/* handle the ast */
 	mov	x0, sp
-	bl	_C_LABEL(ast)
+	bl	ast
 	b	1b
 2:
 .endm
@@ -195,7 +195,8 @@ handle_el1h_error:
 
 .macro	return
 	msr	tpidrro_el0, x18
-	ldr	x18, =trampoline_vectors
+	mrs	x18, tpidr_el1
+	ldr	x18, [x18, #CI_TRAMPOLINE_VECTORS]
 	msr	vbar_el1, x18
 	isb
 	b	tramp_return

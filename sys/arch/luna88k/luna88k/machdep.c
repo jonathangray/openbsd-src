@@ -1,4 +1,4 @@
-/*	$OpenBSD: machdep.c,v 1.140 2022/10/25 11:39:33 aoyama Exp $	*/
+/*	$OpenBSD: machdep.c,v 1.142 2022/12/10 02:41:56 aoyama Exp $	*/
 /*
  * Copyright (c) 1998, 1999, 2000, 2001 Steve Murphree, Jr.
  * Copyright (c) 1996 Nivas Madhur
@@ -60,6 +60,7 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>
+#include <sys/clockintr.h>
 #include <sys/proc.h>
 #include <sys/user.h>
 #include <sys/buf.h>
@@ -189,8 +190,8 @@ int machtype = LUNA_88K;	/* may be overwritten in cpu_startup() */
 int cputyp = CPU_88100;
 int cpuspeed = 33;		/* safe guess */
 int sysconsole = 0;		/* 0 = ttya, may be overwritten in locore0.S */
-u_int16_t dipswitch = 0;	/* set in locore.S */
-int hwplanebits;		/* set in locore.S */
+u_int16_t dipswitch = 0;	/* set in locore0.S */
+int hwplanebits;		/* set in locore0.S */
 
 extern struct consdev syscons;	/* in dev/siotty.c */
 
@@ -779,6 +780,8 @@ secondary_main()
 
 	set_vbr(kernel_vbr);
 
+	clockintr_cpu_init(NULL);
+
 	spl0();
 	SCHED_LOCK(s);
 	set_psr(get_psr() & ~PSR_IND);
@@ -967,7 +970,7 @@ luna88k_vector_init(uint32_t *bootvbr, uint32_t *vectors)
 }
 
 /*
- * Called from locore.S during boot,
+ * Called from locore0.S during boot,
  * this is the first C code that's run.
  */
 void

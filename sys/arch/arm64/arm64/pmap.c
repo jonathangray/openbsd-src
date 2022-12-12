@@ -1,4 +1,4 @@
-/* $OpenBSD: pmap.c,v 1.89 2022/11/21 20:19:21 kettenis Exp $ */
+/* $OpenBSD: pmap.c,v 1.91 2022/12/10 10:13:58 patrick Exp $ */
 /*
  * Copyright (c) 2008-2009,2014-2016 Dale Rahn <drahn@dalerahn.com>
  *
@@ -1295,44 +1295,6 @@ pmap_bootstrap(long kvo, paddr_t lpt1, long kernelstart, long kernelend,
 	memset((void *)pa, 0, Lx_TABLE_ALIGN);
 	pmap_kernel()->pm_pt0pa = pa;
 
-	/* now that we have mapping space for everything, lets map it */
-	/* all of these mappings are ram -> kernel va */
-
-	/*
-	 * enable mappings for existing 'allocated' mapping in the bootstrap
-	 * page tables
-	 */
-	extern uint64_t *pagetable;
-	extern char _end[];
-	vp2 = (void *)((long)&pagetable + kvo);
-	struct mem_region *mp;
-	ssize_t size;
-	for (mp = pmap_allocated; mp->size != 0; mp++) {
-		/* bounds may be kinda messed up */
-		for (pa = mp->start, size = mp->size & ~0xfff;
-		    size > 0;
-		    pa+= L2_SIZE, size -= L2_SIZE)
-		{
-			paddr_t mappa = pa & ~(L2_SIZE-1);
-			vaddr_t mapva = mappa - kvo;
-			int prot = PROT_READ | PROT_WRITE;
-
-			if (mapva < (vaddr_t)_end)
-				continue;
-
-			if (mapva >= (vaddr_t)__text_start &&
-			    mapva < (vaddr_t)_etext)
-				prot = PROT_READ | PROT_EXEC;
-			else if (mapva >= (vaddr_t)__rodata_start &&
-			    mapva < (vaddr_t)_erodata)
-				prot = PROT_READ;
-
-			vp2->l2[VP_IDX2(mapva)] = mappa | L2_BLOCK |
-			    ATTR_IDX(PTE_ATTR_WB) | ATTR_SH(SH_INNER) |
-			    ATTR_nG | ap_bits_kern[prot];
-		}
-	}
-
 	pmap_avail_fixup();
 
 	/*
@@ -1864,14 +1826,21 @@ void
 pmap_postinit(void)
 {
 	extern char trampoline_vectors[];
+	extern char trampoline_vectors_end[];
 	paddr_t pa;
 	vaddr_t minaddr, maxaddr;
 	u_long npteds, npages;
 
 	memset(pmap_tramp.pm_vp.l1, 0, sizeof(struct pmapvp1));
 	pmap_extract(pmap_kernel(), (vaddr_t)trampoline_vectors, &pa);
-	pmap_enter(&pmap_tramp, (vaddr_t)trampoline_vectors, pa,
-	    PROT_READ | PROT_EXEC, PROT_READ | PROT_EXEC | PMAP_WIRED);
+	minaddr = (vaddr_t)trampoline_vectors;
+	maxaddr = (vaddr_t)trampoline_vectors_end;
+	while (minaddr < maxaddr) {
+		pmap_enter(&pmap_tramp, minaddr, pa,
+		    PROT_READ | PROT_EXEC, PROT_READ | PROT_EXEC | PMAP_WIRED);
+		minaddr += PAGE_SIZE;
+		pa += PAGE_SIZE;
+	}
 
 	/*
 	 * Reserve enough virtual address space to grow the kernel

@@ -1,4 +1,4 @@
-/*	$OpenBSD: uipc_syscalls.c,v 1.205 2022/11/30 13:58:39 kn Exp $	*/
+/*	$OpenBSD: uipc_syscalls.c,v 1.207 2022/12/07 01:02:28 deraadt Exp $	*/
 /*	$NetBSD: uipc_syscalls.c,v 1.19 1996/02/09 19:00:48 christos Exp $	*/
 
 /*
@@ -60,6 +60,9 @@
 
 #include <sys/domain.h>
 #include <netinet/in.h>
+#include <netinet/ip.h>
+#include <net/route.h>
+#include <netinet/in_pcb.h>
 #include <net/rtable.h>
 
 int	copyaddrout(struct proc *, struct mbuf *, struct sockaddr *, socklen_t,
@@ -1636,18 +1639,23 @@ out:
 	error = socreate(AF_INET, &so, SCARG(uap, type), 0);
 	if (error)
 		return (error);
-	
+
 	error = ypsockargs(&nam, &ypsin, sizeof ypsin, MT_SONAME);
 	if (error) {
 		soclose(so, MSG_DONTWAIT);
 		return (error);
 	}
-	
+
 #ifdef KTRACE
 	if (KTRPOINT(p, KTR_STRUCT))
 		ktrsockaddr(p, mtod(nam, caddr_t), sizeof(struct sockaddr_in));
 #endif
 	solock(so);
+
+	/* Secure YP maps require reserved ports */
+	if (suser(p) == 0)
+		sotoinpcb(so)->inp_flags |= INP_LOWPORT;
+
 	error = soconnect(so, nam);
 	while ((so->so_state & SS_ISCONNECTING) && so->so_error == 0) {
 		error = sosleep_nsec(so, &so->so_timeo, PSOCK | PCATCH,

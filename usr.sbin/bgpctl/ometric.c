@@ -1,4 +1,4 @@
-/*	$OpenBSD: ometric.c,v 1.4 2022/12/01 09:14:40 claudio Exp $ */
+/*	$OpenBSD: ometric.c,v 1.7 2022/12/06 17:38:41 claudio Exp $ */
 
 /*
  * Copyright (c) 2022 Claudio Jeker <claudio@openbsd.org>
@@ -17,6 +17,7 @@
  */
 
 #include <sys/queue.h>
+#include <sys/time.h>
 
 #include <err.h>
 #include <stdarg.h>
@@ -42,6 +43,7 @@ struct olabels {
 enum ovalue_type {
 	OVT_INTEGER,
 	OVT_DOUBLE,
+	OVT_TIMEVAL,
 };
 
 struct ovalue {
@@ -50,6 +52,7 @@ struct ovalue {
 	union {
 		unsigned long long	i;
 		double			f;
+		struct timeval		tv;
 	}			 value;
 	enum ovalue_type	 valtype;
 };
@@ -68,6 +71,41 @@ struct ometric {
 
 STAILQ_HEAD(, ometric)	ometrics = STAILQ_HEAD_INITIALIZER(ometrics);
 
+static const char *suffixes[] = { "_total", "_created", "_count",
+	"_sum", "_bucket", "_gcount", "_gsum", "_info",
+};
+
+/*
+ * Return true if name has one of the above suffixes.
+ */
+static int
+strsuffix(const char *name)
+{
+	const char *suffix;
+	size_t	i;
+
+	suffix = strrchr(name, '_');
+	if (suffix == NULL)
+		return 0;
+	for (i = 0; i < sizeof(suffixes) / sizeof(suffixes[0]); i++) {
+		if (strcmp(suffix, suffixes[i]) == 0)
+			return 1;
+	}
+	return 0;
+}
+
+static void
+ometric_check(const char *name)
+{
+	struct ometric *om;
+
+	if (strsuffix(name))
+		errx(1, "reserved name suffix used: %s", name);
+	STAILQ_FOREACH(om, &ometrics, entry)
+		if (strcmp(name, om->name) == 0)
+			errx(1, "duplicate name: %s", name);
+}
+
 /*
  * Allocate and return new ometric. The name and help string need to remain
  * valid until the ometric is freed. Normally constant strings should be used.
@@ -76,6 +114,8 @@ struct ometric *
 ometric_new(enum ometric_type type, const char *name, const char *help)
 {
 	struct ometric *om;
+
+	ometric_check(name);
 
 	if ((om = calloc(1, sizeof(*om))) == NULL)
 		err(1, NULL);
@@ -100,6 +140,8 @@ ometric_new_state(const char * const *states, size_t statecnt, const char *name,
     const char *help)
 {
 	struct ometric *om;
+
+	ometric_check(name);
 
 	if ((om = calloc(1, sizeof(*om))) == NULL)
 		err(1, NULL);
@@ -274,8 +316,30 @@ ometric_output_value(FILE *out, const struct ovalue *ov)
 		return fprintf(out, "%llu", ov->value.i);
 	case OVT_DOUBLE:
 		return fprintf(out, "%g", ov->value.f);
+	case OVT_TIMEVAL:
+		return fprintf(out, "%lld.%06ld",
+		    (long long)ov->value.tv.tv_sec, (long)ov->value.tv.tv_usec);
 	}
 	return -1;
+}
+
+static int
+ometric_output_name(FILE *out, const struct ometric *om)
+{
+	const char *suffix;
+
+	switch (om->type) {
+	case OMT_COUNTER:
+		suffix = "_total";
+		break;
+	case OMT_INFO:
+		suffix = "_info";
+		break;
+	default:
+		suffix = "";
+		break;
+	}
+	return fprintf(out, "%s%s", om->name, suffix);
 }
 
 /*
@@ -298,7 +362,7 @@ ometric_output_all(FILE *out)
 			return -1;
 
 		STAILQ_FOREACH(ov, &om->vals, entry) {
-			if (fprintf(out, "%s", om->name) < 0)
+			if (ometric_output_name(out, om) < 0)
 				return -1;
 			if (ometric_output_labels(out, ov->labels) < 0)
 				return -1;
@@ -366,6 +430,28 @@ ometric_set_float(struct ometric *om, double val, struct olabels *ol)
 }
 
 /*
+ * Set an timeval value with label ol. ol can be NULL.
+ */
+void
+ometric_set_timeval(struct ometric *om, const struct timeval *tv,
+    struct olabels *ol)
+{
+	struct ovalue *ov;
+
+	if (om->type != OMT_GAUGE)
+		errx(1, "%s incorrect ometric type", __func__);
+
+	if ((ov = malloc(sizeof(*ov))) == NULL)
+		err(1, NULL);
+
+	ov->value.tv = *tv;
+	ov->valtype = OVT_TIMEVAL;
+	ov->labels = olabels_ref(ol);
+
+	STAILQ_INSERT_TAIL(&om->vals, ov, entry);
+}
+
+/*
  * Add an info value (which is the value 1 but with extra key-value pairs).
  */
 void
@@ -390,20 +476,23 @@ ometric_set_info(struct ometric *om, const char **keys, const char **values,
 void
 ometric_set_state(struct ometric *om, const char *state, struct olabels *ol)
 {
+	struct olabels *extra;
 	size_t i;
 	int val;
 
 	if (om->type != OMT_STATESET)
 		errx(1, "%s incorrect ometric type", __func__);
 
-	for (i = 0; i < om->setsize; i++) {	
+	for (i = 0; i < om->setsize; i++) {
 		if (strcasecmp(state, om->stateset[i]) == 0)
 			val = 1;
 		else
 			val = 0;
 
-		ometric_set_int_with_labels(om, val, OKV(om->name),
-		    OKV(om->stateset[i]), ol);
+		extra = olabels_add_extras(ol, OKV(om->name),
+		    OKV(om->stateset[i]));
+		ometric_set_int_value(om, val, extra);
+		olabels_free(extra);
 	}
 }
 
@@ -419,5 +508,16 @@ ometric_set_int_with_labels(struct ometric *om, uint64_t val,
 
 	extra = olabels_add_extras(ol, keys, values);
 	ometric_set_int(om, val, extra);
+	olabels_free(extra);
+}
+
+void
+ometric_set_timeval_with_labels(struct ometric *om, struct timeval *tv,
+    const char **keys, const char **values, struct olabels *ol)
+{
+	struct olabels *extra;
+
+	extra = olabels_add_extras(ol, keys, values);
+	ometric_set_timeval(om, tv, extra);
 	olabels_free(extra);
 }
