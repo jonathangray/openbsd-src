@@ -724,8 +724,6 @@ static int i915_driver_hw_probe(struct drm_i915_private *dev_priv)
 	root_pdev = pcie_find_root_port(pdev);
 	if (root_pdev)
 		pci_d3cold_disable(root_pdev);
-#else
-	STUB();
 #endif
 
 	return 0;
