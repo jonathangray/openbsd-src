@@ -478,13 +478,10 @@ static int
 shmem_pwrite(struct drm_i915_gem_object *obj,
 	     const struct drm_i915_gem_pwrite *arg)
 {
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
 #ifdef __linux__
 	struct address_space *mapping = obj->base.filp->f_mapping;
-#endif
 	const struct address_space_operations *aops = mapping->a_ops;
+#endif
 	char __user *user_data = u64_to_user_ptr(arg->data_ptr);
 	u64 remain, offset;
 	unsigned int pg;
@@ -542,10 +539,20 @@ shmem_pwrite(struct drm_i915_gem_object *obj,
 		if (err)
 			return err;
 
+#ifdef __linux__
 		err = aops->write_begin(obj->base.filp, mapping, offset, len,
 					&page, &data);
 		if (err < 0)
 			return err;
+#else
+		struct pglist plist;
+		TAILQ_INIT(&plist);
+		if (uvm_obj_wire(obj->base.uao, trunc_page(offset),
+		    trunc_page(offset) + PAGE_SIZE, &plist)) {
+			return -ENOMEM;
+		}
+		page = TAILQ_FIRST(&plist);
+#endif
 
 		vaddr = kmap_atomic(page);
 		unwritten = __copy_from_user_inatomic(vaddr + pg,
@@ -553,10 +560,15 @@ shmem_pwrite(struct drm_i915_gem_object *obj,
 						      len);
 		kunmap_atomic(vaddr);
 
+#ifdef __linux__
 		err = aops->write_end(obj->base.filp, mapping, offset, len,
 				      len - unwritten, page, data);
 		if (err < 0)
 			return err;
+#else
+		uvm_obj_unwire(obj->base.uao, trunc_page(offset),
+		    trunc_page(offset) + PAGE_SIZE);
+#endif
 
 		/* We don't handle -EFAULT, leave it to the caller to check */
 		if (unwritten)
@@ -569,7 +581,6 @@ shmem_pwrite(struct drm_i915_gem_object *obj,
 	} while (remain);
 
 	return 0;
-#endif
 }
 
 static int
