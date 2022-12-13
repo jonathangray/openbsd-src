@@ -171,10 +171,12 @@ void drm_bridge_add(struct drm_bridge *bridge)
 }
 EXPORT_SYMBOL(drm_bridge_add);
 
+#ifdef notyet
 static void drm_bridge_remove_void(void *bridge)
 {
 	drm_bridge_remove(bridge);
 }
+#endif
 
 /**
  * devm_drm_bridge_add - devm managed version of drm_bridge_add()

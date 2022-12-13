@@ -628,6 +628,9 @@ int radeon_info_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 	return 0;
 }
 
+#ifdef __sparc64__
+void radeondrm_setcolor(void *, u_int, u_int8_t, u_int8_t, u_int8_t);
+#endif
 
 /*
  * Outdated mess for old drm with Xorg being in charge (void function now).

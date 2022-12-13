@@ -2234,6 +2234,8 @@ static void drm_fbdev_release(struct drm_fb_helper *fb_helper)
 	kfree(fb_helper);
 }
 
+#ifdef __linux__
+
 /*
  * fb_ops.fb_destroy is called by the last put_fb_info() call at the end of
  * unregister_framebuffer() or fb_release().
@@ -2242,8 +2244,6 @@ static void drm_fbdev_fb_destroy(struct fb_info *info)
 {
 	drm_fbdev_release(info->par);
 }
-
-#ifdef __linux__
 
 static int drm_fbdev_fb_mmap(struct fb_info *info, struct vm_area_struct *vma)
 {

@@ -801,10 +801,12 @@ drm_atomic_helper_check_wb_encoder_state(struct drm_encoder *encoder,
 					 struct drm_connector_state *conn_state)
 {
 	struct drm_writeback_job *wb_job = conn_state->writeback_job;
+#ifdef notyet
 	struct drm_property_blob *pixel_format_blob;
 	struct drm_framebuffer *fb;
 	size_t i, nformats;
 	u32 *formats;
+#endif
 
 	if (!wb_job || !wb_job->fb)
 		return 0;
