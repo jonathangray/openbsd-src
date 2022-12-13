@@ -143,7 +143,6 @@ int	 bcmp(const void *, const void *, size_t);
 void	 bzero(void *, size_t);
 void	 explicit_bzero(void *, size_t);
 int	 ffs(int);
-int	 ffsl(long);
 int	 fls(int);
 int	 flsl(long);
 void	*memchr(const void *, int, size_t);
