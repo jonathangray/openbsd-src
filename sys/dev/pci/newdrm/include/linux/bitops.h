@@ -37,7 +37,15 @@
 #define BITS_TO_LONGS(x)	howmany((x), 8 * sizeof(long))
 
 /* despite the name these are really ctz */
+
+/* sparc64 does not have __ctzdi2 gcc emits for __builtin_ctzl */
+#ifdef __sparc64__
+int ctzl(long);
+#define __ffs(x)		ctzl(x)
+#else
 #define __ffs(x)		__builtin_ctzl(x)
+#endif
+
 #define __ffs64(x)		__builtin_ctzll(x)
 #define ffz(x)			__ffs(~(x))
 
