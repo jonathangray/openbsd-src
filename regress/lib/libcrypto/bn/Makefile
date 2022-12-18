@@ -1,4 +1,4 @@
-#	$OpenBSD: Makefile,v 1.16 2022/12/09 09:56:41 tb Exp $
+#	$OpenBSD: Makefile,v 1.18 2022/12/17 22:31:10 tb Exp $
 
 PROGS +=	bn_add_sub
 PROGS +=	bn_cmp
@@ -10,6 +10,7 @@ PROGS +=	bn_mod_sqrt
 PROGS +=	bn_mont
 PROGS +=	bn_primes
 PROGS +=	bn_rand_interval
+PROGS +=	bn_shift
 PROGS +=	bn_test
 PROGS +=	bn_to_string
 PROGS +=	bn_unit
@@ -58,6 +59,10 @@ run-bc: bn_test.out
 	! grep -v '^test ' <bc.out | grep -v '^0$$'
 
 CLEANFILES +=	bn_test.out bc.out
+
+benchmark: bn_shift
+	./bn_shift --benchmark
+.PHONY: benchmark
 
 .for p in ${STATIC_LINK}
 LDADD_$p +=	${CRYPTO_INT}

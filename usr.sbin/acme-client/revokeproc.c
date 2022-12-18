@@ -1,4 +1,4 @@
-/*	$Id: revokeproc.c,v 1.19 2021/11/22 08:26:08 tb Exp $ */
+/*	$Id: revokeproc.c,v 1.25 2022/12/18 12:04:55 tb Exp $ */
 /*
  * Copyright (c) 2016 Kristaps Dzonsons <kristaps@bsd.lv>
  *
@@ -23,6 +23,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <vis.h>
 
 #include <openssl/pem.h>
 #include <openssl/x509.h>
@@ -34,79 +35,42 @@
 #define	RENEW_ALLOW (30 * 24 * 60 * 60)
 
 /*
- * Convert the X509's expiration time (which is in ASN1_TIME format)
- * into a time_t value.
- * There are lots of suggestions on the Internet on how to do this and
- * they're really, really unsafe.
- * Adapt those poor solutions to a safe one.
+ * Convert the X509's expiration time into a time_t value.
  */
 static time_t
 X509expires(X509 *x)
 {
 	ASN1_TIME	*atim;
 	struct tm	 t;
-	unsigned char	*str;
-	size_t		 i = 0;
 
-	atim = X509_get_notAfter(x);
-	str = atim->data;
+	if ((atim = X509_getm_notAfter(x)) == NULL) {
+		warnx("missing notAfter");
+		return -1;
+	}
+
 	memset(&t, 0, sizeof(t));
 
-	/* Account for 2 and 4-digit time. */
-
-	if (atim->type == V_ASN1_UTCTIME) {
-		if (atim->length <= 2) {
-			warnx("invalid ASN1_TIME");
-			return (time_t)-1;
-		}
-		t.tm_year = (str[0] - '0') * 10 + (str[1] - '0');
-		if (t.tm_year < 70)
-			t.tm_year += 100;
-		i = 2;
-	} else if (atim->type == V_ASN1_GENERALIZEDTIME) {
-		if (atim->length <= 4) {
-			warnx("invalid ASN1_TIME");
-			return (time_t)-1;
-		}
-		t.tm_year = (str[0] - '0') * 1000 + (str[1] - '0') * 100 +
-		    (str[2] - '0') * 10 + (str[3] - '0');
-		t.tm_year -= 1900;
-		i = 4;
-	}
-
-	/* Now the post-year parts. */
-
-	if (atim->length <= (int)i + 10) {
+	if (!ASN1_TIME_to_tm(atim, &t)) {
 		warnx("invalid ASN1_TIME");
-		return (time_t)-1;
+		return -1;
 	}
 
-	t.tm_mon = ((str[i + 0] - '0') * 10 + (str[i + 1] - '0')) - 1;
-	t.tm_mday = (str[i + 2] - '0') * 10 + (str[i + 3] - '0');
-	t.tm_hour = (str[i + 4] - '0') * 10 + (str[i + 5] - '0');
-	t.tm_min  = (str[i + 6] - '0') * 10 + (str[i + 7] - '0');
-	t.tm_sec  = (str[i + 8] - '0') * 10 + (str[i + 9] - '0');
-
-	return mktime(&t);
+	return timegm(&t);
 }
 
 int
 revokeproc(int fd, const char *certfile, int force,
     int revocate, const char *const *alts, size_t altsz)
 {
+	GENERAL_NAMES			*sans = NULL;
 	char				*der = NULL, *dercp, *der64 = NULL;
-	char				*san = NULL, *str, *tok;
-	int				 rc = 0, cc, i, ssz, len;
+	int				 rc = 0, cc, i, len;
 	size_t				*found = NULL;
-	BIO				*bio = NULL;
 	FILE				*f = NULL;
 	X509				*x = NULL;
 	long				 lval;
 	enum revokeop			 op, rop;
 	time_t				 t;
-	const STACK_OF(X509_EXTENSION)	*exts;
-	X509_EXTENSION			*ex;
-	ASN1_OBJECT			*obj;
 	size_t				 j;
 
 	/*
@@ -152,57 +116,24 @@ revokeproc(int fd, const char *certfile, int force,
 		goto out;
 	}
 
+	/* Cache and sanity check X509v3 extensions. */
+
+	if (X509_check_purpose(x, -1, -1) <= 0) {
+		warnx("%s: invalid X509v3 extensions", certfile);
+		goto out;
+	}
+
 	/* Read out the expiration date. */
 
-	if ((t = X509expires(x)) == (time_t)-1) {
+	if ((t = X509expires(x)) == -1) {
 		warnx("X509expires");
 		goto out;
 	}
 
-	/*
-	 * Next, the long process to make sure that the SAN entries
-	 * listed with the certificate fully cover those passed on the
-	 * command line.
-	 */
+	/* Extract list of SAN entries from the certificate. */
 
-	exts = X509_get0_extensions(x);
-
-	/* Scan til we find the SAN NID. */
-
-	for (i = 0; i < sk_X509_EXTENSION_num(exts); i++) {
-		ex = sk_X509_EXTENSION_value(exts, i);
-		assert(ex != NULL);
-		obj = X509_EXTENSION_get_object(ex);
-		assert(obj != NULL);
-		if (NID_subject_alt_name != OBJ_obj2nid(obj))
-			continue;
-
-		if (san != NULL) {
-			warnx("%s: two SAN entries", certfile);
-			goto out;
-		}
-
-		bio = BIO_new(BIO_s_mem());
-		if (bio == NULL) {
-			warnx("BIO_new");
-			goto out;
-		}
-		if (!X509V3_EXT_print(bio, ex, 0, 0)) {
-			warnx("X509V3_EXT_print");
-			goto out;
-		}
-		if ((san = calloc(1, BIO_number_written(bio) + 1)) == NULL) {
-			warn("calloc");
-			goto out;
-		}
-		ssz = BIO_read(bio, san, BIO_number_written(bio));
-		if (ssz < 0 || (unsigned)ssz != BIO_number_written(bio)) {
-			warnx("BIO_read");
-			goto out;
-		}
-	}
-
-	if (san == NULL) {
+	sans = X509_get_ext_d2i(x, NID_subject_alt_name, NULL, NULL);
+	if (sans == NULL) {
 		warnx("%s: does not have a SAN entry", certfile);
 		if (revocate)
 			goto out;
@@ -217,32 +148,56 @@ revokeproc(int fd, const char *certfile, int force,
 	}
 
 	/*
-	 * Parse the SAN line.
-	 * Make sure that all of the domains are represented only once.
+	 * Ensure the certificate's SAN entries fully cover those from the
+	 * configuration file and that all domains are represented only once.
 	 */
 
-	str = san;
-	while ((tok = strsep(&str, ",")) != NULL) {
-		if (*tok == '\0')
+	for (i = 0; i < sk_GENERAL_NAME_num(sans); i++) {
+		GENERAL_NAME		*gen_name;
+		const ASN1_IA5STRING	*name;
+		const unsigned char	*name_buf;
+		int			 name_len;
+		int			 name_type;
+
+		gen_name = sk_GENERAL_NAME_value(sans, i);
+		assert(gen_name != NULL);
+
+		name = GENERAL_NAME_get0_value(gen_name, &name_type);
+		if (name_type != GEN_DNS)
 			continue;
-		while (isspace((int)*tok))
-			tok++;
-		if (strncmp(tok, "DNS:", 4))
-			continue;
-		tok += 4;
-		for (j = 0; j < altsz; j++)
-			if (strcmp(tok, alts[j]) == 0)
+
+		/* name_buf isn't a C string and could contain embedded NULs. */
+		name_buf = ASN1_STRING_get0_data(name);
+		name_len = ASN1_STRING_length(name);
+
+		for (j = 0; j < altsz; j++) {
+			if ((size_t)name_len != strlen(alts[j]))
+				continue;
+			if (memcmp(name_buf, alts[j], name_len) == 0)
 				break;
+		}
 		if (j == altsz) {
 			if (revocate) {
-				warnx("%s: unknown SAN entry: %s", certfile, tok);
+				char *visbuf;
+
+				visbuf = calloc(4, name_len + 1);
+				if (visbuf == NULL) {
+					warn("%s: unexpected SAN", certfile);
+					goto out;
+				}
+				strvisx(visbuf, name_buf, name_len, VIS_SAFE);
+				warnx("%s: unexpected SAN entry: %s",
+				    certfile, visbuf);
+				free(visbuf);
 				goto out;
 			}
 			force = 2;
+			continue;
 		}
 		if (found[j]++) {
 			if (revocate) {
-				warnx("%s: duplicate SAN entry: %s", certfile, tok);
+				warnx("%s: duplicate SAN entry: %.*s",
+				    certfile, name_len, name_buf);
 				goto out;
 			}
 			force = 2;
@@ -342,8 +297,7 @@ out:
 	if (f != NULL)
 		fclose(f);
 	X509_free(x);
-	BIO_free(bio);
-	free(san);
+	GENERAL_NAMES_free(sans);
 	free(der);
 	free(found);
 	free(der64);

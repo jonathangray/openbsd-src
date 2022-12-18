@@ -1,4 +1,4 @@
-/*	$Id: acctproc.c,v 1.23 2022/01/14 09:20:18 tb Exp $ */
+/*	$Id: acctproc.c,v 1.30 2022/12/18 12:39:59 tb Exp $ */
 /*
  * Copyright (c) 2016 Kristaps Dzonsons <kristaps@bsd.lv>
  *
@@ -18,15 +18,18 @@
 #include <sys/stat.h>
 
 #include <err.h>
+#include <errno.h>
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
-#include <openssl/pem.h>
+#include <openssl/bn.h>
+#include <openssl/ec.h>
+#include <openssl/ecdsa.h>
 #include <openssl/evp.h>
 #include <openssl/rsa.h>
-#include <openssl/rand.h>
 #include <openssl/err.h>
 
 #include "extern.h"
@@ -133,8 +136,7 @@ static int
 op_thumbprint(int fd, EVP_PKEY *pkey)
 {
 	char		*thumb = NULL, *dig64 = NULL;
-	EVP_MD_CTX	*ctx = NULL;
-	unsigned char	*dig = NULL;
+	unsigned char	 dig[EVP_MAX_MD_SIZE];
 	unsigned int	 digsz;
 	int		 rc = 0;
 
@@ -161,32 +163,21 @@ op_thumbprint(int fd, EVP_PKEY *pkey)
 	 * it up in the read loop).
 	 */
 
-	if ((dig = malloc(EVP_MAX_MD_SIZE)) == NULL) {
-		warn("malloc");
+	if (!EVP_Digest(thumb, strlen(thumb), dig, &digsz, EVP_sha256(),
+	    NULL)) {
+		warnx("EVP_Digest");
 		goto out;
-	} else if ((ctx = EVP_MD_CTX_new()) == NULL) {
-		warnx("EVP_MD_CTX_new");
-		goto out;
-	} else if (!EVP_DigestInit_ex(ctx, EVP_sha256(), NULL)) {
-		warnx("EVP_SignInit_ex");
-		goto out;
-	} else if (!EVP_DigestUpdate(ctx, thumb, strlen(thumb))) {
-		warnx("EVP_SignUpdate");
-		goto out;
-	} else if (!EVP_DigestFinal_ex(ctx, dig, &digsz)) {
-		warnx("EVP_SignFinal");
-		goto out;
-	} else if ((dig64 = base64buf_url((char *)dig, digsz)) == NULL) {
+	}
+	if ((dig64 = base64buf_url((char *)dig, digsz)) == NULL) {
 		warnx("base64buf_url");
 		goto out;
-	} else if (writestr(fd, COMM_THUMB, dig64) < 0)
+	}
+	if (writestr(fd, COMM_THUMB, dig64) < 0)
 		goto out;
 
 	rc = 1;
 out:
-	EVP_MD_CTX_free(ctx);
 	free(thumb);
-	free(dig);
 	free(dig64);
 	return rc;
 }
@@ -265,17 +256,16 @@ op_sign(int fd, EVP_PKEY *pkey, enum acctop op)
 {
 	EVP_MD_CTX		*ctx = NULL;
 	const EVP_MD		*evp_md = NULL;
-	EC_KEY			*ec;
 	ECDSA_SIG		*ec_sig = NULL;
 	const BIGNUM		*ec_sig_r = NULL, *ec_sig_s = NULL;
-	int			 cc, rc = 0;
-	unsigned int		 digsz, bufsz, degree, bn_len, r_len, s_len;
+	int			 bn_len, sign_len, rc = 0;
 	char			*nonce = NULL, *pay = NULL, *pay64 = NULL;
 	char			*prot = NULL, *prot64 = NULL;
 	char			*sign = NULL, *dig64 = NULL, *fin = NULL;
 	char			*url = NULL, *kid = NULL, *alg = NULL;
-	unsigned char		*dig = NULL, *buf = NULL;
 	const unsigned char	*digp;
+	unsigned char		*dig = NULL, *buf = NULL;
+	size_t			 digsz;
 
 	/* Read our payload and nonce from the requestor. */
 
@@ -342,34 +332,33 @@ op_sign(int fd, EVP_PKEY *pkey, enum acctop op)
 
 	/* Now the signature material. */
 
-	cc = asprintf(&sign, "%s.%s", prot64, pay64);
-	if (cc == -1) {
+	sign_len = asprintf(&sign, "%s.%s", prot64, pay64);
+	if (sign_len == -1) {
 		warn("asprintf");
 		sign = NULL;
 		goto out;
 	}
 
-	if ((dig = malloc(EVP_PKEY_size(pkey))) == NULL) {
-		warn("malloc");
-		goto out;
-	}
-
-	/*
-	 * Here we go: using our RSA key as merged into the envelope,
-	 * sign a SHA256 digest of our message.
-	 */
+	/* Sign the message. */
 
 	if ((ctx = EVP_MD_CTX_new()) == NULL) {
 		warnx("EVP_MD_CTX_new");
 		goto out;
-	} else if (!EVP_SignInit_ex(ctx, evp_md, NULL)) {
-		warnx("EVP_SignInit_ex");
+	}
+	if (!EVP_DigestSignInit(ctx, NULL, evp_md, NULL, pkey)) {
+		warnx("EVP_DigestSignInit");
 		goto out;
-	} else if (!EVP_SignUpdate(ctx, sign, strlen(sign))) {
-		warnx("EVP_SignUpdate");
+	}
+	if (!EVP_DigestSign(ctx, NULL, &digsz, sign, sign_len)) {
+		warnx("EVP_DigestSign");
 		goto out;
-	} else if (!EVP_SignFinal(ctx, dig, &digsz, pkey)) {
-		warnx("EVP_SignFinal");
+	}
+	if ((dig = malloc(digsz)) == NULL) {
+		warn("malloc");
+		goto out;
+	}
+	if (!EVP_DigestSign(ctx, dig, &digsz, sign, sign_len)) {
+		warnx("EVP_DigestSign");
 		goto out;
 	}
 
@@ -381,40 +370,40 @@ op_sign(int fd, EVP_PKEY *pkey, enum acctop op)
 		}
 		break;
 	case EVP_PKEY_EC:
-		if ((ec = EVP_PKEY_get0_EC_KEY(pkey)) == NULL) {
-			warnx("EVP_PKEY_get0_EC_KEY");
+		if (digsz > LONG_MAX) {
+			warnx("EC signature too long");
 			goto out;
 		}
-		degree = EC_GROUP_get_degree(EC_KEY_get0_group(ec));
-		bn_len = (degree + 7) / 8;
 
-		digp = dig; /* d2i_ECDSA_SIG advances digp */
+		digp = dig;
 		if ((ec_sig = d2i_ECDSA_SIG(NULL, &digp, digsz)) == NULL) {
 			warnx("d2i_ECDSA_SIG");
 			goto out;
 		}
 
-		ECDSA_SIG_get0(ec_sig, &ec_sig_r, &ec_sig_s);
-
-		r_len = BN_num_bytes(ec_sig_r);
-		s_len = BN_num_bytes(ec_sig_s);
-
-		if((r_len > bn_len) || (s_len > bn_len)) {
+		if ((ec_sig_r = ECDSA_SIG_get0_r(ec_sig)) == NULL ||
+		    (ec_sig_s = ECDSA_SIG_get0_s(ec_sig)) == NULL) {
 			warnx("ECDSA_SIG_get0");
 			goto out;
 		}
 
-		bufsz = 2 * bn_len;
-		if ((buf = calloc(1, bufsz)) == NULL) {
+		if ((bn_len = (EVP_PKEY_bits(pkey) + 7) / 8) <= 0) {
+			warnx("EVP_PKEY_bits");
+			goto out;
+		}
+
+		if ((buf = calloc(2, bn_len)) == NULL) {
 			warnx("calloc");
 			goto out;
 		}
 
-		/* put r and s in with leading zeros if any */
-		BN_bn2bin(ec_sig_r, buf + bn_len - r_len);
-		BN_bn2bin(ec_sig_s, buf + bufsz - s_len);
+		if (BN_bn2binpad(ec_sig_r, buf, bn_len) != bn_len ||
+		    BN_bn2binpad(ec_sig_s, buf + bn_len, bn_len) != bn_len) {
+			warnx("BN_bn2binpad");
+			goto out;
+		}
 
-		if ((dig64 = base64buf_url((char *)buf, bufsz)) == NULL) {
+		if ((dig64 = base64buf_url((char *)buf, 2 * bn_len)) == NULL) {
 			warnx("base64buf_url");
 			goto out;
 		}
@@ -439,6 +428,7 @@ op_sign(int fd, EVP_PKEY *pkey, enum acctop op)
 
 	rc = 1;
 out:
+	ECDSA_SIG_free(ec_sig);
 	EVP_MD_CTX_free(ctx);
 	free(pay);
 	free(sign);

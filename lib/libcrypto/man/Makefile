@@ -1,4 +1,4 @@
-# $OpenBSD: Makefile,v 1.238 2022/11/21 22:04:04 schwarze Exp $
+# $OpenBSD: Makefile,v 1.240 2022/12/18 19:35:36 schwarze Exp $
 
 .include <bsd.own.mk>
 
@@ -19,6 +19,7 @@ MAN=	\
 	ASN1_TYPE_get.3 \
 	ASN1_UNIVERSALSTRING_to_string.3 \
 	ASN1_bn_print.3 \
+	ASN1_buf_print.3 \
 	ASN1_generate_nconf.3 \
 	ASN1_get_object.3 \
 	ASN1_item_d2i.3 \
@@ -36,6 +37,7 @@ MAN=	\
 	BF_set_key.3 \
 	BIO_ctrl.3 \
 	BIO_dump.3 \
+	BIO_dup_chain.3 \
 	BIO_f_asn1.3 \
 	BIO_f_base64.3 \
 	BIO_f_buffer.3 \

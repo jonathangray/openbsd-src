@@ -1,4 +1,4 @@
-/*	$OpenBSD: print.c,v 1.22 2022/12/01 12:41:34 job Exp $ */
+/*	$OpenBSD: print.c,v 1.24 2022/12/14 08:46:58 job Exp $ */
 /*
  * Copyright (c) 2021 Claudio Jeker <claudio@openbsd.org>
  * Copyright (c) 2019 Kristaps Dzonsons <kristaps@bsd.lv>
@@ -117,27 +117,38 @@ void
 x509_print(const X509 *x)
 {
 	const ASN1_INTEGER	*xserial;
+	const X509_NAME		*xissuer;
+	char			*issuer = NULL;
 	char			*serial = NULL;
 
-	xserial = X509_get0_serialNumber(x);
-	if (xserial == NULL) {
-		warnx("X509_get0_serialNumber failed in %s", __func__);
+	if ((xissuer = X509_get_issuer_name(x)) == NULL) {
+		warnx("X509_get_issuer_name failed");
 		goto out;
 	}
 
-	serial = x509_convert_seqnum(__func__, xserial);
-	if (serial == NULL) {
-		warnx("x509_convert_seqnum failed in %s", __func__);
+	if ((issuer = X509_NAME_oneline(xissuer, NULL, 0)) == NULL) {
+		warnx("X509_NAME_oneline failed");
 		goto out;
 	}
+			
+	if ((xserial = X509_get0_serialNumber(x)) == NULL) {
+		warnx("X509_get0_serialNumber failed");
+		goto out;
+	}
+
+	if ((serial = x509_convert_seqnum(__func__, xserial)) == NULL)
+		goto out;
 
 	if (outformats & FORMAT_JSON) {
+		printf("\t\"cert_issuer\": \"%s\",\n", issuer);
 		printf("\t\"cert_serial\": \"%s\",\n", serial);
 	} else {
+		printf("Certificate issuer:       %s\n", issuer);
 		printf("Certificate serial:       %s\n", serial);
 	}
 
  out:
+	free(issuer);
 	free(serial);
 }
 
@@ -147,9 +158,6 @@ cert_print(const struct cert *p)
 	size_t			 i, j;
 	char			 buf1[64], buf2[64];
 	int			 sockt;
-	char			 tbuf[21];
-
-	strftime(tbuf, sizeof(tbuf), "%FT%TZ", gmtime(&p->expires));
 
 	if (outformats & FORMAT_JSON) {
 		if (p->pubkey != NULL)
@@ -189,9 +197,11 @@ cert_print(const struct cert *p)
 		if (p->pubkey != NULL) {
 			printf("BGPsec ECDSA public key:  %s\n",
 			    p->pubkey);
-			printf("Router key valid until:   %s\n", tbuf);
+			printf("Router key valid until:   %s\n",
+			    time2str(p->expires));
 		} else
-			printf("Certificate valid until:  %s\n", tbuf);
+			printf("Certificate valid until:  %s\n",
+			    time2str(p->expires));
 		printf("Subordinate resources:\n");
 	}
 
@@ -270,8 +280,9 @@ crl_print(const struct crl *p)
 	STACK_OF(X509_REVOKED)	*revlist;
 	X509_REVOKED *rev;
 	ASN1_INTEGER *crlnum;
+	X509_NAME *xissuer;
 	int i;
-	char *serial;
+	char *issuer, *serial;
 	time_t t;
 
 	if (outformats & FORMAT_JSON) {
@@ -280,14 +291,20 @@ crl_print(const struct crl *p)
 	} else
 		printf("Authority key identifier: %s\n", pretty_key_id(p->aki));
 
+	xissuer = X509_CRL_get_issuer(p->x509_crl);
+	issuer = X509_NAME_oneline(xissuer, NULL, 0);	
 	crlnum = X509_CRL_get_ext_d2i(p->x509_crl, NID_crl_number, NULL, NULL);
 	serial = x509_convert_seqnum(__func__, crlnum);
-	if (serial != NULL) {
-		if (outformats & FORMAT_JSON)
+	if (issuer != NULL && serial != NULL) {
+		if (outformats & FORMAT_JSON) {
+			printf("\t\"crl_issuer\": \"%s\",\n", issuer);
 			printf("\t\"crl_serial\": \"%s\",\n", serial);
-		else
-			printf("CRL Serial Number:        %s\n", serial);
+		} else {
+			printf("CRL issuer:               %s\n", issuer);
+			printf("CRL serial number:        %s\n", serial);
+		}
 	}
+	free(issuer);
 	free(serial);
 	ASN1_INTEGER_free(crlnum);
 
@@ -466,12 +483,10 @@ gbr_print(const X509 *x, const struct gbr *p)
 void
 rsc_print(const X509 *x, const struct rsc *p)
 {
-	char	 buf1[64], buf2[64], tbuf[21];
+	char	 buf1[64], buf2[64];
 	char	*hash;
 	int	 sockt;
 	size_t	 i, j;
-
-	strftime(tbuf, sizeof(tbuf), "%FT%TZ", gmtime(&p->expires));
 
 	if (outformats & FORMAT_JSON) {
 		printf("\t\"ski\": \"%s\",\n", pretty_key_id(p->ski));
@@ -485,7 +500,7 @@ rsc_print(const X509 *x, const struct rsc *p)
 		printf("Authority key identifier: %s\n", pretty_key_id(p->aki));
 		x509_print(x);
 		printf("Authority info access:    %s\n", p->aia);
-		printf("Valid until:              %s\n", tbuf);
+		printf("RSC valid until:          %s\n", time2str(p->expires));
 		printf("Signed with resources:\n");
 	}
 
@@ -591,6 +606,7 @@ aspa_print(const X509 *x, const struct aspa *p)
 		printf("\t\"aki\": \"%s\",\n", pretty_key_id(p->aki));
 		printf("\t\"aia\": \"%s\",\n", p->aia);
 		printf("\t\"sia\": \"%s\",\n", p->sia);
+		printf("\t\"valid_until\": %lld,\n", (long long)p->expires);
 		printf("\t\"customer_asid\": %u,\n", p->custasid);
 		printf("\t\"provider_set\": [\n");
 		for (i = 0; i < p->providersz; i++) {
@@ -611,6 +627,7 @@ aspa_print(const X509 *x, const struct aspa *p)
 		printf("Authority key identifier: %s\n", pretty_key_id(p->aki));
 		printf("Authority info access:    %s\n", p->aia);
 		printf("Subject info access:      %s\n", p->sia);
+		printf("ASPA valid until:         %s\n", time2str(p->expires));
 		printf("Customer AS:              %u\n", p->custasid);
 		printf("Provider Set:\n");
 		for (i = 0; i < p->providersz; i++) {
@@ -685,8 +702,6 @@ takey_print(char *name, const struct takey *t)
 void
 tak_print(const X509 *x, const struct tak *p)
 {
-	char	tbuf[21];
-
 	if (outformats & FORMAT_JSON) {
 		printf("\t\"type\": \"tak\",\n");
 		printf("\t\"ski\": \"%s\",\n", pretty_key_id(p->ski));
@@ -697,13 +712,12 @@ tak_print(const X509 *x, const struct tak *p)
 		printf("\t\"valid_until\": %lld,\n", (long long)p->expires);
 		printf("\t\"takeys\": [\n");
 	} else {
-		strftime(tbuf, sizeof(tbuf), "%FT%TZ", gmtime(&p->expires));
 		printf("Subject key identifier:   %s\n", pretty_key_id(p->ski));
 		x509_print(x);
 		printf("Authority key identifier: %s\n", pretty_key_id(p->aki));
 		printf("Authority info access:    %s\n", p->aia);
 		printf("Subject info access:      %s\n", p->sia);
-		printf("TAK valid until:          %s\n", tbuf);
+		printf("TAK valid until:          %s\n", time2str(p->expires));
 	}
 
 	takey_print("current", p->current);

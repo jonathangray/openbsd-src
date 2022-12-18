@@ -1,4 +1,4 @@
-/*	$OpenBSD$	*/
+/*	$OpenBSD: ctzdi2.c,v 1.1 2022/12/14 23:50:31 jsg Exp $	*/
 
 /*
  * Public domain.

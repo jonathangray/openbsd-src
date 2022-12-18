@@ -1241,6 +1241,7 @@
 ./usr/share/man/man4/arm64/apldart.4
 ./usr/share/man/man4/arm64/apldma.4
 ./usr/share/man/man4/arm64/apldog.4
+./usr/share/man/man4/arm64/aplefuse.4
 ./usr/share/man/man4/arm64/aplhidev.4
 ./usr/share/man/man4/arm64/apliic.4
 ./usr/share/man/man4/arm64/aplintc.4
@@ -2014,6 +2015,7 @@
 ./usr/share/man/man4/thmc.4
 ./usr/share/man/man4/tht.4
 ./usr/share/man/man4/ti.4
+./usr/share/man/man4/tipd.4
 ./usr/share/man/man4/tipmic.4
 ./usr/share/man/man4/titmp.4
 ./usr/share/man/man4/tl.4
