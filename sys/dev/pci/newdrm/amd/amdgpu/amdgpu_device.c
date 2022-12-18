@@ -3861,6 +3861,8 @@ fence_driver_init:
 #ifdef __OpenBSD__
 {
 	const char *chip_name;
+	uint32_t version = adev->ip_versions[GC_HWIP][0];
+	int maj, min, rev;
 
 	switch (adev->asic_type) {
 	case CHIP_RAVEN:
@@ -3880,8 +3882,13 @@ fence_driver_init:
 	default:
 		chip_name = amdgpu_asic_name[adev->asic_type];
 	}
-	printf("%s: %s %d CU rev 0x%02x\n", adev->self.dv_xname,
-	    chip_name, adev->gfx.cu_info.number, adev->rev_id);
+
+	maj = IP_VERSION_MAJ(version);
+	min = IP_VERSION_MIN(version);
+	rev = IP_VERSION_REV(version);
+
+	printf("%s: %s GC %d.%d.%d %d CU rev 0x%02x\n", adev->self.dv_xname,
+	    chip_name, maj, min, rev, adev->gfx.cu_info.number, adev->rev_id);
 }
 #endif
 
