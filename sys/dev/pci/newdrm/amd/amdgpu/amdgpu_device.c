@@ -3883,12 +3883,15 @@ fence_driver_init:
 		chip_name = amdgpu_asic_name[adev->asic_type];
 	}
 
-	maj = IP_VERSION_MAJ(version);
-	min = IP_VERSION_MIN(version);
-	rev = IP_VERSION_REV(version);
-
-	printf("%s: %s GC %d.%d.%d %d CU rev 0x%02x\n", adev->self.dv_xname,
-	    chip_name, maj, min, rev, adev->gfx.cu_info.number, adev->rev_id);
+	printf("%s: %s", adev->self.dv_xname, chip_name);
+	/* show graphics/compute ip block version, not set on < GFX9 */
+	if (version) {
+		maj = IP_VERSION_MAJ(version);
+		min = IP_VERSION_MIN(version);
+		rev = IP_VERSION_REV(version);
+		printf(" GC %d.%d.%d", maj, min, rev);
+	}
+	printf(" %d CU rev 0x%02x\n", adev->gfx.cu_info.number, adev->rev_id);
 }
 #endif
 
