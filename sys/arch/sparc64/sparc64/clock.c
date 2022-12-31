@@ -1,4 +1,4 @@
-/*	$OpenBSD: clock.c,v 1.72 2022/11/10 07:08:01 jmatthew Exp $	*/
+/*	$OpenBSD: clock.c,v 1.74 2022/12/29 22:44:23 cheloha Exp $	*/
 /*	$NetBSD: clock.c,v 1.41 2001/07/24 19:29:25 eeh Exp $ */
 
 /*
@@ -149,6 +149,10 @@ static long tick_increment;
 void	tick_start(void);
 void	sys_tick_start(void);
 void	stick_start(void);
+
+void	tick_rearm(uint64_t);
+void	sys_tick_rearm(uint64_t);
+void	stick_rearm(uint64_t);
 
 int	tickintr(void *);
 int	sys_tickintr(void *);
@@ -764,7 +768,7 @@ tickintr(void *cap)
 
 	/* Reset the interrupt. */
 	s = intr_disable();
-	tickcmpr_set(ci->ci_tick);
+	tick_rearm(ci->ci_tick);
 	intr_restore(s);
 
 	return (1);
@@ -787,7 +791,7 @@ sys_tickintr(void *cap)
 
 	/* Reset the interrupt. */
 	s = intr_disable();
-	sys_tickcmpr_set(ci->ci_tick);
+	sys_tick_rearm(ci->ci_tick);
 	intr_restore(s);
 
 	return (1);
@@ -810,7 +814,7 @@ stickintr(void *cap)
 
 	/* Reset the interrupt. */
 	s = intr_disable();
-	stickcmpr_set(ci->ci_tick);
+	stick_rearm(ci->ci_tick);
 	intr_restore(s);
 
 	return (1);
@@ -873,15 +877,25 @@ tick_start(void)
 
 	tick_enable();
 
-	/*
-	 * Try to make the tick interrupts as synchronously as possible on
-	 * all CPUs to avoid inaccuracies for migrating processes.
-	 */
-
 	s = intr_disable();
-	ci->ci_tick = roundup(tick(), tick_increment);
-	tickcmpr_set(ci->ci_tick);
+	ci->ci_tick = tick();
+	tick_rearm(ci->ci_tick);
 	intr_restore(s);
+}
+
+void
+tick_rearm(uint64_t cmp)
+{
+	uint64_t now, off = 8;
+
+	tickcmpr_set(cmp);
+	now = tick();
+	while (cmp <= now) {
+		cmp += off;
+		tickcmpr_set(cmp);
+		now = tick();
+		off *= 2;
+	}
 }
 
 void
@@ -895,15 +909,25 @@ sys_tick_start(void)
 		sys_tick_enable();
 	}
 
-	/*
-	 * Try to make the tick interrupts as synchronously as possible on
-	 * all CPUs to avoid inaccuracies for migrating processes.
-	 */
-
 	s = intr_disable();
-	ci->ci_tick = roundup(sys_tick(), tick_increment);
-	sys_tickcmpr_set(ci->ci_tick);
+	ci->ci_tick = sys_tick();
+	sys_tick_rearm(ci->ci_tick);
 	intr_restore(s);
+}
+
+void
+sys_tick_rearm(uint64_t cmp)
+{
+	uint64_t now, off = 8;
+
+	sys_tickcmpr_set(cmp);
+	now = sys_tick();
+	while (cmp <= now) {
+		cmp += off;
+		sys_tickcmpr_set(cmp);
+		now = sys_tick();
+		off *= 2;
+	}
 }
 
 void
@@ -914,15 +938,25 @@ stick_start(void)
 
 	tick_enable();
 
-	/*
-	 * Try to make the tick interrupts as synchronously as possible on
-	 * all CPUs to avoid inaccuracies for migrating processes.
-	 */
-
 	s = intr_disable();
-	ci->ci_tick = roundup(stick(), tick_increment);
-	stickcmpr_set(ci->ci_tick);
+	ci->ci_tick = stick();
+	stick_rearm(ci->ci_tick);
 	intr_restore(s);
+}
+
+void
+stick_rearm(uint64_t cmp)
+{
+	uint64_t now, off = 8;
+
+	stickcmpr_set(cmp);
+	now = stick();
+	while (cmp <= now) {
+		cmp += off;
+		stickcmpr_set(cmp);
+		now = stick();
+		off *= 2;
+	}
 }
 
 u_int

@@ -1,4 +1,4 @@
-/*	$OpenBSD: cpu.c,v 1.76 2022/12/10 10:13:58 patrick Exp $	*/
+/*	$OpenBSD: cpu.c,v 1.78 2022/12/23 17:46:49 kettenis Exp $	*/
 
 /*
  * Copyright (c) 2016 Dale Rahn <drahn@dalerahn.com>
@@ -674,6 +674,8 @@ cpu_identify(struct cpu_info *ci)
 	}
 	if (ID_AA64MMFR1_PAN(id) >= ID_AA64MMFR1_PAN_ATS1E1)
 		printf("+ATS1E1");
+	if (ID_AA64MMFR1_PAN(id) >= ID_AA64MMFR1_PAN_EPAN)
+		printf("+EPAN");
 
 	if (ID_AA64MMFR1_LO(id) >= ID_AA64MMFR1_LO_IMPL) {
 		printf("%sLO", sep);
@@ -1168,16 +1170,14 @@ cpu_suspend_primary(void)
 		 * by clearing the flag.
 		 */
 		cpu_suspended = 1;
-		arm_intr_func.setipl(IPL_NONE);
-		intr_enable();
+		intr_enable_wakeup();
 
 		while (cpu_suspended) {
 			__asm volatile("wfi");
 			count++;
 		}
 
-		intr_disable();
-		arm_intr_func.setipl(IPL_HIGH);
+		intr_disable_wakeup();
 
 		/* Unmask clock interrupts. */
 		WRITE_SPECIALREG(cntv_ctl_el0,

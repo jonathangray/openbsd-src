@@ -1,4 +1,4 @@
-/* $OpenBSD: ns8250.c,v 1.32 2021/07/16 16:21:22 dv Exp $ */
+/* $OpenBSD: ns8250.c,v 1.34 2022/12/28 21:30:19 jmc Exp $ */
 /*
  * Copyright (c) 2016 Mike Larkin <mlarkin@openbsd.org>
  *
@@ -299,7 +299,7 @@ vcpu_process_com_data(struct vm_exit *vei, uint32_t vm_id, uint32_t vcpu_id)
 			com1_dev.regs.lsr &= ~LSR_RXRDY;
 		} else {
 			set_return_data(vei, com1_dev.regs.data);
-			log_warnx("%s: guest reading com1 when not ready",
+			log_debug("%s: guest reading com1 when not ready",
 			    __func__);
 		}
 
@@ -326,7 +326,7 @@ vcpu_process_com_data(struct vm_exit *vei, uint32_t vm_id, uint32_t vcpu_id)
  *
  * Emulate in/out instructions to the com1 (ns8250) UART line control register
  *
- * Paramters:
+ * Parameters:
  *  vei: vm exit information from vmm(4) containing information on the in/out
  *      instruction being performed
  */

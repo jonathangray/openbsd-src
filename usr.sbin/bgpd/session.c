@@ -1,4 +1,4 @@
-/*	$OpenBSD: session.c,v 1.436 2022/10/18 12:24:51 claudio Exp $ */
+/*	$OpenBSD: session.c,v 1.438 2022/12/28 21:30:16 jmc Exp $ */
 
 /*
  * Copyright (c) 2003, 2004, 2005 Henning Brauer <henning@openbsd.org>
@@ -586,7 +586,7 @@ init_peer(struct peer *p)
 
 	/*
 	 * on startup, demote if requested.
-	 * do not handle new peers. they must reach ESTABLISHED beforehands.
+	 * do not handle new peers. they must reach ESTABLISHED beforehand.
 	 * peers added at runtime have reconf_action set to RECONF_REINIT.
 	 */
 	if (p->reconf_action != RECONF_REINIT && p->conf.demote_group[0])
@@ -1441,8 +1441,8 @@ session_open(struct peer *p)
 	if (p->capa.ann.refresh)	/* no data */
 		errs += session_capa_add(opb, CAPA_REFRESH, 0);
 
-	/* BGP open policy, RFC 9234 */
-	if (p->capa.ann.role_ena) {
+	/* BGP open policy, RFC 9234, only for ebgp sessions */
+	if (p->capa.ann.role_ena && p->conf.ebgp) {
 		errs += session_capa_add(opb, CAPA_ROLE, 1);
 		errs += ibuf_add(opb, &p->capa.ann.role, 1);
 	}
@@ -1505,7 +1505,7 @@ session_open(struct peer *p)
 	if (optparamlen == 0) {
 		/* nothing */
 	} else if (optparamlen + 2 >= 255) {
-		/* RFC9072: 2 byte lenght instead of 1 + 3 byte extra header */
+		/* RFC9072: 2 byte length instead of 1 + 3 byte extra header */
 		optparamlen += sizeof(op_type) + 2 + 3;
 		msg.optparamlen = 255;
 		extlen = 1;
@@ -2478,6 +2478,11 @@ parse_notification(struct peer *peer)
 				log_peer_warnx(&peer->conf,
 				    "disabling route refresh capability");
 				break;
+			case CAPA_ROLE:
+				peer->capa.ann.role_ena = 0;
+				log_peer_warnx(&peer->conf,
+				    "disabling role capability");
+				break;
 			case CAPA_RESTART:
 				peer->capa.ann.grestart.restart = 0;
 				log_peer_warnx(&peer->conf,
@@ -2616,10 +2621,12 @@ parse_capabilities(struct peer *peer, u_char *d, uint16_t dlen, uint32_t *as)
 		case CAPA_ROLE:
 			if (capa_len != 1) {
 				log_peer_warnx(&peer->conf,
-				    "Bad open policy capability length: "
-				    "%u", capa_len);
+				    "Bad role capability length: %u", capa_len);
 				break;
 			}
+			if (!peer->conf.ebgp)
+				log_peer_warnx(&peer->conf,
+				    "Received role capability on iBGP session");
 			peer->capa.peer.role_ena = 1;
 			peer->capa.peer.role = *capa_val;
 			break;
@@ -2768,7 +2775,7 @@ capa_neg_calc(struct peer *p, uint8_t *suberr)
 	/*
 	 * graceful restart: the peer capabilities are of interest here.
 	 * It is necessary to compare the new values with the previous ones
-	 * and act acordingly. AFI/SAFI that are not part in the MP capability
+	 * and act accordingly. AFI/SAFI that are not part in the MP capability
 	 * are treated as not being present.
 	 * Also make sure that a flush happens if the session stopped
 	 * supporting graceful restart.
@@ -2835,8 +2842,10 @@ capa_neg_calc(struct peer *p, uint8_t *suberr)
 	 * Make sure that the roles match and set the negotiated capability
 	 * to the role of the peer. So the RDE can inject the OTC attribute.
 	 * See RFC 9234, section 4.2.
+	 * These checks should only happen on ebgp sessions.
 	 */
-	if (p->capa.ann.role_ena != 0 && p->capa.peer.role_ena != 0) {
+	if (p->capa.ann.role_ena != 0 && p->capa.peer.role_ena != 0 &&
+	    p->conf.ebgp) {
 		switch (p->capa.ann.role) {
 		case CAPA_ROLE_PROVIDER:
 			if (p->capa.peer.role != CAPA_ROLE_CUSTOMER)
@@ -2868,7 +2877,7 @@ capa_neg_calc(struct peer *p, uint8_t *suberr)
 		}
 		p->capa.neg.role_ena = 1;
 		p->capa.neg.role = p->capa.peer.role;
-	} else if (p->capa.ann.role_ena == 2) {
+	} else if (p->capa.ann.role_ena == 2 && p->conf.ebgp) {
 		/* enforce presence of open policy role capability */
 		log_peer_warnx(&p->conf, "open policy role enforced but "
 		    "not present");

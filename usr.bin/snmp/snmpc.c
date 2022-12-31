@@ -1,4 +1,4 @@
-/*	$OpenBSD: snmpc.c,v 1.38 2021/10/21 08:17:34 martijn Exp $	*/
+/*	$OpenBSD: snmpc.c,v 1.40 2022/12/26 19:16:03 jmc Exp $	*/
 
 /*
  * Copyright (c) 2019 Martijn van Duren <martijn@openbsd.org>
@@ -468,7 +468,9 @@ main(int argc, char *argv[])
 	argc -= optind;
 	argv += optind;
 
-	if (version == SNMP_V1 || version == SNMP_V2C) {
+	if (!snmp_app->usecommonopt) {
+		/* No SNMP protocol settings */
+	} else if (version == SNMP_V1 || version == SNMP_V2C) {
 		if (community == NULL || community[0] == '\0')
 			errx(1, "No community name specified.");
 	} else if (version == SNMP_V3) {
@@ -1195,7 +1197,7 @@ snmpc_printerror(enum snmp_error error, struct ber_element *varbind,
 	case SNMP_ERROR_COMMITFAILED:
 		errx(1, "Can't parse oid %s: Commit failed", oid);
 	case SNMP_ERROR_UNDOFAILED:
-		errx(1, "Can't parse oid %s: Undo faild", oid);
+		errx(1, "Can't parse oid %s: Undo failed", oid);
 	case SNMP_ERROR_AUTHERROR:
 		errx(1, "Can't parse oid %s: Authorization error", oid);
 	case SNMP_ERROR_NOTWRITABLE:

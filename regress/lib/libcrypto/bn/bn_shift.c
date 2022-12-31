@@ -1,4 +1,4 @@
-/*	$OpenBSD: bn_shift.c,v 1.3 2022/12/18 00:22:07 tb Exp $ */
+/*	$OpenBSD: bn_shift.c,v 1.5 2022/12/23 02:13:15 jsing Exp $ */
 /*
  * Copyright (c) 2022 Joel Sing <jsing@openbsd.org>
  *
@@ -233,6 +233,43 @@ test_bn_shift(void)
 	if (!check_shift_result(bn1))
 		goto failure;
 
+	/*
+	 * Shift of zero (equivalent to a copy).
+	 */
+	BN_zero(bn2);
+	if (!BN_lshift(bn2, bn1, 0)) {
+		fprintf(stderr, "FAIL: failed to BN_lshift()\n");
+		goto failure;
+	}
+
+	if (!check_shift_result(bn2))
+		goto failure;
+
+	if (!BN_lshift(bn2, bn2, 0)) {
+		fprintf(stderr, "FAIL: failed to BN_lshift()\n");
+		goto failure;
+	}
+
+	if (!check_shift_result(bn2))
+		goto failure;
+
+	BN_zero(bn2);
+	if (!BN_rshift(bn2, bn1, 0)) {
+		fprintf(stderr, "FAIL: failed to BN_rshift()\n");
+		goto failure;
+	}
+
+	if (!check_shift_result(bn2))
+		goto failure;
+
+	if (!BN_rshift(bn2, bn2, 0)) {
+		fprintf(stderr, "FAIL: failed to BN_rshift()\n");
+		goto failure;
+	}
+
+	if (!check_shift_result(bn2))
+		goto failure;
+
 	failed = 0;
 
  failure:
@@ -319,6 +356,9 @@ benchmark_bn_lshift1(BIGNUM *bn)
 {
 	int i;
 
+	if (!BN_set_bit(bn, 8192))
+		errx(1, "BN_set_bit");
+
 	if (!BN_one(bn))
 		errx(1, "BN_one");
 
@@ -332,6 +372,9 @@ static void
 benchmark_bn_lshift(BIGNUM *bn, int n)
 {
 	int i;
+
+	if (!BN_set_bit(bn, 8192 * n))
+		errx(1, "BN_set_bit");
 
 	if (!BN_one(bn))
 		errx(1, "BN_one");
@@ -371,6 +414,9 @@ benchmark_bn_rshift1(BIGNUM *bn)
 {
 	int i;
 
+	if (!BN_one(bn))
+		errx(1, "BN_one");
+
 	if (!BN_set_bit(bn, 8192))
 		errx(1, "BN_set_bit");
 
@@ -384,6 +430,9 @@ static void
 benchmark_bn_rshift(BIGNUM *bn, int n)
 {
 	int i;
+
+	if (!BN_one(bn))
+		errx(1, "BN_one");
 
 	if (!BN_set_bit(bn, 8192 * n))
 		errx(1, "BN_set_bit");

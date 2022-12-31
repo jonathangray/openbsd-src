@@ -1,4 +1,4 @@
-/*	$OpenBSD: parse.c,v 1.13 2019/11/07 13:42:54 mpi Exp $ */
+/*	$OpenBSD: parse.c,v 1.15 2022/12/26 18:43:49 jmc Exp $ */
 
 /*
  * Copyright (c) 2016-2017 Martin Pieuchot

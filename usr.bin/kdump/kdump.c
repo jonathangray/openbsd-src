@@ -1,4 +1,4 @@
-/*	$OpenBSD: kdump.c,v 1.150 2022/09/08 16:04:31 mbuhl Exp $	*/
+/*	$OpenBSD: kdump.c,v 1.153 2022/12/29 01:36:36 guenther Exp $	*/
 
 /*-
  * Copyright (c) 1988, 1993
@@ -145,6 +145,7 @@ static void flagsandmodename(int);
 static void clockname(int);
 static void sockoptlevelname(int);
 static void ktraceopname(int);
+static void idtypeandid(int);
 
 static int screenwidth;
 
@@ -588,6 +589,8 @@ static void (*formatters[])(int) = {
 	gidname,
 	syslogflagname,
 	futexflagname,
+	waitidoptname,
+	idtypeandid,
 };
 
 enum {
@@ -672,6 +675,8 @@ enum {
 	Gidname,
 	Syslogflagname,
 	Futexflagname,
+	Waitidoptname,
+	Idtypeandid,
 };
 
 #define Pptr		Phexlong
@@ -695,6 +700,7 @@ enum {
 #define Msgflgname	Phexlong	/* to be added */
 
 
+/* includes relevant entries as of syscalls.master rev 1.238 */
 typedef signed char formatter;
 static const formatter scargs[][8] = {
     [SYS_exit]		= { Pdecint },
@@ -720,8 +726,6 @@ static const formatter scargs[][8] = {
     [SYS_ptrace]	= { Ptracedecode, Ppid_t, Pptr, Pdecint },
     [SYS_recvmsg]	= { Pfd, Pptr, Sendrecvflagsname },
     [SYS_sendmsg]	= { Pfd, Pptr, Sendrecvflagsname },
-    [SYS_recvmmsg]	= { Pfd, Pptr, Pucount, Sendrecvflagsname, Pptr },
-    [SYS_sendmmsg]	= { Pfd, Pptr, Pucount, Sendrecvflagsname },
     [SYS_recvfrom]	= { Pfd, Pptr, Pbigsize, Sendrecvflagsname },
     [SYS_accept]	= { Pfd, Pptr, Pptr },
     [SYS_getpeername]	= { Pfd, Pptr, Pptr },
@@ -729,7 +733,7 @@ static const formatter scargs[][8] = {
     [SYS_access]	= { Ppath, Accessmodename },
     [SYS_chflags]	= { Ppath, Chflagsname },
     [SYS_fchflags]	= { Pfd, Chflagsname },
-    [SYS_kill]		= { Ppgid, Signame },
+    [SYS_msyscall]	= { Pptr, Pbigsize },
     [SYS_stat]		= { Ppath, Pptr },
     [SYS_lstat]		= { Ppath, Pptr },
     [SYS_dup]		= { Pfd },
@@ -738,7 +742,7 @@ static const formatter scargs[][8] = {
     [SYS_ktrace]	= { Ppath, Ktraceopname, Ktracefacname, Ppgid },
     [SYS_sigaction]	= { Signame, Pptr, Pptr },
     [SYS_sigprocmask]	= { Sigprocmaskhowname, Sigset },
-    [SYS_getlogin_r]	= { Pptr, Psize },
+    [SYS_mmap]		= { Pptr, Pbigsize, Mmapprotname, Mmapflagsname, Pfd, Poff_t, END64 },
     [SYS_setlogin]	= { Pptr },
     [SYS_acct]		= { Ppath },
     [SYS_fstat]		= { Pfd, Pptr },
@@ -765,14 +769,14 @@ static const formatter scargs[][8] = {
     [SYS_madvise]	= { Pptr, Pbigsize, Madvisebehavname },
     [SYS_utimes]	= { Ppath, Pptr },
     [SYS_futimes]	= { Pfd, Pptr },
-    [SYS_kbind]		= { Pptr, Psize, Phexlonglong },
+    [SYS_mquery]	= { Pptr, Pbigsize, Mmapprotname, Mmapflagsname, Pfd, Poff_t, END64 },
     [SYS_getgroups]	= { Pcount, Pptr },
     [SYS_setgroups]	= { Pcount, Pptr },
     [SYS_setpgid]	= { Ppid_t, Ppid_t },
     [SYS_futex]		= { Pptr, Futexflagname, Pcount, Pptr, Pptr },
-    [SYS_sendsyslog]	= { Pptr, Psize, Syslogflagname },
     [SYS_utimensat]	= { Atfd, Ppath, Pptr, Atflagsname },
     [SYS_futimens]	= { Pfd, Pptr },
+    [SYS_kbind]		= { Pptr, Psize, Phexlonglong },
     [SYS_clock_gettime]	= { Clockname, Pptr },
     [SYS_clock_settime]	= { Clockname, Pptr },
     [SYS_clock_getres]	= { Clockname, Pptr },
@@ -794,13 +798,20 @@ static const formatter scargs[][8] = {
     [SYS_setsockopt]	= { Pfd, PASS_TWO, Sockoptlevelname, Pptr, Pdecint },
     [SYS_listen]	= { Pfd, Pdecint },
     [SYS_chflagsat]	= { Atfd, Ppath, Chflagsname, Atflagsname },
+    [SYS_pledge]	= { Pptr, Pptr },
     [SYS_ppoll]		= { Pptr, Pucount, Pptr, Pptr },
     [SYS_pselect]	= { Pcount, Pptr, Pptr, Pptr, Pptr, Pptr },
     [SYS_sigsuspend]	= { Sigset },
+    [SYS_sendsyslog]	= { Pptr, Psize, Syslogflagname },
+    [SYS_unveil]	= { Ppath, Pptr },
+    [SYS___realpath]	= { Ppath, Pptr },
+    [SYS_recvmmsg]	= { Pfd, Pptr, Pucount, Sendrecvflagsname, Pptr },
+    [SYS_sendmmsg]	= { Pfd, Pptr, Pucount, Sendrecvflagsname },
     [SYS_getsockopt]	= { Pfd, PASS_TWO, Sockoptlevelname, Pptr, Pptr },
     [SYS_thrkill]	= { Ppid_t, Signame, Pptr },
     [SYS_readv]		= { Pfd, Pptr, Pcount },
     [SYS_writev]	= { Pfd, Pptr, Pcount },
+    [SYS_kill]		= { Ppgid, Signame },
     [SYS_fchown]	= { Pfd, Uidname, Gidname },
     [SYS_fchmod]	= { Pfd, Modename },
     [SYS_setreuid]	= { Uidname, Uidname },
@@ -814,12 +825,22 @@ static const formatter scargs[][8] = {
     [SYS_mkdir]		= { Ppath, Modename },
     [SYS_rmdir]		= { Ppath },
     [SYS_adjtime]	= { Pptr, Pptr },
+    [SYS_getlogin_r]	= { Pptr, Psize },
     [SYS_quotactl]	= { Ppath, Quotactlname, Uidname, Pptr },
+    [SYS_ypconnect]	= { Socktypename },
     [SYS_nfssvc]	= { Phexint, Pptr },
+    [SYS_mimmutable]	= { Pptr, Pbigsize },
+    [SYS_waitid]	= { PASS_TWO, Idtypeandid, Pptr, Waitidoptname },
     [SYS_getfh]		= { Ppath, Pptr },
+    [SYS___tmpfd]	= { Openflagsname },
     [SYS_sysarch]	= { Pdecint, Pptr },
+    [SYS_lseek]		= { Pfd, Poff_t, Whencename, END64 },
+    [SYS_truncate]	= { Ppath, Poff_t, END64 },
+    [SYS_ftruncate]	= { Pfd, Poff_t, END64 },
     [SYS_pread]		= { Pfd, Pptr, Pbigsize, Poff_t, END64 },
     [SYS_pwrite]        = { Pfd, Pptr, Pbigsize, Poff_t, END64 },
+    [SYS_preadv]	= { Pfd, Pptr, Pcount, Poff_t, END64 },
+    [SYS_pwritev]	= { Pfd, Pptr, Pcount, Poff_t, END64 },
     [SYS_setgid]	= { Gidname },
     [SYS_setegid]	= { Gidname },
     [SYS_seteuid]	= { Uidname },
@@ -828,10 +849,6 @@ static const formatter scargs[][8] = {
     [SYS_swapctl]	= { Swapctlname, Pptr, Pdecint },
     [SYS_getrlimit]	= { Rlimitname, Pptr },
     [SYS_setrlimit]	= { Rlimitname, Pptr },
-    [SYS_mmap]		= { Pptr, Pbigsize, Mmapprotname, Mmapflagsname, Pfd, Poff_t, END64 },
-    [SYS_lseek]		= { Pfd, Poff_t, Whencename, END64 },
-    [SYS_truncate]	= { Ppath, Poff_t, END64 },
-    [SYS_ftruncate]	= { Pfd, Poff_t, END64 },
     [SYS_sysctl]	= { Pptr, Pcount, Pptr, Pptr, Pptr, Psize },
     [SYS_mlock]		= { Pptr, Pbigsize },
     [SYS_munlock]	= { Pptr, Pbigsize },
@@ -850,14 +867,11 @@ static const formatter scargs[][8] = {
     [SYS_msync]		= { Pptr, Pbigsize, Msyncflagsname },
     [SYS_pipe]		= { Pptr },
     [SYS_fhopen]	= { Pptr, Openflagsname },
-    [SYS_preadv]	= { Pfd, Pptr, Pcount, Poff_t, END64 },
-    [SYS_pwritev]	= { Pfd, Pptr, Pcount, Poff_t, END64 },
     [SYS_mlockall]	= { Mlockallname },
     [SYS_getresuid]	= { Pptr, Pptr, Pptr },
     [SYS_setresuid]	= { Uidname, Uidname, Uidname },
     [SYS_getresgid]	= { Pptr, Pptr, Pptr },
     [SYS_setresgid]	= { Gidname, Gidname, Gidname },
-    [SYS_mquery]	= { Pptr, Pbigsize, Mmapprotname, Mmapflagsname, Pfd, Poff_t, END64 },
     [SYS_closefrom]	= { Pfd },
     [SYS_sigaltstack]	= { Pptr, Pptr },
     [SYS_shmget]	= { Pkey_t, Pbigsize, Semgetname },
@@ -1306,60 +1320,84 @@ ktrgenio(struct ktr_genio *ktr, size_t len)
 	showbuf(dp, datalen);
 }
 
+void
+siginfo(const siginfo_t *si, int show_signo)
+{
+	if (show_signo) {
+		printf("signo=");
+		signame(si->si_signo);
+	}
+	if (si->si_code) {
+		printf(" code=");
+		if (!fancy)
+			printf("<%d>", si->si_code);
+		else {
+			switch (si->si_signo) {
+			case SIGILL:
+				sigill_name(si->si_code);
+				break;
+			case SIGTRAP:
+				sigtrap_name(si->si_code);
+				break;
+			case SIGEMT:
+				sigemt_name(si->si_code);
+				break;
+			case SIGFPE:
+				sigfpe_name(si->si_code);
+				break;
+			case SIGBUS:
+				sigbus_name(si->si_code);
+				break;
+			case SIGSEGV:
+				sigsegv_name(si->si_code);
+				break;
+			case SIGCHLD:
+				sigchld_name(si->si_code);
+				break;
+			default:
+				printf("<%d>", si->si_code);
+				break;
+			}
+		}
+	}
+
+	switch (si->si_signo) {
+	case SIGSEGV:
+	case SIGILL:
+	case SIGBUS:
+	case SIGFPE:
+		printf(" addr=%p trapno=%d", si->si_addr, si->si_trapno);
+		break;
+	case SIGCHLD:
+		if (si->si_code == CLD_EXITED) {
+			printf(" status=%d", si->si_status);
+			if (si->si_status < 0 || si->si_status > 9)
+				(void)printf("/%#x", si->si_status);
+		} else {
+			printf(" status=");
+			signame(si->si_status);
+		}
+		printf(" pid=%d uid=", si->si_pid);
+		uidname(si->si_uid);
+		break;
+	default:
+		break;
+	}
+}
+
 static void
 ktrpsig(struct ktr_psig *psig)
 {
 	signame(psig->signo);
 	printf(" ");
 	if (psig->action == SIG_DFL)
-		(void)printf("SIG_DFL");
+		printf("SIG_DFL");
 	else {
-		(void)printf("caught handler=0x%lx mask=",
-		    (u_long)psig->action);
+		printf("caught handler=0x%lx mask=", (u_long)psig->action);
 		sigset(psig->mask);
 	}
-	if (psig->code) {
-		printf(" code ");
-		if (fancy) {
-			switch (psig->signo) {
-			case SIGILL:
-				sigill_name(psig->code);
-				break;
-			case SIGTRAP:
-				sigtrap_name(psig->code);
-				break;
-			case SIGEMT:
-				sigemt_name(psig->code);
-				break;
-			case SIGFPE:
-				sigfpe_name(psig->code);
-				break;
-			case SIGBUS:
-				sigbus_name(psig->code);
-				break;
-			case SIGSEGV:
-				sigsegv_name(psig->code);
-				break;
-			case SIGCHLD:
-				sigchld_name(psig->code);
-				break;
-			}
-		}
-		printf("<%d>", psig->code);
-	}
-
-	switch (psig->signo) {
-	case SIGSEGV:
-	case SIGILL:
-	case SIGBUS:
-	case SIGFPE:
-		printf(" addr=%p trapno=%d", psig->si.si_addr,
-		    psig->si.si_trapno);
-		break;
-	default:
-		break;
-	}
-	printf("\n");
+	siginfo(&psig->si, 0);
+	putchar('\n');
 }
 
 static void
@@ -1722,4 +1760,22 @@ ktraceopname(int ops)
 	printf(">");
 	if (invalid || (ops & ~(KTROP((unsigned)-1) | KTRFLAG_DESCEND)))
 		(void)printf("<invalid>%d", ops);
+}
+
+static void
+idtypeandid(int id)
+{
+	switch (arg1) {
+	case P_PID:
+		printf("P_PID,%d", id);
+		break;
+	case P_PGID:
+		printf("P_PGID,%d", id);
+		break;
+	case P_ALL:
+		printf("P_ALL,<unused>%d", id);
+		break;
+	default: /* Should not reach */
+		printf("<invalid=%d>, <unused>%d", arg1, id);
+	}
 }
