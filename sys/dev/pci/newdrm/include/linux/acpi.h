@@ -67,6 +67,7 @@ acpi_status acpi_evaluate_object(acpi_handle, const char *,
 acpi_status acpi_get_handle(acpi_handle, const char *, acpi_handle *);
 acpi_status acpi_get_name(acpi_handle, int, struct acpi_buffer *);
 acpi_status acpi_get_table(const char *, int, struct acpi_table_header **);
+void acpi_put_table(struct acpi_table_header *);
 
 #define ACPI_FULL_PATHNAME 1
 

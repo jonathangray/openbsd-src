@@ -1332,6 +1332,11 @@ acpi_get_table(const char *sig, int instance,
 	return AE_NOT_FOUND;
 }
 
+void
+acpi_put_table(struct acpi_table_header *hdr)
+{
+}
+
 acpi_status
 acpi_get_handle(acpi_handle node, const char *name, acpi_handle *rnode)
 {
