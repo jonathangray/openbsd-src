@@ -34,7 +34,7 @@
 #define _DRM_LINUX_LIST_H_
 
 #include <sys/param.h>
-#include <linux/kernel.h>
+#include <linux/container_of.h>
 #include <linux/types.h>
 #include <linux/poison.h>
 

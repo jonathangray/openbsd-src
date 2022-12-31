@@ -93,6 +93,13 @@ queue_work(struct workqueue_struct *wq, struct work_struct *work)
 }
 
 static inline void
+cancel_work(struct work_struct *work)
+{
+	if (work->tq != NULL)
+		task_del(work->tq, &work->task);
+}
+
+static inline void
 cancel_work_sync(struct work_struct *work)
 {
 	if (work->tq != NULL)

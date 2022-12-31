@@ -52,6 +52,16 @@ bitmap_zero(void *p, u_int n)
 }
 
 static inline void
+bitmap_fill(void *p, u_int n)
+{
+	u_int *ptr = p;
+	u_int b;
+
+	for (b = 0; b < n; b += 32)
+		ptr[b >> 5] = 0xffffffff;
+}
+
+static inline void
 bitmap_or(void *d, void *s1, void *s2, u_int n)
 {
 	u_int *dst = d;
@@ -119,9 +129,9 @@ bitmap_to_arr32(void *d, unsigned long *src, u_int n)
 
 
 static inline int
-bitmap_weight(void *p, u_int n)
+bitmap_weight(const void *p, u_int n)
 {
-	u_int *ptr = p;
+	const u_int *ptr = p;
 	u_int b;
 	int sum = 0;
 

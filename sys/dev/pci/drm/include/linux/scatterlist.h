@@ -23,6 +23,7 @@
 #include <uvm/uvm_extern.h>
 
 #include <linux/mm.h>
+#include <linux/fwnode.h> /* via asm/io.h -> logic_pio.h */
 
 struct scatterlist {
 	struct vm_page *__page;

@@ -18,6 +18,7 @@
 #ifndef _ASM_SET_MEMORY_H
 #define _ASM_SET_MEMORY_H
 
+#include <sys/types.h>
 #include <sys/systm.h>
 #include <sys/atomic.h>
 
