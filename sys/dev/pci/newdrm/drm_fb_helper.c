@@ -1654,8 +1654,8 @@ static int __drm_fb_helper_find_sizes(struct drm_fb_helper *fb_helper,
 		return -EAGAIN;
 #else
 		drm_info(dev, "Cannot find any crtc or sizes - going 1024x768\n");
-		sizes.fb_width = sizes.surface_width = 1024;
-		sizes.fb_height = sizes.surface_height = 768;
+		sizes->fb_width = sizes->surface_width = 1024;
+		sizes->fb_height = sizes->surface_height = 768;
 #endif
 	}
 
@@ -1715,13 +1715,13 @@ static int drm_fb_helper_single_fb_probe(struct drm_fb_helper *fb_helper)
 
 #ifdef __linux__
 	strcpy(fb_helper->fb->comm, "[fbcon]");
-#else
-	strlcpy(fb_helper->fb->comm, "[fbcon]", sizeof(fb_helper->fb->comm));
-#endif
 
 	/* Set the fb info for vgaswitcheroo clients. Does nothing otherwise. */
 	if (dev_is_pci(dev->dev))
 		vga_switcheroo_client_fb_set(to_pci_dev(dev->dev), fb_helper->info);
+#else
+	strlcpy(fb_helper->fb->comm, "[fbcon]", sizeof(fb_helper->fb->comm));
+#endif
 
 	return 0;
 }
@@ -2047,12 +2047,11 @@ int drm_fb_helper_hotplug_event(struct drm_fb_helper *fb_helper)
 	drm_setup_crtcs_fb(fb_helper);
 	mutex_unlock(&fb_helper->lock);
 
-	drm_fb_helper_set_par(fb_helper->info);
 	fbi = fb_helper->info;
 	if (fbi->fbops && fbi->fbops->fb_set_par)
 		fbi->fbops->fb_set_par(fbi);
 	else
-		drm_fb_helper_set_par(fb_helper->fbdev);
+		drm_fb_helper_set_par(fb_helper->info);
 
 	return 0;
 }
