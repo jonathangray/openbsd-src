@@ -46,6 +46,7 @@ struct drm_device;
 struct drm_printer;
 struct device;
 struct file;
+struct seq_file;
 
 /*
  * FIXME: Not sure we want to have drm_minor here in the end, but to avoid
