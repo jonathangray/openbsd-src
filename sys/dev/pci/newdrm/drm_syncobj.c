@@ -1472,6 +1472,8 @@ drm_syncobj_eventfd_ioctl(struct drm_device *dev, void *data,
 	struct eventfd_ctx *ev_fd_ctx;
 	struct syncobj_eventfd_entry *entry;
 
+	return -EOPNOTSUPP;
+#ifdef notyet
 	if (!drm_core_check_feature(dev, DRIVER_SYNCOBJ_TIMELINE))
 		return -EOPNOTSUPP;
 
@@ -1503,6 +1505,7 @@ drm_syncobj_eventfd_ioctl(struct drm_device *dev, void *data,
 	drm_syncobj_put(syncobj);
 
 	return 0;
+#endif
 }
 
 int
