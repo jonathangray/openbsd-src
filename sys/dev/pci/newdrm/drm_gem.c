@@ -52,6 +52,163 @@
 
 #include "drm_internal.h"
 
+#include <sys/conf.h>
+#include <uvm/uvm.h>
+
+void drm_unref(struct uvm_object *);
+void drm_ref(struct uvm_object *);
+boolean_t drm_flush(struct uvm_object *, voff_t, voff_t, int);
+int drm_fault(struct uvm_faultinfo *, vaddr_t, vm_page_t *, int, int,
+    vm_fault_t, vm_prot_t, int);
+
+const struct uvm_pagerops drm_pgops = {
+	.pgo_reference = drm_ref,
+	.pgo_detach = drm_unref,
+	.pgo_fault = drm_fault,
+	.pgo_flush = drm_flush,
+};
+
+void
+drm_ref(struct uvm_object *uobj)
+{
+	struct drm_gem_object *obj =
+	    container_of(uobj, struct drm_gem_object, uobj);
+
+	drm_gem_object_get(obj);
+}
+
+void
+drm_unref(struct uvm_object *uobj)
+{
+	struct drm_gem_object *obj =
+	    container_of(uobj, struct drm_gem_object, uobj);
+
+	drm_gem_object_put(obj);
+}
+
+int
+drm_fault(struct uvm_faultinfo *ufi, vaddr_t vaddr, vm_page_t *pps,
+    int npages, int centeridx, vm_fault_t fault_type,
+    vm_prot_t access_type, int flags)
+{
+	struct vm_map_entry *entry = ufi->entry;
+	struct uvm_object *uobj = entry->object.uvm_obj;
+	struct drm_gem_object *obj =
+	    container_of(uobj, struct drm_gem_object, uobj);
+	struct drm_device *dev = obj->dev;
+	int ret;
+
+	/*
+	 * we do not allow device mappings to be mapped copy-on-write
+	 * so we kill any attempt to do so here.
+	 */
+	
+	if (UVM_ET_ISCOPYONWRITE(entry)) {
+		uvmfault_unlockall(ufi, ufi->entry->aref.ar_amap, uobj);
+		return(VM_PAGER_ERROR);
+	}
+
+	/*
+	 * We could end up here as the result of a copyin(9) or
+	 * copyout(9) while handling an ioctl.  So we must be careful
+	 * not to deadlock.  Therefore we only block if the quiesce
+	 * count is zero, which guarantees we didn't enter from within
+	 * an ioctl code path.
+	 */
+	mtx_enter(&dev->quiesce_mtx);
+	if (dev->quiesce && dev->quiesce_count == 0) {
+		mtx_leave(&dev->quiesce_mtx);
+		uvmfault_unlockall(ufi, ufi->entry->aref.ar_amap, uobj);
+		mtx_enter(&dev->quiesce_mtx);
+		while (dev->quiesce) {
+			msleep_nsec(&dev->quiesce, &dev->quiesce_mtx,
+			    PZERO, "drmflt", INFSLP);
+		}
+		mtx_leave(&dev->quiesce_mtx);
+		return(VM_PAGER_REFAULT);
+	}
+	dev->quiesce_count++;
+	mtx_leave(&dev->quiesce_mtx);
+
+	/* Call down into driver to do the magic */
+	ret = dev->driver->gem_fault(obj, ufi, entry->offset + (vaddr -
+	    entry->start), vaddr, pps, npages, centeridx,
+	    access_type, flags);
+
+	mtx_enter(&dev->quiesce_mtx);
+	dev->quiesce_count--;
+	if (dev->quiesce)
+		wakeup(&dev->quiesce_count);
+	mtx_leave(&dev->quiesce_mtx);
+
+	return (ret);
+}
+
+boolean_t	
+drm_flush(struct uvm_object *uobj, voff_t start, voff_t stop, int flags)
+{
+	return (TRUE);
+}
+
+struct uvm_object *
+udv_attach_drm(dev_t device, vm_prot_t accessprot, voff_t off, vsize_t size)
+{
+	struct drm_device *dev = drm_get_device_from_kdev(device);
+	struct drm_gem_object *obj = NULL;
+	struct drm_vma_offset_node *node;
+	struct drm_file *priv;
+	struct file *filp;
+
+	if (cdevsw[major(device)].d_mmap != drmmmap)
+		return NULL;
+
+	if (dev == NULL)
+		return NULL;
+
+	mutex_lock(&dev->filelist_mutex);
+	priv = drm_find_file_by_minor(dev, minor(device));
+	if (priv == NULL) {
+		mutex_unlock(&dev->filelist_mutex);
+		return NULL;
+	}
+	filp = priv->filp;
+	mutex_unlock(&dev->filelist_mutex);
+
+	if (dev->driver->mmap)
+		return dev->driver->mmap(filp, accessprot, off, size);
+
+	drm_vma_offset_lock_lookup(dev->vma_offset_manager);
+	node = drm_vma_offset_exact_lookup_locked(dev->vma_offset_manager,
+						  off >> PAGE_SHIFT,
+						  atop(round_page(size)));
+	if (likely(node)) {
+		obj = container_of(node, struct drm_gem_object, vma_node);
+		/*
+		 * When the object is being freed, after it hits 0-refcnt it
+		 * proceeds to tear down the object. In the process it will
+		 * attempt to remove the VMA offset and so acquire this
+		 * mgr->vm_lock.  Therefore if we find an object with a 0-refcnt
+		 * that matches our range, we know it is in the process of being
+		 * destroyed and will be freed as soon as we release the lock -
+		 * so we have to check for the 0-refcnted object and treat it as
+		 * invalid.
+		 */
+		if (!kref_get_unless_zero(&obj->refcount))
+			obj = NULL;
+	}
+	drm_vma_offset_unlock_lookup(dev->vma_offset_manager);
+
+	if (!obj)
+		return NULL;
+
+	if (!drm_vma_node_is_allowed(node, priv)) {
+		drm_gem_object_put(obj);
+		return NULL;
+	}
+
+	return &obj->uobj;
+}
+
 /** @file drm_gem.c
  *
  * This file provides some of the base ioctls and library routines for
@@ -95,7 +252,7 @@ drm_gem_init(struct drm_device *dev)
 {
 	struct drm_vma_offset_manager *vma_offset_manager;
 
-	mutex_init(&dev->object_name_lock);
+	rw_init(&dev->object_name_lock, "drmonl");
 	idr_init_base(&dev->object_name_idr, 1);
 
 	vma_offset_manager = drmm_kzalloc(dev, sizeof(*vma_offset_manager),
@@ -112,6 +269,8 @@ drm_gem_init(struct drm_device *dev)
 
 	return drmm_add_action(dev, drm_gem_init_release, NULL);
 }
+
+#ifdef __linux__
 
 /**
  * drm_gem_object_init - initialize an allocated shmem-backed GEM object
@@ -139,6 +298,26 @@ int drm_gem_object_init(struct drm_device *dev,
 }
 EXPORT_SYMBOL(drm_gem_object_init);
 
+#else
+
+int drm_gem_object_init(struct drm_device *dev,
+			struct drm_gem_object *obj, size_t size)
+{
+	drm_gem_private_object_init(dev, obj, size);
+
+	if (size > (512 * 1024 * 1024)) {
+		printf("%s size too big %lu\n", __func__, size);
+		return -ENOMEM;
+	}
+	
+	obj->uao = uao_create(size, 0);
+	uvm_obj_init(&obj->uobj, &drm_pgops, 1);
+	
+	return 0;
+}
+
+#endif
+
 /**
  * drm_gem_private_object_init - initialize an allocated private GEM object
  * @dev: drm_device the object should be initialized for
@@ -155,7 +334,12 @@ void drm_gem_private_object_init(struct drm_device *dev,
 	BUG_ON((size & (PAGE_SIZE - 1)) != 0);
 
 	obj->dev = dev;
+#ifdef __linux__
 	obj->filp = NULL;
+#else
+	obj->uao = NULL;
+	obj->uobj.pgops = NULL;
+#endif
 
 	kref_init(&obj->refcount);
 	obj->handle_count = 0;
@@ -498,6 +682,7 @@ int drm_gem_create_mmap_offset(struct drm_gem_object *obj)
 }
 EXPORT_SYMBOL(drm_gem_create_mmap_offset);
 
+#ifdef notyet
 /*
  * Move folios to appropriate lru and release the folios, decrementing the
  * ref count of those folios.
@@ -508,6 +693,7 @@ static void drm_gem_check_release_batch(struct folio_batch *fbatch)
 	__folio_batch_release(fbatch);
 	cond_resched();
 }
+#endif
 
 /**
  * drm_gem_get_pages - helper to allocate backing pages for a GEM object
@@ -534,10 +720,13 @@ static void drm_gem_check_release_batch(struct folio_batch *fbatch)
  * drm_gem_object_init(), but not for those initialized with
  * drm_gem_private_object_init() only.
  */
-struct page **drm_gem_get_pages(struct drm_gem_object *obj)
+struct vm_page **drm_gem_get_pages(struct drm_gem_object *obj)
 {
+	STUB();
+	return ERR_PTR(-ENOSYS);
+#ifdef notyet
 	struct address_space *mapping;
-	struct page **pages;
+	struct vm_page **pages;
 	struct folio *folio;
 	struct folio_batch fbatch;
 	long i, j, npages;
@@ -556,7 +745,7 @@ struct page **drm_gem_get_pages(struct drm_gem_object *obj)
 
 	npages = obj->size >> PAGE_SHIFT;
 
-	pages = kvmalloc_array(npages, sizeof(struct page *), GFP_KERNEL);
+	pages = kvmalloc_array(npages, sizeof(struct vm_page *), GFP_KERNEL);
 	if (pages == NULL)
 		return ERR_PTR(-ENOMEM);
 
@@ -599,6 +788,7 @@ fail:
 
 	kvfree(pages);
 	return ERR_CAST(folio);
+#endif
 }
 EXPORT_SYMBOL(drm_gem_get_pages);
 
@@ -609,9 +799,11 @@ EXPORT_SYMBOL(drm_gem_get_pages);
  * @dirty: if true, pages will be marked as dirty
  * @accessed: if true, the pages will be marked as accessed
  */
-void drm_gem_put_pages(struct drm_gem_object *obj, struct page **pages,
+void drm_gem_put_pages(struct drm_gem_object *obj, struct vm_page **pages,
 		bool dirty, bool accessed)
 {
+	STUB();
+#ifdef notyet
 	int i, npages;
 	struct address_space *mapping;
 	struct folio_batch fbatch;
@@ -650,6 +842,7 @@ void drm_gem_put_pages(struct drm_gem_object *obj, struct page **pages,
 		drm_gem_check_release_batch(&fbatch);
 
 	kvfree(pages);
+#endif
 }
 EXPORT_SYMBOL(drm_gem_put_pages);
 
@@ -922,7 +1115,7 @@ void
 drm_gem_open(struct drm_device *dev, struct drm_file *file_private)
 {
 	idr_init_base(&file_private->object_idr, 1);
-	spin_lock_init(&file_private->table_lock);
+	mtx_init(&file_private->table_lock, IPL_NONE);
 }
 
 /**
@@ -952,8 +1145,15 @@ drm_gem_release(struct drm_device *dev, struct drm_file *file_private)
 void
 drm_gem_object_release(struct drm_gem_object *obj)
 {
+#ifdef __linux__
 	if (obj->filp)
 		fput(obj->filp);
+#else
+	if (obj->uao)
+		uao_detach(obj->uao);
+	if (obj->uobj.pgops)
+		uvm_obj_destroy(&obj->uobj);
+#endif
 
 	drm_gem_private_object_fini(obj);
 
@@ -983,6 +1183,7 @@ drm_gem_object_free(struct kref *kref)
 }
 EXPORT_SYMBOL(drm_gem_object_free);
 
+#ifdef __linux__
 /**
  * drm_gem_vm_open - vma->ops->open implementation for GEM
  * @vma: VM area structure
@@ -1144,6 +1345,114 @@ int drm_gem_mmap(struct file *filp, struct vm_area_struct *vma)
 	return ret;
 }
 EXPORT_SYMBOL(drm_gem_mmap);
+#else /* ! __linux__ */
+
+int drm_gem_mmap_obj(struct drm_gem_object *obj, unsigned long obj_size,
+		     vm_prot_t accessprot, voff_t off, vsize_t size)
+{
+	int ret;
+
+	/* Check for valid size. */
+	if (obj_size < size)
+		return -EINVAL;
+
+	/* Take a ref for this mapping of the object, so that the fault
+	 * handler can dereference the mmap offset's pointer to the object.
+	 * This reference is cleaned up by the corresponding vm_close
+	 * (which should happen whether the vma was created by this call, or
+	 * by a vm_open due to mremap or partial unmap or whatever).
+	 */
+	drm_gem_object_get(obj);
+
+#ifdef __linux__
+	vma->vm_private_data = obj;
+	vma->vm_ops = obj->funcs->vm_ops;
+#else
+	if (obj->uobj.pgops == NULL)
+		uvm_obj_init(&obj->uobj, obj->funcs->vm_ops, 1);
+#endif
+
+	if (obj->funcs->mmap) {
+		ret = obj->funcs->mmap(obj, accessprot, off, size);
+		if (ret)
+			goto err_drm_gem_object_put;
+#ifdef notyet
+		WARN_ON(!(vma->vm_flags & VM_DONTEXPAND));
+#endif
+	} else {
+#ifdef notyet
+		if (!vma->vm_ops) {
+			ret = -EINVAL;
+			goto err_drm_gem_object_put;
+		}
+
+		vma->vm_flags |= VM_IO | VM_PFNMAP | VM_DONTEXPAND | VM_DONTDUMP;
+		vma->vm_page_prot = pgprot_writecombine(vm_get_page_prot(vma->vm_flags));
+		vma->vm_page_prot = pgprot_decrypted(vma->vm_page_prot);
+#else
+		ret = -EINVAL;
+		goto err_drm_gem_object_put;
+#endif
+	}
+
+	return 0;
+
+err_drm_gem_object_put:
+	drm_gem_object_put(obj);
+	return ret;
+}
+
+struct uvm_object *
+drm_gem_mmap(struct file *filp, vm_prot_t accessprot, voff_t off,
+    vsize_t size)
+{
+	struct drm_file *priv = (void *)filp;
+	struct drm_device *dev = priv->minor->dev;
+	struct drm_gem_object *obj = NULL;
+	struct drm_vma_offset_node *node;
+	int ret;
+
+	if (drm_dev_is_unplugged(dev))
+		return NULL;
+
+	drm_vma_offset_lock_lookup(dev->vma_offset_manager);
+	node = drm_vma_offset_exact_lookup_locked(dev->vma_offset_manager,
+						  off >> PAGE_SHIFT,
+						  atop(round_page(size)));
+	if (likely(node)) {
+		obj = container_of(node, struct drm_gem_object, vma_node);
+		/*
+		 * When the object is being freed, after it hits 0-refcnt it
+		 * proceeds to tear down the object. In the process it will
+		 * attempt to remove the VMA offset and so acquire this
+		 * mgr->vm_lock.  Therefore if we find an object with a 0-refcnt
+		 * that matches our range, we know it is in the process of being
+		 * destroyed and will be freed as soon as we release the lock -
+		 * so we have to check for the 0-refcnted object and treat it as
+		 * invalid.
+		 */
+		if (!kref_get_unless_zero(&obj->refcount))
+			obj = NULL;
+	}
+	drm_vma_offset_unlock_lookup(dev->vma_offset_manager);
+
+	if (!obj)
+		return NULL;
+
+	if (!drm_vma_node_is_allowed(node, priv)) {
+		drm_gem_object_put(obj);
+		return NULL;
+	}
+
+	ret = drm_gem_mmap_obj(obj, drm_vma_node_size(node) << PAGE_SHIFT,
+			       accessprot, off, size);
+
+	drm_gem_object_put(obj);
+
+	return &obj->uobj;
+}
+
+#endif /* __linux__ */
 
 void drm_gem_print_info(struct drm_printer *p, unsigned int indent,
 			const struct drm_gem_object *obj)
@@ -1314,7 +1623,7 @@ EXPORT_SYMBOL(drm_gem_unlock_reservations);
  * @lock: The lock protecting the LRU
  */
 void
-drm_gem_lru_init(struct drm_gem_lru *lru, struct mutex *lock)
+drm_gem_lru_init(struct drm_gem_lru *lru, struct rwlock *lock)
 {
 	lru->lock = lock;
 	lru->count = 0;

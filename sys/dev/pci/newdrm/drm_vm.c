@@ -139,7 +139,7 @@ static vm_fault_t drm_vm_fault(struct vm_fault *vmf)
 		resource_size_t offset = vmf->address - vma->vm_start;
 		resource_size_t baddr = map->offset + offset;
 		struct drm_agp_mem *agpmem;
-		struct page *page;
+		struct vm_page *page;
 
 #ifdef __alpha__
 		/*
@@ -202,7 +202,7 @@ static vm_fault_t drm_vm_shm_fault(struct vm_fault *vmf)
 	struct drm_local_map *map = vma->vm_private_data;
 	unsigned long offset;
 	unsigned long i;
-	struct page *page;
+	struct vm_page *page;
 
 	if (!map)
 		return VM_FAULT_SIGBUS;	/* Nothing allocated */
@@ -304,7 +304,7 @@ static vm_fault_t drm_vm_dma_fault(struct vm_fault *vmf)
 	struct drm_device_dma *dma = dev->dma;
 	unsigned long offset;
 	unsigned long page_nr;
-	struct page *page;
+	struct vm_page *page;
 
 	if (!dma)
 		return VM_FAULT_SIGBUS;	/* Error */
@@ -341,7 +341,7 @@ static vm_fault_t drm_vm_sg_fault(struct vm_fault *vmf)
 	unsigned long offset;
 	unsigned long map_offset;
 	unsigned long page_offset;
-	struct page *page;
+	struct vm_page *page;
 
 	if (!entry)
 		return VM_FAULT_SIGBUS;	/* Error */

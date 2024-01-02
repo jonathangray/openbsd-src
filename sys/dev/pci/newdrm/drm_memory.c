@@ -43,7 +43,7 @@
 
 #include "drm_legacy.h"
 
-#if IS_ENABLED(CONFIG_AGP)
+#if IS_ENABLED(CONFIG_AGP) && defined(__linux__)
 
 #ifdef HAVE_PAGE_AGP
 # include <asm/agp.h>
@@ -61,8 +61,8 @@ static void *agp_remap(unsigned long offset, unsigned long size,
 	unsigned long i, num_pages =
 	    PAGE_ALIGN(size) / PAGE_SIZE;
 	struct drm_agp_mem *agpmem;
-	struct page **page_map;
-	struct page **phys_page_map;
+	struct vm_page **page_map;
+	struct vm_page **phys_page_map;
 	void *addr;
 
 	size = PAGE_ALIGN(size);
@@ -85,7 +85,7 @@ static void *agp_remap(unsigned long offset, unsigned long size,
 	 * page-table instead (that's probably faster anyhow...).
 	 */
 	/* note: use vmalloc() because num_pages could be large... */
-	page_map = vmalloc(array_size(num_pages, sizeof(struct page *)));
+	page_map = vmalloc(array_size(num_pages, sizeof(struct vm_page *)));
 	if (!page_map)
 		return NULL;
 
@@ -106,6 +106,8 @@ static inline void *agp_remap(unsigned long offset, unsigned long size,
 }
 
 #endif /* CONFIG_AGP */
+
+#ifdef __linux__
 
 void drm_legacy_ioremap(struct drm_local_map *map, struct drm_device *dev)
 {
@@ -136,3 +138,5 @@ void drm_legacy_ioremapfree(struct drm_local_map *map, struct drm_device *dev)
 		iounmap(map->handle);
 }
 EXPORT_SYMBOL(drm_legacy_ioremapfree);
+
+#endif /* __linux__ */

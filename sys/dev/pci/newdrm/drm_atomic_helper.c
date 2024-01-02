@@ -810,14 +810,17 @@ drm_atomic_helper_check_wb_encoder_state(struct drm_encoder *encoder,
 					 struct drm_connector_state *conn_state)
 {
 	struct drm_writeback_job *wb_job = conn_state->writeback_job;
+#ifdef notyet
 	struct drm_property_blob *pixel_format_blob;
 	struct drm_framebuffer *fb;
 	size_t i, nformats;
 	u32 *formats;
+#endif
 
 	if (!wb_job || !wb_job->fb)
 		return 0;
 
+#ifdef notyet
 	pixel_format_blob = wb_job->connector->pixel_formats_blob_ptr;
 	nformats = pixel_format_blob->length / sizeof(u32);
 	formats = pixel_format_blob->data;
@@ -830,6 +833,9 @@ drm_atomic_helper_check_wb_encoder_state(struct drm_encoder *encoder,
 	drm_dbg_kms(encoder->dev, "Invalid pixel format %p4cc\n", &fb->format->format);
 
 	return -EINVAL;
+#endif
+	STUB();
+	return -ENOSYS;
 }
 EXPORT_SYMBOL(drm_atomic_helper_check_wb_encoder_state);
 
