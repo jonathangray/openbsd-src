@@ -11,9 +11,18 @@ struct seq_file {
 };
 
 static inline void
-seq_printf(struct seq_file *m, const char *fmt, ...) {};
+seq_printf(struct seq_file *m, const char *fmt, ...)
+{
+}
 
 static inline void
-seq_puts(struct seq_file *m, const char *s) {};
+seq_puts(struct seq_file *m, const char *s)
+{
+}
+
+static inline void
+seq_write(struct seq_file *m, const void *p, size_t s)
+{
+}
 
 #endif
