@@ -14,6 +14,8 @@
  * struct fb_ops
  */
 
+#ifdef __linux__
+
 static int drm_fbdev_dma_fb_open(struct fb_info *info, int user)
 {
 	struct drm_fb_helper *fb_helper = info->par;
@@ -58,7 +60,10 @@ static int drm_fbdev_dma_fb_mmap(struct fb_info *info, struct vm_area_struct *vm
 	return drm_gem_prime_mmap(fb_helper->buffer->gem, vma);
 }
 
+#endif /* __linux__ */
+
 static const struct fb_ops drm_fbdev_dma_fb_ops = {
+#ifdef notyet
 	.owner = THIS_MODULE,
 	.fb_open = drm_fbdev_dma_fb_open,
 	.fb_release = drm_fbdev_dma_fb_release,
@@ -67,6 +72,9 @@ static const struct fb_ops drm_fbdev_dma_fb_ops = {
 	__FB_DEFAULT_DMAMEM_OPS_DRAW,
 	.fb_mmap = drm_fbdev_dma_fb_mmap,
 	.fb_destroy = drm_fbdev_dma_fb_destroy,
+#else
+	DRM_FB_HELPER_DEFAULT_OPS,
+#endif
 };
 
 /*

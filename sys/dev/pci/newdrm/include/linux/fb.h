@@ -31,8 +31,14 @@ struct fb_ops {
 	int (*fb_set_par)(struct fb_info *);
 };
 
+struct fb_fix_screeninfo {
+	paddr_t	smem_start;
+	psize_t smem_len;
+};
+
 struct fb_info {
 	struct fb_var_screeninfo var;
+	struct fb_fix_screeninfo fix;
 	const struct fb_ops *fbops;
 	char *screen_buffer;
 	char *screen_base;
