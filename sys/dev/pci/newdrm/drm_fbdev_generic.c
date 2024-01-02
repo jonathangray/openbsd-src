@@ -12,6 +12,7 @@
 
 #include <drm/drm_fbdev_generic.h>
 
+#ifdef __linux__
 /* @user: 1=userspace, 0=fbcon */
 static int drm_fbdev_generic_fb_open(struct fb_info *info, int user)
 {
@@ -38,6 +39,8 @@ FB_GEN_DEFAULT_DEFERRED_SYSMEM_OPS(drm_fbdev_generic,
 				   drm_fb_helper_damage_range,
 				   drm_fb_helper_damage_area);
 
+#endif /* __linux__ */
+
 static void drm_fbdev_generic_fb_destroy(struct fb_info *info)
 {
 	struct drm_fb_helper *fb_helper = info->par;
@@ -46,7 +49,9 @@ static void drm_fbdev_generic_fb_destroy(struct fb_info *info)
 	if (!fb_helper->dev)
 		return;
 
+#ifdef notyet
 	fb_deferred_io_cleanup(info);
+#endif
 	drm_fb_helper_fini(fb_helper);
 	vfree(shadow);
 	drm_client_framebuffer_delete(fb_helper->buffer);
@@ -57,12 +62,16 @@ static void drm_fbdev_generic_fb_destroy(struct fb_info *info)
 }
 
 static const struct fb_ops drm_fbdev_generic_fb_ops = {
+#ifdef notyet
 	.owner		= THIS_MODULE,
 	.fb_open	= drm_fbdev_generic_fb_open,
 	.fb_release	= drm_fbdev_generic_fb_release,
 	FB_DEFAULT_DEFERRED_OPS(drm_fbdev_generic),
 	DRM_FB_HELPER_DEFAULT_OPS,
 	.fb_destroy	= drm_fbdev_generic_fb_destroy,
+#else
+	DRM_FB_HELPER_DEFAULT_OPS,
+#endif
 };
 
 /*
@@ -116,6 +125,7 @@ static int drm_fbdev_generic_helper_fb_probe(struct drm_fb_helper *fb_helper,
 	info->fix.smem_start = page_to_phys(vmalloc_to_page(info->screen_buffer));
 	info->fix.smem_len = screen_size;
 
+#ifdef notyet
 	/* deferred I/O */
 	fb_helper->fbdefio.delay = HZ / 20;
 	fb_helper->fbdefio.deferred_io = drm_fb_helper_deferred_io;
@@ -124,11 +134,14 @@ static int drm_fbdev_generic_helper_fb_probe(struct drm_fb_helper *fb_helper,
 	ret = fb_deferred_io_init(info);
 	if (ret)
 		goto err_drm_fb_helper_release_info;
+#endif
 
 	return 0;
 
+#ifdef notyet
 err_drm_fb_helper_release_info:
 	drm_fb_helper_release_info(fb_helper);
+#endif
 err_vfree:
 	vfree(screen_buffer);
 err_drm_client_framebuffer_delete:
