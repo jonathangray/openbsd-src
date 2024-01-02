@@ -2044,6 +2044,15 @@ cb_cleanup:
 	return ret;
 }
 
+void
+dma_fence_set_deadline(struct dma_fence *f, ktime_t t)
+{
+	if (f->ops->set_deadline == NULL)
+		return;
+	if (dma_fence_is_signaled(f) == false)
+		f->ops->set_deadline(f, t);
+}
+
 static struct dma_fence dma_fence_stub;
 static struct mutex dma_fence_stub_mtx = MUTEX_INITIALIZER(IPL_TTY);
 
