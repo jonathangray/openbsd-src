@@ -84,7 +84,8 @@ void ttm_mem_io_free(struct ttm_device *bdev,
 void ttm_move_memcpy(bool clear,
 		     u32 num_pages,
 		     struct ttm_kmap_iter *dst_iter,
-		     struct ttm_kmap_iter *src_iter)
+		     struct ttm_kmap_iter *src_iter,
+		     bus_space_tag_t memt);
 {
 	const struct ttm_kmap_iter_ops *dst_ops = dst_iter->ops;
 	const struct ttm_kmap_iter_ops *src_ops = src_iter->ops;

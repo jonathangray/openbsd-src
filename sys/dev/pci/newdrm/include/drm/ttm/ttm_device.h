@@ -44,7 +44,7 @@ extern struct ttm_global {
 	 * @dummy_read_page: Pointer to a dummy page used for mapping requests
 	 * of unpopulated pages. Constant after init.
 	 */
-	struct page *dummy_read_page;
+	struct vm_page *dummy_read_page;
 
 	/**
 	 * @device_list: List of buffer object devices. Protected by
@@ -236,6 +236,10 @@ struct ttm_device {
 	 */
 	struct ttm_resource_manager *man_drv[TTM_NUM_MEM_TYPES];
 
+	bus_space_tag_t iot;
+	bus_space_tag_t memt;
+	bus_dma_tag_t dmat;
+
 	/**
 	 * @vma_manager: Address space manager for finding BOs to mmap.
 	 */
@@ -275,15 +279,19 @@ int ttm_device_swapout(struct ttm_device *bdev, struct ttm_operation_ctx *ctx,
 static inline struct ttm_resource_manager *
 ttm_manager_type(struct ttm_device *bdev, int mem_type)
 {
+#ifdef notyet
 	BUILD_BUG_ON(__builtin_constant_p(mem_type)
 		     && mem_type >= TTM_NUM_MEM_TYPES);
+#endif
 	return bdev->man_drv[mem_type];
 }
 
 static inline void ttm_set_driver_manager(struct ttm_device *bdev, int type,
 					  struct ttm_resource_manager *manager)
 {
+#ifdef notyet
 	BUILD_BUG_ON(__builtin_constant_p(type) && type >= TTM_NUM_MEM_TYPES);
+#endif
 	bdev->man_drv[type] = manager;
 }
 

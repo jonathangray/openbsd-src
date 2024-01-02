@@ -94,11 +94,24 @@ struct drm_buf {
 	void *dev_private;		 /**< Per-buffer private storage */
 };
 
+struct drm_dmamem {
+	bus_dmamap_t		map;
+	caddr_t			kva;
+	bus_size_t		size;
+	int			nsegs;
+	bus_dma_segment_t	segs[1];
+};
+
 typedef struct drm_dma_handle {
+	struct drm_dmamem *mem;
 	dma_addr_t busaddr;
 	void *vaddr;
 	size_t size;
 } drm_dma_handle_t;
+
+struct drm_dmamem	*drm_dmamem_alloc(bus_dma_tag_t, bus_size_t, bus_size_t,
+			     int, bus_size_t, int, int);
+void			 drm_dmamem_free(bus_dma_tag_t, struct drm_dmamem *);
 
 /**
  * Buffer entry.  There is one of this for each buffer size order.
@@ -143,7 +156,7 @@ struct drm_sg_mem {
 	unsigned long handle;
 	void *virtual;
 	int pages;
-	struct page **pagelist;
+	struct vm_page **pagelist;
 	dma_addr_t *busaddr;
 };
 
@@ -180,7 +193,9 @@ struct drm_local_map *drm_legacy_findmap(struct drm_device *dev, unsigned int to
 void drm_legacy_rmmap(struct drm_device *d, struct drm_local_map *map);
 int drm_legacy_rmmap_locked(struct drm_device *d, struct drm_local_map *map);
 struct drm_local_map *drm_legacy_getsarea(struct drm_device *dev);
+#ifdef __linux__
 int drm_legacy_mmap(struct file *filp, struct vm_area_struct *vma);
+#endif
 
 int drm_legacy_addbufs_agp(struct drm_device *d, struct drm_buf_desc *req);
 int drm_legacy_addbufs_pci(struct drm_device *d, struct drm_buf_desc *req);
@@ -247,6 +262,7 @@ static inline void drm_legacy_pci_exit(const struct drm_driver *driver,
  * AGP Support
  */
 
+#ifdef __linux__
 struct drm_agp_head {
 	struct agp_kern_info agp_info;
 	struct list_head memory;
@@ -259,8 +275,28 @@ struct drm_agp_head {
 	int cant_use_aperture;
 	unsigned long page_mask;
 };
+#else
 
-#if IS_ENABLED(CONFIG_DRM_LEGACY) && IS_ENABLED(CONFIG_AGP)
+#include <dev/pci/pcivar.h>
+#include <dev/pci/agpvar.h>
+
+struct drm_agp_head {
+	struct agp_softc			*agpdev;
+	const char				*chipset;
+	TAILQ_HEAD(agp_memlist, drm_agp_mem)	 memory;
+	struct agp_info				 info;
+	unsigned long				 base;
+	unsigned long				 mode;
+	unsigned long				 page_mask;
+	int					 acquired;
+	int					 cant_use_aperture;
+	int					 enabled;
+   	int					 mtrr;
+};
+#endif
+
+/* #if IS_ENABLED(CONFIG_DRM_LEGACY) && IS_ENABLED(CONFIG_AGP) */
+#if IS_ENABLED(CONFIG_AGP)
 struct drm_agp_head *drm_legacy_agp_init(struct drm_device *dev);
 int drm_legacy_agp_acquire(struct drm_device *dev);
 int drm_legacy_agp_release(struct drm_device *dev);

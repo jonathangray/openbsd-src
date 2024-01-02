@@ -1,13 +1,19 @@
 #ifndef _DRM_DEVICE_H_
 #define _DRM_DEVICE_H_
 
+#include <sys/types.h>
+#include <sys/event.h>
+
 #include <linux/list.h>
 #include <linux/kref.h>
 #include <linux/mutex.h>
 #include <linux/idr.h>
+#include <linux/pci.h>
 
 #include <drm/drm_legacy.h>
 #include <drm/drm_mode_config.h>
+
+#include <sys/pool.h>
 
 struct drm_driver;
 struct drm_minor;
@@ -48,14 +54,18 @@ enum switch_power_state {
  * may contain multiple heads.
  */
 struct drm_device {
+	struct device *dev;
+
 	/** @if_version: Highest interface version set */
 	int if_version;
 
 	/** @ref: Object ref-count */
 	struct kref ref;
 
+#ifdef __linux__
 	/** @dev: Device structure of bus-device */
 	struct device *dev;
+#endif
 
 	/**
 	 * @managed:
@@ -74,6 +84,17 @@ struct drm_device {
 
 	/** @driver: DRM driver managing the device */
 	const struct drm_driver *driver;
+
+	bus_dma_tag_t		dmat;
+	bus_space_tag_t		bst;
+
+	struct klist note;
+	struct pci_dev  _pdev;
+	struct pci_dev *pdev;
+
+	struct mutex	quiesce_mtx;
+	int		quiesce;
+	int		quiesce_count;
 
 	/**
 	 * @dev_private:
@@ -156,14 +177,14 @@ struct drm_device {
 	 * WARNING:
 	 * Only drivers annotated with DRIVER_LEGACY should be using this.
 	 */
-	struct mutex struct_mutex;
+	struct rwlock struct_mutex;
 
 	/**
 	 * @master_mutex:
 	 *
 	 * Lock for &drm_minor.master and &drm_file.is_master
 	 */
-	struct mutex master_mutex;
+	struct rwlock master_mutex;
 
 	/**
 	 * @open_count:
@@ -174,13 +195,17 @@ struct drm_device {
 	atomic_t open_count;
 
 	/** @filelist_mutex: Protects @filelist. */
-	struct mutex filelist_mutex;
+	struct rwlock filelist_mutex;
 	/**
 	 * @filelist:
 	 *
 	 * List of userspace clients, linked through &drm_file.lhead.
 	 */
+#ifdef __linux__
 	struct list_head filelist;
+#else
+	SPLAY_HEAD(drm_file_tree, drm_file)	files;
+#endif
 
 	/**
 	 * @filelist_internal:
@@ -195,7 +220,7 @@ struct drm_device {
 	 *
 	 * Protects &clientlist access.
 	 */
-	struct mutex clientlist_mutex;
+	struct rwlock clientlist_mutex;
 
 	/**
 	 * @clientlist:
@@ -281,8 +306,10 @@ struct drm_device {
 	/** @mode_config: Current mode config */
 	struct drm_mode_config mode_config;
 
+	struct pool objpl;
+
 	/** @object_name_lock: GEM information */
-	struct mutex object_name_lock;
+	struct rwlock object_name_lock;
 
 	/** @object_name_idr: GEM information */
 	struct idr object_name_idr;
@@ -344,7 +371,7 @@ struct drm_device {
 	struct list_head ctxlist;
 
 	/* Context handle management - mutex for &ctxlist */
-	struct mutex ctxlist_mutex;
+	struct rwlock ctxlist_mutex;
 
 	/* Context handle management */
 	struct idr ctx_idr;
@@ -390,6 +417,8 @@ struct drm_device {
 	/* IRQs */
 	bool irq_enabled;
 	int irq;
+#else
+	struct drm_agp_head *agp;
 #endif
 };
 
