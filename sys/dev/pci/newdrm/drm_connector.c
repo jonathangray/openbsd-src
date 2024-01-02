@@ -35,6 +35,7 @@
 
 #include <linux/property.h>
 #include <linux/uaccess.h>
+#include <linux/backlight.h>
 
 #include <video/cmdline.h>
 

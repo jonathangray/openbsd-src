@@ -1745,7 +1745,7 @@ struct drm_connector {
 	/**
 	 * @edid_override_mutex: Protect access to edid_override.
 	 */
-	struct mutex edid_override_mutex;
+	struct rwlock edid_override_mutex;
 
 	/** @epoch_counter: used to detect any other changes in connector, besides status */
 	u64 epoch_counter;
