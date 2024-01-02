@@ -2293,6 +2293,10 @@ static int drm_mode_parse_cmdline_named_mode(const char *name,
 	if (!name_end)
 		return 0;
 
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
+
 	/* If the name starts with a digit, it's not a named mode */
 	if (isdigit(name[0]))
 		return 0;
@@ -2334,6 +2338,7 @@ static int drm_mode_parse_cmdline_named_mode(const char *name,
 	}
 
 	return -EINVAL;
+#endif
 }
 
 /**
