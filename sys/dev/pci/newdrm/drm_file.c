@@ -160,7 +160,9 @@ struct drm_file *drm_file_alloc(struct drm_minor *minor)
 
 	/* Get a unique identifier for fdinfo: */
 	file->client_id = atomic64_inc_return(&ident);
+#ifdef __linux__
 	rcu_assign_pointer(file->pid, get_pid(task_tgid(current)));
+#endif
 	file->minor = minor;
 
 	/* for compatibility root is always authenticated */
@@ -249,10 +251,16 @@ void drm_file_free(struct drm_file *file)
 
 	dev = file->minor->dev;
 
+#ifdef __linux__
 	drm_dbg_core(dev, "comm=\"%s\", pid=%d, dev=0x%lx, open_count=%d\n",
 		     current->comm, task_pid_nr(current),
 		     (long)old_encode_dev(file->minor->kdev->devt),
 		     atomic_read(&dev->open_count));
+#else
+	drm_dbg_core(dev, "pid=%d, dev=0x%lx, open_count=%d\n",
+		     curproc->p_p->ps_pid, (long)&dev->dev,
+		     atomic_read(&dev->open_count));
+#endif
 
 #ifdef CONFIG_DRM_LEGACY
 	if (drm_core_check_feature(dev, DRIVER_LEGACY) &&
@@ -528,6 +536,8 @@ void drm_file_update_pid(struct drm_file *filp)
 	if (filp->was_master)
 		return;
 
+	STUB();
+#ifdef notyet
 	pid = task_tgid(current);
 
 	/*
@@ -547,6 +557,7 @@ void drm_file_update_pid(struct drm_file *filp)
 		synchronize_rcu();
 		put_pid(old);
 	}
+#endif
 }
 
 /**
@@ -1037,6 +1048,8 @@ EXPORT_SYMBOL(drm_show_memory_stats);
  */
 void drm_show_fdinfo(struct seq_file *m, struct file *f)
 {
+	STUB();
+#ifdef notyet
 	struct drm_file *file = f->private_data;
 	struct drm_device *dev = file->minor->dev;
 	struct drm_printer p = drm_seq_file_printer(m);
@@ -1054,6 +1067,7 @@ void drm_show_fdinfo(struct seq_file *m, struct file *f)
 
 	if (dev->driver->show_fdinfo)
 		dev->driver->show_fdinfo(&p, file);
+#endif
 }
 EXPORT_SYMBOL(drm_show_fdinfo);
 
