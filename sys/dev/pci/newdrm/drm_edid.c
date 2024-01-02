@@ -2891,6 +2891,9 @@ EXPORT_SYMBOL(drm_get_edid_switcheroo);
 const struct drm_edid *drm_edid_read_switcheroo(struct drm_connector *connector,
 						struct i2c_adapter *adapter)
 {
+	STUB();
+	return NULL;
+#ifdef notyet
 	struct drm_device *dev = connector->dev;
 	struct pci_dev *pdev = to_pci_dev(dev->dev);
 	const struct drm_edid *drm_edid;
@@ -2903,6 +2906,7 @@ const struct drm_edid *drm_edid_read_switcheroo(struct drm_connector *connector,
 	vga_switcheroo_unlock_ddc(pdev);
 
 	return drm_edid;
+#endif
 }
 EXPORT_SYMBOL(drm_edid_read_switcheroo);
 
@@ -5898,9 +5902,17 @@ static void parse_cta_vdb(struct drm_connector *connector, const struct cea_db *
 		return;
 
 	/* Gracefully handle multiple VDBs, however unlikely that is */
+#ifdef __linux__
 	vics = krealloc(info->vics, info->vics_len + len, GFP_KERNEL);
 	if (!vics)
 		return;
+#else
+	vics = kmalloc(info->vics_len + len, GFP_KERNEL);
+	if (!vics)
+		return;
+	memcpy(vics, info->vics, info->vics_len);
+	kfree(info->vics);
+#endif
 
 	vic_index = info->vics_len;
 	info->vics_len += len;
