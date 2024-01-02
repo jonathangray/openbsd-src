@@ -98,18 +98,18 @@ static void dma_resv_list_set(struct dma_resv_list *list,
 static struct dma_resv_list *dma_resv_list_alloc(unsigned int max_fences)
 {
 	struct dma_resv_list *list;
-	size_t size;
 
-	/* Round up to the next kmalloc bucket size. */
-	size = kmalloc_size_roundup(struct_size(list, table, max_fences));
-
-	list = kmalloc(size, GFP_KERNEL);
+	list = kmalloc(struct_size(list, table, max_fences), GFP_KERNEL);
 	if (!list)
 		return NULL;
 
-	/* Given the resulting bucket size, recalculated max_fences. */
-	list->max_fences = (size - offsetof(typeof(*list), table)) /
+#ifdef __linux__
+	list->max_fences = (ksize(list) - offsetof(typeof(*list), table)) /
 		sizeof(*list->table);
+#else
+	list->max_fences = (offsetof(typeof(*list), table[max_fences]) -
+	    offsetof(typeof(*list), table)) / sizeof(*list->table);
+#endif
 
 	return list;
 }
@@ -563,6 +563,7 @@ int dma_resv_get_fences(struct dma_resv *obj, enum dma_resv_usage usage,
 {
 	struct dma_resv_iter cursor;
 	struct dma_fence *fence;
+	struct dma_fence **nfences;
 
 	*num_fences = 0;
 	*fences = NULL;
@@ -580,9 +581,20 @@ int dma_resv_get_fences(struct dma_resv *obj, enum dma_resv_usage usage,
 			count = cursor.num_fences + 1;
 
 			/* Eventually re-allocate the array */
+#ifdef __linux__
 			new_fences = krealloc_array(*fences, count,
 						    sizeof(void *),
 						    GFP_KERNEL);
+#else
+			nfences = kmalloc(count * sizeof(void *),
+						 GFP_KERNEL);
+			if (nfences != NULL && *fences != NULL) {
+				memcpy(nfences, *fences,
+				    (count - 1) *  sizeof(void *));
+				kfree(*fences);
+			}
+			new_fences = nfences;
+#endif
 			if (count && !new_fences) {
 				kfree(*fences);
 				*fences = NULL;
@@ -665,7 +677,7 @@ EXPORT_SYMBOL_GPL(dma_resv_get_singleton);
  * dma_resv_lock() already
  * RETURNS
  * Returns -ERESTARTSYS if interrupted, 0 if the wait timed out, or
- * greater than zero on success.
+ * greater than zer on success.
  */
 long dma_resv_wait_timeout(struct dma_resv *obj, enum dma_resv_usage usage,
 			   bool intr, unsigned long timeout)
@@ -689,28 +701,6 @@ long dma_resv_wait_timeout(struct dma_resv *obj, enum dma_resv_usage usage,
 }
 EXPORT_SYMBOL_GPL(dma_resv_wait_timeout);
 
-/**
- * dma_resv_set_deadline - Set a deadline on reservation's objects fences
- * @obj: the reservation object
- * @usage: controls which fences to include, see enum dma_resv_usage.
- * @deadline: the requested deadline (MONOTONIC)
- *
- * May be called without holding the dma_resv lock.  Sets @deadline on
- * all fences filtered by @usage.
- */
-void dma_resv_set_deadline(struct dma_resv *obj, enum dma_resv_usage usage,
-			   ktime_t deadline)
-{
-	struct dma_resv_iter cursor;
-	struct dma_fence *fence;
-
-	dma_resv_iter_begin(&cursor, obj, usage);
-	dma_resv_for_each_fence_unlocked(&cursor, fence) {
-		dma_fence_set_deadline(fence, deadline);
-	}
-	dma_resv_iter_end(&cursor);
-}
-EXPORT_SYMBOL_GPL(dma_resv_set_deadline);
 
 /**
  * dma_resv_test_signaled - Test if a reservation object's fences have been
@@ -750,6 +740,8 @@ EXPORT_SYMBOL_GPL(dma_resv_test_signaled);
  */
 void dma_resv_describe(struct dma_resv *obj, struct seq_file *seq)
 {
+	STUB();
+#ifdef notyet
 	static const char *usage[] = { "kernel", "write", "read", "bookkeep" };
 	struct dma_resv_iter cursor;
 	struct dma_fence *fence;
@@ -759,6 +751,7 @@ void dma_resv_describe(struct dma_resv *obj, struct seq_file *seq)
 			   usage[dma_resv_iter_usage(&cursor)]);
 		dma_fence_describe(fence, seq);
 	}
+#endif
 }
 EXPORT_SYMBOL_GPL(dma_resv_describe);
 
