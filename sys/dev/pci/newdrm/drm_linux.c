@@ -1639,6 +1639,13 @@ drm_sysfs_connector_status_event(struct drm_connector *connector,
 	STUB();
 }
 
+void
+drm_sysfs_connector_property_event(struct drm_connector *connector,
+    struct drm_property *property)
+{
+	STUB();
+}
+
 struct dma_fence *
 dma_fence_get(struct dma_fence *fence)
 {
