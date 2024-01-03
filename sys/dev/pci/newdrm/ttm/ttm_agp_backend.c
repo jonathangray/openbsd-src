@@ -49,8 +49,11 @@ struct ttm_agp_backend {
 
 int ttm_agp_bind(struct ttm_tt *ttm, struct ttm_resource *bo_mem)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct ttm_agp_backend *agp_be = container_of(ttm, struct ttm_agp_backend, ttm);
-	struct page *dummy_read_page = ttm_glob.dummy_read_page;
+	struct vm_page *dummy_read_page = ttm_glob.dummy_read_page;
 	struct agp_memory *mem;
 	int ret, cached = ttm->caching == ttm_cached;
 	unsigned i;
@@ -64,7 +67,7 @@ int ttm_agp_bind(struct ttm_tt *ttm, struct ttm_resource *bo_mem)
 
 	mem->page_count = 0;
 	for (i = 0; i < ttm->num_pages; i++) {
-		struct page *page = ttm->pages[i];
+		struct vm_page *page = ttm->pages[i];
 
 		if (!page)
 			page = dummy_read_page;
@@ -81,11 +84,14 @@ int ttm_agp_bind(struct ttm_tt *ttm, struct ttm_resource *bo_mem)
 		pr_err("AGP Bind memory failed\n");
 
 	return ret;
+#endif
 }
 EXPORT_SYMBOL(ttm_agp_bind);
 
 void ttm_agp_unbind(struct ttm_tt *ttm)
 {
+	STUB();
+#ifdef notyet
 	struct ttm_agp_backend *agp_be = container_of(ttm, struct ttm_agp_backend, ttm);
 
 	if (agp_be->mem) {
@@ -96,28 +102,36 @@ void ttm_agp_unbind(struct ttm_tt *ttm)
 		agp_free_memory(agp_be->mem);
 		agp_be->mem = NULL;
 	}
+#endif
 }
 EXPORT_SYMBOL(ttm_agp_unbind);
 
 bool ttm_agp_is_bound(struct ttm_tt *ttm)
 {
+	STUB();
+	return false;
+#ifdef notyet
 	struct ttm_agp_backend *agp_be = container_of(ttm, struct ttm_agp_backend, ttm);
 
 	if (!ttm)
 		return false;
 
-	return (agp_be->mem != NULL);
+	return (agp_be->bound == 1);
+#endif
 }
 EXPORT_SYMBOL(ttm_agp_is_bound);
 
 void ttm_agp_destroy(struct ttm_tt *ttm)
 {
+	STUB();
+#ifdef notyet
 	struct ttm_agp_backend *agp_be = container_of(ttm, struct ttm_agp_backend, ttm);
 
-	if (agp_be->mem)
+	if (agp_be->bound)
 		ttm_agp_unbind(ttm);
 	ttm_tt_fini(ttm);
 	kfree(agp_be);
+#endif
 }
 EXPORT_SYMBOL(ttm_agp_destroy);
 

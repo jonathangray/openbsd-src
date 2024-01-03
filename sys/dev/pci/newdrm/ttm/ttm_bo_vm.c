@@ -38,6 +38,8 @@
 #include <drm/drm_drv.h>
 #include <drm/drm_managed.h>
 
+#ifdef __linux__
+
 static vm_fault_t ttm_bo_vm_fault_idle(struct ttm_buffer_object *bo,
 				struct vm_fault *vmf)
 {
@@ -189,7 +191,7 @@ vm_fault_t ttm_bo_vm_fault_reserved(struct vm_fault *vmf,
 	unsigned long page_last;
 	unsigned long pfn;
 	struct ttm_tt *ttm = NULL;
-	struct page *page;
+	struct vm_page *page;
 	int err;
 	pgoff_t i;
 	vm_fault_t ret = VM_FAULT_NOPAGE;
@@ -347,6 +349,287 @@ vm_fault_t ttm_bo_vm_fault(struct vm_fault *vmf)
 }
 EXPORT_SYMBOL(ttm_bo_vm_fault);
 
+#else /* !__linux__ */
+
+static vm_fault_t ttm_bo_vm_fault_idle(struct ttm_buffer_object *bo,
+    struct uvm_faultinfo *ufi)
+{
+	long err = 0;
+
+	/*
+	 * Quick non-stalling check for idle.
+	 */
+	if (dma_resv_test_signaled(bo->base.resv, DMA_RESV_USAGE_KERNEL))
+		return 0;
+
+#ifdef __linux__
+	/*
+	 * If possible, avoid waiting for GPU with mmap_lock
+	 * held.  We only do this if the fault allows retry and this
+	 * is the first attempt.
+	 */
+	if (fault_flag_allow_retry_first(vmf->flags)) {
+		if (vmf->flags & FAULT_FLAG_RETRY_NOWAIT)
+			return VM_FAULT_RETRY;
+
+		ttm_bo_get(bo);
+		mmap_read_unlock(vmf->vma->vm_mm);
+		(void) dma_fence_wait(bo->moving, true);
+		(void)dma_resv_wait_timeout(bo->base.resv,
+					    DMA_RESV_USAGE_KERNEL, true,
+					    MAX_SCHEDULE_TIMEOUT);
+		dma_resv_unlock(bo->base.resv);
+		ttm_bo_put(bo);
+		return VM_FAULT_RETRY;
+	}
+#endif
+
+	/*
+	 * Ordinary wait.
+	 */
+	err = dma_resv_wait_timeout(bo->base.resv, DMA_RESV_USAGE_KERNEL, true,
+				    MAX_SCHEDULE_TIMEOUT);
+	if (unlikely(err < 0)) {
+		return (err != -ERESTARTSYS) ? VM_FAULT_SIGBUS :
+			VM_FAULT_NOPAGE;
+	}
+
+	return 0;
+}
+
+static unsigned long ttm_bo_io_mem_pfn(struct ttm_buffer_object *bo,
+				       unsigned long page_offset)
+{
+	struct ttm_device *bdev = bo->bdev;
+
+	if (bdev->funcs->io_mem_pfn)
+		return bdev->funcs->io_mem_pfn(bo, page_offset);
+
+	return (bo->resource->bus.offset >> PAGE_SHIFT) + page_offset;
+}
+
+/**
+ * ttm_bo_vm_reserve - Reserve a buffer object in a retryable vm callback
+ * @bo: The buffer object
+ * @vmf: The fault structure handed to the callback
+ *
+ * vm callbacks like fault() and *_mkwrite() allow for the mmap_lock to be dropped
+ * during long waits, and after the wait the callback will be restarted. This
+ * is to allow other threads using the same virtual memory space concurrent
+ * access to map(), unmap() completely unrelated buffer objects. TTM buffer
+ * object reservations sometimes wait for GPU and should therefore be
+ * considered long waits. This function reserves the buffer object interruptibly
+ * taking this into account. Starvation is avoided by the vm system not
+ * allowing too many repeated restarts.
+ * This function is intended to be used in customized fault() and _mkwrite()
+ * handlers.
+ *
+ * Return:
+ *    0 on success and the bo was reserved.
+ *    VM_FAULT_RETRY if blocking wait.
+ *    VM_FAULT_NOPAGE if blocking wait and retrying was not allowed.
+ */
+vm_fault_t ttm_bo_vm_reserve(struct ttm_buffer_object *bo)
+{
+	/*
+	 * Work around locking order reversal in fault / nopfn
+	 * between mmap_lock and bo_reserve: Perform a trylock operation
+	 * for reserve, and if it fails, retry the fault after waiting
+	 * for the buffer to become unreserved.
+	 */
+	if (unlikely(!dma_resv_trylock(bo->base.resv))) {
+#ifdef __linux__
+		/*
+		 * If the fault allows retry and this is the first
+		 * fault attempt, we try to release the mmap_lock
+		 * before waiting
+		 */
+		if (fault_flag_allow_retry_first(vmf->flags)) {
+			if (!(vmf->flags & FAULT_FLAG_RETRY_NOWAIT)) {
+				ttm_bo_get(bo);
+				mmap_read_unlock(vmf->vma->vm_mm);
+				if (!dma_resv_lock_interruptible(bo->base.resv,
+								 NULL))
+					dma_resv_unlock(bo->base.resv);
+				ttm_bo_put(bo);
+			}
+
+			return VM_FAULT_RETRY;
+		}
+#endif
+
+		if (dma_resv_lock_interruptible(bo->base.resv, NULL))
+			return VM_FAULT_NOPAGE;
+	}
+
+	/*
+	 * Refuse to fault imported pages. This should be handled
+	 * (if at all) by redirecting mmap to the exporter.
+	 */
+	if (bo->ttm && (bo->ttm->page_flags & TTM_TT_FLAG_EXTERNAL)) {
+		if (!(bo->ttm->page_flags & TTM_TT_FLAG_EXTERNAL_MAPPABLE)) {
+			dma_resv_unlock(bo->base.resv);
+			return VM_FAULT_SIGBUS;
+		}
+	}
+
+	return 0;
+}
+
+vm_fault_t ttm_bo_vm_fault_reserved(struct uvm_faultinfo *ufi,
+				    vaddr_t vaddr,
+				    pgoff_t num_prefault,
+				    pgoff_t fault_page_size)
+{
+	struct uvm_object *uobj = ufi->entry->object.uvm_obj;
+	struct ttm_buffer_object *bo = (struct ttm_buffer_object *)uobj;
+	struct ttm_device *bdev = bo->bdev;
+	unsigned long page_offset;
+	unsigned long page_last;
+	unsigned long pfn;
+	struct ttm_tt *ttm = NULL;
+	struct vm_page *page;
+	bus_addr_t addr;
+	paddr_t paddr;
+	vm_prot_t prot;
+	int pmap_flags;
+	int err;
+	pgoff_t i;
+	vm_fault_t ret = VM_FAULT_NOPAGE;
+	unsigned long address = (unsigned long)vaddr;
+
+	/*
+	 * Wait for buffer data in transit, due to a pipelined
+	 * move.
+	 */
+	ret = ttm_bo_vm_fault_idle(bo, ufi);
+	if (unlikely(ret != 0))
+		return ret;
+	ret = VM_FAULT_NOPAGE;
+
+	err = ttm_mem_io_reserve(bdev, bo->resource);
+	if (unlikely(err != 0))
+		return VM_FAULT_SIGBUS;
+
+	page_offset = ((address - ufi->entry->start) >> PAGE_SHIFT) +
+	    drm_vma_node_start(&bo->base.vma_node) - (ufi->entry->offset >> PAGE_SHIFT);
+	page_last = ((ufi->entry->end - ufi->entry->start) >> PAGE_SHIFT) +
+	    drm_vma_node_start(&bo->base.vma_node) - (ufi->entry->offset >> PAGE_SHIFT);
+
+	if (unlikely(page_offset >= bo->resource->num_pages))
+		return VM_FAULT_SIGBUS;
+
+	prot = ufi->entry->protection;
+	pmap_flags = ttm_io_prot(bo, bo->resource, 0);
+	if (!bo->resource->bus.is_iomem) {
+		struct ttm_operation_ctx ctx = {
+			.interruptible = false,
+			.no_wait_gpu = false,
+			.force_alloc = true
+		};
+
+		ttm = bo->ttm;
+		if (ttm_tt_populate(bdev, bo->ttm, &ctx))
+			return VM_FAULT_OOM;
+	}
+
+#ifdef __linux__
+	/* We don't prefault on huge faults. Yet. */
+	if (IS_ENABLED(CONFIG_TRANSPARENT_HUGEPAGE) && fault_page_size != 1)
+		return ttm_bo_vm_insert_huge(vmf, bo, page_offset,
+					     fault_page_size, prot);
+#endif
+
+	/*
+	 * Speculatively prefault a number of pages. Only error on
+	 * first page.
+	 */
+	for (i = 0; i < num_prefault; ++i) {
+		if (bo->resource->bus.is_iomem) {
+			pfn = ttm_bo_io_mem_pfn(bo, page_offset);
+			addr = pfn << PAGE_SHIFT;
+			paddr = bus_space_mmap(bdev->memt, addr, 0, prot, 0);
+		} else {
+			page = ttm->pages[page_offset];
+			if (unlikely(!page && i == 0)) {
+				return VM_FAULT_OOM;
+			} else if (unlikely(!page)) {
+				break;
+			}
+			paddr = VM_PAGE_TO_PHYS(page);
+		}
+
+		err = pmap_enter(ufi->orig_map->pmap, address,
+		    paddr | pmap_flags, prot, PMAP_CANFAIL | prot);
+
+		/* Never error on prefaulted PTEs */
+		if (unlikely(err)) {
+			ret = VM_FAULT_OOM;
+			if (i == 0)
+				return VM_FAULT_NOPAGE;
+			else
+				break;
+		}
+
+		address += PAGE_SIZE;
+		if (unlikely(++page_offset >= page_last))
+			break;
+	}
+	pmap_update(ufi->orig_map->pmap);
+	return ret;
+}
+EXPORT_SYMBOL(ttm_bo_vm_fault_reserved);
+
+int
+ttm_bo_vm_fault(struct uvm_faultinfo *ufi, vaddr_t vaddr, vm_page_t *pps,
+    int npages, int centeridx, vm_fault_t fault_type,
+    vm_prot_t access_type, int flags)
+{
+	struct uvm_object *uobj = ufi->entry->object.uvm_obj;
+	struct ttm_buffer_object *bo = (struct ttm_buffer_object *)uobj;
+	vm_fault_t ret;
+
+	ret = ttm_bo_vm_reserve(bo);
+	if (ret) {
+		switch (ret) {
+		case VM_FAULT_NOPAGE:
+			ret = VM_PAGER_OK;
+			break;
+		case VM_FAULT_RETRY:
+			ret = VM_PAGER_REFAULT;
+			break;
+		default:
+			ret = VM_PAGER_BAD;
+			break;
+		}
+
+		uvmfault_unlockall(ufi, NULL, uobj);
+		return ret;
+	}
+
+	ret = ttm_bo_vm_fault_reserved(ufi, vaddr, TTM_BO_VM_NUM_PREFAULT, 1);
+	switch (ret) {
+	case VM_FAULT_NOPAGE:
+		ret = VM_PAGER_OK;
+		break;
+	case VM_FAULT_RETRY:
+		ret = VM_PAGER_REFAULT;
+		break;
+	default:
+		ret = VM_PAGER_BAD;
+		break;
+	}
+
+	dma_resv_unlock(bo->base.resv);
+
+	uvmfault_unlockall(ufi, NULL, uobj);
+	return ret;
+}
+EXPORT_SYMBOL(ttm_bo_vm_fault);
+
+#endif /* !__linux__ */
+
+#ifdef notyet
 void ttm_bo_vm_open(struct vm_area_struct *vma)
 {
 	struct ttm_buffer_object *bo = vma->vm_private_data;
@@ -447,7 +730,32 @@ static const struct vm_operations_struct ttm_bo_vm_ops = {
 	.close = ttm_bo_vm_close,
 	.access = ttm_bo_vm_access,
 };
+#endif
 
+void
+ttm_bo_vm_reference(struct uvm_object *uobj)
+{
+	struct ttm_buffer_object *bo =
+	    (struct ttm_buffer_object *)uobj;
+
+	ttm_bo_get(bo);
+}
+
+void
+ttm_bo_vm_detach(struct uvm_object *uobj)
+{
+	struct ttm_buffer_object *bo = (struct ttm_buffer_object *)uobj;
+
+	ttm_bo_put(bo);
+}
+
+const struct uvm_pagerops ttm_bo_vm_ops = {
+	.pgo_fault = ttm_bo_vm_fault,
+	.pgo_reference = ttm_bo_vm_reference,
+	.pgo_detach = ttm_bo_vm_detach
+};
+
+#ifdef __linux__
 /**
  * ttm_bo_mmap_obj - mmap memory backed by a ttm buffer object.
  *
@@ -482,3 +790,35 @@ int ttm_bo_mmap_obj(struct vm_area_struct *vma, struct ttm_buffer_object *bo)
 	return 0;
 }
 EXPORT_SYMBOL(ttm_bo_mmap_obj);
+#else /* !__linux__ */
+int ttm_bo_mmap_obj(struct ttm_buffer_object *bo)
+{
+	/* Enforce no COW since would have really strange behavior with it. */
+#ifdef notyet
+	if (UVM_ET_ISCOPYONWRITE(entry))
+		return -EINVAL;
+#endif
+
+	ttm_bo_get(bo);
+
+	/*
+	 * Drivers may want to override the vm_ops field. Otherwise we
+	 * use TTM's default callbacks.
+	 */
+	if (bo->base.uobj.pgops == NULL)
+		uvm_obj_init(&bo->base.uobj, &ttm_bo_vm_ops, 1);
+
+	/*
+	 * Note: We're transferring the bo reference to
+	 * vma->vm_private_data here.
+	 */
+
+#ifdef notyet
+	vma->vm_private_data = bo;
+
+	vma->vm_flags |= VM_PFNMAP;
+	vma->vm_flags |= VM_IO | VM_DONTEXPAND | VM_DONTDUMP;
+#endif
+	return 0;
+}
+#endif /* !__linux__ */

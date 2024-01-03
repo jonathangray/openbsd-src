@@ -67,14 +67,11 @@ static int ttm_global_init(void)
 {
 	struct ttm_global *glob = &ttm_glob;
 	unsigned long num_pages, num_dma32;
-	struct sysinfo si;
 	int ret = 0;
 
 	mutex_lock(&ttm_global_mutex);
 	if (++ttm_glob_use_count > 1)
 		goto out;
-
-	si_meminfo(&si);
 
 	ttm_debugfs_root = debugfs_create_dir("ttm", NULL);
 	if (IS_ERR(ttm_debugfs_root)) {
@@ -84,12 +81,11 @@ static int ttm_global_init(void)
 	/* Limit the number of pages in the pool to about 50% of the total
 	 * system memory.
 	 */
-	num_pages = ((u64)si.totalram * si.mem_unit) >> PAGE_SHIFT;
+	num_pages = physmem;
 	num_pages /= 2;
 
 	/* But for DMA32 we limit ourself to only use 2GiB maximum. */
-	num_dma32 = (u64)(si.totalram - si.totalhigh) * si.mem_unit
-		>> PAGE_SHIFT;
+	num_dma32 = physmem;
 	num_dma32 = min(num_dma32, 2UL << (30 - PAGE_SHIFT));
 
 	ttm_pool_mgr_init(num_pages);
@@ -216,7 +212,7 @@ int ttm_device_init(struct ttm_device *bdev, const struct ttm_device_funcs *func
 	ttm_pool_init(&bdev->pool, dev, NUMA_NO_NODE, use_dma_alloc, use_dma32);
 
 	bdev->vma_manager = vma_manager;
-	spin_lock_init(&bdev->lru_lock);
+	mtx_init(&bdev->lru_lock, IPL_NONE);
 	INIT_LIST_HEAD(&bdev->pinned);
 	bdev->dev_mapping = mapping;
 	mutex_lock(&ttm_global_mutex);
