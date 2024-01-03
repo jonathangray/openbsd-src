@@ -58,6 +58,7 @@ static inline bool radeon_has_atpx(void) { return false; }
  * the rest of the device (CP, writeback, etc.).
  * Returns 0 on success.
  */
+#ifdef __linux__
 void radeon_driver_unload_kms(struct drm_device *dev)
 {
 	struct radeon_device *rdev = dev->dev_private;
@@ -187,6 +188,7 @@ out:
 
 	return r;
 }
+#endif
 
 /**
  * radeon_set_filp_rights - Set filp right.
@@ -251,7 +253,11 @@ int radeon_info_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 
 	switch (info->request) {
 	case RADEON_INFO_DEVICE_ID:
+#ifdef __linux__
 		*value = to_pci_dev(dev->dev)->device;
+#else
+		*value = dev->pdev->device;
+#endif
 		break;
 	case RADEON_INFO_NUM_GB_PIPES:
 		*value = rdev->num_gb_pipes;

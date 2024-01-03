@@ -80,6 +80,17 @@
 #include <drm/drm_gem.h>
 #include <drm/drm_audio_component.h>
 #include <drm/drm_suballoc.h>
+#include <drm/drm_legacy.h>
+
+#include <dev/wscons/wsconsio.h>
+#include <dev/wscons/wsdisplayvar.h>
+#include <dev/rasops/rasops.h>
+
+#include <dev/pci/pcivar.h>
+
+#ifdef __sparc64__
+#include <machine/fbvar.h>
+#endif
 
 #include "radeon_family.h"
 #include "radeon_mode.h"
@@ -254,7 +265,7 @@ bool radeon_get_bios(struct radeon_device *rdev);
  */
 struct radeon_dummy_page {
 	uint64_t	entry;
-	struct page	*page;
+	struct drm_dmamem	*dmah;
 	dma_addr_t	addr;
 };
 int radeon_dummy_page_init(struct radeon_device *rdev);
@@ -524,7 +535,7 @@ struct radeon_sa_manager {
  * GEM objects.
  */
 struct radeon_gem {
-	struct mutex		mutex;
+	struct rwlock		mutex;
 	struct list_head	objects;
 };
 
@@ -605,12 +616,13 @@ struct radeon_mc;
 
 struct radeon_gart {
 	dma_addr_t			table_addr;
+	struct drm_dmamem		*dmah;
 	struct radeon_bo		*robj;
 	void				*ptr;
 	unsigned			num_gpu_pages;
 	unsigned			num_cpu_pages;
 	unsigned			table_size;
-	struct page			**pages;
+	struct vm_page			**pages;
 	uint64_t			*pages_entry;
 	bool				ready;
 };
@@ -626,7 +638,7 @@ void radeon_gart_fini(struct radeon_device *rdev);
 void radeon_gart_unbind(struct radeon_device *rdev, unsigned offset,
 			int pages);
 int radeon_gart_bind(struct radeon_device *rdev, unsigned offset,
-		     int pages, struct page **pagelist,
+		     int pages, struct vm_page **pagelist,
 		     dma_addr_t *dma_addr, uint32_t flags);
 
 
@@ -681,6 +693,7 @@ struct radeon_doorbell {
 	resource_size_t		base;
 	resource_size_t		size;
 	u32 __iomem		*ptr;
+	bus_space_handle_t	bsh;
 	u32			num_doorbells;	/* Number of doorbells actually reserved for radeon. */
 	DECLARE_BITMAP(used, RADEON_MAX_DOORBELLS);
 };
@@ -875,7 +888,7 @@ struct radeon_vm_id {
 };
 
 struct radeon_vm {
-	struct mutex		mutex;
+	struct rwlock		mutex;
 
 	struct rb_root_cached	va;
 
@@ -1093,7 +1106,9 @@ struct radeon_agp_info {
 };
 
 struct radeon_agp_head {
+#ifdef notyet
 	struct agp_kern_info agp_info;
+#endif
 	struct list_head memory;
 	unsigned long mode;
 	struct agp_bridge_data *bridge;
@@ -1585,9 +1600,9 @@ void radeon_dpm_enable_uvd(struct radeon_device *rdev, bool enable);
 void radeon_dpm_enable_vce(struct radeon_device *rdev, bool enable);
 
 struct radeon_pm {
-	struct mutex		mutex;
+	struct rwlock		mutex;
 	/* write locked while reprogramming mclk */
-	struct rw_semaphore	mclk_lock;
+	struct rwlock		mclk_lock;
 	u32			active_crtcs;
 	int			active_crtc_count;
 	int			req_vblank;
@@ -2299,6 +2314,7 @@ typedef uint32_t (*radeon_rreg_t)(struct radeon_device*, uint32_t);
 typedef void (*radeon_wreg_t)(struct radeon_device*, uint32_t, uint32_t);
 
 struct radeon_device {
+	struct device			self;
 	struct device			*dev;
 	struct drm_device		*ddev;
 	struct pci_dev			*pdev;
@@ -2306,7 +2322,36 @@ struct radeon_device {
 	struct pci_controller		*hose;
 #endif
 	struct radeon_agp_head		*agp;
-	struct rw_semaphore		exclusive_lock;
+	struct rwlock			exclusive_lock;
+
+	pci_chipset_tag_t		pc;
+	pcitag_t			pa_tag;
+	pci_intr_handle_t		intrh;
+	bus_space_tag_t			iot;
+	bus_space_tag_t			memt;
+	bus_dma_tag_t			dmat;
+	void				*irqh;
+
+	void				(*switchcb)(void *, int, int);
+	void				*switchcbarg;
+	void				*switchcookie;
+	struct task			switchtask;
+	struct rasops_info		ro;
+	int				console;
+	int				primary;
+
+	struct task			burner_task;
+	int				burner_fblank;
+
+#ifdef __sparc64__
+	struct sunfb			sf;
+	bus_size_t			fb_offset;
+	bus_space_handle_t		memh;
+#endif
+
+	unsigned long			fb_aper_offset;
+	unsigned long			fb_aper_size;
+
 	/* ASIC */
 	union radeon_asic_config	config;
 	enum radeon_family		family;
@@ -2348,6 +2393,7 @@ struct radeon_device {
 	spinlock_t didt_idx_lock;
 	/* protects concurrent ENDPOINT (audio) register access */
 	spinlock_t end_idx_lock;
+	bus_space_handle_t		rmmio_bsh;
 	void __iomem			*rmmio;
 	radeon_rreg_t			mc_rreg;
 	radeon_wreg_t			mc_wreg;
@@ -2357,7 +2403,7 @@ struct radeon_device {
 	radeon_rreg_t			pciep_rreg;
 	radeon_wreg_t			pciep_wreg;
 	/* io port */
-	void __iomem                    *rio_mem;
+	bus_space_handle_t		rio_mem;
 	resource_size_t			rio_mem_size;
 	struct radeon_clock             clock;
 	struct radeon_mc		mc;
@@ -2369,7 +2415,7 @@ struct radeon_device {
 	struct radeon_fence_driver	fence_drv[RADEON_NUM_RINGS];
 	wait_queue_head_t		fence_queue;
 	u64				fence_context;
-	struct mutex			ring_lock;
+	struct rwlock			ring_lock;
 	struct radeon_ring		ring[RADEON_NUM_RINGS];
 	bool				ib_pool_ready;
 	struct radeon_sa_manager	ring_tmp_bo;
@@ -2409,7 +2455,7 @@ struct radeon_device {
 	struct work_struct dp_work;
 	struct work_struct audio_work;
 	int num_crtc; /* number of crtcs */
-	struct mutex dc_hw_i2c_mutex; /* display controller hw i2c mutex */
+	struct rwlock dc_hw_i2c_mutex; /* display controller hw i2c mutex */
 	bool has_uvd;
 	bool has_vce;
 	struct r600_audio audio; /* audio stuff */
@@ -2421,7 +2467,7 @@ struct radeon_device {
 	struct radeon_i2c_chan *i2c_bus[RADEON_MAX_I2C_BUS];
 	/* virtual memory */
 	struct radeon_vm_manager	vm_manager;
-	struct mutex			gpu_clock_mutex;
+	struct rwlock			gpu_clock_mutex;
 	/* memory stats */
 	atomic64_t			num_bytes_moved;
 	atomic_t			gpu_reset_counter;
@@ -2429,7 +2475,7 @@ struct radeon_device {
 	struct radeon_atif		atif;
 	struct radeon_atcs		atcs;
 	/* srbm instance registers */
-	struct mutex			srbm_mutex;
+	struct rwlock			srbm_mutex;
 	/* clock, powergating flags */
 	u32 cg_flags;
 	u32 pg_flags;

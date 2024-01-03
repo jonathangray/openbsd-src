@@ -1465,8 +1465,8 @@ static int r600_mc_init(struct radeon_device *rdev)
 	}
 	rdev->mc.vram_width = numchan * chansize;
 	/* Could aper size report 0 ? */
-	rdev->mc.aper_base = pci_resource_start(rdev->pdev, 0);
-	rdev->mc.aper_size = pci_resource_len(rdev->pdev, 0);
+	rdev->mc.aper_base = rdev->fb_aper_offset;
+	rdev->mc.aper_size = rdev->fb_aper_size;
 	/* Setup GPU memory space */
 	rdev->mc.mc_vram_size = RREG32(CONFIG_MEMSIZE);
 	rdev->mc.real_vram_size = RREG32(CONFIG_MEMSIZE);
@@ -2474,50 +2474,50 @@ int r600_init_microcode(struct radeon_device *rdev)
 		chip_name = "RV770";
 		rlc_chip_name = "R700";
 		smc_chip_name = "RV770";
-		smc_req_size = ALIGN(RV770_SMC_UCODE_SIZE, 4);
+		smc_req_size = roundup2(RV770_SMC_UCODE_SIZE, 4);
 		break;
 	case CHIP_RV730:
 		chip_name = "RV730";
 		rlc_chip_name = "R700";
 		smc_chip_name = "RV730";
-		smc_req_size = ALIGN(RV730_SMC_UCODE_SIZE, 4);
+		smc_req_size = roundup2(RV730_SMC_UCODE_SIZE, 4);
 		break;
 	case CHIP_RV710:
 		chip_name = "RV710";
 		rlc_chip_name = "R700";
 		smc_chip_name = "RV710";
-		smc_req_size = ALIGN(RV710_SMC_UCODE_SIZE, 4);
+		smc_req_size = roundup2(RV710_SMC_UCODE_SIZE, 4);
 		break;
 	case CHIP_RV740:
 		chip_name = "RV730";
 		rlc_chip_name = "R700";
 		smc_chip_name = "RV740";
-		smc_req_size = ALIGN(RV740_SMC_UCODE_SIZE, 4);
+		smc_req_size = roundup2(RV740_SMC_UCODE_SIZE, 4);
 		break;
 	case CHIP_CEDAR:
 		chip_name = "CEDAR";
 		rlc_chip_name = "CEDAR";
 		smc_chip_name = "CEDAR";
-		smc_req_size = ALIGN(CEDAR_SMC_UCODE_SIZE, 4);
+		smc_req_size = roundup2(CEDAR_SMC_UCODE_SIZE, 4);
 		break;
 	case CHIP_REDWOOD:
 		chip_name = "REDWOOD";
 		rlc_chip_name = "REDWOOD";
 		smc_chip_name = "REDWOOD";
-		smc_req_size = ALIGN(REDWOOD_SMC_UCODE_SIZE, 4);
+		smc_req_size = roundup2(REDWOOD_SMC_UCODE_SIZE, 4);
 		break;
 	case CHIP_JUNIPER:
 		chip_name = "JUNIPER";
 		rlc_chip_name = "JUNIPER";
 		smc_chip_name = "JUNIPER";
-		smc_req_size = ALIGN(JUNIPER_SMC_UCODE_SIZE, 4);
+		smc_req_size = roundup2(JUNIPER_SMC_UCODE_SIZE, 4);
 		break;
 	case CHIP_CYPRESS:
 	case CHIP_HEMLOCK:
 		chip_name = "CYPRESS";
 		rlc_chip_name = "CYPRESS";
 		smc_chip_name = "CYPRESS";
-		smc_req_size = ALIGN(CYPRESS_SMC_UCODE_SIZE, 4);
+		smc_req_size = roundup2(CYPRESS_SMC_UCODE_SIZE, 4);
 		break;
 	case CHIP_PALM:
 		chip_name = "PALM";
@@ -4108,6 +4108,8 @@ int r600_irq_process(struct radeon_device *rdev)
 
 	wptr = r600_get_ih_wptr(rdev);
 
+	if (wptr == rdev->ih.rptr)
+		return IRQ_NONE;
 restart_ih:
 	/* is somebody else already processing irqs? */
 	if (atomic_xchg(&rdev->ih.lock, 1))
@@ -4486,6 +4488,7 @@ static void r600_pcie_gen2_enable(struct radeon_device *rdev)
 {
 	u32 link_width_cntl, lanes, speed_cntl, training_cntl, tmp;
 	u16 link_cntl2;
+	enum pci_bus_speed max_bus_speed;
 
 	if (radeon_pcie_gen2 == 0)
 		return;
@@ -4504,8 +4507,9 @@ static void r600_pcie_gen2_enable(struct radeon_device *rdev)
 	if (rdev->family <= CHIP_R600)
 		return;
 
-	if ((rdev->pdev->bus->max_bus_speed != PCIE_SPEED_5_0GT) &&
-		(rdev->pdev->bus->max_bus_speed != PCIE_SPEED_8_0GT))
+	max_bus_speed = pcie_get_speed_cap(rdev->pdev->bus->self);
+	if ((max_bus_speed != PCIE_SPEED_5_0GT) &&
+		(max_bus_speed != PCIE_SPEED_8_0GT))
 		return;
 
 	speed_cntl = RREG32_PCIE_PORT(PCIE_LC_SPEED_CNTL);
