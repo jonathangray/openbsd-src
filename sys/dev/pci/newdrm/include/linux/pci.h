@@ -495,6 +495,12 @@ pci_unregister_driver(void *d)
 {
 }
 
+static inline u16
+pci_dev_id(struct pci_dev *dev)
+{
+	return dev->devfn | (dev->bus->number << 8);
+}
+
 #define PCI_CLASS_DISPLAY_VGA \
     ((PCI_CLASS_DISPLAY << 8) | PCI_SUBCLASS_DISPLAY_VGA)
 #define PCI_CLASS_DISPLAY_OTHER \
