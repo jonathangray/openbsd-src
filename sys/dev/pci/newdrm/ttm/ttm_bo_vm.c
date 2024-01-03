@@ -516,21 +516,28 @@ vm_fault_t ttm_bo_vm_fault_reserved(struct uvm_faultinfo *ufi,
 	page_last = ((ufi->entry->end - ufi->entry->start) >> PAGE_SHIFT) +
 	    drm_vma_node_start(&bo->base.vma_node) - (ufi->entry->offset >> PAGE_SHIFT);
 
-	if (unlikely(page_offset >= bo->resource->num_pages))
+	if (unlikely(page_offset >= PFN_UP(bo->base.size)))
 		return VM_FAULT_SIGBUS;
 
 	prot = ufi->entry->protection;
 	pmap_flags = ttm_io_prot(bo, bo->resource, 0);
 	if (!bo->resource->bus.is_iomem) {
 		struct ttm_operation_ctx ctx = {
-			.interruptible = false,
+			.interruptible = true,
 			.no_wait_gpu = false,
 			.force_alloc = true
 		};
 
 		ttm = bo->ttm;
-		if (ttm_tt_populate(bdev, bo->ttm, &ctx))
-			return VM_FAULT_OOM;
+		err = ttm_tt_populate(bdev, bo->ttm, &ctx);
+		if (err) {
+			if (err == -EINTR || err == -ERESTARTSYS ||
+			    err == -EAGAIN)
+				return VM_FAULT_NOPAGE;
+
+			pr_debug("TTM fault hit %pe.\n", ERR_PTR(err));
+			return VM_FAULT_SIGBUS;
+		}
 	}
 
 #ifdef __linux__
