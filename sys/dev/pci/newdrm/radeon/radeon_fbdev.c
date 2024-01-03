@@ -349,6 +349,8 @@ static void radeon_fbdev_client_unregister(struct drm_client_dev *client)
 void radeondrm_setcolor(void *, u_int, u_int8_t, u_int8_t, u_int8_t);
 #endif
 
+void radeondrm_burner_cb(void *);
+
 static int radeon_fbdev_client_restore(struct drm_client_dev *client)
 {
 #ifdef __sparc64__
@@ -506,7 +508,7 @@ void
 radeondrm_burner_cb(void *arg1)
 {
 	struct radeon_device *rdev = arg1;
-	struct drm_fb_helper *helper = &rdev->mode_info.rfbdev->helper;
+	struct drm_fb_helper *helper = rdev->ddev->fb_helper;
 
-	drm_fb_helper_blank(rdev->burner_fblank, helper->fbdev);
+	drm_fb_helper_blank(rdev->burner_fblank, helper->info);
 }

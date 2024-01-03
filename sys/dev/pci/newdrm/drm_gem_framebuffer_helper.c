@@ -20,3 +20,11 @@ drm_gem_fb_create_handle(struct drm_framebuffer *fb, struct drm_file *file,
 {
 	return drm_gem_handle_create(file, fb->obj[0], handle);
 }
+
+struct drm_gem_object *
+drm_gem_fb_get_obj(struct drm_framebuffer *fb, unsigned int plane)
+{
+	if (plane < nitems(fb->obj))
+		return fb->obj[plane];
+	return NULL;
+}
