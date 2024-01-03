@@ -752,6 +752,8 @@ void drm_fb_helper_deferred_io(struct fb_info *info, struct list_head *pagerefli
 }
 EXPORT_SYMBOL(drm_fb_helper_deferred_io);
 
+#endif /* __linux__ */
+
 /**
  * drm_fb_helper_set_suspend - wrapper around fb_set_suspend
  * @fb_helper: driver-allocated fbdev helper, can be NULL
@@ -763,8 +765,10 @@ EXPORT_SYMBOL(drm_fb_helper_deferred_io);
  */
 void drm_fb_helper_set_suspend(struct drm_fb_helper *fb_helper, bool suspend)
 {
+#ifdef __linux__
 	if (fb_helper && fb_helper->info)
 		fb_set_suspend(fb_helper->info, suspend);
+#endif
 }
 EXPORT_SYMBOL(drm_fb_helper_set_suspend);
 
@@ -1020,8 +1024,6 @@ backoff:
 	drm_modeset_backoff(&ctx);
 	goto retry;
 }
-
-#endif /* __linux__ */
 
 /**
  * drm_fb_helper_setcmap - implementation for &fb_ops.fb_setcmap
