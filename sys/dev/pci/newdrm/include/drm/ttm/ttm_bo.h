@@ -38,6 +38,8 @@
 
 #include "ttm_device.h"
 
+#include <uvm/uvm_extern.h>
+
 /* Default number of pre-faulted pages in the TTM fault handler */
 #define TTM_BO_VM_NUM_PREFAULT 16
 
@@ -150,7 +152,7 @@ struct ttm_buffer_object {
 #define TTM_BO_MAP_IOMEM_MASK 0x80
 struct ttm_bo_kmap_obj {
 	void *virtual;
-	struct page *page;
+	struct vm_page *page;
 	enum {
 		ttm_bo_map_iomap        = 1 | TTM_BO_MAP_IOMEM_MASK,
 		ttm_bo_map_vmap         = 2,
@@ -372,7 +374,11 @@ int ttm_bo_kmap(struct ttm_buffer_object *bo, unsigned long start_page,
 void ttm_bo_kunmap(struct ttm_bo_kmap_obj *map);
 int ttm_bo_vmap(struct ttm_buffer_object *bo, struct iosys_map *map);
 void ttm_bo_vunmap(struct ttm_buffer_object *bo, struct iosys_map *map);
+#ifdef __linux__
 int ttm_bo_mmap_obj(struct vm_area_struct *vma, struct ttm_buffer_object *bo);
+#else
+int ttm_bo_mmap_obj(struct ttm_buffer_object *bo);
+#endif
 int ttm_bo_swapout(struct ttm_buffer_object *bo, struct ttm_operation_ctx *ctx,
 		   gfp_t gfp_flags);
 void ttm_bo_pin(struct ttm_buffer_object *bo);
@@ -382,6 +388,7 @@ int ttm_mem_evict_first(struct ttm_device *bdev,
 			const struct ttm_place *place,
 			struct ttm_operation_ctx *ctx,
 			struct ww_acquire_ctx *ticket);
+#ifdef __linux__
 vm_fault_t ttm_bo_vm_reserve(struct ttm_buffer_object *bo,
 			     struct vm_fault *vmf);
 vm_fault_t ttm_bo_vm_fault_reserved(struct vm_fault *vmf,
@@ -393,6 +400,15 @@ void ttm_bo_vm_close(struct vm_area_struct *vma);
 int ttm_bo_vm_access(struct vm_area_struct *vma, unsigned long addr,
 		     void *buf, int len, int write);
 vm_fault_t ttm_bo_vm_dummy_page(struct vm_fault *vmf, pgprot_t prot);
+#else
+vm_fault_t ttm_bo_vm_reserve(struct ttm_buffer_object *bo);
+vm_fault_t ttm_bo_vm_fault_reserved(struct uvm_faultinfo *ufi,
+				    vaddr_t vaddr,
+				    pgoff_t num_prefault,
+				    pgoff_t fault_page_size);
+int ttm_bo_vm_fault(struct uvm_faultinfo *, vaddr_t, vm_page_t *,
+    int, int, vm_fault_t, vm_prot_t, int);
+#endif /* !__linux__ */
 
 int ttm_bo_mem_space(struct ttm_buffer_object *bo,
 		     struct ttm_placement *placement,
