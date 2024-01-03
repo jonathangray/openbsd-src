@@ -1094,10 +1094,10 @@ void ttm_bo_unmap_virtual(struct ttm_buffer_object *bo)
 		paddr_t paddr;
 		unsigned i;
 
-		if (bo->resource->bus.is_iomem) {
+		if (bo->resource && bo->resource->bus.is_iomem) {
 			addr = bo->resource->bus.offset;
 			paddr = bus_space_mmap(bdev->memt, addr, 0, 0, 0);
-			for (i = 0; i < PFN_UP(bo->resource->size); i++) {
+			for (i = 0; i < PFN_UP(bo->base.size); i++) {
 				pg = PHYS_TO_VM_PAGE(paddr);
 				if (pg)
 					pmap_page_protect(pg, PROT_NONE);
