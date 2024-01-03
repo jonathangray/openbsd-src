@@ -85,7 +85,7 @@ void ttm_move_memcpy(bool clear,
 		     u32 num_pages,
 		     struct ttm_kmap_iter *dst_iter,
 		     struct ttm_kmap_iter *src_iter,
-		     bus_space_tag_t memt);
+		     bus_space_tag_t memt)
 {
 	const struct ttm_kmap_iter_ops *dst_ops = dst_iter->ops;
 	const struct ttm_kmap_iter_ops *src_ops = src_iter->ops;
@@ -436,11 +436,11 @@ void ttm_bo_kunmap(struct ttm_bo_kmap_obj *map)
 	switch (map->bo_kmap_type) {
 	case ttm_bo_map_iomap:
 		bus_space_unmap(map->bo->bdev->memt, map->bo->resource->bus.bsh,
-		    (size_t)map->bo->resource->num_pages << PAGE_SHIFT);
+		    map->bo->resource->size);
 		break;
 	case ttm_bo_map_vmap:
-		vunmap(map->virtual,
-		    (size_t)map->bo->resource->num_pages << PAGE_SHIFT);
+		vunmap(map->virtual, 
+		    map->bo->resource->size);
 		break;
 	case ttm_bo_map_kmap:
 		kunmap_va(map->virtual);
@@ -559,10 +559,10 @@ void ttm_bo_vunmap(struct ttm_buffer_object *bo, struct iosys_map *map)
 
 	if (!map->is_iomem)
 		vunmap(map->vaddr,
-		    (size_t)mem->num_pages << PAGE_SHIFT);
+		    bo->base.size);
 	else if (!mem->bus.addr)
 		bus_space_unmap(bo->bdev->memt, mem->bus.bsh,
-		    (size_t)mem->num_pages << PAGE_SHIFT);
+		    bo->base.size);
 	iosys_map_clear(map);
 
 	ttm_mem_io_free(bo->bdev, bo->resource);
