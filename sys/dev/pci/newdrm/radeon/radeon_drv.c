@@ -654,6 +654,7 @@ static inline bool radeon_has_atpx(void) { return false; }
 #endif
 
 #include <drm/drm_drv.h>
+#include <drm/drm_fb_helper.h>
 #include "vga.h"
 
 #if NVGA > 0
@@ -874,7 +875,7 @@ radeondrm_doswitch(void *v)
 #else
 	radeondrm_setpal(rdev, ri);
 #endif
-	drm_fb_helper_restore_fbdev_mode_unlocked((void *)rdev->mode_info.rfbdev);
+	drm_fb_helper_restore_fbdev_mode_unlocked(rdev->ddev->fb_helper);
 
 	if (rdev->switchcb)
 		(rdev->switchcb)(rdev->switchcbarg, 0, 0);
@@ -885,13 +886,13 @@ radeondrm_enter_ddb(void *v, void *cookie)
 {
 	struct rasops_info *ri = v;
 	struct radeon_device *rdev = ri->ri_hw;
-	struct drm_fb_helper *fb_helper = (void *)rdev->mode_info.rfbdev;
+	struct drm_fb_helper *fb_helper = rdev->ddev->fb_helper;
 
 	if (cookie == ri->ri_active)
 		return;
 
 	rasops_show_screen(ri, cookie, 0, NULL, NULL);
-	drm_fb_helper_debug_enter(fb_helper->fbdev);
+	drm_fb_helper_debug_enter(fb_helper->info);
 }
 
 #ifdef __sparc64__
