@@ -1776,7 +1776,7 @@ struct r600_audio {
 	struct radeon_audio_basic_funcs *funcs;
 	struct drm_audio_component *component;
 	bool component_registered;
-	struct mutex component_mutex;
+	struct rwlock component_mutex;
 };
 
 /*
