@@ -35,9 +35,10 @@ extern struct workqueue_struct *system_highpri_wq;
 extern struct workqueue_struct *system_unbound_wq;
 extern struct workqueue_struct *system_long_wq;
 
-#define WQ_HIGHPRI	1
-#define WQ_FREEZABLE	2
-#define WQ_UNBOUND	4
+#define WQ_HIGHPRI	(1 << 1)
+#define WQ_FREEZABLE	(1 << 2)
+#define WQ_UNBOUND	(1 << 3)
+#define WQ_MEM_RECLAIM	(1 << 4)
 
 #define WQ_UNBOUND_MAX_ACTIVE	4	/* matches nthreads in drm_linux.c */
 
