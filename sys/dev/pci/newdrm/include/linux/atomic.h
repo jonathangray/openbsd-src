@@ -479,4 +479,17 @@ find_next_bit(const volatile void *p, int max, int b)
 #define smp_store_mb(x, v)	do { x = v; mb(); } while (0)
 #endif
 
+#ifndef smp_store_release
+#define smp_store_release(x, v)	do { smp_mb(); WRITE_ONCE(*x, v); } while(0)
+#endif
+
+#ifndef smp_load_acquire
+#define smp_load_acquire(x)			\
+({						\
+	__typeof(*x) _v = READ_ONCE(*x);	\
+	smp_mb();				\
+	_v;					\
+})
+#endif
+
 #endif
