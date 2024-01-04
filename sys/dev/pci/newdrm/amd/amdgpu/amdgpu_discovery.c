@@ -219,6 +219,9 @@ static int amdgpu_discovery_read_binary_from_sysmem(struct amdgpu_device *adev, 
 	pos = tmr_offset + tmr_size - DISCOVERY_TMR_OFFSET;
 
 	/* This region is read-only and reserved from system use */
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	discv_regn = memremap(pos, adev->mman.discovery_tmr_size, MEMREMAP_WC);
 	if (discv_regn) {
 		memcpy(binary, discv_regn, adev->mman.discovery_tmr_size);
@@ -227,6 +230,7 @@ static int amdgpu_discovery_read_binary_from_sysmem(struct amdgpu_device *adev, 
 	}
 
 	return -ENOENT;
+#endif
 }
 
 static int amdgpu_discovery_read_binary_from_mem(struct amdgpu_device *adev,
