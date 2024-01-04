@@ -45,6 +45,12 @@ void	dev_set_drvdata(struct device *, void *);
 #define devm_kzalloc(x, y, z)	kzalloc(y, z)
 #define devm_kfree(x, y)	kfree(y)
 
+static inline int
+devm_device_add_group(struct device *dev, const struct attribute_group *g)
+{
+	return 0;
+}
+
 #define dev_warn(dev, fmt, arg...)				\
 	printf("drm:pid%d:%s *WARNING* " fmt, curproc->p_p->ps_pid,	\
 	    __func__ , ## arg)
