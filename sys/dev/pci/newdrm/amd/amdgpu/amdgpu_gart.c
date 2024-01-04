@@ -114,6 +114,9 @@ void amdgpu_gart_dummy_page_fini(struct amdgpu_device *adev)
  */
 int amdgpu_gart_table_ram_alloc(struct amdgpu_device *adev)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	unsigned int order = get_order(adev->gart.table_size);
 	gfp_t gfp_flags = GFP_KERNEL | __GFP_ZERO;
 	struct amdgpu_bo *bo = NULL;
@@ -208,6 +211,7 @@ error:
 	}
 	__free_pages(p, order);
 	return ret;
+#endif
 }
 
 /**
