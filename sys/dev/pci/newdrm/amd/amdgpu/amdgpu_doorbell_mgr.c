@@ -152,7 +152,7 @@ int amdgpu_doorbell_create_kernel_doorbells(struct amdgpu_device *adev)
 		return 0;
 
 	/* Reserve first num_kernel_doorbells (page-aligned) for kernel ops */
-	size = ALIGN(adev->doorbell.num_kernel_doorbells * sizeof(u32), PAGE_SIZE);
+	size = roundup2(adev->doorbell.num_kernel_doorbells * sizeof(u32), PAGE_SIZE);
 
 	/* Allocate an extra page for MES kernel usages (ring test) */
 	adev->mes.db_start_dw_offset = size / sizeof(u32);
@@ -196,14 +196,18 @@ int amdgpu_doorbell_init(struct amdgpu_device *adev)
 		return 0;
 	}
 
+#ifdef __linux__
 	if (pci_resource_flags(adev->pdev, 2) & IORESOURCE_UNSET)
 		return -EINVAL;
+#endif
 
 	amdgpu_asic_init_doorbell_index(adev);
 
 	/* doorbell bar mapping */
+#ifdef __linux__
 	adev->doorbell.base = pci_resource_start(adev->pdev, 2);
 	adev->doorbell.size = pci_resource_len(adev->pdev, 2);
+#endif
 
 	adev->doorbell.num_kernel_doorbells =
 		min_t(u32, adev->doorbell.size / sizeof(u32),
