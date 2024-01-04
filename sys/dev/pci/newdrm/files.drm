@@ -902,7 +902,7 @@ file	dev/pci/newdrm/amd/display/amdgpu_dm/amdgpu_dm_color.c	amdgpu
 #file	dev/pci/newdrm/amd/display/amdgpu_dm/amdgpu_dm_crc.c	amdgpu
 file	dev/pci/newdrm/amd/display/amdgpu_dm/amdgpu_dm_crtc.c	amdgpu
 #file	dev/pci/newdrm/amd/display/amdgpu_dm/amdgpu_dm_debugfs.c	amdgpu
-#file	dev/pci/newdrm/amd/display/amdgpu_dm/amdgpu_dm_hdcp.c	amdgpu
+file	dev/pci/newdrm/amd/display/amdgpu_dm/amdgpu_dm_hdcp.c	amdgpu
 file	dev/pci/newdrm/amd/display/amdgpu_dm/amdgpu_dm_helpers.c	amdgpu
 file	dev/pci/newdrm/amd/display/amdgpu_dm/amdgpu_dm_irq.c	amdgpu
 file	dev/pci/newdrm/amd/display/amdgpu_dm/amdgpu_dm_mst_types.c	amdgpu

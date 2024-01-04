@@ -696,10 +696,12 @@ ret:
  *	to load from storage to PSP: cat srmfile > /sys/class/drm/card0/device/hdcp_srm
  */
 static const struct bin_attribute data_attr = {
+#ifdef notyet
 	.attr = {.name = "hdcp_srm", .mode = 0664},
 	.size = PSP_HDCP_SRM_FIRST_GEN_MAX_SIZE, /* Limit SRM size */
 	.write = srm_data_write,
 	.read = srm_data_read,
+#endif
 };
 
 struct hdcp_workqueue *hdcp_create_workqueue(struct amdgpu_device *adev,
