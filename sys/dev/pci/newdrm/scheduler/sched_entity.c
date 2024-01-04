@@ -83,7 +83,7 @@ int drm_sched_entity_init(struct drm_sched_entity *entity,
 	/* We start in an idle state. */
 	complete_all(&entity->entity_idle);
 
-	spin_lock_init(&entity->rq_lock);
+	mtx_init(&entity->rq_lock, IPL_NONE);
 	spsc_queue_init(&entity->job_queue);
 
 	atomic_set(&entity->fence_seq, 0);
@@ -259,7 +259,11 @@ static void drm_sched_entity_kill(struct drm_sched_entity *entity)
 long drm_sched_entity_flush(struct drm_sched_entity *entity, long timeout)
 {
 	struct drm_gpu_scheduler *sched;
+#ifdef __linux__
 	struct task_struct *last_user;
+#else
+	struct process *last_user, *curpr;
+#endif
 	long ret = timeout;
 
 	if (!entity->rq)
@@ -270,7 +274,12 @@ long drm_sched_entity_flush(struct drm_sched_entity *entity, long timeout)
 	 * The client will not queue more IBs during this fini, consume existing
 	 * queued IBs or discard them on SIGKILL
 	 */
+#ifdef __linux__
 	if (current->flags & PF_EXITING) {
+#else
+	curpr = curproc->p_p;
+	if (curpr->ps_flags & PS_EXITING) {
+#endif
 		if (timeout)
 			ret = wait_event_timeout(
 					sched->job_scheduled,
@@ -282,9 +291,16 @@ long drm_sched_entity_flush(struct drm_sched_entity *entity, long timeout)
 	}
 
 	/* For killed process disable any more IBs enqueue right now */
+#ifdef __linux__
 	last_user = cmpxchg(&entity->last_user, current->group_leader, NULL);
 	if ((!last_user || last_user == current->group_leader) &&
 	    (current->flags & PF_EXITING) && (current->exit_code == SIGKILL))
+#else
+	last_user = cmpxchg(&entity->last_user, curpr, NULL);
+	if ((!last_user || last_user == curproc->p_p) &&
+	    (curpr->ps_flags & PS_EXITING) &&
+	    (curpr->ps_xsig == SIGKILL))
+#endif
 		drm_sched_entity_kill(entity);
 
 	return ret;
@@ -563,7 +579,11 @@ void drm_sched_entity_push_job(struct drm_sched_job *sched_job)
 
 	trace_drm_sched_job(sched_job, entity);
 	atomic_inc(entity->rq->sched->score);
+#ifdef __linux__
 	WRITE_ONCE(entity->last_user, current->group_leader);
+#else
+	WRITE_ONCE(entity->last_user, curproc->p_p);
+#endif
 
 	/*
 	 * After the sched_job is pushed into the entity queue, it may be
