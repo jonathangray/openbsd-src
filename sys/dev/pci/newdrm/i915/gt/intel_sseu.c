@@ -190,6 +190,8 @@ xehp_load_dss_mask(struct intel_uncore *uncore,
 		   int numregs,
 		   ...)
 {
+	STUB();
+#ifdef notyet
 	va_list argp;
 	u32 fuse_val[I915_MAX_SS_FUSE_REGS] = {};
 	int i;
@@ -203,6 +205,7 @@ xehp_load_dss_mask(struct intel_uncore *uncore,
 	va_end(argp);
 
 	bitmap_from_arr32(ssmask->xehp, fuse_val, numregs * 32);
+#endif
 }
 
 static void xehp_sseu_info_init(struct intel_gt *gt)
@@ -881,6 +884,9 @@ void intel_sseu_print_ss_info(const char *type,
 u16 intel_slicemask_from_xehp_dssmask(intel_sseu_ss_mask_t dss_mask,
 				      int dss_per_slice)
 {
+	STUB();
+	return 0;
+#ifdef notyet
 	intel_sseu_ss_mask_t per_slice_mask = {};
 	unsigned long slice_mask = 0;
 	int i;
@@ -898,4 +904,5 @@ u16 intel_slicemask_from_xehp_dssmask(intel_sseu_ss_mask_t dss_mask,
 	}
 
 	return slice_mask;
+#endif
 }

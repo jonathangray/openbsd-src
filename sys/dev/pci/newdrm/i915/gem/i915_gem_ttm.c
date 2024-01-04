@@ -189,6 +189,9 @@ static int i915_ttm_tt_shmem_populate(struct ttm_device *bdev,
 				      struct ttm_tt *ttm,
 				      struct ttm_operation_ctx *ctx)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct drm_i915_private *i915 = container_of(bdev, typeof(*i915), bdev);
 	struct intel_memory_region *mr = i915->mm.regions[INTEL_MEMORY_SYSTEM];
 	struct i915_ttm_tt *i915_tt = container_of(ttm, typeof(*i915_tt), ttm);
@@ -197,7 +200,7 @@ static int i915_ttm_tt_shmem_populate(struct ttm_device *bdev,
 	struct file *filp = i915_tt->filp;
 	struct sgt_iter sgt_iter;
 	struct sg_table *st;
-	struct page *page;
+	struct vm_page *page;
 	unsigned long i;
 	int err;
 
@@ -242,16 +245,20 @@ err_free_st:
 	shmem_sg_free_table(st, filp->f_mapping, false, false);
 
 	return err;
+#endif
 }
 
 static void i915_ttm_tt_shmem_unpopulate(struct ttm_tt *ttm)
 {
+	STUB();
+#ifdef notyet
 	struct i915_ttm_tt *i915_tt = container_of(ttm, typeof(*i915_tt), ttm);
 	bool backup = ttm->page_flags & TTM_TT_FLAG_SWAPPED;
 	struct sg_table *st = &i915_tt->cached_rsgt.table;
 
 	shmem_sg_free_table(st, file_inode(i915_tt->filp)->i_mapping,
 			    backup, backup);
+#endif
 }
 
 static void i915_ttm_tt_release(struct kref *ref)
@@ -333,6 +340,8 @@ static int i915_ttm_tt_populate(struct ttm_device *bdev,
 
 static void i915_ttm_tt_unpopulate(struct ttm_device *bdev, struct ttm_tt *ttm)
 {
+	STUB();
+#ifdef notyet
 	struct i915_ttm_tt *i915_tt = container_of(ttm, typeof(*i915_tt), ttm);
 	struct sg_table *st = &i915_tt->cached_rsgt.table;
 
@@ -345,6 +354,7 @@ static void i915_ttm_tt_unpopulate(struct ttm_device *bdev, struct ttm_tt *ttm)
 		sg_free_table(st);
 		ttm_pool_free(&bdev->pool, ttm);
 	}
+#endif
 }
 
 static void i915_ttm_tt_destroy(struct ttm_device *bdev, struct ttm_tt *ttm)
@@ -446,8 +456,15 @@ int i915_ttm_purge(struct drm_i915_gem_object *obj)
 		 * pages(like by the shrinker) we should try to be more
 		 * aggressive and release the pages immediately.
 		 */
+#ifdef __linux__
 		shmem_truncate_range(file_inode(i915_tt->filp),
 				     0, (loff_t)-1);
+#else
+		rw_enter(obj->base.uao->vmobjlock, RW_WRITE);
+		obj->base.uao->pgops->pgo_flush(obj->base.uao, 0, obj->base.size,
+		    PGO_ALLPAGES | PGO_FREE);
+		rw_exit(obj->base.uao->vmobjlock);
+#endif
 		fput(fetch_and_zero(&i915_tt->filp));
 	}
 
@@ -502,7 +519,11 @@ static int i915_ttm_shrink(struct drm_i915_gem_object *obj, unsigned int flags)
 	}
 
 	if (flags & I915_GEM_OBJECT_SHRINK_WRITEBACK)
+#ifdef notyet
 		__shmem_writeback(obj->base.size, i915_tt->filp->f_mapping);
+#else
+		STUB();
+#endif
 
 	return 0;
 }
@@ -525,6 +546,9 @@ static void i915_ttm_delete_mem_notify(struct ttm_buffer_object *bo)
 
 static struct i915_refct_sgt *i915_ttm_tt_get_st(struct ttm_tt *ttm)
 {
+	STUB();
+	return ERR_PTR(-ENOSYS);
+#ifdef notyet
 	struct i915_ttm_tt *i915_tt = container_of(ttm, typeof(*i915_tt), ttm);
 	struct sg_table *st;
 	int ret;
@@ -549,6 +573,7 @@ static struct i915_refct_sgt *i915_ttm_tt_get_st(struct ttm_tt *ttm)
 	}
 
 	return i915_refct_sgt_get(&i915_tt->cached_rsgt);
+#endif
 }
 
 /**
@@ -690,6 +715,9 @@ static int i915_ttm_io_mem_reserve(struct ttm_device *bdev, struct ttm_resource 
 static unsigned long i915_ttm_io_mem_pfn(struct ttm_buffer_object *bo,
 					 unsigned long page_offset)
 {
+	STUB();
+	return 0;
+#ifdef notyet
 	struct drm_i915_gem_object *obj = i915_ttm_to_gem(bo);
 	struct scatterlist *sg;
 	unsigned long base;
@@ -702,6 +730,7 @@ static unsigned long i915_ttm_io_mem_pfn(struct ttm_buffer_object *bo,
 	sg = i915_gem_object_page_iter_get_sg(obj, &obj->ttm.get_io_page, page_offset, &ofs);
 
 	return ((base + sg_dma_address(sg)) >> PAGE_SHIFT) + ofs;
+#endif
 }
 
 static int i915_ttm_access_memory(struct ttm_buffer_object *bo,
@@ -1038,6 +1067,7 @@ static void i915_ttm_delayed_free(struct drm_i915_gem_object *obj)
 	ttm_bo_put(i915_gem_to_ttm(obj));
 }
 
+#ifdef notyet
 static vm_fault_t vm_fault_ttm(struct vm_fault *vmf)
 {
 	struct vm_area_struct *area = vmf->vma;
@@ -1189,6 +1219,8 @@ static const struct vm_operations_struct vm_ops_ttm = {
 	.close = ttm_vm_close,
 };
 
+#endif
+
 static u64 i915_ttm_mmap_offset(struct drm_i915_gem_object *obj)
 {
 	/* The ttm_bo must be allocated with I915_BO_ALLOC_USER */
@@ -1240,7 +1272,9 @@ static const struct drm_i915_gem_object_ops i915_gem_ttm_obj_ops = {
 
 	.mmap_offset = i915_ttm_mmap_offset,
 	.unmap_virtual = i915_ttm_unmap_virtual,
+#ifdef notyet
 	.mmap_ops = &vm_ops_ttm,
+#endif
 };
 
 void i915_ttm_bo_destroy(struct ttm_buffer_object *bo)
@@ -1309,7 +1343,7 @@ int __i915_gem_ttm_object_init(struct intel_memory_region *mem,
 	INIT_LIST_HEAD(&obj->mm.region_link);
 
 	INIT_RADIX_TREE(&obj->ttm.get_io_page.radix, GFP_KERNEL | __GFP_NOWARN);
-	mutex_init(&obj->ttm.get_io_page.lock);
+	rw_init(&obj->ttm.get_io_page.lock, "i915ttm");
 	bo_type = (obj->flags & I915_BO_ALLOC_USER) ? ttm_bo_type_device :
 		ttm_bo_type_kernel;
 

@@ -61,6 +61,7 @@
  */
 void intel_vgpu_detect(struct drm_i915_private *dev_priv)
 {
+#ifdef notyet
 	struct pci_dev *pdev = to_pci_dev(dev_priv->drm.dev);
 	u64 magic;
 	u16 version_major;
@@ -97,11 +98,12 @@ void intel_vgpu_detect(struct drm_i915_private *dev_priv)
 	dev_priv->vgpu.caps = readl(shared_area + vgtif_offset(vgt_caps));
 
 	dev_priv->vgpu.active = true;
-	mutex_init(&dev_priv->vgpu.lock);
+	rw_init(&dev_priv->vgpu.lock, "vgpul");
 	drm_info(&dev_priv->drm, "Virtual GPU for Intel GVT-g detected.\n");
 
 out:
 	pci_iounmap(pdev, shared_area);
+#endif
 }
 
 void intel_vgpu_register(struct drm_i915_private *i915)

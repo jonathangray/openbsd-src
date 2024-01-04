@@ -1394,7 +1394,7 @@ static void intel_irq_postinstall(struct drm_i915_private *dev_priv)
  */
 int intel_irq_install(struct drm_i915_private *dev_priv)
 {
-	int irq = to_pci_dev(dev_priv->drm.dev)->irq;
+	int irq = dev_priv->drm.pdev->irq;
 	int ret;
 
 	/*
@@ -1414,6 +1414,9 @@ int intel_irq_install(struct drm_i915_private *dev_priv)
 		dev_priv->irq_enabled = false;
 		return ret;
 	}
+#ifdef __OpenBSD__
+	dev_priv->irq_handler = intel_irq_handler(dev_priv);
+#endif
 
 	intel_irq_postinstall(dev_priv);
 
@@ -1429,7 +1432,7 @@ int intel_irq_install(struct drm_i915_private *dev_priv)
  */
 void intel_irq_uninstall(struct drm_i915_private *dev_priv)
 {
-	int irq = to_pci_dev(dev_priv->drm.dev)->irq;
+	int irq = dev_priv->drm.pdev->irq;
 
 	/*
 	 * FIXME we can get called twice during driver probe
@@ -1445,6 +1448,9 @@ void intel_irq_uninstall(struct drm_i915_private *dev_priv)
 	intel_irq_reset(dev_priv);
 
 	free_irq(irq, dev_priv);
+#ifdef __OpenBSD__
+	dev_priv->irq_handler = NULL;
+#endif
 
 	intel_hpd_cancel_work(dev_priv);
 	dev_priv->runtime_pm.irqs_enabled = false;
@@ -1485,10 +1491,18 @@ bool intel_irqs_enabled(struct drm_i915_private *dev_priv)
 
 void intel_synchronize_irq(struct drm_i915_private *i915)
 {
+#ifdef __linux__
 	synchronize_irq(to_pci_dev(i915->drm.dev)->irq);
+#else
+	intr_barrier(i915->irqh);
+#endif
 }
 
 void intel_synchronize_hardirq(struct drm_i915_private *i915)
 {
+#ifdef __linux__
 	synchronize_hardirq(to_pci_dev(i915->drm.dev)->irq);
+#else
+	intr_barrier(i915->irqh);
+#endif
 }

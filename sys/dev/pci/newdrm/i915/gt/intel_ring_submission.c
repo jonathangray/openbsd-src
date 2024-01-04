@@ -59,7 +59,7 @@ static void set_hws_pga(struct intel_engine_cs *engine, phys_addr_t phys)
 	intel_uncore_write(engine->uncore, HWS_PGA, addr);
 }
 
-static struct page *status_page(struct intel_engine_cs *engine)
+static struct vm_page *status_page(struct intel_engine_cs *engine)
 {
 	struct drm_i915_gem_object *obj = engine->status_page.vma->obj;
 
@@ -474,8 +474,13 @@ static int ring_context_init_default_state(struct intel_context *ce,
 	if (IS_ERR(vaddr))
 		return PTR_ERR(vaddr);
 
+#ifdef __linux__
 	shmem_read(ce->engine->default_state, 0,
 		   vaddr, ce->engine->context_size);
+#else
+	uao_read(ce->engine->default_state, 0,
+		   vaddr, ce->engine->context_size);
+#endif
 
 	i915_gem_object_flush_map(obj);
 	__i915_gem_object_release_map(obj);
@@ -629,7 +634,7 @@ static void ring_context_cancel_request(struct intel_context *ce,
 	if (engine && intel_engine_pulse(engine))
 		intel_gt_handle_error(engine->gt, engine->mask, 0,
 				      "request cancellation by %s",
-				      current->comm);
+				      curproc->p_p->ps_comm);
 }
 
 static const struct intel_context_ops ring_context_ops = {
@@ -1287,7 +1292,7 @@ static struct i915_vma *gen7_ctx_vma(struct intel_engine_cs *engine)
 	if (!err)
 		return NULL;
 
-	size = ALIGN(err, PAGE_SIZE);
+	size = roundup2(err, PAGE_SIZE);
 
 	obj = i915_gem_object_create_internal(engine->i915, size);
 	if (IS_ERR(obj))

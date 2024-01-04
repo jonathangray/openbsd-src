@@ -158,7 +158,7 @@ static int i915_do_reset(struct intel_gt *gt,
 			 intel_engine_mask_t engine_mask,
 			 unsigned int retry)
 {
-	struct pci_dev *pdev = to_pci_dev(gt->i915->drm.dev);
+	struct pci_dev *pdev = gt->i915->drm.pdev;
 	int err;
 
 	/* Assert reset for at least 20 usec, and wait for acknowledgement. */
@@ -187,7 +187,7 @@ static int g33_do_reset(struct intel_gt *gt,
 			intel_engine_mask_t engine_mask,
 			unsigned int retry)
 {
-	struct pci_dev *pdev = to_pci_dev(gt->i915->drm.dev);
+	struct pci_dev *pdev = gt->i915->drm.pdev;
 
 	pci_write_config_byte(pdev, I915_GDRST, GRDOM_RESET_ENABLE);
 	return wait_for_atomic(g4x_reset_complete(pdev), 50);
@@ -197,7 +197,7 @@ static int g4x_do_reset(struct intel_gt *gt,
 			intel_engine_mask_t engine_mask,
 			unsigned int retry)
 {
-	struct pci_dev *pdev = to_pci_dev(gt->i915->drm.dev);
+	struct pci_dev *pdev = gt->i915->drm.pdev;
 	struct intel_uncore *uncore = gt->uncore;
 	int ret;
 
@@ -867,10 +867,22 @@ static void revoke_mmaps(struct intel_gt *gt)
 		node = &vma->mmo->vma_node;
 		vma_offset = vma->gtt_view.partial.offset << PAGE_SHIFT;
 
+#ifdef __linux__
 		unmap_mapping_range(gt->i915->drm.anon_inode->i_mapping,
 				    drm_vma_node_offset_addr(node) + vma_offset,
 				    vma->size,
 				    1);
+#else
+{
+		struct drm_i915_private *dev_priv = vma->obj->base.dev->dev_private;
+		struct vm_page *pg;
+
+		for (pg = &dev_priv->pgs[atop(vma->node.start)];
+		     pg != &dev_priv->pgs[atop(vma->node.start + vma->size)];
+		     pg++)
+			pmap_page_protect(pg, PROT_NONE);
+}
+#endif
 	}
 }
 
@@ -1135,7 +1147,7 @@ static int do_reset(struct intel_gt *gt, intel_engine_mask_t stalled_mask)
 
 	err = __intel_gt_reset(gt, ALL_ENGINES);
 	for (i = 0; err && i < RESET_MAX_RETRIES; i++) {
-		msleep(10 * (i + 1));
+		drm_msleep(10 * (i + 1));
 		err = __intel_gt_reset(gt, ALL_ENGINES);
 	}
 	if (err)
@@ -1355,10 +1367,12 @@ static void intel_gt_reset_global(struct intel_gt *gt,
 				  u32 engine_mask,
 				  const char *reason)
 {
+#ifdef notyet
 	struct kobject *kobj = &gt->i915->drm.primary->kdev->kobj;
 	char *error_event[] = { I915_ERROR_UEVENT "=1", NULL };
 	char *reset_event[] = { I915_RESET_UEVENT "=1", NULL };
 	char *reset_done_event[] = { I915_ERROR_UEVENT "=0", NULL };
+#endif
 	struct intel_wedge_me w;
 
 	kobject_uevent_env(kobj, KOBJ_CHANGE, error_event);
@@ -1580,7 +1594,7 @@ void intel_gt_set_wedged_on_fini(struct intel_gt *gt)
 void intel_gt_init_reset(struct intel_gt *gt)
 {
 	init_waitqueue_head(&gt->reset.queue);
-	mutex_init(&gt->reset.mutex);
+	rw_init(&gt->reset.mutex, "gtres");
 	init_srcu_struct(&gt->reset.backoff_srcu);
 
 	/*

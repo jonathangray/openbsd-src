@@ -1170,7 +1170,7 @@ static void gen11_dsi_pre_pll_enable(struct intel_atomic_state *state,
 	intel_dsi_wait_panel_power_cycle(intel_dsi);
 
 	intel_dsi_vbt_exec_sequence(intel_dsi, MIPI_SEQ_POWER_ON);
-	msleep(intel_dsi->panel_on_delay);
+	drm_msleep(intel_dsi->panel_on_delay);
 	intel_dsi_vbt_exec_sequence(intel_dsi, MIPI_SEQ_DEASSERT_RESET);
 
 	/* step2: enable IO power */

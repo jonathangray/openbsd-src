@@ -162,12 +162,12 @@ struct intel_engine_execlists {
 	/**
 	 * @timer: kick the current context if its timeslice expires
 	 */
-	struct timer_list timer;
+	struct timeout timer;
 
 	/**
 	 * @preempt: reset the current context if it fails to give way
 	 */
-	struct timer_list preempt;
+	struct timeout preempt;
 
 	/**
 	 * @preempt_target: active request at the time of the preemption request
@@ -436,7 +436,11 @@ struct intel_engine_cs {
 
 	unsigned long wakeref_serial;
 	struct intel_wakeref wakeref;
+#ifdef __linux__
 	struct file *default_state;
+#else
+	struct uvm_object *default_state;
+#endif
 
 	struct {
 		struct intel_ring *ring;
@@ -559,7 +563,9 @@ struct intel_engine_cs {
 	struct work_struct retire_work;
 
 	/* status_notifier: list of callbacks for context-switch changes */
+#ifdef notyet
 	struct atomic_notifier_head context_status_notifier;
+#endif
 
 #define I915_ENGINE_USING_CMD_PARSER BIT(0)
 #define I915_ENGINE_SUPPORTS_STATS   BIT(1)

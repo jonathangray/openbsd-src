@@ -55,8 +55,8 @@ struct execute_cb {
 	struct i915_request *signal;
 };
 
-static struct kmem_cache *slab_requests;
-static struct kmem_cache *slab_execute_cbs;
+static struct pool slab_requests;
+static struct pool slab_execute_cbs;
 
 static const char *i915_fence_get_driver_name(struct dma_fence *fence)
 {
@@ -105,10 +105,17 @@ static signed long i915_fence_wait(struct dma_fence *fence,
 					 timeout);
 }
 
+#ifdef __linux__
 struct kmem_cache *i915_request_slab_cache(void)
 {
 	return slab_requests;
 }
+#else
+struct pool *i915_request_slab_cache(void)
+{
+	return &slab_requests;
+}
+#endif
 
 static void i915_fence_release(struct dma_fence *fence)
 {
@@ -168,7 +175,11 @@ static void i915_fence_release(struct dma_fence *fence)
 	    !cmpxchg(&rq->engine->request_pool, NULL, rq))
 		return;
 
+#ifdef __linux__
 	kmem_cache_free(slab_requests, rq);
+#else
+	pool_put(&slab_requests, rq);
+#endif
 }
 
 const struct dma_fence_ops i915_fence_ops = {
@@ -185,7 +196,11 @@ static void irq_execute_cb(struct irq_work *wrk)
 	struct execute_cb *cb = container_of(wrk, typeof(*cb), work);
 
 	i915_sw_fence_complete(cb->fence);
+#ifdef __linux__
 	kmem_cache_free(slab_execute_cbs, cb);
+#else
+	pool_put(&slab_execute_cbs, cb);
+#endif
 }
 
 static __always_inline void
@@ -209,7 +224,11 @@ static void __notify_execute_cb_irq(struct i915_request *rq)
 
 static bool irq_work_imm(struct irq_work *wrk)
 {
+#ifdef __linux__
 	wrk->func(wrk);
+#else
+	wrk->task.t_func(wrk);
+#endif
 	return false;
 }
 
@@ -276,8 +295,10 @@ i915_request_active_engine(struct i915_request *rq,
 
 static void __rq_init_watchdog(struct i915_request *rq)
 {
-	rq->watchdog.timer.function = NULL;
+	rq->watchdog.timer.to_func = NULL;
 }
+
+#ifdef __linux__
 
 static enum hrtimer_restart __rq_watchdog_expired(struct hrtimer *hrtimer)
 {
@@ -295,6 +316,24 @@ static enum hrtimer_restart __rq_watchdog_expired(struct hrtimer *hrtimer)
 	return HRTIMER_NORESTART;
 }
 
+#else
+
+static void
+__rq_watchdog_expired(void *arg)
+{
+	struct i915_request *rq = (struct i915_request *)arg;
+	struct intel_gt *gt = rq->engine->gt;
+
+	if (!i915_request_completed(rq)) {
+		if (llist_add(&rq->watchdog.link, &gt->watchdog.list))
+			schedule_work(&gt->watchdog.work);
+	} else {
+		i915_request_put(rq);
+	}
+}
+
+#endif
+
 static void __rq_arm_watchdog(struct i915_request *rq)
 {
 	struct i915_request_watchdog *wdg = &rq->watchdog;
@@ -305,6 +344,7 @@ static void __rq_arm_watchdog(struct i915_request *rq)
 
 	i915_request_get(rq);
 
+#ifdef __linux__
 	hrtimer_init(&wdg->timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
 	wdg->timer.function = __rq_watchdog_expired;
 	hrtimer_start_range_ns(&wdg->timer,
@@ -312,13 +352,17 @@ static void __rq_arm_watchdog(struct i915_request *rq)
 					   NSEC_PER_USEC),
 			       NSEC_PER_MSEC,
 			       HRTIMER_MODE_REL);
+#else
+	timeout_set(&wdg->timer, __rq_watchdog_expired, rq);
+	timeout_add_msec(&wdg->timer, 1);
+#endif
 }
 
 static void __rq_cancel_watchdog(struct i915_request *rq)
 {
 	struct i915_request_watchdog *wdg = &rq->watchdog;
 
-	if (wdg->timer.function && hrtimer_try_to_cancel(&wdg->timer) > 0)
+	if (wdg->timer.to_func && hrtimer_try_to_cancel(&wdg->timer) > 0)
 		i915_request_put(rq);
 }
 
@@ -508,7 +552,12 @@ __await_execution(struct i915_request *rq,
 	if (i915_request_is_active(signal))
 		return 0;
 
+#ifdef __linux__
 	cb = kmem_cache_alloc(slab_execute_cbs, gfp);
+#else
+	cb = pool_get(&slab_execute_cbs,
+	    (gfp & GFP_NOWAIT) ? PR_NOWAIT : PR_WAITOK);
+#endif
 	if (!cb)
 		return -ENOMEM;
 
@@ -831,6 +880,8 @@ static void retire_requests(struct intel_timeline *tl)
 			break;
 }
 
+static void __i915_request_ctor(void *);
+
 static noinline struct i915_request *
 request_alloc_slow(struct intel_timeline *tl,
 		   struct i915_request **rsvd,
@@ -854,8 +905,15 @@ request_alloc_slow(struct intel_timeline *tl,
 	rq = list_first_entry(&tl->requests, typeof(*rq), link);
 	i915_request_retire(rq);
 
+#ifdef __linux__
 	rq = kmem_cache_alloc(slab_requests,
 			      gfp | __GFP_RETRY_MAYFAIL | __GFP_NOWARN);
+#else
+	rq = pool_get(&slab_requests,
+	    (gfp & GFP_NOWAIT) ? PR_NOWAIT : PR_WAITOK);
+	if (rq)
+		__i915_request_ctor(rq);
+#endif
 	if (rq)
 		return rq;
 
@@ -867,14 +925,26 @@ request_alloc_slow(struct intel_timeline *tl,
 	retire_requests(tl);
 
 out:
+#ifdef __linux__
 	return kmem_cache_alloc(slab_requests, gfp);
+#else
+	rq = pool_get(&slab_requests,
+	    (gfp & GFP_NOWAIT) ? PR_NOWAIT : PR_WAITOK);
+	if (rq)
+		__i915_request_ctor(rq);
+	return rq;
+#endif
 }
 
 static void __i915_request_ctor(void *arg)
 {
 	struct i915_request *rq = arg;
 
-	spin_lock_init(&rq->lock);
+	/*
+	 * witness does not understand spin_lock_nested()
+	 * order reversal in i915 with this lock
+	 */
+	mtx_init_flags(&rq->lock, IPL_TTY, NULL, MTX_NOWITNESS);
 	i915_sched_node_init(&rq->sched);
 	i915_sw_fence_init(&rq->submit, submit_notify);
 	i915_sw_fence_init(&rq->semaphore, semaphore_notify);
@@ -933,8 +1003,15 @@ __i915_request_create(struct intel_context *ce, gfp_t gfp)
 	 *
 	 * Do not use kmem_cache_zalloc() here!
 	 */
+#ifdef __linux__
 	rq = kmem_cache_alloc(slab_requests,
 			      gfp | __GFP_RETRY_MAYFAIL | __GFP_NOWARN);
+#else
+	rq = pool_get(&slab_requests,
+	    (gfp & GFP_NOWAIT) ? PR_NOWAIT : PR_WAITOK);
+	if (rq)
+		__i915_request_ctor(rq);
+#endif
 	if (unlikely(!rq)) {
 		rq = request_alloc_slow(tl, &ce->engine->request_pool, gfp);
 		if (!rq) {
@@ -1019,7 +1096,11 @@ err_unwind:
 	GEM_BUG_ON(!list_empty(&rq->sched.waiters_list));
 
 err_free:
+#ifdef __linux__
 	kmem_cache_free(slab_requests, rq);
+#else
+	pool_put(&slab_requests, rq);
+#endif
 err_unreserve:
 	intel_context_unpin(ce);
 	return ERR_PTR(ret);
@@ -1942,14 +2023,18 @@ static bool __i915_spin_request(struct i915_request * const rq, int state)
 			break;
 
 		cpu_relax();
-	} while (!need_resched());
+	} while (!drm_need_resched());
 
 	return false;
 }
 
 struct request_wait {
 	struct dma_fence_cb cb;
+#ifdef __linux__
 	struct task_struct *tsk;
+#else
+	struct proc *tsk;
+#endif
 };
 
 static void request_wait_wake(struct dma_fence *fence, struct dma_fence_cb *cb)
@@ -2047,7 +2132,11 @@ long i915_request_wait_timeout(struct i915_request *rq,
 	if (flags & I915_WAIT_PRIORITY && !i915_request_started(rq))
 		intel_rps_boost(rq);
 
+#ifdef __linux__
 	wait.tsk = current;
+#else
+	wait.tsk = curproc;
+#endif
 	if (dma_fence_add_callback(&rq->fence, &wait.cb, request_wait_wake))
 		goto out;
 
@@ -2280,12 +2369,18 @@ enum i915_request_state i915_test_request_state(struct i915_request *rq)
 
 void i915_request_module_exit(void)
 {
+#ifdef __linux__
 	kmem_cache_destroy(slab_execute_cbs);
 	kmem_cache_destroy(slab_requests);
+#else
+	pool_destroy(&slab_execute_cbs);
+	pool_destroy(&slab_requests);
+#endif
 }
 
 int __init i915_request_module_init(void)
 {
+#ifdef __linux__
 	slab_requests =
 		kmem_cache_create("i915_request",
 				  sizeof(struct i915_request),
@@ -2303,10 +2398,18 @@ int __init i915_request_module_init(void)
 					     SLAB_TYPESAFE_BY_RCU);
 	if (!slab_execute_cbs)
 		goto err_requests;
+#else
+	pool_init(&slab_requests, sizeof(struct i915_request),
+	    CACHELINESIZE, IPL_TTY, 0, "i915_request", NULL);
+	pool_init(&slab_execute_cbs, sizeof(struct execute_cb),
+	    CACHELINESIZE, IPL_TTY, 0, "i915_exec", NULL);
+#endif
 
 	return 0;
 
+#ifdef __linux__
 err_requests:
 	kmem_cache_destroy(slab_requests);
 	return -ENOMEM;
+#endif
 }

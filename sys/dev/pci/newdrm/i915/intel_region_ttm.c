@@ -32,9 +32,15 @@ int intel_region_ttm_device_init(struct drm_i915_private *dev_priv)
 {
 	struct drm_device *drm = &dev_priv->drm;
 
+#ifdef notyet
 	return ttm_device_init(&dev_priv->bdev, i915_ttm_driver(),
 			       drm->dev, drm->anon_inode->i_mapping,
 			       drm->vma_offset_manager, false, false);
+#else
+	return ttm_device_init(&dev_priv->bdev, i915_ttm_driver(),
+			       drm->dev, /*drm->anon_inode->i_mapping*/NULL,
+			       drm->vma_offset_manager, false, false);
+#endif
 }
 
 /**
@@ -130,7 +136,7 @@ int intel_region_ttm_fini(struct intel_memory_region *mem)
 		if (!ret)
 			break;
 
-		msleep(20);
+		drm_msleep(20);
 		drain_workqueue(mem->i915->bdev.wq);
 	}
 

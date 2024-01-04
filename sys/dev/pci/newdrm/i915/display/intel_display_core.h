@@ -98,7 +98,7 @@ struct intel_audio {
 	struct i915_audio_component *component;
 	bool component_registered;
 	/* mutex for audio/video sync */
-	struct mutex mutex;
+	struct rwlock mutex;
 	int power_refcount;
 	u32 freq_cntrl;
 
@@ -118,7 +118,7 @@ struct intel_audio {
  * dpll, because on some platforms plls share registers.
  */
 struct intel_dpll {
-	struct mutex lock;
+	struct rwlock lock;
 
 	int num_shared_dpll;
 	struct intel_shared_dpll shared_dplls[I915_NUM_PLLS];
@@ -261,7 +261,7 @@ struct intel_wm {
 	 * protects * intel_crtc->wm.active and
 	 * crtc_state->wm.need_postvbl_update.
 	 */
-	struct mutex wm_mutex;
+	struct rwlock wm_mutex;
 
 	bool ipc_enabled;
 };
@@ -302,7 +302,7 @@ struct intel_display {
 
 	struct {
 		/* backlight registers and fields in struct intel_panel */
-		struct mutex lock;
+		struct rwlock lock;
 	} backlight;
 
 	struct {
@@ -348,7 +348,7 @@ struct intel_display {
 		wait_queue_head_t waitqueue;
 
 		/* mutex to protect pmdemand programming sequence */
-		struct mutex lock;
+		struct rwlock lock;
 
 		struct intel_global_obj obj;
 	} pmdemand;
@@ -397,7 +397,7 @@ struct intel_display {
 		 * gmbus.mutex protects against concurrent usage of the single
 		 * hw gmbus controller on different i2c buses.
 		 */
-		struct mutex mutex;
+		struct rwlock mutex;
 
 		struct intel_gmbus *bus[GMBUS_NUM_PINS];
 
@@ -415,7 +415,7 @@ struct intel_display {
 		 */
 		struct intel_hdcp_gsc_message *hdcp_message;
 		/* Mutex to protect the above hdcp related values. */
-		struct mutex hdcp_mutex;
+		struct rwlock hdcp_mutex;
 	} hdcp;
 
 	struct {
@@ -454,7 +454,7 @@ struct intel_display {
 		u32 mmio_base;
 
 		/* protects panel power sequencer state */
-		struct mutex mutex;
+		struct rwlock mutex;
 	} pps;
 
 	struct {

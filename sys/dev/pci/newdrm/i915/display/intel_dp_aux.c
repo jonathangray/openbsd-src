@@ -278,7 +278,7 @@ intel_dp_aux_xfer(struct intel_dp *intel_dp,
 		status = intel_de_read_notrace(i915, ch_ctl);
 		if ((status & DP_AUX_CH_CTL_SEND_BUSY) == 0)
 			break;
-		msleep(1);
+		drm_msleep(1);
 	}
 	/* just trace the final value */
 	trace_i915_reg_rw(false, ch_ctl, status, sizeof(status), true);

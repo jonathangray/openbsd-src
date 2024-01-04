@@ -113,7 +113,7 @@ static int get_huge_pages(struct drm_i915_gem_object *obj)
 		int order = get_order(page_size);
 
 		do {
-			struct page *page;
+			struct vm_page *page;
 
 			GEM_BUG_ON(order > MAX_ORDER);
 			page = alloc_pages(GFP | __GFP_ZERO, order);
@@ -720,7 +720,7 @@ static int igt_ppgtt_huge_fill(void *arg)
 	unsigned long page_num;
 	struct file *file;
 	bool single = false;
-	LIST_HEAD(objects);
+	DRM_LIST_HEAD(objects);
 	IGT_TIMEOUT(end_time);
 	int err = -ENODEV;
 
@@ -1360,7 +1360,7 @@ static u32 igt_random_size(struct rnd_state *prng,
 	GEM_BUG_ON(min_page_size < PAGE_SIZE);
 	GEM_BUG_ON(min_page_size > max_page_size);
 
-	mask = ((max_page_size << 1ULL) - 1) & PAGE_MASK;
+	mask = ((max_page_size << 1ULL) - 1) & LINUX_PAGE_MASK;
 	size = prandom_u32_state(prng) & mask;
 	if (size < min_page_size)
 		size |= min_page_size;

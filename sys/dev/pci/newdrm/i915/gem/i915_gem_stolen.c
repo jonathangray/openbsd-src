@@ -144,6 +144,7 @@ static int request_smem_stolen(struct drm_i915_private *i915,
 {
 	struct resource *r;
 
+#ifdef __linux__
 	/*
 	 * With stolen lmem, we don't need to request system memory for the
 	 * address range since it's local to the gpu.
@@ -188,6 +189,7 @@ static int request_smem_stolen(struct drm_i915_private *i915,
 			return -EBUSY;
 		}
 	}
+#endif
 
 	return 0;
 }
@@ -471,6 +473,7 @@ static int init_reserved_stolen(struct drm_i915_private *i915)
 
 	i915->dsm.reserved = DEFINE_RES_MEM(reserved_base, reserved_size);
 
+#ifdef notyet
 	if (!resource_contains(&i915->dsm.stolen, &i915->dsm.reserved)) {
 		drm_err(&i915->drm,
 			"Stolen reserved area %pR outside stolen memory %pR\n",
@@ -478,6 +481,7 @@ static int init_reserved_stolen(struct drm_i915_private *i915)
 		ret = -EINVAL;
 		goto bail_out;
 	}
+#endif
 
 	return 0;
 
@@ -491,7 +495,7 @@ static int i915_gem_init_stolen(struct intel_memory_region *mem)
 {
 	struct drm_i915_private *i915 = mem->i915;
 
-	mutex_init(&i915->mm.stolen_lock);
+	rw_init(&i915->mm.stolen_lock, "stln");
 
 	if (intel_vgpu_active(i915)) {
 		drm_notice(&i915->drm,
@@ -595,7 +599,7 @@ i915_pages_create_for_stolen(struct drm_device *dev,
 
 	GEM_BUG_ON(range_overflows(offset, size, resource_size(&i915->dsm.stolen)));
 
-	/* We hide that we have no struct page backing our stolen object
+	/* We hide that we have no struct vm_page backing our stolen object
 	 * by wrapping the contiguous physical allocation with a fake
 	 * dma mapping in a single scatterlist.
 	 */
@@ -817,6 +821,9 @@ static int init_stolen_lmem(struct intel_memory_region *mem)
 		return 0;
 	}
 
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	if (mem->io_size &&
 	    !io_mapping_init_wc(&mem->iomap, mem->io_start, mem->io_size))
 		goto err_cleanup;
@@ -830,12 +837,16 @@ static int init_stolen_lmem(struct intel_memory_region *mem)
 err_cleanup:
 	i915_gem_cleanup_stolen(mem->i915);
 	return err;
+#endif
 }
 
 static int release_stolen_lmem(struct intel_memory_region *mem)
 {
+	STUB();
+#ifdef notyet
 	if (mem->io_size)
 		io_mapping_fini(&mem->iomap);
+#endif
 	i915_gem_cleanup_stolen(mem->i915);
 	return 0;
 }
@@ -874,21 +885,37 @@ i915_gem_stolen_lmem_setup(struct drm_i915_private *i915, u16 type,
 			   u16 instance)
 {
 	struct intel_uncore *uncore = &i915->uncore;
-	struct pci_dev *pdev = to_pci_dev(i915->drm.dev);
+	struct pci_dev *pdev = i915->drm.pdev
 	resource_size_t dsm_size, dsm_base, lmem_size;
 	struct intel_memory_region *mem;
 	resource_size_t io_start, io_size;
 	resource_size_t min_page_size;
 	int ret;
+	pcireg_t mtype;
+	bus_addr_t lmem_start;
+	bus_size_t lmem_len;
 
 	if (WARN_ON_ONCE(instance))
 		return ERR_PTR(-ENODEV);
 
+#ifdef __linux__
 	if (!i915_pci_resource_valid(pdev, GEN12_LMEM_BAR))
 		return ERR_PTR(-ENXIO);
+#else
+	mtype = pci_mapreg_type(i915->pc, i915->tag,
+	    0x10 + (4 * GEN12_LMEM_BAR));
+	ret = pci_mapreg_info(i915->pc, i915->tag,
+	    0x10 + (4 * GEN12_LMEM_BAR), mtype, &lmem_start, &lmem_len, NULL);
+	if (ret != 0)
+		return ERR_PTR(-ENXIO);
+#endif
 
 	if (HAS_LMEMBAR_SMEM_STOLEN(i915) || IS_DG1(i915)) {
+#ifdef __linux__
 		lmem_size = pci_resource_len(pdev, GEN12_LMEM_BAR);
+#else
+		lmem_size = lmem_len;
+#endif
 	} else {
 		resource_size_t lmem_range;
 
@@ -923,6 +950,7 @@ i915_gem_stolen_lmem_setup(struct drm_i915_private *i915, u16 type,
 		dsm_size = ALIGN_DOWN(lmem_size - dsm_base, SZ_1M);
 	}
 
+#ifdef __linux__
 	if (pci_resource_len(pdev, GEN12_LMEM_BAR) < lmem_size) {
 		io_start = 0;
 		io_size = 0;
@@ -930,6 +958,15 @@ i915_gem_stolen_lmem_setup(struct drm_i915_private *i915, u16 type,
 		io_start = pci_resource_start(pdev, GEN12_LMEM_BAR) + dsm_base;
 		io_size = dsm_size;
 	}
+#else
+	if (lmem_len < lmem_size) {
+		io_start = 0;
+		io_size = 0;
+	} else {
+		io_start = lmem_start + dsm_base;
+		io_size = dsm_size;
+	}
+#endif
 
 	min_page_size = HAS_64K_PAGES(i915) ? I915_GTT_PAGE_SIZE_64K :
 						I915_GTT_PAGE_SIZE_4K;

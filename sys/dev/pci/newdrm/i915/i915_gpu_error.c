@@ -65,14 +65,20 @@
 static void __sg_set_buf(struct scatterlist *sg,
 			 void *addr, unsigned int len, loff_t it)
 {
+	STUB();
+#ifdef notyet
 	sg->page_link = (unsigned long)virt_to_page(addr);
 	sg->offset = offset_in_page(addr);
 	sg->length = len;
 	sg->dma_address = it;
+#endif
 }
 
 static bool __i915_error_grow(struct drm_i915_error_state_buf *e, size_t len)
 {
+	STUB();
+	return false;
+#ifdef notyet
 	if (!len)
 		return false;
 
@@ -108,7 +114,7 @@ static bool __i915_error_grow(struct drm_i915_error_state_buf *e, size_t len)
 		e->end = sgl + SG_MAX_SINGLE_ALLOC - 1;
 	}
 
-	e->size = ALIGN(len + 1, SZ_64K);
+	e->size = roundup2(len + 1, SZ_64K);
 	e->buf = kmalloc(e->size, ALLOW_FAIL);
 	if (!e->buf) {
 		e->size = PAGE_ALIGN(len + 1);
@@ -120,6 +126,7 @@ static bool __i915_error_grow(struct drm_i915_error_state_buf *e, size_t len)
 	}
 
 	return true;
+#endif
 }
 
 __printf(2, 0)
@@ -189,7 +196,10 @@ i915_error_printer(struct drm_i915_error_state_buf *e)
 /* single threaded page allocator with a reserved stash for emergencies */
 static void pool_fini(struct folio_batch *fbatch)
 {
+	STUB();
+#ifdef notyet
 	folio_batch_release(fbatch);
+#endif
 }
 
 static int pool_refill(struct folio_batch *fbatch, gfp_t gfp)
@@ -207,7 +217,7 @@ static int pool_refill(struct folio_batch *fbatch, gfp_t gfp)
 	return 0;
 }
 
-static int pool_init(struct folio_batch *fbatch, gfp_t gfp)
+static int intel_pool_init(struct folio_batch *fbatch, gfp_t gfp)
 {
 	int err;
 
@@ -222,6 +232,9 @@ static int pool_init(struct folio_batch *fbatch, gfp_t gfp)
 
 static void *pool_alloc(struct folio_batch *fbatch, gfp_t gfp)
 {
+	STUB();
+	return NULL;
+#ifdef notyet
 	struct folio *folio;
 
 	folio = folio_alloc(gfp, 0);
@@ -229,16 +242,20 @@ static void *pool_alloc(struct folio_batch *fbatch, gfp_t gfp)
 		folio = fbatch->folios[--fbatch->nr];
 
 	return folio ? folio_address(folio) : NULL;
+#endif
 }
 
 static void pool_free(struct folio_batch *fbatch, void *addr)
 {
+	STUB();
+#ifdef notyet
 	struct folio *folio = virt_to_folio(addr);
 
 	if (folio_batch_space(fbatch))
 		folio_batch_add(fbatch, folio);
 	else
 		folio_put(folio);
+#endif
 }
 
 #ifdef CONFIG_DRM_I915_COMPRESS_ERROR
@@ -253,7 +270,7 @@ static bool compress_init(struct i915_vma_compress *c)
 {
 	struct z_stream_s *zstream = &c->zstream;
 
-	if (pool_init(&c->pool, ALLOW_FAIL))
+	if (intel_pool_init(&c->pool, ALLOW_FAIL))
 		return false;
 
 	zstream->workspace =
@@ -286,7 +303,7 @@ static void *compress_next_page(struct i915_vma_compress *c,
 				struct i915_vma_coredump *dst)
 {
 	void *page_addr;
-	struct page *page;
+	struct vm_page *page;
 
 	page_addr = pool_alloc(&c->pool, ALLOW_FAIL);
 	if (!page_addr)
@@ -386,7 +403,7 @@ struct i915_vma_compress {
 
 static bool compress_init(struct i915_vma_compress *c)
 {
-	return pool_init(&c->pool, ALLOW_FAIL) == 0;
+	return intel_pool_init(&c->pool, ALLOW_FAIL) == 0;
 }
 
 static bool compress_start(struct i915_vma_compress *c)
@@ -399,6 +416,9 @@ static int compress_page(struct i915_vma_compress *c,
 			 struct i915_vma_coredump *dst,
 			 bool wc)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	void *ptr;
 
 	ptr = pool_alloc(&c->pool, ALLOW_FAIL);
@@ -411,6 +431,7 @@ static int compress_page(struct i915_vma_compress *c,
 	cond_resched();
 
 	return 0;
+#endif
 }
 
 static int compress_flush(struct i915_vma_compress *c,
@@ -613,8 +634,10 @@ void intel_gpu_error_print_vma(struct drm_i915_error_state_buf *m,
 			       const struct intel_engine_cs *engine,
 			       const struct i915_vma_coredump *vma)
 {
+	STUB();
+#ifdef notyet
 	char out[ASCII85_BUFSZ];
-	struct page *page;
+	struct vm_page *page;
 
 	if (!vma)
 		return;
@@ -641,6 +664,7 @@ void intel_gpu_error_print_vma(struct drm_i915_error_state_buf *m,
 			err_puts(m, ascii85_encode(addr[i], out));
 	}
 	err_puts(m, "\n");
+#endif
 }
 
 static void err_print_capabilities(struct drm_i915_error_state_buf *m,
@@ -665,7 +689,7 @@ static void err_print_params(struct drm_i915_error_state_buf *m,
 static void err_print_pciid(struct drm_i915_error_state_buf *m,
 			    struct drm_i915_private *i915)
 {
-	struct pci_dev *pdev = to_pci_dev(i915->drm.dev);
+	struct pci_dev *pdev = i915->drm.pdev;
 
 	err_printf(m, "PCI ID: 0x%04x\n", pdev->device);
 	err_printf(m, "PCI Revision: 0x%02x\n", pdev->revision);
@@ -703,6 +727,8 @@ static void err_print_uc(struct drm_i915_error_state_buf *m,
 
 static void err_free_sgl(struct scatterlist *sgl)
 {
+	STUB();
+#ifdef notyet
 	while (sgl) {
 		struct scatterlist *sg;
 
@@ -716,6 +742,7 @@ static void err_free_sgl(struct scatterlist *sgl)
 		free_page((unsigned long)sgl);
 		sgl = sg;
 	}
+#endif
 }
 
 static void err_print_gt_info(struct drm_i915_error_state_buf *m,
@@ -838,9 +865,16 @@ static void __err_print_to_sgl(struct drm_i915_error_state_buf *m,
 
 	if (*error->error_msg)
 		err_printf(m, "%s\n", error->error_msg);
+#ifdef __linux__
 	err_printf(m, "Kernel: %s %s\n",
 		   init_utsname()->release,
 		   init_utsname()->machine);
+#else
+	extern char machine[];
+	err_printf(m, "Kernel: %s %s\n",
+		   osrelease,
+		   machine);
+#endif
 	err_printf(m, "Driver: %s\n", DRIVER_DATE);
 	ts = ktime_to_timespec64(error->time);
 	err_printf(m, "Time: %lld s %ld us\n",
@@ -947,6 +981,9 @@ static int err_print_to_sgl(struct i915_gpu_coredump *error)
 ssize_t i915_gpu_coredump_copy_to_buffer(struct i915_gpu_coredump *error,
 					 char *buf, loff_t off, size_t rem)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct scatterlist *sg;
 	size_t count;
 	loff_t pos;
@@ -1006,13 +1043,16 @@ ssize_t i915_gpu_coredump_copy_to_buffer(struct i915_gpu_coredump *error,
 	} while (!sg_is_last(sg++));
 
 	return count;
+#endif
 }
 
 static void i915_vma_coredump_free(struct i915_vma_coredump *vma)
 {
+	STUB();
+#ifdef notyet
 	while (vma) {
 		struct i915_vma_coredump *next = vma->next;
-		struct page *page, *n;
+		struct vm_page *page, *n;
 
 		list_for_each_entry_safe(page, n, &vma->page_list, lru) {
 			list_del_init(&page->lru);
@@ -1022,6 +1062,7 @@ static void i915_vma_coredump_free(struct i915_vma_coredump *vma)
 		kfree(vma);
 		vma = next;
 	}
+#endif
 }
 
 static void cleanup_params(struct i915_gpu_coredump *error)
@@ -1086,6 +1127,9 @@ i915_vma_coredump_create(const struct intel_gt *gt,
 			 const char *name)
 
 {
+	STUB();
+	return NULL;
+#ifdef notyet
 	struct i915_ggtt *ggtt = gt->ggtt;
 	const u64 slot = ggtt->error_capture.start;
 	struct i915_vma_coredump *dst;
@@ -1107,7 +1151,7 @@ i915_vma_coredump_create(const struct intel_gt *gt,
 	}
 
 	INIT_LIST_HEAD(&dst->page_list);
-	strcpy(dst->name, name);
+	strlcpy(dst->name, name, sizeof(dst->name));
 	dst->next = NULL;
 
 	dst->gtt_offset = vma_res->start;
@@ -1168,7 +1212,7 @@ i915_vma_coredump_create(const struct intel_gt *gt,
 				break;
 		}
 	} else {
-		struct page *page;
+		struct vm_page *page;
 
 		for_each_sgt_page(page, iter, vma_res->bi.pages) {
 			void *s;
@@ -1187,7 +1231,7 @@ i915_vma_coredump_create(const struct intel_gt *gt,
 	}
 
 	if (ret || compress_flush(compress, dst)) {
-		struct page *page, *n;
+		struct vm_page *page, *n;
 
 		list_for_each_entry_safe_reverse(page, n, &dst->page_list, lru) {
 			list_del_init(&page->lru);
@@ -1200,6 +1244,7 @@ i915_vma_coredump_create(const struct intel_gt *gt,
 	compress_finish(compress);
 
 	return dst;
+#endif
 }
 
 static void gt_record_fences(struct intel_gt_coredump *gt)
@@ -1364,7 +1409,11 @@ static void record_request(const struct i915_request *request,
 
 		ctx = rcu_dereference(request->context->gem_context);
 		if (ctx)
+#ifdef __linux__
 			erq->pid = pid_nr(ctx->pid);
+#else
+			erq->pid = ctx->pid;
+#endif
 	}
 	rcu_read_unlock();
 }
@@ -1396,6 +1445,7 @@ static bool record_context(struct i915_gem_context_coredump *e,
 	if (!ctx)
 		return true;
 
+#ifdef __linux__
 	rcu_read_lock();
 	task = pid_task(ctx->pid, PIDTYPE_PID);
 	if (task) {
@@ -1403,6 +1453,7 @@ static bool record_context(struct i915_gem_context_coredump *e,
 		e->pid = task->pid;
 	}
 	rcu_read_unlock();
+#endif
 
 	e->sched_attr = ctx->sched;
 	e->guilty = atomic_read(&ctx->guilty_count);
@@ -1445,7 +1496,7 @@ capture_vma_snapshot(struct intel_engine_capture_vma *next,
 		return next;
 	}
 
-	strcpy(c->name, name);
+	strlcpy(c->name, name, sizeof(c->name));
 	c->vma_res = i915_vma_resource_get(vma_res);
 
 	c->next = next;
@@ -2128,10 +2179,11 @@ __i915_gpu_coredump(struct intel_gt *gt, intel_engine_mask_t engine_mask, u32 du
 	return error;
 }
 
+static DEFINE_MUTEX(capture_mutex);
+
 struct i915_gpu_coredump *
 i915_gpu_coredump(struct intel_gt *gt, intel_engine_mask_t engine_mask, u32 dump_flags)
 {
-	static DEFINE_MUTEX(capture_mutex);
 	int ret = mutex_lock_interruptible(&capture_mutex);
 	struct i915_gpu_coredump *dump;
 

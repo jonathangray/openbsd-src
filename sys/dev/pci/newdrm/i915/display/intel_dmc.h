@@ -9,6 +9,7 @@
 #include <linux/types.h>
 
 struct drm_i915_error_state_buf;
+#define drm_i915_private inteldrm_softc
 struct drm_i915_private;
 enum pipe;
 

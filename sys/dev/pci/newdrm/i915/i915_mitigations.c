@@ -27,6 +27,8 @@ bool i915_mitigate_clear_residuals(void)
 	return READ_ONCE(mitigations) & BIT(CLEAR_RESIDUALS);
 }
 
+#ifdef __linux__
+
 static int mitigations_set(const char *val, const struct kernel_param *kp)
 {
 	unsigned long new = ~0UL;
@@ -145,3 +147,5 @@ MODULE_PARM_DESC(mitigations,
 "Active mitigations for Ivybridge, Baytrail, Haswell:\n"
 "  residuals -- clear all thread-local registers between contexts"
 );
+
+#endif /* __linux__ */

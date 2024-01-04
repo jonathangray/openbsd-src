@@ -304,8 +304,11 @@ struct i915_ttm_memcpy_work {
 
 static void i915_ttm_move_memcpy(struct i915_ttm_memcpy_arg *arg)
 {
+	STUB();
+#ifdef notyet
 	ttm_move_memcpy(arg->clear, arg->num_pages,
 			arg->dst_iter, arg->src_iter);
+#endif
 }
 
 static void i915_ttm_memcpy_init(struct i915_ttm_memcpy_arg *arg,
@@ -314,6 +317,8 @@ static void i915_ttm_memcpy_init(struct i915_ttm_memcpy_arg *arg,
 				 struct ttm_tt *dst_ttm,
 				 struct i915_refct_sgt *dst_rsgt)
 {
+	STUB();
+#ifdef notyet
 	struct drm_i915_gem_object *obj = i915_ttm_to_gem(bo);
 	struct intel_memory_region *dst_reg, *src_reg;
 
@@ -337,6 +342,7 @@ static void i915_ttm_memcpy_init(struct i915_ttm_memcpy_arg *arg,
 	arg->dst_rsgt = i915_refct_sgt_get(dst_rsgt);
 	arg->src_rsgt = clear ? NULL :
 		i915_ttm_resource_get_st(obj, bo->resource);
+#endif
 }
 
 static void i915_ttm_memcpy_release(struct i915_ttm_memcpy_arg *arg)
@@ -436,7 +442,7 @@ i915_ttm_memcpy_work_arm(struct i915_ttm_memcpy_work *work,
 {
 	int ret;
 
-	spin_lock_init(&work->lock);
+	mtx_init(&work->lock, IPL_TTY);
 	dma_fence_init(&work->fence, &dma_fence_memcpy_ops, &work->lock, 0, 0);
 	dma_fence_get(&work->fence);
 	ret = dma_fence_add_callback(dep, &work->cb, __memcpy_cb);

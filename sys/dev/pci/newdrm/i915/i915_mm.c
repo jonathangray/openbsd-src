@@ -48,6 +48,8 @@ static inline unsigned long sgt_pfn(const struct remap_pfn *r)
 		return r->sgt.pfn + (r->sgt.curr >> PAGE_SHIFT);
 }
 
+#ifdef notyet
+
 static int remap_sg(pte_t *pte, unsigned long addr, void *data)
 {
 	struct remap_pfn *r = data;
@@ -55,7 +57,7 @@ static int remap_sg(pte_t *pte, unsigned long addr, void *data)
 	if (GEM_WARN_ON(!r->sgt.sgp))
 		return -EINVAL;
 
-	/* Special PTE are not associated with any struct page */
+	/* Special PTE are not associated with any struct vm_page */
 	set_pte_at(r->mm, addr, pte,
 		   pte_mkspecial(pfn_pte(sgt_pfn(r), r->prot)));
 	r->pfn++; /* track insertions in case we need to unwind later */
@@ -70,6 +72,7 @@ static int remap_sg(pte_t *pte, unsigned long addr, void *data)
 #define EXPECTED_FLAGS (VM_PFNMAP | VM_DONTEXPAND | VM_DONTDUMP)
 
 #if IS_ENABLED(CONFIG_X86)
+#ifdef notyet
 static int remap_pfn(pte_t *pte, unsigned long addr, void *data)
 {
 	struct remap_pfn *r = data;
@@ -80,6 +83,7 @@ static int remap_pfn(pte_t *pte, unsigned long addr, void *data)
 
 	return 0;
 }
+#endif
 
 /**
  * remap_io_mapping - remap an IO mapping to userspace
@@ -152,3 +156,5 @@ int remap_io_sg(struct vm_area_struct *vma,
 
 	return 0;
 }
+
+#endif /* notyet */

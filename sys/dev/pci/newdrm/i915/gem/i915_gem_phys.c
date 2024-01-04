@@ -9,6 +9,7 @@
 #include <linux/swap.h>
 
 #include <drm/drm_cache.h>
+#include <drm/drm_legacy.h>	/* for drm_dmamem_alloc() */
 
 #include "gt/intel_gt.h"
 #include "i915_drv.h"
@@ -19,7 +20,12 @@
 
 static int i915_gem_object_get_pages_phys(struct drm_i915_gem_object *obj)
 {
+#ifdef __linux__
 	struct address_space *mapping = obj->base.filp->f_mapping;
+#else
+	struct drm_dmamem *dmah;
+	int flags = 0;
+#endif
 	struct drm_i915_private *i915 = to_i915(obj->base.dev);
 	struct scatterlist *sg;
 	struct sg_table *st;
@@ -40,11 +46,22 @@ static int i915_gem_object_get_pages_phys(struct drm_i915_gem_object *obj)
 	 * to handle all possible callers, and given typical object sizes,
 	 * the alignment of the buddy allocation will naturally match.
 	 */
+#ifdef __linux__
 	vaddr = dma_alloc_coherent(obj->base.dev->dev,
 				   roundup_pow_of_two(obj->base.size),
 				   &dma, GFP_KERNEL);
 	if (!vaddr)
 		return -ENOMEM;
+#else
+	dmah = drm_dmamem_alloc(i915->dmat,
+	    roundup_pow_of_two(obj->base.size),
+	    PAGE_SIZE, 1,
+	    roundup_pow_of_two(obj->base.size), flags, 0);
+	if (dmah == NULL)
+		return -ENOMEM;
+	dma = dmah->map->dm_segs[0].ds_addr;
+	vaddr = dmah->kva;
+#endif
 
 	st = kmalloc(sizeof(*st), GFP_KERNEL);
 	if (!st)
@@ -57,25 +74,43 @@ static int i915_gem_object_get_pages_phys(struct drm_i915_gem_object *obj)
 	sg->offset = 0;
 	sg->length = obj->base.size;
 
+#ifdef __linux__
 	sg_assign_page(sg, (struct page *)vaddr);
+#else
+	sg_assign_page(sg, (struct vm_page *)dmah);
+#endif
 	sg_dma_address(sg) = dma;
 	sg_dma_len(sg) = obj->base.size;
 
 	dst = vaddr;
 	for (i = 0; i < obj->base.size / PAGE_SIZE; i++) {
-		struct page *page;
+		struct vm_page *page;
 		void *src;
 
+#ifdef  __linux__
 		page = shmem_read_mapping_page(mapping, i);
 		if (IS_ERR(page))
 			goto err_st;
+#else
+		struct pglist plist;
+		TAILQ_INIT(&plist);
+		if (uvm_obj_wire(obj->base.uao, i * PAGE_SIZE,
+				(i + 1) * PAGE_SIZE, &plist))
+			goto err_st;
+		page = TAILQ_FIRST(&plist);
+#endif
 
 		src = kmap_atomic(page);
 		memcpy(dst, src, PAGE_SIZE);
 		drm_clflush_virt_range(dst, PAGE_SIZE);
 		kunmap_atomic(src);
 
+#ifdef __linux__
 		put_page(page);
+#else
+		uvm_obj_unwire(obj->base.uao, i * PAGE_SIZE,
+			      (i + 1) * PAGE_SIZE);
+#endif
 		dst += PAGE_SIZE;
 	}
 
@@ -90,9 +125,13 @@ static int i915_gem_object_get_pages_phys(struct drm_i915_gem_object *obj)
 err_st:
 	kfree(st);
 err_pci:
+#ifdef __linux__
 	dma_free_coherent(obj->base.dev->dev,
 			  roundup_pow_of_two(obj->base.size),
 			  vaddr, dma);
+#else
+	drm_dmamem_free(i915->dmat, dmah);
+#endif
 	return -ENOMEM;
 }
 
@@ -101,22 +140,39 @@ i915_gem_object_put_pages_phys(struct drm_i915_gem_object *obj,
 			       struct sg_table *pages)
 {
 	dma_addr_t dma = sg_dma_address(pages->sgl);
+#ifdef __linux__
 	void *vaddr = sg_page(pages->sgl);
+#else
+	struct drm_dmamem *dmah = (void *)sg_page(pages->sgl);
+	void *vaddr = dmah->kva;
+	struct drm_i915_private *i915 = to_i915(obj->base.dev);
+#endif
 
 	__i915_gem_object_release_shmem(obj, pages, false);
 
 	if (obj->mm.dirty) {
+#ifdef __linux__
 		struct address_space *mapping = obj->base.filp->f_mapping;
+#endif
 		void *src = vaddr;
 		int i;
 
 		for (i = 0; i < obj->base.size / PAGE_SIZE; i++) {
-			struct page *page;
+			struct vm_page *page;
 			char *dst;
 
+#ifdef __linux__
 			page = shmem_read_mapping_page(mapping, i);
 			if (IS_ERR(page))
 				continue;
+#else
+			struct pglist plist;
+			TAILQ_INIT(&plist);
+			if (uvm_obj_wire(obj->base.uao, i * PAGE_SIZE,
+					(i + 1) * PAGE_SIZE, &plist))
+				continue;
+			page = TAILQ_FIRST(&plist);
+#endif
 
 			dst = kmap_atomic(page);
 			drm_clflush_virt_range(src, PAGE_SIZE);
@@ -124,9 +180,14 @@ i915_gem_object_put_pages_phys(struct drm_i915_gem_object *obj,
 			kunmap_atomic(dst);
 
 			set_page_dirty(page);
+#ifdef __linux__
 			if (obj->mm.madv == I915_MADV_WILLNEED)
 				mark_page_accessed(page);
 			put_page(page);
+#else
+			uvm_obj_unwire(obj->base.uao, i * PAGE_SIZE,
+				      (i + 1) * PAGE_SIZE);
+#endif
 
 			src += PAGE_SIZE;
 		}
@@ -136,15 +197,24 @@ i915_gem_object_put_pages_phys(struct drm_i915_gem_object *obj,
 	sg_free_table(pages);
 	kfree(pages);
 
+#ifdef __linux__
 	dma_free_coherent(obj->base.dev->dev,
 			  roundup_pow_of_two(obj->base.size),
 			  vaddr, dma);
+#else
+	drm_dmamem_free(i915->dmat, dmah);
+#endif
 }
 
 int i915_gem_object_pwrite_phys(struct drm_i915_gem_object *obj,
 				const struct drm_i915_gem_pwrite *args)
 {
+#ifdef __linux__
 	void *vaddr = sg_page(obj->mm.pages->sgl) + args->offset;
+#else
+	struct drm_dmamem *dmah = (void *)sg_page(obj->mm.pages->sgl);
+	void *vaddr = dmah->kva + args->offset;
+#endif
 	char __user *user_data = u64_to_user_ptr(args->data_ptr);
 	struct drm_i915_private *i915 = to_i915(obj->base.dev);
 	int err;
@@ -175,7 +245,12 @@ int i915_gem_object_pwrite_phys(struct drm_i915_gem_object *obj,
 int i915_gem_object_pread_phys(struct drm_i915_gem_object *obj,
 			       const struct drm_i915_gem_pread *args)
 {
+#ifdef __linux__
 	void *vaddr = sg_page(obj->mm.pages->sgl) + args->offset;
+#else
+	struct drm_dmamem *dmah = (void *)sg_page(obj->mm.pages->sgl);
+	void *vaddr = dmah->kva + args->offset;
+#endif
 	char __user *user_data = u64_to_user_ptr(args->data_ptr);
 	int err;
 

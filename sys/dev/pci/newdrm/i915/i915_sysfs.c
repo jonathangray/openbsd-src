@@ -38,6 +38,8 @@
 #include "i915_drv.h"
 #include "i915_sysfs.h"
 
+#ifdef __linux__
+
 struct drm_i915_private *kdev_minor_to_i915(struct device *kdev)
 {
 	struct drm_minor *minor = dev_get_drvdata(kdev);
@@ -230,8 +232,11 @@ static void i915_setup_error_capture(struct device *kdev) {}
 static void i915_teardown_error_capture(struct device *kdev) {}
 #endif
 
+#endif /* __linux__ */
+
 void i915_setup_sysfs(struct drm_i915_private *dev_priv)
 {
+#ifdef __linux__
 	struct device *kdev = dev_priv->drm.primary->kdev;
 	int ret;
 
@@ -258,16 +263,19 @@ void i915_setup_sysfs(struct drm_i915_private *dev_priv)
 	i915_setup_error_capture(kdev);
 
 	intel_engines_add_sysfs(dev_priv);
+#endif /* __linux__ */
 }
 
 void i915_teardown_sysfs(struct drm_i915_private *dev_priv)
 {
+#ifdef __linux__
 	struct device *kdev = dev_priv->drm.primary->kdev;
 
 	i915_teardown_error_capture(kdev);
 
 	device_remove_bin_file(kdev,  &dpf_attrs_1);
 	device_remove_bin_file(kdev,  &dpf_attrs);
+#endif /* __linux__ */
 
 	kobject_put(dev_priv->sysfs_gt);
 }

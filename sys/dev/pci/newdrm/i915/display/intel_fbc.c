@@ -92,7 +92,7 @@ struct intel_fbc {
 	 * struct_mutex and it's the outer lock when overlapping
 	 * with stolen_lock.
 	 */
-	struct mutex lock;
+	struct rwlock lock;
 	unsigned int busy_bits;
 
 	struct i915_stolen_fb compressed_fb, compressed_llb;
@@ -166,7 +166,7 @@ static unsigned int skl_fbc_min_cfb_stride(const struct intel_plane_state *plane
 	 * At least some of the platforms require each 4 line segment to
 	 * be 512 byte aligned. Just do it always for simplicity.
 	 */
-	stride = ALIGN(stride, 512);
+	stride = roundup2(stride, 512);
 
 	/* convert back to single line equivalent with 1:1 compression limit */
 	return stride * limit / height;
@@ -184,7 +184,7 @@ static unsigned int intel_fbc_cfb_stride(const struct intel_plane_state *plane_s
 	 * that regardless of the compression limit we choose later.
 	 */
 	if (DISPLAY_VER(i915) >= 9)
-		return max(ALIGN(stride, 512), skl_fbc_min_cfb_stride(plane_state));
+		return max(roundup2(stride, 512), skl_fbc_min_cfb_stride(plane_state));
 	else
 		return stride;
 }
@@ -1686,7 +1686,7 @@ static struct intel_fbc *intel_fbc_create(struct drm_i915_private *i915,
 	fbc->id = fbc_id;
 	fbc->i915 = i915;
 	INIT_WORK(&fbc->underrun_work, intel_fbc_underrun_work_fn);
-	mutex_init(&fbc->lock);
+	rw_init(&fbc->lock, "fbclk");
 
 	if (DISPLAY_VER(i915) >= 7)
 		fbc->funcs = &ivb_fbc_funcs;
@@ -1743,6 +1743,8 @@ void intel_fbc_sanitize(struct drm_i915_private *i915)
 			intel_fbc_hw_deactivate(fbc);
 	}
 }
+
+#ifdef notyet
 
 static int intel_fbc_debugfs_status_show(struct seq_file *m, void *unused)
 {
@@ -1816,6 +1818,8 @@ DEFINE_DEBUGFS_ATTRIBUTE(intel_fbc_debugfs_false_color_fops,
 			 intel_fbc_debugfs_false_color_get,
 			 intel_fbc_debugfs_false_color_set,
 			 "%llu\n");
+
+#endif /* notyet */
 
 static void intel_fbc_debugfs_add(struct intel_fbc *fbc,
 				  struct dentry *parent)

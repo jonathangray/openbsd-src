@@ -206,7 +206,7 @@ struct intel_overlay {
 static void i830_overlay_clock_gating(struct drm_i915_private *dev_priv,
 				      bool enable)
 {
-	struct pci_dev *pdev = to_pci_dev(dev_priv->drm.dev);
+	struct pci_dev *pdev = dev_priv->drm.pdev;
 	u8 val;
 
 	/* WA_OVERLAY_CLKGATE:alm */
@@ -553,9 +553,9 @@ static u32 calc_swidthsw(struct drm_i915_private *dev_priv, u32 offset, u32 widt
 	u32 sw;
 
 	if (DISPLAY_VER(dev_priv) == 2)
-		sw = ALIGN((offset & 31) + width, 32);
+		sw = roundup2((offset & 31) + width, 32);
 	else
-		sw = ALIGN((offset & 63) + width, 64);
+		sw = roundup2((offset & 63) + width, 64);
 
 	if (sw == 0)
 		return 0;

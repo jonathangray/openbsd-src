@@ -947,8 +947,10 @@ int intel_uc_fw_fetch(struct intel_uc_fw *uc_fw)
 			   uc_fw->file_selected.ver.major,
 			   uc_fw->file_selected.ver.minor,
 			   uc_fw->file_selected.ver.patch);
+#ifdef __linux__
 		gt_info(gt, "Consider updating your linux-firmware pkg or downloading from %s\n",
 			INTEL_UC_FIRMWARE_URL);
+#endif
 	}
 
 	if (HAS_LMEM(i915)) {
@@ -978,8 +980,10 @@ fail:
 
 	gt_probe_error(gt, "%s firmware %s: fetch failed %pe\n",
 		       intel_uc_fw_type_repr(uc_fw->type), uc_fw->file_selected.path, ERR_PTR(err));
+#ifdef __linux__
 	gt_info(gt, "%s firmware(s) can be downloaded from %s\n",
 		intel_uc_fw_type_repr(uc_fw->type), INTEL_UC_FIRMWARE_URL);
+#endif
 
 	release_firmware(fw);		/* OK even if fw is NULL */
 	return err;
@@ -1310,6 +1314,9 @@ void intel_uc_fw_cleanup_fetch(struct intel_uc_fw *uc_fw)
  */
 size_t intel_uc_fw_copy_rsa(struct intel_uc_fw *uc_fw, void *dst, u32 max_len)
 {
+	STUB();
+	return 0;
+#ifdef notyet
 	struct intel_memory_region *mr = uc_fw->obj->mm.region;
 	u32 size = min_t(u32, uc_fw->rsa_size, max_len);
 	u32 offset = uc_fw->dma_start_offset + sizeof(struct uc_css_header) + uc_fw->ucode_size;
@@ -1372,6 +1379,7 @@ size_t intel_uc_fw_copy_rsa(struct intel_uc_fw *uc_fw, void *dst, u32 max_len)
 	}
 
 	return count;
+#endif
 }
 
 /**

@@ -56,7 +56,9 @@ struct guc_ct_buffer_desc {
 #define GUC_CTB_STATUS_UNUSED				BIT(3)
 	u32 reserved[13];
 } __packed;
+#ifdef notyet
 static_assert(sizeof(struct guc_ct_buffer_desc) == 64);
+#endif
 
 /**
  * DOC: CTB Message

@@ -1848,7 +1848,7 @@ int intel_tc_port_init(struct intel_digital_port *dig_port, bool is_legacy)
 		return -ENOMEM;
 	}
 
-	mutex_init(&tc->lock);
+	rw_init(&tc->lock, "itcp");
 	/* TODO: Combine the two works */
 	INIT_DELAYED_WORK(&tc->disconnect_phy_work, intel_tc_port_disconnect_phy_work);
 	INIT_DELAYED_WORK(&tc->link_reset_work, intel_tc_port_link_reset_work);

@@ -6,6 +6,7 @@
  * state.
  */
 
+#include <linux/compiler.h> /* for __must_check */
 #include <drm/drm_atomic_uapi.h>
 #include <drm/drm_atomic_state_helper.h>
 

@@ -1019,8 +1019,13 @@ void lrc_init_state(struct intel_context *ce,
 	set_redzone(state, engine);
 
 	if (engine->default_state) {
+#ifdef __linux__
 		shmem_read(engine->default_state, 0,
 			   state, engine->context_size);
+#else
+		uao_read(engine->default_state, 0,
+			   state, engine->context_size);
+#endif
 		__set_bit(CONTEXT_VALID_BIT, &ce->flags);
 		inhibit = false;
 	}

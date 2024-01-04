@@ -14,11 +14,15 @@
 #include "intel_engine_pm.h"
 #include "intel_ring.h"
 
-static struct kmem_cache *slab_ce;
+static struct pool slab_ce;
 
 static struct intel_context *intel_context_alloc(void)
 {
+#ifdef __linux__
 	return kmem_cache_zalloc(slab_ce, GFP_KERNEL);
+#else
+	return pool_get(&slab_ce, PR_WAITOK | PR_ZERO);
+#endif
 }
 
 static void rcu_context_free(struct rcu_head *rcu)
@@ -26,7 +30,11 @@ static void rcu_context_free(struct rcu_head *rcu)
 	struct intel_context *ce = container_of(rcu, typeof(*ce), rcu);
 
 	trace_intel_context_free(ce);
+#ifdef __linux__
 	kmem_cache_free(slab_ce, ce);
+#else
+	pool_put(&slab_ce, ce);
+#endif
 }
 
 void intel_context_free(struct intel_context *ce)
@@ -391,12 +399,12 @@ intel_context_init(struct intel_context *ce, struct intel_engine_cs *engine)
 	ce->vm = i915_vm_get(engine->gt->vm);
 
 	/* NB ce->signal_link/lock is used under RCU */
-	spin_lock_init(&ce->signal_lock);
+	mtx_init(&ce->signal_lock, IPL_NONE);
 	INIT_LIST_HEAD(&ce->signals);
 
-	mutex_init(&ce->pin_mutex);
+	rw_init(&ce->pin_mutex, "cepin");
 
-	spin_lock_init(&ce->guc_state.lock);
+	mtx_init(&ce->guc_state.lock, IPL_NONE);
 	INIT_LIST_HEAD(&ce->guc_state.fences);
 	INIT_LIST_HEAD(&ce->guc_state.requests);
 
@@ -439,14 +447,23 @@ void intel_context_fini(struct intel_context *ce)
 
 void i915_context_module_exit(void)
 {
+#ifdef __linux__
 	kmem_cache_destroy(slab_ce);
+#else
+	pool_destroy(&slab_ce);
+#endif
 }
 
 int __init i915_context_module_init(void)
 {
+#ifdef __linux__
 	slab_ce = KMEM_CACHE(intel_context, SLAB_HWCACHE_ALIGN);
 	if (!slab_ce)
 		return -ENOMEM;
+#else
+	pool_init(&slab_ce, sizeof(struct intel_context),
+	    CACHELINESIZE, IPL_TTY, 0, "ictx", NULL);
+#endif
 
 	return 0;
 }

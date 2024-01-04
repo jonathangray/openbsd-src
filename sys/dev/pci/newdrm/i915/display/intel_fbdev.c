@@ -67,7 +67,7 @@ struct intel_fbdev {
 	bool hpd_waiting: 1;
 
 	/* Protects hpd_suspended */
-	struct mutex hpd_lock;
+	struct rwlock hpd_lock;
 };
 
 static struct intel_fbdev *to_intel_fbdev(struct drm_fb_helper *fb_helper)
@@ -136,14 +136,18 @@ static int intel_fbdev_mmap(struct fb_info *info, struct vm_area_struct *vma)
 }
 
 static const struct fb_ops intelfb_ops = {
+#ifdef notyet
 	.owner = THIS_MODULE,
 	__FB_DEFAULT_DEFERRED_OPS_RDWR(intel_fbdev),
 	DRM_FB_HELPER_DEFAULT_OPS,
+#endif
 	.fb_set_par = intel_fbdev_set_par,
+#ifdef notyet
 	.fb_blank = intel_fbdev_blank,
 	.fb_pan_display = intel_fbdev_pan_display,
 	__FB_DEFAULT_DEFERRED_OPS_DRAW(intel_fbdev),
 	.fb_mmap = intel_fbdev_mmap,
+#endif
 };
 
 static int intelfb_alloc(struct drm_fb_helper *helper,
@@ -164,7 +168,7 @@ static int intelfb_alloc(struct drm_fb_helper *helper,
 	mode_cmd.width = sizes->surface_width;
 	mode_cmd.height = sizes->surface_height;
 
-	mode_cmd.pitches[0] = ALIGN(mode_cmd.width *
+	mode_cmd.pitches[0] = roundup2(mode_cmd.width *
 				    DIV_ROUND_UP(sizes->surface_bpp, 8), 64);
 	mode_cmd.pixel_format = drm_mode_legacy_fb_format(sizes->surface_bpp,
 							  sizes->surface_depth);
@@ -212,7 +216,7 @@ static int intelfb_create(struct drm_fb_helper *helper,
 	struct intel_framebuffer *intel_fb = ifbdev->fb;
 	struct drm_device *dev = helper->dev;
 	struct drm_i915_private *dev_priv = to_i915(dev);
-	struct pci_dev *pdev = to_pci_dev(dev_priv->drm.dev);
+	struct pci_dev *pdev = dev_priv->drm.pdev;
 	struct i915_ggtt *ggtt = to_gt(dev_priv)->ggtt;
 	const struct i915_gtt_view view = {
 		.type = I915_GTT_VIEW_NORMAL,
@@ -329,6 +333,51 @@ static int intelfb_create(struct drm_fb_helper *helper,
 		memset_io(info->screen_base, 0, info->screen_size);
 
 	/* Use default scratch pixmap (info->pixmap.flags = FB_PIXMAP_SYSTEM) */
+#else
+{
+	struct drm_framebuffer *fb = ifbdev->helper.fb;
+	struct rasops_info *ri = &dev_priv->ro;
+	bus_space_handle_t bsh;
+	int err;
+
+	vaddr = i915_vma_pin_iomap(vma);
+	if (IS_ERR(vaddr)) {
+		DRM_ERROR("Failed to remap framebuffer into virtual memory\n");
+		ret = PTR_ERR(vaddr);
+		goto out_unpin;
+	}
+
+	drm_fb_helper_fill_info(info, &ifbdev->helper, sizes);
+
+	ri->ri_bits = vaddr;
+	ri->ri_depth = fb->format->cpp[0] * 8;
+	ri->ri_stride = fb->pitches[0];
+	ri->ri_width = sizes->fb_width;
+	ri->ri_height = sizes->fb_height;
+
+	switch (fb->format->format) {
+	case DRM_FORMAT_XRGB8888:
+		ri->ri_rnum = 8;
+		ri->ri_rpos = 16;
+		ri->ri_gnum = 8;
+		ri->ri_gpos = 8;
+		ri->ri_bnum = 8;
+		ri->ri_bpos = 0;
+		break;
+	case DRM_FORMAT_RGB565:
+		ri->ri_rnum = 5;
+		ri->ri_rpos = 11;
+		ri->ri_gnum = 6;
+		ri->ri_gpos = 5;
+		ri->ri_bnum = 5;
+		ri->ri_bpos = 0;
+		break;
+	}
+
+	if (vma->obj->stolen && !prealloc)
+		memset(ri->ri_bits, 0, vma->node.size);
+}
+#endif
 
 	drm_dbg_kms(&dev_priv->drm, "allocated %dx%d fb: 0x%08x\n",
 		    ifbdev->fb->base.width, ifbdev->fb->base.height,
@@ -558,7 +607,7 @@ int intel_fbdev_init(struct drm_device *dev)
 	if (ifbdev == NULL)
 		return -ENOMEM;
 
-	mutex_init(&ifbdev->hpd_lock);
+	rw_init(&ifbdev->hpd_lock, "hdplk");
 	drm_fb_helper_prepare(dev, &ifbdev->helper, 32, &intel_fb_helper_funcs);
 
 	if (intel_fbdev_init_bios(dev, ifbdev))
@@ -599,12 +648,14 @@ void intel_fbdev_initial_config_async(struct drm_i915_private *dev_priv)
 
 static void intel_fbdev_sync(struct intel_fbdev *ifbdev)
 {
+#ifdef __linux__
 	if (!ifbdev->cookie)
 		return;
 
 	/* Only serialises with all preceding async calls, hence +1 */
 	async_synchronize_cookie(ifbdev->cookie + 1);
 	ifbdev->cookie = 0;
+#endif
 }
 
 void intel_fbdev_unregister(struct drm_i915_private *dev_priv)
@@ -616,8 +667,10 @@ void intel_fbdev_unregister(struct drm_i915_private *dev_priv)
 
 	intel_fbdev_set_suspend(&dev_priv->drm, FBINFO_STATE_SUSPENDED, true);
 
+#ifdef __linux__
 	if (!current_is_async())
 		intel_fbdev_sync(ifbdev);
+#endif
 
 	drm_fb_helper_unregister_info(&ifbdev->helper);
 }
@@ -655,6 +708,7 @@ static void intel_fbdev_hpd_set_suspend(struct drm_i915_private *i915, int state
 
 void intel_fbdev_set_suspend(struct drm_device *dev, int state, bool synchronous)
 {
+#ifdef __linux__
 	struct drm_i915_private *dev_priv = to_i915(dev);
 	struct intel_fbdev *ifbdev = dev_priv->display.fbdev.fbdev;
 	struct fb_info *info;
@@ -712,6 +766,7 @@ void intel_fbdev_set_suspend(struct drm_device *dev, int state, bool synchronous
 
 set_suspend:
 	intel_fbdev_hpd_set_suspend(dev_priv, state);
+#endif
 }
 
 void intel_fbdev_output_poll_changed(struct drm_device *dev)

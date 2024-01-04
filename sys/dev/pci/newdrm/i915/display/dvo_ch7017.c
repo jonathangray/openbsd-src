@@ -357,7 +357,7 @@ static void ch7017_dpms(struct intel_dvo_device *dvo, bool enable)
 	}
 
 	/* XXX: Should actually wait for update power status somehow */
-	msleep(20);
+	drm_msleep(20);
 }
 
 static bool ch7017_get_hw_state(struct intel_dvo_device *dvo)

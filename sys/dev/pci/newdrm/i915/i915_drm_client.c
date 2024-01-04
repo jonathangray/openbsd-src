@@ -26,7 +26,7 @@ struct i915_drm_client *i915_drm_client_alloc(void)
 		return NULL;
 
 	kref_init(&client->kref);
-	spin_lock_init(&client->ctx_lock);
+	mtx_init(&client->ctx_lock, IPL_NONE);
 	INIT_LIST_HEAD(&client->ctx_list);
 
 	return client;

@@ -24,6 +24,8 @@
 #include "intel_uncore.h"
 #include "vlv_sideband.h"
 
+#ifdef notyet
+
 void intel_gt_pm_debugfs_forcewake_user_open(struct intel_gt *gt)
 {
 	atomic_inc(&gt->user_wakeref);
@@ -585,8 +587,11 @@ static bool perf_limit_reasons_eval(void *data)
 DEFINE_SIMPLE_ATTRIBUTE(perf_limit_reasons_fops, perf_limit_reasons_get,
 			perf_limit_reasons_clear, "0x%llx\n");
 
+#endif /* notyet */
+
 void intel_gt_pm_debugfs_register(struct intel_gt *gt, struct dentry *root)
 {
+#ifdef notyet
 	static const struct intel_gt_debugfs_file files[] = {
 		{ "drpc", &drpc_fops, NULL },
 		{ "frequency", &frequency_fops, NULL },
@@ -598,4 +603,5 @@ void intel_gt_pm_debugfs_register(struct intel_gt *gt, struct dentry *root)
 	};
 
 	intel_gt_debugfs_register_files(root, files, ARRAY_SIZE(files), gt);
+#endif
 }

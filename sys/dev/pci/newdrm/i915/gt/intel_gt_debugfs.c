@@ -49,6 +49,8 @@ static int __intel_gt_debugfs_reset_show(void *data, u64 *val)
 	return intel_gt_debugfs_reset_show(data, val);
 }
 
+#ifdef notyet
+
 static int __intel_gt_debugfs_reset_store(void *data, u64 val)
 {
 	intel_gt_debugfs_reset_store(data, val);
@@ -80,8 +82,11 @@ static void gt_debugfs_register(struct intel_gt *gt, struct dentry *root)
 	intel_gt_debugfs_register_files(root, files, ARRAY_SIZE(files), gt);
 }
 
+#endif /* notyet */
+
 void intel_gt_debugfs_register(struct intel_gt *gt)
 {
+#ifdef notyet
 	struct dentry *root;
 	char gtname[4];
 
@@ -100,12 +105,14 @@ void intel_gt_debugfs_register(struct intel_gt *gt)
 	intel_sseu_debugfs_register(gt, root);
 
 	intel_uc_debugfs_register(&gt->uc, root);
+#endif
 }
 
 void intel_gt_debugfs_register_files(struct dentry *root,
 				     const struct intel_gt_debugfs_file *files,
 				     unsigned long count, void *data)
 {
+#ifdef notyet
 	while (count--) {
 		umode_t mode = files->fops->write ? 0644 : 0444;
 
@@ -116,4 +123,5 @@ void intel_gt_debugfs_register_files(struct dentry *root,
 
 		files++;
 	}
+#endif
 }

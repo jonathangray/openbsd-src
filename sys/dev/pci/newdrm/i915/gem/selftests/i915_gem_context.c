@@ -677,7 +677,7 @@ static int igt_ctx_exec(void *arg)
 		struct i915_request *tq[5] = {};
 		struct igt_live_test t;
 		IGT_TIMEOUT(end_time);
-		LIST_HEAD(objects);
+		DRM_LIST_HEAD(objects);
 		struct file *file;
 
 		if (!intel_engine_can_store_dword(engine))
@@ -822,7 +822,7 @@ static int igt_shared_ctx_exec(void *arg)
 		unsigned long ncontexts, ndwords, dw;
 		struct drm_i915_gem_object *obj = NULL;
 		IGT_TIMEOUT(end_time);
-		LIST_HEAD(objects);
+		DRM_LIST_HEAD(objects);
 
 		if (!intel_engine_can_store_dword(engine))
 			continue;
@@ -1376,7 +1376,7 @@ static int igt_ctx_readonly(void *arg)
 	struct igt_live_test t;
 	I915_RND_STATE(prng);
 	IGT_TIMEOUT(end_time);
-	LIST_HEAD(objects);
+	DRM_LIST_HEAD(objects);
 	struct file *file;
 	int err = -ENODEV;
 

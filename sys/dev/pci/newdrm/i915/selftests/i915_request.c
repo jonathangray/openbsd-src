@@ -509,7 +509,7 @@ static int mock_breadcrumbs_smoketest(void *arg)
 		kthread_queue_work(worker, &threads[n].work);
 	}
 
-	msleep(jiffies_to_msecs(i915_selftest.timeout_jiffies));
+	drm_msleep(jiffies_to_msecs(i915_selftest.timeout_jiffies));
 
 	for (n = 0; n < ncpus; n++) {
 		int err;
@@ -1823,7 +1823,7 @@ static int live_breadcrumbs_smoketest(void *arg)
 		idx++;
 	}
 
-	msleep(jiffies_to_msecs(i915_selftest.timeout_jiffies));
+	drm_msleep(jiffies_to_msecs(i915_selftest.timeout_jiffies));
 
 out_flush:
 	idx = 0;

@@ -37,8 +37,10 @@
 #include <asm/hypervisor.h>
 #endif
 
+#define drm_i915_private inteldrm_softc
+
 struct drm_i915_private;
-struct timer_list;
+struct timeout;
 
 #define FDO_BUG_URL "https://gitlab.freedesktop.org/drm/intel/-/wikis/How-to-file-i915-bugs"
 
@@ -366,15 +368,19 @@ static inline void __add_taint_for_CI(unsigned int taint)
 	add_taint(taint, LOCKDEP_STILL_OK);
 }
 
-void cancel_timer(struct timer_list *t);
-void set_timer_ms(struct timer_list *t, unsigned long timeout);
+void cancel_timer(struct timeout *t);
+void set_timer_ms(struct timeout *t, unsigned long timeout);
 
-static inline bool timer_active(const struct timer_list *t)
+static inline bool timer_active(const struct timeout *t)
 {
+#ifdef __linux__
 	return READ_ONCE(t->expires);
+#else
+	return READ_ONCE(t->to_time);
+#endif
 }
 
-static inline bool timer_expired(const struct timer_list *t)
+static inline bool timer_expired(const struct timeout *t)
 {
 	return timer_active(t) && !timer_pending(t);
 }

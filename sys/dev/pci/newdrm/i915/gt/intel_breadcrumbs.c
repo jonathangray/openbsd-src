@@ -6,7 +6,9 @@
 #include <linux/kthread.h>
 #include <linux/string_helpers.h>
 #include <trace/events/dma_fence.h>
+#ifdef notyet
 #include <uapi/linux/sched/types.h>
+#endif
 
 #include "i915_drv.h"
 #include "i915_trace.h"
@@ -273,11 +275,11 @@ intel_breadcrumbs_create(struct intel_engine_cs *irq_engine)
 
 	kref_init(&b->ref);
 
-	spin_lock_init(&b->signalers_lock);
+	mtx_init(&b->signalers_lock, IPL_TTY);
 	INIT_LIST_HEAD(&b->signalers);
 	init_llist_head(&b->signaled_requests);
 
-	spin_lock_init(&b->irq_lock);
+	mtx_init(&b->irq_lock, IPL_TTY);
 	init_irq_work(&b->irq_work, signal_irq_work);
 
 	b->irq_engine = irq_engine;

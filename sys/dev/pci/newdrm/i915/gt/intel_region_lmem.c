@@ -20,18 +20,23 @@
 #ifdef CONFIG_64BIT
 static void _release_bars(struct pci_dev *pdev)
 {
+	STUB();
+#ifdef notyet
 	int resno;
 
 	for (resno = PCI_STD_RESOURCES; resno < PCI_STD_RESOURCE_END; resno++) {
 		if (pci_resource_len(pdev, resno))
 			pci_release_resource(pdev, resno);
 	}
+#endif
 }
 
 static void
 _resize_bar(struct drm_i915_private *i915, int resno, resource_size_t size)
 {
-	struct pci_dev *pdev = to_pci_dev(i915->drm.dev);
+	STUB();
+#ifdef notyet
+	struct pci_dev *pdev = i915->drm.pdev;
 	int bar_size = pci_rebar_bytes_to_size(size);
 	int ret;
 
@@ -45,11 +50,14 @@ _resize_bar(struct drm_i915_private *i915, int resno, resource_size_t size)
 	}
 
 	drm_info(&i915->drm, "BAR%d resized to %dM\n", resno, 1 << bar_size);
+#endif
 }
 
 static void i915_resize_lmem_bar(struct drm_i915_private *i915, resource_size_t lmem_size)
 {
-	struct pci_dev *pdev = to_pci_dev(i915->drm.dev);
+	STUB();
+#ifdef notyet
+	struct pci_dev *pdev = i915->drm.pdev;
 	struct pci_bus *root = pdev->bus;
 	struct resource *root_res;
 	resource_size_t rebar_size;
@@ -122,6 +130,7 @@ static void i915_resize_lmem_bar(struct drm_i915_private *i915, resource_size_t 
 		pci_write_config_dword(pdev, PCI_COMMAND, pci_cmd);
 		intel_uncore_forcewake_put(&i915->uncore, FORCEWAKE_ALL);
 	}
+#endif
 }
 #else
 static void i915_resize_lmem_bar(struct drm_i915_private *i915, resource_size_t lmem_size) {}
@@ -133,7 +142,10 @@ region_lmem_release(struct intel_memory_region *mem)
 	int ret;
 
 	ret = intel_region_ttm_fini(mem);
+	STUB();
+#ifdef notyet
 	io_mapping_fini(&mem->iomap);
+#endif
 
 	return ret;
 }
@@ -141,6 +153,9 @@ region_lmem_release(struct intel_memory_region *mem)
 static int
 region_lmem_init(struct intel_memory_region *mem)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	int ret;
 
 	if (!io_mapping_init_wc(&mem->iomap,
@@ -158,6 +173,7 @@ out_no_buddy:
 	io_mapping_fini(&mem->iomap);
 
 	return ret;
+#endif
 }
 
 static const struct intel_memory_region_ops intel_region_lmem_ops = {
@@ -202,7 +218,7 @@ static struct intel_memory_region *setup_lmem(struct intel_gt *gt)
 {
 	struct drm_i915_private *i915 = gt->i915;
 	struct intel_uncore *uncore = gt->uncore;
-	struct pci_dev *pdev = to_pci_dev(i915->drm.dev);
+	struct pci_dev *pdev = i915->drm.pdev;
 	struct intel_memory_region *mem;
 	resource_size_t min_page_size;
 	resource_size_t io_start;
@@ -213,8 +229,10 @@ static struct intel_memory_region *setup_lmem(struct intel_gt *gt)
 	if (!IS_DGFX(i915))
 		return ERR_PTR(-ENODEV);
 
+#ifdef notyet
 	if (!i915_pci_resource_valid(pdev, GEN12_LMEM_BAR))
 		return ERR_PTR(-ENXIO);
+#endif
 
 	if (HAS_FLAT_CCS(i915)) {
 		resource_size_t lmem_range;
@@ -250,8 +268,21 @@ static struct intel_memory_region *setup_lmem(struct intel_gt *gt)
 				  mul_u32_u32(i915->params.lmem_size, SZ_1M));
 	}
 
+#ifdef __linux__
 	io_start = pci_resource_start(pdev, GEN12_LMEM_BAR);
 	io_size = min(pci_resource_len(pdev, GEN12_LMEM_BAR), lmem_size);
+#else
+	{
+		pcireg_t type;
+		bus_size_t len;
+
+		type = pci_mapreg_type(i915->pc, i915->tag,
+		    0x10 + (4 * GEN12_LMEM_BAR));
+		err = -pci_mapreg_info(i915->pc, i915->tag,
+		    0x10 + (4 * GEN12_LMEM_BAR), type, &io_start, &len, NULL);
+		io_size = min(len, lmem_size);
+	}
+#endif
 	if (!io_size)
 		return ERR_PTR(-EIO);
 

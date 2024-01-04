@@ -9,6 +9,8 @@
 #include "i915_drv.h"
 #include "i915_switcheroo.h"
 
+#ifdef notyet
+
 static void i915_switcheroo_set_state(struct pci_dev *pdev,
 				      enum vga_switcheroo_state state)
 {
@@ -57,16 +59,24 @@ static const struct vga_switcheroo_client_ops i915_switcheroo_ops = {
 	.can_switch = i915_switcheroo_can_switch,
 };
 
+#endif /* notyet */
+
 int i915_switcheroo_register(struct drm_i915_private *i915)
 {
+#ifdef notyet
 	struct pci_dev *pdev = to_pci_dev(i915->drm.dev);
 
 	return vga_switcheroo_register_client(pdev, &i915_switcheroo_ops, false);
+#else
+	return 0;
+#endif
 }
 
 void i915_switcheroo_unregister(struct drm_i915_private *i915)
 {
+#ifdef notyet
 	struct pci_dev *pdev = to_pci_dev(i915->drm.dev);
 
 	vga_switcheroo_unregister_client(pdev);
+#endif
 }

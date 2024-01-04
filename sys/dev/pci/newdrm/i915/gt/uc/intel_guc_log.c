@@ -214,6 +214,8 @@ static int guc_action_control_log(struct intel_guc *guc, bool enable,
 	return intel_guc_send(guc, action, ARRAY_SIZE(action));
 }
 
+#ifdef __linux__
+
 /*
  * Sub buffer switch callback. Called whenever relay has to switch to a new
  * sub buffer, relay stays on the same sub buffer if 0 is returned.
@@ -285,8 +287,12 @@ static const struct rchan_callbacks relay_callbacks = {
 	.remove_buf_file = remove_buf_file_callback,
 };
 
+#endif /* __linux__ */
+
 static void guc_move_to_next_buf(struct intel_guc_log *log)
 {
+	STUB();
+#ifdef notyet
 	/*
 	 * Make sure the updates made in the sub buffer are visible when
 	 * Consumer sees the following update to offset inside the sub buffer.
@@ -299,10 +305,14 @@ static void guc_move_to_next_buf(struct intel_guc_log *log)
 
 	/* Switch to the next sub buffer */
 	relay_flush(log->relay.channel);
+#endif
 }
 
 static void *guc_get_write_buffer(struct intel_guc_log *log)
 {
+	STUB();
+	return NULL;
+#ifdef notyet
 	/*
 	 * Just get the base address of a new sub buffer and copy data into it
 	 * ourselves. NULL will be returned in no-overwrite mode, if all sub
@@ -313,6 +323,7 @@ static void *guc_get_write_buffer(struct intel_guc_log *log)
 	 * better to use relay_reserve() alone.
 	 */
 	return relay_reserve(log->relay.channel, 0);
+#endif
 }
 
 bool intel_guc_check_log_buf_overflow(struct intel_guc_log *log,
@@ -512,13 +523,16 @@ static void guc_log_relay_unmap(struct intel_guc_log *log)
 
 void intel_guc_log_init_early(struct intel_guc_log *log)
 {
-	mutex_init(&log->relay.lock);
+	rw_init(&log->relay.lock, "rllk");
 	INIT_WORK(&log->relay.flush_work, copy_debug_logs_work);
 	log->relay.started = false;
 }
 
 static int guc_log_relay_create(struct intel_guc_log *log)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct intel_guc *guc = log_to_guc(log);
 	struct drm_i915_private *i915 = guc_to_gt(guc)->i915;
 	struct rchan *guc_log_relay_chan;
@@ -560,14 +574,18 @@ static int guc_log_relay_create(struct intel_guc_log *log)
 	log->relay.channel = guc_log_relay_chan;
 
 	return 0;
+#endif
 }
 
 static void guc_log_relay_destroy(struct intel_guc_log *log)
 {
+	STUB();
+#ifdef notyet
 	lockdep_assert_held(&log->relay.lock);
 
 	relay_close(log->relay.channel);
 	log->relay.channel = NULL;
+#endif
 }
 
 static void guc_log_copy_debuglogs_for_relay(struct intel_guc_log *log)

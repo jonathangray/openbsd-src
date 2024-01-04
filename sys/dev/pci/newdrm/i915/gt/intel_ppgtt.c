@@ -46,7 +46,7 @@ struct i915_page_directory *__alloc_pd(int count)
 		return NULL;
 	}
 
-	spin_lock_init(&pd->lock);
+	mtx_init(&pd->lock, IPL_NONE);
 	return pd;
 }
 
@@ -311,7 +311,9 @@ void ppgtt_init(struct i915_ppgtt *ppgtt, struct intel_gt *gt,
 
 	ppgtt->vm.gt = gt;
 	ppgtt->vm.i915 = i915;
+#ifdef notyet
 	ppgtt->vm.dma = i915->drm.dev;
+#endif
 	ppgtt->vm.total = BIT_ULL(RUNTIME_INFO(i915)->ppgtt_size);
 	ppgtt->vm.lmem_pt_obj_flags = lmem_pt_obj_flags;
 

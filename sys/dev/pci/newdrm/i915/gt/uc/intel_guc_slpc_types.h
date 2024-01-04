@@ -39,7 +39,7 @@ struct intel_guc_slpc {
 	/* Protects set/reset of boost freq
 	 * and value of num_waiters
 	 */
-	struct mutex lock;
+	struct rwlock lock;
 
 	struct work_struct boost_work;
 	atomic_t num_waiters;

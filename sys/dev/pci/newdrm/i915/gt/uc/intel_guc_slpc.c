@@ -285,7 +285,7 @@ int intel_guc_slpc_init(struct intel_guc_slpc *slpc)
 	slpc->num_boosts = 0;
 	slpc->media_ratio_mode = SLPC_MEDIA_RATIO_MODE_DYNAMIC_CONTROL;
 
-	mutex_init(&slpc->lock);
+	rw_init(&slpc->lock, "slpc");
 	INIT_WORK(&slpc->boost_work, slpc_boost_work);
 
 	return err;

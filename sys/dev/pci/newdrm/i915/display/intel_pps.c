@@ -763,7 +763,7 @@ bool intel_pps_vdd_on_unlocked(struct intel_dp *intel_dp)
 			    "[ENCODER:%d:%s] %s panel power wasn't enabled\n",
 			    dig_port->base.base.base.id, dig_port->base.base.name,
 			    pps_name(dev_priv, &intel_dp->pps));
-		msleep(intel_dp->pps.panel_power_up_delay);
+		drm_msleep(intel_dp->pps.panel_power_up_delay);
 	}
 
 	return need_to_disable;

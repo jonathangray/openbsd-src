@@ -80,7 +80,7 @@ static inline struct intel_guc *ct_to_guc(struct intel_guc_ct *ct)
  * of the receive buffer (relative to the send) to ensure a G2H response
  * CTB has a landing spot.
  */
-#define CTB_DESC_SIZE		ALIGN(sizeof(struct guc_ct_buffer_desc), SZ_2K)
+#define CTB_DESC_SIZE		roundup2(sizeof(struct guc_ct_buffer_desc), SZ_2K)
 #define CTB_H2G_BUFFER_SIZE	(SZ_4K)
 #define CTB_G2H_BUFFER_SIZE	(4 * CTB_H2G_BUFFER_SIZE)
 #define G2H_ROOM_BUFFER_SIZE	(CTB_G2H_BUFFER_SIZE / 4)
@@ -112,9 +112,9 @@ static void ct_incoming_request_worker_func(struct work_struct *w);
  */
 void intel_guc_ct_init_early(struct intel_guc_ct *ct)
 {
-	spin_lock_init(&ct->ctbs.send.lock);
-	spin_lock_init(&ct->ctbs.recv.lock);
-	spin_lock_init(&ct->requests.lock);
+	mtx_init(&ct->ctbs.send.lock, IPL_TTY);
+	mtx_init(&ct->ctbs.recv.lock, IPL_TTY);
+	mtx_init(&ct->requests.lock, IPL_TTY);
 	INIT_LIST_HEAD(&ct->requests.pending);
 	INIT_LIST_HEAD(&ct->requests.incoming);
 #if IS_ENABLED(CONFIG_DRM_I915_DEBUG_GUC)

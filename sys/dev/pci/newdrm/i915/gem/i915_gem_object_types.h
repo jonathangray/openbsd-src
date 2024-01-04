@@ -234,7 +234,7 @@ struct i915_gem_object_page_iter {
 	unsigned int sg_idx; /* in pages, but 32bit eek! */
 
 	struct radix_tree_root radix;
-	struct mutex lock; /* protects this cache */
+	struct rwlock lock; /* protects this cache */
 };
 
 struct drm_i915_gem_object {

@@ -1259,6 +1259,8 @@ static int i915_audio_component_get_eld(struct device *kdev, int port,
 	return ret;
 }
 
+#ifdef notyet
+
 static const struct drm_audio_component_ops i915_audio_component_ops = {
 	.owner		= THIS_MODULE,
 	.get_power	= i915_audio_component_get_power,
@@ -1329,6 +1331,8 @@ static const struct component_ops i915_audio_component_bind_ops = {
 #define AUD_FREQ_GEN12          (AUD_FREQ_8T | AUD_FREQ_PULLCLKS(0) | AUD_FREQ_BCLK_96M)
 #define AUD_FREQ_TGL_BROKEN     (AUD_FREQ_8T | AUD_FREQ_PULLCLKS(2) | AUD_FREQ_BCLK_96M)
 
+#endif /* notyet */
+
 /**
  * i915_audio_component_init - initialize and register the audio component
  * @i915: i915 device instance
@@ -1347,6 +1351,7 @@ static const struct component_ops i915_audio_component_bind_ops = {
  */
 static void i915_audio_component_init(struct drm_i915_private *i915)
 {
+#ifdef notyet
 	u32 aud_freq, aud_freq_init;
 	int ret;
 
@@ -1383,6 +1388,7 @@ static void i915_audio_component_init(struct drm_i915_private *i915)
 	intel_audio_cdclk_change_post(i915);
 
 	i915->display.audio.component_registered = true;
+#endif
 }
 
 /**

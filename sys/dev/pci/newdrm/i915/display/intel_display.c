@@ -523,7 +523,7 @@ unsigned int intel_remapped_info_size(const struct intel_remapped_info *rem_info
 			continue;
 
 		if (rem_info->plane_alignment)
-			size = ALIGN(size, rem_info->plane_alignment);
+			size = roundup2(size, rem_info->plane_alignment);
 
 		size += plane_size;
 	}
@@ -7990,7 +7990,11 @@ void intel_hpd_poll_fini(struct drm_i915_private *i915)
 	/* Kill all the work that may have been queued by hpd. */
 	drm_connector_list_iter_begin(&i915->drm, &conn_iter);
 	for_each_intel_connector_iter(connector, &conn_iter) {
+#ifdef __linux__
 		if (connector->modeset_retry_work.func)
+#else
+		if (connector->modeset_retry_work.task.t_func)
+#endif
 			cancel_work_sync(&connector->modeset_retry_work);
 		if (connector->hdcp.shim) {
 			cancel_delayed_work_sync(&connector->hdcp.check_work);

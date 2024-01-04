@@ -14,6 +14,7 @@
 
 #define GSC_BAR_LENGTH  0x00000FFC
 
+#ifdef notyet
 static void gsc_irq_mask(struct irq_data *d)
 {
 	/* generic irq handling */
@@ -29,13 +30,18 @@ static struct irq_chip gsc_irq_chip = {
 	.irq_mask = gsc_irq_mask,
 	.irq_unmask = gsc_irq_unmask,
 };
+#endif
 
 static int gsc_irq_init(int irq)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	irq_set_chip_and_handler_name(irq, &gsc_irq_chip,
 				      handle_simple_irq, "gsc_irq_handler");
 
 	return irq_set_chip_data(irq, NULL);
+#endif
 }
 
 static int
@@ -131,15 +137,20 @@ static const struct gsc_def gsc_def_dg2[] = {
 
 static void gsc_release_dev(struct device *dev)
 {
+	STUB();
+#ifdef notyet
 	struct auxiliary_device *aux_dev = to_auxiliary_dev(dev);
 	struct mei_aux_device *adev = auxiliary_dev_to_mei_aux_dev(aux_dev);
 
 	kfree(adev);
+#endif
 }
 
 static void gsc_destroy_one(struct drm_i915_private *i915,
 			    struct intel_gsc *gsc, unsigned int intf_id)
 {
+	STUB();
+#ifdef notyet
 	struct intel_gsc_intf *intf = &gsc->intf[intf_id];
 
 	if (intf->adev) {
@@ -159,12 +170,15 @@ static void gsc_destroy_one(struct drm_i915_private *i915,
 	intf->irq = -1;
 
 	gsc_ext_om_destroy(intf);
+#endif
 }
 
 static void gsc_init_one(struct drm_i915_private *i915, struct intel_gsc *gsc,
 			 unsigned int intf_id)
 {
-	struct pci_dev *pdev = to_pci_dev(i915->drm.dev);
+	STUB();
+#ifdef notyet
+	struct pci_dev *pdev = i915->drm.pdev;
 	struct mei_aux_device *adev;
 	struct auxiliary_device *aux_dev;
 	const struct gsc_def *def;
@@ -279,10 +293,13 @@ add_device:
 	return;
 fail:
 	gsc_destroy_one(i915, gsc, intf->id);
+#endif
 }
 
 static void gsc_irq_handler(struct intel_gt *gt, unsigned int intf_id)
 {
+	STUB();
+#ifdef notyet
 	int ret;
 
 	if (intf_id >= INTEL_GSC_NUM_INTERFACES) {
@@ -301,6 +318,7 @@ static void gsc_irq_handler(struct intel_gt *gt, unsigned int intf_id)
 	ret = generic_handle_irq(gt->gsc.intf[intf_id].irq);
 	if (ret)
 		drm_err_ratelimited(&gt->i915->drm, "error handling GSC irq: %d\n", ret);
+#endif
 }
 
 void intel_gsc_irq_handler(struct intel_gt *gt, u32 iir)

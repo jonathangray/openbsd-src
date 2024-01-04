@@ -21,7 +21,7 @@
  * they idle (when we know the active requests are inactive) and allocate the
  * nodes from a local slab cache to hopefully reduce the fragmentation.
  */
-static struct kmem_cache *slab_cache;
+static struct pool slab_cache;
 
 struct active_node {
 	struct rb_node node;
@@ -169,7 +169,11 @@ __active_retire(struct i915_active *ref)
 	/* Finally free the discarded timeline tree  */
 	rbtree_postorder_for_each_entry_safe(it, n, &root, node) {
 		GEM_BUG_ON(i915_active_fence_isset(&it->base));
+#ifdef __linux__
 		kmem_cache_free(slab_cache, it);
+#else
+		pool_put(&slab_cache, it);
+#endif
 	}
 }
 
@@ -317,7 +321,11 @@ active_instance(struct i915_active *ref, u64 idx)
 	 * XXX: We should preallocate this before i915_active_ref() is ever
 	 *  called, but we cannot call into fs_reclaim() anyway, so use GFP_ATOMIC.
 	 */
+#ifdef __linux__
 	node = kmem_cache_alloc(slab_cache, GFP_ATOMIC);
+#else
+	node = pool_get(&slab_cache, PR_NOWAIT);
+#endif
 	if (!node)
 		goto out;
 
@@ -348,13 +356,17 @@ void __i915_active_init(struct i915_active *ref,
 	ref->active = active;
 	ref->retire = retire;
 
-	spin_lock_init(&ref->tree_lock);
+	mtx_init(&ref->tree_lock, IPL_TTY);
 	ref->tree = RB_ROOT;
 	ref->cache = NULL;
 
 	init_llist_head(&ref->preallocated_barriers);
 	atomic_set(&ref->count, 0);
+#ifdef __linux__
 	__mutex_init(&ref->mutex, "i915_active", mkey);
+#else
+	rw_init(&ref->mutex, "i915_active");
+#endif
 	__i915_active_fence_init(&ref->excl, NULL, excl_retire);
 	INIT_WORK(&ref->work, active_work);
 #if IS_ENABLED(CONFIG_LOCKDEP)
@@ -763,7 +775,11 @@ void i915_active_fini(struct i915_active *ref)
 	mutex_destroy(&ref->mutex);
 
 	if (ref->cache)
+#ifdef __linux__
 		kmem_cache_free(slab_cache, ref->cache);
+#else
+		pool_put(&slab_cache, ref->cache);
+#endif
 }
 
 static inline bool is_idle_barrier(struct active_node *node, u64 idx)
@@ -883,7 +899,11 @@ int i915_active_acquire_preallocate_barrier(struct i915_active *ref,
 		node = reuse_idle_barrier(ref, idx);
 		rcu_read_unlock();
 		if (!node) {
+#ifdef __linux__
 			node = kmem_cache_alloc(slab_cache, GFP_KERNEL);
+#else
+			node = pool_get(&slab_cache, PR_WAITOK);
+#endif
 			if (!node)
 				goto unwind;
 
@@ -931,7 +951,11 @@ unwind:
 		atomic_dec(&ref->count);
 		intel_engine_pm_put(barrier_to_engine(node));
 
+#ifdef __linux__
 		kmem_cache_free(slab_cache, node);
+#else
+		pool_put(&slab_cache, node);
+#endif
 	}
 	return -ENOMEM;
 }
@@ -1195,14 +1219,23 @@ struct i915_active *i915_active_create(void)
 
 void i915_active_module_exit(void)
 {
+#ifdef __linux__
 	kmem_cache_destroy(slab_cache);
+#else
+	pool_destroy(&slab_cache);
+#endif
 }
 
 int __init i915_active_module_init(void)
 {
+#ifdef __linux__
 	slab_cache = KMEM_CACHE(active_node, SLAB_HWCACHE_ALIGN);
 	if (!slab_cache)
 		return -ENOMEM;
+#else
+	pool_init(&slab_cache, sizeof(struct active_node),
+	    CACHELINESIZE, IPL_TTY, 0, "drmsc", NULL);
+#endif
 
 	return 0;
 }

@@ -663,7 +663,7 @@ void intel_ddi_disable_transcoder_func(const struct intel_crtc_state *crtc_state
 		drm_dbg_kms(&dev_priv->drm,
 			    "Quirk Increase DDI disabled time\n");
 		/* Quirk time at 100ms for reliable operation */
-		msleep(100);
+		drm_msleep(100);
 	}
 }
 
@@ -4828,7 +4828,7 @@ void intel_ddi_init(struct drm_i915_private *dev_priv,
 				 "DDI %c/PHY %c", port_name(port),  phy_name(phy));
 	}
 
-	mutex_init(&dig_port->hdcp_mutex);
+	rw_init(&dig_port->hdcp_mutex, "dhdcp");
 	dig_port->num_hdcp_streams = 0;
 
 	encoder->hotplug = intel_ddi_hotplug;

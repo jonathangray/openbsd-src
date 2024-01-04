@@ -702,7 +702,11 @@ void intel_engine_free_request_pool(struct intel_engine_cs *engine)
 	if (!engine->request_pool)
 		return;
 
+#ifdef __linux__
 	kmem_cache_free(i915_request_slab_cache(), engine->request_pool);
+#else
+	pool_put(i915_request_slab_cache(), engine->request_pool);
+#endif
 }
 
 void intel_engines_free(struct intel_gt *gt)
@@ -1532,7 +1536,7 @@ void intel_engine_cleanup_common(struct intel_engine_cs *engine)
 	intel_engine_cleanup_cmd_parser(engine);
 
 	if (engine->default_state)
-		fput(engine->default_state);
+		uao_detach(engine->default_state);
 
 	if (engine->kernel_context)
 		intel_engine_destroy_pinned_context(engine->kernel_context);
@@ -2017,6 +2021,8 @@ static int print_ring(char *buf, int sz, struct i915_request *rq)
 
 static void hexdump(struct drm_printer *m, const void *buf, size_t len)
 {
+	STUB();
+#ifdef notyet
 	const size_t rowsize = 8 * sizeof(u32);
 	const void *prev = NULL;
 	bool skip = false;
@@ -2042,11 +2048,12 @@ static void hexdump(struct drm_printer *m, const void *buf, size_t len)
 		prev = buf + pos;
 		skip = false;
 	}
+#endif
 }
 
-static const char *repr_timer(const struct timer_list *t)
+static const char *repr_timer(const struct timeout *t)
 {
-	if (!READ_ONCE(t->expires))
+	if (!READ_ONCE(t->to_time))
 		return "inactive";
 
 	if (timer_pending(t))
