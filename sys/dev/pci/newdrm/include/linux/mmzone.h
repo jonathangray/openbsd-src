@@ -7,5 +7,6 @@
 #include <linux/nodemask.h>
 
 #define MAX_ORDER	11
+#define pfn_to_nid(x)	0
 
 #endif

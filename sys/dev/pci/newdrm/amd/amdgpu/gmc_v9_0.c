@@ -1348,10 +1348,12 @@ static void gmc_v9_0_override_vm_pte_flags(struct amdgpu_device *adev,
 	/* Only handle real RAM. Mappings of PCIe resources don't have struct
 	 * page or NUMA nodes.
 	 */
+#ifdef notyet
 	if (!page_is_ram(addr >> PAGE_SHIFT)) {
 		dev_dbg(adev->dev, "Page is not RAM.\n");
 		return;
 	}
+#endif
 	nid = pfn_to_nid(addr >> PAGE_SHIFT);
 	dev_dbg(adev->dev, "vm->mem_id=%d, local_node=%d, nid=%d\n",
 		vm->mem_id, local_node, nid);
@@ -1600,8 +1602,13 @@ static int gmc_v9_0_early_init(void *handle)
 		 * "is_app_apu" can be used to identify the APU in the native
 		 * mode.
 		 */
+#ifdef notyet
 		adev->gmc.is_app_apu = (pkg_type == AMDGPU_PKG_TYPE_APU &&
 					!pci_resource_len(adev->pdev, 0));
+#else
+		adev->gmc.is_app_apu = (pkg_type == AMDGPU_PKG_TYPE_APU &&
+					!adev->fb_aper_size);
+#endif
 	}
 
 	gmc_v9_0_set_gmc_funcs(adev);
