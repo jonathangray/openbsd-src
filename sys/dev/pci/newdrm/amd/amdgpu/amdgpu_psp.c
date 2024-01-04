@@ -3734,16 +3734,20 @@ static ssize_t amdgpu_psp_vbflash_status(struct device *dev,
 }
 static DEVICE_ATTR(psp_vbflash_status, 0440, amdgpu_psp_vbflash_status, NULL);
 
+#ifdef notyet
 static struct bin_attribute *bin_flash_attrs[] = {
 	&psp_vbflash_bin_attr,
 	NULL
 };
+#endif
 
 static struct attribute *flash_attrs[] = {
 	&dev_attr_psp_vbflash_status.attr,
 	&dev_attr_usbc_pd_fw.attr,
 	NULL
 };
+
+#ifdef notyet
 
 static umode_t amdgpu_flash_attr_is_visible(struct kobject *kobj, struct attribute *attr, int idx)
 {
@@ -3774,6 +3778,8 @@ const struct attribute_group amdgpu_flash_attr_group = {
 	.is_bin_visible = amdgpu_bin_flash_attr_is_visible,
 	.is_visible = amdgpu_flash_attr_is_visible,
 };
+
+#endif /* notyet */
 
 const struct amd_ip_funcs psp_ip_funcs = {
 	.name = "psp",
