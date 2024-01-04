@@ -62,6 +62,8 @@
 #define min3(x, y, z) MIN(x, MIN(y, z))
 #define max3(x, y, z) MAX(x, MAX(y, z))
 
+#define min_not_zero(a, b) (a == 0) ? b : ((b == 0) ? a : min(a, b))
+
 #define mult_frac(x, n, d) (((x) * (n)) / (d))
 
 #define roundup2(x, y) (((x) + ((y) - 1)) & (~((__typeof(x))(y) - 1)))
