@@ -120,7 +120,7 @@ int amdgpu_gart_table_ram_alloc(struct amdgpu_device *adev)
 	struct sg_table *sg = NULL;
 	struct amdgpu_bo_param bp;
 	dma_addr_t dma_addr;
-	struct page *p;
+	struct vm_page *p;
 	int ret;
 
 	if (adev->gart.bo != NULL)
@@ -222,7 +222,7 @@ void amdgpu_gart_table_ram_free(struct amdgpu_device *adev)
 {
 	unsigned int order = get_order(adev->gart.table_size);
 	struct sg_table *sg = adev->gart.bo->tbo.sg;
-	struct page *p;
+	struct vm_page *p;
 	int ret;
 
 	ret = amdgpu_bo_reserve(adev->gart.bo, false);
