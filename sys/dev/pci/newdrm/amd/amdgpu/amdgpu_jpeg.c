@@ -286,7 +286,8 @@ int amdgpu_jpeg_ras_sw_init(struct amdgpu_device *adev)
 		return err;
 	}
 
-	strcpy(ras->ras_block.ras_comm.name, "jpeg");
+	strlcpy(ras->ras_block.ras_comm.name, "jpeg",
+	    sizeof(ras->ras_block.ras_comm.name));
 	ras->ras_block.ras_comm.block = AMDGPU_RAS_BLOCK__JPEG;
 	ras->ras_block.ras_comm.type = AMDGPU_RAS_ERROR__POISON;
 	adev->jpeg.ras_if = &ras->ras_block.ras_comm;

@@ -37,7 +37,8 @@ int amdgpu_nbio_ras_sw_init(struct amdgpu_device *adev)
 		return err;
 	}
 
-	strcpy(ras->ras_block.ras_comm.name, "pcie_bif");
+	strlcpy(ras->ras_block.ras_comm.name, "pcie_bif",
+	    sizeof(ras->ras_block.ras_comm.name));
 	ras->ras_block.ras_comm.block = AMDGPU_RAS_BLOCK__PCIE_BIF;
 	ras->ras_block.ras_comm.type = AMDGPU_RAS_ERROR__MULTI_UNCORRECTABLE;
 	adev->nbio.ras_if = &ras->ras_block.ras_comm;

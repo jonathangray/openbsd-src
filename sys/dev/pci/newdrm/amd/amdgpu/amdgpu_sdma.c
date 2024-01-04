@@ -329,7 +329,8 @@ int amdgpu_sdma_ras_sw_init(struct amdgpu_device *adev)
 		return err;
 	}
 
-	strcpy(ras->ras_block.ras_comm.name, "sdma");
+	strlcpy(ras->ras_block.ras_comm.name, "sdma",
+	    sizeof(ras->ras_block.ras_comm.name));
 	ras->ras_block.ras_comm.block = AMDGPU_RAS_BLOCK__SDMA;
 	ras->ras_block.ras_comm.type = AMDGPU_RAS_ERROR__MULTI_UNCORRECTABLE;
 	adev->sdma.ras_if = &ras->ras_block.ras_comm;
