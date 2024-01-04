@@ -2106,7 +2106,7 @@ static enum dc_status enable_link_dp(struct dc_state *state,
 	dpcd_set_source_specific_data(link);
 	if (link->dpcd_sink_ext_caps.raw != 0) {
 		post_oui_delay += link->panel_config.pps.extra_post_OUI_ms;
-		msleep(post_oui_delay);
+		drm_msleep(post_oui_delay);
 	}
 
 	// similarly, mode switch can cause loss of cable ID
@@ -2142,7 +2142,7 @@ static enum dc_status enable_link_dp(struct dc_state *state,
 		link->dpcd_sink_ext_caps.bits.hdr_aux_backlight_control == 1) {
 		set_default_brightness_aux(link);
 		if (link->dpcd_sink_ext_caps.bits.oled == 1)
-			msleep(bl_oled_enable_delay);
+			drm_msleep(bl_oled_enable_delay);
 		edp_backlight_enable_aux(link, true);
 	}
 
@@ -2230,7 +2230,7 @@ static enum dc_status enable_link(
 		break;
 	case SIGNAL_TYPE_DISPLAY_PORT_MST:
 		status = enable_link_dp_mst(state, pipe_ctx);
-		msleep(200);
+		drm_msleep(200);
 		break;
 	case SIGNAL_TYPE_DVI_SINGLE_LINK:
 	case SIGNAL_TYPE_DVI_DUAL_LINK:
@@ -2523,7 +2523,7 @@ void link_set_dpms_on(
 		&pipe_ctx->stream->link->cur_link_settings);
 
 	if (stream->sink_patches.delay_ignore_msa > 0)
-		msleep(stream->sink_patches.delay_ignore_msa);
+		drm_msleep(stream->sink_patches.delay_ignore_msa);
 
 	if (dc_is_dp_signal(pipe_ctx->stream->signal))
 		enable_stream_features(pipe_ctx);

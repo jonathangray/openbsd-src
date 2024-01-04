@@ -1406,7 +1406,7 @@ static bool perform_post_lt_adj_req_sequence(
 				break;
 			}
 
-			msleep(1);
+			drm_msleep(1);
 		}
 
 		if (!req_drv_setting_changed) {
@@ -1447,7 +1447,7 @@ static enum link_training_result dp_transition_to_video_idle(
 		 * DPCD 0202h.
 		 */
 		if (link->connector_signal != SIGNAL_TYPE_EDP && status == LINK_TRAINING_SUCCESS) {
-			msleep(5);
+			drm_msleep(5);
 			status = dp_check_link_loss_status(link, lt_settings);
 		}
 		return status;
@@ -1584,7 +1584,7 @@ bool perform_link_training_with_retries(
 		if (stream->sink_patches.dppowerup_delay > 0) {
 			int delay_dp_power_up_in_ms = stream->sink_patches.dppowerup_delay;
 
-			msleep(delay_dp_power_up_in_ms);
+			drm_msleep(delay_dp_power_up_in_ms);
 		}
 
 		if (panel_mode == DP_PANEL_MODE_EDP) {
@@ -1724,7 +1724,7 @@ bool perform_link_training_with_retries(
 					__func__, link->link_index, req_bw, link_bw);
 		}
 
-		msleep(delay_between_attempts);
+		drm_msleep(delay_between_attempts);
 	}
 
 	return false;

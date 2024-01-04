@@ -536,7 +536,7 @@ static void read_current_link_settings_on_detect(struct dc_link *link)
 			break;
 		}
 
-		msleep(8);
+		drm_msleep(8);
 	}
 
 	// Read DPCD 00100h to find if standard link rates are set
@@ -875,7 +875,7 @@ static bool detect_link_and_local_sink(struct dc_link *link,
 		if (link->connector_signal == SIGNAL_TYPE_EDP &&
 			(link->dpcd_sink_ext_caps.bits.oled == 1)) {
 			dpcd_set_source_specific_data(link);
-			msleep(post_oui_delay);
+			drm_msleep(post_oui_delay);
 			set_default_brightness_aux(link);
 		}
 

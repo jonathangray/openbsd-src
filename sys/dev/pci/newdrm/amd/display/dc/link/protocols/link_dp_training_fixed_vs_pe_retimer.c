@@ -351,7 +351,7 @@ enum link_training_result dp_perform_fixed_vs_pe_training_sequence_legacy(
 				/* Vendor specific: Disable intercept */
 				for (i = 0; i < max_vendor_dpcd_retries; i++) {
 					if (pre_disable_intercept_delay_ms != 0)
-						msleep(pre_disable_intercept_delay_ms);
+						drm_msleep(pre_disable_intercept_delay_ms);
 					if (link_configure_fixed_vs_pe_retimer(link->ddc,
 							&vendor_lttpr_write_data_intercept_dis[0],
 							sizeof(vendor_lttpr_write_data_intercept_dis)))
@@ -697,7 +697,7 @@ enum link_training_result dp_perform_fixed_vs_pe_training_sequence(
 				/* Vendor specific: Disable intercept */
 				for (i = 0; i < max_vendor_dpcd_retries; i++) {
 					if (pre_disable_intercept_delay_ms != 0)
-						msleep(pre_disable_intercept_delay_ms);
+						drm_msleep(pre_disable_intercept_delay_ms);
 					if (link_configure_fixed_vs_pe_retimer(link->ddc,
 							&vendor_lttpr_write_data_intercept_dis[0],
 							sizeof(vendor_lttpr_write_data_intercept_dis)))

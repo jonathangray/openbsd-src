@@ -2054,7 +2054,7 @@ static int smu_v13_0_6_mode2_reset(struct smu_context *smu)
 					       SMU_RESET_MODE_2);
 
 	/* This is similar to FLR, wait till max FLR timeout */
-	msleep(100);
+	drm_msleep(100);
 
 	dev_dbg(smu->adev->dev, "restore config space...\n");
 	/* Restore the config space saved during init */
@@ -2153,7 +2153,7 @@ static int smu_v13_0_6_mode1_reset(struct smu_context *smu)
 					      param, NULL);
 
 	if (!ret)
-		msleep(SMU13_MODE1_RESET_WAIT_TIME_IN_MS);
+		drm_msleep(SMU13_MODE1_RESET_WAIT_TIME_IN_MS);
 
 	return ret;
 }

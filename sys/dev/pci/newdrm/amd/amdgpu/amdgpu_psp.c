@@ -575,7 +575,7 @@ int psp_wait_for_spirom_update(struct psp_context *psp, uint32_t reg_index,
 		val = RREG32(reg_index);
 		if ((val & mask) == reg_val)
 			return 0;
-		msleep(1);
+		drm_msleep(1);
 	}
 
 	return -ETIME;

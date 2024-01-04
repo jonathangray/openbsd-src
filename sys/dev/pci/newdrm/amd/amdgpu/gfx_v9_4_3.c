@@ -484,7 +484,7 @@ static int gfx_v9_4_3_mec_init(struct amdgpu_device *adev)
 			for (i = 0; i < mec_hpd_size / 4; i++) {
 				memset((void *)(hpd + i), 0, 4);
 				if (i % 50 == 0)
-					msleep(1);
+					drm_msleep(1);
 			}
 		} else {
 			memset(hpd, 0, mec_hpd_size);
@@ -1271,7 +1271,7 @@ static int gfx_v9_4_3_xcc_rlc_load_microcode(struct amdgpu_device *adev,
 	for (i = 0; i < fw_size; i++) {
 		if (amdgpu_emu_mode == 1 && i % 100 == 0) {
 			dev_info(adev->dev, "Write RLC ucode data %u DWs\n", i);
-			msleep(1);
+			drm_msleep(1);
 		}
 		WREG32_SOC15(GC, GET_INST(GC, xcc_id), regRLC_GPM_UCODE_DATA, le32_to_cpup(fw_data++));
 	}

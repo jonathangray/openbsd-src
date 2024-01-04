@@ -510,7 +510,7 @@ static void nbio_v7_9_get_pcie_usage(struct amdgpu_device *adev, uint64_t *count
 	 */
 	WREG32_PCIE(smnPCIE_PERF_COUNT_CNTL, 0x00000001);
 
-	msleep(1000);
+	drm_msleep(1000);
 
 	/* Disable Global Counter, Reset and enable SHADOW_WR
 	 * Write 0x6:

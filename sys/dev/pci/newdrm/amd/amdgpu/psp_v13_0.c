@@ -746,7 +746,7 @@ static int psp_v13_0_fatal_error_recovery_quirk(struct psp_context *psp)
 		/* delay 1000ms for the mode1 reset for fatal error
 		 * to be recovered back.
 		 */
-		msleep(1000);
+		drm_msleep(1000);
 	}
 
 	return 0;
