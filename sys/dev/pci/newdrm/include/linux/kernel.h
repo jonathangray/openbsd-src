@@ -67,6 +67,7 @@
 #define mult_frac(x, n, d) (((x) * (n)) / (d))
 
 #define roundup2(x, y) (((x) + ((y) - 1)) & (~((__typeof(x))(y) - 1)))
+#define rounddown2(x, y) ((x) & ~((__typeof(x))(y) - 1))
 #define round_up(x, y) ((((x) + ((y) - 1)) / (y)) * (y))
 #define round_down(x, y) (((x) / (y)) * (y)) /* y is power of two */
 #define rounddown(x, y) (((x) / (y)) * (y)) /* arbitrary y */
@@ -79,6 +80,7 @@
 
 #define IS_ALIGNED(x, y)	(((x) & ((y) - 1)) == 0)
 #define PTR_ALIGN(x, y)		((__typeof(x))roundup2((unsigned long)(x), (y)))
+#define ALIGN_DOWN(x, y)	((__typeof(x))rounddown2((unsigned long)(x), (y)))
 
 static inline char *
 kvasprintf(int flags, const char *fmt, va_list ap)
