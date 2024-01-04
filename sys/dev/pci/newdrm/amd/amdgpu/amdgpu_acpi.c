@@ -40,9 +40,11 @@
 #include "atom.h"
 
 /* Declare GUID for AMD _DSM method for XCCs */
+#ifdef notyet
 static const guid_t amd_xcc_dsm_guid = GUID_INIT(0x8267f5d5, 0xa556, 0x44f2,
 						 0xb8, 0xb4, 0x45, 0x56, 0x2e,
 						 0x8c, 0x5b, 0xec);
+#endif
 
 #define AMD_XCC_HID_START 3000
 #define AMD_XCC_DSM_GET_NUM_FUNCS 0
@@ -957,6 +959,10 @@ static int amdgpu_acpi_dev_init(struct amdgpu_acpi_dev_info **dev_info,
 	INIT_LIST_HEAD(&tmp->list);
 	tmp->bdf = bdf;
 
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
+
 	obj = acpi_evaluate_dsm_typed(xcc_info->handle, &amd_xcc_dsm_guid, 0,
 				      AMD_XCC_DSM_GET_SUPP_MODE, NULL,
 				      ACPI_TYPE_INTEGER);
@@ -1020,11 +1026,15 @@ out:
 	kfree(tmp);
 
 	return ret;
+#endif
 }
 
 static int amdgpu_acpi_get_xcc_info(struct amdgpu_acpi_xcc_info *xcc_info,
 				    u16 *bdf)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	union acpi_object *obj;
 	acpi_status status;
 	int ret = -ENOENT;
@@ -1070,10 +1080,14 @@ out:
 		ACPI_FREE(obj);
 
 	return ret;
+#endif
 }
 
 static int amdgpu_acpi_enumerate_xcc(void)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct amdgpu_acpi_dev_info *dev_info = NULL;
 	struct amdgpu_acpi_xcc_info *xcc_info;
 	struct acpi_device *acpi_dev;
@@ -1130,6 +1144,7 @@ static int amdgpu_acpi_enumerate_xcc(void)
 	}
 
 	return 0;
+#endif
 }
 
 int amdgpu_acpi_get_tmr_info(struct amdgpu_device *adev, u64 *tmr_offset,
