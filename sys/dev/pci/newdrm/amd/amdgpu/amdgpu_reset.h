@@ -62,7 +62,7 @@ struct amdgpu_reset_handler {
 struct amdgpu_reset_control {
 	void *handle;
 	struct work_struct reset_work;
-	struct mutex reset_lock;
+	struct rwlock reset_lock;
 	struct list_head reset_handlers;
 	atomic_t in_reset;
 	enum amd_reset_method active_reset;
@@ -82,7 +82,7 @@ struct amdgpu_reset_domain {
 	struct kref refcount;
 	struct workqueue_struct *wq;
 	enum amdgpu_reset_domain_type type;
-	struct rw_semaphore sem;
+	struct rwlock sem;
 	atomic_t in_gpu_reset;
 	atomic_t reset_res;
 };

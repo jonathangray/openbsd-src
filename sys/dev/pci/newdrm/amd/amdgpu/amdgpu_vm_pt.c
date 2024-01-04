@@ -661,7 +661,7 @@ void amdgpu_vm_pt_free_work(struct work_struct *work)
 {
 	struct amdgpu_vm_bo_base *entry, *next;
 	struct amdgpu_vm *vm;
-	LIST_HEAD(pt_freed);
+	DRM_LIST_HEAD(pt_freed);
 
 	vm = container_of(work, struct amdgpu_vm, pt_free_work);
 
@@ -1007,7 +1007,7 @@ int amdgpu_vm_ptes_update(struct amdgpu_vm_update_params *params,
 
 			pt = cursor.entry->bo;
 			shift = parent_shift;
-			frag_end = max(frag_end, ALIGN(frag_start + 1,
+			frag_end = max(frag_end, roundup2(frag_start + 1,
 				   1ULL << shift));
 		}
 

@@ -2497,7 +2497,7 @@ static int navi10_baco_exit(struct smu_context *smu)
 
 	if (adev->in_runpm && smu_cmn_is_audio_func_enabled(adev)) {
 		/* Wait for PMFW handling for the Dstate change */
-		msleep(10);
+		drm_msleep(10);
 		return smu_v11_0_baco_set_armd3_sequence(smu, BACO_SEQ_ULPS);
 	} else {
 		return smu_v11_0_baco_exit(smu);
@@ -3074,10 +3074,12 @@ static int navi10_i2c_control_init(struct smu_context *smu)
 
 		smu_i2c->adev = adev;
 		smu_i2c->port = i;
-		mutex_init(&smu_i2c->mutex);
+		rw_init(&smu_i2c->mutex, "nvtiic");
+#ifdef __linux__
 		control->owner = THIS_MODULE;
 		control->class = I2C_CLASS_HWMON;
 		control->dev.parent = &adev->pdev->dev;
+#endif
 		control->algo = &navi10_i2c_algo;
 		snprintf(control->name, sizeof(control->name), "AMDGPU SMU %d", i);
 		control->quirks = &navi10_i2c_control_quirks;

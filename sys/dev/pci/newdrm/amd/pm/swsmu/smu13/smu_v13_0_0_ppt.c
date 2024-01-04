@@ -1696,7 +1696,9 @@ static int smu_v13_0_0_get_thermal_temperature_range(struct smu_context *smu,
 	return 0;
 }
 
+#ifndef MAX
 #define MAX(a, b)	((a) > (b) ? (a) : (b))
+#endif
 static ssize_t smu_v13_0_0_get_gpu_metrics(struct smu_context *smu,
 					   void **table)
 {
@@ -1929,7 +1931,7 @@ static void smu_v13_0_0_get_unique_id(struct smu_context *smu)
 out:
 	adev->unique_id = ((uint64_t)upper32 << 32) | lower32;
 	if (adev->serial[0] == '\0')
-		sprintf(adev->serial, "%016llx", adev->unique_id);
+		snprintf(adev->serial, sizeof(adev->serial), "%016llx", adev->unique_id);
 }
 
 static int smu_v13_0_0_get_fan_speed_pwm(struct smu_context *smu,
@@ -2327,10 +2329,12 @@ static int smu_v13_0_0_i2c_control_init(struct smu_context *smu)
 
 		smu_i2c->adev = adev;
 		smu_i2c->port = i;
-		mutex_init(&smu_i2c->mutex);
+		rw_init(&smu_i2c->mutex, "smu13iic");
+#ifdef __linux__
 		control->owner = THIS_MODULE;
 		control->class = I2C_CLASS_SPD;
 		control->dev.parent = &adev->pdev->dev;
+#endif
 		control->algo = &smu_v13_0_0_i2c_algo;
 		snprintf(control->name, sizeof(control->name), "AMDGPU SMU %d", i);
 		control->quirks = &smu_v13_0_0_i2c_control_quirks;
@@ -2447,7 +2451,7 @@ static int smu_v13_0_0_mode1_reset(struct smu_context *smu)
 	}
 
 	if (!ret)
-		msleep(SMU13_MODE1_RESET_WAIT_TIME_IN_MS);
+		drm_msleep(SMU13_MODE1_RESET_WAIT_TIME_IN_MS);
 
 	return ret;
 }

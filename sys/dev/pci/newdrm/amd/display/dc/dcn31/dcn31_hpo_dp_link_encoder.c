@@ -537,7 +537,7 @@ void dcn31_hpo_dp_link_enc_enable_dp_output(
 
 void dcn31_hpo_dp_link_enc_disable_output(
 	struct hpo_dp_link_encoder *enc,
-	enum signal_type signal)
+	enum amd_signal_type signal)
 {
 	struct dcn31_hpo_dp_link_encoder *enc3 = DCN3_1_HPO_DP_LINK_ENC_FROM_HPO_LINK_ENC(enc);
 	struct bp_transmitter_control cntl = { 0 };

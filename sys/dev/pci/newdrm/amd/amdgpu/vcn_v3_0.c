@@ -190,7 +190,7 @@ static int vcn_v3_0_sw_init(void *handle)
 			ring->doorbell_index = (adev->doorbell_index.vcn.vcn_ring0_1 << 1) + 8 * i;
 		}
 		ring->vm_hub = AMDGPU_MMHUB0(0);
-		sprintf(ring->name, "vcn_dec_%d", i);
+		snprintf(ring->name, sizeof(ring->name), "vcn_dec_%d", i);
 		r = amdgpu_ring_init(adev, ring, 512, &adev->vcn.inst[i].irq, 0,
 				     AMDGPU_RING_PRIO_DEFAULT,
 				     &adev->vcn.inst[i].sched_score);
@@ -214,7 +214,7 @@ static int vcn_v3_0_sw_init(void *handle)
 				ring->doorbell_index = (adev->doorbell_index.vcn.vcn_ring0_1 << 1) + 2 + j + 8 * i;
 			}
 			ring->vm_hub = AMDGPU_MMHUB0(0);
-			sprintf(ring->name, "vcn_enc_%d.%d", i, j);
+			snprintf(ring->name, sizeof(ring->name), "vcn_enc_%d.%d", i, j);
 			r = amdgpu_ring_init(adev, ring, 512, &adev->vcn.inst[i].irq, 0,
 					     hw_prio, &adev->vcn.inst[i].sched_score);
 			if (r)
@@ -1795,7 +1795,7 @@ static int vcn_v3_0_dec_msg(struct amdgpu_cs_parser *p, struct amdgpu_job *job,
 	addr &= AMDGPU_GMC_HOLE_MASK;
 	r = amdgpu_cs_find_mapping(p, addr, &bo, &map);
 	if (r) {
-		DRM_ERROR("Can't find BO for addr 0x%08Lx\n", addr);
+		DRM_ERROR("Can't find BO for addr 0x%08llx\n", addr);
 		return r;
 	}
 

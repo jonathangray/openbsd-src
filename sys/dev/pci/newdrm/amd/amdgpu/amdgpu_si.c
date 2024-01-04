@@ -1318,7 +1318,7 @@ static bool si_read_bios_from_rom(struct amdgpu_device *adev,
 		return false;
 
 	dw_ptr = (u32 *)bios;
-	length_dw = ALIGN(length_bytes, 4) / 4;
+	length_dw = roundup2(length_bytes, 4) / 4;
 	/* set rom index to 0 */
 	WREG32(mmROM_INDEX, 0);
 	for (i = 0; i < length_dw; i++)
@@ -1604,7 +1604,7 @@ static void si_get_pcie_usage(struct amdgpu_device *adev, uint64_t *count0,
 	 */
 	WREG32_PCIE(ixPCIE_PERF_COUNT_CNTL, 0x00000005);
 
-	msleep(1000);
+	drm_msleep(1000);
 
 	/* Load the shadow and disable the perf counters
 	 * Write 0x2:

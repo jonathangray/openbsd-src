@@ -557,7 +557,7 @@ void amdgpu_vmid_mgr_init(struct amdgpu_device *adev)
 		struct amdgpu_vmid_mgr *id_mgr =
 			&adev->vm_manager.id_mgr[i];
 
-		mutex_init(&id_mgr->lock);
+		rw_init(&id_mgr->lock, "idmgr");
 		INIT_LIST_HEAD(&id_mgr->ids_lru);
 		id_mgr->reserved_use_count = 0;
 

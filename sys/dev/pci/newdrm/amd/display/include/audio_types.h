@@ -92,7 +92,7 @@ struct audio_output {
 	/* Front DIG id. */
 	enum engine_id engine_id;
 	/* encoder output signal */
-	enum signal_type signal;
+	enum amd_signal_type signal;
 	/* video timing */
 	struct audio_crtc_info crtc_info;
 	/* PLL for audio */

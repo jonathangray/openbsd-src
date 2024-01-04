@@ -57,22 +57,31 @@ struct amdgpu_fence {
 	ktime_t				start_timestamp;
 };
 
-static struct kmem_cache *amdgpu_fence_slab;
+static struct pool amdgpu_fence_slab;
 
 int amdgpu_fence_slab_init(void)
 {
+#ifdef __linux__
 	amdgpu_fence_slab = kmem_cache_create(
 		"amdgpu_fence", sizeof(struct amdgpu_fence), 0,
 		SLAB_HWCACHE_ALIGN, NULL);
 	if (!amdgpu_fence_slab)
 		return -ENOMEM;
+#else
+	pool_init(&amdgpu_fence_slab, sizeof(struct amdgpu_fence),
+	    CACHELINESIZE, IPL_TTY, 0, "amdgpu_fence", NULL);
+#endif
 	return 0;
 }
 
 void amdgpu_fence_slab_fini(void)
 {
 	rcu_barrier();
+#ifdef __linux__
 	kmem_cache_destroy(amdgpu_fence_slab);
+#else
+	pool_destroy(&amdgpu_fence_slab);
+#endif
 }
 /*
  * Cast helper
@@ -150,7 +159,11 @@ int amdgpu_fence_emit(struct amdgpu_ring *ring, struct dma_fence **f, struct amd
 
 	if (job == NULL) {
 		/* create a sperate hw fence */
+#ifdef __linux__
 		am_fence = kmem_cache_alloc(amdgpu_fence_slab, GFP_ATOMIC);
+#else
+		am_fence = pool_get(&amdgpu_fence_slab, PR_NOWAIT);
+#endif
 		if (am_fence == NULL)
 			return -ENOMEM;
 		fence = &am_fence->base;
@@ -322,10 +335,9 @@ bool amdgpu_fence_process(struct amdgpu_ring *ring)
  *
  * Checks for fence activity.
  */
-static void amdgpu_fence_fallback(struct timer_list *t)
+static void amdgpu_fence_fallback(void *arg)
 {
-	struct amdgpu_ring *ring = from_timer(ring, t,
-					      fence_drv.fallback_timer);
+	struct amdgpu_ring *ring = arg;
 
 	if (amdgpu_fence_process(ring))
 		DRM_WARN("Fence fallback timer expired on ring %s\n", ring->name);
@@ -481,7 +493,7 @@ int amdgpu_fence_driver_start_ring(struct amdgpu_ring *ring,
 		ring->fence_drv.gpu_addr = ring->fence_gpu_addr;
 	} else {
 		/* put fence directly behind firmware */
-		index = ALIGN(adev->uvd.fw->size, 8);
+		index = roundup2(adev->uvd.fw->size, 8);
 		ring->fence_drv.cpu_addr = adev->uvd.inst[ring->me].cpu_addr + index;
 		ring->fence_drv.gpu_addr = adev->uvd.inst[ring->me].gpu_addr + index;
 	}
@@ -521,10 +533,15 @@ int amdgpu_fence_driver_init_ring(struct amdgpu_ring *ring)
 	atomic_set(&ring->fence_drv.last_seq, 0);
 	ring->fence_drv.initialized = false;
 
+#ifdef __linux__
 	timer_setup(&ring->fence_drv.fallback_timer, amdgpu_fence_fallback, 0);
+#else
+	timeout_set(&ring->fence_drv.fallback_timer, amdgpu_fence_fallback,
+	    ring);
+#endif
 
 	ring->fence_drv.num_fences_mask = ring->num_hw_submission * 2 - 1;
-	spin_lock_init(&ring->fence_drv.lock);
+	mtx_init(&ring->fence_drv.lock, IPL_TTY);
 	ring->fence_drv.fences = kcalloc(ring->num_hw_submission * 2, sizeof(void *),
 					 GFP_KERNEL);
 
@@ -626,6 +643,8 @@ void amdgpu_fence_driver_hw_fini(struct amdgpu_device *adev)
 /* Will either stop and flush handlers for amdgpu interrupt or reanble it */
 void amdgpu_fence_driver_isr_toggle(struct amdgpu_device *adev, bool stop)
 {
+	STUB();
+#ifdef notyet
 	int i;
 
 	for (i = 0; i < AMDGPU_MAX_RINGS; i++) {
@@ -639,6 +658,7 @@ void amdgpu_fence_driver_isr_toggle(struct amdgpu_device *adev, bool stop)
 		else
 			enable_irq(adev->irq.irq);
 	}
+#endif
 }
 
 void amdgpu_fence_driver_sw_fini(struct amdgpu_device *adev)
@@ -831,7 +851,11 @@ static void amdgpu_fence_free(struct rcu_head *rcu)
 	struct dma_fence *f = container_of(rcu, struct dma_fence, rcu);
 
 	/* free fence_slab if it's separated fence*/
+#ifdef __linux__
 	kmem_cache_free(amdgpu_fence_slab, to_amdgpu_fence(f));
+#else
+	pool_put(&amdgpu_fence_slab, to_amdgpu_fence(f));
+#endif
 }
 
 /**

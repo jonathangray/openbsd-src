@@ -850,7 +850,7 @@ static int mes_v10_1_ring_init(struct amdgpu_device *adev)
 	ring->doorbell_index = adev->doorbell_index.mes_ring0 << 1;
 	ring->eop_gpu_addr = adev->mes.eop_gpu_addr[AMDGPU_MES_SCHED_PIPE];
 	ring->no_scheduler = true;
-	sprintf(ring->name, "mes_%d.%d.%d", ring->me, ring->pipe, ring->queue);
+	snprintf(ring->name, sizeof(ring->name), "mes_%d.%d.%d", ring->me, ring->pipe, ring->queue);
 
 	return amdgpu_ring_init(adev, ring, 1024, NULL, 0,
 				AMDGPU_RING_PRIO_DEFAULT, NULL);
@@ -860,7 +860,7 @@ static int mes_v10_1_kiq_ring_init(struct amdgpu_device *adev)
 {
 	struct amdgpu_ring *ring;
 
-	spin_lock_init(&adev->gfx.kiq[0].ring_lock);
+	mtx_init(&adev->gfx.kiq[0].ring_lock, IPL_TTY);
 
 	ring = &adev->gfx.kiq[0].ring;
 
@@ -874,7 +874,7 @@ static int mes_v10_1_kiq_ring_init(struct amdgpu_device *adev)
 	ring->doorbell_index = adev->doorbell_index.mes_ring1 << 1;
 	ring->eop_gpu_addr = adev->mes.eop_gpu_addr[AMDGPU_MES_KIQ_PIPE];
 	ring->no_scheduler = true;
-	sprintf(ring->name, "mes_kiq_%d.%d.%d",
+	snprintf(ring->name, sizeof(ring->name), "mes_kiq_%d.%d.%d",
 		ring->me, ring->pipe, ring->queue);
 
 	return amdgpu_ring_init(adev, ring, 1024, NULL, 0,

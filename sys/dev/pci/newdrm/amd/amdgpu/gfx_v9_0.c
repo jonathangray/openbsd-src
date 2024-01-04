@@ -1663,7 +1663,7 @@ static int gfx_v9_0_rlc_init(struct amdgpu_device *adev)
 
 	if (adev->flags & AMD_IS_APU) {
 		/* TODO: double check the cp_table_size for RV */
-		adev->gfx.rlc.cp_table_size = ALIGN(96 * 5 * 4, 2048) + (64 * 1024); /* JT + GDS */
+		adev->gfx.rlc.cp_table_size = roundup2(96 * 5 * 4, 2048) + (64 * 1024); /* JT + GDS */
 		r = amdgpu_gfx_rlc_init_cpt(adev);
 		if (r)
 			return r;
@@ -1982,7 +1982,7 @@ static int gfx_v9_0_compute_ring_init(struct amdgpu_device *adev, int ring_id,
 	ring->eop_gpu_addr = adev->gfx.mec.hpd_eop_gpu_addr
 				+ (ring_id * GFX9_MEC_HPD_SIZE);
 	ring->vm_hub = AMDGPU_GFXHUB(0);
-	sprintf(ring->name, "comp_%d.%d.%d", ring->me, ring->pipe, ring->queue);
+	snprintf(ring->name, sizeof(ring->name), "comp_%d.%d.%d", ring->me, ring->pipe, ring->queue);
 
 	irq_type = AMDGPU_CP_IRQ_COMPUTE_MEC1_PIPE0_EOP
 		+ ((ring->me - 1) * adev->gfx.mec.num_pipe_per_mec)
@@ -2073,9 +2073,9 @@ static int gfx_v9_0_sw_init(void *handle)
 		ring = &adev->gfx.gfx_ring[i];
 		ring->ring_obj = NULL;
 		if (!i)
-			sprintf(ring->name, "gfx");
+			snprintf(ring->name, sizeof(ring->name), "gfx");
 		else
-			sprintf(ring->name, "gfx_%d", i);
+			snprintf(ring->name, sizeof(ring->name), "gfx_%d", i);
 		ring->use_doorbell = true;
 		ring->doorbell_index = adev->doorbell_index.gfx_ring0 << 1;
 
@@ -2094,7 +2094,7 @@ static int gfx_v9_0_sw_init(void *handle)
 		for (i = 0; i < GFX9_NUM_SW_GFX_RINGS; i++) {
 			ring = &adev->gfx.sw_gfx_ring[i];
 			ring->ring_obj = NULL;
-			sprintf(ring->name, amdgpu_sw_ring_name(i));
+			snprintf(ring->name, sizeof(ring->name), amdgpu_sw_ring_name(i));
 			ring->use_doorbell = true;
 			ring->doorbell_index = adev->doorbell_index.gfx_ring0 << 1;
 			ring->is_sw_ring = true;
@@ -3958,7 +3958,7 @@ static uint64_t gfx_v9_0_kiq_read_clock(struct amdgpu_device *adev)
 
 	might_sleep();
 	while (r < 1 && cnt++ < MAX_KIQ_REG_TRY) {
-		msleep(MAX_KIQ_REG_BAILOUT_INTERVAL);
+		drm_msleep(MAX_KIQ_REG_BAILOUT_INTERVAL);
 		r = amdgpu_fence_wait_polling(ring, seq, MAX_KIQ_REG_WAIT);
 	}
 
@@ -4373,9 +4373,9 @@ static int gfx_v9_0_do_edc_gpr_workarounds(struct amdgpu_device *adev)
 		(gpr_reg_size * 3 + 4 + 5 + 2) * 4; /* SGPRS1 */
 	total_size +=
 		(gpr_reg_size * 3 + 4 + 5 + 2) * 4; /* SGPRS2 */
-	total_size = ALIGN(total_size, 256);
+	total_size = roundup2(total_size, 256);
 	vgpr_offset = total_size;
-	total_size += ALIGN(vgpr_init_shader_size, 256);
+	total_size += roundup2(vgpr_init_shader_size, 256);
 	sgpr_offset = total_size;
 	total_size += sizeof(sgpr_init_compute_shader);
 

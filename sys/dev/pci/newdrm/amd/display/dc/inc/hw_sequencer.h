@@ -348,12 +348,12 @@ struct hw_sequencer_funcs {
 
 	void (*enable_dp_link_output)(struct dc_link *link,
 			const struct link_resource *link_res,
-			enum signal_type signal,
+			enum amd_signal_type signal,
 			enum clock_source_id clock_source,
 			const struct dc_link_settings *link_settings);
 	void (*enable_tmds_link_output)(struct dc_link *link,
 			const struct link_resource *link_res,
-			enum signal_type signal,
+			enum amd_signal_type signal,
 			enum clock_source_id clock_source,
 			enum dc_color_depth color_depth,
 			uint32_t pixel_clock);
@@ -363,7 +363,7 @@ struct hw_sequencer_funcs {
 			uint32_t pixel_clock);
 	void (*disable_link_output)(struct dc_link *link,
 			const struct link_resource *link_res,
-			enum signal_type signal);
+			enum amd_signal_type signal);
 
 	void (*get_dcc_en_bits)(struct dc *dc, int *dcc_en_bits);
 

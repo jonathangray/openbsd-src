@@ -535,7 +535,7 @@ static int amdgpu_vram_mgr_new(struct ttm_resource_manager *man,
 		struct drm_buddy_block *block;
 		struct list_head *trim_list;
 		u64 original_size;
-		LIST_HEAD(temp);
+		DRM_LIST_HEAD(temp);
 
 		trim_list = &vres->blocks;
 		original_size = (u64)vres->base.size;
@@ -657,6 +657,9 @@ int amdgpu_vram_mgr_alloc_sgt(struct amdgpu_device *adev,
 			      enum dma_data_direction dir,
 			      struct sg_table **sgt)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct amdgpu_res_cursor cursor;
 	struct scatterlist *sg;
 	int num_entries = 0;
@@ -722,6 +725,7 @@ error_unmap:
 error_free:
 	kfree(*sgt);
 	return r;
+#endif
 }
 
 /**
@@ -737,6 +741,8 @@ void amdgpu_vram_mgr_free_sgt(struct device *dev,
 			      enum dma_data_direction dir,
 			      struct sg_table *sgt)
 {
+	STUB();
+#ifdef notyet
 	struct scatterlist *sg;
 	int i;
 
@@ -746,6 +752,7 @@ void amdgpu_vram_mgr_free_sgt(struct device *dev,
 				   DMA_ATTR_SKIP_CPU_SYNC);
 	sg_free_table(sgt);
 	kfree(sgt);
+#endif
 }
 
 /**
@@ -889,7 +896,7 @@ int amdgpu_vram_mgr_init(struct amdgpu_device *adev)
 	ttm_resource_manager_init(man, &adev->mman.bdev,
 				  adev->gmc.real_vram_size);
 
-	mutex_init(&mgr->lock);
+	rw_init(&mgr->lock, "vrmgr");
 	INIT_LIST_HEAD(&mgr->reservations_pending);
 	INIT_LIST_HEAD(&mgr->reserved_pages);
 	mgr->default_page_size = PAGE_SIZE;

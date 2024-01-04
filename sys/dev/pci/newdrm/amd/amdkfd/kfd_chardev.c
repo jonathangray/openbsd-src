@@ -1724,7 +1724,7 @@ static int kfd_ioctl_svm(struct file *filep, struct kfd_process *p, void *data)
 	pr_debug("start 0x%llx size 0x%llx op 0x%x nattr 0x%x\n",
 		 args->start_addr, args->size, args->op, args->nattr);
 
-	if ((args->start_addr & ~PAGE_MASK) || (args->size & ~PAGE_MASK))
+	if ((args->start_addr & ~LINUX_PAGE_MASK) || (args->size & ~LINUX_PAGE_MASK))
 		return -EINVAL;
 	if (!args->start_addr || !args->size)
 		return -EINVAL;

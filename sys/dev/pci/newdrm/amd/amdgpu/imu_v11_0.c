@@ -62,12 +62,12 @@ static int imu_v11_0_init_microcode(struct amdgpu_device *adev)
 		info->ucode_id = AMDGPU_UCODE_ID_IMU_I;
 		info->fw = adev->gfx.imu_fw;
 		adev->firmware.fw_size +=
-			ALIGN(le32_to_cpu(imu_hdr->imu_iram_ucode_size_bytes), PAGE_SIZE);
+			roundup2(le32_to_cpu(imu_hdr->imu_iram_ucode_size_bytes), PAGE_SIZE);
 		info = &adev->firmware.ucode[AMDGPU_UCODE_ID_IMU_D];
 		info->ucode_id = AMDGPU_UCODE_ID_IMU_D;
 		info->fw = adev->gfx.imu_fw;
 		adev->firmware.fw_size +=
-			ALIGN(le32_to_cpu(imu_hdr->imu_dram_ucode_size_bytes), PAGE_SIZE);
+			roundup2(le32_to_cpu(imu_hdr->imu_dram_ucode_size_bytes), PAGE_SIZE);
 	}
 
 out:

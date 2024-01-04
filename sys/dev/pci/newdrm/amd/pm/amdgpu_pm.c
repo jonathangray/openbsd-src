@@ -57,6 +57,8 @@ const char * const amdgpu_pp_profile_name[] = {
 	"UNCAPPED",
 };
 
+#ifdef __linux__
+
 /**
  * DOC: power_dpm_state
  *
@@ -3361,8 +3363,12 @@ static const struct attribute_group *hwmon_groups[] = {
 	NULL
 };
 
+#endif /* __linux__ */
+
 int amdgpu_pm_sysfs_init(struct amdgpu_device *adev)
 {
+	return 0;
+#ifdef __linux__
 	int ret;
 	uint32_t mask = 0;
 
@@ -3408,14 +3414,17 @@ int amdgpu_pm_sysfs_init(struct amdgpu_device *adev)
 	adev->pm.sysfs_initialized = true;
 
 	return 0;
+#endif
 }
 
 void amdgpu_pm_sysfs_fini(struct amdgpu_device *adev)
 {
+#ifdef __linux__
 	if (adev->pm.int_hwmon_dev)
 		hwmon_device_unregister(adev->pm.int_hwmon_dev);
 
 	amdgpu_device_attr_remove_groups(adev, &adev->pm.pm_attr_list);
+#endif
 }
 
 /*

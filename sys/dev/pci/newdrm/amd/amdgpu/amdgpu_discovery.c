@@ -677,6 +677,8 @@ struct ip_hw_instance {
 	u32 base_addr[];
 };
 
+#ifdef notyet
+
 struct ip_hw_id {
 	struct kset hw_id_kset;  /* ip_discovery/die/#die/#hw_id/, contains ip_hw_instance */
 	int hw_id;
@@ -1099,8 +1101,12 @@ static int amdgpu_discovery_sysfs_recurse(struct amdgpu_device *adev)
 	return 0;
 }
 
+#endif
+
 static int amdgpu_discovery_sysfs_init(struct amdgpu_device *adev)
 {
+	return 0;
+#ifdef notyet
 	struct kset *die_kset;
 	int res, ii;
 
@@ -1140,7 +1146,10 @@ static int amdgpu_discovery_sysfs_init(struct amdgpu_device *adev)
 Err:
 	kobject_put(&adev->ip_top->kobj);
 	return res;
+#endif
 }
+
+#ifdef notyet
 
 /* -------------------------------------------------- */
 
@@ -1181,8 +1190,11 @@ static void amdgpu_discovery_sysfs_die_free(struct ip_die_entry *ip_die_entry)
 	kobject_put(&ip_die_entry->ip_kset.kobj);
 }
 
+#endif /* notyet */
+
 static void amdgpu_discovery_sysfs_fini(struct amdgpu_device *adev)
 {
+#ifdef notyet
 	struct list_head *el, *tmp;
 	struct kset *die_kset;
 
@@ -1197,6 +1209,7 @@ static void amdgpu_discovery_sysfs_fini(struct amdgpu_device *adev)
 	spin_unlock(&die_kset->list_lock);
 	kobject_put(&adev->ip_top->die_kset.kobj);
 	kobject_put(&adev->ip_top->kobj);
+#endif
 }
 
 /* ================================================== */

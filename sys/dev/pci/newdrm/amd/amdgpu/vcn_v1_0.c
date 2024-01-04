@@ -111,7 +111,13 @@ static int vcn_v1_0_sw_init(void *handle)
 		return r;
 
 	/* Override the work func */
+#ifdef __linux__
 	adev->vcn.idle_work.work.func = vcn_v1_0_idle_work_handler;
+#else
+	task_set(&adev->vcn.idle_work.work.task,
+	    (void (*)(void *))vcn_v1_0_idle_work_handler,
+	    &adev->vcn.idle_work.work);
+#endif
 
 	amdgpu_vcn_setup_ucode(adev);
 
@@ -121,7 +127,7 @@ static int vcn_v1_0_sw_init(void *handle)
 
 	ring = &adev->vcn.inst->ring_dec;
 	ring->vm_hub = AMDGPU_MMHUB0(0);
-	sprintf(ring->name, "vcn_dec");
+	snprintf(ring->name, sizeof(ring->name), "vcn_dec");
 	r = amdgpu_ring_init(adev, ring, 512, &adev->vcn.inst->irq, 0,
 			     AMDGPU_RING_PRIO_DEFAULT, NULL);
 	if (r)
@@ -143,7 +149,7 @@ static int vcn_v1_0_sw_init(void *handle)
 
 		ring = &adev->vcn.inst->ring_enc[i];
 		ring->vm_hub = AMDGPU_MMHUB0(0);
-		sprintf(ring->name, "vcn_enc%d", i);
+		snprintf(ring->name, sizeof(ring->name), "vcn_enc%d", i);
 		r = amdgpu_ring_init(adev, ring, 512, &adev->vcn.inst->irq, 0,
 				     hw_prio, NULL);
 		if (r)

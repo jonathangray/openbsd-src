@@ -669,6 +669,8 @@ const char *amdgpu_ucode_name(enum AMDGPU_UCODE_ID ucode_id)
 	}
 }
 
+#ifdef __linux__
+
 #define FW_VERSION_ATTR(name, mode, field)				\
 static ssize_t show_##name(struct device *dev,				\
 			  struct device_attribute *attr,		\
@@ -726,6 +728,8 @@ static const struct attribute_group fw_attr_group = {
 	.name = "fw_version",
 	.attrs = fw_attrs
 };
+
+#endif /* __linux__ */
 
 int amdgpu_ucode_sysfs_init(struct amdgpu_device *adev)
 {
@@ -981,7 +985,7 @@ static int amdgpu_ucode_patch_jt(struct amdgpu_firmware_info *ucode,
 	comm_hdr = (const struct common_firmware_header *)ucode->fw->data;
 	header = (const struct gfx_firmware_header_v1_0 *)ucode->fw->data;
 	dst_addr = ucode->kaddr +
-			   ALIGN(le32_to_cpu(comm_hdr->ucode_size_bytes),
+			   roundup2(le32_to_cpu(comm_hdr->ucode_size_bytes),
 			   PAGE_SIZE);
 	src_addr = (uint8_t *)ucode->fw->data +
 			   le32_to_cpu(comm_hdr->ucode_array_offset_bytes) +
@@ -1050,9 +1054,9 @@ int amdgpu_ucode_init_bo(struct amdgpu_device *adev)
 				cp_hdr = (const struct gfx_firmware_header_v1_0 *)ucode->fw->data;
 				amdgpu_ucode_patch_jt(ucode,  adev->firmware.fw_buf_mc + fw_offset,
 						    adev->firmware.fw_buf_ptr + fw_offset);
-				fw_offset += ALIGN(le32_to_cpu(cp_hdr->jt_size) << 2, PAGE_SIZE);
+				fw_offset += roundup2(le32_to_cpu(cp_hdr->jt_size) << 2, PAGE_SIZE);
 			}
-			fw_offset += ALIGN(ucode->ucode_size, PAGE_SIZE);
+			fw_offset += roundup2(ucode->ucode_size, PAGE_SIZE);
 		}
 	}
 	return 0;

@@ -349,7 +349,7 @@ static int gfx_v11_0_ring_test_ring(struct amdgpu_ring *ring)
 		if (tmp == 0xDEADBEEF)
 			break;
 		if (amdgpu_emu_mode == 1)
-			msleep(1);
+			drm_msleep(1);
 		else
 			udelay(1);
 	}
@@ -919,7 +919,7 @@ static int gfx_v11_0_gfx_ring_init(struct amdgpu_device *adev, int ring_id,
 	else
 		ring->doorbell_index = adev->doorbell_index.gfx_ring1 << 1;
 	ring->vm_hub = AMDGPU_GFXHUB(0);
-	sprintf(ring->name, "gfx_%d.%d.%d", ring->me, ring->pipe, ring->queue);
+	snprintf(ring->name, sizeof(ring->name), "gfx_%d.%d.%d", ring->me, ring->pipe, ring->queue);
 
 	irq_type = AMDGPU_CP_IRQ_GFX_ME0_PIPE0_EOP + ring->pipe;
 	r = amdgpu_ring_init(adev, ring, 1024, &adev->gfx.eop_irq, irq_type,
@@ -950,7 +950,7 @@ static int gfx_v11_0_compute_ring_init(struct amdgpu_device *adev, int ring_id,
 	ring->eop_gpu_addr = adev->gfx.mec.hpd_eop_gpu_addr
 				+ (ring_id * GFX11_MEC_HPD_SIZE);
 	ring->vm_hub = AMDGPU_GFXHUB(0);
-	sprintf(ring->name, "comp_%d.%d.%d", ring->me, ring->pipe, ring->queue);
+	snprintf(ring->name, sizeof(ring->name), "comp_%d.%d.%d", ring->me, ring->pipe, ring->queue);
 
 	irq_type = AMDGPU_CP_IRQ_COMPUTE_MEC1_PIPE0_EOP
 		+ ((ring->me - 1) * adev->gfx.mec.num_pipe_per_mec)
@@ -1873,7 +1873,7 @@ static void gfx_v11_0_load_rlc_iram_dram_microcode(struct amdgpu_device *adev)
 
 	for (i = 0; i < fw_size; i++) {
 		if ((amdgpu_emu_mode == 1) && (i % 100 == 99))
-			msleep(1);
+			drm_msleep(1);
 		WREG32_SOC15(GC, 0, regRLC_LX6_IRAM_DATA,
 				le32_to_cpup(fw_data++));
 	}
@@ -1887,7 +1887,7 @@ static void gfx_v11_0_load_rlc_iram_dram_microcode(struct amdgpu_device *adev)
 	WREG32_SOC15(GC, 0, regRLC_LX6_DRAM_ADDR, 0);
 	for (i = 0; i < fw_size; i++) {
 		if ((amdgpu_emu_mode == 1) && (i % 100 == 99))
-			msleep(1);
+			drm_msleep(1);
 		WREG32_SOC15(GC, 0, regRLC_LX6_DRAM_DATA,
 				le32_to_cpup(fw_data++));
 	}
@@ -1917,7 +1917,7 @@ static void gfx_v11_0_load_rlcp_rlcv_microcode(struct amdgpu_device *adev)
 
 	for (i = 0; i < fw_size; i++) {
 		if ((amdgpu_emu_mode == 1) && (i % 100 == 99))
-			msleep(1);
+			drm_msleep(1);
 		WREG32_SOC15(GC, 0, regRLC_PACE_UCODE_DATA,
 				le32_to_cpup(fw_data++));
 	}
@@ -1936,7 +1936,7 @@ static void gfx_v11_0_load_rlcp_rlcv_microcode(struct amdgpu_device *adev)
 
 	for (i = 0; i < fw_size; i++) {
 		if ((amdgpu_emu_mode == 1) && (i % 100 == 99))
-			msleep(1);
+			drm_msleep(1);
 		WREG32_SOC15(GC, 0, regRLC_GPU_IOV_UCODE_DATA,
 				le32_to_cpup(fw_data++));
 	}
@@ -4207,7 +4207,7 @@ static void gfx_v11_0_select_cp_fw_arch(struct amdgpu_device *adev)
 	}
 
 	if (amdgpu_emu_mode == 1)
-		msleep(100);
+		drm_msleep(100);
 }
 
 static int get_gb_addr_config(struct amdgpu_device * adev)
@@ -5608,7 +5608,7 @@ static void gfx_v11_0_ring_emit_de_meta(struct amdgpu_ring *ring, bool resume)
 		de_payload_gpu_addr = amdgpu_csa_vaddr(ring->adev) + offset;
 		de_payload_cpu_addr = adev->virt.csa_cpu_addr + offset;
 
-		gds_addr = ALIGN(amdgpu_csa_vaddr(ring->adev) +
+		gds_addr = roundup2(amdgpu_csa_vaddr(ring->adev) +
 				 AMDGPU_CSA_SIZE - adev->gds.gds_size,
 				 PAGE_SIZE);
 	}

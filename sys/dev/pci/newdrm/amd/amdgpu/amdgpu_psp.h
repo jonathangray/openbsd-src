@@ -182,7 +182,7 @@ struct ta_context {
 
 struct ta_cp_context {
 	struct ta_context		context;
-	struct mutex			mutex;
+	struct rwlock			mutex;
 };
 
 struct psp_xgmi_context {
@@ -379,7 +379,7 @@ struct psp_context {
 	struct ta_cp_context		dtm_context;
 	struct ta_cp_context		rap_context;
 	struct ta_cp_context		securedisplay_context;
-	struct mutex			mutex;
+	struct rwlock			mutex;
 	struct psp_memory_training_context mem_train_ctx;
 
 	uint32_t			boot_cfg_bitmask;

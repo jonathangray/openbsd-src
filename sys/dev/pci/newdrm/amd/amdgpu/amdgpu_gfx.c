@@ -120,6 +120,7 @@ void amdgpu_gfx_parse_disable_cu(unsigned int *mask, unsigned int max_se, unsign
 	if (!amdgpu_disable_cu || !*amdgpu_disable_cu)
 		return;
 
+#ifdef notyet
 	p = amdgpu_disable_cu;
 	for (;;) {
 		char *next;
@@ -143,6 +144,7 @@ void amdgpu_gfx_parse_disable_cu(unsigned int *mask, unsigned int max_se, unsign
 			break;
 		p = next + 1;
 	}
+#endif
 }
 
 static bool amdgpu_gfx_is_graphics_multipipe_capable(struct amdgpu_device *adev)
@@ -310,7 +312,7 @@ int amdgpu_gfx_kiq_init_ring(struct amdgpu_device *adev,
 	struct amdgpu_kiq *kiq = &adev->gfx.kiq[xcc_id];
 	int r = 0;
 
-	spin_lock_init(&kiq->ring_lock);
+	mtx_init(&kiq->ring_lock, IPL_TTY);
 
 	ring->adev = NULL;
 	ring->ring_obj = NULL;
@@ -328,7 +330,7 @@ int amdgpu_gfx_kiq_init_ring(struct amdgpu_device *adev,
 
 	ring->eop_gpu_addr = kiq->eop_gpu_addr;
 	ring->no_scheduler = true;
-	sprintf(ring->name, "kiq_%d.%d.%d.%d", xcc_id, ring->me, ring->pipe, ring->queue);
+	snprintf(ring->name, sizeof(ring->name), "kiq_%d.%d.%d.%d", xcc_id, ring->me, ring->pipe, ring->queue);
 	r = amdgpu_ring_init(adev, ring, 1024, irq, AMDGPU_CP_KIQ_IRQ_DRIVER0,
 			     AMDGPU_RING_PRIO_DEFAULT, NULL);
 	if (r)
@@ -955,7 +957,7 @@ uint32_t amdgpu_kiq_rreg(struct amdgpu_device *adev, uint32_t reg)
 
 	might_sleep();
 	while (r < 1 && cnt++ < MAX_KIQ_REG_TRY) {
-		msleep(MAX_KIQ_REG_BAILOUT_INTERVAL);
+		drm_msleep(MAX_KIQ_REG_BAILOUT_INTERVAL);
 		r = amdgpu_fence_wait_polling(ring, seq, MAX_KIQ_REG_WAIT);
 	}
 
@@ -1022,7 +1024,7 @@ void amdgpu_kiq_wreg(struct amdgpu_device *adev, uint32_t reg, uint32_t v)
 	might_sleep();
 	while (r < 1 && cnt++ < MAX_KIQ_REG_TRY) {
 
-		msleep(MAX_KIQ_REG_BAILOUT_INTERVAL);
+		drm_msleep(MAX_KIQ_REG_BAILOUT_INTERVAL);
 		r = amdgpu_fence_wait_polling(ring, seq, MAX_KIQ_REG_WAIT);
 	}
 
@@ -1184,7 +1186,7 @@ void amdgpu_gfx_cp_init_microcode(struct amdgpu_device *adev,
 		info = &adev->firmware.ucode[ucode_id];
 		info->ucode_id = ucode_id;
 		info->fw = ucode_fw;
-		adev->firmware.fw_size += ALIGN(fw_size, PAGE_SIZE);
+		adev->firmware.fw_size += roundup2(fw_size, PAGE_SIZE);
 	}
 }
 

@@ -331,7 +331,7 @@ static int amdgpu_ctx_init(struct amdgpu_ctx_mgr *mgr, int32_t priority,
 
 	kref_init(&ctx->refcount);
 	ctx->mgr = mgr;
-	spin_lock_init(&ctx->ring_lock);
+	mtx_init(&ctx->ring_lock, IPL_TTY);
 
 	ctx->reset_counter = atomic_read(&mgr->adev->gpu_reset_counter);
 	ctx->reset_counter_query = ctx->reset_counter;
@@ -877,7 +877,7 @@ void amdgpu_ctx_mgr_init(struct amdgpu_ctx_mgr *mgr,
 	unsigned int i;
 
 	mgr->adev = adev;
-	mutex_init(&mgr->lock);
+	rw_init(&mgr->lock, "mgrlk");
 	idr_init_base(&mgr->ctx_handles, 1);
 
 	for (i = 0; i < AMDGPU_HW_IP_NUM; ++i)

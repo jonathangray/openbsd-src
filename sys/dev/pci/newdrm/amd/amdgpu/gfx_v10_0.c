@@ -3790,7 +3790,7 @@ static int gfx_v10_0_ring_test_ring(struct amdgpu_ring *ring)
 		if (tmp == 0xDEADBEEF)
 			break;
 		if (amdgpu_emu_mode == 1)
-			msleep(1);
+			drm_msleep(1);
 		else
 			udelay(1);
 	}
@@ -4444,7 +4444,7 @@ static int gfx_v10_0_gfx_ring_init(struct amdgpu_device *adev, int ring_id,
 	else
 		ring->doorbell_index = adev->doorbell_index.gfx_ring1 << 1;
 	ring->vm_hub = AMDGPU_GFXHUB(0);
-	sprintf(ring->name, "gfx_%d.%d.%d", ring->me, ring->pipe, ring->queue);
+	snprintf(ring->name, sizeof(ring->name), "gfx_%d.%d.%d", ring->me, ring->pipe, ring->queue);
 
 	irq_type = AMDGPU_CP_IRQ_GFX_ME0_PIPE0_EOP + ring->pipe;
 	hw_prio = amdgpu_gfx_is_high_priority_graphics_queue(adev, ring) ?
@@ -4473,7 +4473,7 @@ static int gfx_v10_0_compute_ring_init(struct amdgpu_device *adev, int ring_id,
 	ring->eop_gpu_addr = adev->gfx.mec.hpd_eop_gpu_addr
 				+ (ring_id * GFX10_MEC_HPD_SIZE);
 	ring->vm_hub = AMDGPU_GFXHUB(0);
-	sprintf(ring->name, "comp_%d.%d.%d", ring->me, ring->pipe, ring->queue);
+	snprintf(ring->name, sizeof(ring->name), "comp_%d.%d.%d", ring->me, ring->pipe, ring->queue);
 
 	irq_type = AMDGPU_CP_IRQ_COMPUTE_MEC1_PIPE0_EOP
 		+ ((ring->me - 1) * adev->gfx.mec.num_pipe_per_mec)
@@ -5232,7 +5232,7 @@ static int gfx_v10_0_parse_rlc_toc(struct amdgpu_device *adev)
 		if ((rlc_toc->id >= FIRMWARE_ID_CP_CE) &&
 		    (rlc_toc->id <= FIRMWARE_ID_CP_MES)) {
 			/* Offset needs 4KB alignment */
-			rlc_toc->offset = ALIGN(rlc_toc->offset * 4, PAGE_SIZE);
+			rlc_toc->offset = roundup2(rlc_toc->offset * 4, PAGE_SIZE);
 		}
 
 		rlc_autoload_info[rlc_toc->id].id = rlc_toc->id;
@@ -8652,7 +8652,7 @@ static void gfx_v10_0_ring_emit_de_meta(struct amdgpu_ring *ring, bool resume)
 		de_payload_gpu_addr = amdgpu_csa_vaddr(ring->adev) + offset;
 		de_payload_cpu_addr = adev->virt.csa_cpu_addr + offset;
 
-		gds_addr = ALIGN(amdgpu_csa_vaddr(ring->adev) +
+		gds_addr = roundup2(amdgpu_csa_vaddr(ring->adev) +
 				 AMDGPU_CSA_SIZE - adev->gds.gds_size,
 				 PAGE_SIZE);
 	}

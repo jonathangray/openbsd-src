@@ -23,6 +23,8 @@
  *
  */
 
+#include <generated/autoconf.h>
+
 #include "../display_mode_lib.h"
 #include "../display_mode_vba.h"
 #include "../dml_inline_defs.h"

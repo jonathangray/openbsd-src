@@ -661,7 +661,7 @@ static int smu_early_init(void *handle)
 	smu->smu_baco.platform_support = false;
 	smu->user_dpm_profile.fan_mode = -1;
 
-	mutex_init(&smu->message_lock);
+	rw_init(&smu->message_lock, "smuml");
 
 	adev->powerplay.pp_handle = smu;
 	adev->powerplay.pp_funcs = &swsmu_pm_funcs;

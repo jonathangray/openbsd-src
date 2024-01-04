@@ -994,10 +994,12 @@ static void amdgpu_dm_audio_component_unbind(struct device *kdev,
 	adev->dm.audio_component = NULL;
 }
 
+#ifdef notyet
 static const struct component_ops amdgpu_dm_audio_component_bind_ops = {
 	.bind	= amdgpu_dm_audio_component_bind,
 	.unbind	= amdgpu_dm_audio_component_unbind,
 };
+#endif
 
 static int amdgpu_dm_audio_init(struct amdgpu_device *adev)
 {
@@ -1369,7 +1371,7 @@ static void dm_handle_hpd_rx_offload_work(struct work_struct *work)
 		if (aconnector->timing_changed) {
 			/* force connector disconnect and reconnect */
 			force_connector_state(aconnector, DRM_FORCE_OFF);
-			msleep(100);
+			drm_msleep(100);
 			force_connector_state(aconnector, DRM_FORCE_UNSPECIFIED);
 		}
 
@@ -1434,7 +1436,7 @@ static struct hpd_rx_irq_offload_work_queue *hpd_rx_irq_create_workqueue(struct 
 			goto out_err;
 		}
 
-		spin_lock_init(&hpd_rx_offload_wq[i].offload_lock);
+		mtx_init(&hpd_rx_offload_wq[i].offload_lock, IPL_TTY);
 	}
 
 	return hpd_rx_offload_wq;
@@ -1564,9 +1566,9 @@ static int amdgpu_dm_init(struct amdgpu_device *adev)
 	memset(&init_data, 0, sizeof(init_data));
 	memset(&init_params, 0, sizeof(init_params));
 
-	mutex_init(&adev->dm.dpia_aux_lock);
-	mutex_init(&adev->dm.dc_lock);
-	mutex_init(&adev->dm.audio_lock);
+	rw_init(&adev->dm.dpia_aux_lock, "dmdpia");
+	rw_init(&adev->dm.dc_lock, "dmdc");
+	rw_init(&adev->dm.audio_lock, "dmaud");
 
 	if (amdgpu_dm_irq_init(adev)) {
 		DRM_ERROR("amdgpu: failed to initialize DM IRQ support.\n");
@@ -2050,12 +2052,12 @@ static int load_dmcu_fw(struct amdgpu_device *adev)
 	adev->firmware.ucode[AMDGPU_UCODE_ID_DMCU_ERAM].ucode_id = AMDGPU_UCODE_ID_DMCU_ERAM;
 	adev->firmware.ucode[AMDGPU_UCODE_ID_DMCU_ERAM].fw = adev->dm.fw_dmcu;
 	adev->firmware.fw_size +=
-		ALIGN(le32_to_cpu(hdr->header.ucode_size_bytes) - le32_to_cpu(hdr->intv_size_bytes), PAGE_SIZE);
+		roundup2(le32_to_cpu(hdr->header.ucode_size_bytes) - le32_to_cpu(hdr->intv_size_bytes), PAGE_SIZE);
 
 	adev->firmware.ucode[AMDGPU_UCODE_ID_DMCU_INTV].ucode_id = AMDGPU_UCODE_ID_DMCU_INTV;
 	adev->firmware.ucode[AMDGPU_UCODE_ID_DMCU_INTV].fw = adev->dm.fw_dmcu;
 	adev->firmware.fw_size +=
-		ALIGN(le32_to_cpu(hdr->intv_size_bytes), PAGE_SIZE);
+		roundup2(le32_to_cpu(hdr->intv_size_bytes), PAGE_SIZE);
 
 	adev->dm.dmcu_fw_version = le32_to_cpu(hdr->header.ucode_version);
 
@@ -2141,7 +2143,7 @@ static int dm_dmub_sw_init(struct amdgpu_device *adev)
 		adev->firmware.ucode[AMDGPU_UCODE_ID_DMCUB].fw =
 			adev->dm.dmub_fw;
 		adev->firmware.fw_size +=
-			ALIGN(le32_to_cpu(hdr->inst_const_bytes), PAGE_SIZE);
+			roundup2(le32_to_cpu(hdr->inst_const_bytes), PAGE_SIZE);
 
 		DRM_INFO("Loading DMUB firmware via PSP: version=0x%08X\n",
 			 adev->dm.dmcub_fw_version);
@@ -6973,7 +6975,7 @@ static int dm_update_mst_vcpi_slots_for_dsc(struct drm_atomic_state *state,
 	return 0;
 }
 
-static int to_drm_connector_type(enum signal_type st)
+static int to_drm_connector_type(enum amd_signal_type st)
 {
 	switch (st) {
 	case SIGNAL_TYPE_HDMI_TYPE_A:
@@ -7351,8 +7353,8 @@ void amdgpu_dm_connector_init_helper(struct amdgpu_display_manager *dm,
 	aconnector->pack_sdp_v1_3 = false;
 	aconnector->as_type = ADAPTIVE_SYNC_TYPE_NONE;
 	memset(&aconnector->vsdb_info, 0, sizeof(aconnector->vsdb_info));
-	mutex_init(&aconnector->hpd_lock);
-	mutex_init(&aconnector->handle_mst_msg_ready);
+	rw_init(&aconnector->hpd_lock, "dmhpd");
+	rw_init(&aconnector->handle_mst_msg_ready, "dmmr");
 
 	/*
 	 * configure support HPD hot plug connector_>polled default value is 0
@@ -7486,9 +7488,11 @@ create_i2c(struct ddc_service *ddc_service,
 	i2c = kzalloc(sizeof(struct amdgpu_i2c_adapter), GFP_KERNEL);
 	if (!i2c)
 		return NULL;
+#ifdef notyet
 	i2c->base.owner = THIS_MODULE;
 	i2c->base.class = I2C_CLASS_DDC;
 	i2c->base.dev.parent = &adev->pdev->dev;
+#endif
 	i2c->base.algo = &amdgpu_dm_i2c_algo;
 	snprintf(i2c->base.name, sizeof(i2c->base.name), "AMDGPU DM i2c hw bus %d", link_index);
 	i2c_set_adapdata(&i2c->base, i2c);
@@ -10559,7 +10563,8 @@ static bool dm_edid_parser_send_cea(struct amdgpu_display_manager *dm,
 		vsdb->min_refresh_rate_hz = output->amd_vsdb.min_frame_rate;
 		vsdb->max_refresh_rate_hz = output->amd_vsdb.max_frame_rate;
 	} else {
-		DRM_WARN("Unknown EDID CEA parser results\n");
+		if (output->type != 0)
+			DRM_WARN("Unknown EDID CEA parser results\n");
 		return false;
 	}
 

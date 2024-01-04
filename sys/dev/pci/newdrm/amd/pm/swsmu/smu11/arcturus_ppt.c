@@ -2166,10 +2166,12 @@ static int arcturus_i2c_control_init(struct smu_context *smu)
 
 		smu_i2c->adev = adev;
 		smu_i2c->port = i;
-		mutex_init(&smu_i2c->mutex);
+		rw_init(&smu_i2c->mutex, "arsmuiic");
+#ifdef __linux__
 		control->owner = THIS_MODULE;
 		control->class = I2C_CLASS_HWMON;
 		control->dev.parent = &adev->pdev->dev;
+#endif
 		control->algo = &arcturus_i2c_algo;
 		control->quirks = &arcturus_i2c_control_quirks;
 		snprintf(control->name, sizeof(control->name), "AMDGPU SMU %d", i);
@@ -2237,7 +2239,7 @@ static void arcturus_get_unique_id(struct smu_context *smu)
 	/* For Arcturus-and-later, unique_id == serial_number, so convert it to a
 	 * 16-digit HEX string for convenience and backwards-compatibility
 	 */
-	sprintf(adev->serial, "%llx", id);
+	snprintf(adev->serial, sizeof(adev->serial), "%llx", id);
 }
 
 static int arcturus_set_df_cstate(struct smu_context *smu,

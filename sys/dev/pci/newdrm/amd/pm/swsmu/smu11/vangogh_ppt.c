@@ -476,7 +476,15 @@ static int vangogh_init_smc_tables(struct smu_context *smu)
 
 #ifdef CONFIG_X86
 	/* AMD x86 APU only */
+#ifdef __linux__
 	smu->cpu_core_num = boot_cpu_data.x86_max_cores;
+#else
+	{
+		uint32_t eax, ebx, ecx, edx;
+		CPUID_LEAF(4, 0, eax, ebx, ecx, edx);
+		smu->cpu_core_num = ((eax >> 26) & 0x3f) + 1;
+	}
+#endif
 #else
 	smu->cpu_core_num = 4;
 #endif

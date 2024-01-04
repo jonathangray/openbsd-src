@@ -119,7 +119,7 @@ int smu_v13_0_init_microcode(struct smu_context *smu)
 		ucode->fw = adev->pm.fw;
 		header = (const struct common_firmware_header *)ucode->fw->data;
 		adev->firmware.fw_size +=
-			ALIGN(le32_to_cpu(header->ucode_size_bytes), PAGE_SIZE);
+			roundup2(le32_to_cpu(header->ucode_size_bytes), PAGE_SIZE);
 	}
 
 out:
@@ -224,7 +224,7 @@ int smu_v13_0_init_pptable_microcode(struct smu_context *smu)
 	ucode->ucode_id = AMDGPU_UCODE_ID_PPTABLE;
 	ucode->fw = &smu->pptable_firmware;
 	adev->firmware.fw_size +=
-		ALIGN(smu->pptable_firmware.size, PAGE_SIZE);
+		roundup2(smu->pptable_firmware.size, PAGE_SIZE);
 
 	return 0;
 }
@@ -2288,7 +2288,7 @@ int smu_v13_0_baco_enter(struct smu_context *smu)
 	if (ret)
 		return ret;
 
-	msleep(10);
+	drm_msleep(10);
 
 	return ret;
 }
@@ -2414,7 +2414,7 @@ int smu_v13_0_mode1_reset(struct smu_context *smu)
 
 	ret = smu_cmn_send_smc_msg(smu, SMU_MSG_Mode1Reset, NULL);
 	if (!ret)
-		msleep(SMU13_MODE1_RESET_WAIT_TIME_IN_MS);
+		drm_msleep(SMU13_MODE1_RESET_WAIT_TIME_IN_MS);
 
 	return ret;
 }

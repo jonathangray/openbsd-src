@@ -1774,7 +1774,7 @@ static int psp_hdcp_initialize(struct psp_context *psp)
 	ret = psp_ta_load(psp, &psp->hdcp_context.context);
 	if (!ret) {
 		psp->hdcp_context.context.initialized = true;
-		mutex_init(&psp->hdcp_context.mutex);
+		rw_init(&psp->hdcp_context.mutex, "pspcp");
 	}
 
 	return ret;
@@ -1841,7 +1841,7 @@ static int psp_dtm_initialize(struct psp_context *psp)
 	ret = psp_ta_load(psp, &psp->dtm_context.context);
 	if (!ret) {
 		psp->dtm_context.context.initialized = true;
-		mutex_init(&psp->dtm_context.mutex);
+		rw_init(&psp->dtm_context.mutex, "pspdtm");
 	}
 
 	return ret;
@@ -1909,7 +1909,7 @@ static int psp_rap_initialize(struct psp_context *psp)
 	ret = psp_ta_load(psp, &psp->rap_context.context);
 	if (!ret) {
 		psp->rap_context.context.initialized = true;
-		mutex_init(&psp->rap_context.mutex);
+		rw_init(&psp->rap_context.mutex, "psprap");
 	} else
 		return ret;
 
@@ -1995,6 +1995,19 @@ static int psp_securedisplay_initialize(struct psp_context *psp)
 		return 0;
 	}
 
+#ifdef __OpenBSD__
+	/*
+	 * with 20230117 or later firmware or later on renoir:
+	 *
+	 * [drm] psp gfx command LOAD_TA(0x1) failed and response status is (0x7)
+	 * [drm] psp gfx command INVOKE_CMD(0x3) failed and response status is (0x4)
+	 * psp_securedisplay_parse_resp_status *ERROR* Secure display: Generic Failure
+	 * psp_securedisplay_initialize *ERROR* SECUREDISPLAY: query
+	 *   securedisplay TA failed. ret 0x0
+	 */
+	return 0;
+#endif
+
 	psp->securedisplay_context.context.mem_context.shared_mem_size =
 		PSP_SECUREDISPLAY_SHARED_MEM_SIZE;
 	psp->securedisplay_context.context.ta_load_type = GFX_CMD_ID_LOAD_TA;
@@ -2009,7 +2022,7 @@ static int psp_securedisplay_initialize(struct psp_context *psp)
 	ret = psp_ta_load(psp, &psp->securedisplay_context.context);
 	if (!ret) {
 		psp->securedisplay_context.context.initialized = true;
-		mutex_init(&psp->securedisplay_context.mutex);
+		rw_init(&psp->securedisplay_context.mutex, "pscm");
 	} else
 		return ret;
 
@@ -3457,7 +3470,7 @@ int psp_init_cap_microcode(struct psp_context *psp, const char *chip_name)
 	info->fw = adev->psp.cap_fw;
 	cap_hdr_v1_0 = (const struct psp_firmware_header_v1_0 *)
 		adev->psp.cap_fw->data;
-	adev->firmware.fw_size += ALIGN(
+	adev->firmware.fw_size += roundup2(
 			le32_to_cpu(cap_hdr_v1_0->header.ucode_size_bytes), PAGE_SIZE);
 	adev->psp.cap_fw_version = le32_to_cpu(cap_hdr_v1_0->header.ucode_version);
 	adev->psp.cap_feature_version = le32_to_cpu(cap_hdr_v1_0->sos.fw_version);
@@ -3595,6 +3608,9 @@ static ssize_t amdgpu_psp_vbflash_write(struct file *filp, struct kobject *kobj,
 					struct bin_attribute *bin_attr,
 					char *buffer, loff_t pos, size_t count)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct device *dev = kobj_to_dev(kobj);
 	struct drm_device *ddev = dev_get_drvdata(dev);
 	struct amdgpu_device *adev = drm_to_adev(ddev);
@@ -3625,12 +3641,16 @@ static ssize_t amdgpu_psp_vbflash_write(struct file *filp, struct kobject *kobj,
 	dev_dbg(adev->dev, "IFWI staged for update");
 
 	return count;
+#endif
 }
 
 static ssize_t amdgpu_psp_vbflash_read(struct file *filp, struct kobject *kobj,
 				       struct bin_attribute *bin_attr, char *buffer,
 				       loff_t pos, size_t count)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct device *dev = kobj_to_dev(kobj);
 	struct drm_device *ddev = dev_get_drvdata(dev);
 	struct amdgpu_device *adev = drm_to_adev(ddev);
@@ -3673,6 +3693,7 @@ rel_buf:
 
 	dev_dbg(adev->dev, "PSP IFWI flash process done");
 	return 0;
+#endif
 }
 
 /**
@@ -3680,12 +3701,14 @@ rel_buf:
  * Writing to this file will stage an IFWI for update. Reading from this file
  * will trigger the update process.
  */
+#ifdef notyet
 static struct bin_attribute psp_vbflash_bin_attr = {
 	.attr = {.name = "psp_vbflash", .mode = 0660},
 	.size = 0,
 	.write = amdgpu_psp_vbflash_write,
 	.read = amdgpu_psp_vbflash_read,
 };
+#endif
 
 /**
  * DOC: psp_vbflash_status

@@ -871,7 +871,7 @@ static int amdgpu_cs_parser_bos(struct amdgpu_cs_parser *p,
 		int i;
 
 		e->user_pages = kvmalloc_array(bo->tbo.ttm->num_pages,
-					sizeof(struct page *),
+					sizeof(struct vm_page *),
 					GFP_KERNEL | __GFP_ZERO);
 		if (!e->user_pages) {
 			DRM_ERROR("kvmalloc_array failure\n");
@@ -922,6 +922,7 @@ static int amdgpu_cs_parser_bos(struct amdgpu_cs_parser *p,
 	}
 
 	amdgpu_bo_list_for_each_userptr_entry(e, p->bo_list) {
+#ifdef notyet
 		struct mm_struct *usermm;
 
 		usermm = amdgpu_ttm_tt_get_usermm(e->bo->tbo.ttm);
@@ -929,6 +930,7 @@ static int amdgpu_cs_parser_bos(struct amdgpu_cs_parser *p,
 			r = -EPERM;
 			goto out_free_user_pages;
 		}
+#endif
 
 		if (amdgpu_ttm_tt_is_userptr(e->bo->tbo.ttm) &&
 		    e->user_invalidated && e->user_pages) {

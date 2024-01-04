@@ -53,7 +53,7 @@ struct link_hwss_ext {
 			struct fixed31_32 throttled_vcp_size);
 	void (*enable_dp_link_output)(struct dc_link *link,
 			const struct link_resource *link_res,
-			enum signal_type signal,
+			enum amd_signal_type signal,
 			enum clock_source_id clock_source,
 			const struct dc_link_settings *link_settings);
 	void (*set_dp_link_test_pattern)(struct dc_link *link,
@@ -79,7 +79,7 @@ struct link_hwss {
 	void (*setup_stream_attribute)(struct pipe_ctx *pipe_ctx);
 	void (*disable_link_output)(struct dc_link *link,
 			const struct link_resource *link_res,
-			enum signal_type signal);
+			enum amd_signal_type signal);
 	void (*setup_audio_output)(struct pipe_ctx *pipe_ctx,
 			struct audio_output *audio_output, uint32_t audio_inst);
 	void (*enable_audio_packet)(struct pipe_ctx *pipe_ctx);

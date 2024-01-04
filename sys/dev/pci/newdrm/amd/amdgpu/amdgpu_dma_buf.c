@@ -59,8 +59,10 @@ static int amdgpu_dma_buf_attach(struct dma_buf *dmabuf,
 	struct amdgpu_device *adev = amdgpu_ttm_adev(bo->tbo.bdev);
 	int r;
 
+#ifdef notyet
 	if (pci_p2pdma_distance(adev->pdev, attach->dev, false) < 0)
 		attach->peer2peer = false;
+#endif
 
 	r = pm_runtime_get_sync(adev_to_drm(adev)->dev);
 	if (r < 0)
@@ -72,6 +74,8 @@ out:
 	pm_runtime_put_autosuspend(adev_to_drm(adev)->dev);
 	return r;
 }
+
+#ifdef notyet
 
 /**
  * amdgpu_dma_buf_detach - &dma_buf_ops.detach implementation
@@ -261,18 +265,24 @@ static int amdgpu_dma_buf_begin_cpu_access(struct dma_buf *dma_buf,
 	return ret;
 }
 
+#endif /* notyet */
+
 const struct dma_buf_ops amdgpu_dmabuf_ops = {
+#ifdef notyet
 	.attach = amdgpu_dma_buf_attach,
 	.detach = amdgpu_dma_buf_detach,
 	.pin = amdgpu_dma_buf_pin,
 	.unpin = amdgpu_dma_buf_unpin,
 	.map_dma_buf = amdgpu_dma_buf_map,
 	.unmap_dma_buf = amdgpu_dma_buf_unmap,
+#endif
 	.release = drm_gem_dmabuf_release,
+#ifdef notyet
 	.begin_cpu_access = amdgpu_dma_buf_begin_cpu_access,
 	.mmap = drm_gem_dmabuf_mmap,
 	.vmap = drm_gem_dmabuf_vmap,
 	.vunmap = drm_gem_dmabuf_vunmap,
+#endif
 };
 
 /**
@@ -455,12 +465,17 @@ struct drm_gem_object *amdgpu_gem_prime_import(struct drm_device *dev,
 	if (IS_ERR(obj))
 		return obj;
 
+	STUB();
+#ifdef notyet
 	attach = dma_buf_dynamic_attach(dma_buf, dev->dev,
 					&amdgpu_dma_buf_attach_ops, obj);
 	if (IS_ERR(attach)) {
 		drm_gem_object_put(obj);
 		return ERR_CAST(attach);
 	}
+#else
+	attach = NULL;
+#endif
 
 	get_dma_buf(dma_buf);
 	obj->import_attach = attach;
@@ -483,6 +498,7 @@ bool amdgpu_dmabuf_is_xgmi_accessible(struct amdgpu_device *adev,
 	struct drm_gem_object *gobj;
 
 	if (obj->import_attach) {
+#ifdef notyet
 		struct dma_buf *dma_buf = obj->import_attach->dmabuf;
 
 		if (dma_buf->ops != &amdgpu_dmabuf_ops)
@@ -491,6 +507,9 @@ bool amdgpu_dmabuf_is_xgmi_accessible(struct amdgpu_device *adev,
 
 		gobj = dma_buf->priv;
 		bo = gem_to_amdgpu_bo(gobj);
+#else
+		return false;
+#endif
 	}
 
 	if (amdgpu_xgmi_same_hive(adev, amdgpu_ttm_adev(bo->tbo.bdev)) &&

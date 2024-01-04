@@ -239,17 +239,21 @@ struct kfd2kgd_calls {
 	int (*init_interrupts)(struct amdgpu_device *adev, uint32_t pipe_id,
 			uint32_t inst);
 
+#ifdef notyet
 	int (*hqd_load)(struct amdgpu_device *adev, void *mqd, uint32_t pipe_id,
 			uint32_t queue_id, uint32_t __user *wptr,
 			uint32_t wptr_shift, uint32_t wptr_mask,
 			struct mm_struct *mm, uint32_t inst);
+#endif
 
 	int (*hiq_mqd_load)(struct amdgpu_device *adev, void *mqd,
 			    uint32_t pipe_id, uint32_t queue_id,
 			    uint32_t doorbell_off, uint32_t inst);
 
+#ifdef notyet
 	int (*hqd_sdma_load)(struct amdgpu_device *adev, void *mqd,
 			     uint32_t __user *wptr, struct mm_struct *mm);
+#endif
 
 	int (*hqd_dump)(struct amdgpu_device *adev,
 			uint32_t pipe_id, uint32_t queue_id,

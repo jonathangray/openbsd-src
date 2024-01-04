@@ -69,6 +69,7 @@ void amdgpu_unregister_gpu_instance(struct amdgpu_device *adev)
 	mutex_unlock(&mgpu_info.mutex);
 }
 
+#ifdef __linux__
 /**
  * amdgpu_driver_unload_kms - Main unload function for KMS.
  *
@@ -95,6 +96,7 @@ void amdgpu_driver_unload_kms(struct drm_device *dev)
 	amdgpu_acpi_fini(adev);
 	amdgpu_device_fini_hw(adev);
 }
+#endif /* __linux__ */
 
 void amdgpu_register_gpu_instance(struct amdgpu_device *adev)
 {
@@ -121,6 +123,7 @@ void amdgpu_register_gpu_instance(struct amdgpu_device *adev)
 	mutex_unlock(&mgpu_info.mutex);
 }
 
+#ifdef __linux__
 /**
  * amdgpu_driver_load_kms - Main load function for KMS.
  *
@@ -199,6 +202,7 @@ out:
 
 	return r;
 }
+#endif /* __linux__ */
 
 static int amdgpu_firmware_info(struct drm_amdgpu_info_firmware *fw_info,
 				struct drm_amdgpu_query_fw *query_fw,
@@ -1266,7 +1270,7 @@ int amdgpu_driver_open_kms(struct drm_device *dev, struct drm_file *file_priv)
 			goto error_vm;
 	}
 
-	mutex_init(&fpriv->bo_list_lock);
+	rw_init(&fpriv->bo_list_lock, "agbo");
 	idr_init_base(&fpriv->bo_list_handles, 1);
 
 	amdgpu_ctx_mgr_init(&fpriv->ctx_mgr, adev);

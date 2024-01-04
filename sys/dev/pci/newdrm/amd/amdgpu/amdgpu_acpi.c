@@ -1348,6 +1348,8 @@ static bool amdgpu_atcs_pci_probe_handle(struct pci_dev *pdev)
 	return true;
 }
 
+extern struct cfdriver amdgpu_cd;
+
 
 /**
  * amdgpu_acpi_should_gpu_reset
@@ -1389,6 +1391,7 @@ void amdgpu_acpi_detect(void)
 	struct pci_dev *pdev = NULL;
 	int ret;
 
+#ifdef notyet
 	while ((pdev = pci_get_class(PCI_CLASS_DISPLAY_VGA << 8, pdev)) != NULL) {
 		if (!atif->handle)
 			amdgpu_atif_pci_probe_handle(pdev);
@@ -1402,6 +1405,16 @@ void amdgpu_acpi_detect(void)
 		if (!atcs->handle)
 			amdgpu_atcs_pci_probe_handle(pdev);
 	}
+#else
+	{
+		struct amdgpu_device *adev = (void *)amdgpu_cd.cd_devs[0];
+		pdev = adev->pdev;
+		if (!atif->handle)
+			amdgpu_atif_pci_probe_handle(pdev);
+		if (!atcs->handle)
+			amdgpu_atcs_pci_probe_handle(pdev);
+	}
+#endif
 
 	if (atif->functions.sbios_requests && !atif->functions.system_params) {
 		/* XXX check this workraround, if sbios request function is

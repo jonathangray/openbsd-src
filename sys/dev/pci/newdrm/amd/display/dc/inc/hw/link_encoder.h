@@ -111,11 +111,11 @@ struct link_encoder_funcs {
 		struct link_encoder *enc, const struct dc_stream_state *stream);
 	void (*hw_init)(struct link_encoder *enc);
 	void (*setup)(struct link_encoder *enc,
-		enum signal_type signal);
+		enum amd_signal_type signal);
 	void (*enable_tmds_output)(struct link_encoder *enc,
 		enum clock_source_id clock_source,
 		enum dc_color_depth color_depth,
-		enum signal_type signal,
+		enum amd_signal_type signal,
 		uint32_t pixel_clock);
 	void (*enable_dp_output)(struct link_encoder *enc,
 		const struct dc_link_settings *link_settings,
@@ -127,7 +127,7 @@ struct link_encoder_funcs {
 		enum clock_source_id clock_source,
 		uint32_t pixel_clock);
 	void (*disable_output)(struct link_encoder *link_enc,
-		enum signal_type signal);
+		enum amd_signal_type signal);
 	void (*dp_set_lane_settings)(struct link_encoder *enc,
 		const struct dc_link_settings *link_settings,
 		const struct dc_lane_settings lane_settings[LANE_COUNT_DP_MAX]);
@@ -161,7 +161,7 @@ struct link_encoder_funcs {
 	void (*get_max_link_cap)(struct link_encoder *enc,
 		struct dc_link_settings *link_settings);
 
-	enum signal_type (*get_dig_mode)(
+	enum amd_signal_type (*get_dig_mode)(
 		struct link_encoder *enc);
 	void (*set_dio_phy_mux)(
 		struct link_encoder *enc,
@@ -241,7 +241,7 @@ struct hpo_dp_link_encoder_funcs {
 		enum hpd_source_id hpd_source);
 
 	void (*disable_link_phy)(struct hpo_dp_link_encoder *link_enc,
-		enum signal_type signal);
+		enum amd_signal_type signal);
 
 	void (*link_enable)(
 			struct hpo_dp_link_encoder *enc,

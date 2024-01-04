@@ -189,7 +189,7 @@ void dcn31_hpo_dp_link_enc_enable_dp_output(
 
 void dcn31_hpo_dp_link_enc_disable_output(
 	struct hpo_dp_link_encoder *enc,
-	enum signal_type signal);
+	enum amd_signal_type signal);
 
 void dcn31_hpo_dp_link_enc_enable(
 	struct hpo_dp_link_encoder *enc,

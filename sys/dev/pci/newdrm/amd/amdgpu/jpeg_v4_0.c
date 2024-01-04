@@ -111,7 +111,7 @@ static int jpeg_v4_0_sw_init(void *handle)
 	ring->doorbell_index = amdgpu_sriov_vf(adev) ? (((adev->doorbell_index.vcn.vcn_ring0_1) << 1) + 4) : ((adev->doorbell_index.vcn.vcn_ring0_1 << 1) + 1);
 	ring->vm_hub = AMDGPU_MMHUB0(0);
 
-	sprintf(ring->name, "jpeg_dec");
+	snprintf(ring->name, sizeof(ring->name), "jpeg_dec");
 	r = amdgpu_ring_init(adev, ring, 512, &adev->jpeg.inst->irq, 0,
 			     AMDGPU_RING_PRIO_DEFAULT, NULL);
 	if (r)

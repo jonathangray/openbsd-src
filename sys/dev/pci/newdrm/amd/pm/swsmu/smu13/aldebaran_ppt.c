@@ -1570,10 +1570,12 @@ static int aldebaran_i2c_control_init(struct smu_context *smu)
 
 	smu_i2c->adev = adev;
 	smu_i2c->port = 0;
-	mutex_init(&smu_i2c->mutex);
+	rw_init(&smu_i2c->mutex, "aldiic");
+#ifdef __linux__
 	control->owner = THIS_MODULE;
 	control->class = I2C_CLASS_SPD;
 	control->dev.parent = &adev->pdev->dev;
+#endif
 	control->algo = &aldebaran_i2c_algo;
 	snprintf(control->name, sizeof(control->name), "AMDGPU SMU 0");
 	control->quirks = &aldebaran_i2c_control_quirks;
@@ -1623,7 +1625,7 @@ static void aldebaran_get_unique_id(struct smu_context *smu)
 out:
 	adev->unique_id = ((uint64_t)upper32 << 32) | lower32;
 	if (adev->serial[0] == '\0')
-		sprintf(adev->serial, "%016llx", adev->unique_id);
+		snprintf(adev->serial, sizeof(adev->serial), "%016llx", adev->unique_id);
 }
 
 static bool aldebaran_is_baco_supported(struct smu_context *smu)
@@ -1915,7 +1917,7 @@ static int aldebaran_mode1_reset(struct smu_context *smu)
 	}
 
 	if (!ret)
-		msleep(SMU13_MODE1_RESET_WAIT_TIME_IN_MS);
+		drm_msleep(SMU13_MODE1_RESET_WAIT_TIME_IN_MS);
 
 	return ret;
 }
@@ -1936,7 +1938,7 @@ static int aldebaran_mode2_reset(struct smu_context *smu)
 	if (smu_version >= 0x00441400) {
 		ret = smu_cmn_send_msg_without_waiting(smu, (uint16_t)index, SMU_RESET_MODE_2);
 		/* This is similar to FLR, wait till max FLR timeout */
-		msleep(100);
+		drm_msleep(100);
 		dev_dbg(smu->adev->dev, "restore config space...\n");
 		/* Restore the config space saved during init */
 		amdgpu_device_load_pci_state(adev->pdev);

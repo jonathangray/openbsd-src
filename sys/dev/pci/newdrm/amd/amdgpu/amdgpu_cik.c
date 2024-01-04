@@ -1025,7 +1025,7 @@ static bool cik_read_bios_from_rom(struct amdgpu_device *adev,
 		return false;
 
 	dw_ptr = (u32 *)bios;
-	length_dw = ALIGN(length_bytes, 4) / 4;
+	length_dw = roundup2(length_bytes, 4) / 4;
 	/* take the smc lock since we are using the smc index */
 	spin_lock_irqsave(&adev->smc_idx_lock, flags);
 	/* set rom index to 0 */
@@ -1625,7 +1625,7 @@ static void cik_pcie_gen3_enable(struct amdgpu_device *adev)
 				tmp |= PCIE_LC_CNTL4__LC_REDO_EQ_MASK;
 				WREG32_PCIE(ixPCIE_LC_CNTL4, tmp);
 
-				msleep(100);
+				drm_msleep(100);
 
 				/* linkctl */
 				pcie_capability_clear_and_set_word(root, PCI_EXP_LNKCTL,
@@ -1924,7 +1924,7 @@ static void cik_get_pcie_usage(struct amdgpu_device *adev, uint64_t *count0,
 	 */
 	WREG32_PCIE(ixPCIE_PERF_COUNT_CNTL, 0x00000005);
 
-	msleep(1000);
+	drm_msleep(1000);
 
 	/* Load the shadow and disable the perf counters
 	 * Write 0x2:

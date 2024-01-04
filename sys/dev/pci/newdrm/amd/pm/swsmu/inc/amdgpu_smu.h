@@ -478,7 +478,7 @@ struct smu_context {
 	const struct cmn2asic_mapping	*table_map;
 	const struct cmn2asic_mapping	*pwr_src_map;
 	const struct cmn2asic_mapping	*workload_map;
-	struct mutex			message_lock;
+	struct rwlock			message_lock;
 	uint64_t pool_size;
 
 	struct smu_table_context	smu_table;
@@ -1451,7 +1451,6 @@ enum smu_baco_seq {
 	size_t __dst_offset = offsetof(typeof(*(dst)), first_dst_member);  \
 	size_t __dst_size = offsetofend(typeof(*(dst)), last_dst_member) - \
 			    __dst_offset;				   \
-	BUILD_BUG_ON(__src_size != __dst_size);				   \
 	__builtin_memcpy((u8 *)(dst) + __dst_offset,			   \
 			 (u8 *)(src) + __src_offset,			   \
 			 __dst_size);					   \

@@ -120,7 +120,7 @@ void amdgpu_amdkfd_gpuvm_init_mem_limits(void)
 	mem = si.freeram - si.freehigh;
 	mem *= si.mem_unit;
 
-	spin_lock_init(&kfd_mem_limit.mem_limit_lock);
+	mtx_init(&kfd_mem_limit.mem_limit_lock, IPL_TTY);
 	kfd_mem_limit.max_system_mem_limit = mem - (mem >> 4);
 	kfd_mem_limit.max_ttm_mem_limit = ttm_tt_pages_limit() << PAGE_SHIFT;
 	pr_debug("Kernel memory limit %lluM, TTM limit %lluM\n",
@@ -1322,8 +1322,8 @@ static int init_kfd_vm(struct amdgpu_vm *vm, void **process_info,
 		if (!info)
 			return -ENOMEM;
 
-		mutex_init(&info->lock);
-		mutex_init(&info->notifier_lock);
+		rw_init(&info->lock, "aginfo");
+		rw_init(&info->notifier_lock, "aginfn");
 		INIT_LIST_HEAD(&info->vm_list_head);
 		INIT_LIST_HEAD(&info->kfd_bo_list);
 		INIT_LIST_HEAD(&info->userptr_valid_list);
@@ -1699,7 +1699,7 @@ int amdgpu_amdkfd_gpuvm_alloc_memory_of_gpu(
 		goto err;
 	}
 	INIT_LIST_HEAD(&(*mem)->attachments);
-	mutex_init(&(*mem)->lock);
+	rw_init(&(*mem)->lock, "gpuvma");
 	(*mem)->aql_queue = !!(flags & KFD_IOC_ALLOC_MEM_FLAGS_AQL_QUEUE_MEM);
 
 	/* Workaround for AQL queue wraparound bug. Map the same
@@ -2295,7 +2295,7 @@ int amdgpu_amdkfd_gpuvm_import_dmabuf(struct amdgpu_device *adev,
 		*mmap_offset = amdgpu_bo_mmap_offset(bo);
 
 	INIT_LIST_HEAD(&(*mem)->attachments);
-	mutex_init(&(*mem)->lock);
+	rw_init(&(*mem)->lock, "gpuvmi");
 
 	(*mem)->alloc_flags =
 		((bo->preferred_domains & AMDGPU_GEM_DOMAIN_VRAM) ?
@@ -2896,7 +2896,7 @@ int amdgpu_amdkfd_add_gws_to_process(void *info, void *gws, struct kgd_mem **mem
 	if (!*mem)
 		return -ENOMEM;
 
-	mutex_init(&(*mem)->lock);
+	rw_init(&(*mem)->lock, "aggws");
 	INIT_LIST_HEAD(&(*mem)->attachments);
 	(*mem)->bo = amdgpu_bo_ref(gws_bo);
 	(*mem)->domain = AMDGPU_GEM_DOMAIN_GWS;

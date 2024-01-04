@@ -109,7 +109,7 @@ static int xgpu_nv_poll_msg(struct amdgpu_device *adev, enum idh_event event)
 		if (!r)
 			return 0;
 
-		msleep(10);
+		drm_msleep(10);
 		now = (uint64_t)ktime_to_ms(ktime_get());
 	} while (timeout > now);
 
@@ -134,7 +134,7 @@ static void xgpu_nv_mailbox_trans_msg (struct amdgpu_device *adev,
 		trn = xgpu_nv_peek_ack(adev);
 		if (trn) {
 			pr_err("trn=%x ACK should not assert! wait again !\n", trn);
-			msleep(1);
+			drm_msleep(1);
 		}
 	} while (trn);
 
@@ -294,7 +294,7 @@ static void xgpu_nv_mailbox_flr_work(struct work_struct *work)
 		if (xgpu_nv_mailbox_peek_msg(adev) == IDH_FLR_NOTIFICATION_CMPL)
 			goto flr_done;
 
-		msleep(10);
+		drm_msleep(10);
 		timeout -= 10;
 	} while (timeout > 1);
 

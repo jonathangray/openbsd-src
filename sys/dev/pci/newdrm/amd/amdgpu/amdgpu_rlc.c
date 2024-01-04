@@ -335,7 +335,7 @@ static int amdgpu_gfx_rlc_init_microcode_v2_0(struct amdgpu_device *adev)
 		if (info->fw) {
 			common_hdr = (const struct common_firmware_header *)info->fw->data;
 			adev->firmware.fw_size +=
-				ALIGN(le32_to_cpu(common_hdr->ucode_size_bytes), PAGE_SIZE);
+				roundup2(le32_to_cpu(common_hdr->ucode_size_bytes), PAGE_SIZE);
 		}
 	}
 
@@ -369,7 +369,7 @@ static void amdgpu_gfx_rlc_init_microcode_v2_1(struct amdgpu_device *adev)
 			info->ucode_id = AMDGPU_UCODE_ID_RLC_RESTORE_LIST_CNTL;
 			info->fw = adev->gfx.rlc_fw;
 			adev->firmware.fw_size +=
-				ALIGN(adev->gfx.rlc.save_restore_list_cntl_size_bytes, PAGE_SIZE);
+				roundup2(adev->gfx.rlc.save_restore_list_cntl_size_bytes, PAGE_SIZE);
 		}
 
 		if (adev->gfx.rlc.save_restore_list_gpm_size_bytes) {
@@ -377,7 +377,7 @@ static void amdgpu_gfx_rlc_init_microcode_v2_1(struct amdgpu_device *adev)
 			info->ucode_id = AMDGPU_UCODE_ID_RLC_RESTORE_LIST_GPM_MEM;
 			info->fw = adev->gfx.rlc_fw;
 			adev->firmware.fw_size +=
-				ALIGN(adev->gfx.rlc.save_restore_list_gpm_size_bytes, PAGE_SIZE);
+				roundup2(adev->gfx.rlc.save_restore_list_gpm_size_bytes, PAGE_SIZE);
 		}
 
 		if (adev->gfx.rlc.save_restore_list_srm_size_bytes) {
@@ -385,7 +385,7 @@ static void amdgpu_gfx_rlc_init_microcode_v2_1(struct amdgpu_device *adev)
 			info->ucode_id = AMDGPU_UCODE_ID_RLC_RESTORE_LIST_SRM_MEM;
 			info->fw = adev->gfx.rlc_fw;
 			adev->firmware.fw_size +=
-				ALIGN(adev->gfx.rlc.save_restore_list_srm_size_bytes, PAGE_SIZE);
+				roundup2(adev->gfx.rlc.save_restore_list_srm_size_bytes, PAGE_SIZE);
 		}
 	}
 }
@@ -407,7 +407,7 @@ static void amdgpu_gfx_rlc_init_microcode_v2_2(struct amdgpu_device *adev)
 			info->ucode_id = AMDGPU_UCODE_ID_RLC_IRAM;
 			info->fw = adev->gfx.rlc_fw;
 			adev->firmware.fw_size +=
-				ALIGN(adev->gfx.rlc.rlc_iram_ucode_size_bytes, PAGE_SIZE);
+				roundup2(adev->gfx.rlc.rlc_iram_ucode_size_bytes, PAGE_SIZE);
 		}
 
 		if (adev->gfx.rlc.rlc_dram_ucode_size_bytes) {
@@ -415,7 +415,7 @@ static void amdgpu_gfx_rlc_init_microcode_v2_2(struct amdgpu_device *adev)
 			info->ucode_id = AMDGPU_UCODE_ID_RLC_DRAM;
 			info->fw = adev->gfx.rlc_fw;
 			adev->firmware.fw_size +=
-				ALIGN(adev->gfx.rlc.rlc_dram_ucode_size_bytes, PAGE_SIZE);
+				roundup2(adev->gfx.rlc.rlc_dram_ucode_size_bytes, PAGE_SIZE);
 		}
 	}
 }
@@ -442,7 +442,7 @@ static void amdgpu_gfx_rlc_init_microcode_v2_3(struct amdgpu_device *adev)
 			info->ucode_id = AMDGPU_UCODE_ID_RLC_P;
 			info->fw = adev->gfx.rlc_fw;
 			adev->firmware.fw_size +=
-				ALIGN(adev->gfx.rlc.rlcp_ucode_size_bytes, PAGE_SIZE);
+				roundup2(adev->gfx.rlc.rlcp_ucode_size_bytes, PAGE_SIZE);
 		}
 
 		if (adev->gfx.rlc.rlcv_ucode_size_bytes) {
@@ -450,7 +450,7 @@ static void amdgpu_gfx_rlc_init_microcode_v2_3(struct amdgpu_device *adev)
 			info->ucode_id = AMDGPU_UCODE_ID_RLC_V;
 			info->fw = adev->gfx.rlc_fw;
 			adev->firmware.fw_size +=
-				ALIGN(adev->gfx.rlc.rlcv_ucode_size_bytes, PAGE_SIZE);
+				roundup2(adev->gfx.rlc.rlcv_ucode_size_bytes, PAGE_SIZE);
 		}
 	}
 }
@@ -478,7 +478,7 @@ static void amdgpu_gfx_rlc_init_microcode_v2_4(struct amdgpu_device *adev)
 			info->ucode_id = AMDGPU_UCODE_ID_GLOBAL_TAP_DELAYS;
 			info->fw = adev->gfx.rlc_fw;
 			adev->firmware.fw_size +=
-				ALIGN(adev->gfx.rlc.global_tap_delays_ucode_size_bytes, PAGE_SIZE);
+				roundup2(adev->gfx.rlc.global_tap_delays_ucode_size_bytes, PAGE_SIZE);
 		}
 
 		if (adev->gfx.rlc.se0_tap_delays_ucode_size_bytes) {
@@ -486,7 +486,7 @@ static void amdgpu_gfx_rlc_init_microcode_v2_4(struct amdgpu_device *adev)
 			info->ucode_id = AMDGPU_UCODE_ID_SE0_TAP_DELAYS;
 			info->fw = adev->gfx.rlc_fw;
 			adev->firmware.fw_size +=
-				ALIGN(adev->gfx.rlc.se0_tap_delays_ucode_size_bytes, PAGE_SIZE);
+				roundup2(adev->gfx.rlc.se0_tap_delays_ucode_size_bytes, PAGE_SIZE);
 		}
 
 		if (adev->gfx.rlc.se1_tap_delays_ucode_size_bytes) {
@@ -494,7 +494,7 @@ static void amdgpu_gfx_rlc_init_microcode_v2_4(struct amdgpu_device *adev)
 			info->ucode_id = AMDGPU_UCODE_ID_SE1_TAP_DELAYS;
 			info->fw = adev->gfx.rlc_fw;
 			adev->firmware.fw_size +=
-				ALIGN(adev->gfx.rlc.se1_tap_delays_ucode_size_bytes, PAGE_SIZE);
+				roundup2(adev->gfx.rlc.se1_tap_delays_ucode_size_bytes, PAGE_SIZE);
 		}
 
 		if (adev->gfx.rlc.se2_tap_delays_ucode_size_bytes) {
@@ -502,7 +502,7 @@ static void amdgpu_gfx_rlc_init_microcode_v2_4(struct amdgpu_device *adev)
 			info->ucode_id = AMDGPU_UCODE_ID_SE2_TAP_DELAYS;
 			info->fw = adev->gfx.rlc_fw;
 			adev->firmware.fw_size +=
-				ALIGN(adev->gfx.rlc.se2_tap_delays_ucode_size_bytes, PAGE_SIZE);
+				roundup2(adev->gfx.rlc.se2_tap_delays_ucode_size_bytes, PAGE_SIZE);
 		}
 
 		if (adev->gfx.rlc.se3_tap_delays_ucode_size_bytes) {
@@ -510,7 +510,7 @@ static void amdgpu_gfx_rlc_init_microcode_v2_4(struct amdgpu_device *adev)
 			info->ucode_id = AMDGPU_UCODE_ID_SE3_TAP_DELAYS;
 			info->fw = adev->gfx.rlc_fw;
 			adev->firmware.fw_size +=
-				ALIGN(adev->gfx.rlc.se3_tap_delays_ucode_size_bytes, PAGE_SIZE);
+				roundup2(adev->gfx.rlc.se3_tap_delays_ucode_size_bytes, PAGE_SIZE);
 		}
 	}
 }

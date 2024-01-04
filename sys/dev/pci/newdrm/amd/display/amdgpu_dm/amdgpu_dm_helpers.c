@@ -645,7 +645,7 @@ static bool execute_synaptics_rc_command(struct drm_dp_aux *aux,
 		if (rc_cmd == cmd)
 			// active is 0
 			break;
-		msleep(10);
+		drm_msleep(10);
 	}
 
 	// read rc result

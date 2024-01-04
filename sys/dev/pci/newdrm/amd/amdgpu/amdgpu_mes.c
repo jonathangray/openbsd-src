@@ -113,9 +113,9 @@ int amdgpu_mes_init(struct amdgpu_device *adev)
 	idr_init(&adev->mes.gang_id_idr);
 	idr_init(&adev->mes.queue_id_idr);
 	ida_init(&adev->mes.doorbell_ida);
-	spin_lock_init(&adev->mes.queue_id_lock);
-	spin_lock_init(&adev->mes.ring_lock);
-	mutex_init(&adev->mes.mutex_hidden);
+	mtx_init(&adev->mes.queue_id_lock, IPL_TTY);
+	mtx_init(&adev->mes.ring_lock, IPL_TTY);
+	rw_init(&adev->mes.mutex_hidden, "agmes");
 
 	adev->mes.total_max_queue = AMDGPU_FENCE_MES_QUEUE_ID_MASK;
 	adev->mes.vmid_mask_mmhub = 0xffffff00;
@@ -1039,12 +1039,12 @@ int amdgpu_mes_add_ring(struct amdgpu_device *adev, int gang_id,
 	ring->doorbell_index = qprops.doorbell_off;
 
 	if (queue_type == AMDGPU_RING_TYPE_GFX)
-		sprintf(ring->name, "gfx_%d.%d.%d", pasid, gang_id, queue_id);
+		snprintf(ring->name, sizeof(ring->name), "gfx_%d.%d.%d", pasid, gang_id, queue_id);
 	else if (queue_type == AMDGPU_RING_TYPE_COMPUTE)
-		sprintf(ring->name, "compute_%d.%d.%d", pasid, gang_id,
+		snprintf(ring->name, sizeof(ring->name), "compute_%d.%d.%d", pasid, gang_id,
 			queue_id);
 	else if (queue_type == AMDGPU_RING_TYPE_SDMA)
-		sprintf(ring->name, "sdma_%d.%d.%d", pasid, gang_id,
+		snprintf(ring->name, sizeof(ring->name), "sdma_%d.%d.%d", pasid, gang_id,
 			queue_id);
 	else
 		BUG();
@@ -1460,14 +1460,14 @@ int amdgpu_mes_init_microcode(struct amdgpu_device *adev, int pipe)
 		info->ucode_id = ucode;
 		info->fw = adev->mes.fw[pipe];
 		adev->firmware.fw_size +=
-			ALIGN(le32_to_cpu(mes_hdr->mes_ucode_size_bytes),
+			roundup2(le32_to_cpu(mes_hdr->mes_ucode_size_bytes),
 			      PAGE_SIZE);
 
 		info = &adev->firmware.ucode[ucode_data];
 		info->ucode_id = ucode_data;
 		info->fw = adev->mes.fw[pipe];
 		adev->firmware.fw_size +=
-			ALIGN(le32_to_cpu(mes_hdr->mes_ucode_data_size_bytes),
+			roundup2(le32_to_cpu(mes_hdr->mes_ucode_data_size_bytes),
 			      PAGE_SIZE);
 	}
 

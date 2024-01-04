@@ -260,7 +260,7 @@ int amdgpu_sdma_init_microcode(struct amdgpu_device *adev,
 					info->ucode_id = AMDGPU_UCODE_ID_SDMA0 + i;
 					info->fw = adev->sdma.instance[i].fw;
 					adev->firmware.fw_size +=
-						ALIGN(le32_to_cpu(header->ucode_size_bytes), PAGE_SIZE);
+						roundup2(le32_to_cpu(header->ucode_size_bytes), PAGE_SIZE);
 				}
 			}
 			break;
@@ -271,12 +271,12 @@ int amdgpu_sdma_init_microcode(struct amdgpu_device *adev,
 			info->ucode_id = AMDGPU_UCODE_ID_SDMA_UCODE_TH0;
 			info->fw = adev->sdma.instance[0].fw;
 			adev->firmware.fw_size +=
-				ALIGN(le32_to_cpu(sdma_hdr->ctx_ucode_size_bytes), PAGE_SIZE);
+				roundup2(le32_to_cpu(sdma_hdr->ctx_ucode_size_bytes), PAGE_SIZE);
 			info = &adev->firmware.ucode[AMDGPU_UCODE_ID_SDMA_UCODE_TH1];
 			info->ucode_id = AMDGPU_UCODE_ID_SDMA_UCODE_TH1;
 			info->fw = adev->sdma.instance[0].fw;
 			adev->firmware.fw_size +=
-				ALIGN(le32_to_cpu(sdma_hdr->ctl_ucode_size_bytes), PAGE_SIZE);
+				roundup2(le32_to_cpu(sdma_hdr->ctl_ucode_size_bytes), PAGE_SIZE);
 			break;
 		default:
 			err = -EINVAL;
