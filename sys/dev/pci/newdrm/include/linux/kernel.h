@@ -17,6 +17,7 @@
 #include <linux/printk.h>
 #include <linux/typecheck.h>
 #include <linux/container_of.h>
+#include <linux/stddef.h>
 #include <asm/byteorder.h>
 
 #define swap(a, b) \
