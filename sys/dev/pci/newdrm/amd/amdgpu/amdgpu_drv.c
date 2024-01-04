@@ -2852,7 +2852,9 @@ const struct drm_driver amdgpu_partition_driver = {
 	.num_ioctls = ARRAY_SIZE(amdgpu_ioctls_kms),
 	.dumb_create = amdgpu_mode_dumb_create,
 	.dumb_map_offset = amdgpu_mode_dumb_mmap,
+#ifdef __linux__
 	.fops = &amdgpu_driver_kms_fops,
+#endif
 	.release = &amdgpu_driver_release_kms,
 
 	.gem_prime_import = amdgpu_gem_prime_import,
@@ -2945,6 +2947,7 @@ MODULE_LICENSE("GPL and additional rights");
 
 #include <drm/drm_drv.h>
 #include <drm/drm_utils.h>
+#include <drm/drm_fb_helper.h>
 
 #include "vga.h"
 
@@ -3127,8 +3130,6 @@ amdgpu_attach(struct device *parent, struct device *self, void *aux)
 			printf(": can't map doorbell space\n");
 			return;
 		}
-		adev->doorbell.ptr = bus_space_vaddr(adev->doorbell.bst,
-		    adev->doorbell.bsh);
 	}
 
 	if (adev->family >= CHIP_BONAIRE)
@@ -3446,7 +3447,7 @@ amdgpu_enter_ddb(void *v, void *cookie)
 		return;
 
 	rasops_show_screen(ri, cookie, 0, NULL, NULL);
-	drm_fb_helper_debug_enter(fb_helper->fbdev);
+	drm_fb_helper_debug_enter(fb_helper->info);
 }
 
 void
@@ -3582,8 +3583,8 @@ amdgpu_attachhook(struct device *self)
 
 		ri->ri_depth = fb->format->cpp[0] * 8;
 		ri->ri_stride = fb->pitches[0];
-		ri->ri_width = fb_helper->fbdev->var.xres;
-		ri->ri_height = fb_helper->fbdev->var.yres;
+		ri->ri_width = fb_helper->info->var.xres;
+		ri->ri_height = fb_helper->info->var.yres;
 
 		switch (fb->format->format) {
 		case DRM_FORMAT_XRGB8888:
@@ -3763,5 +3764,5 @@ amdgpu_burner_cb(void *arg1)
 	struct amdgpu_device *adev = arg1;
 	struct drm_fb_helper *helper = adev_to_drm(adev)->fb_helper;
 
-	drm_fb_helper_blank(adev->burner_fblank, helper->fbdev);
+	drm_fb_helper_blank(adev->burner_fblank, helper->info);
 }
