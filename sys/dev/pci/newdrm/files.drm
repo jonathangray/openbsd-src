@@ -684,7 +684,7 @@ file	dev/pci/newdrm/amd/amdgpu/amdgpu_gfx.c		amdgpu
 file	dev/pci/newdrm/amd/amdgpu/amdgpu_gmc.c		amdgpu
 file	dev/pci/newdrm/amd/amdgpu/amdgpu_gtt_mgr.c		amdgpu
 file	dev/pci/newdrm/amd/amdgpu/amdgpu_hdp.c		amdgpu
-file	dev/pci/newdrm/amd/amdgpu/amdgpu_hmm.c		amdgpu
+#file	dev/pci/newdrm/amd/amdgpu/amdgpu_hmm.c		amdgpu
 file	dev/pci/newdrm/amd/amdgpu/amdgpu_i2c.c		amdgpu
 file	dev/pci/newdrm/amd/amdgpu/amdgpu_ib.c		amdgpu
 file	dev/pci/newdrm/amd/amdgpu/amdgpu_ids.c		amdgpu
