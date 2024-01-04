@@ -2094,7 +2094,7 @@ static int gfx_v9_0_sw_init(void *handle)
 		for (i = 0; i < GFX9_NUM_SW_GFX_RINGS; i++) {
 			ring = &adev->gfx.sw_gfx_ring[i];
 			ring->ring_obj = NULL;
-			snprintf(ring->name, sizeof(ring->name), amdgpu_sw_ring_name(i));
+			snprintf(ring->name, sizeof(ring->name), "%s", amdgpu_sw_ring_name(i));
 			ring->use_doorbell = true;
 			ring->doorbell_index = adev->doorbell_index.gfx_ring0 << 1;
 			ring->is_sw_ring = true;
@@ -5530,7 +5530,7 @@ static void gfx_v9_0_ring_emit_de_meta(struct amdgpu_ring *ring, bool resume, bo
 		de_payload_gpu_addr = amdgpu_csa_vaddr(ring->adev) + offset;
 		de_payload_cpu_addr = adev->virt.csa_cpu_addr + offset;
 
-		gds_addr = ALIGN(amdgpu_csa_vaddr(ring->adev) +
+		gds_addr = roundup2(amdgpu_csa_vaddr(ring->adev) +
 				 AMDGPU_CSA_SIZE - adev->gds.gds_size,
 				 PAGE_SIZE);
 	}
