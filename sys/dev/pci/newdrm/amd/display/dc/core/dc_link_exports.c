@@ -95,12 +95,12 @@ const struct dc_link_status *dc_link_get_status(const struct dc_link *link)
 }
 
 /* return true if the connected receiver supports the hdcp version */
-bool dc_link_is_hdcp14(struct dc_link *link, enum signal_type signal)
+bool dc_link_is_hdcp14(struct dc_link *link, enum amd_signal_type signal)
 {
 	return link->dc->link_srv->is_hdcp1x_supported(link, signal);
 }
 
-bool dc_link_is_hdcp22(struct dc_link *link, enum signal_type signal)
+bool dc_link_is_hdcp22(struct dc_link *link, enum amd_signal_type signal)
 {
 	return link->dc->link_srv->is_hdcp2x_supported(link, signal);
 }

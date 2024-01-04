@@ -38,12 +38,12 @@ void reset_dio_stream_encoder(struct pipe_ctx *pipe_ctx);
 void setup_dio_stream_attribute(struct pipe_ctx *pipe_ctx);
 void enable_dio_dp_link_output(struct dc_link *link,
 		const struct link_resource *link_res,
-		enum signal_type signal,
+		enum amd_signal_type signal,
 		enum clock_source_id clock_source,
 		const struct dc_link_settings *link_settings);
 void disable_dio_link_output(struct dc_link *link,
 		const struct link_resource *link_res,
-		enum signal_type signal);
+		enum amd_signal_type signal);
 void set_dio_dp_link_test_pattern(struct dc_link *link,
 		const struct link_resource *link_res,
 		struct encoder_set_dp_phy_pattern_param *tp_params);

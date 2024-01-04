@@ -184,7 +184,7 @@ static void set_hpo_fixed_vs_pe_retimer_dp_lane_settings(struct dc_link *link,
 
 static void enable_hpo_fixed_vs_pe_retimer_dp_link_output(struct dc_link *link,
 		const struct link_resource *link_res,
-		enum signal_type signal,
+		enum amd_signal_type signal,
 		enum clock_source_id clock_source,
 		const struct dc_link_settings *link_settings)
 {

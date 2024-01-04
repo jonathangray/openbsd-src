@@ -57,7 +57,7 @@ void dpcd_write_rx_power_ctrl(struct dc_link *link, bool on)
 void dp_enable_link_phy(
 	struct dc_link *link,
 	const struct link_resource *link_res,
-	enum signal_type signal,
+	enum amd_signal_type signal,
 	enum clock_source_id clock_source,
 	const struct dc_link_settings *link_settings)
 {
@@ -69,7 +69,7 @@ void dp_enable_link_phy(
 
 void dp_disable_link_phy(struct dc_link *link,
 		const struct link_resource *link_res,
-		enum signal_type signal)
+		enum amd_signal_type signal)
 {
 	struct dc  *dc = link->ctx->dc;
 

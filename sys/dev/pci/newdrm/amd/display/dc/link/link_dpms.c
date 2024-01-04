@@ -118,7 +118,7 @@ void link_blank_dp_stream(struct dc_link *link, bool hw_init)
 {
 	unsigned int j;
 	struct dc  *dc = link->ctx->dc;
-	enum signal_type signal = link->connector_signal;
+	enum amd_signal_type signal = link->connector_signal;
 
 	if ((signal == SIGNAL_TYPE_EDP) ||
 		(signal == SIGNAL_TYPE_DISPLAY_PORT)) {
@@ -1918,7 +1918,7 @@ enum dc_status link_increase_mst_payload(struct pipe_ctx *pipe_ctx, uint32_t bw_
 
 static void disable_link_dp(struct dc_link *link,
 		const struct link_resource *link_res,
-		enum signal_type signal)
+		enum amd_signal_type signal)
 {
 	struct dc_link_settings link_settings = link->cur_link_settings;
 
@@ -1947,7 +1947,7 @@ static void disable_link_dp(struct dc_link *link,
 
 static void disable_link(struct dc_link *link,
 		const struct link_resource *link_res,
-		enum signal_type signal)
+		enum amd_signal_type signal)
 {
 	if (dc_is_dp_signal(signal)) {
 		disable_link_dp(link, link_res, signal);

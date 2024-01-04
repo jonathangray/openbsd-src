@@ -1447,7 +1447,7 @@ struct dc_link {
 	struct dc_sink *local_sink;
 	unsigned int link_index;
 	enum dc_connection_type type;
-	enum signal_type connector_signal;
+	enum amd_signal_type connector_signal;
 	enum dc_irq_source irq_source_hpd;
 	enum dc_irq_source irq_source_hpd_rx;/* aka DP Short Pulse  */
 
@@ -1727,8 +1727,8 @@ bool dc_is_oem_i2c_device_present(
 );
 
 /* return true if the connected receiver supports the hdcp version */
-bool dc_link_is_hdcp14(struct dc_link *link, enum signal_type signal);
-bool dc_link_is_hdcp22(struct dc_link *link, enum signal_type signal);
+bool dc_link_is_hdcp14(struct dc_link *link, enum amd_signal_type signal);
+bool dc_link_is_hdcp22(struct dc_link *link, enum amd_signal_type signal);
 
 /* Notify DC about DP RX Interrupt (aka DP IRQ_HPD).
  *

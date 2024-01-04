@@ -123,9 +123,9 @@ struct link_service {
 	bool (*reset_cur_dp_mst_topology)(struct dc_link *link);
 	const struct dc_link_status *(*get_status)(const struct dc_link *link);
 	bool (*is_hdcp1x_supported)(struct dc_link *link,
-			enum signal_type signal);
+			enum amd_signal_type signal);
 	bool (*is_hdcp2x_supported)(struct dc_link *link,
-			enum signal_type signal);
+			enum amd_signal_type signal);
 	void (*clear_dprx_states)(struct dc_link *link);
 
 
