@@ -111,8 +111,12 @@ void drm_sched_rq_update_fifo(struct drm_sched_entity *entity, ktime_t ts)
 
 	entity->oldest_job_waiting = ts;
 
+#ifdef notyet
 	rb_add_cached(&entity->rb_tree_node, &entity->rq->rb_tree_root,
 		      drm_sched_entity_compare_before);
+#else
+	STUB();
+#endif
 
 	spin_unlock(&entity->rq->lock);
 	spin_unlock(&entity->rq_lock);
