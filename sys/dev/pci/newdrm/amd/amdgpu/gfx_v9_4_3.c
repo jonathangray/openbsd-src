@@ -762,7 +762,7 @@ static int gfx_v9_4_3_compute_ring_init(struct amdgpu_device *adev, int ring_id,
 			     (ring_id + xcc_id * adev->gfx.num_compute_rings) *
 				     GFX9_MEC_HPD_SIZE;
 	ring->vm_hub = AMDGPU_GFXHUB(xcc_id);
-	sprintf(ring->name, "comp_%d.%d.%d.%d",
+	snprintf(ring->name, sizeof(ring->name), "comp_%d.%d.%d.%d",
 			ring->xcc_id, ring->me, ring->pipe, ring->queue);
 
 	irq_type = AMDGPU_CP_IRQ_COMPUTE_MEC1_PIPE0_EOP

@@ -1085,7 +1085,7 @@ static int amdgpu_acpi_enumerate_xcc(void)
 	xa_init(&numa_info_xa);
 
 	for (id = 0; id < AMD_XCC_MAX_HID; id++) {
-		sprintf(hid, "%s%d", "AMD", AMD_XCC_HID_START + id);
+		snprintf(hid, sizeof(hid), "%s%d", "AMD", AMD_XCC_HID_START + id);
 		acpi_dev = acpi_dev_get_first_match_dev(hid, NULL, -1);
 		/* These ACPI objects are expected to be in sequential order. If
 		 * one is not found, no need to check the rest.

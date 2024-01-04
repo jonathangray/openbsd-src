@@ -335,6 +335,9 @@ static ssize_t amdgpu_xgmi_show_num_hops(struct device *dev,
 					struct device_attribute *attr,
 					char *buf)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef __linux__
 	struct drm_device *ddev = dev_get_drvdata(dev);
 	struct amdgpu_device *adev = drm_to_adev(ddev);
 	struct psp_xgmi_topology_info *top = &adev->psp.xgmi_context.top_info;
@@ -344,12 +347,16 @@ static ssize_t amdgpu_xgmi_show_num_hops(struct device *dev,
 		sprintf(buf + 3 * i, "%02x ", top->nodes[i].num_hops);
 
 	return sysfs_emit(buf, "%s\n", buf);
+#endif
 }
 
 static ssize_t amdgpu_xgmi_show_num_links(struct device *dev,
 					struct device_attribute *attr,
 					char *buf)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef __linux__
 	struct drm_device *ddev = dev_get_drvdata(dev);
 	struct amdgpu_device *adev = drm_to_adev(ddev);
 	struct psp_xgmi_topology_info *top = &adev->psp.xgmi_context.top_info;
@@ -359,6 +366,7 @@ static ssize_t amdgpu_xgmi_show_num_links(struct device *dev,
 		sprintf(buf + 3 * i, "%02x ", top->nodes[i].num_links);
 
 	return sysfs_emit(buf, "%s\n", buf);
+#endif
 }
 
 #define AMDGPU_XGMI_SET_FICAA(o)	((o) | 0x456801)
