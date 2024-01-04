@@ -1906,7 +1906,11 @@ static void amdgpu_dm_fini(struct amdgpu_device *adev)
 	}
 #endif
 	if (adev->dm.hdcp_workqueue) {
+#ifdef notyet
 		hdcp_destroy(&adev->dev->kobj, adev->dm.hdcp_workqueue);
+#else
+		STUB();
+#endif
 		adev->dm.hdcp_workqueue = NULL;
 	}
 
