@@ -911,7 +911,7 @@ file	dev/pci/newdrm/amd/display/amdgpu_dm/amdgpu_dm_pp_smu.c	amdgpu
 file	dev/pci/newdrm/amd/display/amdgpu_dm/amdgpu_dm_psr.c	amdgpu
 file	dev/pci/newdrm/amd/display/amdgpu_dm/amdgpu_dm_replay.c	amdgpu
 file	dev/pci/newdrm/amd/display/amdgpu_dm/amdgpu_dm_services.c	amdgpu
-file	dev/pci/newdrm/amd/display/amdgpu_dm/dc_fpu.c		amdgpu
+file	dev/pci/newdrm/amd/display/amdgpu_dm/dc_fpu.c		amdgpu & bios
 file	dev/pci/newdrm/amd/display/dc/basics/amdgpu_vector.c	amdgpu
 file	dev/pci/newdrm/amd/display/dc/basics/conversion.c		amdgpu
 file	dev/pci/newdrm/amd/display/dc/basics/dc_common.c		amdgpu
@@ -1139,9 +1139,9 @@ file	dev/pci/newdrm/amd/display/dc/dcn32/dcn32_resource.c		amdgpu & bios
 file	dev/pci/newdrm/amd/display/dc/dcn32/dcn32_resource_helpers.c	amdgpu & bios
 file	dev/pci/newdrm/amd/display/dc/dcn321/dcn321_dio_link_encoder.c	amdgpu & bios
 file	dev/pci/newdrm/amd/display/dc/dcn321/dcn321_resource.c		amdgpu & bios
-file	dev/pci/newdrm/amd/display/dc/dml/calcs/bw_fixed.c			amdgpu & bios
-file	dev/pci/newdrm/amd/display/dc/dml/calcs/custom_float.c		amdgpu & bios
-file	dev/pci/newdrm/amd/display/dc/dml/calcs/dce_calcs.c		amdgpu & bios
+file	dev/pci/newdrm/amd/display/dc/dml/calcs/bw_fixed.c			amdgpu
+file	dev/pci/newdrm/amd/display/dc/dml/calcs/custom_float.c		amdgpu
+file	dev/pci/newdrm/amd/display/dc/dml/calcs/dce_calcs.c		amdgpu
 file	dev/pci/newdrm/amd/display/dc/dml/calcs/dcn_calc_auto.c		amdgpu & bios
 file	dev/pci/newdrm/amd/display/dc/dml/calcs/dcn_calc_math.c		amdgpu & bios
 file	dev/pci/newdrm/amd/display/dc/dml/calcs/dcn_calcs.c		amdgpu & bios
@@ -1175,9 +1175,9 @@ file	dev/pci/newdrm/amd/display/dc/dml/display_mode_vba.c		amdgpu & bios
 file	dev/pci/newdrm/amd/display/dc/dml/display_rq_dlg_helpers.c		amdgpu & bios
 file	dev/pci/newdrm/amd/display/dc/dml/dml1_display_rq_dlg_calc.c	amdgpu & bios
 file	dev/pci/newdrm/amd/display/dc/dml/dsc/rc_calc_fpu.c		amdgpu & bios
-file	dev/pci/newdrm/amd/display/dc/dsc/dc_dsc.c				amdgpu & bios
-file	dev/pci/newdrm/amd/display/dc/dsc/rc_calc.c			amdgpu & bios
-file	dev/pci/newdrm/amd/display/dc/dsc/rc_calc_dpi.c			amdgpu & bios
+file	dev/pci/newdrm/amd/display/dc/dsc/dc_dsc.c				amdgpu
+file	dev/pci/newdrm/amd/display/dc/dsc/rc_calc.c			amdgpu
+file	dev/pci/newdrm/amd/display/dc/dsc/rc_calc_dpi.c			amdgpu
 file	dev/pci/newdrm/amd/display/dc/gpio/dce110/hw_factory_dce110.c	amdgpu
 file	dev/pci/newdrm/amd/display/dc/gpio/dce110/hw_translate_dce110.c	amdgpu
 file	dev/pci/newdrm/amd/display/dc/gpio/dce120/hw_factory_dce120.c	amdgpu
