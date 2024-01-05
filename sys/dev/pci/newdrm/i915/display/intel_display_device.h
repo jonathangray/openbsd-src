@@ -10,6 +10,7 @@
 
 #include "intel_display_limits.h"
 
+#define drm_i915_private inteldrm_softc
 struct drm_i915_private;
 struct drm_printer;
 

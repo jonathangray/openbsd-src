@@ -39,6 +39,7 @@ struct intel_wakeref {
 
 	intel_wakeref_t wakeref;
 
+#define drm_i915_private inteldrm_softc
 	struct drm_i915_private *i915;
 	const struct intel_wakeref_ops *ops;
 
