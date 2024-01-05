@@ -40,9 +40,6 @@ struct amdgpu_doorbell {
 
 	/* For CPU access of doorbells */
 	uint32_t *cpu_addr;
-
-	bus_space_tag_t bst;
-	bus_space_handle_t bsh;
 };
 
 /* Reserved doorbells for amdgpu (including multimedia).

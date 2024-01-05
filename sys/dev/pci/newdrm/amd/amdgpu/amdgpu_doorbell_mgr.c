@@ -207,6 +207,14 @@ int amdgpu_doorbell_init(struct amdgpu_device *adev)
 #ifdef __linux__
 	adev->doorbell.base = pci_resource_start(adev->pdev, 2);
 	adev->doorbell.size = pci_resource_len(adev->pdev, 2);
+#else
+	{
+		pcireg_t mtype;
+		mtype = pci_mapreg_type(adev->pdev->pc, adev->pdev->tag, 0x18);
+		if (pci_mapreg_info(adev->pdev->pc, adev->pdev->tag, 0x18,
+		    mtype, &adev->doorbell.base, &adev->doorbell.size, NULL))
+			return -EINVAL;
+	}
 #endif
 
 	adev->doorbell.num_kernel_doorbells =
