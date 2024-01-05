@@ -1431,7 +1431,7 @@ static void gen11_dsi_post_disable(struct intel_atomic_state *state,
 
 	intel_dsi_vbt_exec_sequence(intel_dsi, MIPI_SEQ_ASSERT_RESET);
 
-	msleep(intel_dsi->panel_off_delay);
+	drm_msleep(intel_dsi->panel_off_delay);
 	intel_dsi_vbt_exec_sequence(intel_dsi, MIPI_SEQ_POWER_OFF);
 
 	intel_dsi->panel_power_off_time = ktime_get_boottime();

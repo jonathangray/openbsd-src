@@ -496,7 +496,7 @@ static bool intel_sanitize_crtc(struct intel_crtc *crtc,
 	 * up-to-date HPD state.
 	 */
 	if (needs_link_reset)
-		msleep(20);
+		drm_msleep(20);
 
 	return true;
 }

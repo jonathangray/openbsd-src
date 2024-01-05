@@ -181,7 +181,7 @@ gsccs_send_message_retry_complete(struct intel_pxp *pxp,
 		if (ret != -EAGAIN)
 			break;
 
-		msleep(GSC_PENDING_RETRY_PAUSE_MS);
+		drm_msleep(GSC_PENDING_RETRY_PAUSE_MS);
 	} while (++tries < GSC_PENDING_RETRY_MAXCOUNT);
 
 	return ret;

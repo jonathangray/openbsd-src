@@ -19,7 +19,7 @@ void intel_dsi_wait_panel_power_cycle(struct intel_dsi *intel_dsi)
 						  intel_dsi->panel_power_off_time);
 
 	if (panel_power_off_duration < (s64)intel_dsi->panel_pwr_cycle_delay)
-		msleep(intel_dsi->panel_pwr_cycle_delay - panel_power_off_duration);
+		drm_msleep(intel_dsi->panel_pwr_cycle_delay - panel_power_off_duration);
 }
 
 void intel_dsi_shutdown(struct intel_encoder *encoder)

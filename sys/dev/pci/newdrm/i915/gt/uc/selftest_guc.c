@@ -107,7 +107,7 @@ static int intel_guc_scrub_ctbs(void *arg)
 
 	/* Force all H2G / G2H to be submitted / processed */
 	intel_gt_retire_requests(gt);
-	msleep(500);
+	drm_msleep(500);
 
 	/* Scrub missing G2H */
 	intel_gt_handle_error(engine->gt, -1, 0, "selftest reset");

@@ -746,7 +746,7 @@ wa_14015076503_start(struct intel_gt *gt, intel_engine_mask_t engine_mask, bool 
 		intel_uncore_rmw(gt->uncore,
 				 HECI_H_CSR(MTL_GSC_HECI2_BASE),
 				 HECI_H_CSR_RST, HECI_H_CSR_IG);
-		msleep(200);
+		drm_msleep(200);
 	}
 
 	return engine_mask;
