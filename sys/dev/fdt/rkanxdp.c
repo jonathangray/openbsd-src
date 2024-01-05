@@ -41,6 +41,7 @@
 #include <dev/ofw/fdt.h>
 
 #include <drm/drm_crtc_helper.h>
+#include <drm/drm_atomic_helper.h>
 
 #include <dev/ic/anxdp.h>
 

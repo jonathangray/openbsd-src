@@ -35,6 +35,7 @@
 #include <dev/ic/dwhdmi.h>
 
 #include <dev/i2c/i2cvar.h>
+#include <linux/i2c.h>
 
 #ifdef notyet
 #include <dev/audio/audio_dai.h>
