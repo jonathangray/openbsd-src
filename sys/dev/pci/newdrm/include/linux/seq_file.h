@@ -9,6 +9,7 @@
 #include <linux/fs.h>
 
 struct seq_file {
+	void *private;
 };
 
 static inline void
@@ -25,5 +26,7 @@ static inline void
 seq_write(struct seq_file *m, const void *p, size_t s)
 {
 }
+
+#define DEFINE_SHOW_ATTRIBUTE(a)
 
 #endif
