@@ -67,11 +67,13 @@ bool intel_display_driver_probe_defer(struct pci_dev *pdev)
 		return true;
 
 	/* If the LCD panel has a privacy-screen, wait for it */
+#ifdef notyet
 	privacy_screen = drm_privacy_screen_get(&pdev->dev, NULL);
 	if (IS_ERR(privacy_screen) && PTR_ERR(privacy_screen) == -EPROBE_DEFER)
 		return true;
 
 	drm_privacy_screen_put(privacy_screen);
+#endif
 
 	return false;
 }
