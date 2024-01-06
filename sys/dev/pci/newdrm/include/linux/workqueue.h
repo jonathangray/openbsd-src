@@ -1,4 +1,4 @@
-/*	$OpenBSD: workqueue.h,v 1.10 2023/03/21 09:44:35 jsg Exp $	*/
+/*	$OpenBSD: workqueue.h,v 1.11 2024/01/06 09:33:08 kettenis Exp $	*/
 /*
  * Copyright (c) 2015 Mark Kettenis
  *
@@ -50,7 +50,7 @@ alloc_workqueue(const char *name, int flags, int max_active)
 }
 
 static inline struct workqueue_struct *
-alloc_ordered_workqueue(const char *name, int flags)
+alloc_ordered_workqueue(const char *name, int flags, ...)
 {
 	struct taskq *tq = taskq_create(name, 1, IPL_TTY, 0);
 	return (struct workqueue_struct *)tq;
