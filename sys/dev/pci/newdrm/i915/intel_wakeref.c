@@ -130,22 +130,6 @@ int intel_wakeref_wait_for_idle(struct intel_wakeref *wf)
 	return 0;
 }
 
-#ifdef __linux__
-static void wakeref_auto_timeout(struct timer_list *t)
-{
-	struct intel_wakeref_auto *wf = from_timer(wf, t, timer);
-	intel_wakeref_t wakeref;
-	unsigned long flags;
-
-	if (!refcount_dec_and_lock_irqsave(&wf->count, &wf->lock, &flags))
-		return;
-
-	wakeref = fetch_and_zero(&wf->wakeref);
-	spin_unlock_irqrestore(&wf->lock, flags);
-
-	intel_runtime_pm_put(&wf->i915->runtime_pm, wakeref);
-}
-#else
 static void wakeref_auto_timeout(void *arg)
 {
 	struct intel_wakeref_auto *wf = arg;
@@ -159,7 +143,7 @@ static void wakeref_auto_timeout(void *arg)
 	spin_unlock_irqrestore(&wf->lock, flags);
 
 	intel_runtime_pm_put(&wf->i915->runtime_pm, wakeref);
-#endif
+}
 
 void intel_wakeref_auto_init(struct intel_wakeref_auto *wf,
 			     struct drm_i915_private *i915)
