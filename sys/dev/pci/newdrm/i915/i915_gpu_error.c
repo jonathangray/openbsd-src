@@ -204,6 +204,9 @@ static void pool_fini(struct folio_batch *fbatch)
 
 static int pool_refill(struct folio_batch *fbatch, gfp_t gfp)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	while (folio_batch_space(fbatch)) {
 		struct folio *folio;
 
@@ -215,12 +218,16 @@ static int pool_refill(struct folio_batch *fbatch, gfp_t gfp)
 	}
 
 	return 0;
+#endif
 }
 
 static int intel_pool_init(struct folio_batch *fbatch, gfp_t gfp)
 {
 	int err;
 
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	folio_batch_init(fbatch);
 
 	err = pool_refill(fbatch, gfp);
@@ -228,6 +235,7 @@ static int intel_pool_init(struct folio_batch *fbatch, gfp_t gfp)
 		pool_fini(fbatch);
 
 	return err;
+#endif
 }
 
 static void *pool_alloc(struct folio_batch *fbatch, gfp_t gfp)
