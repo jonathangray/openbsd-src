@@ -57,7 +57,7 @@ struct hwm_drvdata {
 struct i915_hwmon {
 	struct hwm_drvdata ddat;
 	struct hwm_drvdata ddat_gt[I915_MAX_GT];
-	struct mutex hwmon_lock;		/* counter overflow logic and rmw */
+	struct rwlock hwmon_lock;		/* counter overflow logic and rmw */
 	struct hwm_reg rg;
 	int scl_shift_power;
 	int scl_shift_energy;

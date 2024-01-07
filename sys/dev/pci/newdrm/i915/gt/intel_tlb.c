@@ -145,7 +145,7 @@ unlock:
 
 void intel_gt_init_tlb(struct intel_gt *gt)
 {
-	mutex_init(&gt->tlb.invalidate_lock);
+	rw_init(&gt->tlb.invalidate_lock, "gttlb");
 	seqcount_mutex_init(&gt->tlb.seqno, &gt->tlb.invalidate_lock);
 }
 
