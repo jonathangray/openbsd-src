@@ -885,7 +885,7 @@ i915_gem_stolen_lmem_setup(struct drm_i915_private *i915, u16 type,
 			   u16 instance)
 {
 	struct intel_uncore *uncore = &i915->uncore;
-	struct pci_dev *pdev = i915->drm.pdev
+	struct pci_dev *pdev = i915->drm.pdev;
 	resource_size_t dsm_size, dsm_base, lmem_size;
 	struct intel_memory_region *mem;
 	resource_size_t io_start, io_size;
