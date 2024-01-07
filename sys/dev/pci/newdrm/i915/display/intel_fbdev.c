@@ -126,6 +126,7 @@ static int intel_fbdev_pan_display(struct fb_var_screeninfo *var,
 	return ret;
 }
 
+#ifdef notyet
 static int intel_fbdev_mmap(struct fb_info *info, struct vm_area_struct *vma)
 {
 	struct intel_fbdev *fbdev = to_intel_fbdev(info->par);
@@ -134,6 +135,7 @@ static int intel_fbdev_mmap(struct fb_info *info, struct vm_area_struct *vma)
 
 	return i915_gem_fb_mmap(obj, vma);
 }
+#endif
 
 static const struct fb_ops intelfb_ops = {
 #ifdef notyet
@@ -168,7 +170,7 @@ static int intelfb_alloc(struct drm_fb_helper *helper,
 	mode_cmd.width = sizes->surface_width;
 	mode_cmd.height = sizes->surface_height;
 
-	mode_cmd.pitches[0] = roundup2(mode_cmd.width *
+	mode_cmd.pitches[0] = ALIGN(mode_cmd.width *
 				    DIV_ROUND_UP(sizes->surface_bpp, 8), 64);
 	mode_cmd.pixel_format = drm_mode_legacy_fb_format(sizes->surface_bpp,
 							  sizes->surface_depth);
@@ -286,6 +288,7 @@ static int intelfb_create(struct drm_fb_helper *helper,
 
 	info->fbops = &intelfb_ops;
 
+#ifdef __linux__
 	obj = intel_fb_obj(&intel_fb->base);
 	if (i915_gem_object_is_lmem(obj)) {
 		struct intel_memory_region *mem = obj->mm.region;
