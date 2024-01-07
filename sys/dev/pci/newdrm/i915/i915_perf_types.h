@@ -185,7 +185,7 @@ struct i915_perf_stream {
 	/**
 	 * @lock: Lock associated with operations on stream
 	 */
-	struct mutex lock;
+	struct rwlock lock;
 
 	/**
 	 * @sample_flags: Flags representing the `DRM_I915_PERF_PROP_SAMPLE_*`
@@ -442,7 +442,7 @@ struct i915_perf_gt {
 	/*
 	 * Lock associated with anything below within this structure.
 	 */
-	struct mutex lock;
+	struct rwlock lock;
 
 	/**
 	 * @sseu: sseu configuration selected to run while perf is active,

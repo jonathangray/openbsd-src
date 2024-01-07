@@ -430,13 +430,13 @@ static void free_oa_config_bo(struct i915_oa_config_bo *oa_bo)
 	kfree(oa_bo);
 }
 
+#endif
+
 static inline const
 struct i915_perf_regs *__oa_regs(struct i915_perf_stream *stream)
 {
 	return &stream->engine->oa_group->regs;
 }
-
-#endif
 
 static u32 gen12_oa_hw_tail_read(struct i915_perf_stream *stream)
 {
@@ -1656,6 +1656,8 @@ free_noa_wait(struct i915_perf_stream *stream)
 	i915_vma_unpin_and_release(&stream->noa_wait, 0);
 }
 
+#endif /* notyet */
+
 static bool engine_supports_oa(const struct intel_engine_cs *engine)
 {
 	return engine->oa_group;
@@ -1665,6 +1667,8 @@ static bool engine_supports_oa_format(struct intel_engine_cs *engine, int type)
 {
 	return engine->oa_group && engine->oa_group->type == type;
 }
+
+#ifdef notyet
 
 static void i915_oa_stream_destroy(struct i915_perf_stream *stream)
 {
