@@ -156,4 +156,6 @@ _in_dbg_master(void)
 
 #define CONCATENATE(x, y)	__CONCAT(x, y)
 
+#define PTR_IF(c, p)		((c) ? (p) : NULL)
+
 #endif

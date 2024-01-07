@@ -331,12 +331,6 @@ static int i915_driver_mmio_probe(struct drm_i915_private *dev_priv)
 		if (ret)
 			return ret;
 	}
-#else
-	if (dev_priv->memex == NULL || extent_alloc(dev_priv->memex,
-	    MCHBAR_SIZE, MCHBAR_SIZE, 0, 0, 0, &dev_priv->mch_res.start)) {
-		return -ENOMEM;
-	}
-#endif
 
 	/* Try to make sure MCHBAR is enabled before poking at it */
 	intel_gmch_bar_setup(dev_priv);
@@ -746,6 +740,10 @@ i915_driver_create(struct pci_dev *pdev, const struct pci_device_id *ent)
 	return i915;
 }
 
+#endif
+
+void inteldrm_init_backlight(struct inteldrm_softc *);
+
 /**
  * i915_driver_probe - setup chip and create an initial config
  * @pdev: PCI device
@@ -757,8 +755,9 @@ i915_driver_create(struct pci_dev *pdev, const struct pci_device_id *ent)
  *   - allocate initial config memory
  *   - setup the DRM framebuffer with the allocated memory
  */
-int i915_driver_probe(struct pci_dev *pdev, const struct pci_device_id *ent)
+int i915_driver_probe(struct drm_i915_private *i915, const struct pci_device_id *ent)
 {
+#ifdef __linux__
 	struct drm_i915_private *i915;
 	int ret;
 
@@ -773,6 +772,10 @@ int i915_driver_probe(struct pci_dev *pdev, const struct pci_device_id *ent)
 		pci_disable_device(pdev);
 		return PTR_ERR(i915);
 	}
+#else
+	struct pci_dev *pdev = i915->drm.pdev;
+	int ret;
+#endif
 
 	ret = i915_driver_early_probe(i915);
 	if (ret < 0)
@@ -818,6 +821,10 @@ int i915_driver_probe(struct pci_dev *pdev, const struct pci_device_id *ent)
 
 	i915_driver_register(i915);
 
+#ifdef __OpenBSD__
+	inteldrm_init_backlight(i915);
+#endif
+
 	enable_rpm_wakeref_asserts(&i915->runtime_pm);
 
 	i915_welcome_messages(i915);
@@ -856,120 +863,6 @@ out_pci_disable:
 	i915_probe_error(i915, "Device initialization failed (%d)\n", ret);
 	return ret;
 }
-
-#else /* !__linux__ */
-
-void inteldrm_init_backlight(struct inteldrm_softc *);
-
-/**
- * i915_driver_probe - setup chip and create an initial config
- * @pdev: PCI device
- * @ent: matching PCI ID entry
- *
- * The driver probe routine has to do several things:
- *   - drive output discovery via intel_modeset_init()
- *   - initialize the memory manager
- *   - allocate initial config memory
- *   - setup the DRM framebuffer with the allocated memory
- */
-int i915_driver_probe(struct drm_i915_private *i915, const struct pci_device_id *ent)
-{
-	struct pci_dev *pdev = i915->drm.pdev;
-	int ret;
-
-	/* Disable nuclear pageflip by default on pre-ILK */
-	if (!i915->params.nuclear_pageflip && DISPLAY_VER(i915) < 5)
-		i915->drm.driver_features &= ~DRIVER_ATOMIC;
-
-	ret = pci_enable_device(pdev);
-	if (ret)
-		goto out_fini;
-
-	ret = i915_driver_early_probe(i915);
-	if (ret < 0)
-		goto out_pci_disable;
-
-	disable_rpm_wakeref_asserts(&i915->runtime_pm);
-
-	intel_vgpu_detect(i915);
-
-	ret = intel_gt_probe_all(i915);
-	if (ret < 0)
-		goto out_runtime_pm_put;
-
-	ret = i915_driver_mmio_probe(i915);
-	if (ret < 0)
-		goto out_runtime_pm_put;
-
-	ret = i915_driver_hw_probe(i915);
-	if (ret < 0)
-		goto out_cleanup_mmio;
-
-	ret = intel_modeset_init_noirq(i915);
-	if (ret < 0)
-		goto out_cleanup_hw;
-
-	ret = intel_irq_install(i915);
-	if (ret)
-		goto out_cleanup_modeset;
-
-	ret = intel_modeset_init_nogem(i915);
-	if (ret)
-		goto out_cleanup_irq;
-
-	ret = i915_gem_init(i915);
-	if (ret)
-		goto out_cleanup_modeset2;
-
-	ret = intel_modeset_init(i915);
-	if (ret)
-		goto out_cleanup_gem;
-
-	i915_driver_register(i915);
-
-	inteldrm_init_backlight(i915);
-
-	enable_rpm_wakeref_asserts(&i915->runtime_pm);
-
-	i915_welcome_messages(i915);
-
-	i915->do_release = true;
-
-	return 0;
-
-out_cleanup_gem:
-	i915_gem_suspend(i915);
-	i915_gem_driver_remove(i915);
-	i915_gem_driver_release(i915);
-out_cleanup_modeset2:
-	/* FIXME clean up the error path */
-	intel_modeset_driver_remove(i915);
-	intel_irq_uninstall(i915);
-	intel_modeset_driver_remove_noirq(i915);
-	goto out_cleanup_modeset;
-out_cleanup_irq:
-	intel_irq_uninstall(i915);
-out_cleanup_modeset:
-	intel_modeset_driver_remove_nogem(i915);
-out_cleanup_hw:
-	i915_driver_hw_remove(i915);
-	intel_memory_regions_driver_release(i915);
-	i915_ggtt_driver_release(i915);
-	i915_gem_drain_freed_objects(i915);
-	i915_ggtt_driver_late_release(i915);
-out_cleanup_mmio:
-	i915_driver_mmio_release(i915);
-out_runtime_pm_put:
-	enable_rpm_wakeref_asserts(&i915->runtime_pm);
-	i915_driver_late_release(i915);
-out_pci_disable:
-	pci_disable_device(pdev);
-out_fini:
-	i915_probe_error(i915, "Device initialization failed (%d)\n", ret);
-	return ret;
-}
-
-#endif
 
 void i915_driver_remove(struct drm_i915_private *i915)
 {
@@ -2187,7 +2080,7 @@ inteldrm_doswitch(void *v)
 	struct drm_device *dev = &dev_priv->drm;
 
 	rasops_show_screen(ri, dev_priv->switchcookie, 0, NULL, NULL);
-	intel_fbdev_restore_mode(dev);
+	intel_fbdev_restore_mode(dev_priv);
 
 	if (dev_priv->switchcb)
 		(*dev_priv->switchcb)(dev_priv->switchcbarg, 0, 0);
@@ -2204,7 +2097,7 @@ inteldrm_enter_ddb(void *v, void *cookie)
 		return;
 
 	rasops_show_screen(ri, cookie, 0, NULL, NULL);
-	intel_fbdev_restore_mode(dev);
+	intel_fbdev_restore_mode(dev_priv);
 }
 
 int
@@ -2264,7 +2157,7 @@ inteldrm_burner_cb(void *arg1)
 	struct drm_device *dev = &dev_priv->drm;
 	struct drm_fb_helper *helper = dev->fb_helper;
 
-	drm_fb_helper_blank(dev_priv->burner_fblank, helper->fbdev);
+	drm_fb_helper_blank(dev_priv->burner_fblank, helper->info);
 }
 
 int
@@ -2407,14 +2300,8 @@ inteldrm_attach(struct device *parent, struct device *self, void *aux)
 	dev_priv->params.request_timeout_ms = 0;
 	dev_priv->params.enable_psr = 0;
 
-	/* Setup the write-once "constant" device info */
-	device_info = mkwrite_device_info(dev_priv);
-	memcpy(device_info, info, sizeof(*device_info));
-
-	/* Initialize initial runtime info from static const data and pdev. */
-	runtime = RUNTIME_INFO(dev_priv);
-	memcpy(runtime, &INTEL_INFO(dev_priv)->__runtime, sizeof(*runtime));
-	runtime->device_id = dev->pdev->device;
+	/* Set up device info and initial runtime info. */
+	intel_device_info_driver_create(dev_priv, dev->pdev->device, info);
 
 	mmio_bar = (GRAPHICS_VER(dev_priv) == 2) ? 0x14 : 0x10;
 	/* Before gen4, the registers and the GTT are behind different BARs.
@@ -2482,7 +2369,7 @@ inteldrm_attach(struct device *parent, struct device *self, void *aux)
 		return;
 	}
 	dev->pdev->irq = -1;
-	i915_get_bridge_dev(dev_priv);
+	intel_gmch_bridge_setup(dev_priv);
 	intel_init_stolen_res(dev_priv);
 
 	config_mountroot(self, inteldrm_attachhook);
@@ -2629,7 +2516,7 @@ inteldrm_activate(struct device *self, int act)
 	case DVACT_WAKEUP:
 		i915_drm_resume_early(dev);
 		i915_drm_resume(dev);
-		intel_fbdev_restore_mode(dev);
+		intel_fbdev_restore_mode(dev_priv);
 		rv = config_suspend(dev->dev, act);
 		break;
 	}
