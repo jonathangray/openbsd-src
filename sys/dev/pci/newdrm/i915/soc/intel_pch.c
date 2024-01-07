@@ -214,6 +214,8 @@ intel_virt_detect_pch(const struct drm_i915_private *dev_priv,
 
 void intel_detect_pch(struct drm_i915_private *dev_priv)
 {
+	STUB();
+#ifdef notyet
 	struct pci_dev *pch = NULL;
 	unsigned short id;
 	enum intel_pch pch_type;
@@ -278,4 +280,5 @@ void intel_detect_pch(struct drm_i915_private *dev_priv)
 	}
 
 	pci_dev_put(pch);
+#endif
 }
