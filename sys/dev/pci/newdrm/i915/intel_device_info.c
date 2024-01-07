@@ -290,6 +290,8 @@ static void intel_device_info_subplatform_init(struct drm_i915_private *i915)
 
 static void ip_ver_read(struct drm_i915_private *i915, u32 offset, struct intel_ip_version *ip)
 {
+	STUB();
+#ifdef notyet
 	struct pci_dev *pdev = to_pci_dev(i915->drm.dev);
 	void __iomem *addr;
 	u32 val;
@@ -312,6 +314,7 @@ static void ip_ver_read(struct drm_i915_private *i915, u32 offset, struct intel_
 		drm_dbg(&i915->drm,
 			"Hardware reports GMD IP version %u.%u (REG[0x%x] = 0x%08x) but minimum expected is %u.%u\n",
 			ip->ver, ip->rel, offset, val, expected_ver, expected_rel);
+#endif
 }
 
 /*
