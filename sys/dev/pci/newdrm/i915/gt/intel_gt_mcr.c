@@ -144,7 +144,7 @@ void intel_gt_mcr_init(struct intel_gt *gt)
 	unsigned long fuse;
 	int i;
 
-	spin_lock_init(&gt->mcr_lock);
+	mtx_init(&gt->mcr_lock, IPL_TTY);
 
 	/*
 	 * An mslice is unavailable only if both the meml3 for the slice is
