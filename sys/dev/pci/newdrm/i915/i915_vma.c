@@ -582,7 +582,7 @@ void __iomem *i915_vma_pin_iomap(struct i915_vma *vma)
 			ptr = i915_gem_object_lmem_io_map(vma->obj, 0,
 							  vma->obj->base.size);
 		} else if (i915_vma_is_map_and_fenceable(vma)) {
-+#ifdef __linux__
+#ifdef __linux__
 			ptr = io_mapping_map_wc(&i915_vm_to_ggtt(vma->vm)->iomap,
 						i915_vma_offset(vma),
 						i915_vma_size(vma));
