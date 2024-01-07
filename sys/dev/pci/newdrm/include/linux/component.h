@@ -19,7 +19,8 @@ struct component_master_ops {
 };
 
 #define component_del(a, b)
-#define component_add(a, b)	0
+#define component_add(a, b)		0
+#define component_add_typed(a, b, c)	0
 
 static inline int
 component_bind_all(struct device *dev, void *data)
