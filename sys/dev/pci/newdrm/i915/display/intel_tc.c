@@ -49,7 +49,7 @@ struct intel_tc_port {
 
 	const struct intel_tc_phy_ops *phy_ops;
 
-	struct mutex lock;	/* protects the TypeC port mode */
+	struct rwlock lock;	/* protects the TypeC port mode */
 	intel_wakeref_t lock_wakeref;
 #if IS_ENABLED(CONFIG_DRM_I915_DEBUG_RUNTIME_PM)
 	enum intel_display_power_domain lock_power_domain;
