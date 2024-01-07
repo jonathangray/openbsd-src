@@ -24,8 +24,11 @@
  */
 static void check_release_folio_batch(struct folio_batch *fbatch)
 {
+	STUB();
+#ifdef notyet
 	check_move_unevictable_folios(fbatch);
 	__folio_batch_release(fbatch);
+#endif
 	cond_resched();
 }
 
@@ -40,10 +43,11 @@ void shmem_sg_free_table(struct sg_table *st, struct address_space *mapping,
 
 #ifdef __linux__
 	mapping_clear_unevictable(mapping);
-#endif
 
 	folio_batch_init(&fbatch);
+#endif
 	for_each_sgt_page(page, sgt_iter, st) {
+#ifdef __linux__
 		struct folio *folio = page_folio(page);
 
 		if (folio == last)
@@ -51,12 +55,14 @@ void shmem_sg_free_table(struct sg_table *st, struct address_space *mapping,
 		last = folio;
 		if (dirty)
 			folio_mark_dirty(folio);
-#ifdef __linux__
 		if (backup)
 			folio_mark_accessed(folio);
 
 		if (!folio_batch_add(&fbatch, folio))
 			check_release_folio_batch(&fbatch);
+#else
+		if (dirty)
+			set_page_dirty(page);
 #endif
 	}
 #ifdef __linux__
@@ -82,6 +88,7 @@ int shmem_sg_alloc_table(struct drm_i915_private *i915, struct sg_table *st,
 	gfp_t noreclaim;
 	int ret;
 	struct pglist plist;
+	struct vm_page *page;
 
 	if (overflows_type(size / PAGE_SIZE, page_count))
 		return -E2BIG;
