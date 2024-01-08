@@ -223,7 +223,7 @@ int intel_pxp_init(struct drm_i915_private *i915)
 
 	/* init common info used by all feature-mode usages*/
 	i915->pxp->ctrl_gt = gt;
-	mutex_init(&i915->pxp->tee_mutex);
+	rw_init(&i915->pxp->tee_mutex, "pxptee");
 
 	/*
 	 * If full PXP feature is not available but HuC is loaded by GSC on pre-MTL

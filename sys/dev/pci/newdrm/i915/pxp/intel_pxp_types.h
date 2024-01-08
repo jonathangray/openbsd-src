@@ -67,7 +67,7 @@ struct intel_pxp {
 	struct intel_context *ce;
 
 	/** @arb_mutex: protects arb session start */
-	struct mutex arb_mutex;
+	struct rwlock arb_mutex;
 	/**
 	 * @arb_is_valid: tracks arb session status.
 	 * After a teardown, the arb session can still be in play on the HW
@@ -84,7 +84,7 @@ struct intel_pxp {
 	u32 key_instance;
 
 	/** @tee_mutex: protects the tee channel binding and messaging. */
-	struct mutex tee_mutex;
+	struct rwlock tee_mutex;
 
 	/** @stream_cmd: LMEM obj used to send stream PXP commands to the GSC */
 	struct {
