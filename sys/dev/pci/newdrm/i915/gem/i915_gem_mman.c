@@ -1469,6 +1469,7 @@ i915_gem_mmap(struct file *filp, vm_prot_t accessprot,
 
 #endif /* !__linux__ */
 
+#ifdef notyet
 int i915_gem_fb_mmap(struct drm_i915_gem_object *obj, struct vm_area_struct *vma)
 {
 	struct drm_i915_private *i915 = to_i915(obj->base.dev);
@@ -1504,6 +1505,7 @@ int i915_gem_fb_mmap(struct drm_i915_gem_object *obj, struct vm_area_struct *vma
 	obj = i915_gem_object_get(obj);
 	return i915_gem_object_mmap(obj, mmo, vma);
 }
+#endif /* notyet */
 
 #if IS_ENABLED(CONFIG_DRM_I915_SELFTEST)
 #include "selftests/i915_gem_mman.c"
