@@ -732,16 +732,12 @@ static const struct intel_display_device_info xe_lpdp_display = {
  */
 static bool has_no_display(struct pci_dev *pdev)
 {
-	STUB();
-	return false;
-#ifdef notyet
 	static const struct pci_device_id ids[] = {
 		INTEL_IVB_Q_IDS(0),
 		{}
 	};
 
 	return pci_match_id(ids, pdev);
-#endif
 }
 
 #undef INTEL_VGA_DEVICE
