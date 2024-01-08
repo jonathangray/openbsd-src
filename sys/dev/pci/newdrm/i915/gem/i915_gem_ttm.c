@@ -737,6 +737,9 @@ static int i915_ttm_access_memory(struct ttm_buffer_object *bo,
 				  unsigned long offset, void *buf,
 				  int len, int write)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct drm_i915_gem_object *obj = i915_ttm_to_gem(bo);
 	resource_size_t iomap = obj->mm.region->iomap.base -
 		obj->mm.region->region.start;
@@ -775,6 +778,7 @@ static int i915_ttm_access_memory(struct ttm_buffer_object *bo,
 	} while (bytes_left);
 
 	return len;
+#endif
 }
 
 /*
