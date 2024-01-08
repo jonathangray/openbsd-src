@@ -212,13 +212,22 @@ intel_virt_detect_pch(const struct drm_i915_private *dev_priv,
 	*pch_id = id;
 }
 
+static int
+intel_pch_match(struct pci_attach_args *pa)
+{
+	if (PCI_VENDOR(pa->pa_id) == PCI_VENDOR_INTEL &&
+	    PCI_CLASS(pa->pa_class) == PCI_CLASS_BRIDGE &&
+	    PCI_SUBCLASS(pa->pa_class) == PCI_SUBCLASS_BRIDGE_ISA)
+		return 1;
+	return 0;
+}
+
 void intel_detect_pch(struct drm_i915_private *dev_priv)
 {
-	STUB();
-#ifdef notyet
-	struct pci_dev *pch = NULL;
+	struct pci_attach_args pa;
 	unsigned short id;
 	enum intel_pch pch_type;
+	pcireg_t subsys;
 
 	/* DG1 has south engine display on the same PCI device */
 	if (IS_DG1(dev_priv)) {
@@ -240,23 +249,19 @@ void intel_detect_pch(struct drm_i915_private *dev_priv)
 	 * all the ISA bridge devices and check for the first match, instead
 	 * of only checking the first one.
 	 */
-	while ((pch = pci_get_class(PCI_CLASS_BRIDGE_ISA << 8, pch))) {
-		if (pch->vendor != PCI_VENDOR_ID_INTEL)
-			continue;
-
-		id = pch->device & INTEL_PCH_DEVICE_ID_MASK;
+	if (pci_find_device(&pa, intel_pch_match)) {
+		id = PCI_PRODUCT(pa.pa_id) & INTEL_PCH_DEVICE_ID_MASK;
+		subsys = pci_conf_read(pa.pa_pc, pa.pa_tag, PCI_SUBSYS_ID_REG);
 
 		pch_type = intel_pch_type(dev_priv, id);
 		if (pch_type != PCH_NONE) {
 			dev_priv->pch_type = pch_type;
 			dev_priv->pch_id = id;
-			break;
-		} else if (intel_is_virt_pch(id, pch->subsystem_vendor,
-					     pch->subsystem_device)) {
+		} else if (intel_is_virt_pch(id, PCI_VENDOR(subsys),
+					     PCI_PRODUCT(subsys))) {
 			intel_virt_detect_pch(dev_priv, &id, &pch_type);
 			dev_priv->pch_type = pch_type;
 			dev_priv->pch_id = id;
-			break;
 		}
 	}
 
@@ -264,12 +269,12 @@ void intel_detect_pch(struct drm_i915_private *dev_priv)
 	 * Use PCH_NOP (PCH but no South Display) for PCH platforms without
 	 * display.
 	 */
-	if (pch && !HAS_DISPLAY(dev_priv)) {
+	if (pci_find_device(&pa, intel_pch_match) && !HAS_DISPLAY(dev_priv)) {
 		drm_dbg_kms(&dev_priv->drm,
 			    "Display disabled, reverting to NOP PCH\n");
 		dev_priv->pch_type = PCH_NOP;
 		dev_priv->pch_id = 0;
-	} else if (!pch) {
+	} else if (!pci_find_device(&pa, intel_pch_match)) {
 		if (i915_run_as_guest() && HAS_DISPLAY(dev_priv)) {
 			intel_virt_detect_pch(dev_priv, &id, &pch_type);
 			dev_priv->pch_type = pch_type;
@@ -280,5 +285,4 @@ void intel_detect_pch(struct drm_i915_private *dev_priv)
 	}
 
 	pci_dev_put(pch);
-#endif
 }
