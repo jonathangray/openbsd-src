@@ -109,14 +109,18 @@ static void gsc_init_done(struct intel_huc *huc)
 	/* MEI-GSC init is done, now we wait for MEI-PXP to bind */
 	huc->delayed_load.status = INTEL_HUC_WAITING_ON_PXP;
 	if (!i915_sw_fence_done(&huc->delayed_load.fence))
+#ifdef __linux__
 		hrtimer_start(&huc->delayed_load.timer,
 			      ms_to_ktime(PXP_INIT_TIMEOUT_MS),
 			      HRTIMER_MODE_REL);
+#else
+		timeout_add_msec(&huc->delayed_load.timer, PXP_INIT_TIMEOUT_MS);
+#endif
 }
 
-static enum hrtimer_restart huc_delayed_load_timer_callback(struct hrtimer *hrtimer)
+static void huc_delayed_load_timer_callback(void *arg)
 {
-	struct intel_huc *huc = container_of(hrtimer, struct intel_huc, delayed_load.timer);
+	struct intel_huc *huc = arg;
 
 	if (!intel_huc_is_authenticated(huc, INTEL_HUC_AUTH_BY_GSC)) {
 		if (huc->delayed_load.status == INTEL_HUC_WAITING_ON_GSC)
@@ -128,13 +132,11 @@ static enum hrtimer_restart huc_delayed_load_timer_callback(struct hrtimer *hrti
 
 		__gsc_init_error(huc);
 	}
-
-	return HRTIMER_NORESTART;
 }
 
 static void huc_delayed_load_start(struct intel_huc *huc)
 {
-	ktime_t delay;
+	int delay;
 
 	GEM_BUG_ON(intel_huc_is_authenticated(huc, INTEL_HUC_AUTH_BY_GSC));
 
@@ -144,10 +146,10 @@ static void huc_delayed_load_start(struct intel_huc *huc)
 	 */
 	switch (huc->delayed_load.status) {
 	case INTEL_HUC_WAITING_ON_GSC:
-		delay = ms_to_ktime(GSC_INIT_TIMEOUT_MS);
+		delay = GSC_INIT_TIMEOUT_MS;
 		break;
 	case INTEL_HUC_WAITING_ON_PXP:
-		delay = ms_to_ktime(PXP_INIT_TIMEOUT_MS);
+		delay = PXP_INIT_TIMEOUT_MS;
 		break;
 	default:
 		gsc_init_error(huc);
@@ -166,11 +168,18 @@ static void huc_delayed_load_start(struct intel_huc *huc)
 	i915_sw_fence_await(&huc->delayed_load.fence);
 	i915_sw_fence_commit(&huc->delayed_load.fence);
 
+#ifdef __linux__
 	hrtimer_start(&huc->delayed_load.timer, delay, HRTIMER_MODE_REL);
+#else
+	timeout_add_msec(&huc->delayed_load.timer, delay);
+#endif
 }
 
 static int gsc_notifier(struct notifier_block *nb, unsigned long action, void *data)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct device *dev = data;
 	struct intel_huc *huc = container_of(nb, struct intel_huc, delayed_load.nb);
 	struct intel_gsc_intf *intf = &huc_to_gt(huc)->gsc.intf[0];
@@ -191,6 +200,7 @@ static int gsc_notifier(struct notifier_block *nb, unsigned long action, void *d
 	}
 
 	return 0;
+#endif
 }
 
 void intel_huc_register_gsc_notifier(struct intel_huc *huc, const struct bus_type *bus)
@@ -230,8 +240,13 @@ static void delayed_huc_load_init(struct intel_huc *huc)
 			   sw_fence_dummy_notify);
 	i915_sw_fence_commit(&huc->delayed_load.fence);
 
+#ifdef __linux__
 	hrtimer_init(&huc->delayed_load.timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
 	huc->delayed_load.timer.function = huc_delayed_load_timer_callback;
+#else
+	timeout_set(&huc->delayed_load.timer, huc_delayed_load_timer_callback,
+	    huc);
+#endif
 }
 
 static void delayed_huc_load_fini(struct intel_huc *huc)
