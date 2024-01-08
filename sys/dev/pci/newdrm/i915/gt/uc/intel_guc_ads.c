@@ -677,6 +677,9 @@ static void guc_init_golden_context(struct intel_guc *guc)
 
 static u32 guc_get_capture_engine_mask(struct iosys_map *info_map, u32 capture_class)
 {
+	STUB();
+	return 0;
+#ifdef notyet
 	u32 mask;
 
 	switch (capture_class) {
@@ -706,6 +709,7 @@ static u32 guc_get_capture_engine_mask(struct iosys_map *info_map, u32 capture_c
 	}
 
 	return mask;
+#endif
 }
 
 static int
