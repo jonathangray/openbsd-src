@@ -1292,7 +1292,7 @@ static struct i915_vma *gen7_ctx_vma(struct intel_engine_cs *engine)
 	if (!err)
 		return NULL;
 
-	size = roundup2(err, PAGE_SIZE);
+	size = ALIGN(err, PAGE_SIZE);
 
 	obj = i915_gem_object_create_internal(engine->i915, size);
 	if (IS_ERR(obj))

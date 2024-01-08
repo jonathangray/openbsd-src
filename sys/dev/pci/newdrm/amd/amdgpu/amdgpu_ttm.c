@@ -225,7 +225,7 @@ static int amdgpu_ttm_map_buffer(struct ttm_buffer_object *bo,
 		AMDGPU_GPU_PAGE_SIZE;
 	*addr += offset;
 
-	num_dw = roundup2(adev->mman.buffer_funcs->copy_num_dw, 8);
+	num_dw = ALIGN(adev->mman.buffer_funcs->copy_num_dw, 8);
 	num_bytes = num_pages * 8 * AMDGPU_GPU_PAGES_IN_CPU_PAGE;
 
 	r = amdgpu_job_alloc_with_ib(adev, &adev->mman.high_pr,
@@ -1505,7 +1505,7 @@ static int amdgpu_ttm_access_memory_sdma(struct ttm_buffer_object *bo,
 	if (write)
 		memcpy(adev->mman.sdma_access_ptr, buf, len);
 
-	num_dw = roundup2(adev->mman.buffer_funcs->copy_num_dw, 8);
+	num_dw = ALIGN(adev->mman.buffer_funcs->copy_num_dw, 8);
 	r = amdgpu_job_alloc_with_ib(adev, &adev->mman.high_pr,
 				     AMDGPU_FENCE_OWNER_UNDEFINED,
 				     num_dw * 4, AMDGPU_IB_POOL_DELAYED,
@@ -1723,7 +1723,7 @@ static void amdgpu_ttm_training_data_block_init(struct amdgpu_device *adev,
 	memset(ctx, 0, sizeof(*ctx));
 
 	ctx->c2p_train_data_offset =
-		roundup2((adev->gmc.mc_vram_size - reserve_size - SZ_1M), SZ_1M);
+		ALIGN((adev->gmc.mc_vram_size - reserve_size - SZ_1M), SZ_1M);
 	ctx->p2c_train_data_offset =
 		(adev->gmc.mc_vram_size - GDDR6_MEM_TRAINING_OFFSET);
 	ctx->train_data_size =
@@ -2214,7 +2214,7 @@ int amdgpu_copy_buffer(struct amdgpu_ring *ring, uint64_t src_offset,
 
 	max_bytes = adev->mman.buffer_funcs->copy_max_bytes;
 	num_loops = DIV_ROUND_UP(byte_count, max_bytes);
-	num_dw = roundup2(num_loops * adev->mman.buffer_funcs->copy_num_dw, 8);
+	num_dw = ALIGN(num_loops * adev->mman.buffer_funcs->copy_num_dw, 8);
 	r = amdgpu_ttm_prepare_job(adev, direct_submit, num_dw,
 				   resv, vm_needs_flush, &job, false);
 	if (r)
@@ -2263,7 +2263,7 @@ static int amdgpu_ttm_fill_mem(struct amdgpu_ring *ring, uint32_t src_data,
 
 	max_bytes = adev->mman.buffer_funcs->fill_max_bytes;
 	num_loops = DIV_ROUND_UP_ULL(byte_count, max_bytes);
-	num_dw = roundup2(num_loops * adev->mman.buffer_funcs->fill_num_dw, 8);
+	num_dw = ALIGN(num_loops * adev->mman.buffer_funcs->fill_num_dw, 8);
 	r = amdgpu_ttm_prepare_job(adev, false, num_dw, resv, vm_needs_flush,
 				   &job, delayed);
 	if (r)

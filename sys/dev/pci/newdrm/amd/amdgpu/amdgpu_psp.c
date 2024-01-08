@@ -3470,7 +3470,7 @@ int psp_init_cap_microcode(struct psp_context *psp, const char *chip_name)
 	info->fw = adev->psp.cap_fw;
 	cap_hdr_v1_0 = (const struct psp_firmware_header_v1_0 *)
 		adev->psp.cap_fw->data;
-	adev->firmware.fw_size += roundup2(
+	adev->firmware.fw_size += ALIGN(
 			le32_to_cpu(cap_hdr_v1_0->header.ucode_size_bytes), PAGE_SIZE);
 	adev->psp.cap_fw_version = le32_to_cpu(cap_hdr_v1_0->header.ucode_version);
 	adev->psp.cap_feature_version = le32_to_cpu(cap_hdr_v1_0->sos.fw_version);

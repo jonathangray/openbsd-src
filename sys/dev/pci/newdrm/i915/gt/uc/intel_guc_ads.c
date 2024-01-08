@@ -274,7 +274,7 @@ __mmio_reg_add(struct temp_regset *regset, struct guc_mmio_reg *reg)
 	struct guc_mmio_reg *slot;
 
 	if (pos >= regset->storage_max) {
-		size_t size = roundup2((pos + 1) * sizeof(*slot), PAGE_SIZE);
+		size_t size = ALIGN((pos + 1) * sizeof(*slot), PAGE_SIZE);
 		struct guc_mmio_reg *r = krealloc(regset->storage,
 						  size, GFP_KERNEL);
 		if (!r) {

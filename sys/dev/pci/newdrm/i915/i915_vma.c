@@ -1193,7 +1193,7 @@ remap_color_plane_pages(const struct intel_remapped_info *rem_info,
 	unsigned int alignment_pad = 0;
 
 	if (rem_info->plane_alignment)
-		alignment_pad = roundup2(*gtt_offset, rem_info->plane_alignment) - *gtt_offset;
+		alignment_pad = ALIGN(*gtt_offset, rem_info->plane_alignment) - *gtt_offset;
 
 	if (rem_info->plane[color_plane].linear)
 		sg = remap_linear_color_plane_pages(obj,

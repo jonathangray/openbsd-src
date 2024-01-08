@@ -80,7 +80,7 @@ static inline struct intel_guc *ct_to_guc(struct intel_guc_ct *ct)
  * of the receive buffer (relative to the send) to ensure a G2H response
  * CTB has a landing spot.
  */
-#define CTB_DESC_SIZE		roundup2(sizeof(struct guc_ct_buffer_desc), SZ_2K)
+#define CTB_DESC_SIZE		ALIGN(sizeof(struct guc_ct_buffer_desc), SZ_2K)
 #define CTB_H2G_BUFFER_SIZE	(SZ_4K)
 #define CTB_G2H_BUFFER_SIZE	(4 * CTB_H2G_BUFFER_SIZE)
 #define G2H_ROOM_BUFFER_SIZE	(CTB_G2H_BUFFER_SIZE / 4)

@@ -1663,7 +1663,7 @@ static int gfx_v9_0_rlc_init(struct amdgpu_device *adev)
 
 	if (adev->flags & AMD_IS_APU) {
 		/* TODO: double check the cp_table_size for RV */
-		adev->gfx.rlc.cp_table_size = roundup2(96 * 5 * 4, 2048) + (64 * 1024); /* JT + GDS */
+		adev->gfx.rlc.cp_table_size = ALIGN(96 * 5 * 4, 2048) + (64 * 1024); /* JT + GDS */
 		r = amdgpu_gfx_rlc_init_cpt(adev);
 		if (r)
 			return r;
@@ -4373,9 +4373,9 @@ static int gfx_v9_0_do_edc_gpr_workarounds(struct amdgpu_device *adev)
 		(gpr_reg_size * 3 + 4 + 5 + 2) * 4; /* SGPRS1 */
 	total_size +=
 		(gpr_reg_size * 3 + 4 + 5 + 2) * 4; /* SGPRS2 */
-	total_size = roundup2(total_size, 256);
+	total_size = ALIGN(total_size, 256);
 	vgpr_offset = total_size;
-	total_size += roundup2(vgpr_init_shader_size, 256);
+	total_size += ALIGN(vgpr_init_shader_size, 256);
 	sgpr_offset = total_size;
 	total_size += sizeof(sgpr_init_compute_shader);
 
@@ -5530,7 +5530,7 @@ static void gfx_v9_0_ring_emit_de_meta(struct amdgpu_ring *ring, bool resume, bo
 		de_payload_gpu_addr = amdgpu_csa_vaddr(ring->adev) + offset;
 		de_payload_cpu_addr = adev->virt.csa_cpu_addr + offset;
 
-		gds_addr = roundup2(amdgpu_csa_vaddr(ring->adev) +
+		gds_addr = ALIGN(amdgpu_csa_vaddr(ring->adev) +
 				 AMDGPU_CSA_SIZE - adev->gds.gds_size,
 				 PAGE_SIZE);
 	}

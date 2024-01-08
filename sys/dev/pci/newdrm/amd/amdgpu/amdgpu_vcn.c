@@ -1069,7 +1069,7 @@ void amdgpu_vcn_setup_ucode(struct amdgpu_device *adev)
 			adev->firmware.ucode[idx].ucode_id = idx;
 			adev->firmware.ucode[idx].fw = adev->vcn.fw;
 			adev->firmware.fw_size +=
-				roundup2(le32_to_cpu(hdr->ucode_size_bytes), PAGE_SIZE);
+				ALIGN(le32_to_cpu(hdr->ucode_size_bytes), PAGE_SIZE);
 
 			if (adev->ip_versions[UVD_HWIP][0] == IP_VERSION(4, 0, 3))
 				break;

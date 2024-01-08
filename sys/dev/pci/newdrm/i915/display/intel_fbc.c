@@ -166,7 +166,7 @@ static unsigned int skl_fbc_min_cfb_stride(const struct intel_plane_state *plane
 	 * At least some of the platforms require each 4 line segment to
 	 * be 512 byte aligned. Just do it always for simplicity.
 	 */
-	stride = roundup2(stride, 512);
+	stride = ALIGN(stride, 512);
 
 	/* convert back to single line equivalent with 1:1 compression limit */
 	return stride * limit / height;
@@ -184,7 +184,7 @@ static unsigned int intel_fbc_cfb_stride(const struct intel_plane_state *plane_s
 	 * that regardless of the compression limit we choose later.
 	 */
 	if (DISPLAY_VER(i915) >= 9)
-		return max(roundup2(stride, 512), skl_fbc_min_cfb_stride(plane_state));
+		return max(ALIGN(stride, 512), skl_fbc_min_cfb_stride(plane_state));
 	else
 		return stride;
 }

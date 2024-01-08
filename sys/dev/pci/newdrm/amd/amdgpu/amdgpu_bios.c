@@ -261,7 +261,7 @@ static bool amdgpu_read_bios_from_rom(struct amdgpu_device *adev)
 
 	/* valid vbios, go on */
 	len = AMD_VBIOS_LENGTH(header);
-	len = roundup2(len, 4);
+	len = ALIGN(len, 4);
 	adev->bios = kmalloc(len, GFP_KERNEL);
 	if (!adev->bios) {
 		DRM_ERROR("no memory to allocate for BIOS\n");
@@ -623,7 +623,7 @@ bool amdgpu_soc15_read_bios_from_rom(struct amdgpu_device *adev,
 		return false;
 
 	dw_ptr = (u32 *)bios;
-	length_dw = roundup2(length_bytes, 4) / 4;
+	length_dw = ALIGN(length_bytes, 4) / 4;
 
 	rom_index_offset =
 		adev->smuio.funcs->get_rom_index_offset(adev);

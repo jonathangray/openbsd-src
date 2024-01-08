@@ -1187,7 +1187,7 @@ void amdgpu_gfx_cp_init_microcode(struct amdgpu_device *adev,
 		info = &adev->firmware.ucode[ucode_id];
 		info->ucode_id = ucode_id;
 		info->fw = ucode_fw;
-		adev->firmware.fw_size += roundup2(fw_size, PAGE_SIZE);
+		adev->firmware.fw_size += ALIGN(fw_size, PAGE_SIZE);
 	}
 }
 

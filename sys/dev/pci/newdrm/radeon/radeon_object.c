@@ -138,7 +138,7 @@ int radeon_bo_create(struct radeon_device *rdev,
 	unsigned long page_align = roundup(byte_align, PAGE_SIZE) >> PAGE_SHIFT;
 	int r;
 
-	size = roundup2(size, PAGE_SIZE);
+	size = ALIGN(size, PAGE_SIZE);
 
 	if (kernel) {
 		type = ttm_bo_type_kernel;

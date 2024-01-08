@@ -730,7 +730,7 @@ intel_fb_align_height(const struct drm_framebuffer *fb,
 {
 	unsigned int tile_height = intel_tile_height(fb, color_plane);
 
-	return roundup2(height, tile_height);
+	return ALIGN(height, tile_height);
 }
 
 static unsigned int intel_fb_modifier_to_tiling(u64 fb_modifier)
@@ -1114,7 +1114,7 @@ static int intel_fb_offset_to_xy(int *x, int *y,
 	}
 
 	height = drm_framebuffer_plane_height(fb->height, fb, color_plane);
-	height = roundup2(height, intel_tile_height(fb, color_plane));
+	height = ALIGN(height, intel_tile_height(fb, color_plane));
 
 	/* Catch potential overflows early */
 	if (add_overflows_t(u32, mul_u32_u32(height, fb->pitches[color_plane]),
@@ -1482,7 +1482,7 @@ static u32 calc_plane_remap_info(const struct intel_framebuffer *fb, int color_p
 		check_array_bounds(i915, view->gtt.remapped.plane, color_plane);
 
 		if (view->gtt.remapped.plane_alignment) {
-			unsigned int aligned_offset = roundup2(gtt_offset,
+			unsigned int aligned_offset = ALIGN(gtt_offset,
 							    view->gtt.remapped.plane_alignment);
 
 			size += aligned_offset - gtt_offset;

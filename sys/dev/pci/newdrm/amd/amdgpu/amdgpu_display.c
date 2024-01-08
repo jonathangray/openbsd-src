@@ -887,7 +887,7 @@ static int convert_tiling_flags_to_modifier(struct amdgpu_framebuffer *afb)
 				}
 
 				dcc_block_bits -= ilog2(afb->base.format->cpp[0]);
-				afb->base.pitches[2] = roundup2(afb->base.width,
+				afb->base.pitches[2] = ALIGN(afb->base.width,
 							     1u << ((dcc_block_bits + 1) / 2));
 			}
 			format_info = amdgpu_lookup_format_info(afb->base.format->format,
@@ -979,7 +979,7 @@ static int amdgpu_display_verify_plane(struct amdgpu_framebuffer *rfb, int plane
 		((plane && plane < format->num_planes) ? format->vsub : 1);
 	unsigned int cpp = plane < format->num_planes ? format->cpp[plane] : 1;
 	unsigned int block_pitch = block_width * cpp;
-	unsigned int min_pitch = roundup2(width * cpp, block_pitch);
+	unsigned int min_pitch = ALIGN(width * cpp, block_pitch);
 	unsigned int block_size = 1 << block_size_log2;
 	uint64_t size;
 

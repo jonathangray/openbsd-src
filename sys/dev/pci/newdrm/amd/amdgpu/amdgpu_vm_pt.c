@@ -1007,7 +1007,7 @@ int amdgpu_vm_ptes_update(struct amdgpu_vm_update_params *params,
 
 			pt = cursor.entry->bo;
 			shift = parent_shift;
-			frag_end = max(frag_end, roundup2(frag_start + 1,
+			frag_end = max(frag_end, ALIGN(frag_start + 1,
 				   1ULL << shift));
 		}
 

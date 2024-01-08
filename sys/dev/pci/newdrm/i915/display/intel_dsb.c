@@ -107,7 +107,7 @@ static void intel_dsb_emit(struct intel_dsb *dsb, u32 ldw, u32 udw)
 		return;
 
 	/* Every instruction should be 8 byte aligned. */
-	dsb->free_pos = roundup2(dsb->free_pos, 2);
+	dsb->free_pos = ALIGN(dsb->free_pos, 2);
 
 	dsb->ins_start_offset = dsb->free_pos;
 
@@ -205,7 +205,7 @@ static void intel_dsb_align_tail(struct intel_dsb *dsb)
 	u32 aligned_tail, tail;
 
 	tail = dsb->free_pos * 4;
-	aligned_tail = roundup2(tail, CACHELINE_BYTES);
+	aligned_tail = ALIGN(tail, CACHELINE_BYTES);
 
 	if (aligned_tail > tail)
 		memset(&dsb->cmd_buf[dsb->free_pos], 0,
@@ -301,7 +301,7 @@ struct intel_dsb *intel_dsb_prepare(struct intel_crtc *crtc,
 	wakeref = intel_runtime_pm_get(&i915->runtime_pm);
 
 	/* ~1 qword per instruction, full cachelines */
-	size = roundup2(max_cmds * 8, CACHELINE_BYTES);
+	size = ALIGN(max_cmds * 8, CACHELINE_BYTES);
 
 	obj = i915_gem_object_create_internal(i915, PAGE_ALIGN(size));
 	if (IS_ERR(obj))

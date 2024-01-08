@@ -523,7 +523,7 @@ unsigned int intel_remapped_info_size(const struct intel_remapped_info *rem_info
 			continue;
 
 		if (rem_info->plane_alignment)
-			size = roundup2(size, rem_info->plane_alignment);
+			size = ALIGN(size, rem_info->plane_alignment);
 
 		size += plane_size;
 	}

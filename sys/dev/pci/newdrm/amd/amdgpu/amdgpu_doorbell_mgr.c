@@ -152,7 +152,7 @@ int amdgpu_doorbell_create_kernel_doorbells(struct amdgpu_device *adev)
 		return 0;
 
 	/* Reserve first num_kernel_doorbells (page-aligned) for kernel ops */
-	size = roundup2(adev->doorbell.num_kernel_doorbells * sizeof(u32), PAGE_SIZE);
+	size = ALIGN(adev->doorbell.num_kernel_doorbells * sizeof(u32), PAGE_SIZE);
 
 	/* Allocate an extra page for MES kernel usages (ring test) */
 	adev->mes.db_start_dw_offset = size / sizeof(u32);

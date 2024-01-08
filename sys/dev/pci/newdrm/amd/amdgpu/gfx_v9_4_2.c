@@ -356,9 +356,9 @@ static int gfx_v9_4_2_run_shader(struct amdgpu_device *adev,
 	u64 gpu_addr;
 
 	total_size = (regs_size * 3 + 4 + 5 + 5) * 4;
-	total_size = roundup2(total_size, 256);
+	total_size = ALIGN(total_size, 256);
 	shader_offset = total_size;
-	total_size += roundup2(shader_size, 256);
+	total_size += ALIGN(shader_size, 256);
 
 	/* allocate an indirect buffer to put the commands in */
 	memset(ib, 0, sizeof(*ib));
