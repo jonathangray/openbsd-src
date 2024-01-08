@@ -732,12 +732,16 @@ static const struct intel_display_device_info xe_lpdp_display = {
  */
 static bool has_no_display(struct pci_dev *pdev)
 {
+	STUB();
+	return false;
+#ifdef notyet
 	static const struct pci_device_id ids[] = {
 		INTEL_IVB_Q_IDS(0),
 		{}
 	};
 
 	return pci_match_id(ids, pdev);
+#endif
 }
 
 #undef INTEL_VGA_DEVICE
@@ -808,7 +812,7 @@ static const struct {
 static const struct intel_display_device_info *
 probe_gmdid_display(struct drm_i915_private *i915, u16 *ver, u16 *rel, u16 *step)
 {
-	struct pci_dev *pdev = to_pci_dev(i915->drm.dev);
+	struct pci_dev *pdev = i915->drm.pdev;
 	void __iomem *addr;
 	u32 val;
 	int i;
@@ -822,6 +826,9 @@ probe_gmdid_display(struct drm_i915_private *i915, u16 *ver, u16 *rel, u16 *step
 	*rel = 0;
 	*step = 0;
 
+	STUB();
+	return &no_display;
+#ifdef notyet
 	addr = pci_iomap_range(pdev, 0, i915_mmio_reg_offset(GMD_ID_DISPLAY), sizeof(u32));
 	if (!addr) {
 		drm_err(&i915->drm, "Cannot map MMIO BAR to read display GMD_ID\n");
@@ -848,13 +855,14 @@ probe_gmdid_display(struct drm_i915_private *i915, u16 *ver, u16 *rel, u16 *step
 	drm_err(&i915->drm, "Unrecognized display IP version %d.%02d; disabling display.\n",
 		*ver, *rel);
 	return &no_display;
+#endif
 }
 
 const struct intel_display_device_info *
 intel_display_device_probe(struct drm_i915_private *i915, bool has_gmdid,
 			   u16 *gmdid_ver, u16 *gmdid_rel, u16 *gmdid_step)
 {
-	struct pci_dev *pdev = to_pci_dev(i915->drm.dev);
+	struct pci_dev *pdev = i915->drm.pdev;
 	int i;
 
 	if (has_gmdid)
