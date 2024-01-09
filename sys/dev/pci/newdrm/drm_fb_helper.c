@@ -625,6 +625,8 @@ void drm_fb_helper_fini(struct drm_fb_helper *fb_helper)
 }
 EXPORT_SYMBOL(drm_fb_helper_fini);
 
+#ifdef __linux__
+
 static void drm_fb_helper_add_damage_clip(struct drm_fb_helper *helper, u32 x, u32 y,
 					  u32 width, u32 height)
 {
@@ -638,8 +640,6 @@ static void drm_fb_helper_add_damage_clip(struct drm_fb_helper *helper, u32 x, u
 	clip->y2 = max_t(u32, clip->y2, y + height);
 	spin_unlock_irqrestore(&helper->damage_lock, flags);
 }
-
-#ifdef __linux__
 
 static void drm_fb_helper_damage(struct drm_fb_helper *helper, u32 x, u32 y,
 				 u32 width, u32 height)
@@ -1343,7 +1343,9 @@ EXPORT_SYMBOL(drm_fb_helper_check_var);
 int drm_fb_helper_set_par(struct fb_info *info)
 {
 	struct drm_fb_helper *fb_helper = info->par;
+#ifdef __linux__
 	struct fb_var_screeninfo *var = &info->var;
+#endif
 	bool force;
 
 	if (oops_in_progress)
@@ -1482,7 +1484,9 @@ EXPORT_SYMBOL(drm_fb_helper_pan_display);
 static uint32_t drm_fb_helper_find_format(struct drm_fb_helper *fb_helper, const uint32_t *formats,
 					  size_t format_count, uint32_t bpp, uint32_t depth)
 {
+#ifdef notyet
 	struct drm_device *dev = fb_helper->dev;
+#endif
 	uint32_t format;
 	size_t i;
 
@@ -1513,7 +1517,9 @@ static uint32_t drm_fb_helper_find_color_mode_format(struct drm_fb_helper *fb_he
 						     const uint32_t *formats, size_t format_count,
 						     unsigned int color_mode)
 {
+#ifdef notyet
 	struct drm_device *dev = fb_helper->dev;
+#endif
 	uint32_t bpp, depth;
 
 	switch (color_mode) {
@@ -1698,7 +1704,9 @@ static int drm_fb_helper_find_sizes(struct drm_fb_helper *fb_helper,
 static int drm_fb_helper_single_fb_probe(struct drm_fb_helper *fb_helper)
 {
 	struct drm_client_dev *client = &fb_helper->client;
+#ifdef __linux__
 	struct drm_device *dev = fb_helper->dev;
+#endif
 	struct drm_fb_helper_surface_size sizes;
 	int ret;
 

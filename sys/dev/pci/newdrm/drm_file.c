@@ -525,8 +525,10 @@ EXPORT_SYMBOL(drm_release);
 
 void drm_file_update_pid(struct drm_file *filp)
 {
+#ifdef notyet
 	struct drm_device *dev;
 	struct pid *pid, *old;
+#endif
 
 	/*
 	 * Master nodes need to keep the original ownership in order for

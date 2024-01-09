@@ -490,10 +490,12 @@ void drm_panel_remove_follower(struct drm_panel_follower *follower)
 }
 EXPORT_SYMBOL(drm_panel_remove_follower);
 
+#ifdef notyet
 static void drm_panel_remove_follower_void(void *follower)
 {
 	drm_panel_remove_follower(follower);
 }
+#endif
 
 /**
  * devm_drm_panel_add_follower() - devm version of drm_panel_add_follower()

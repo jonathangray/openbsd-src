@@ -308,6 +308,7 @@ syncobj_eventfd_entry_free(struct syncobj_eventfd_entry *entry)
 	kfree(entry);
 }
 
+#ifdef notyet
 static void
 drm_syncobj_add_eventfd(struct drm_syncobj *syncobj,
 			struct syncobj_eventfd_entry *entry)
@@ -317,6 +318,7 @@ drm_syncobj_add_eventfd(struct drm_syncobj *syncobj,
 	syncobj_eventfd_entry_func(syncobj, entry);
 	spin_unlock(&syncobj->lock);
 }
+#endif
 
 /**
  * drm_syncobj_add_point - add new timeline point to the syncobj
@@ -1467,13 +1469,13 @@ int
 drm_syncobj_eventfd_ioctl(struct drm_device *dev, void *data,
 			  struct drm_file *file_private)
 {
+	return -EOPNOTSUPP;
+#ifdef notyet
 	struct drm_syncobj_eventfd *args = data;
 	struct drm_syncobj *syncobj;
 	struct eventfd_ctx *ev_fd_ctx;
 	struct syncobj_eventfd_entry *entry;
 
-	return -EOPNOTSUPP;
-#ifdef notyet
 	if (!drm_core_check_feature(dev, DRIVER_SYNCOBJ_TIMELINE))
 		return -EOPNOTSUPP;
 

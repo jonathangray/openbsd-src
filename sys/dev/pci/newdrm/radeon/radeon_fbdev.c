@@ -160,7 +160,6 @@ err_pm_runtime_mark_last_busy:
 	pm_runtime_put_autosuspend(rdev->ddev->dev);
 	return ret;
 }
-#endif
 
 static int radeon_fbdev_fb_release(struct fb_info *info, int user)
 {
@@ -190,6 +189,7 @@ static void radeon_fbdev_fb_destroy(struct fb_info *info)
 	drm_fb_helper_unprepare(fb_helper);
 	kfree(fb_helper);
 }
+#endif /* __linux__ */
 
 static const struct fb_ops radeon_fbdev_fb_ops = {
 #ifdef notyet
@@ -354,7 +354,7 @@ void radeondrm_burner_cb(void *);
 static int radeon_fbdev_client_restore(struct drm_client_dev *client)
 {
 #ifdef __sparc64__
-	struct radeon_device *rdev = dev->dev_private;
+	struct radeon_device *rdev = client->dev->dev_private;
 	fbwscons_setcolormap(&rdev->sf, radeondrm_setcolor);
 #endif
 	drm_fb_helper_lastclose(client->dev);
@@ -381,7 +381,6 @@ static int radeon_fbdev_client_hotplug(struct drm_client_dev *client)
 
 #ifdef __sparc64__
 {
-	struct drm_fb_helper *fb_helper = &rfbdev->helper;
 	struct drm_connector_list_iter conn_iter;
 	struct drm_connector *connector;
 	struct drm_cmdline_mode *mode;

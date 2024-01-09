@@ -39,8 +39,6 @@ FB_GEN_DEFAULT_DEFERRED_SYSMEM_OPS(drm_fbdev_generic,
 				   drm_fb_helper_damage_range,
 				   drm_fb_helper_damage_area);
 
-#endif /* __linux__ */
-
 static void drm_fbdev_generic_fb_destroy(struct fb_info *info)
 {
 	struct drm_fb_helper *fb_helper = info->par;
@@ -60,6 +58,8 @@ static void drm_fbdev_generic_fb_destroy(struct fb_info *info)
 	drm_fb_helper_unprepare(fb_helper);
 	kfree(fb_helper);
 }
+
+#endif /* __linux__ */
 
 static const struct fb_ops drm_fbdev_generic_fb_ops = {
 #ifdef notyet

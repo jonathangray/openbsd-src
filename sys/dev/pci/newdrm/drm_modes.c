@@ -2284,6 +2284,8 @@ static const struct drm_named_mode drm_named_modes[] = {
 	NAMED_MODE("PAL-M", 13500, 720, 480, DRM_MODE_FLAG_INTERLACE, DRM_MODE_TV_MODE_PAL_M),
 };
 
+#ifdef __linux__
+
 static int drm_mode_parse_cmdline_named_mode(const char *name,
 					     unsigned int name_end,
 					     struct drm_cmdline_mode *cmdline_mode)
@@ -2292,10 +2294,6 @@ static int drm_mode_parse_cmdline_named_mode(const char *name,
 
 	if (!name_end)
 		return 0;
-
-	STUB();
-	return -ENOSYS;
-#ifdef notyet
 
 	/* If the name starts with a digit, it's not a named mode */
 	if (isdigit(name[0]))
@@ -2338,8 +2336,9 @@ static int drm_mode_parse_cmdline_named_mode(const char *name,
 	}
 
 	return -EINVAL;
-#endif
 }
+
+#endif /* __linux__ */
 
 /**
  * drm_mode_parse_command_line_for_connector - parse command line modeline for connector
