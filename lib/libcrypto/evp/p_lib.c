@@ -1,4 +1,4 @@
-/* $OpenBSD: p_lib.c,v 1.52 2024/01/01 15:23:00 tb Exp $ */
+/* $OpenBSD: p_lib.c,v 1.58 2024/01/05 21:22:01 tb Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -133,33 +133,40 @@
 
 extern const EVP_PKEY_ASN1_METHOD cmac_asn1_meth;
 extern const EVP_PKEY_ASN1_METHOD dh_asn1_meth;
-extern const EVP_PKEY_ASN1_METHOD dsa_asn1_meths[];
+extern const EVP_PKEY_ASN1_METHOD dsa_asn1_meth;
+extern const EVP_PKEY_ASN1_METHOD dsa1_asn1_meth;
+extern const EVP_PKEY_ASN1_METHOD dsa2_asn1_meth;
+extern const EVP_PKEY_ASN1_METHOD dsa3_asn1_meth;
+extern const EVP_PKEY_ASN1_METHOD dsa4_asn1_meth;
 extern const EVP_PKEY_ASN1_METHOD eckey_asn1_meth;
 extern const EVP_PKEY_ASN1_METHOD ed25519_asn1_meth;
 extern const EVP_PKEY_ASN1_METHOD gostimit_asn1_meth;
-extern const EVP_PKEY_ASN1_METHOD gostr01_asn1_meths[];
+extern const EVP_PKEY_ASN1_METHOD gostr01_asn1_meth;
+extern const EVP_PKEY_ASN1_METHOD gostr12_256_asn1_meth;
+extern const EVP_PKEY_ASN1_METHOD gostr12_512_asn1_meth;
 extern const EVP_PKEY_ASN1_METHOD hmac_asn1_meth;
-extern const EVP_PKEY_ASN1_METHOD rsa_asn1_meths[];
+extern const EVP_PKEY_ASN1_METHOD rsa_asn1_meth;
+extern const EVP_PKEY_ASN1_METHOD rsa2_asn1_meth;
 extern const EVP_PKEY_ASN1_METHOD rsa_pss_asn1_meth;
 extern const EVP_PKEY_ASN1_METHOD x25519_asn1_meth;
 
 static const EVP_PKEY_ASN1_METHOD *asn1_methods[] = {
 	&cmac_asn1_meth,
 	&dh_asn1_meth,
-	&dsa_asn1_meths[0],
-	&dsa_asn1_meths[1],
-	&dsa_asn1_meths[2],
-	&dsa_asn1_meths[3],
-	&dsa_asn1_meths[4],
+	&dsa_asn1_meth,
+	&dsa1_asn1_meth,
+	&dsa2_asn1_meth,
+	&dsa3_asn1_meth,
+	&dsa4_asn1_meth,
 	&eckey_asn1_meth,
 	&ed25519_asn1_meth,
 	&gostimit_asn1_meth,
-	&gostr01_asn1_meths[0],
-	&gostr01_asn1_meths[1],
-	&gostr01_asn1_meths[2],
+	&gostr01_asn1_meth,
+	&gostr12_256_asn1_meth,
+	&gostr12_512_asn1_meth,
 	&hmac_asn1_meth,
-	&rsa_asn1_meths[0],
-	&rsa_asn1_meths[1],
+	&rsa_asn1_meth,
+	&rsa2_asn1_meth,
 	&rsa_pss_asn1_meth,
 	&x25519_asn1_meth,
 };
@@ -181,84 +188,70 @@ EVP_PKEY_asn1_get0(int idx)
 	return asn1_methods[idx];
 }
 
-static const EVP_PKEY_ASN1_METHOD *
-pkey_asn1_find(int pkey_id)
+const EVP_PKEY_ASN1_METHOD *
+EVP_PKEY_asn1_find(ENGINE **engine, int pkey_id)
 {
-	const EVP_PKEY_ASN1_METHOD *ameth;
-	int i;
+	size_t i;
 
-	for (i = EVP_PKEY_asn1_get_count() - 1; i >= 0; i--) {
-		ameth = EVP_PKEY_asn1_get0(i);
-		if (ameth->pkey_id == pkey_id)
-			return ameth;
+	if (engine != NULL)
+		*engine = NULL;
+
+	for (i = 0; i < N_ASN1_METHODS; i++) {
+		if (asn1_methods[i]->pkey_id == pkey_id)
+			return asn1_methods[i]->base_method;
 	}
 
 	return NULL;
 }
 
-/*
- * XXX - fix this. In what looks like an infinite loop, this API only makes two
- * calls to pkey_asn1_find(): If the type resolves to an aliased ASN.1 method,
- * the second call will find the method it aliases. Codify this in regress and
- * make this explicit in code.
- */
 const EVP_PKEY_ASN1_METHOD *
-EVP_PKEY_asn1_find(ENGINE **pe, int type)
-{
-	const EVP_PKEY_ASN1_METHOD *mp;
-
-	if (pe != NULL)
-		*pe = NULL;
-
-	for (;;) {
-		if ((mp = pkey_asn1_find(type)) == NULL)
-			break;
-		if ((mp->pkey_flags & ASN1_PKEY_ALIAS) == 0)
-			break;
-		type = mp->pkey_base_id;
-	}
-
-	return mp;
-}
-
-const EVP_PKEY_ASN1_METHOD *
-EVP_PKEY_asn1_find_str(ENGINE **pe, const char *str, int len)
+EVP_PKEY_asn1_find_str(ENGINE **engine, const char *str, int len)
 {
 	const EVP_PKEY_ASN1_METHOD *ameth;
-	int i;
+	size_t i, str_len;
 
+	if (engine != NULL)
+		*engine = NULL;
+
+	if (len < -1)
+		return NULL;
 	if (len == -1)
-		len = strlen(str);
-	if (pe != NULL)
-		*pe = NULL;
-	for (i = EVP_PKEY_asn1_get_count() - 1; i >= 0; i--) {
-		ameth = EVP_PKEY_asn1_get0(i);
-		if (ameth->pkey_flags & ASN1_PKEY_ALIAS)
+		str_len = strlen(str);
+	else
+		str_len = len;
+
+	for (i = 0; i < N_ASN1_METHODS; i++) {
+		ameth = asn1_methods[i];
+		if ((ameth->pkey_flags & ASN1_PKEY_ALIAS) != 0)
 			continue;
-		if (((int)strlen(ameth->pem_str) == len) &&
-		    !strncasecmp(ameth->pem_str, str, len))
+		if (strlen(ameth->pem_str) != str_len)
+			continue;
+		if (strncasecmp(ameth->pem_str, str, str_len) == 0)
 			return ameth;
 	}
+
 	return NULL;
 }
 
 int
-EVP_PKEY_asn1_get0_info(int *ppkey_id, int *ppkey_base_id, int *ppkey_flags,
-    const char **pinfo, const char **ppem_str,
+EVP_PKEY_asn1_get0_info(int *pkey_id, int *pkey_base_id, int *pkey_flags,
+    const char **info, const char **pem_str,
     const EVP_PKEY_ASN1_METHOD *ameth)
 {
-	if (!ameth)
+	if (ameth == NULL)
 		return 0;
-	if (ppkey_id)
-		*ppkey_id = ameth->pkey_id;
-	if (ppkey_base_id)
-		*ppkey_base_id = ameth->pkey_base_id;
-	if (ppkey_flags)
-		*ppkey_flags = ameth->pkey_flags;
-	if (pinfo)
-		*pinfo = ameth->info;
-	if (ppem_str)
-		*ppem_str = ameth->pem_str;
+
+	if (pkey_id != NULL)
+		*pkey_id = ameth->pkey_id;
+	if (pkey_base_id != NULL)
+		*pkey_base_id = ameth->base_method->pkey_id;
+	if (pkey_flags != NULL)
+		*pkey_flags = ameth->pkey_flags;
+	if (info != NULL)
+		*info = ameth->info;
+	if (pem_str != NULL)
+		*pem_str = ameth->pem_str;
+
 	return 1;
 }
 

@@ -1,4 +1,4 @@
-/*	$OpenBSD: if.c,v 1.714 2023/12/29 11:43:04 bluhm Exp $	*/
+/*	$OpenBSD: if.c,v 1.716 2024/01/06 11:42:11 bluhm Exp $	*/
 /*	$NetBSD: if.c,v 1.35 1996/05/07 05:26:04 thorpej Exp $	*/
 
 /*
@@ -839,11 +839,8 @@ if_input_local(struct ifnet *ifp, struct mbuf *m, sa_family_t af)
 	if (ISSET(keepcksum, M_ICMP_CSUM_OUT))
 		m->m_pkthdr.csum_flags |= M_ICMP_CSUM_IN_OK;
 
-	if (ifp->if_counters == NULL) {
-		/* XXXSMP multicast loopback and simplex interfaces */
-		ifp->if_opackets++;
-		ifp->if_obytes += m->m_pkthdr.len;
-	} else {
+	/* do not count multicast loopback and simplex interfaces */
+	if (ISSET(ifp->if_flags, IFF_LOOPBACK)) {
 		counters_pkt(ifp->if_counters, ifc_opackets, ifc_obytes,
 		    m->m_pkthdr.len);
 	}
@@ -1774,16 +1771,16 @@ if_linkstate_task(void *xifidx)
 	unsigned int ifidx = (unsigned long)xifidx;
 	struct ifnet *ifp;
 
-	KERNEL_LOCK();
 	NET_LOCK();
+	KERNEL_LOCK();
 
 	ifp = if_get(ifidx);
 	if (ifp != NULL)
 		if_linkstate(ifp);
 	if_put(ifp);
 
-	NET_UNLOCK();
 	KERNEL_UNLOCK();
+	NET_UNLOCK();
 }
 
 void

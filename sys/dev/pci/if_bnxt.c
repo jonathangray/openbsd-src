@@ -1,4 +1,4 @@
-/*	$OpenBSD: if_bnxt.c,v 1.40 2024/01/04 07:08:47 jmatthew Exp $	*/
+/*	$OpenBSD: if_bnxt.c,v 1.43 2024/01/10 05:06:00 jmatthew Exp $	*/
 /*-
  * Broadcom NetXtreme-C/E network driver.
  *
@@ -742,6 +742,8 @@ bnxt_free_slots(struct bnxt_softc *sc, struct bnxt_slot *slots, int allocated,
 	while (i-- > 0) {
 		bs = &slots[i];
 		bus_dmamap_destroy(sc->sc_dmat, bs->bs_map);
+		if (bs->bs_m != NULL)
+			m_freem(bs->bs_m);
 	}
 	free(slots, M_DEVBUF, total * sizeof(*bs));
 }
@@ -1001,8 +1003,6 @@ bnxt_queue_down(struct bnxt_softc *sc, struct bnxt_queue *bq)
 	struct bnxt_rx_queue *rx = &bq->q_rx;
 	struct bnxt_tx_queue *tx = &bq->q_tx;
 
-	/* empty rx ring first i guess */
-
 	bnxt_free_slots(sc, tx->tx_slots, tx->tx_ring.ring_size,
 	    tx->tx_ring.ring_size);
 	tx->tx_slots = NULL;
@@ -1073,7 +1073,7 @@ bnxt_up(struct bnxt_softc *sc)
 	if (bnxt_hwrm_vnic_ctx_alloc(sc, &sc->sc_vnic.rss_id) != 0) {
 		printf("%s: failed to allocate vnic rss context\n",
 		    DEVNAME(sc));
-		goto down_queues;
+		goto down_all_queues;
 	}
 
 	sc->sc_vnic.id = (uint16_t)HWRM_NA_SIGNATURE;
@@ -1139,8 +1139,11 @@ dealloc_vnic:
 	bnxt_hwrm_vnic_free(sc, &sc->sc_vnic);
 dealloc_vnic_ctx:
 	bnxt_hwrm_vnic_ctx_free(sc, &sc->sc_vnic.rss_id);
+
+down_all_queues:
+	i = sc->sc_nqueues;
 down_queues:
-	for (i = 0; i < sc->sc_nqueues; i++)
+	while (i-- > 0)
 		bnxt_queue_down(sc, &sc->sc_queues[i]);
 
 	bnxt_dmamem_free(sc, sc->sc_rx_cfg);

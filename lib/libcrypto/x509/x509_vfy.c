@@ -1,4 +1,4 @@
-/* $OpenBSD: x509_vfy.c,v 1.135 2023/12/23 00:52:13 tb Exp $ */
+/* $OpenBSD: x509_vfy.c,v 1.139 2024/01/10 17:31:28 tb Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -2163,7 +2163,8 @@ X509_STORE_CTX_set0_crls(X509_STORE_CTX *ctx, STACK_OF(X509_CRL) *sk)
 }
 LCRYPTO_ALIAS(X509_STORE_CTX_set0_crls);
 
-/* This function is used to set the X509_STORE_CTX purpose and trust
+/*
+ * This function is used to set the X509_STORE_CTX purpose and trust
  * values. This is intended to be used when another structure has its
  * own trust and purpose values which (if set) will be inherited by
  * the ctx. If they aren't set then we will usually have a default
@@ -2172,64 +2173,62 @@ LCRYPTO_ALIAS(X509_STORE_CTX_set0_crls);
  * purpose and trust settings which the application can set: if they
  * aren't set then we use the default of SSL client/server.
  */
-
 int
 X509_STORE_CTX_purpose_inherit(X509_STORE_CTX *ctx, int def_purpose,
     int purpose, int trust)
 {
-	int idx;
-
-	/* If purpose not set use default */
-	if (!purpose)
-		purpose = def_purpose;
-	/* If we have a purpose then check it is valid */
-	if (purpose) {
-		X509_PURPOSE *ptmp;
-		idx = X509_PURPOSE_get_by_id(purpose);
-		if (idx == -1) {
-			X509error(X509_R_UNKNOWN_PURPOSE_ID);
-			return 0;
-		}
-		ptmp = X509_PURPOSE_get0(idx);
-		if (ptmp->trust == X509_TRUST_DEFAULT) {
-			idx = X509_PURPOSE_get_by_id(def_purpose);
-			if (idx == -1) {
-				X509error(X509_R_UNKNOWN_PURPOSE_ID);
-				return 0;
-			}
-			ptmp = X509_PURPOSE_get0(idx);
-		}
-		/* If trust not set then get from purpose default */
-		if (!trust)
-			trust = ptmp->trust;
-	}
-	if (trust) {
-		idx = X509_TRUST_get_by_id(trust);
-		if (idx == -1) {
-			X509error(X509_R_UNKNOWN_TRUST_ID);
-			return 0;
-		}
-	}
-
-	if (purpose && !ctx->param->purpose)
-		ctx->param->purpose = purpose;
-	if (trust && !ctx->param->trust)
-		ctx->param->trust = trust;
-	return 1;
+	X509error(ERR_R_DISABLED);
+	return 0;
 }
 LCRYPTO_ALIAS(X509_STORE_CTX_purpose_inherit);
 
 int
-X509_STORE_CTX_set_purpose(X509_STORE_CTX *ctx, int purpose)
+X509_STORE_CTX_set_purpose(X509_STORE_CTX *ctx, int purpose_id)
 {
-	return X509_STORE_CTX_purpose_inherit(ctx, 0, purpose, 0);
+	const X509_PURPOSE *purpose;
+	int idx;
+
+	/* XXX - Match wacky/documented behavior. Do we need to keep this? */
+	if (purpose_id == 0)
+		return 1;
+
+	if (purpose_id < X509_PURPOSE_MIN || purpose_id > X509_PURPOSE_MAX) {
+		X509error(X509_R_UNKNOWN_PURPOSE_ID);
+		return 0;
+	}
+	idx = purpose_id - X509_PURPOSE_MIN;
+	if ((purpose = X509_PURPOSE_get0(idx)) == NULL) {
+		X509error(X509_R_UNKNOWN_PURPOSE_ID);
+		return 0;
+	}
+
+	/* XXX - Succeeding while ignoring purpose_id and trust is awful. */
+	if (ctx->param->purpose == 0)
+		ctx->param->purpose = purpose_id;
+	if (ctx->param->trust == 0)
+		ctx->param->trust = purpose->trust;
+
+	return 1;
 }
 LCRYPTO_ALIAS(X509_STORE_CTX_set_purpose);
 
 int
-X509_STORE_CTX_set_trust(X509_STORE_CTX *ctx, int trust)
+X509_STORE_CTX_set_trust(X509_STORE_CTX *ctx, int trust_id)
 {
-	return X509_STORE_CTX_purpose_inherit(ctx, 0, 0, trust);
+	/* XXX - Match wacky/documented behavior. Do we need to keep this? */
+	if (trust_id == 0)
+		return 1;
+
+	if (trust_id < X509_TRUST_MIN || trust_id > X509_TRUST_MAX) {
+		X509error(X509_R_UNKNOWN_TRUST_ID);
+		return 0;
+	}
+
+	/* XXX - Succeeding while ignoring the trust_id is awful. */
+	if (ctx->param->trust == 0)
+		ctx->param->trust = trust_id;
+
+	return 1;
 }
 LCRYPTO_ALIAS(X509_STORE_CTX_set_trust);
 

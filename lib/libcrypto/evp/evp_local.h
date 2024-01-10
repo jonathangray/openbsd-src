@@ -1,4 +1,4 @@
-/* $OpenBSD: evp_local.h,v 1.11 2024/01/01 15:23:00 tb Exp $ */
+/* $OpenBSD: evp_local.h,v 1.13 2024/01/04 17:38:36 tb Exp $ */
 /* Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL
  * project 2000.
  */
@@ -90,8 +90,8 @@ struct ecx_key_st {
 };
 
 struct evp_pkey_asn1_method_st {
+	const EVP_PKEY_ASN1_METHOD *base_method;
 	int pkey_id;
-	int pkey_base_id;
 	unsigned long pkey_flags;
 
 	char *pem_str;
@@ -223,7 +223,6 @@ struct evp_cipher_st {
 	int (*set_asn1_parameters)(EVP_CIPHER_CTX *, ASN1_TYPE *); /* Populate a ASN1_TYPE with parameters */
 	int (*get_asn1_parameters)(EVP_CIPHER_CTX *, ASN1_TYPE *); /* Get parameters from a ASN1_TYPE */
 	int (*ctrl)(EVP_CIPHER_CTX *, int type, int arg, void *ptr); /* Miscellaneous operations */
-	void *app_data;		/* Application data */
 } /* EVP_CIPHER */;
 
 struct evp_cipher_ctx_st {

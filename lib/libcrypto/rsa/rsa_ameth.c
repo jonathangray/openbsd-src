@@ -1,4 +1,4 @@
-/* $OpenBSD: rsa_ameth.c,v 1.54 2024/01/01 15:43:02 tb Exp $ */
+/* $OpenBSD: rsa_ameth.c,v 1.57 2024/01/10 14:59:19 tb Exp $ */
 /* Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL
  * project 2006.
  */
@@ -73,10 +73,6 @@
 #include "evp_local.h"
 #include "rsa_local.h"
 #include "x509_local.h"
-
-/* Macros to test if a pkey or ctx is for a PSS key */
-#define pkey_is_pss(pkey) (pkey->ameth->pkey_id == EVP_PKEY_RSA_PSS)
-#define pkey_ctx_is_pss(ctx) (ctx->pmeth->pkey_id == EVP_PKEY_RSA_PSS)
 
 #ifndef OPENSSL_NO_CMS
 static int rsa_cms_sign(CMS_SignerInfo *si);
@@ -453,7 +449,8 @@ pkey_rsa_print(BIO *bp, const EVP_PKEY *pkey, int off, int priv)
 	if (!BIO_indent(bp, off, 128))
 		goto err;
 
-	if (BIO_printf(bp, "%s ", pkey_is_pss(pkey) ?  "RSA-PSS" : "RSA") <= 0)
+	if (BIO_printf(bp, "%s ",
+	    pkey->ameth->pkey_id == EVP_PKEY_RSA_PSS ? "RSA-PSS" : "RSA") <= 0)
 		goto err;
 
 	if (priv && x->d != NULL) {
@@ -485,7 +482,8 @@ pkey_rsa_print(BIO *bp, const EVP_PKEY *pkey, int off, int priv)
 		if (!bn_printf(bp, x->iqmp, off, "coefficient:"))
 			goto err;
 	}
-	if (pkey_is_pss(pkey) && !rsa_pss_param_print(bp, 1, x->pss, off))
+	if (pkey->ameth->pkey_id == EVP_PKEY_RSA_PSS &&
+	    !rsa_pss_param_print(bp, 1, x->pss, off))
 		goto err;
 	ret = 1;
  err:
@@ -539,7 +537,7 @@ rsa_pkey_ctrl(EVP_PKEY *pkey, int op, long arg1, void *arg2)
 		break;
 
 	case ASN1_PKEY_CTRL_PKCS7_ENCRYPT:
-		if (pkey_is_pss(pkey))
+		if (pkey->ameth->pkey_id == EVP_PKEY_RSA_PSS)
 			return -2;
 		if (arg1 == 0)
 			PKCS7_RECIP_INFO_get0_alg(arg2, &alg);
@@ -553,7 +551,7 @@ rsa_pkey_ctrl(EVP_PKEY *pkey, int op, long arg1, void *arg2)
 		break;
 
 	case ASN1_PKEY_CTRL_CMS_ENVELOPE:
-		if (pkey_is_pss(pkey))
+		if (pkey->ameth->pkey_id == EVP_PKEY_RSA_PSS)
 			return -2;
 		if (arg1 == 0)
 			return rsa_cms_encrypt(arg2);
@@ -562,7 +560,7 @@ rsa_pkey_ctrl(EVP_PKEY *pkey, int op, long arg1, void *arg2)
 		break;
 
 	case ASN1_PKEY_CTRL_CMS_RI_TYPE:
-		if (pkey_is_pss(pkey))
+		if (pkey->ameth->pkey_id == EVP_PKEY_RSA_PSS)
 			return -2;
 		*(int *)arg2 = CMS_RECIPINFO_TRANS;
 		return 1;
@@ -852,7 +850,7 @@ rsa_cms_verify(CMS_SignerInfo *si)
 	if (nid == EVP_PKEY_RSA_PSS)
 		return rsa_pss_to_ctx(NULL, pkey_ctx, alg, NULL);
 	/* Only PSS allowed for PSS keys */
-	if (pkey_ctx_is_pss(pkey_ctx)) {
+	if (pkey_ctx->pmeth->pkey_id == EVP_PKEY_RSA_PSS) {
 		RSAerror(RSA_R_ILLEGAL_OR_UNSUPPORTED_PADDING_MODE);
 		return 0;
 	}
@@ -1148,52 +1146,50 @@ rsa_cms_encrypt(CMS_RecipientInfo *ri)
 }
 #endif
 
-const EVP_PKEY_ASN1_METHOD rsa_asn1_meths[] = {
-	{
-		.pkey_id = EVP_PKEY_RSA,
-		.pkey_base_id = EVP_PKEY_RSA,
-		.pkey_flags = ASN1_PKEY_SIGPARAM_NULL,
+const EVP_PKEY_ASN1_METHOD rsa_asn1_meth = {
+	.base_method = &rsa_asn1_meth,
+	.pkey_id = EVP_PKEY_RSA,
+	.pkey_flags = ASN1_PKEY_SIGPARAM_NULL,
 
-		.pem_str = "RSA",
-		.info = "OpenSSL RSA method",
+	.pem_str = "RSA",
+	.info = "OpenSSL RSA method",
 
-		.pub_decode = rsa_pub_decode,
-		.pub_encode = rsa_pub_encode,
-		.pub_cmp = rsa_pub_cmp,
-		.pub_print = rsa_pub_print,
+	.pub_decode = rsa_pub_decode,
+	.pub_encode = rsa_pub_encode,
+	.pub_cmp = rsa_pub_cmp,
+	.pub_print = rsa_pub_print,
 
-		.priv_decode = rsa_priv_decode,
-		.priv_encode = rsa_priv_encode,
-		.priv_print = rsa_priv_print,
+	.priv_decode = rsa_priv_decode,
+	.priv_encode = rsa_priv_encode,
+	.priv_print = rsa_priv_print,
 
-		.pkey_size = rsa_size,
-		.pkey_bits = rsa_bits,
-		.pkey_security_bits = rsa_security_bits,
+	.pkey_size = rsa_size,
+	.pkey_bits = rsa_bits,
+	.pkey_security_bits = rsa_security_bits,
 
-		.sig_print = rsa_sig_print,
+	.sig_print = rsa_sig_print,
 
-		.pkey_free = rsa_free,
-		.pkey_ctrl = rsa_pkey_ctrl,
-		.old_priv_decode = old_rsa_priv_decode,
-		.old_priv_encode = old_rsa_priv_encode,
-		.item_verify = rsa_item_verify,
-		.item_sign = rsa_item_sign,
+	.pkey_free = rsa_free,
+	.pkey_ctrl = rsa_pkey_ctrl,
+	.old_priv_decode = old_rsa_priv_decode,
+	.old_priv_encode = old_rsa_priv_encode,
+	.item_verify = rsa_item_verify,
+	.item_sign = rsa_item_sign,
 
-		.pkey_check = rsa_pkey_check,
-	},
+	.pkey_check = rsa_pkey_check,
+};
 
-	{
-		.pkey_id = EVP_PKEY_RSA2,
-		.pkey_base_id = EVP_PKEY_RSA,
-		.pkey_flags = ASN1_PKEY_ALIAS,
+const EVP_PKEY_ASN1_METHOD rsa2_asn1_meth = {
+	.base_method = &rsa_asn1_meth,
+	.pkey_id = EVP_PKEY_RSA2,
+	.pkey_flags = ASN1_PKEY_ALIAS,
 
-		.pkey_check = rsa_pkey_check,
-	},
+	.pkey_check = rsa_pkey_check,
 };
 
 const EVP_PKEY_ASN1_METHOD rsa_pss_asn1_meth = {
+	.base_method = &rsa_pss_asn1_meth,
 	.pkey_id = EVP_PKEY_RSA_PSS,
-	.pkey_base_id = EVP_PKEY_RSA_PSS,
 	.pkey_flags = ASN1_PKEY_SIGPARAM_NULL,
 
 	.pem_str = "RSA-PSS",
