@@ -217,7 +217,7 @@ atomic64_add_return(int i, atomic64_t *v)
 	return val;
 }
 
-#define atomic64_inc_return(p)		atomic64_add_return(p, 1)
+#define atomic64_inc_return(p)		atomic64_add_return(1, p)
 
 static inline void
 atomic64_sub(int i, atomic64_t *v)
