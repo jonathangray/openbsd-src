@@ -19,7 +19,7 @@ struct component_master_ops {
 };
 
 int	component_add(struct device *, const struct component_ops *);
-#define component_add_typed(a, b, c)	0
+int	component_add_typed(struct device *, const struct component_ops *, int);
 #define component_del(a, b)
 
 int	component_bind_all(struct device *, void *);

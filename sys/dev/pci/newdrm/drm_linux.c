@@ -3398,6 +3398,13 @@ component_add(struct device *dev, const struct component_ops *ops)
 }
 
 int
+component_add_typed(struct device *dev, const struct component_ops *ops,
+	int type)
+{
+	return component_add(dev, ops);
+}
+
+int
 component_bind_all(struct device *dev, void *data)
 {
 	struct component *component;
