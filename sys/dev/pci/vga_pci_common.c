@@ -37,9 +37,9 @@
 #include <dev/ic/vgavar.h>
 #include <dev/pci/vga_pcivar.h>
 
-#include <dev/pci/newdrm/i915/i915_devlist.h>
-#include <dev/pci/newdrm/radeon/radeon_devlist.h>
-#include <dev/pci/newdrm/amd/amdgpu/amdgpu_devlist.h>
+#include <dev/pci/drm/i915/i915_devlist.h>
+#include <dev/pci/drm/radeon/radeon_devlist.h>
+#include <dev/pci/drm/amd/amdgpu/amdgpu_devlist.h>
 
 #ifdef RAMDISK_HOOKS
 static const struct pci_matchid aperture_blacklist[] = {
