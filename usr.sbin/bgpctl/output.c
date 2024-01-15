@@ -1,4 +1,4 @@
-/*	$OpenBSD: output.c,v 1.44 2024/01/10 14:59:41 claudio Exp $ */
+/*	$OpenBSD: output.c,v 1.46 2024/01/11 14:34:49 claudio Exp $ */
 
 /*
  * Copyright (c) 2003 Henning Brauer <henning@openbsd.org>
@@ -388,10 +388,6 @@ show_neighbor_full(struct peer *p, struct parse_result *res)
 
 	show_neighbor_msgstats(p);
 	printf("\n");
-	if (p->stats.last_reason[0]) {
-		printf("  Last received shutdown reason: \"%s\"\n",
-		    log_reason(p->stats.last_reason));
-	}
 
 	errstr = fmt_errstr(p->stats.last_sent_errcode,
 	    p->stats.last_sent_suberr);
@@ -401,6 +397,10 @@ show_neighbor_full(struct peer *p, struct parse_result *res)
 	    p->stats.last_rcvd_suberr);
 	if (errstr)
 		printf("  Last error received: %s\n", errstr);
+	if (p->stats.last_reason[0]) {
+		printf("  Last received shutdown reason: \"%s\"\n",
+		    log_reason(p->stats.last_reason));
+	}
 
 	if (p->state >= STATE_OPENSENT) {
 		printf("  Local host:  %20s, Local port:  %5u\n",
@@ -1171,12 +1171,13 @@ show_rtr(struct ctl_show_rtr *rtr)
 
 	printf("RTR neighbor is %s, port %u\n",
 	    log_addr(&rtr->remote_addr), rtr->remote_port);
+	printf(" State: %s\n", rtr->state);
 	if (rtr->descr[0])
 		printf(" Description: %s\n", rtr->descr);
 	if (rtr->local_addr.aid != AID_UNSPEC)
 		printf(" Local Address: %s\n", log_addr(&rtr->local_addr));
 	if (rtr->session_id != -1)
-		printf("Version: %u Session ID: %d Serial #: %u\n",
+		printf(" Version: %u Session ID: %d Serial #: %u\n",
 		    rtr->version, rtr->session_id, rtr->serial);
 	printf(" Refresh: %u, Retry: %u, Expire: %u\n",
 	    rtr->refresh, rtr->retry, rtr->expire);
