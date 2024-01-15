@@ -300,6 +300,18 @@ list_splice_tail_init(struct list_head *list, struct list_head *head)
 	INIT_LIST_HEAD(list);
 }
 
+static inline size_t
+list_count_nodes(struct list_head *head)
+{
+	struct list_head *entry;
+	size_t n = 0;
+
+	list_for_each(entry, head)
+		n++;
+
+	return n;
+}
+
 void	list_sort(void *, struct list_head *,
 	    int (*)(void *, const struct list_head *, const struct list_head *));
 

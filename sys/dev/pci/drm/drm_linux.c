@@ -1639,6 +1639,13 @@ drm_sysfs_connector_status_event(struct drm_connector *connector,
 	STUB();
 }
 
+void
+drm_sysfs_connector_property_event(struct drm_connector *connector,
+    struct drm_property *property)
+{
+	STUB();
+}
+
 struct dma_fence *
 dma_fence_get(struct dma_fence *fence)
 {
@@ -2042,6 +2049,15 @@ cb_cleanup:
 		dma_fence_remove_callback(fences[i], &cb[i].base);
 	free(cb, M_DRM, count * sizeof(*cb));
 	return ret;
+}
+
+void
+dma_fence_set_deadline(struct dma_fence *f, ktime_t t)
+{
+	if (f->ops->set_deadline == NULL)
+		return;
+	if (dma_fence_is_signaled(f) == false)
+		f->ops->set_deadline(f, t);
 }
 
 static struct dma_fence dma_fence_stub;
@@ -3379,6 +3395,13 @@ component_add(struct device *dev, const struct component_ops *ops)
 	component->ops = ops;
 	SLIST_INSERT_HEAD(&component_list, component, next);
 	return 0;
+}
+
+int
+component_add_typed(struct device *dev, const struct component_ops *ops,
+	int type)
+{
+	return component_add(dev, ops);
 }
 
 int

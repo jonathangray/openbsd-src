@@ -18,10 +18,11 @@
 #ifndef _LINUX_VMALLOC_H
 #define _LINUX_VMALLOC_H
 
-#include <sys/types.h>
+#include <sys/param.h>
 #include <sys/malloc.h>
 #include <uvm/uvm_extern.h>
 #include <linux/overflow.h>
+#include <linux/types.h> /* for pgprot_t */
 
 void	*vmap(struct vm_page **, unsigned int, unsigned long, pgprot_t);
 void	 vunmap(void *, size_t);

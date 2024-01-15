@@ -187,7 +187,6 @@ drm_gem_dma_fault(struct drm_gem_object *gem_obj, struct uvm_faultinfo *ufi,
     off_t offset, vaddr_t vaddr, vm_page_t *pps, int npages, int centeridx,
     vm_prot_t access_type, int flags)
 {
-	struct vm_map_entry *entry = ufi->entry;
 	struct drm_gem_dma_object *obj = to_drm_gem_dma_obj(gem_obj);
 	struct uvm_object *uobj = &obj->base.uobj;
 	paddr_t paddr;
@@ -232,10 +231,10 @@ drm_gem_dma_fault(struct drm_gem_object *gem_obj, struct uvm_faultinfo *ufi,
 struct sg_table *
 drm_gem_dma_get_sg_table(struct drm_gem_object *gem_obj)
 {
-	struct drm_gem_dma_object *obj = to_drm_gem_dma_obj(gem_obj);
-
 	return NULL;
 #ifdef notyet
+	struct drm_gem_dma_object *obj = to_drm_gem_dma_obj(gem_obj);
+
 	return drm_prime_bus_dmamem_to_sg(obj->dmat, obj->dmasegs, 1);
 #endif
 }
