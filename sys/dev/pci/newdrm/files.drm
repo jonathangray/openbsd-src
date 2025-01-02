@@ -87,7 +87,7 @@ file	dev/pci/newdrm/linux_sort.c		drm
 file	dev/pci/newdrm/display/drm_dp_dual_mode_helper.c	drm
 file	dev/pci/newdrm/display/drm_dp_helper.c		drm
 file	dev/pci/newdrm/display/drm_dp_mst_topology.c	drm
-file	dev/pci/newdrm/display/drm_dp_tunnel.c		drm
+#file	dev/pci/newdrm/display/drm_dp_tunnel.c		drm
 file	dev/pci/newdrm/display/drm_dsc_helper.c		drm
 file	dev/pci/newdrm/display/drm_hdcp_helper.c		drm
 file	dev/pci/newdrm/display/drm_hdmi_helper.c		drm
