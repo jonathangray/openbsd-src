@@ -42,6 +42,9 @@
 	t __max_b = (b); \
 	__max_a > __max_b ? __max_a : __max_b; })
 
+#define MIN_T(t, a, b) min_t(t, a, b)
+#define MAX_T(t, a, b) max_t(t, a, b)
+
 #define clamp_t(t, x, a, b) min_t(t, max_t(t, x, a), b)
 #define clamp(x, a, b) clamp_t(__typeof(x), x, a, b)
 #define clamp_val(x, a, b) clamp_t(__typeof(x), x, a, b)
