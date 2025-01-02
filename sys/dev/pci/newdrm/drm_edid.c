@@ -2751,6 +2751,7 @@ void drm_edid_get_product_id(const struct drm_edid *drm_edid,
 }
 EXPORT_SYMBOL(drm_edid_get_product_id);
 
+#ifdef notyet
 static void decode_date(struct seq_buf *s, const struct drm_edid_product_id *id)
 {
 	int week = id->week_of_manufacture;
@@ -2763,6 +2764,7 @@ static void decode_date(struct seq_buf *s, const struct drm_edid_product_id *id)
 	else
 		seq_buf_printf(s, "week/year of manufacture: %d/%d", week, year);
 }
+#endif
 
 /**
  * drm_edid_print_product_id - Print decoded product id to printer
@@ -2775,21 +2777,31 @@ static void decode_date(struct seq_buf *s, const struct drm_edid_product_id *id)
 void drm_edid_print_product_id(struct drm_printer *p,
 			       const struct drm_edid_product_id *id, bool raw)
 {
+#ifdef notyet
 	DECLARE_SEQ_BUF(date, 40);
+#endif
 	char vend[4];
 
 	drm_edid_decode_mfg_id(be16_to_cpu(id->manufacturer_name), vend);
 
+#ifdef notyet
 	decode_date(&date, id);
 
 	drm_printf(p, "manufacturer name: %s, product code: %u, serial number: %u, %s\n",
 		   vend, le16_to_cpu(id->product_code),
 		   le32_to_cpu(id->serial_number), seq_buf_str(&date));
+#else
+	drm_printf(p, "manufacturer name: %s, product code: %u, serial number: %u\n",
+		   vend, le16_to_cpu(id->product_code),
+		   le32_to_cpu(id->serial_number));
+#endif
 
 	if (raw)
 		drm_printf(p, "raw product id: %*ph\n", (int)sizeof(*id), id);
 
+#ifdef notyet
 	WARN_ON(seq_buf_has_overflowed(&date));
+#endif
 }
 EXPORT_SYMBOL(drm_edid_print_product_id);
 
