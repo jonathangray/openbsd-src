@@ -72,6 +72,7 @@ struct fb_info {
 
 #define FB_GEN_DEFAULT_DEFERRED_IOMEM_OPS(a, b, c)
 #define FB_GEN_DEFAULT_DEFERRED_DMAMEM_OPS(a, b, c)
+#define FB_GEN_DEFAULT_DEFERRED_SYSMEM_OPS(a, b, c)
 
 static inline struct fb_info *
 framebuffer_alloc(size_t size, void *dev)
@@ -106,6 +107,11 @@ register_framebuffer(struct fb_info *fbi)
 
 static inline void
 unregister_framebuffer(struct fb_info *fbi)
+{
+}
+
+static inline void
+fb_deferred_io_cleanup(struct fb_info *fbi)
 {
 }
 
