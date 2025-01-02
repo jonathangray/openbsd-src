@@ -1119,7 +1119,7 @@ radeondrm_attach_kms(struct device *parent, struct device *self, void *aux)
 	printf("\n");
 
 	dev = drm_attach_pci(&kms_driver, pa, is_agp, rdev->primary,
-	    self, NULL);
+	    self, &rdev->ddev);
 	if (dev == NULL) {
 		printf("%s: drm attach failed\n", rdev->self.dv_xname);
 		return;
