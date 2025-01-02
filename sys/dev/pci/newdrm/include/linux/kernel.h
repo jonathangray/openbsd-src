@@ -21,14 +21,12 @@
 #include <linux/math.h>
 #include <linux/limits.h>
 #include <asm/byteorder.h>
+#include <linux/wordpart.h>
 
 #define swap(a, b) \
 	do { __typeof(a) __tmp = (a); (a) = (b); (b) = __tmp; } while(0)
 
 #define ARRAY_SIZE nitems
-
-#define lower_32_bits(n)	((u32)(n))
-#define upper_32_bits(_val)	((u32)(((_val) >> 16) >> 16))
 
 #define scnprintf(str, size, fmt, arg...) snprintf(str, size, fmt, ## arg)
 
