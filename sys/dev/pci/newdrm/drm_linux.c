@@ -2932,17 +2932,27 @@ pci_resize_resource(struct pci_dev *pdev, int bar, int nsize)
 
 TAILQ_HEAD(, shrinker) shrinkers = TAILQ_HEAD_INITIALIZER(shrinkers);
 
-int
-register_shrinker(struct shrinker *shrinker, const char *format, ...)
+struct shrinker *
+shrinker_alloc(u_int flags, const char *format, ...)
 {
-	TAILQ_INSERT_TAIL(&shrinkers, shrinker, next);
-	return 0;
+	struct shrinker *s;
+
+	s = kzalloc(sizeof(*s), GFP_KERNEL);
+	s->seeks = DEFAULT_SEEKS;
+	return s;
 }
 
 void
-unregister_shrinker(struct shrinker *shrinker)
+shrinker_register(struct shrinker *shrinker)
+{
+	TAILQ_INSERT_TAIL(&shrinkers, shrinker, next);
+}
+
+void
+shrinker_free(struct shrinker *shrinker)
 {
 	TAILQ_REMOVE(&shrinkers, shrinker, next);
+	kfree(shrinker);
 }
 
 unsigned long
