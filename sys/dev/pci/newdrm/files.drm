@@ -43,7 +43,7 @@ file	dev/pci/newdrm/drm_gem.c			drm
 file	dev/pci/newdrm/drm_gem_atomic_helper.c	drm
 file	dev/pci/newdrm/drm_gem_dma_helper.c	drm
 file	dev/pci/newdrm/drm_gem_framebuffer_helper.c	drm
-file	dev/pci/newdrm/drm_gpuvm.c			drm
+#file	dev/pci/newdrm/drm_gpuvm.c			drm
 #file	dev/pci/newdrm/drm_ioc32.c			drm
 file	dev/pci/newdrm/drm_ioctl.c			drm
 file	dev/pci/newdrm/drm_kms_helper_common.c	drm
