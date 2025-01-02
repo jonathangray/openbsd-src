@@ -605,7 +605,7 @@ static const struct drm_ioctl_desc drm_ioctls[] = {
 	DRM_IOCTL_DEF(DRM_IOCTL_AUTH_MAGIC, drm_authmagic, DRM_MASTER),
 
 #ifdef __OpenBSD__
-	DRM_IOCTL_DEF(DRM_IOCTL_GET_PCIINFO, drm_getpciinfo, DRM_UNLOCKED|DRM_RENDER_ALLOW),
+	DRM_IOCTL_DEF(DRM_IOCTL_GET_PCIINFO, drm_getpciinfo, DRM_RENDER_ALLOW),
 #endif
 
 #ifdef __linux__
@@ -613,8 +613,8 @@ static const struct drm_ioctl_desc drm_ioctls[] = {
 	DRM_IOCTL_DEF(DRM_IOCTL_DROP_MASTER, drm_dropmaster_ioctl, 0),
 #else
 	/* On OpenBSD xorg privdrop has already occurred before this point */
-	DRM_IOCTL_DEF(DRM_IOCTL_SET_MASTER, drm_noop, DRM_UNLOCKED),
-	DRM_IOCTL_DEF(DRM_IOCTL_DROP_MASTER, drm_noop, DRM_UNLOCKED),
+	DRM_IOCTL_DEF(DRM_IOCTL_SET_MASTER, drm_noop, 0),
+	DRM_IOCTL_DEF(DRM_IOCTL_DROP_MASTER, drm_noop, 0),
 #endif
 
 	DRM_IOCTL_DEF(DRM_IOCTL_ADD_DRAW, drm_noop, DRM_AUTH|DRM_MASTER|DRM_ROOT_ONLY),
@@ -1024,16 +1024,6 @@ drm_do_ioctl(struct drm_device *dev, int minor, u_long cmd, caddr_t data)
 	if (asize > usize) {
 		adata = malloc(asize, M_DRM, M_WAITOK | M_ZERO);
 		memcpy(adata, data, usize);
-	}
-
-	/* Enforce sane locking for modern driver ioctls. */
-	if (likely(!drm_core_check_feature(dev, DRIVER_LEGACY)) ||
-	    (ioctl->flags & DRM_UNLOCKED))
-		retcode = func(dev, adata, file_priv);
-	else {
-		mutex_lock(&drm_global_mutex);
-		retcode = func(dev, adata, file_priv);
-		mutex_unlock(&drm_global_mutex);
 	}
 
 	if (asize > usize) {
