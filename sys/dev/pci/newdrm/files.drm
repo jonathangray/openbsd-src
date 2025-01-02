@@ -32,7 +32,7 @@ file	dev/pci/newdrm/drm_exec.c			drm
 file	dev/pci/newdrm/drm_fb_dma_helper.c		drm
 file	dev/pci/newdrm/drm_fb_helper.c		drm
 file	dev/pci/newdrm/drm_fbdev_dma.c		drm
-file	dev/pci/newdrm/drm_fbdev_shmem.c		drm
+#file	dev/pci/newdrm/drm_fbdev_shmem.c		drm
 file	dev/pci/newdrm/drm_fbdev_ttm.c		drm
 file	dev/pci/newdrm/drm_file.c			drm
 file	dev/pci/newdrm/drm_flip_work.c		drm
