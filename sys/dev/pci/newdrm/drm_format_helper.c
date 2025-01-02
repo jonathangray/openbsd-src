@@ -80,9 +80,17 @@ void *drm_format_conv_state_reserve(struct drm_format_conv_state *state,
 	else if (state->tmp.preallocated)
 		return NULL;
 
+#ifdef __linux__
 	mem = krealloc(state->tmp.mem, new_size, flags);
 	if (!mem)
 		return NULL;
+#else
+	mem = kmalloc(new_size, flags);
+	if (!mem)
+		return NULL;
+	memcpy(mem, state->tmp.mem, state->tmp.size);
+	kfree(state->tmp.mem);
+#endif
 
 	state->tmp.mem = mem;
 	state->tmp.size = new_size;
