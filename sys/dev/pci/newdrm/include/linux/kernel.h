@@ -111,6 +111,7 @@ vscnprintf(char *buf, size_t size, const char *fmt, va_list ap)
 #define u64_to_user_ptr(x)	((void *)(uintptr_t)(x))
 
 #define _RET_IP_		__builtin_return_address(0)
+#define _THIS_IP_		0
 
 #define STUB() do { printf("%s: stub\n", __func__); } while(0)
 
