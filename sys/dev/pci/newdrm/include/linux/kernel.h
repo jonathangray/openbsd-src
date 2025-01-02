@@ -105,6 +105,7 @@ vscnprintf(char *buf, size_t size, const char *fmt, va_list ap)
 	if (x)				\
 		assertwaitok();		\
 } while (0)
+#define might_fault()
 
 #define add_taint(x, y)
 #define TAINT_MACHINE_CHECK	0
