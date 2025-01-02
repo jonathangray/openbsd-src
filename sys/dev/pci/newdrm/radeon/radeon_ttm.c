@@ -715,8 +715,8 @@ int radeon_ttm_init(struct radeon_device *rdev)
 			       dma_addressing_limited(&rdev->pdev->dev));
 #else
 	r = ttm_device_init(&rdev->mman.bdev, &radeon_bo_driver, rdev->dev,
-			       /*rdev->ddev->anon_inode->i_mapping*/NULL,
-			       rdev->ddev->vma_offset_manager,
+			       /*rdev_to_drm(rdev)->anon_inode->i_mapping*/NULL,
+			       rdev_to_drm(rdev)->vma_offset_manager,
 			       rdev->need_swiotlb,
 			       dma_addressing_limited(&rdev->pdev->dev));
 #endif
