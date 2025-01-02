@@ -400,7 +400,7 @@ err_undo:
 EXPORT_SYMBOL(drm_open);
 #endif
 
-static void drm_lastclose(struct drm_device *dev)
+void drm_lastclose(struct drm_device *dev)
 {
 	drm_client_dev_restore(dev);
 

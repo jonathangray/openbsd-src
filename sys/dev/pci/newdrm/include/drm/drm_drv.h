@@ -561,6 +561,26 @@ struct drm_device *drm_get_device_from_kdev(dev_t);
 
 #ifdef __OpenBSD__
 
+struct drm_dmamem {
+	bus_dmamap_t		map;
+	caddr_t			kva;
+	bus_size_t		size;
+	int			nsegs;
+	bus_dma_segment_t	segs[1];
+	LIST_ENTRY(drm_dmamem)	next;
+};
+
+typedef struct drm_dma_handle {
+	struct drm_dmamem *mem;
+	dma_addr_t busaddr;
+	void *vaddr;
+	size_t size;
+} drm_dma_handle_t;
+
+struct drm_dmamem	*drm_dmamem_alloc(bus_dma_tag_t, bus_size_t, bus_size_t,
+			     int, bus_size_t, int, int);
+void			 drm_dmamem_free(bus_dma_tag_t, struct drm_dmamem *);
+
 void drm_attach_platform(struct drm_driver *, bus_space_tag_t, bus_dma_tag_t,
     struct device *, struct drm_device *);
 struct drm_device *drm_attach_pci(const struct drm_driver *,

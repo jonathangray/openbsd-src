@@ -244,6 +244,7 @@ static int drm_minor_register(struct drm_device *dev, enum drm_minor_type type)
 	if (!minor)
 		return 0;
 
+#ifdef __linux__
 	if (minor->type != DRM_MINOR_ACCEL) {
 		ret = drm_debugfs_register(minor, minor->index,
 					   drm_debugfs_root);
@@ -1223,6 +1224,8 @@ module_init(drm_core_init);
 module_exit(drm_core_exit);
 #endif
 
+void drm_lastclose(struct drm_device *dev);
+
 void
 drm_attach_platform(struct drm_driver *driver, bus_space_tag_t iot,
     bus_dma_tag_t dmat, struct device *dev, struct drm_device *drm)
@@ -1735,7 +1738,6 @@ drmopen(dev_t kdev, int flags, int fmt, struct proc *p)
 	struct drm_minor	*dm;
 	int			 ret = 0;
 	int			 dminor, realminor, minor_type;
-	int need_setup = 0;
 
 	dev = drm_get_device_from_kdev(kdev);
 	if (dev == NULL || dev->dev_private == NULL)
@@ -1749,8 +1751,7 @@ drmopen(dev_t kdev, int flags, int fmt, struct proc *p)
 	if (drm_dev_needs_global_mutex(dev))
 		mutex_lock(&drm_global_mutex);
 
-	if (!atomic_fetch_inc(&dev->open_count))
-		need_setup = 1;
+	atomic_fetch_inc(&dev->open_count);
 
 	dminor = minor(kdev);
 	realminor =  dminor & ((1 << CLONE_SHIFT) - 1);
@@ -1789,12 +1790,6 @@ drmopen(dev_t kdev, int flags, int fmt, struct proc *p)
 	mutex_lock(&dev->filelist_mutex);
 	SPLAY_INSERT(drm_file_tree, &dev->files, file_priv);
 	mutex_unlock(&dev->filelist_mutex);
-
-	if (need_setup) {
-		ret = drm_legacy_setup(dev);
-		if (ret)
-			goto out_file_free;
-	}
 
 	if (drm_dev_needs_global_mutex(dev))
 		mutex_unlock(&drm_global_mutex);
