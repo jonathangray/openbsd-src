@@ -893,4 +893,4 @@ attach	ufshci at pci with ufshci_pci
 file	dev/pci/ufshci_pci.c		ufshci_pci
 
 include "dev/pci/files.agp"
-include "dev/pci/drm/files.drm"
+include "dev/pci/newdrm/files.drm"
