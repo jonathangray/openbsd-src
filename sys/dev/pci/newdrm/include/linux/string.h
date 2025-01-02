@@ -13,6 +13,12 @@
 
 void *memchr_inv(const void *, int, size_t);
 
+static inline bool
+mem_is_zero(const void *b, size_t len)
+{
+	return (memchr_inv(b, 0, len) == NULL);
+}
+
 static inline void *
 memset32(uint32_t *b, uint32_t c, size_t len)
 {
