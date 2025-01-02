@@ -45,7 +45,6 @@
 #include <drm/ttm/ttm_pool.h>
 #include <drm/ttm/ttm_tt.h>
 #include <drm/ttm/ttm_bo.h>
-#include <drm/drm_legacy.h>
 
 #include "ttm_module.h"
 
