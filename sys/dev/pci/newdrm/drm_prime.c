@@ -519,6 +519,9 @@ int drm_gem_prime_handle_to_fd(struct drm_device *dev,
 			       uint32_t flags,
 			       int *prime_fd)
 {
+	STUB();
+	return -1;
+#ifdef notyet
 	struct dma_buf *dmabuf;
 	int fd = get_unused_fd_flags(flags);
 
@@ -534,6 +537,7 @@ int drm_gem_prime_handle_to_fd(struct drm_device *dev,
 	fd_install(fd, dmabuf->file);
 	*prime_fd = fd;
 	return 0;
+#endif
 }
 EXPORT_SYMBOL(drm_gem_prime_handle_to_fd);
 
