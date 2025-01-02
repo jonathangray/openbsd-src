@@ -196,7 +196,7 @@
  */
 
 static DEFINE_MUTEX(bridge_lock);
-static LIST_HEAD(bridge_list);
+static DRM_LIST_HEAD(bridge_list);
 
 /**
  * drm_bridge_add - add the given bridge to the global bridge list
@@ -205,7 +205,7 @@ static LIST_HEAD(bridge_list);
  */
 void drm_bridge_add(struct drm_bridge *bridge)
 {
-	mutex_init(&bridge->hpd_mutex);
+	rw_init(&bridge->hpd_mutex, "brhpd");
 
 	mutex_lock(&bridge_lock);
 	list_add_tail(&bridge->list, &bridge_list);
@@ -213,10 +213,12 @@ void drm_bridge_add(struct drm_bridge *bridge)
 }
 EXPORT_SYMBOL(drm_bridge_add);
 
+#ifdef notyet
 static void drm_bridge_remove_void(void *bridge)
 {
 	drm_bridge_remove(bridge);
 }
+#endif
 
 /**
  * devm_drm_bridge_add - devm managed version of drm_bridge_add()
@@ -232,7 +234,12 @@ static void drm_bridge_remove_void(void *bridge)
 int devm_drm_bridge_add(struct device *dev, struct drm_bridge *bridge)
 {
 	drm_bridge_add(bridge);
+#ifdef notyet
 	return devm_add_action_or_reset(dev, drm_bridge_remove_void, bridge);
+#else
+	STUB();
+	return -ENOSYS;
+#endif
 }
 EXPORT_SYMBOL(devm_drm_bridge_add);
 

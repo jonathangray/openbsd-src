@@ -15,6 +15,8 @@
  * struct fb_ops
  */
 
+#ifdef __linux__
+
 static int drm_fbdev_dma_fb_open(struct fb_info *info, int user)
 {
 	struct drm_fb_helper *fb_helper = info->par;
@@ -61,7 +63,10 @@ static void drm_fbdev_dma_fb_destroy(struct fb_info *info)
 	kfree(fb_helper);
 }
 
+#endif /* __linux__ */
+
 static const struct fb_ops drm_fbdev_dma_fb_ops = {
+#ifdef notyet
 	.owner = THIS_MODULE,
 	.fb_open = drm_fbdev_dma_fb_open,
 	.fb_release = drm_fbdev_dma_fb_release,
@@ -70,6 +75,9 @@ static const struct fb_ops drm_fbdev_dma_fb_ops = {
 	__FB_DEFAULT_DMAMEM_OPS_DRAW,
 	.fb_mmap = drm_fbdev_dma_fb_mmap,
 	.fb_destroy = drm_fbdev_dma_fb_destroy,
+#else
+	DRM_FB_HELPER_DEFAULT_OPS,
+#endif
 };
 
 FB_GEN_DEFAULT_DEFERRED_DMAMEM_OPS(drm_fbdev_dma,

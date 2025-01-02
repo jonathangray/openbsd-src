@@ -30,7 +30,7 @@
 #include <drm/drm_print.h>
 
 static DEFINE_MUTEX(panel_lock);
-static LIST_HEAD(panel_list);
+static DRM_LIST_HEAD(panel_list);
 
 /**
  * DOC: drm panel
@@ -59,7 +59,7 @@ void drm_panel_init(struct drm_panel *panel, struct device *dev,
 {
 	INIT_LIST_HEAD(&panel->list);
 	INIT_LIST_HEAD(&panel->followers);
-	mutex_init(&panel->follower_lock);
+	rw_init(&panel->follower_lock, "dpflk");
 	panel->dev = dev;
 	panel->funcs = funcs;
 	panel->connector_type = connector_type;
@@ -408,12 +408,16 @@ EXPORT_SYMBOL(of_drm_get_panel_orientation);
  */
 bool drm_is_panel_follower(struct device *dev)
 {
+	STUB();
+	return false;
+#ifdef notyet
 	/*
 	 * The "panel" property is actually a phandle, but for simplicity we
 	 * don't bother trying to parse it here. We just need to know if the
 	 * property is there.
 	 */
 	return of_property_read_bool(dev->of_node, "panel");
+#endif
 }
 EXPORT_SYMBOL(drm_is_panel_follower);
 
@@ -440,6 +444,9 @@ EXPORT_SYMBOL(drm_is_panel_follower);
 int drm_panel_add_follower(struct device *follower_dev,
 			   struct drm_panel_follower *follower)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct device_node *panel_np;
 	struct drm_panel *panel;
 	int ret;
@@ -469,6 +476,7 @@ int drm_panel_add_follower(struct device *follower_dev,
 	mutex_unlock(&panel->follower_lock);
 
 	return 0;
+#endif
 }
 EXPORT_SYMBOL(drm_panel_add_follower);
 
@@ -483,6 +491,8 @@ EXPORT_SYMBOL(drm_panel_add_follower);
  */
 void drm_panel_remove_follower(struct drm_panel_follower *follower)
 {
+	STUB();
+#ifdef notyet
 	struct drm_panel *panel = follower->panel;
 	int ret;
 
@@ -499,13 +509,16 @@ void drm_panel_remove_follower(struct drm_panel_follower *follower)
 	mutex_unlock(&panel->follower_lock);
 
 	put_device(panel->dev);
+#endif
 }
 EXPORT_SYMBOL(drm_panel_remove_follower);
 
+#ifdef notyet
 static void drm_panel_remove_follower_void(void *follower)
 {
 	drm_panel_remove_follower(follower);
 }
+#endif
 
 /**
  * devm_drm_panel_add_follower() - devm version of drm_panel_add_follower()
@@ -519,6 +532,9 @@ static void drm_panel_remove_follower_void(void *follower)
 int devm_drm_panel_add_follower(struct device *follower_dev,
 				struct drm_panel_follower *follower)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	int ret;
 
 	ret = drm_panel_add_follower(follower_dev, follower);
@@ -527,6 +543,7 @@ int devm_drm_panel_add_follower(struct device *follower_dev,
 
 	return devm_add_action_or_reset(follower_dev,
 					drm_panel_remove_follower_void, follower);
+#endif
 }
 EXPORT_SYMBOL(devm_drm_panel_add_follower);
 

@@ -48,6 +48,8 @@
  * subset of the MIPI DCS command set.
  */
 
+#ifdef notyet
+
 static int mipi_dsi_device_match(struct device *dev, const struct device_driver *drv)
 {
 	struct mipi_dsi_device *dsi = to_mipi_dsi_device(dev);
@@ -283,6 +285,9 @@ devm_mipi_dsi_device_register_full(struct device *dev,
 	if (IS_ERR(dsi))
 		return dsi;
 
+	STUB();
+	return ERR_PTR(-ENOSYS);
+#ifdef notyet
 	ret = devm_add_action_or_reset(dev,
 				       devm_mipi_dsi_device_unregister,
 				       dsi);
@@ -290,11 +295,12 @@ devm_mipi_dsi_device_register_full(struct device *dev,
 		return ERR_PTR(ret);
 
 	return dsi;
+#endif
 }
 EXPORT_SYMBOL_GPL(devm_mipi_dsi_device_register_full);
 
 static DEFINE_MUTEX(host_lock);
-static LIST_HEAD(host_list);
+static DRM_LIST_HEAD(host_list);
 
 /**
  * of_find_mipi_dsi_host_by_node() - find the MIPI DSI host matching a
@@ -363,6 +369,8 @@ void mipi_dsi_host_unregister(struct mipi_dsi_host *host)
 	mutex_unlock(&host_lock);
 }
 EXPORT_SYMBOL(mipi_dsi_host_unregister);
+
+#endif
 
 /**
  * mipi_dsi_attach - attach a DSI device to its DSI host
@@ -433,11 +441,15 @@ int devm_mipi_dsi_attach(struct device *dev,
 	if (ret)
 		return ret;
 
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	ret = devm_add_action_or_reset(dev, devm_mipi_dsi_detach, dsi);
 	if (ret)
 		return ret;
 
 	return 0;
+#endif
 }
 EXPORT_SYMBOL_GPL(devm_mipi_dsi_attach);
 
@@ -1333,6 +1345,8 @@ int mipi_dsi_dcs_set_pixel_format(struct mipi_dsi_device *dsi, u8 format)
 }
 EXPORT_SYMBOL(mipi_dsi_dcs_set_pixel_format);
 
+#ifdef notyet
+
 /**
  * mipi_dsi_dcs_set_tear_scanline() - set the scanline to use as trigger for
  *    the Tearing Effect output signal of the display module
@@ -1935,3 +1949,5 @@ postcore_initcall(mipi_dsi_bus_init);
 MODULE_AUTHOR("Andrzej Hajda <a.hajda@samsung.com>");
 MODULE_DESCRIPTION("MIPI DSI Bus");
 MODULE_LICENSE("GPL and additional rights");
+
+#endif

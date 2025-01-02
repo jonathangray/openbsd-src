@@ -22,6 +22,7 @@
 
 #include <linux/export.h>
 #include <linux/uaccess.h>
+#include <linux/backlight.h>
 
 #include <drm/drm_atomic.h>
 #include <drm/drm_drv.h>
@@ -146,11 +147,13 @@ struct drm_mode_object *__drm_mode_object_find(struct drm_device *dev,
 	if (obj && obj->id != id)
 		obj = NULL;
 
+#ifdef notyet
 	if (obj && drm_mode_object_lease_required(obj->type) &&
 	    !_drm_lease_held(file_priv, obj->id)) {
 		drm_dbg_kms(dev, "[OBJECT:%d] not included in lease", id);
 		obj = NULL;
 	}
+#endif
 
 	if (obj && obj->free_cb) {
 		if (!kref_get_unless_zero(&obj->refcount))
@@ -319,6 +322,23 @@ static int __drm_object_property_get_value(struct drm_mode_object *obj,
 					   struct drm_property *property,
 					   uint64_t *val)
 {
+
+#ifdef __OpenBSD__
+	if (obj->type == DRM_MODE_OBJECT_CONNECTOR) {
+		struct drm_connector *connector = obj_to_connector(obj);
+
+		if (property == connector->backlight_property) {
+			struct backlight_device *bd =
+				connector->backlight_device;
+
+			if (bd->props.type == BACKLIGHT_FIRMWARE)
+				*val = bd->ops->get_brightness(bd);
+			else
+				*val = bd->props.brightness;
+			return 0;
+		}
+	}
+#endif
 
 	/* read-only properties bypass atomic mechanism and still store
 	 * their value in obj->properties->values[].. mostly to avoid
@@ -538,6 +558,15 @@ retry:
 		ret = drm_atomic_connector_commit_dpms(state,
 						       obj_to_connector(obj),
 						       prop_value);
+#ifdef __OpenBSD__
+	} else if (obj->type == DRM_MODE_OBJECT_CONNECTOR &&
+	    prop == (obj_to_connector(obj))->backlight_property) {
+		struct drm_connector *connector = obj_to_connector(obj);
+		connector->backlight_device->props.brightness = prop_value;
+		backlight_schedule_update_status(connector->backlight_device);
+		knote_locked(&connector->dev->note, NOTE_CHANGE);
+		ret = 0;
+#endif
 	} else {
 		ret = drm_atomic_set_property(state, file_priv, obj, prop, prop_value, false);
 		if (ret)

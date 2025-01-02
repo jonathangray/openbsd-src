@@ -2090,8 +2090,12 @@ EXPORT_SYMBOL(drm_dp_remote_aux_init);
  */
 void drm_dp_aux_init(struct drm_dp_aux *aux)
 {
-	mutex_init(&aux->hw_mutex);
-	mutex_init(&aux->cec.lock);
+	/*
+	 * witness does not understand mutex_lock_nest_lock()
+	 * order reversal in i915 with this lock
+	 */
+	rw_init_flags(&aux->hw_mutex, "drmdp", RWL_NOWITNESS);
+	rw_init(&aux->cec.lock, "drmcec");
 	INIT_WORK(&aux->crc_work, drm_dp_aux_crc_work);
 
 	aux->ddc.algo = &drm_dp_i2c_algo;
@@ -2138,8 +2142,10 @@ int drm_dp_aux_register(struct drm_dp_aux *aux)
 	if (!aux->ddc.algo)
 		drm_dp_aux_init(aux);
 
+#ifdef __linux__
 	aux->ddc.owner = THIS_MODULE;
 	aux->ddc.dev.parent = aux->dev;
+#endif
 
 	strscpy(aux->ddc.name, aux->name ? aux->name : dev_name(aux->dev),
 		sizeof(aux->ddc.name));
@@ -4040,6 +4046,9 @@ EXPORT_SYMBOL(drm_edp_backlight_init);
 
 static int dp_aux_backlight_update_status(struct backlight_device *bd)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct dp_aux_backlight *bl = bl_get_data(bd);
 	u16 brightness = backlight_get_brightness(bd);
 	int ret = 0;
@@ -4059,6 +4068,7 @@ static int dp_aux_backlight_update_status(struct backlight_device *bd)
 	}
 
 	return ret;
+#endif
 }
 
 static const struct backlight_ops dp_aux_bl_ops = {

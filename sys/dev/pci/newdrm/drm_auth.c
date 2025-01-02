@@ -65,7 +65,11 @@ static bool drm_is_current_master_locked(struct drm_file *fpriv)
 	lockdep_assert_once(lockdep_is_held(&fpriv->master_lookup_lock) ||
 			    lockdep_is_held(&fpriv->minor->dev->master_mutex));
 
+#ifdef notyet
 	return fpriv->is_master && drm_lease_owner(fpriv->master) == fpriv->minor->dev->master;
+#else
+	return (fpriv->is_master ==1);
+#endif
 }
 
 /**
@@ -233,9 +237,11 @@ static int drm_new_set_master(struct drm_device *dev, struct drm_file *fpriv)
 static int
 drm_master_check_perm(struct drm_device *dev, struct drm_file *file_priv)
 {
+#ifdef __linux__
 	if (file_priv->was_master &&
 	    rcu_access_pointer(file_priv->pid) == task_tgid(current))
 		return 0;
+#endif
 
 	if (!capable(CAP_SYS_ADMIN))
 		return -EACCES;

@@ -485,9 +485,9 @@ out:
 	spin_unlock_irqrestore(&dev->vblank_time_lock, irqflags);
 }
 
-static void vblank_disable_fn(struct timer_list *t)
+static void vblank_disable_fn(void *arg)
 {
-	struct drm_vblank_crtc *vblank = from_timer(vblank, t, disable_timer);
+	struct drm_vblank_crtc *vblank = arg;
 	struct drm_device *dev = vblank->dev;
 	unsigned int pipe = vblank->pipe;
 	unsigned long irqflags;
@@ -528,8 +528,8 @@ int drm_vblank_init(struct drm_device *dev, unsigned int num_crtcs)
 	int ret;
 	unsigned int i;
 
-	spin_lock_init(&dev->vbl_lock);
-	spin_lock_init(&dev->vblank_time_lock);
+	mtx_init(&dev->vbl_lock, IPL_TTY);
+	mtx_init(&dev->vblank_time_lock, IPL_TTY);
 
 	dev->vblank = drmm_kcalloc(dev, num_crtcs, sizeof(*dev->vblank), GFP_KERNEL);
 	if (!dev->vblank)
@@ -543,8 +543,12 @@ int drm_vblank_init(struct drm_device *dev, unsigned int num_crtcs)
 		vblank->dev = dev;
 		vblank->pipe = i;
 		init_waitqueue_head(&vblank->queue);
+#ifdef __linux__
 		timer_setup(&vblank->disable_timer, vblank_disable_fn, 0);
-		seqlock_init(&vblank->seqlock);
+#else
+		timeout_set(&vblank->disable_timer, vblank_disable_fn, vblank);
+#endif
+		seqlock_init(&vblank->seqlock, IPL_TTY);
 
 		ret = drmm_add_action_or_reset(dev, drm_vblank_init_release,
 					       vblank);
@@ -1252,7 +1256,7 @@ void drm_vblank_put(struct drm_device *dev, unsigned int pipe)
 		if (!vblank_offdelay)
 			return;
 		else if (vblank_offdelay < 0)
-			vblank_disable_fn(&vblank->disable_timer);
+			vblank_disable_fn(vblank);
 		else if (!vblank->config.disable_immediate)
 			mod_timer(&vblank->disable_timer,
 				  jiffies + ((vblank_offdelay * HZ) / 1000));
@@ -1292,6 +1296,19 @@ void drm_wait_one_vblank(struct drm_device *dev, unsigned int pipe)
 
 	if (drm_WARN_ON(dev, pipe >= dev->num_crtcs))
 		return;
+
+#ifdef __OpenBSD__
+	/*
+	 * If we're cold, vblank interrupts won't happen even if
+	 * they're turned on by the driver.  Just stall long enough
+	 * for a vblank to pass.  This assumes a vrefresh of at least
+	 * 25 Hz.
+	 */
+	if (cold) {
+		delay(40000);
+		return;
+	}
+#endif
 
 	ret = drm_vblank_get(dev, pipe);
 	if (drm_WARN(dev, ret, "vblank not available on crtc %i, ret=%i\n",
@@ -1962,7 +1979,7 @@ bool drm_handle_vblank(struct drm_device *dev, unsigned int pipe)
 	spin_unlock_irqrestore(&dev->event_lock, irqflags);
 
 	if (disable_irq)
-		vblank_disable_fn(&vblank->disable_timer);
+		vblank_disable_fn(vblank);
 
 	return true;
 }

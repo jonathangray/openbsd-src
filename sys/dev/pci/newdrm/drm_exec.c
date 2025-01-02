@@ -145,9 +145,17 @@ static int drm_exec_obj_locked(struct drm_exec *exec,
 		size_t size = exec->max_objects * sizeof(void *);
 		void *tmp;
 
+#ifdef __linux__
 		tmp = kvrealloc(exec->objects, size + PAGE_SIZE, GFP_KERNEL);
 		if (!tmp)
 			return -ENOMEM;
+#else
+		tmp = kvmalloc(size + PAGE_SIZE, GFP_KERNEL);
+		if (!tmp)
+			return -ENOMEM;
+		memcpy(tmp, exec->objects, size);
+		kvfree(exec->objects);
+#endif
 
 		exec->objects = tmp;
 		exec->max_objects += PAGE_SIZE / sizeof(void *);

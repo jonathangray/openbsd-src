@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 
+#ifdef __linux__
 #include <uapi/linux/sched/types.h>
+#endif
 
 #include <drm/drm_print.h>
 #include <drm/drm_vblank.h>
@@ -285,6 +287,8 @@ int drm_vblank_worker_init(struct drm_vblank_crtc *vblank)
 
 	vblank->worker = worker;
 
+#ifdef notyet
 	sched_set_fifo(worker->task);
+#endif
 	return 0;
 }

@@ -1956,11 +1956,11 @@ static void edid_block_dump(const char *level, const void *block, int block_num)
 
 	status = edid_block_check(block, block_num == 0);
 	if (status == EDID_BLOCK_ZERO)
-		sprintf(prefix, "\t[%02x] ZERO ", block_num);
+		snprintf(prefix, sizeof(prefix), "\t[%02x] ZERO ", block_num);
 	else if (!edid_block_status_valid(status, edid_block_tag(block)))
-		sprintf(prefix, "\t[%02x] BAD  ", block_num);
+		snprintf(prefix, sizeof(prefix), "\t[%02x] BAD  ", block_num);
 	else
-		sprintf(prefix, "\t[%02x] GOOD ", block_num);
+		snprintf(prefix, sizeof(prefix), "\t[%02x] GOOD ", block_num);
 
 	print_hex_dump(level, prefix, DUMP_PREFIX_NONE, 16, 1,
 		       block, EDID_LENGTH, false);
@@ -2106,9 +2106,19 @@ static struct edid *edid_filter_invalid_blocks(struct edid *edid,
 
 	*alloc_size = edid_size_by_blocks(valid_blocks);
 
+#ifdef __linux__
 	new = krealloc(edid, *alloc_size, GFP_KERNEL);
 	if (!new)
 		kfree(edid);
+#else
+	new = kmalloc(*alloc_size, GFP_KERNEL);
+	if (!new) {
+		kfree(edid);
+		return NULL;
+	}
+	memcpy(new, edid, EDID_LENGTH);
+	kfree(edid);
+#endif
 
 	return new;
 }
@@ -2398,9 +2408,17 @@ static struct edid *_drm_do_get_edid(struct drm_connector *connector,
 		goto ok;
 
 	alloc_size = edid_size(edid);
+#ifdef __linux__
 	new = krealloc(edid, alloc_size, GFP_KERNEL);
 	if (!new)
 		goto fail;
+#else
+	new = kmalloc(alloc_size, GFP_KERNEL);
+	if (!new)
+		goto fail;
+	memcpy(new, edid, EDID_LENGTH);
+	kfree(edid);
+#endif
 	edid = new;
 
 	num_blocks = edid_block_count(edid);
@@ -2430,9 +2448,17 @@ static struct edid *_drm_do_get_edid(struct drm_connector *connector,
 			if (eeodb > num_blocks) {
 				num_blocks = eeodb;
 				alloc_size = edid_size_by_blocks(num_blocks);
+#ifdef __linux__
 				new = krealloc(edid, alloc_size, GFP_KERNEL);
 				if (!new)
 					goto fail;
+#else
+				new = kmalloc(alloc_size, GFP_KERNEL);
+				if (!new)
+					goto fail;
+				memcpy(new, edid, EDID_LENGTH);
+				kfree(edid);
+#endif
 				edid = new;
 			}
 		}
@@ -2868,6 +2894,9 @@ EXPORT_SYMBOL(drm_edid_read_base_block);
 struct edid *drm_get_edid_switcheroo(struct drm_connector *connector,
 				     struct i2c_adapter *adapter)
 {
+	STUB();
+	return NULL;
+#ifdef notyet
 	struct drm_device *dev = connector->dev;
 	struct pci_dev *pdev = to_pci_dev(dev->dev);
 	struct edid *edid;
@@ -2880,6 +2909,7 @@ struct edid *drm_get_edid_switcheroo(struct drm_connector *connector,
 	vga_switcheroo_unlock_ddc(pdev);
 
 	return edid;
+#endif
 }
 EXPORT_SYMBOL(drm_get_edid_switcheroo);
 
@@ -2897,6 +2927,9 @@ EXPORT_SYMBOL(drm_get_edid_switcheroo);
 const struct drm_edid *drm_edid_read_switcheroo(struct drm_connector *connector,
 						struct i2c_adapter *adapter)
 {
+	STUB();
+	return NULL;
+#ifdef notyet
 	struct drm_device *dev = connector->dev;
 	struct pci_dev *pdev = to_pci_dev(dev->dev);
 	const struct drm_edid *drm_edid;
@@ -2909,6 +2942,7 @@ const struct drm_edid *drm_edid_read_switcheroo(struct drm_connector *connector,
 	vga_switcheroo_unlock_ddc(pdev);
 
 	return drm_edid;
+#endif
 }
 EXPORT_SYMBOL(drm_edid_read_switcheroo);
 
@@ -4273,6 +4307,7 @@ cea_mode_alternate_timings(u8 vic, struct drm_display_mode *mode)
 	 * get the other variants by simply increasing the
 	 * vertical front porch length.
 	 */
+#ifdef notyet
 	BUILD_BUG_ON(cea_mode_for_vic(8)->vtotal != 262 ||
 		     cea_mode_for_vic(9)->vtotal != 262 ||
 		     cea_mode_for_vic(12)->vtotal != 262 ||
@@ -4281,6 +4316,7 @@ cea_mode_alternate_timings(u8 vic, struct drm_display_mode *mode)
 		     cea_mode_for_vic(24)->vtotal != 312 ||
 		     cea_mode_for_vic(27)->vtotal != 312 ||
 		     cea_mode_for_vic(28)->vtotal != 312);
+#endif
 
 	if (((vic == 8 || vic == 9 ||
 	      vic == 12 || vic == 13) && mode->vtotal < 263) ||
@@ -4479,7 +4515,7 @@ static int add_alternate_cea_modes(struct drm_connector *connector,
 {
 	struct drm_device *dev = connector->dev;
 	struct drm_display_mode *mode, *tmp;
-	LIST_HEAD(list);
+	DRM_LIST_HEAD(list);
 	int modes = 0;
 
 	/* Don't add CTA modes if the CTA extension block is missing */
@@ -5991,9 +6027,17 @@ static void parse_cta_vdb(struct drm_connector *connector, const struct cea_db *
 		return;
 
 	/* Gracefully handle multiple VDBs, however unlikely that is */
+#ifdef __linux__
 	vics = krealloc(info->vics, info->vics_len + len, GFP_KERNEL);
 	if (!vics)
 		return;
+#else
+	vics = kmalloc(info->vics_len + len, GFP_KERNEL);
+	if (!vics)
+		return;
+	memcpy(vics, info->vics, info->vics_len);
+	kfree(info->vics);
+#endif
 
 	vic_index = info->vics_len;
 	info->vics_len += len;

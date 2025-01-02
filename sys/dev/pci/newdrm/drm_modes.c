@@ -1936,6 +1936,8 @@ void drm_connector_list_update(struct drm_connector *connector)
 }
 EXPORT_SYMBOL(drm_connector_list_update);
 
+#ifdef __linux__
+
 static int drm_mode_parse_cmdline_bpp(const char *str, char **end_ptr,
 				      struct drm_cmdline_mode *mode)
 {
@@ -2257,6 +2259,8 @@ static int drm_mode_parse_cmdline_options(const char *str,
 	return 0;
 }
 
+#endif /* __linux__ */
+
 struct drm_named_mode {
 	const char *name;
 	unsigned int pixel_clock_khz;
@@ -2282,6 +2286,8 @@ static const struct drm_named_mode drm_named_modes[] = {
 	NAMED_MODE("PAL", 13500, 720, 576, DRM_MODE_FLAG_INTERLACE, DRM_MODE_TV_MODE_PAL),
 	NAMED_MODE("PAL-M", 13500, 720, 480, DRM_MODE_FLAG_INTERLACE, DRM_MODE_TV_MODE_PAL_M),
 };
+
+#ifdef __linux__
 
 static int drm_mode_parse_cmdline_named_mode(const char *name,
 					     unsigned int name_end,
@@ -2335,6 +2341,8 @@ static int drm_mode_parse_cmdline_named_mode(const char *name,
 	return -EINVAL;
 }
 
+#endif /* __linux__ */
+
 /**
  * drm_mode_parse_command_line_for_connector - parse command line modeline for connector
  * @mode_option: optional per connector mode option
@@ -2363,6 +2371,7 @@ bool drm_mode_parse_command_line_for_connector(const char *mode_option,
 					       const struct drm_connector *connector,
 					       struct drm_cmdline_mode *mode)
 {
+#ifdef __linux__
 	const char *name;
 	bool freestanding = false, parse_extras = false;
 	unsigned int bpp_off = 0, refresh_off = 0, options_off = 0;
@@ -2501,6 +2510,9 @@ bool drm_mode_parse_command_line_for_connector(const char *mode_option,
 	}
 
 	return true;
+#else
+	return false;
+#endif
 }
 EXPORT_SYMBOL(drm_mode_parse_command_line_for_connector);
 
