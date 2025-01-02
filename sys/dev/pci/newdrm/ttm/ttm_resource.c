@@ -465,7 +465,7 @@ void ttm_resource_manager_init(struct ttm_resource_manager *man,
 {
 	unsigned i;
 
-	spin_lock_init(&man->move_lock);
+	mtx_init(&man->move_lock, IPL_NONE);
 	man->bdev = bdev;
 	man->size = size;
 	man->usage = 0;
@@ -658,7 +658,7 @@ struct ttm_resource *ttm_lru_first_res_or_null(struct list_head *head)
 
 static void ttm_kmap_iter_iomap_map_local(struct ttm_kmap_iter *iter,
 					  struct iosys_map *dmap,
-					  pgoff_t i)
+					  pgoff_t i, bus_space_tag_t bst)
 {
 	struct ttm_kmap_iter_iomap *iter_io =
 		container_of(iter, typeof(*iter_io), base);
@@ -688,7 +688,7 @@ retry:
 }
 
 static void ttm_kmap_iter_iomap_unmap_local(struct ttm_kmap_iter *iter,
-					    struct iosys_map *map)
+					    struct iosys_map *map, bus_space_tag_t bst)
 {
 	io_mapping_unmap_local(map->vaddr_iomem);
 }
@@ -740,7 +740,7 @@ EXPORT_SYMBOL(ttm_kmap_iter_iomap_init);
 
 static void ttm_kmap_iter_linear_io_map_local(struct ttm_kmap_iter *iter,
 					      struct iosys_map *dmap,
-					      pgoff_t i)
+					      pgoff_t i, bus_space_tag_t bst)
 {
 	struct ttm_kmap_iter_linear_io *iter_io =
 		container_of(iter, typeof(*iter_io), base);
@@ -787,22 +787,59 @@ ttm_kmap_iter_linear_io_init(struct ttm_kmap_iter_linear_io *iter_io,
 	} else {
 		iter_io->needs_unmap = true;
 		memset(&iter_io->dmap, 0, sizeof(iter_io->dmap));
-		if (mem->bus.caching == ttm_write_combined)
+		if (mem->bus.caching == ttm_write_combined) {
+#ifdef __linux__
 			iosys_map_set_vaddr_iomem(&iter_io->dmap,
 						  ioremap_wc(mem->bus.offset,
 							     mem->size));
-		else if (mem->bus.caching == ttm_cached)
+#else
+			if (bus_space_map(bdev->memt, mem->bus.offset,
+			    mem->size, BUS_SPACE_MAP_LINEAR | BUS_SPACE_MAP_PREFETCHABLE,
+			    &iter_io->dmap.bsh)) {
+				ret = -ENOMEM;
+				goto out_io_free;
+			}
+			iter_io->dmap.size = mem->size;
+			iosys_map_set_vaddr_iomem(&iter_io->dmap,
+			    bus_space_vaddr(bdev->memt, iter_io->dmap.bsh));
+#endif
+		} else if (mem->bus.caching == ttm_cached) {
+#ifdef __linux__
 			iosys_map_set_vaddr(&iter_io->dmap,
 					    memremap(mem->bus.offset, mem->size,
 						     MEMREMAP_WB |
 						     MEMREMAP_WT |
 						     MEMREMAP_WC));
+#else
+			if (bus_space_map(bdev->memt, mem->bus.offset,
+			    mem->size, BUS_SPACE_MAP_LINEAR | BUS_SPACE_MAP_PREFETCHABLE,
+			    &iter_io->dmap.bsh)) {
+				ret = -ENOMEM;
+				goto out_io_free;
+			}   
+			iter_io->dmap.size = mem->size;
+			iosys_map_set_vaddr(&iter_io->dmap,
+			    bus_space_vaddr(bdev->memt, iter_io->dmap.bsh));
+#endif
+		}
 
 		/* If uncached requested or if mapping cached or wc failed */
-		if (iosys_map_is_null(&iter_io->dmap))
+		if (iosys_map_is_null(&iter_io->dmap)) {
+#ifdef __linux__
 			iosys_map_set_vaddr_iomem(&iter_io->dmap,
 						  ioremap(mem->bus.offset,
 							  mem->size));
+#else
+		if (bus_space_map(bdev->memt, mem->bus.offset,
+		    mem->size, BUS_SPACE_MAP_LINEAR, &iter_io->dmap.bsh)) {
+			ret = -ENOMEM;
+			goto out_io_free;
+		}
+		iter_io->dmap.size = mem->size;
+		iosys_map_set_vaddr_iomem(&iter_io->dmap,
+		    bus_space_vaddr(bdev->memt, iter_io->dmap.bsh));
+#endif
+		}
 
 		if (iosys_map_is_null(&iter_io->dmap)) {
 			ret = -ENOMEM;
@@ -834,10 +871,15 @@ ttm_kmap_iter_linear_io_fini(struct ttm_kmap_iter_linear_io *iter_io,
 			     struct ttm_resource *mem)
 {
 	if (iter_io->needs_unmap && iosys_map_is_set(&iter_io->dmap)) {
+#ifdef __linux__
 		if (iter_io->dmap.is_iomem)
 			iounmap(iter_io->dmap.vaddr_iomem);
 		else
 			memunmap(iter_io->dmap.vaddr);
+#else
+		bus_space_unmap(bdev->memt, iter_io->dmap.bsh,
+		    iter_io->dmap.size);
+#endif
 	}
 
 	ttm_mem_io_free(bdev, mem);
@@ -867,6 +909,7 @@ DEFINE_SHOW_ATTRIBUTE(ttm_resource_manager);
  * This function setups up a debugfs file that can be used to look
  * at debug statistics of the specified ttm_resource_manager.
  */
+struct dentry;
 void ttm_resource_manager_create_debugfs(struct ttm_resource_manager *man,
 					 struct dentry * parent,
 					 const char *name)

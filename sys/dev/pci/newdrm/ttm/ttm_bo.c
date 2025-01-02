@@ -1009,7 +1009,33 @@ void ttm_bo_unmap_virtual(struct ttm_buffer_object *bo)
 {
 	struct ttm_device *bdev = bo->bdev;
 
+#ifdef __linux__
 	drm_vma_node_unmap(&bo->base.vma_node, bdev->dev_mapping);
+#else
+	if (drm_mm_node_allocated(&bo->base.vma_node.vm_node)) {
+		struct vm_page *pg;
+		bus_addr_t addr;
+		paddr_t paddr;
+		unsigned i;
+
+		if (bo->resource && bo->resource->bus.is_iomem) {
+			addr = bo->resource->bus.offset;
+			paddr = bus_space_mmap(bdev->memt, addr, 0, 0, 0);
+			for (i = 0; i < PFN_UP(bo->base.size); i++) {
+				pg = PHYS_TO_VM_PAGE(paddr);
+				if (pg)
+					pmap_page_protect(pg, PROT_NONE);
+				paddr += PAGE_SIZE;
+			}
+		} else if (bo->ttm) {
+			for (i = 0; i < bo->ttm->num_pages; i++) {
+				pg = bo->ttm->pages[i];
+				if (pg)
+					pmap_page_protect(pg, PROT_NONE);
+			}
+		}
+	}
+#endif
 	ttm_mem_io_free(bdev, bo->resource);
 }
 EXPORT_SYMBOL(ttm_bo_unmap_virtual);

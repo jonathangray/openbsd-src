@@ -84,7 +84,8 @@ void ttm_mem_io_free(struct ttm_device *bdev,
 void ttm_move_memcpy(bool clear,
 		     u32 num_pages,
 		     struct ttm_kmap_iter *dst_iter,
-		     struct ttm_kmap_iter *src_iter)
+		     struct ttm_kmap_iter *src_iter,
+		     bus_space_tag_t memt)
 {
 	const struct ttm_kmap_iter_ops *dst_ops = dst_iter->ops;
 	const struct ttm_kmap_iter_ops *src_ops = src_iter->ops;
@@ -98,27 +99,27 @@ void ttm_move_memcpy(bool clear,
 	/* Don't move nonexistent data. Clear destination instead. */
 	if (clear) {
 		for (i = 0; i < num_pages; ++i) {
-			dst_ops->map_local(dst_iter, &dst_map, i);
+			dst_ops->map_local(dst_iter, &dst_map, i, memt);
 			if (dst_map.is_iomem)
 				memset_io(dst_map.vaddr_iomem, 0, PAGE_SIZE);
 			else
 				memset(dst_map.vaddr, 0, PAGE_SIZE);
 			if (dst_ops->unmap_local)
-				dst_ops->unmap_local(dst_iter, &dst_map);
+				dst_ops->unmap_local(dst_iter, &dst_map, memt);
 		}
 		return;
 	}
 
 	for (i = 0; i < num_pages; ++i) {
-		dst_ops->map_local(dst_iter, &dst_map, i);
-		src_ops->map_local(src_iter, &src_map, i);
+		dst_ops->map_local(dst_iter, &dst_map, i, memt);
+		src_ops->map_local(src_iter, &src_map, i, memt);
 
 		drm_memcpy_from_wc(&dst_map, &src_map, PAGE_SIZE);
 
 		if (src_ops->unmap_local)
-			src_ops->unmap_local(src_iter, &src_map);
+			src_ops->unmap_local(src_iter, &src_map, memt);
 		if (dst_ops->unmap_local)
-			dst_ops->unmap_local(dst_iter, &dst_map);
+			dst_ops->unmap_local(dst_iter, &dst_map, memt);
 	}
 }
 EXPORT_SYMBOL(ttm_move_memcpy);
@@ -184,7 +185,8 @@ int ttm_bo_move_memcpy(struct ttm_buffer_object *bo,
 
 	clear = src_iter->ops->maps_tt && (!ttm || !ttm_tt_is_populated(ttm));
 	if (!(clear && ttm && !(ttm->page_flags & TTM_TT_FLAG_ZERO_ALLOC)))
-		ttm_move_memcpy(clear, PFN_UP(dst_mem->size), dst_iter, src_iter);
+		ttm_move_memcpy(clear, PFN_UP(dst_mem->size), dst_iter, src_iter,
+		    bdev->memt);
 
 	if (!src_iter->ops->maps_tt)
 		ttm_kmap_iter_linear_io_fini(&_src_iter.io, bdev, src_mem);
@@ -311,23 +313,32 @@ static int ttm_bo_ioremap(struct ttm_buffer_object *bo,
 			  unsigned long size,
 			  struct ttm_bo_kmap_obj *map)
 {
+	int flags;
 	struct ttm_resource *mem = bo->resource;
 
 	if (bo->resource->bus.addr) {
 		map->bo_kmap_type = ttm_bo_map_premapped;
 		map->virtual = ((u8 *)bo->resource->bus.addr) + offset;
 	} else {
-		resource_size_t res = bo->resource->bus.offset + offset;
-
 		map->bo_kmap_type = ttm_bo_map_iomap;
 		if (mem->bus.caching == ttm_write_combined)
-			map->virtual = ioremap_wc(res, size);
+			flags = BUS_SPACE_MAP_PREFETCHABLE;
 #ifdef CONFIG_X86
 		else if (mem->bus.caching == ttm_cached)
-			map->virtual = ioremap_cache(res, size);
+			flags = BUS_SPACE_MAP_CACHEABLE;
 #endif
 		else
-			map->virtual = ioremap(res, size);
+			flags = 0;
+		if (bus_space_map(bo->bdev->memt,
+		    bo->resource->bus.offset + offset,
+		    size, BUS_SPACE_MAP_LINEAR | flags,
+		    &bo->resource->bus.bsh)) {
+			printf("%s bus_space_map failed\n", __func__);
+			map->virtual = 0;
+		} else {
+			map->virtual = bus_space_vaddr(bo->bdev->memt,
+			    bo->resource->bus.bsh);
+		}
 	}
 	return (!map->virtual) ? -ENOMEM : 0;
 }
@@ -433,13 +444,15 @@ void ttm_bo_kunmap(struct ttm_bo_kmap_obj *map)
 		return;
 	switch (map->bo_kmap_type) {
 	case ttm_bo_map_iomap:
-		iounmap(map->virtual);
+		bus_space_unmap(map->bo->bdev->memt, map->bo->resource->bus.bsh,
+		    map->bo->resource->size);
 		break;
 	case ttm_bo_map_vmap:
-		vunmap(map->virtual);
+		vunmap(map->virtual, 
+		    map->bo->resource->size);
 		break;
 	case ttm_bo_map_kmap:
-		kunmap(map->page);
+		kunmap_va(map->virtual);
 		break;
 	case ttm_bo_map_premapped:
 		break;
@@ -468,6 +481,7 @@ EXPORT_SYMBOL(ttm_bo_kunmap);
  */
 int ttm_bo_vmap(struct ttm_buffer_object *bo, struct iosys_map *map)
 {
+	int flags;
 	struct ttm_resource *mem = bo->resource;
 	int ret;
 
@@ -482,16 +496,24 @@ int ttm_bo_vmap(struct ttm_buffer_object *bo, struct iosys_map *map)
 
 		if (mem->bus.addr)
 			vaddr_iomem = (void __iomem *)mem->bus.addr;
-		else if (mem->bus.caching == ttm_write_combined)
-			vaddr_iomem = ioremap_wc(mem->bus.offset,
-						 bo->base.size);
+		else {
+			if (mem->bus.caching == ttm_write_combined)
+				flags = BUS_SPACE_MAP_PREFETCHABLE;
 #ifdef CONFIG_X86
-		else if (mem->bus.caching == ttm_cached)
-			vaddr_iomem = ioremap_cache(mem->bus.offset,
-						  bo->base.size);
+			else if (mem->bus.caching == ttm_cached)
+				flags = BUS_SPACE_MAP_CACHEABLE;
 #endif
-		else
-			vaddr_iomem = ioremap(mem->bus.offset, bo->base.size);
+			else
+				flags = 0;
+			if (bus_space_map(bo->bdev->memt, mem->bus.offset,
+			    bo->base.size, BUS_SPACE_MAP_LINEAR | flags,
+			    &mem->bus.bsh)) {
+				printf("%s bus_space_map failed\n", __func__);
+				return -ENOMEM;
+			}
+			vaddr_iomem = bus_space_vaddr(bo->bdev->memt,
+			    mem->bus.bsh);
+		}
 
 		if (!vaddr_iomem)
 			return -ENOMEM;
@@ -545,9 +567,11 @@ void ttm_bo_vunmap(struct ttm_buffer_object *bo, struct iosys_map *map)
 		return;
 
 	if (!map->is_iomem)
-		vunmap(map->vaddr);
+		vunmap(map->vaddr,
+		    bo->base.size);
 	else if (!mem->bus.addr)
-		iounmap(map->vaddr_iomem);
+		bus_space_unmap(bo->bdev->memt, mem->bus.bsh,
+		    bo->base.size);
 	iosys_map_clear(map);
 
 	ttm_mem_io_free(bo->bdev, bo->resource);
