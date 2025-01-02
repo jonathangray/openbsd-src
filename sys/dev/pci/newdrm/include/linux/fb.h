@@ -71,6 +71,7 @@ struct fb_info {
 #define FB_ROTATE_CCW		3
 
 #define FB_GEN_DEFAULT_DEFERRED_IOMEM_OPS(a, b, c)
+#define FB_GEN_DEFAULT_DEFERRED_DMAMEM_OPS(a, b, c)
 
 static inline struct fb_info *
 framebuffer_alloc(size_t size, void *dev)
