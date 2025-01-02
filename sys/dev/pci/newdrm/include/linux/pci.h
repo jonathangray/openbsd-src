@@ -539,4 +539,9 @@ pci_device_is_present(struct pci_dev *pdev)
 	return 1;
 }
 
+static inline int
+dev_is_pci(struct device *dev)
+{
+	return 1;
+}
 #endif /* _LINUX_PCI_H_ */
