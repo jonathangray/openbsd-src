@@ -46,6 +46,7 @@ struct fb_info {
 	void *par;
 	int fbcon_rotate_hint;
 	bool skip_vt_switch;
+	bool skip_panic;
 	int flags;
 };
 
