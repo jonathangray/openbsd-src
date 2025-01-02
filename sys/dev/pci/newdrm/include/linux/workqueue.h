@@ -92,6 +92,12 @@ queue_work(struct workqueue_struct *wq, struct work_struct *work)
 	return task_add(work->tq, &work->task);
 }
 
+static inline bool
+queue_work_node(int node, struct workqueue_struct *wq, struct work_struct *work)
+{
+	return queue_work(wq, work);
+}
+
 static inline void
 cancel_work(struct work_struct *work)
 {
