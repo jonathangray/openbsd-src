@@ -168,6 +168,17 @@ static inline void
 drm_sysfs_connector_remove(struct drm_connector *connector)
 {
 }
+
+static inline int
+drm_sysfs_connector_add_late(struct drm_connector *connector)
+{
+	return 0;
+}
+
+static inline void
+drm_sysfs_connector_remove_early(struct drm_connector *connector)
+{
+}
 #endif
 
 /* drm_gem.c */
