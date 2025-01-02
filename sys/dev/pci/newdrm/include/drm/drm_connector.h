@@ -1697,7 +1697,7 @@ struct drm_connector_hdmi {
 		 * @lock: Mutex protecting against concurrent access to
 		 * the infoframes, most notably between KMS and ALSA.
 		 */
-		struct mutex lock;
+		struct rwlock lock;
 
 		/**
 		 * @audio: Current Audio Infoframes structure. Protected

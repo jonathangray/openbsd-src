@@ -516,8 +516,17 @@ int drmm_connector_hdmi_init(struct drm_device *dev,
 		return ret;
 
 	connector->hdmi.supported_formats = supported_formats;
+#ifdef notyet
 	strtomem_pad(connector->hdmi.vendor, vendor, 0);
 	strtomem_pad(connector->hdmi.product, product, 0);
+#else
+	/* strlen bounds checks above */
+	memset(connector->hdmi.vendor, 0, DRM_CONNECTOR_HDMI_VENDOR_LEN);
+	memcpy(connector->hdmi.vendor, vendor, strlen(vendor));
+
+	memset(connector->hdmi.product, 0, DRM_CONNECTOR_HDMI_PRODUCT_LEN);
+	memcpy(connector->hdmi.product, product, strlen(product));
+#endif
 
 	/*
 	 * drm_connector_attach_max_bpc_property() requires the
