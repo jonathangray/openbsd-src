@@ -56,6 +56,7 @@
 #include <drm/drm_device.h>
 #include <drm/drm_connector.h>
 #include <drm/drm_print.h>
+#include <drm/drm_drv.h>
 
 #if defined(__amd64__) || defined(__i386__)
 #include "bios.h"
@@ -3235,13 +3236,6 @@ sync_file_create(struct dma_fence *fence)
 	fp->f_data = sf;
 	return sf;
 }
-
-bool
-drm_firmware_drivers_only(void)
-{
-	return false;
-}
-
 
 void *
 memremap(phys_addr_t phys_addr, size_t size, int flags)
