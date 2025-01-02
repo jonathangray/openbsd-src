@@ -42,6 +42,7 @@ struct sg_table *radeon_gem_prime_get_sg_table(struct drm_gem_object *obj)
 				     bo->tbo.ttm->num_pages);
 }
 
+#ifdef notyet
 struct drm_gem_object *radeon_gem_prime_import_sg_table(struct drm_device *dev,
 							struct dma_buf_attachment *attach,
 							struct sg_table *sg)
@@ -67,6 +68,7 @@ struct drm_gem_object *radeon_gem_prime_import_sg_table(struct drm_device *dev,
 	bo->prime_shared_count = 1;
 	return &bo->tbo.base;
 }
+#endif
 
 int radeon_gem_prime_pin(struct drm_gem_object *obj)
 {

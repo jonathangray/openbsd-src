@@ -744,6 +744,8 @@ static void radeon_audio_component_notify(struct radeon_device *rdev, int port)
 	mutex_unlock(&rdev->audio.component_mutex);
 }
 
+#ifdef notyet
+
 static int radeon_audio_component_get_eld(struct device *kdev, int port,
 					  int pipe, bool *enabled,
 					  unsigned char *buf, int max_bytes)
@@ -827,20 +829,29 @@ static const struct component_ops radeon_audio_component_bind_ops = {
 	.unbind	= radeon_audio_component_unbind,
 };
 
+#endif
+
 void radeon_audio_component_init(struct radeon_device *rdev)
 {
 	if (rdev->audio.component_registered ||
 	    !radeon_audio || !radeon_audio_chipset_supported(rdev))
 		return;
-
+#ifdef notyet
 	if (!component_add(rdev->dev, &radeon_audio_component_bind_ops))
 		rdev->audio.component_registered = true;
+#else
+	STUB();
+#endif
 }
 
 void radeon_audio_component_fini(struct radeon_device *rdev)
 {
 	if (rdev->audio.component_registered) {
+#ifdef notyet
 		component_del(rdev->dev, &radeon_audio_component_bind_ops);
 		rdev->audio.component_registered = false;
+#else
+		STUB();
+#endif
 	}
 }

@@ -485,7 +485,7 @@ int radeon_vm_bo_set_addr(struct radeon_device *rdev,
 			struct radeon_bo_va *tmp;
 			tmp = container_of(it, struct radeon_bo_va, it);
 			/* bo and tmp overlap, invalid offset */
-			dev_err(rdev->dev, "bo %p va 0x%010Lx conflict with "
+			dev_err(rdev->dev, "bo %p va 0x%010llx conflict with "
 				"(bo %p 0x%010lx 0x%010lx)\n", bo_va->bo,
 				soffset, tmp->bo, tmp->it.start, tmp->it.last);
 			mutex_unlock(&vm->mutex);
@@ -1183,9 +1183,9 @@ int radeon_vm_init(struct radeon_device *rdev, struct radeon_vm *vm)
 		vm->ids[i].flushed_updates = NULL;
 		vm->ids[i].last_id_use = NULL;
 	}
-	mutex_init(&vm->mutex);
+	rw_init(&vm->mutex, "vmlk");
 	vm->va = RB_ROOT_CACHED;
-	spin_lock_init(&vm->status_lock);
+	mtx_init(&vm->status_lock, IPL_TTY);
 	INIT_LIST_HEAD(&vm->invalidated);
 	INIT_LIST_HEAD(&vm->freed);
 	INIT_LIST_HEAD(&vm->cleared);

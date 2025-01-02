@@ -142,6 +142,7 @@ err_radeon_fbdev_destroy_pinned_object:
  * Fbdev ops and struct fb_ops
  */
 
+#ifdef __linux__
 static int radeon_fbdev_fb_open(struct fb_info *info, int user)
 {
 	struct drm_fb_helper *fb_helper = info->par;
@@ -188,14 +189,19 @@ static void radeon_fbdev_fb_destroy(struct fb_info *info)
 	drm_fb_helper_unprepare(fb_helper);
 	kfree(fb_helper);
 }
+#endif /* __linux__ */
 
 static const struct fb_ops radeon_fbdev_fb_ops = {
+#ifdef notyet
 	.owner = THIS_MODULE,
 	.fb_open = radeon_fbdev_fb_open,
 	.fb_release = radeon_fbdev_fb_release,
 	FB_DEFAULT_IOMEM_OPS,
 	DRM_FB_HELPER_DEFAULT_OPS,
 	.fb_destroy = radeon_fbdev_fb_destroy,
+#else
+	DRM_FB_HELPER_DEFAULT_OPS,
+#endif
 };
 
 /*
@@ -208,6 +214,7 @@ static int radeon_fbdev_fb_helper_fb_probe(struct drm_fb_helper *fb_helper,
 	struct radeon_device *rdev = fb_helper->dev->dev_private;
 	struct drm_mode_fb_cmd2 mode_cmd = { };
 	struct fb_info *info;
+	struct rasops_info *ri = &rdev->ro;
 	struct drm_gem_object *gobj;
 	struct radeon_bo *rbo;
 	struct drm_framebuffer *fb;
@@ -275,6 +282,31 @@ static int radeon_fbdev_fb_helper_fb_probe(struct drm_fb_helper *fb_helper,
 	DRM_INFO("fb depth is %d\n", fb->format->depth);
 	DRM_INFO("   pitch is %d\n", fb->pitches[0]);
 
+	ri->ri_bits = rbo->kptr;
+	ri->ri_depth = fb->format->cpp[0] * 8;
+	ri->ri_stride = fb->pitches[0];
+	ri->ri_width = sizes->fb_width;
+	ri->ri_height = sizes->fb_height;
+
+	switch (fb->format->format) {
+	case DRM_FORMAT_XRGB8888:
+		ri->ri_rnum = 8;
+		ri->ri_rpos = 16;
+		ri->ri_gnum = 8;
+		ri->ri_gpos = 8;
+		ri->ri_bnum = 8;
+		ri->ri_bpos = 0;
+		break;
+	case DRM_FORMAT_RGB565:
+		ri->ri_rnum = 5;
+		ri->ri_rpos = 11;
+		ri->ri_gnum = 6;
+		ri->ri_gpos = 5;
+		ri->ri_bnum = 5;
+		ri->ri_bpos = 0;
+		break;
+	}
+
 	return 0;
 
 err_drm_framebuffer_unregister_private:
@@ -313,8 +345,18 @@ static void radeon_fbdev_client_unregister(struct drm_client_dev *client)
 	}
 }
 
+#ifdef __sparc64__
+void radeondrm_setcolor(void *, u_int, u_int8_t, u_int8_t, u_int8_t);
+#endif
+
+void radeondrm_burner_cb(void *);
+
 static int radeon_fbdev_client_restore(struct drm_client_dev *client)
 {
+#ifdef __sparc64__
+	struct radeon_device *rdev = client->dev->dev_private;
+	fbwscons_setcolormap(&rdev->sf, radeondrm_setcolor);
+#endif
 	drm_fb_helper_lastclose(client->dev);
 	vga_switcheroo_process_delayed_switch();
 
@@ -334,6 +376,28 @@ static int radeon_fbdev_client_hotplug(struct drm_client_dev *client)
 	ret = drm_fb_helper_init(dev, fb_helper);
 	if (ret)
 		goto err_drm_err;
+
+	task_set(&rdev->burner_task, radeondrm_burner_cb, rdev);
+
+#ifdef __sparc64__
+{
+	struct drm_connector_list_iter conn_iter;
+	struct drm_connector *connector;
+	struct drm_cmdline_mode *mode;
+
+	drm_connector_list_iter_begin(fb_helper->dev, &conn_iter);
+	drm_client_for_each_connector_iter(connector, &conn_iter) {
+		mode = &connector->cmdline_mode;
+
+		mode->specified = true;
+		mode->xres = rdev->sf.sf_width;
+		mode->yres = rdev->sf.sf_height;
+		mode->bpp_specified = true;
+		mode->bpp = rdev->sf.sf_depth;
+	}
+	drm_connector_list_iter_end(&conn_iter);
+}
+#endif
 
 	if (!drm_drv_uses_atomic_modeset(dev))
 		drm_helper_disable_unused_functions(dev);
@@ -413,4 +477,37 @@ bool radeon_fbdev_robj_is_fb(struct radeon_device *rdev, struct radeon_bo *robj)
 		return false;
 
 	return true;
+}
+
+void
+radeondrm_burner(void *v, u_int on, u_int flags)
+{
+	struct rasops_info *ri = v;
+	struct radeon_device *rdev = ri->ri_hw;
+
+	task_del(systq, &rdev->burner_task);
+
+	if (on)
+		rdev->burner_fblank = FB_BLANK_UNBLANK;
+	else {
+		if (flags & WSDISPLAY_BURN_VBLANK)
+			rdev->burner_fblank = FB_BLANK_VSYNC_SUSPEND;
+		else
+			rdev->burner_fblank = FB_BLANK_NORMAL;
+	}
+
+	/*
+	 * Setting the DPMS mode may sleep while waiting for vblank so
+	 * hand things off to a taskq.
+	 */
+	task_add(systq, &rdev->burner_task);
+}
+
+void
+radeondrm_burner_cb(void *arg1)
+{
+	struct radeon_device *rdev = arg1;
+	struct drm_fb_helper *helper = rdev->ddev->fb_helper;
+
+	drm_fb_helper_blank(rdev->burner_fblank, helper->info);
 }

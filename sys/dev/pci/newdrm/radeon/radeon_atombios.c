@@ -186,7 +186,7 @@ void radeon_atombios_i2c_init(struct radeon_device *rdev)
 			i2c = radeon_get_bus_rec_for_i2c_gpio(gpio);
 
 			if (i2c.valid) {
-				sprintf(stmp, "0x%x", i2c.i2c_id);
+				snprintf(stmp, sizeof(stmp), "0x%x", i2c.i2c_id);
 				rdev->i2c_bus[i] = radeon_i2c_create(rdev_to_drm(rdev), &i2c, stmp);
 			}
 			gpio = (ATOM_GPIO_I2C_ASSIGMENT *)
@@ -285,7 +285,11 @@ static bool radeon_atom_apply_quirks(struct drm_device *dev,
 				     uint16_t *line_mux,
 				     struct radeon_hpd *hpd)
 {
+#ifdef __linux__
 	struct pci_dev *pdev = to_pci_dev(dev->dev);
+#else
+	struct pci_dev *pdev = dev->pdev;
+#endif
 
 	/* Asus M2A-VM HDMI board lists the DVI port as HDMI */
 	if ((pdev->device == 0x791e) &&
@@ -2103,6 +2107,7 @@ static int radeon_atombios_parse_power_table_1_3(struct radeon_device *rdev)
 			 power_info->info.ucOverdriveControllerAddress >> 1);
 		i2c_bus = radeon_lookup_i2c_gpio(rdev, power_info->info.ucOverdriveI2cLine);
 		rdev->pm.i2c_bus = radeon_i2c_lookup(rdev, &i2c_bus);
+#ifdef notyet
 		if (rdev->pm.i2c_bus) {
 			struct i2c_board_info info = { };
 			const char *name = thermal_controller_names[power_info->info.
@@ -2111,6 +2116,7 @@ static int radeon_atombios_parse_power_table_1_3(struct radeon_device *rdev)
 			strscpy(info.type, name, sizeof(info.type));
 			i2c_new_client_device(&rdev->pm.i2c_bus->adapter, &info);
 		}
+#endif
 	}
 	num_modes = power_info->info.ucNumOfPowerModeEntries;
 	if (num_modes > ATOM_MAX_NUMBEROF_POWER_BLOCK)
@@ -2354,6 +2360,7 @@ static void radeon_atombios_add_pplib_thermal_controller(struct radeon_device *r
 			rdev->pm.int_thermal_type = THERMAL_TYPE_EXTERNAL;
 			i2c_bus = radeon_lookup_i2c_gpio(rdev, controller->ucI2cLine);
 			rdev->pm.i2c_bus = radeon_i2c_lookup(rdev, &i2c_bus);
+#ifdef notyet
 			if (rdev->pm.i2c_bus) {
 				struct i2c_board_info info = { };
 				const char *name = pp_lib_thermal_controller_names[controller->ucType];
@@ -2361,6 +2368,7 @@ static void radeon_atombios_add_pplib_thermal_controller(struct radeon_device *r
 				strscpy(info.type, name, sizeof(info.type));
 				i2c_new_client_device(&rdev->pm.i2c_bus->adapter, &info);
 			}
+#endif
 		} else {
 			DRM_INFO("Unknown thermal controller type %d at 0x%02x %s fan control\n",
 				 controller->ucType,
