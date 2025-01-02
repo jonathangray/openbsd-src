@@ -63,7 +63,7 @@ static void radeon_ttm_bo_destroy(struct ttm_buffer_object *tbo)
 	if (bo->tbo.base.import_attach)
 		drm_prime_gem_destroy(&bo->tbo.base, bo->tbo.sg);
 	drm_gem_object_release(&bo->tbo.base);
-	pool_put(&bo->rdev->ddev->objpl, bo);
+	pool_put(&rdev_to_drm(bo->rdev)->objpl, bo);
 }
 
 bool radeon_ttm_bo_is_radeon_bo(struct ttm_buffer_object *bo)
@@ -147,7 +147,7 @@ int radeon_bo_create(struct radeon_device *rdev,
 	}
 	*bo_ptr = NULL;
 
-	bo = pool_get(&rdev->ddev->objpl, PR_WAITOK | PR_ZERO);
+	bo = pool_get(&rdev_to_drm(rdev)->objpl, PR_WAITOK | PR_ZERO);
 	if (bo == NULL)
 		return -ENOMEM;
 	drm_gem_private_object_init(rdev_to_drm(rdev), &bo->tbo.base, size);
