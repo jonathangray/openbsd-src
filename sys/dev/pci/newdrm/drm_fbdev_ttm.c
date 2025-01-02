@@ -129,14 +129,16 @@ static int drm_fbdev_ttm_helper_fb_probe(struct drm_fb_helper *fb_helper,
 	ret = fb_deferred_io_init(info);
 	if (ret)
 		goto err_drm_fb_helper_release_info;
+#else
+	STUB();
+	ret = -ENOSYS;
+	goto err_drm_fb_helper_release_info;
 #endif
 
 	return 0;
 
-#ifdef notyet
 err_drm_fb_helper_release_info:
 	drm_fb_helper_release_info(fb_helper);
-#endif
 err_vfree:
 	vfree(screen_buffer);
 err_drm_client_framebuffer_delete:

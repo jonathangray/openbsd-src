@@ -84,6 +84,7 @@ FB_GEN_DEFAULT_DEFERRED_DMAMEM_OPS(drm_fbdev_dma,
 				   drm_fb_helper_damage_range,
 				   drm_fb_helper_damage_area);
 
+#ifdef __linux__
 static int drm_fbdev_dma_deferred_fb_mmap(struct fb_info *info, struct vm_area_struct *vma)
 {
 	struct drm_fb_helper *fb_helper = info->par;
@@ -95,16 +96,21 @@ static int drm_fbdev_dma_deferred_fb_mmap(struct fb_info *info, struct vm_area_s
 
 	return fb_deferred_io_mmap(info, vma);
 }
+#endif
 
 static const struct fb_ops drm_fbdev_dma_deferred_fb_ops = {
+#ifdef __linux__
 	.owner = THIS_MODULE,
 	.fb_open = drm_fbdev_dma_fb_open,
 	.fb_release = drm_fbdev_dma_fb_release,
 	__FB_DEFAULT_DEFERRED_OPS_RDWR(drm_fbdev_dma),
+#endif
 	DRM_FB_HELPER_DEFAULT_OPS,
+#ifdef notyet
 	__FB_DEFAULT_DEFERRED_OPS_DRAW(drm_fbdev_dma),
 	.fb_mmap = drm_fbdev_dma_deferred_fb_mmap,
 	.fb_destroy = drm_fbdev_dma_fb_destroy,
+#endif
 };
 
 /*
@@ -196,6 +202,7 @@ static int drm_fbdev_dma_helper_fb_probe(struct drm_fb_helper *fb_helper,
 			use_deferred_io = false;
 	}
 
+#ifdef notyet
 	/* deferred I/O */
 	if (use_deferred_io) {
 		fb_helper->fbdefio.delay = HZ / 20;
@@ -206,6 +213,11 @@ static int drm_fbdev_dma_helper_fb_probe(struct drm_fb_helper *fb_helper,
 		if (ret)
 			goto err_drm_fb_helper_release_info;
 	}
+#else
+	STUB();
+	ret = -ENOSYS;
+	goto err_drm_fb_helper_release_info;
+#endif
 
 	return 0;
 
