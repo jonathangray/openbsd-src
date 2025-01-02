@@ -735,10 +735,7 @@ radeondrm_detach_kms(struct device *self, int flags)
 	radeon_modeset_fini(rdev);
 	radeon_device_fini(rdev);
 
-	if (rdev->ddev != NULL) {
-		config_detach(rdev->ddev->dev, flags);
-		rdev->ddev = NULL;
-	}
+	config_detach(rdev_to_drm(rdev)->dev, flags);
 
 	return 0;
 }
@@ -879,7 +876,7 @@ radeondrm_doswitch(void *v)
 #else
 	radeondrm_setpal(rdev, ri);
 #endif
-	drm_fb_helper_restore_fbdev_mode_unlocked(rdev->ddev->fb_helper);
+	drm_fb_helper_restore_fbdev_mode_unlocked(rdev_to_drm(rdev)->fb_helper);
 
 	if (rdev->switchcb)
 		(rdev->switchcb)(rdev->switchcbarg, 0, 0);
@@ -890,7 +887,7 @@ radeondrm_enter_ddb(void *v, void *cookie)
 {
 	struct rasops_info *ri = v;
 	struct radeon_device *rdev = ri->ri_hw;
-	struct drm_fb_helper *fb_helper = rdev->ddev->fb_helper;
+	struct drm_fb_helper *fb_helper = rdev_to_drm(rdev)->fb_helper;
 
 	if (cookie == ri->ri_active)
 		return;
@@ -1127,7 +1124,6 @@ radeondrm_attach_kms(struct device *parent, struct device *self, void *aux)
 		printf("%s: drm attach failed\n", rdev->self.dv_xname);
 		return;
 	}
-	rdev->ddev = dev;
 	rdev->pdev = dev->pdev;
 
 	if (!radeon_msi_ok(rdev))
@@ -1144,7 +1140,7 @@ radeondrm_attach_kms(struct device *parent, struct device *self, void *aux)
 	    pci_intr_string(pa->pa_pc, rdev->intrh));
 
 	rdev->irqh = pci_intr_establish(pa->pa_pc, rdev->intrh, IPL_TTY,
-	    radeon_driver_irq_handler_kms, rdev->ddev, rdev->self.dv_xname);
+	    radeon_driver_irq_handler_kms, rdev_to_drm(rdev), rdev->self.dv_xname);
 	if (rdev->irqh == NULL) {
 		printf("%s: couldn't establish interrupt\n",
 		    rdev->self.dv_xname);
@@ -1232,7 +1228,7 @@ radeondrm_attachhook(struct device *self)
 	 * properly initialize the GPU MC controller and permit
 	 * VRAM allocation
 	 */
-	r = radeon_device_init(rdev, rdev->ddev, rdev->ddev->pdev, rdev->flags);
+	r = radeon_device_init(rdev, dev, dev->pdev, rdev->flags);
 	if (r) {
 		dev_err(&dev->pdev->dev, "Fatal error during GPU init\n");
 		radeon_fatal_error = 1;
@@ -1262,7 +1258,7 @@ radeondrm_attachhook(struct device *self)
 	radeon_kfd_device_init(rdev);
 #endif
 
-	if (radeon_is_px(rdev->ddev)) {
+	if (radeon_is_px(rdev_to_drm(rdev))) {
 		pm_runtime_use_autosuspend(dev->dev);
 		pm_runtime_set_autosuspend_delay(dev->dev, 5000);
 		pm_runtime_set_active(dev->dev);
@@ -1340,22 +1336,23 @@ int
 radeondrm_activate_kms(struct device *self, int act)
 {
 	struct radeon_device *rdev = (struct radeon_device *)self;
+	struct drm_device *ddev = rdev_to_drm(rdev);
 	int rv = 0;
 
-	if (rdev->ddev == NULL || radeon_fatal_error)
+	if (ddev == NULL || radeon_fatal_error)
 		return (0);
 
 	switch (act) {
 	case DVACT_QUIESCE:
 		rv = config_activate_children(self, act);
-		radeon_suspend_kms(rdev->ddev, true, true, false);
+		radeon_suspend_kms(ddev, true, true, false);
 		break;
 	case DVACT_SUSPEND:
 		break;
 	case DVACT_RESUME:
 		break;
 	case DVACT_WAKEUP:
-		radeon_resume_kms(rdev->ddev, true, true);
+		radeon_resume_kms(ddev, true, true);
 		rv = config_activate_children(self, act);
 		break;
 	}
