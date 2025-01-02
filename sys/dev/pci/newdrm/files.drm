@@ -59,7 +59,7 @@ file	dev/pci/newdrm/drm_modeset_lock.c		drm
 file	dev/pci/newdrm/drm_mtrr.c			drm
 file	dev/pci/newdrm/drm_panel.c			drm
 file	dev/pci/newdrm/drm_panel_orientation_quirks.c	drm
-file	dev/pci/newdrm/drm_panic.c			drm
+#file	dev/pci/newdrm/drm_panic.c			drm
 file	dev/pci/newdrm/drm_pci.c			drm
 file	dev/pci/newdrm/drm_plane.c			drm
 file	dev/pci/newdrm/drm_plane_helper.c		drm
