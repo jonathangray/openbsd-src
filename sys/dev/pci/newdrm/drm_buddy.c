@@ -811,7 +811,7 @@ static int __alloc_contig_try_harder(struct drm_buddy *mm,
 	u64 rhs_offset, lhs_offset, lhs_size, filled;
 	struct drm_buddy_block *block;
 	struct list_head *list;
-	LIST_HEAD(blocks_lhs);
+	DRM_LIST_HEAD(blocks_lhs);
 	unsigned long pages;
 	unsigned int order;
 	u64 modify_size;
@@ -1098,7 +1098,7 @@ int drm_buddy_alloc_blocks(struct drm_buddy *mm,
 	if (!(flags & DRM_BUDDY_TRIM_DISABLE) &&
 	    original_size != size) {
 		struct list_head *trim_list;
-		LIST_HEAD(temp);
+		DRM_LIST_HEAD(temp);
 		u64 trim_size;
 
 		trim_list = &allocated;
