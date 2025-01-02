@@ -1511,7 +1511,9 @@ struct drm_connector_funcs {
 	 *
 	 * Allows connectors to create connector-specific debugfs files.
 	 */
+#ifdef __linux__
 	void (*debugfs_init)(struct drm_connector *connector, struct dentry *root);
+#endif
 };
 
 /**
@@ -1758,7 +1760,7 @@ struct drm_connector {
 	 * @registered. Most of the connector state is still protected by
 	 * &drm_mode_config.mutex.
 	 */
-	struct mutex mutex;
+	struct rwlock mutex;
 
 	/**
 	 * @index: Compacted connector index, which matches the position inside
@@ -1980,7 +1982,7 @@ struct drm_connector {
 	/**
 	 * @edid_override_mutex: Protect access to edid_override.
 	 */
-	struct mutex edid_override_mutex;
+	struct rwlock edid_override_mutex;
 
 	/** @epoch_counter: used to detect any other changes in connector, besides status */
 	u64 epoch_counter;
@@ -2101,6 +2103,11 @@ struct drm_connector {
 	/** @tile_h_size: horizontal size of this tile. */
 	/** @tile_v_size: vertical size of this tile. */
 	uint16_t tile_h_size, tile_v_size;
+
+#ifdef __OpenBSD__
+	struct backlight_device *backlight_device;
+	struct drm_property *backlight_property;
+#endif
 
 	/**
 	 * @free_node:

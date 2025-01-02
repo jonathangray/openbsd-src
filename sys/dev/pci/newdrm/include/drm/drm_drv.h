@@ -34,6 +34,8 @@
 
 #include <drm/drm_device.h>
 
+#include <uvm/uvm_extern.h>
+
 struct drm_file;
 struct drm_gem_object;
 struct drm_master;
@@ -323,6 +325,11 @@ struct drm_driver {
 				struct dma_buf_attachment *attach,
 				struct sg_table *sgt);
 
+#ifdef __OpenBSD__
+	struct uvm_object *(*mmap)(struct file *, vm_prot_t, voff_t, vsize_t);
+	size_t gem_size;
+#endif
+
 	/**
 	 * @dumb_create:
 	 *
@@ -372,6 +379,12 @@ struct drm_driver {
 	 * Print device specific fdinfo.  See Documentation/gpu/drm-usage-stats.rst.
 	 */
 	void (*show_fdinfo)(struct drm_printer *p, struct drm_file *f);
+
+#ifdef __OpenBSD__
+	int (*gem_fault)(struct drm_gem_object *,
+			 struct uvm_faultinfo *, off_t, vaddr_t,
+			 vm_page_t *, int, int, vm_prot_t, int);
+#endif
 
 	/** @major: driver major number */
 	int major;
@@ -542,6 +555,24 @@ static inline bool drm_firmware_drivers_only(void)
 {
 	return video_firmware_drivers_only();
 }
+
+struct drm_file *drm_find_file_by_minor(struct drm_device *, int);
+struct drm_device *drm_get_device_from_kdev(dev_t);
+
+#ifdef __OpenBSD__
+
+void drm_attach_platform(struct drm_driver *, bus_space_tag_t, bus_dma_tag_t,
+    struct device *, struct drm_device *);
+struct drm_device *drm_attach_pci(const struct drm_driver *,
+    struct pci_attach_args *, int, int, struct device *, struct drm_device *);
+
+int drm_pciprobe(struct pci_attach_args *, const struct pci_device_id * );
+const struct pci_device_id *drm_find_description(int, int,
+    const struct pci_device_id *);
+
+int drm_getpciinfo(struct drm_device *, void *, struct drm_file *);
+
+#endif
 
 #if defined(CONFIG_DEBUG_FS)
 void drm_debugfs_dev_init(struct drm_device *dev, struct dentry *root);

@@ -37,6 +37,11 @@ struct ttm_operation_ctx;
 struct ttm_pool;
 struct ttm_tt;
 
+struct ttm_pool_type_lru {
+	LIST_ENTRY(ttm_pool_type_lru) entries;
+	struct vm_page *pg;
+};
+
 /**
  * struct ttm_pool_type - Pool for a certain memory type
  *
@@ -46,6 +51,7 @@ struct ttm_tt;
  * @shrinker_list: our place on the global shrinker list
  * @lock: protection of the page list
  * @pages: the list of pages in the pool
+ * @lru: the free list of pages
  */
 struct ttm_pool_type {
 	struct ttm_pool *pool;
@@ -56,6 +62,7 @@ struct ttm_pool_type {
 
 	spinlock_t lock;
 	struct list_head pages;
+	LIST_HEAD(, ttm_pool_type_lru) lru;
 };
 
 /**

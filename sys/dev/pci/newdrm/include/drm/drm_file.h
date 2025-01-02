@@ -38,12 +38,15 @@
 
 #include <drm/drm_prime.h>
 
+#include <sys/selinfo.h>
+
 struct dma_fence;
 struct drm_file;
 struct drm_device;
 struct drm_printer;
 struct device;
 struct file;
+struct seq_file;
 
 extern struct xarray drm_minors_xa;
 
@@ -295,6 +298,8 @@ struct drm_file {
 	/** @minor: &struct drm_minor for this file. */
 	struct drm_minor *minor;
 
+	int fminor;
+
 	/**
 	 * @object_idr:
 	 *
@@ -334,7 +339,7 @@ struct drm_file {
 	struct list_head fbs;
 
 	/** @fbs_lock: Protects @fbs. */
-	struct mutex fbs_lock;
+	struct rwlock fbs_lock;
 
 	/**
 	 * @blobs:
@@ -380,7 +385,7 @@ struct drm_file {
 	int event_space;
 
 	/** @event_read_lock: Serializes drm_read(). */
-	struct mutex event_read_lock;
+	struct rwlock event_read_lock;
 
 	/**
 	 * @prime:
@@ -388,6 +393,11 @@ struct drm_file {
 	 * Per-file buffer caches used by the PRIME buffer sharing code.
 	 */
 	struct drm_prime_file_private prime;
+
+#ifdef __OpenBSD__
+	struct selinfo rsel;
+	SPLAY_ENTRY(drm_file) link;
+#endif
 };
 
 /**
@@ -439,6 +449,7 @@ void drm_file_update_pid(struct drm_file *);
 struct drm_minor *drm_minor_acquire(struct xarray *minors_xa, unsigned int minor_id);
 void drm_minor_release(struct drm_minor *minor);
 
+#ifdef __linux__
 int drm_open(struct inode *inode, struct file *filp);
 int drm_open_helper(struct file *filp, struct drm_minor *minor);
 ssize_t drm_read(struct file *filp, char __user *buffer,
@@ -446,6 +457,7 @@ ssize_t drm_read(struct file *filp, char __user *buffer,
 int drm_release(struct inode *inode, struct file *filp);
 int drm_release_noglobal(struct inode *inode, struct file *filp);
 __poll_t drm_poll(struct file *filp, struct poll_table_struct *wait);
+#endif
 int drm_event_reserve_init_locked(struct drm_device *dev,
 				  struct drm_file *file_priv,
 				  struct drm_pending_event *p,

@@ -205,7 +205,11 @@ struct drm_sched_entity {
 	/**
 	 * @last_user: last group leader pushing a job into the entity.
 	 */
+#ifdef __linux__
 	struct task_struct		*last_user;
+#else
+	struct process			*last_user;
+#endif
 
 	/**
 	 * @stopped:

@@ -37,7 +37,7 @@
 
 struct iosys_map;
 
-void drm_clflush_pages(struct page *pages[], unsigned long num_pages);
+void drm_clflush_pages(struct vm_page *pages[], unsigned long num_pages);
 void drm_clflush_sg(struct sg_table *st);
 void drm_clflush_virt_range(void *addr, unsigned long length);
 bool drm_need_swiotlb(int dma_bits);

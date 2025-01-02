@@ -336,7 +336,7 @@ struct drm_edid;
  * @unregister_work: unregister the CEC adapter
  */
 struct drm_dp_aux_cec {
-	struct mutex lock;
+	struct rwlock lock;
 	struct cec_adapter *adap;
 	struct drm_connector *connector;
 	struct delayed_work unregister_work;
@@ -403,7 +403,7 @@ struct drm_dp_aux {
 	 * channels, the driver needs to do additional locking to
 	 * prevent concurrent access.
 	 */
-	struct mutex hw_mutex;
+	struct rwlock hw_mutex;
 
 	/**
 	 * @crc_work: worker that captures CRCs for each frame
