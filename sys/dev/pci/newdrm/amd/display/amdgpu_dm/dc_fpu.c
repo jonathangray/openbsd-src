@@ -44,8 +44,9 @@ static DEFINE_PER_CPU(int, fpu_recursion_depth);
 #else
 static int fpu_recursion_depth;
 
-#define get_cpu_ptr(x)	(x)
-#define put_cpu_ptr(x)	do {} while(0)
+#define __this_cpu_read(x)		atomic_read(&x)
+#define __this_cpu_inc_return(x)	atomic_inc_return(&x)
+#define __this_cpu_dec_return(x)	atomic_dec_return(&x)
 #endif
 
 /**
