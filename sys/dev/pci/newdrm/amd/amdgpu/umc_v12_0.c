@@ -651,6 +651,8 @@ static int umc_v12_0_fill_error_record(struct amdgpu_device *adev,
 static void umc_v12_0_query_ras_ecc_err_addr(struct amdgpu_device *adev,
 					void *ras_error_status)
 {
+	STUB();
+#ifdef notyet
 	struct amdgpu_ras *con = amdgpu_ras_get_context(adev);
 	struct ras_ecc_err *entries[MAX_ECC_NUM_PER_RETIREMENT];
 	struct radix_tree_root *ecc_tree;
@@ -674,6 +676,7 @@ static void umc_v12_0_query_ras_ecc_err_addr(struct amdgpu_device *adev,
 				entries[i]->pa_pfn, UMC_ECC_NEW_DETECTED_TAG);
 	}
 	mutex_unlock(&con->umc_ecc_log.lock);
+#endif
 }
 
 struct amdgpu_umc_ras umc_v12_0_ras = {
