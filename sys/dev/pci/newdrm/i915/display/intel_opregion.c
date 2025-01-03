@@ -304,7 +304,7 @@ static int swsci(struct intel_display *display,
 		 u32 function, u32 parm, u32 *parm_out)
 {
 	struct opregion_swsci *swsci;
-	struct pci_dev *pdev = to_pci_dev(display->drm->dev);
+	struct pci_dev *pdev = display->drm.pdev;
 	u32 scic, dslp;
 	u16 swsci_val;
 	int ret;
@@ -491,11 +491,13 @@ static u32 asle_set_backlight(struct intel_display *display, u32 bclp)
 
 	drm_dbg(display->drm, "bclp = 0x%08x\n", bclp);
 
+#ifdef __linux__
 	if (acpi_video_get_backlight_type() == acpi_backlight_native) {
 		drm_dbg_kms(display->drm,
 			    "opregion backlight request ignored\n");
 		return 0;
 	}
+#endif
 
 	if (!(bclp & ASLE_BCLP_VALID))
 		return ASLC_BACKLIGHT_FAILED;
@@ -674,6 +676,8 @@ void intel_opregion_asle_intr(struct intel_display *display)
 #define ACPI_EV_LID            (1<<1)
 #define ACPI_EV_DOCK           (1<<2)
 
+#ifdef notyet
+
 /*
  * The only video events relevant to opregion are 0x80. These indicate either a
  * docking event, lid switch or display switch request. In Linux, these are
@@ -790,6 +794,8 @@ static void intel_setup_cadls(struct intel_display *display)
 		opregion->acpi->cadl[i] = 0;
 }
 
+#endif
+
 static void swsci_setup(struct intel_display *display)
 {
 	struct intel_opregion *opregion = display->opregion;
@@ -871,7 +877,7 @@ static const struct dmi_system_id intel_no_opregion_vbt[] = {
 int intel_opregion_setup(struct intel_display *display)
 {
 	struct intel_opregion *opregion;
-	struct pci_dev *pdev = to_pci_dev(display->drm->dev);
+	struct pci_dev *pdev = display->drm.pdev;
 	u32 asls, mboxes;
 	char buf[sizeof(OPREGION_SIGNATURE)];
 	int err = 0;
@@ -902,11 +908,18 @@ int intel_opregion_setup(struct intel_display *display)
 
 	INIT_WORK(&opregion->asle_work, asle_work);
 
+#ifdef __linux__
 	base = memremap(asls, OPREGION_SIZE, MEMREMAP_WB);
 	if (!base) {
 		err = -ENOMEM;
 		goto err_memremap;
 	}
+#else
+	if (bus_space_map(dev_priv->bst, asls, OPREGION_SIZE,
+	    BUS_SPACE_MAP_LINEAR, &dev_priv->opregion_ioh))
+		return -ENOMEM;
+	base = bus_space_vaddr(dev_priv->bst, dev_priv->opregion_ioh);
+#endif
 
 	memcpy(buf, base, sizeof(buf));
 
@@ -985,8 +998,17 @@ int intel_opregion_setup(struct intel_display *display)
 			rvda += asls;
 		}
 
+#ifdef __linux__
 		opregion->rvda = memremap(rvda, opregion->asle->rvds,
 					  MEMREMAP_WB);
+#else
+		if (bus_space_map(dev_priv->bst, rvda, opregion->asle->rvds,
+		    BUS_SPACE_MAP_LINEAR, &dev_priv->opregion_rvda_ioh))
+			return -ENOMEM;
+		opregion->rvda = bus_space_vaddr(dev_priv->bst,
+		    dev_priv->opregion_rvda_ioh);
+		dev_priv->opregion_rvda_size = opregion->asle->rvds;
+#endif
 
 		vbt = opregion->rvda;
 		vbt_size = opregion->asle->rvds;
@@ -999,7 +1021,12 @@ int intel_opregion_setup(struct intel_display *display)
 		} else {
 			drm_dbg_kms(display->drm,
 				    "Invalid VBT in ACPI OpRegion (RVDA)\n");
+#ifdef __linux__
 			memunmap(opregion->rvda);
+#else
+			bus_space_unmap(dev_priv->bst, dev_priv->opregion_rvda_ioh,
+			    dev_priv->opregion_rvda_size);
+#endif
 			opregion->rvda = NULL;
 		}
 	}
@@ -1029,7 +1056,11 @@ out:
 	return 0;
 
 err_out:
+#ifdef __linux__
 	memunmap(base);
+#else
+	bus_space_unmap(dev_priv->bst, dev_priv->opregion_ioh, OPREGION_SIZE);
+#endif
 err_memremap:
 	kfree(opregion);
 	display->opregion = NULL;
@@ -1179,9 +1210,11 @@ void intel_opregion_register(struct intel_display *display)
 		return;
 
 	if (opregion->acpi) {
+#ifdef notyet
 		opregion->acpi_notifier.notifier_call =
 			intel_opregion_video_event;
 		register_acpi_notifier(&opregion->acpi_notifier);
+#endif
 	}
 
 	intel_opregion_resume(display);
@@ -1192,8 +1225,10 @@ static void intel_opregion_resume_display(struct intel_display *display)
 	struct intel_opregion *opregion = display->opregion;
 
 	if (opregion->acpi) {
+#ifdef notyet
 		intel_didl_outputs(display);
 		intel_setup_cadls(display);
+#endif
 
 		/*
 		 * Notify BIOS we are ready to handle ACPI video ext notifs.
@@ -1274,9 +1309,16 @@ void intel_opregion_cleanup(struct intel_display *display)
 	if (!opregion)
 		return;
 
+#ifdef __linux__
 	memunmap(opregion->header);
 	if (opregion->rvda)
 		memunmap(opregion->rvda);
+#else
+	bus_space_unmap(i915->bst, i915->opregion_ioh, OPREGION_SIZE);
+	if (opregion->rvda)
+		bus_space_unmap(i915->bst, i915->opregion_rvda_ioh,
+		    i915->opregion_rvda_size);
+#endif
 	kfree(opregion);
 	display->opregion = NULL;
 }

@@ -424,8 +424,11 @@ execlists_context_status_change(struct i915_request *rq, unsigned long status)
 	if (!IS_ENABLED(CONFIG_DRM_I915_GVT))
 		return;
 
+	STUB();
+#ifdef notyet
 	atomic_notifier_call_chain(&rq->engine->context_status_notifier,
 				   status, rq);
+#endif
 }
 
 static void reset_active(struct i915_request *rq,
@@ -1074,7 +1077,7 @@ static void virtual_xfer_context(struct virtual_engine *ve,
 
 static void defer_request(struct i915_request *rq, struct list_head * const pl)
 {
-	LIST_HEAD(list);
+	DRM_LIST_HEAD(list);
 
 	/*
 	 * We want to move the interrupted request to the back of
@@ -2055,7 +2058,7 @@ static void post_process_csb(struct i915_request **port,
 
 static void __execlists_hold(struct i915_request *rq)
 {
-	LIST_HEAD(list);
+	DRM_LIST_HEAD(list);
 
 	do {
 		struct i915_dependency *p;
@@ -2153,7 +2156,7 @@ static bool hold_request(const struct i915_request *rq)
 
 static void __execlists_unhold(struct i915_request *rq)
 {
-	LIST_HEAD(list);
+	DRM_LIST_HEAD(list);
 
 	do {
 		struct i915_dependency *p;
@@ -2412,7 +2415,7 @@ static void execlists_reset(struct intel_engine_cs *engine, const char *msg)
 
 static bool preempt_timeout(const struct intel_engine_cs *const engine)
 {
-	const struct timer_list *t = &engine->execlists.preempt;
+	const struct timeout *t = &engine->execlists.preempt;
 
 	if (!CONFIG_DRM_I915_PREEMPT_TIMEOUT)
 		return false;
@@ -2537,13 +2540,15 @@ static void __execlists_kick(struct intel_engine_execlists *execlists)
 #define execlists_kick(t, member) \
 	__execlists_kick(container_of(t, struct intel_engine_execlists, member))
 
-static void execlists_timeslice(struct timer_list *timer)
+static void execlists_timeslice(void *arg)
 {
+	struct timeout *timer = (struct timeout *)arg;
 	execlists_kick(timer, timer);
 }
 
-static void execlists_preempt(struct timer_list *timer)
+static void execlists_preempt(void *arg)
 {
+	struct timeout *timer = (struct timeout *)arg;
 	execlists_kick(timer, preempt);
 }
 
@@ -2649,7 +2654,7 @@ static void execlists_context_cancel_request(struct intel_context *ce,
 	if (engine && intel_engine_pulse(engine))
 		intel_gt_handle_error(engine->gt, engine->mask, 0,
 				      "request cancellation by %s",
-				      current->comm);
+				      curproc->p_p->ps_comm);
 }
 
 static struct intel_context *
@@ -3541,8 +3546,15 @@ int intel_execlists_submission_setup(struct intel_engine_cs *engine)
 	u32 base = engine->mmio_base;
 
 	tasklet_setup(&engine->sched_engine->tasklet, execlists_submission_tasklet);
+#ifdef __linux__
 	timer_setup(&engine->execlists.timer, execlists_timeslice, 0);
 	timer_setup(&engine->execlists.preempt, execlists_preempt, 0);
+#else
+	timeout_set(&engine->execlists.timer, execlists_timeslice,
+	    &engine->execlists.timer);
+	timeout_set(&engine->execlists.preempt, execlists_preempt,
+	    &engine->execlists.preempt);
+#endif
 
 	logical_ring_default_vfuncs(engine);
 	logical_ring_default_irqs(engine);

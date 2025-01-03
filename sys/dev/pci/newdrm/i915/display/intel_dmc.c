@@ -1012,7 +1012,11 @@ static void dmc_load_work_fn(struct work_struct *work)
 	const char *fallback_path;
 	int err;
 
+#ifdef __linux__
 	err = request_firmware(&fw, dmc->fw_path, i915->drm.dev);
+#else
+	err = request_firmware(&fw, dmc->fw_path, NULL);
+#endif
 
 	if (err == -ENOENT && !dmc_firmware_param(i915)) {
 		fallback_path = dmc_fallback_path(i915);
@@ -1029,8 +1033,10 @@ static void dmc_load_work_fn(struct work_struct *work)
 		drm_notice(&i915->drm,
 			   "Failed to load DMC firmware %s (%pe). Disabling runtime power management.\n",
 			   dmc->fw_path, ERR_PTR(err));
+#ifdef __linux__
 		drm_notice(&i915->drm, "DMC firmware homepage: %s",
 			   INTEL_DMC_FIRMWARE_URL);
+#endif
 		return;
 	}
 
@@ -1201,6 +1207,8 @@ void intel_dmc_print_error_state(struct drm_printer *p,
 			   DMC_VERSION_MINOR(dmc->version));
 }
 
+#ifdef notyet
+
 static int intel_dmc_debugfs_status_show(struct seq_file *m, void *unused)
 {
 	struct drm_i915_private *i915 = m->private;
@@ -1273,6 +1281,8 @@ out:
 }
 
 DEFINE_SHOW_ATTRIBUTE(intel_dmc_debugfs_status);
+
+#endif /* notyet */
 
 void intel_dmc_debugfs_register(struct drm_i915_private *i915)
 {

@@ -398,7 +398,7 @@ int intel_gsc_proxy_init(struct intel_gsc_uc *gsc)
 	struct intel_gt *gt = gsc_uc_to_gt(gsc);
 	struct drm_i915_private *i915 = gt->i915;
 
-	mutex_init(&gsc->proxy.mutex);
+	rw_init(&gsc->proxy.mutex, "gscprox");
 
 	if (!IS_ENABLED(CONFIG_INTEL_MEI_GSC_PROXY)) {
 		gt_info(gt, "can't init GSC proxy due to missing mei component\n");

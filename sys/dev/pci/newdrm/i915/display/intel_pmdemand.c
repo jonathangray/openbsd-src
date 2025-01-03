@@ -101,7 +101,7 @@ int intel_pmdemand_init(struct drm_i915_private *i915)
 
 void intel_pmdemand_init_early(struct drm_i915_private *i915)
 {
-	mutex_init(&i915->display.pmdemand.lock);
+	rw_init(&i915->display.pmdemand.lock, "pmdem");
 	init_waitqueue_head(&i915->display.pmdemand.waitqueue);
 }
 

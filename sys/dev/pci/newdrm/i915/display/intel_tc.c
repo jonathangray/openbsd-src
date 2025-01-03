@@ -49,7 +49,7 @@ struct intel_tc_port {
 
 	const struct intel_tc_phy_ops *phy_ops;
 
-	struct mutex lock;	/* protects the TypeC port mode */
+	struct rwlock lock;	/* protects the TypeC port mode */
 	intel_wakeref_t lock_wakeref;
 #if IS_ENABLED(CONFIG_DRM_I915_DEBUG_RUNTIME_PM)
 	enum intel_display_power_domain lock_power_domain;
@@ -1879,7 +1879,7 @@ int intel_tc_port_init(struct intel_digital_port *dig_port, bool is_legacy)
 		return -ENOMEM;
 	}
 
-	mutex_init(&tc->lock);
+	rw_init(&tc->lock, "itcp");
 	/* TODO: Combine the two works */
 	INIT_DELAYED_WORK(&tc->disconnect_phy_work, intel_tc_port_disconnect_phy_work);
 	INIT_DELAYED_WORK(&tc->link_reset_work, intel_tc_port_link_reset_work);

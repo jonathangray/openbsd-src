@@ -18,6 +18,8 @@
 #include "intel_gt_types.h"
 #include "intel_rc6.h"
 
+#ifdef notyet
+
 bool is_object_gt(struct kobject *kobj)
 {
 	return !strncmp(kobj->name, "gt", 2);
@@ -78,8 +80,11 @@ static const struct kobj_type kobj_gt_type = {
 	.default_groups = id_groups,
 };
 
+#endif /* notyet */
+
 void intel_gt_sysfs_register(struct intel_gt *gt)
 {
+#ifdef notyet
 	/*
 	 * We need to make things right with the
 	 * ABI compatibility. The files were originally
@@ -107,10 +112,13 @@ void intel_gt_sysfs_register(struct intel_gt *gt)
 exit_fail:
 	kobject_put(&gt->sysfs_gt);
 	gt_warn(gt, "failed to initialize sysfs root\n");
+#endif
 }
 
 void intel_gt_sysfs_unregister(struct intel_gt *gt)
 {
+#ifdef notyet
 	kobject_put(gt->sysfs_defaults);
 	kobject_put(&gt->sysfs_gt);
+#endif
 }

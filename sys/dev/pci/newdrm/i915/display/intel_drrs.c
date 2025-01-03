@@ -301,7 +301,7 @@ void intel_drrs_flush(struct drm_i915_private *dev_priv,
 void intel_drrs_crtc_init(struct intel_crtc *crtc)
 {
 	INIT_DELAYED_WORK(&crtc->drrs.work, intel_drrs_downclock_work);
-	mutex_init(&crtc->drrs.mutex);
+	rw_init(&crtc->drrs.mutex, "drrs");
 	crtc->drrs.cpu_transcoder = INVALID_TRANSCODER;
 }
 

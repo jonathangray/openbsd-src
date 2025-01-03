@@ -108,7 +108,7 @@ struct intel_gt {
 
 	struct {
 		/* Serialize global tlb invalidations */
-		struct mutex invalidate_lock;
+		struct rwlock invalidate_lock;
 
 		/*
 		 * Batch TLB invalidations

@@ -12,6 +12,8 @@
 #include <drm/drm_mm.h>
 #include <uapi/drm/i915_drm.h>
 
+#define drm_i915_private inteldrm_softc
+
 struct drm_i915_private;
 struct drm_i915_gem_object;
 struct drm_printer;
@@ -76,7 +78,7 @@ struct intel_memory_region {
 	bool private; /* not for userspace */
 
 	struct {
-		struct mutex lock; /* Protects access to objects */
+		struct rwlock lock; /* Protects access to objects */
 		struct list_head list;
 	} objects;
 

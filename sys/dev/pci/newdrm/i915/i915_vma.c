@@ -56,16 +56,24 @@ static inline void assert_vma_held_evict(const struct i915_vma *vma)
 		assert_object_held_shared(vma->obj);
 }
 
-static struct kmem_cache *slab_vmas;
+static struct pool slab_vmas;
 
 static struct i915_vma *i915_vma_alloc(void)
 {
+#ifdef __linux__
 	return kmem_cache_zalloc(slab_vmas, GFP_KERNEL);
+#else
+	return pool_get(&slab_vmas, PR_WAITOK | PR_ZERO);
+#endif
 }
 
 static void i915_vma_free(struct i915_vma *vma)
 {
+#ifdef __linux__
 	return kmem_cache_free(slab_vmas, vma);
+#else
+	pool_put(&slab_vmas, vma);
+#endif
 }
 
 #if IS_ENABLED(CONFIG_DRM_I915_ERRLOG_GEM) && IS_ENABLED(CONFIG_DRM_DEBUG_MM)
@@ -166,12 +174,14 @@ vma_create(struct drm_i915_gem_object *obj,
 
 	i915_active_init(&vma->active, __i915_vma_active, __i915_vma_retire, 0);
 
+#ifdef notyet
 	/* Declare ourselves safe for use inside shrinkers */
 	if (IS_ENABLED(CONFIG_LOCKDEP)) {
 		fs_reclaim_acquire(GFP_KERNEL);
 		might_lock(&vma->active.mutex);
 		fs_reclaim_release(GFP_KERNEL);
 	}
+#endif
 
 	INIT_LIST_HEAD(&vma->closed_link);
 	INIT_LIST_HEAD(&vma->obj_link);
@@ -1836,7 +1846,7 @@ void i915_vma_destroy(struct i915_vma *vma)
 void i915_vma_parked(struct intel_gt *gt)
 {
 	struct i915_vma *vma, *next;
-	LIST_HEAD(closed);
+	DRM_LIST_HEAD(closed);
 
 	spin_lock_irq(&gt->closed_lock);
 	list_for_each_entry_safe(vma, next, &gt->closed_vma, closed_link) {
@@ -1905,10 +1915,20 @@ void i915_vma_revoke_mmap(struct i915_vma *vma)
 
 	node = &vma->mmo->vma_node;
 	vma_offset = vma->gtt_view.partial.offset << PAGE_SHIFT;
+#ifdef __linux__
 	unmap_mapping_range(vma->vm->i915->drm.anon_inode->i_mapping,
 			    drm_vma_node_offset_addr(node) + vma_offset,
 			    vma->size,
 			    1);
+#else
+	struct drm_i915_private *dev_priv = vma->obj->base.dev->dev_private;
+	struct vm_page *pg;
+
+	for (pg = &dev_priv->pgs[atop(vma->node.start)];
+	    pg != &dev_priv->pgs[atop(vma->node.start + vma->size)];
+	    pg++)
+		pmap_page_protect(pg, PROT_NONE);
+#endif
 
 	i915_vma_unset_userfault(vma);
 	if (!--vma->obj->userfault_count)
@@ -2287,14 +2307,23 @@ void i915_vma_make_purgeable(struct i915_vma *vma)
 
 void i915_vma_module_exit(void)
 {
+#ifdef __linux__
 	kmem_cache_destroy(slab_vmas);
+#else
+	pool_destroy(&slab_vmas);
+#endif
 }
 
 int __init i915_vma_module_init(void)
 {
+#ifdef __linux__
 	slab_vmas = KMEM_CACHE(i915_vma, SLAB_HWCACHE_ALIGN);
 	if (!slab_vmas)
 		return -ENOMEM;
+#else
+	pool_init(&slab_vmas, sizeof(struct i915_vma),
+	    CACHELINESIZE, IPL_NONE, 0, "drmvma", NULL);
+#endif
 
 	return 0;
 }

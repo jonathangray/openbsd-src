@@ -673,7 +673,7 @@ void intel_ddi_disable_transcoder_func(const struct intel_crtc_state *crtc_state
 	    intel_crtc_has_type(crtc_state, INTEL_OUTPUT_HDMI)) {
 		drm_dbg_kms(display->drm, "Quirk Increase DDI disabled time\n");
 		/* Quirk time at 100ms for reliable operation */
-		msleep(100);
+		drm_msleep(100);
 	}
 }
 
@@ -4979,7 +4979,7 @@ void intel_ddi_init(struct intel_display *display,
 
 	intel_encoder_link_check_init(encoder, intel_ddi_link_check);
 
-	mutex_init(&dig_port->hdcp_mutex);
+	rw_init(&dig_port->hdcp_mutex, "dhdcp");
 	dig_port->num_hdcp_streams = 0;
 
 	encoder->hotplug = intel_ddi_hotplug;

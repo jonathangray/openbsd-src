@@ -241,7 +241,7 @@ struct intel_guc {
 	u32 mmio_msg;
 
 	/** @send_mutex: used to serialize the intel_guc_send actions */
-	struct mutex send_mutex;
+	struct rwlock send_mutex;
 
 	/**
 	 * @timestamp: GT timestamp object that stores a copy of the timestamp

@@ -278,6 +278,7 @@ __mmio_reg_add(struct temp_regset *regset, struct guc_mmio_reg *reg)
 
 	if (pos >= regset->storage_max) {
 		size_t size = ALIGN((pos + 1) * sizeof(*slot), PAGE_SIZE);
+#ifdef __linux__
 		struct guc_mmio_reg *r = krealloc(regset->storage,
 						  size, GFP_KERNEL);
 		if (!r) {
@@ -285,6 +286,17 @@ __mmio_reg_add(struct temp_regset *regset, struct guc_mmio_reg *reg)
 				  -ENOMEM);
 			return ERR_PTR(-ENOMEM);
 		}
+#else
+		struct guc_mmio_reg *r = kmalloc(size, GFP_KERNEL);
+		if (!r) {
+			WARN_ONCE(1, "Incomplete regset list: can't add register (%d)\n",
+				  -ENOMEM);
+			return ERR_PTR(-ENOMEM);
+		}
+		memcpy(r, regset->storage,
+		    ALIGN((pos) * sizeof(*slot), PAGE_SIZE));
+		kfree(regset->storage);
+#endif
 
 		regset->registers = r + (regset->registers - regset->storage);
 		regset->storage = r;
@@ -659,7 +671,7 @@ static void guc_init_golden_context(struct intel_guc *guc)
 
 		addr_ggtt += alloc_size;
 
-		shmem_read_to_iosys_map(engine->default_state, 0, &guc->ads_map,
+		uao_read_to_iosys_map(engine->default_state, 0, &guc->ads_map,
 					offset, real_size);
 		offset += alloc_size;
 	}

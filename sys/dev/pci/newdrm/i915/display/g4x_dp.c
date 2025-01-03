@@ -475,7 +475,7 @@ intel_dp_link_down(struct intel_encoder *encoder,
 		intel_set_pch_fifo_underrun_reporting(dev_priv, PIPE_A, true);
 	}
 
-	msleep(intel_dp->pps.panel_power_down_delay);
+	drm_msleep(intel_dp->pps.panel_power_down_delay);
 
 	if (IS_VALLEYVIEW(dev_priv) || IS_CHERRYVIEW(dev_priv)) {
 		intel_wakeref_t wakeref;
@@ -1323,7 +1323,7 @@ bool g4x_dp_init(struct drm_i915_private *dev_priv,
 
 	intel_encoder->devdata = devdata;
 
-	mutex_init(&dig_port->hdcp_mutex);
+	rw_init(&dig_port->hdcp_mutex, "dhdcp");
 
 	if (drm_encoder_init(display->drm, &intel_encoder->base,
 			     &intel_dp_enc_funcs, DRM_MODE_ENCODER_TMDS,

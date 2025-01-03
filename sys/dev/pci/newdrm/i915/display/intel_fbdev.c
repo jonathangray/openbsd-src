@@ -67,7 +67,7 @@ struct intel_fbdev {
 	bool hpd_waiting: 1;
 
 	/* Protects hpd_suspended */
-	struct mutex hpd_lock;
+	struct rwlock hpd_lock;
 };
 
 static struct intel_fbdev *to_intel_fbdev(struct drm_fb_helper *fb_helper)
@@ -126,6 +126,7 @@ static int intel_fbdev_pan_display(struct fb_var_screeninfo *var,
 	return ret;
 }
 
+#ifdef notyet
 static int intel_fbdev_mmap(struct fb_info *info, struct vm_area_struct *vma)
 {
 	struct intel_fbdev *fbdev = to_intel_fbdev(info->par);
@@ -158,16 +159,22 @@ static void intel_fbdev_fb_destroy(struct fb_info *info)
 __diag_push();
 __diag_ignore_all("-Woverride-init", "Allow field initialization overrides for fb ops");
 
+#endif /* notyet */
+
 static const struct fb_ops intelfb_ops = {
+#ifdef notyet
 	.owner = THIS_MODULE,
 	__FB_DEFAULT_DEFERRED_OPS_RDWR(intel_fbdev),
 	DRM_FB_HELPER_DEFAULT_OPS,
+#endif
 	.fb_set_par = intel_fbdev_set_par,
+#ifdef notyet
 	.fb_blank = intel_fbdev_blank,
 	.fb_pan_display = intel_fbdev_pan_display,
 	__FB_DEFAULT_DEFERRED_OPS_DRAW(intel_fbdev),
 	.fb_mmap = intel_fbdev_mmap,
 	.fb_destroy = intel_fbdev_fb_destroy,
+#endif
 };
 
 __diag_pop();
@@ -272,7 +279,35 @@ static int intelfb_create(struct drm_fb_helper *helper,
 	ifbdev->vma_flags = flags;
 
 	intel_runtime_pm_put(&dev_priv->runtime_pm, wakeref);
+{
+	struct drm_framebuffer *fb = ifbdev->helper.fb;
+	struct rasops_info *ri = &dev_priv->ro;
 
+	ri->ri_bits = vaddr;
+	ri->ri_depth = fb->format->cpp[0] * 8;
+	ri->ri_stride = fb->pitches[0];
+	ri->ri_width = sizes->fb_width;
+	ri->ri_height = sizes->fb_height;
+
+	switch (fb->format->format) {
+	case DRM_FORMAT_XRGB8888:
+		ri->ri_rnum = 8;
+		ri->ri_rpos = 16;
+		ri->ri_gnum = 8;
+		ri->ri_gpos = 8;
+		ri->ri_bnum = 8;
+		ri->ri_bpos = 0;
+		break;
+	case DRM_FORMAT_RGB565:
+		ri->ri_rnum = 5;
+		ri->ri_rpos = 11;
+		ri->ri_gnum = 6;
+		ri->ri_gpos = 5;
+		ri->ri_bnum = 5;
+		ri->ri_bpos = 0;
+		break;
+	}
+}
 	return 0;
 
 out_unpin:
@@ -484,6 +519,7 @@ static void intel_fbdev_hpd_set_suspend(struct drm_i915_private *i915, int state
 
 void intel_fbdev_set_suspend(struct drm_device *dev, int state, bool synchronous)
 {
+#ifdef __linux__
 	struct drm_i915_private *dev_priv = to_i915(dev);
 	struct intel_fbdev *ifbdev = dev_priv->display.fbdev.fbdev;
 	struct fb_info *info;
@@ -541,6 +577,7 @@ void intel_fbdev_set_suspend(struct drm_device *dev, int state, bool synchronous
 
 set_suspend:
 	intel_fbdev_hpd_set_suspend(dev_priv, state);
+#endif
 }
 
 static int intel_fbdev_output_poll_changed(struct drm_device *dev)
@@ -668,7 +705,7 @@ void intel_fbdev_setup(struct drm_i915_private *i915)
 
 	i915->display.fbdev.fbdev = ifbdev;
 	INIT_WORK(&i915->display.fbdev.suspend_work, intel_fbdev_suspend_worker);
-	mutex_init(&ifbdev->hpd_lock);
+	rw_init(&ifbdev->hpd_lock, "hdplk");
 	if (intel_fbdev_init_bios(dev, ifbdev))
 		ifbdev->helper.preferred_bpp = ifbdev->preferred_bpp;
 	else

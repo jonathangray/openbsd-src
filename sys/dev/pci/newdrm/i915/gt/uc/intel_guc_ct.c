@@ -139,9 +139,9 @@ static void ct_incoming_request_worker_func(struct work_struct *w);
  */
 void intel_guc_ct_init_early(struct intel_guc_ct *ct)
 {
-	spin_lock_init(&ct->ctbs.send.lock);
-	spin_lock_init(&ct->ctbs.recv.lock);
-	spin_lock_init(&ct->requests.lock);
+	mtx_init(&ct->ctbs.send.lock, IPL_TTY);
+	mtx_init(&ct->ctbs.recv.lock, IPL_TTY);
+	mtx_init(&ct->requests.lock, IPL_TTY);
 	INIT_LIST_HEAD(&ct->requests.pending);
 	INIT_LIST_HEAD(&ct->requests.incoming);
 #if IS_ENABLED(CONFIG_DRM_I915_DEBUG_GUC)

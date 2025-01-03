@@ -80,7 +80,7 @@ static const struct {
 };
 static int init_progress;
 
-static int __init i915_init(void)
+int __init i915_init(void)
 {
 	int err, i;
 

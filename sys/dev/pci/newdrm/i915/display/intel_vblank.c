@@ -479,7 +479,7 @@ static bool pipe_scanline_is_moving(struct intel_display *display,
 	u32 line1, line2;
 
 	line1 = intel_de_read(display, reg) & PIPEDSL_LINE_MASK;
-	msleep(5);
+	drm_msleep(5);
 	line2 = intel_de_read(display, reg) & PIPEDSL_LINE_MASK;
 
 	return line1 != line2;

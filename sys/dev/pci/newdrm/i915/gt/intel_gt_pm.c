@@ -47,22 +47,38 @@ static void user_forcewake(struct intel_gt *gt, bool suspend)
 static void runtime_begin(struct intel_gt *gt)
 {
 	local_irq_disable();
+#ifdef notyet
 	write_seqcount_begin(&gt->stats.lock);
+#else
+	write_seqcount_begin((seqcount_t *)&gt->stats.lock);
+#endif
 	gt->stats.start = ktime_get();
 	gt->stats.active = true;
+#ifdef notyet
 	write_seqcount_end(&gt->stats.lock);
+#else
+	write_seqcount_end((seqcount_t *)&gt->stats.lock);
+#endif
 	local_irq_enable();
 }
 
 static void runtime_end(struct intel_gt *gt)
 {
 	local_irq_disable();
+#ifdef notyet
 	write_seqcount_begin(&gt->stats.lock);
+#else
+	write_seqcount_begin((seqcount_t *)&gt->stats.lock);
+#endif
 	gt->stats.active = false;
 	gt->stats.total =
 		ktime_add(gt->stats.total,
 			  ktime_sub(ktime_get(), gt->stats.start));
+#ifdef notyet
 	write_seqcount_end(&gt->stats.lock);
+#else
+	write_seqcount_end((seqcount_t *)&gt->stats.lock);
+#endif
 	local_irq_enable();
 }
 
@@ -417,10 +433,17 @@ ktime_t intel_gt_get_awake_time(const struct intel_gt *gt)
 	unsigned int seq;
 	ktime_t total;
 
+#ifdef notyet
 	do {
 		seq = read_seqcount_begin(&gt->stats.lock);
 		total = __intel_gt_get_awake_time(gt);
 	} while (read_seqcount_retry(&gt->stats.lock, seq));
+#else
+	do {
+		seq = read_seqcount_begin((seqcount_t *)&gt->stats.lock);
+		total = __intel_gt_get_awake_time(gt);
+	} while (read_seqcount_retry((seqcount_t *)&gt->stats.lock, seq));
+#endif
 
 	return total;
 }

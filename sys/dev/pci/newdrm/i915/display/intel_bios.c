@@ -2963,6 +2963,12 @@ static const struct bdb_header *get_bdb_header(const struct vbt_header *vbt)
 	return _vbt + vbt->bdb_offset;
 }
 
+#include <dev/isa/isareg.h>
+#include <dev/isa/isavar.h>
+
+#define VGA_BIOS_ADDR	0xc0000
+#define VGA_BIOS_LEN	0x10000
+
 /**
  * intel_bios_is_valid_vbt - does the given buffer contain a valid VBT
  * @display:	display device
@@ -3118,15 +3124,22 @@ err_not_found:
 static struct vbt_header *oprom_get_vbt(struct intel_display *display,
 					size_t *sizep)
 {
+#ifdef __linux__
 	struct pci_dev *pdev = to_pci_dev(display->drm->dev);
+#endif
 	void __iomem *p = NULL, *oprom;
 	struct vbt_header *vbt;
 	u16 vbt_size;
 	size_t i, size;
 
+#ifdef __linux__
 	oprom = pci_map_rom(pdev, &size);
 	if (!oprom)
 		return NULL;
+#else
+	oprom = (u8 *)ISA_HOLE_VADDR(VGA_BIOS_ADDR);
+	size = VGA_BIOS_LEN;
+#endif
 
 	/* Scour memory looking for the VBT signature. */
 	for (i = 0; i + 4 < size; i += 4) {
@@ -3163,7 +3176,9 @@ static struct vbt_header *oprom_get_vbt(struct intel_display *display,
 	if (!intel_bios_is_valid_vbt(display, vbt, vbt_size))
 		goto err_free_vbt;
 
+#ifdef __linux__
 	pci_unmap_rom(pdev, oprom);
+#endif
 
 	if (sizep)
 		*sizep = vbt_size;
@@ -3175,7 +3190,9 @@ static struct vbt_header *oprom_get_vbt(struct intel_display *display,
 err_free_vbt:
 	kfree(vbt);
 err_unmap_oprom:
+#ifdef __linux__
 	pci_unmap_rom(pdev, oprom);
+#endif
 
 	return NULL;
 }

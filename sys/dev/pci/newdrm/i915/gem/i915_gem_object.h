@@ -508,7 +508,7 @@ __i915_gem_object_get_sg_dma(struct drm_i915_gem_object *obj, pgoff_t n,
  * Recommended to use wrapper macro: i915_gem_object_get_page()
  * See also __i915_gem_object_page_iter_get_sg()
  */
-struct page *
+struct vm_page *
 __i915_gem_object_get_page(struct drm_i915_gem_object *obj, pgoff_t n);
 
 /**
@@ -543,7 +543,7 @@ __i915_gem_object_get_page(struct drm_i915_gem_object *obj, pgoff_t n);
  * Recommended to use wrapper macro: i915_gem_object_get_dirty_page()
  * See also __i915_gem_object_page_iter_get_sg() and __i915_gem_object_get_page()
  */
-struct page *
+struct vm_page *
 __i915_gem_object_get_dirty_page(struct drm_i915_gem_object *obj, pgoff_t n);
 
 /**
@@ -839,12 +839,23 @@ bool i915_gem_object_placement_possible(struct drm_i915_gem_object *obj,
 
 bool i915_gem_object_needs_ccs_pages(struct drm_i915_gem_object *obj);
 
+#ifdef __linux__
 int shmem_sg_alloc_table(struct drm_i915_private *i915, struct sg_table *st,
 			 size_t size, struct intel_memory_region *mr,
 			 struct address_space *mapping,
 			 unsigned int max_segment);
 void shmem_sg_free_table(struct sg_table *st, struct address_space *mapping,
 			 bool dirty, bool backup);
+#else
+int shmem_sg_alloc_table(struct drm_i915_private *i915, struct sg_table *st,
+			 size_t size, struct intel_memory_region *mr,
+			 struct address_space *mapping,
+			 unsigned int max_segment,
+			 struct drm_i915_gem_object *obj);
+void shmem_sg_free_table(struct sg_table *st, struct address_space *mapping,
+			 bool dirty, bool backup,
+			 struct drm_i915_gem_object *obj);
+#endif
 void __shmem_writeback(size_t size, struct address_space *mapping);
 
 #ifdef CONFIG_MMU_NOTIFIER

@@ -19,6 +19,7 @@ static void intel_gmch_bridge_release(struct drm_device *dev, void *bridge)
 	pci_dev_put(bridge);
 }
 
+#ifdef __linux__
 int intel_gmch_bridge_setup(struct drm_i915_private *i915)
 {
 	int domain = pci_domain_nr(to_pci_dev(i915->drm.dev)->bus);
@@ -37,6 +38,24 @@ static int mchbar_reg(struct drm_i915_private *i915)
 {
 	return GRAPHICS_VER(i915) >= 4 ? MCHBAR_I965 : MCHBAR_I915;
 }
+#else
+int intel_gmch_bridge_setup(struct drm_i915_private *i915)
+{
+	struct drm_device *dev = &i915->drm;
+
+	/* may be already called from attach */
+	if (i915->gmch.pdev != NULL)
+		return 0;
+
+	i915->gmch.pdev = malloc(sizeof(*i915->gmch.pdev),
+	    M_DEVBUF, M_WAITOK);
+	i915->gmch.pdev->pc = dev->pdev->pc;
+	i915->gmch.pdev->tag = pci_make_tag(dev->pdev->pc, 0, 0, 0);
+
+	return drmm_add_action_or_reset(&i915->drm, intel_gmch_bridge_release,
+					i915->gmch.pdev);
+}
+#endif
 
 /* Allocate space for the MCH regs if needed, return nonzero on error */
 static int
@@ -52,10 +71,13 @@ intel_alloc_mchbar_resource(struct drm_i915_private *i915)
 	mchbar_addr = ((u64)temp_hi << 32) | temp_lo;
 
 	/* If ACPI doesn't have it, assume we need to allocate it ourselves */
+#ifdef CONFIG_PNP
 	if (IS_ENABLED(CONFIG_PNP) && mchbar_addr &&
 	    pnp_range_reserved(mchbar_addr, mchbar_addr + MCHBAR_SIZE))
 		return 0;
+#endif
 
+#ifdef __linux__
 	/* Get some space for it */
 	i915->gmch.mch_res.name = "i915 MCHBAR";
 	i915->gmch.mch_res.flags = IORESOURCE_MEM;
@@ -70,6 +92,12 @@ intel_alloc_mchbar_resource(struct drm_i915_private *i915)
 		i915->gmch.mch_res.start = 0;
 		return ret;
 	}
+#else
+	if (i915->memex == NULL || extent_alloc(i915->memex,
+	    MCHBAR_SIZE, MCHBAR_SIZE, 0, 0, 0, &i915->gmch.mch_res.start)) {
+		return -ENOMEM;
+	}
+#endif
 
 	if (GRAPHICS_VER(i915) >= 4)
 		pci_write_config_dword(i915->gmch.pdev, mchbar_reg(i915) + 4,
@@ -141,7 +169,12 @@ void intel_gmch_bar_teardown(struct drm_i915_private *i915)
 	}
 
 	if (i915->gmch.mch_res.start)
+#ifdef __linux__
 		release_resource(&i915->gmch.mch_res);
+#else
+		extent_free(i915->memex, i915->gmch.mch_res.start,
+		    MCHBAR_SIZE, 0);
+#endif
 }
 
 int intel_gmch_vga_set_state(struct drm_i915_private *i915, bool enable_decode)

@@ -3435,7 +3435,7 @@ void intel_dp_set_power(struct intel_dp *intel_dp, u8 mode)
 			ret = drm_dp_dpcd_writeb(&intel_dp->aux, DP_SET_POWER, mode);
 			if (ret == 1)
 				break;
-			msleep(1);
+			drm_msleep(1);
 		}
 
 		if (ret == 1 && lspcon->active)
@@ -6182,8 +6182,10 @@ intel_dp_connector_register(struct drm_connector *connector)
 	if (ret)
 		return ret;
 
+#ifdef notyet
 	drm_dbg_kms(&i915->drm, "registering %s bus for %s\n",
 		    intel_dp->aux.name, connector->kdev->kobj.name);
+#endif
 
 	intel_dp->aux.dev = connector->kdev;
 	ret = drm_dp_aux_register(&intel_dp->aux);

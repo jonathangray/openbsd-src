@@ -1131,12 +1131,12 @@ static void reloc_cache_init(struct reloc_cache *cache,
 
 static void *unmask_page(unsigned long p)
 {
-	return (void *)(uintptr_t)(p & PAGE_MASK);
+	return (void *)(uintptr_t)(p & LINUX_PAGE_MASK);
 }
 
 static unsigned int unmask_flags(unsigned long p)
 {
-	return p & ~PAGE_MASK;
+	return p & ~LINUX_PAGE_MASK;
 }
 
 #define KMAP 0x4 /* after CLFLUSH_FLAGS */
@@ -1171,7 +1171,7 @@ static void reloc_cache_remap(struct reloc_cache *cache,
 		return;
 
 	if (cache->vaddr & KMAP) {
-		struct page *page = i915_gem_object_get_page(obj, cache->page);
+		struct vm_page *page = i915_gem_object_get_page(obj, cache->page);
 
 		vaddr = kmap_local_page(page);
 		cache->vaddr = unmask_flags(cache->vaddr) |
@@ -1232,7 +1232,7 @@ static void *reloc_kmap(struct drm_i915_gem_object *obj,
 			unsigned long pageno)
 {
 	void *vaddr;
-	struct page *page;
+	struct vm_page *page;
 
 	if (cache->vaddr) {
 		kunmap_local(unmask_page(cache->vaddr));
@@ -1245,7 +1245,7 @@ static void *reloc_kmap(struct drm_i915_gem_object *obj,
 			return ERR_PTR(err);
 
 		BUILD_BUG_ON(KMAP & CLFLUSH_FLAGS);
-		BUILD_BUG_ON((KMAP | CLFLUSH_FLAGS) & PAGE_MASK);
+		BUILD_BUG_ON((KMAP | CLFLUSH_FLAGS) & LINUX_PAGE_MASK);
 
 		cache->vaddr = flushes | KMAP;
 		cache->node.mm = (void *)obj;
@@ -2534,7 +2534,11 @@ static int eb_pin_timeline(struct i915_execbuffer *eb, struct intel_context *ce,
 	intel_context_timeline_unlock(tl);
 
 	if (rq) {
+#ifdef __linux__
 		bool nonblock = eb->file->filp->f_flags & O_NONBLOCK;
+#else
+		bool nonblock = eb->file->filp->f_flag & FNONBLOCK;
+#endif
 		long timeout = nonblock ? 0 : MAX_SCHEDULE_TIMEOUT;
 
 		if (i915_request_wait(rq, I915_WAIT_INTERRUPTIBLE,
@@ -2825,17 +2829,28 @@ add_timeline_fence_array(struct i915_execbuffer *eb,
 	if (!access_ok(user_values, nfences * sizeof(*user_values)))
 		return -EFAULT;
 
+#ifdef __linux__
 	f = krealloc(eb->fences,
 		     (eb->num_fences + nfences) * sizeof(*f),
 		     __GFP_NOWARN | GFP_KERNEL);
 	if (!f)
 		return -ENOMEM;
+#else
+	f = kmalloc((eb->num_fences + nfences) * sizeof(*f),
+		     __GFP_NOWARN | GFP_KERNEL);
+	if (!f)
+		return -ENOMEM;
+	memcpy(f, eb->fences, eb->num_fences * sizeof(*f));
+	kfree(eb->fences);
+#endif
 
 	eb->fences = f;
 	f += eb->num_fences;
 
+#ifdef notyet
 	BUILD_BUG_ON(~(ARCH_KMALLOC_MINALIGN - 1) &
 		     ~__I915_EXEC_FENCE_UNKNOWN_FLAGS);
+#endif
 
 	while (nfences--) {
 		struct drm_i915_gem_exec_fence user_fence;
@@ -2954,11 +2969,20 @@ static int add_fence_array(struct i915_execbuffer *eb)
 	if (!access_ok(user, num_fences * sizeof(*user)))
 		return -EFAULT;
 
+#ifdef __linux__
 	f = krealloc(eb->fences,
 		     (eb->num_fences + num_fences) * sizeof(*f),
 		     __GFP_NOWARN | GFP_KERNEL);
 	if (!f)
 		return -ENOMEM;
+#else
+	f = kmalloc((eb->num_fences + num_fences) * sizeof(*f),
+		     __GFP_NOWARN | GFP_KERNEL);
+	if (!f)
+		return -ENOMEM;
+	memcpy(f, eb->fences, eb->num_fences * sizeof(*f));
+	kfree(eb->fences);
+#endif
 
 	eb->fences = f;
 	f += eb->num_fences;
@@ -2990,8 +3014,10 @@ static int add_fence_array(struct i915_execbuffer *eb)
 			}
 		}
 
+#ifdef notyet
 		BUILD_BUG_ON(~(ARCH_KMALLOC_MINALIGN - 1) &
 			     ~__I915_EXEC_FENCE_UNKNOWN_FLAGS);
+#endif
 
 		f->syncobj = ptr_pack_bits(syncobj, user_fence.flags, 2);
 		f->dma_fence = fence;

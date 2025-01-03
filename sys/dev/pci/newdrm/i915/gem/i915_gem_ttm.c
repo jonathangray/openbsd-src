@@ -182,6 +182,9 @@ static int i915_ttm_tt_shmem_populate(struct ttm_device *bdev,
 				      struct ttm_tt *ttm,
 				      struct ttm_operation_ctx *ctx)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct drm_i915_private *i915 = container_of(bdev, typeof(*i915), bdev);
 	struct intel_memory_region *mr = i915->mm.regions[INTEL_MEMORY_SYSTEM];
 	struct i915_ttm_tt *i915_tt = container_of(ttm, typeof(*i915_tt), ttm);
@@ -190,7 +193,7 @@ static int i915_ttm_tt_shmem_populate(struct ttm_device *bdev,
 	struct file *filp = i915_tt->filp;
 	struct sgt_iter sgt_iter;
 	struct sg_table *st;
-	struct page *page;
+	struct vm_page *page;
 	unsigned long i;
 	int err;
 
@@ -235,16 +238,20 @@ err_free_st:
 	shmem_sg_free_table(st, filp->f_mapping, false, false);
 
 	return err;
+#endif
 }
 
 static void i915_ttm_tt_shmem_unpopulate(struct ttm_tt *ttm)
 {
+	STUB();
+#ifdef notyet
 	struct i915_ttm_tt *i915_tt = container_of(ttm, typeof(*i915_tt), ttm);
 	bool backup = ttm->page_flags & TTM_TT_FLAG_SWAPPED;
 	struct sg_table *st = &i915_tt->cached_rsgt.table;
 
 	shmem_sg_free_table(st, file_inode(i915_tt->filp)->i_mapping,
 			    backup, backup);
+#endif
 }
 
 static void i915_ttm_tt_release(struct kref *ref)
@@ -326,6 +333,8 @@ static int i915_ttm_tt_populate(struct ttm_device *bdev,
 
 static void i915_ttm_tt_unpopulate(struct ttm_device *bdev, struct ttm_tt *ttm)
 {
+	STUB();
+#ifdef notyet
 	struct i915_ttm_tt *i915_tt = container_of(ttm, typeof(*i915_tt), ttm);
 	struct sg_table *st = &i915_tt->cached_rsgt.table;
 
@@ -338,6 +347,7 @@ static void i915_ttm_tt_unpopulate(struct ttm_device *bdev, struct ttm_tt *ttm)
 		sg_free_table(st);
 		ttm_pool_free(&bdev->pool, ttm);
 	}
+#endif
 }
 
 static void i915_ttm_tt_destroy(struct ttm_device *bdev, struct ttm_tt *ttm)
@@ -439,8 +449,15 @@ int i915_ttm_purge(struct drm_i915_gem_object *obj)
 		 * pages(like by the shrinker) we should try to be more
 		 * aggressive and release the pages immediately.
 		 */
+#ifdef __linux__
 		shmem_truncate_range(file_inode(i915_tt->filp),
 				     0, (loff_t)-1);
+#else
+		rw_enter(obj->base.uao->vmobjlock, RW_WRITE);
+		obj->base.uao->pgops->pgo_flush(obj->base.uao, 0, obj->base.size,
+		    PGO_ALLPAGES | PGO_FREE);
+		rw_exit(obj->base.uao->vmobjlock);
+#endif
 		fput(fetch_and_zero(&i915_tt->filp));
 	}
 
@@ -495,7 +512,11 @@ static int i915_ttm_shrink(struct drm_i915_gem_object *obj, unsigned int flags)
 	}
 
 	if (flags & I915_GEM_OBJECT_SHRINK_WRITEBACK)
+#ifdef notyet
 		__shmem_writeback(obj->base.size, i915_tt->filp->f_mapping);
+#else
+		STUB();
+#endif
 
 	return 0;
 }
@@ -518,6 +539,9 @@ static void i915_ttm_delete_mem_notify(struct ttm_buffer_object *bo)
 
 static struct i915_refct_sgt *i915_ttm_tt_get_st(struct ttm_tt *ttm)
 {
+	STUB();
+	return ERR_PTR(-ENOSYS);
+#ifdef notyet
 	struct i915_ttm_tt *i915_tt = container_of(ttm, typeof(*i915_tt), ttm);
 	struct sg_table *st;
 	int ret;
@@ -542,6 +566,7 @@ static struct i915_refct_sgt *i915_ttm_tt_get_st(struct ttm_tt *ttm)
 	}
 
 	return i915_refct_sgt_get(&i915_tt->cached_rsgt);
+#endif
 }
 
 /**
@@ -701,6 +726,9 @@ static int i915_ttm_access_memory(struct ttm_buffer_object *bo,
 				  unsigned long offset, void *buf,
 				  int len, int write)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct drm_i915_gem_object *obj = i915_ttm_to_gem(bo);
 	resource_size_t iomap = obj->mm.region->iomap.base -
 		obj->mm.region->region.start;
@@ -739,6 +767,7 @@ static int i915_ttm_access_memory(struct ttm_buffer_object *bo,
 	} while (bytes_left);
 
 	return len;
+#endif
 }
 
 /*
@@ -1032,6 +1061,8 @@ static void i915_ttm_delayed_free(struct drm_i915_gem_object *obj)
 	ttm_bo_put(i915_gem_to_ttm(obj));
 }
 
+#ifdef __linux__
+
 static vm_fault_t vm_fault_ttm(struct vm_fault *vmf)
 {
 	struct vm_area_struct *area = vmf->vma;
@@ -1184,6 +1215,189 @@ static const struct vm_operations_struct vm_ops_ttm = {
 	.close = ttm_vm_close,
 };
 
+#else /* !__linux__ */
+
+static int
+
+vm_fault_ttm(struct uvm_faultinfo *ufi, vaddr_t vaddr, vm_page_t *pps,
+    int npages, int centeridx, vm_fault_t fault_type,
+    vm_prot_t access_type, int flags)
+{
+	struct uvm_object *uobj = ufi->entry->object.uvm_obj;
+	struct ttm_buffer_object *bo = (struct ttm_buffer_object *)uobj;
+	struct drm_device *dev = bo->base.dev;
+	struct drm_i915_gem_object *obj = i915_ttm_to_gem(bo);
+	intel_wakeref_t wakeref = 0;
+	vm_fault_t ret;
+	int idx;
+	int write = !!(access_type & PROT_WRITE);
+
+	/* Sanity check that we allow writing into this object */
+	if (unlikely(i915_gem_object_is_readonly(obj) && write)) {
+		uvmfault_unlockall(ufi, NULL, &obj->base.uobj);
+		return EACCES;
+	}
+
+	ret = ttm_bo_vm_reserve(bo);
+	if (ret) {
+		switch (ret) {
+		case VM_FAULT_NOPAGE:
+			ret = 0;
+			break;
+		case VM_FAULT_RETRY:
+			ret = ERESTART;
+			break;
+		default:
+			ret = EACCES;
+			break;
+		}
+		uvmfault_unlockall(ufi, NULL, &obj->base.uobj);
+		return ret;
+	}
+
+	if (obj->mm.madv != I915_MADV_WILLNEED) {
+		dma_resv_unlock(bo->base.resv);
+		uvmfault_unlockall(ufi, NULL, &obj->base.uobj);
+		return EACCES;
+	}
+
+	/*
+	 * This must be swapped out with shmem ttm_tt (pipeline-gutting).
+	 * Calling ttm_bo_validate() here with TTM_PL_SYSTEM should only go as
+	 * far as far doing a ttm_bo_move_null(), which should skip all the
+	 * other junk.
+	 */
+	if (!bo->resource) {
+		struct ttm_operation_ctx ctx = {
+			.interruptible = true,
+			.no_wait_gpu = true, /* should be idle already */
+		};
+		int err;
+
+		GEM_BUG_ON(!bo->ttm || !(bo->ttm->page_flags & TTM_TT_FLAG_SWAPPED));
+
+		err = ttm_bo_validate(bo, i915_ttm_sys_placement(), &ctx);
+		if (err) {
+			dma_resv_unlock(bo->base.resv);
+			uvmfault_unlockall(ufi, NULL, &obj->base.uobj);
+			return EACCES;
+		}
+	} else if (!i915_ttm_resource_mappable(bo->resource)) {
+		int err = -ENODEV;
+		int i;
+
+		for (i = 0; i < obj->mm.n_placements; i++) {
+			struct intel_memory_region *mr = obj->mm.placements[i];
+			unsigned int flags;
+
+			if (!mr->io_size && mr->type != INTEL_MEMORY_SYSTEM)
+				continue;
+
+			flags = obj->flags;
+			flags &= ~I915_BO_ALLOC_GPU_ONLY;
+			err = __i915_ttm_migrate(obj, mr, flags);
+			if (!err)
+				break;
+		}
+
+		if (err) {
+			drm_dbg(dev, "Unable to make resource CPU accessible(err = %pe)\n",
+				ERR_PTR(err));
+			dma_resv_unlock(bo->base.resv);
+			ret = VM_FAULT_SIGBUS;
+			goto out_rpm;
+		}
+	}
+
+	if (i915_ttm_cpu_maps_iomem(bo->resource))
+		wakeref = intel_runtime_pm_get(&to_i915(obj->base.dev)->runtime_pm);
+
+	if (drm_dev_enter(dev, &idx)) {
+		ret = ttm_bo_vm_fault_reserved(ufi, vaddr,
+					       TTM_BO_VM_NUM_PREFAULT, 1);
+		drm_dev_exit(idx);
+	} else {
+		STUB();
+#ifdef notyet
+		ret = ttm_bo_vm_dummy_page(vmf, vmf->vma->vm_page_prot);
+#else
+		STUB();
+		ret = VM_FAULT_NOPAGE;
+#endif
+	}
+#ifdef __linux__
+	if (ret == VM_FAULT_RETRY && !(vmf->flags & FAULT_FLAG_RETRY_NOWAIT))
+		goto out_rpm;
+#endif
+
+	/*
+	 * ttm_bo_vm_reserve() already has dma_resv_lock.
+	 * userfault_count is protected by dma_resv lock and rpm wakeref.
+	 */
+	if (ret == VM_FAULT_NOPAGE && wakeref && !obj->userfault_count) {
+		obj->userfault_count = 1;
+		spin_lock(&to_i915(obj->base.dev)->runtime_pm.lmem_userfault_lock);
+		list_add(&obj->userfault_link, &to_i915(obj->base.dev)->runtime_pm.lmem_userfault_list);
+		spin_unlock(&to_i915(obj->base.dev)->runtime_pm.lmem_userfault_lock);
+
+		GEM_WARN_ON(!i915_ttm_cpu_maps_iomem(bo->resource));
+	}
+
+	if (wakeref & CONFIG_DRM_I915_USERFAULT_AUTOSUSPEND)
+		intel_wakeref_auto(&to_i915(obj->base.dev)->runtime_pm.userfault_wakeref,
+				   msecs_to_jiffies_timeout(CONFIG_DRM_I915_USERFAULT_AUTOSUSPEND));
+
+	i915_ttm_adjust_lru(obj);
+
+	dma_resv_unlock(bo->base.resv);
+
+out_rpm:
+	switch (ret) {
+	case VM_FAULT_NOPAGE:
+		ret = 0;
+		break;
+	case VM_FAULT_RETRY:
+		ret = ERESTART;
+		break;
+	default:
+		ret = EACCES;
+		break;
+	}
+
+	if (wakeref)
+		intel_runtime_pm_put(&to_i915(obj->base.dev)->runtime_pm, wakeref);
+
+	uvmfault_unlockall(ufi, NULL, &obj->base.uobj);
+
+	return ret;
+}
+
+static void
+ttm_vm_reference(struct uvm_object *uobj)
+{
+	struct drm_i915_gem_object *obj =
+		i915_ttm_to_gem((struct ttm_buffer_object *)uobj);
+
+	i915_gem_object_get(obj);
+}
+
+static void
+ttm_vm_detach(struct uvm_object *uobj)
+{
+	struct drm_i915_gem_object *obj =
+		i915_ttm_to_gem((struct ttm_buffer_object *)uobj);
+
+	i915_gem_object_put(obj);
+}
+
+const struct uvm_pagerops vm_ops_ttm = {
+	.pgo_fault = vm_fault_ttm,
+	.pgo_reference = ttm_vm_reference,
+	.pgo_detach = ttm_vm_detach,
+};
+
+#endif
+
 static u64 i915_ttm_mmap_offset(struct drm_i915_gem_object *obj)
 {
 	/* The ttm_bo must be allocated with I915_BO_ALLOC_USER */
@@ -1304,7 +1518,7 @@ int __i915_gem_ttm_object_init(struct intel_memory_region *mem,
 	INIT_LIST_HEAD(&obj->mm.region_link);
 
 	INIT_RADIX_TREE(&obj->ttm.get_io_page.radix, GFP_KERNEL | __GFP_NOWARN);
-	mutex_init(&obj->ttm.get_io_page.lock);
+	rw_init(&obj->ttm.get_io_page.lock, "i915ttm");
 	bo_type = (obj->flags & I915_BO_ALLOC_USER) ? ttm_bo_type_device :
 		ttm_bo_type_kernel;
 

@@ -6,6 +6,7 @@
  * state.
  */
 
+#include <linux/compiler.h> /* for __must_check */
 #include <drm/drm_atomic_uapi.h>
 #include <drm/drm_atomic_state_helper.h>
 
@@ -516,7 +517,7 @@ static bool intel_sanitize_crtc(struct intel_crtc *crtc,
 	 * up-to-date HPD state.
 	 */
 	if (needs_link_reset)
-		msleep(20);
+		drm_msleep(20);
 
 	return true;
 }

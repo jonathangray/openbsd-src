@@ -53,7 +53,7 @@ struct intel_gsc_uc {
 		struct i915_vma *vma;
 		void *to_gsc;
 		void *to_csme;
-		struct mutex mutex; /* protects the tee channel binding */
+		struct rwlock mutex; /* protects the tee channel binding */
 	} proxy;
 };
 

@@ -3271,7 +3271,7 @@ void intel_psr_init(struct intel_dp *intel_dp)
 
 	INIT_WORK(&intel_dp->psr.work, intel_psr_work);
 	INIT_DELAYED_WORK(&intel_dp->psr.dc3co_work, tgl_dc3co_disable_work);
-	mutex_init(&intel_dp->psr.lock);
+	rw_init(&intel_dp->psr.lock, "psrlk");
 }
 
 static int psr_get_status_and_error_status(struct intel_dp *intel_dp,

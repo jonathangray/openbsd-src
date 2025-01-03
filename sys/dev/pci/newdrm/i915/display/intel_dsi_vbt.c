@@ -25,10 +25,12 @@
  */
 
 #include <linux/gpio/consumer.h>
+#ifdef notyet
 #include <linux/gpio/machine.h>
 #include <linux/mfd/intel_soc_pmic.h>
 #include <linux/pinctrl/consumer.h>
 #include <linux/pinctrl/machine.h>
+#endif
 #include <linux/slab.h>
 #include <linux/string_helpers.h>
 
@@ -58,7 +60,9 @@
 struct i2c_adapter_lookup {
 	u16 target_addr;
 	struct intel_dsi *intel_dsi;
+#ifdef notyet
 	acpi_handle dev_handle;
+#endif
 };
 
 #define CHV_GPIO_IDX_START_N		0
@@ -264,6 +268,8 @@ static void vlv_gpio_set_value(struct intel_connector *connector,
 static void chv_gpio_set_value(struct intel_connector *connector,
 			       u8 gpio_source, u8 gpio_index, bool value)
 {
+	STUB();
+#ifdef __linux__
 	struct drm_i915_private *dev_priv = to_i915(connector->base.dev);
 
 	if (connector->panel.vbt.dsi.seq_version >= 3) {
@@ -430,7 +436,7 @@ static const u8 *mipi_exec_gpio(struct intel_dsi *intel_dsi, const u8 *data)
 	return data + size;
 }
 
-#ifdef CONFIG_ACPI
+#if defined(CONFIG_ACPI) && defined(__linux__)
 static int i2c_adapter_lookup(struct acpi_resource *ares, void *data)
 {
 	struct i2c_adapter_lookup *lookup = data;
@@ -483,6 +489,9 @@ static inline void i2c_acpi_find_adapter(struct intel_dsi *intel_dsi,
 
 static const u8 *mipi_exec_i2c(struct intel_dsi *intel_dsi, const u8 *data)
 {
+	STUB();
+	return NULL;
+#ifdef notyet
 	struct drm_i915_private *i915 = to_i915(intel_dsi->base.base.dev);
 	struct i2c_adapter *adapter;
 	struct i2c_msg msg;
@@ -530,6 +539,7 @@ err_alloc:
 	i2c_put_adapter(adapter);
 err_bus:
 	return data + payload_size + 7;
+#endif
 }
 
 static const u8 *mipi_exec_spi(struct intel_dsi *intel_dsi, const u8 *data)
@@ -679,6 +689,8 @@ static void intel_dsi_vbt_exec(struct intel_dsi *intel_dsi,
 void intel_dsi_vbt_exec_sequence(struct intel_dsi *intel_dsi,
 				 enum mipi_seq seq_id)
 {
+	STUB();
+#ifdef notyet
 	if (seq_id == MIPI_SEQ_POWER_ON && intel_dsi->gpio_panel)
 		gpiod_set_value_cansleep(intel_dsi->gpio_panel, 1);
 	if (seq_id == MIPI_SEQ_BACKLIGHT_ON && intel_dsi->gpio_backlight)
@@ -690,6 +702,7 @@ void intel_dsi_vbt_exec_sequence(struct intel_dsi *intel_dsi,
 		gpiod_set_value_cansleep(intel_dsi->gpio_panel, 0);
 	if (seq_id == MIPI_SEQ_BACKLIGHT_OFF && intel_dsi->gpio_backlight)
 		gpiod_set_value_cansleep(intel_dsi->gpio_backlight, 0);
+#endif
 }
 
 void intel_dsi_log_params(struct intel_dsi *intel_dsi)
@@ -851,6 +864,8 @@ bool intel_dsi_vbt_init(struct intel_dsi *intel_dsi, u16 panel_id)
 	return true;
 }
 
+#ifdef notyet
+
 /*
  * On some BYT/CHT devs some sequences are incomplete and we need to manually
  * control some GPIOs. We need to add a GPIO lookup table before we get these.
@@ -881,8 +896,12 @@ static const struct pinctrl_map soc_pwm_pinctrl_map[] = {
 			  "pwm0_grp", "pwm"),
 };
 
+#endif /* notyet */
+
 void intel_dsi_vbt_gpio_init(struct intel_dsi *intel_dsi, bool panel_is_on)
 {
+	STUB();
+#ifdef notyet
 	struct drm_device *dev = intel_dsi->base.base.dev;
 	struct drm_i915_private *dev_priv = to_i915(dev);
 	struct intel_connector *connector = intel_dsi->attached_connector;
@@ -942,4 +961,5 @@ void intel_dsi_vbt_gpio_init(struct intel_dsi *intel_dsi, bool panel_is_on)
 
 	if (gpiod_lookup_table)
 		gpiod_remove_lookup_table(gpiod_lookup_table);
+#endif
 }

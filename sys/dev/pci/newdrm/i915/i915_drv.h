@@ -36,6 +36,11 @@
 
 #include <drm/ttm/ttm_device.h>
 
+#include "vga.h"
+
+struct inteldrm_softc;
+#define drm_i915_private inteldrm_softc
+
 #include "display/intel_display_limits.h"
 #include "display/intel_display_core.h"
 
@@ -63,6 +68,19 @@
 #include "intel_runtime_pm.h"
 #include "intel_step.h"
 #include "intel_uncore.h"
+
+#include "drm.h"
+
+#include <dev/ic/mc6845reg.h>
+#include <dev/ic/pcdisplayvar.h>
+#include <dev/ic/vgareg.h>
+#include <dev/ic/vgavar.h>
+
+#include <sys/task.h>
+#include <dev/pci/vga_pcivar.h>
+#include <dev/wscons/wsconsio.h>
+#include <dev/wscons/wsdisplayvar.h>
+#include <dev/rasops/rasops.h>
 
 struct drm_i915_clock_gating_funcs;
 struct vlv_s0ix_state;
@@ -128,7 +146,7 @@ struct i915_gem_mm {
 	struct drm_mm stolen;
 	/** Protects the usage of the GTT stolen memory allocator. This is
 	 * always the inner lock when overlapping with struct_mutex. */
-	struct mutex stolen_lock;
+	struct rwlock stolen_lock;
 
 	/* Protects bound_list/unbound_list and #drm_i915_gem_object.mm.link */
 	spinlock_t obj_lock;
@@ -171,7 +189,7 @@ struct i915_gem_mm {
 };
 
 struct i915_virtual_gpu {
-	struct mutex lock; /* serialises sending of g2v_notify command pkts */
+	struct rwlock lock; /* serialises sending of g2v_notify command pkts */
 	bool active;
 	u32 caps;
 	u32 *initial_mmio;
@@ -184,7 +202,18 @@ struct i915_selftest_stash {
 	struct ida mock_region_instances;
 };
 
-struct drm_i915_private {
+
+struct inteldrm_softc {
+#ifdef __OpenBSD__
+	struct device sc_dev;
+	bus_dma_tag_t dmat;
+	bus_space_tag_t iot;
+	bus_space_tag_t bst;
+	bus_space_handle_t opregion_ioh;
+	bus_space_handle_t opregion_rvda_ioh;
+	bus_size_t opregion_rvda_size;
+#endif
+
 	struct drm_device drm;
 
 	struct intel_display display;
@@ -200,6 +229,47 @@ struct drm_i915_private {
 	struct intel_driver_caps caps;
 
 	struct i915_dsm dsm;
+
+#ifdef __OpenBSD__
+	struct pci_attach_args *pa;
+	pci_chipset_tag_t pc;
+	pcitag_t tag;
+	struct extent *memex;
+	pci_intr_handle_t ih;
+	irqreturn_t(*irq_handler) (int, void *);
+	void *irqh;
+
+	struct vga_pci_bar bar;
+	struct vga_pci_bar *vga_regs;
+
+	const struct pci_device_id *id;
+
+	int console;
+	int primary;
+	int nscreens;
+	void (*switchcb)(void *, int, int);
+	void *switchcbarg;
+	void *switchcookie;
+	struct task switchtask;
+	struct rasops_info ro;
+
+	struct task burner_task;
+	int burner_fblank;
+
+	struct backlight_device *backlight;
+
+	union flush {
+		struct {
+			bus_space_tag_t		bst;
+			bus_space_handle_t	bsh;
+		} i9xx;
+		struct {
+			bus_dma_segment_t	seg;
+			caddr_t			kva;
+		} i8xx;
+	}			 ifp;
+	struct vm_page *pgs;
+#endif
 
 	struct intel_uncore uncore;
 	struct intel_uncore_mmio_debug mmio_debug;
@@ -236,7 +306,7 @@ struct drm_i915_private {
 	spinlock_t irq_lock;
 
 	/* Sideband mailbox protection */
-	struct mutex sb_lock;
+	struct rwlock sb_lock;
 	struct pm_qos_request sb_qos;
 
 	/** Cached value of IMR to avoid reads in updating the bitfield */
@@ -410,7 +480,7 @@ static inline struct intel_gt *to_gt(const struct drm_i915_private *i915)
 #define IS_MEDIA_VER(i915, from, until) \
 	(MEDIA_VER(i915) >= (from) && MEDIA_VER(i915) <= (until))
 
-#define INTEL_REVID(i915)	(to_pci_dev((i915)->drm.dev)->revision)
+#define INTEL_REVID(i915)	((i915)->drm.pdev->revision)
 
 #define INTEL_GRAPHICS_STEP(__i915) (RUNTIME_INFO(__i915)->step.graphics_step)
 #define INTEL_MEDIA_STEP(__i915) (RUNTIME_INFO(__i915)->step.media_step)
@@ -462,7 +532,9 @@ IS_PLATFORM(const struct drm_i915_private *i915, enum intel_platform p)
 	const unsigned int pi = __platform_mask_index(info, p);
 	const unsigned int pb = __platform_mask_bit(info, p);
 
+#ifdef notyet
 	BUILD_BUG_ON(!__builtin_constant_p(p));
+#endif
 
 	return info->platform_mask[pi] & BIT(pb);
 }
@@ -477,9 +549,11 @@ IS_SUBPLATFORM(const struct drm_i915_private *i915,
 	const unsigned int msb = BITS_PER_TYPE(info->platform_mask[0]) - 1;
 	const u32 mask = info->platform_mask[pi];
 
+#ifdef notyet
 	BUILD_BUG_ON(!__builtin_constant_p(p));
 	BUILD_BUG_ON(!__builtin_constant_p(s));
 	BUILD_BUG_ON((s) >= INTEL_SUBPLATFORM_BITS);
+#endif
 
 	/* Shift and test on the MSB position so sign flag can be used. */
 	return ((mask << (msb - pb)) & (mask << (msb - s))) & BIT(msb);

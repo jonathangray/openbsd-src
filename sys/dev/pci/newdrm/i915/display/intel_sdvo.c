@@ -573,7 +573,7 @@ static bool intel_sdvo_read_response(struct intel_sdvo *intel_sdvo,
 	while ((status == SDVO_CMD_STATUS_PENDING ||
 		status == SDVO_CMD_STATUS_TARGET_NOT_SPECIFIED) && --retry) {
 		if (retry < 10)
-			msleep(15);
+			drm_msleep(15);
 		else
 			udelay(15);
 
@@ -3347,15 +3347,19 @@ intel_sdvo_init_ddc_proxy(struct intel_sdvo_ddc *ddc,
 			  struct intel_sdvo *sdvo, int ddc_bus)
 {
 	struct drm_i915_private *dev_priv = to_i915(sdvo->base.base.dev);
-	struct pci_dev *pdev = to_pci_dev(dev_priv->drm.dev);
+	struct pci_dev *pdev = dev_priv->drm.pdev;
 
 	ddc->sdvo = sdvo;
 	ddc->ddc_bus = ddc_bus;
 
+#ifdef __linux__
 	ddc->ddc.owner = THIS_MODULE;
+#endif
 	snprintf(ddc->ddc.name, I2C_NAME_SIZE, "SDVO %c DDC%d",
 		 port_name(sdvo->base.port), ddc_bus);
+#ifdef __linux__
 	ddc->ddc.dev.parent = &pdev->dev;
+#endif
 	ddc->ddc.algo_data = ddc;
 	ddc->ddc.algo = &intel_sdvo_ddc_proxy;
 	ddc->ddc.lock_ops = &proxy_lock_ops;

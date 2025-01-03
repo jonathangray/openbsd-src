@@ -188,7 +188,7 @@ static void __i915_gem_object_reset_page_iter(struct drm_i915_gem_object *obj)
 static void unmap_object(struct drm_i915_gem_object *obj, void *ptr)
 {
 	if (is_vmalloc_addr(ptr))
-		vunmap(ptr);
+		vunmap(ptr, obj->base.size);
 }
 
 static void flush_tlb_invalidate(struct drm_i915_gem_object *obj)
@@ -272,7 +272,7 @@ static void *i915_gem_object_map_page(struct drm_i915_gem_object *obj,
 				      enum i915_map_type type)
 {
 	unsigned long n_pages = obj->base.size >> PAGE_SHIFT, i;
-	struct page *stack[32], **pages = stack, *page;
+	struct vm_page *stack[32], **pages = stack, *page;
 	struct sgt_iter iter;
 	pgprot_t pgprot;
 	void *vaddr;
@@ -299,8 +299,10 @@ static void *i915_gem_object_map_page(struct drm_i915_gem_object *obj,
 		 * So if the page is beyond the 32b boundary, make an explicit
 		 * vmap.
 		 */
+#ifdef notyet
 		if (n_pages == 1 && !PageHighMem(sg_page(obj->mm.pages->sgl)))
 			return page_address(sg_page(obj->mm.pages->sgl));
+#endif
 		pgprot = PAGE_KERNEL;
 		break;
 	case I915_MAP_WC:
@@ -629,7 +631,7 @@ lookup:
 	return sg;
 }
 
-struct page *
+struct vm_page *
 __i915_gem_object_get_page(struct drm_i915_gem_object *obj, pgoff_t n)
 {
 	struct scatterlist *sg;
@@ -642,10 +644,10 @@ __i915_gem_object_get_page(struct drm_i915_gem_object *obj, pgoff_t n)
 }
 
 /* Like i915_gem_object_get_page(), but mark the returned page dirty */
-struct page *
+struct vm_page *
 __i915_gem_object_get_dirty_page(struct drm_i915_gem_object *obj, pgoff_t n)
 {
-	struct page *page;
+	struct vm_page *page;
 
 	page = i915_gem_object_get_page(obj, n);
 	if (!obj->mm.dirty)

@@ -4305,7 +4305,7 @@ void intel_shared_dpll_init(struct drm_i915_private *i915)
 	const struct dpll_info *dpll_info;
 	int i;
 
-	mutex_init(&i915->display.dpll.lock);
+	rw_init(&i915->display.dpll.lock, "dplllk");
 
 	if (DISPLAY_VER(i915) >= 14 || IS_DG2(i915))
 		/* No shared DPLLs on DG2; port PLLs are part of the PHY */

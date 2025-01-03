@@ -114,7 +114,11 @@ struct drm_i915_gem_object_ops {
 
 	void (*release)(struct drm_i915_gem_object *obj);
 
+#ifdef __linux__
 	const struct vm_operations_struct *mmap_ops;
+#else
+	const struct uvm_pagerops *mmap_ops;
+#endif
 	const char *name; /* friendly name for debug, e.g. lockdep classes */
 };
 
@@ -234,7 +238,7 @@ struct i915_gem_object_page_iter {
 	unsigned int sg_idx; /* in pages, but 32bit eek! */
 
 	struct radix_tree_root radix;
-	struct mutex lock; /* protects this cache */
+	struct rwlock lock; /* protects this cache */
 };
 
 struct drm_i915_gem_object {

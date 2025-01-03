@@ -11,6 +11,7 @@
 #include "i915_reg_defs.h"
 
 enum port;
+#define drm_i915_private inteldrm_softc
 struct drm_atomic_state;
 struct drm_connector;
 struct drm_i915_private;

@@ -13,7 +13,7 @@ struct i915_gem_ww_ctx;
 struct gen6_ppgtt {
 	struct i915_ppgtt base;
 
-	struct mutex flush;
+	struct rwlock flush;
 	struct i915_vma *vma;
 	gen6_pte_t __iomem *pd_addr;
 	u32 pp_dir;

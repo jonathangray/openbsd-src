@@ -228,10 +228,10 @@ static int i915_driver_early_probe(struct drm_i915_private *dev_priv)
 
 	intel_uncore_mmio_debug_init_early(dev_priv);
 
-	spin_lock_init(&dev_priv->irq_lock);
-	spin_lock_init(&dev_priv->gpu_error.lock);
+	mtx_init(&dev_priv->irq_lock, IPL_TTY);
+	mtx_init(&dev_priv->gpu_error.lock, IPL_TTY);
 
-	mutex_init(&dev_priv->sb_lock);
+	rw_init(&dev_priv->sb_lock, "sb");
 	cpu_latency_qos_add_request(&dev_priv->sb_qos, PM_QOS_DEFAULT_VALUE);
 
 	i915_memcpy_init_early(dev_priv);
@@ -244,6 +244,12 @@ static int i915_driver_early_probe(struct drm_i915_private *dev_priv)
 	ret = vlv_suspend_init(dev_priv);
 	if (ret < 0)
 		goto err_workqueues;
+
+#ifdef __OpenBSD__
+	dev_priv->bdev.iot = dev_priv->iot;
+	dev_priv->bdev.memt = dev_priv->bst;
+	dev_priv->bdev.dmat = dev_priv->dmat;
+#endif
 
 	ret = intel_region_ttm_device_init(dev_priv);
 	if (ret)
@@ -441,7 +447,7 @@ static int i915_pcode_init(struct drm_i915_private *i915)
 static int i915_driver_hw_probe(struct drm_i915_private *dev_priv)
 {
 	struct intel_display *display = &dev_priv->display;
-	struct pci_dev *pdev = to_pci_dev(dev_priv->drm.dev);
+	struct pci_dev *pdev = dev_priv->drm.pdev;
 	int ret;
 
 	if (i915_inject_probe_failure(dev_priv))
@@ -580,7 +586,7 @@ err_perf:
 static void i915_driver_hw_remove(struct drm_i915_private *dev_priv)
 {
 	struct intel_display *display = &dev_priv->display;
-	struct pci_dev *pdev = to_pci_dev(dev_priv->drm.dev);
+	struct pci_dev *pdev = dev_priv->drm.pdev;
 
 	i915_perf_fini(dev_priv);
 
@@ -711,6 +717,8 @@ static void i915_welcome_messages(struct drm_i915_private *dev_priv)
 			 "DRM_I915_DEBUG_RUNTIME_PM enabled\n");
 }
 
+#ifdef __linux__
+
 static struct drm_i915_private *
 i915_driver_create(struct pci_dev *pdev, const struct pci_device_id *ent)
 {
@@ -736,6 +744,10 @@ i915_driver_create(struct pci_dev *pdev, const struct pci_device_id *ent)
 	return i915;
 }
 
+#endif
+
+void inteldrm_init_backlight(struct inteldrm_softc *);
+
 /**
  * i915_driver_probe - setup chip and create an initial config
  * @pdev: PCI device
@@ -747,8 +759,9 @@ i915_driver_create(struct pci_dev *pdev, const struct pci_device_id *ent)
  *   - allocate initial config memory
  *   - setup the DRM framebuffer with the allocated memory
  */
-int i915_driver_probe(struct pci_dev *pdev, const struct pci_device_id *ent)
+int i915_driver_probe(struct drm_i915_private *i915, const struct pci_device_id *ent)
 {
+#ifdef __linux__
 	struct drm_i915_private *i915;
 	int ret;
 
@@ -763,6 +776,10 @@ int i915_driver_probe(struct pci_dev *pdev, const struct pci_device_id *ent)
 		pci_disable_device(pdev);
 		return PTR_ERR(i915);
 	}
+#else
+	struct pci_dev *pdev = i915->drm.pdev;
+	int ret;
+#endif
 
 	ret = i915_driver_early_probe(i915);
 	if (ret < 0)
@@ -809,6 +826,10 @@ int i915_driver_probe(struct pci_dev *pdev, const struct pci_device_id *ent)
 		goto out_cleanup_gem;
 
 	i915_driver_register(i915);
+
+#ifdef __OpenBSD__
+	inteldrm_init_backlight(i915);
+#endif
 
 	enable_rpm_wakeref_asserts(&i915->runtime_pm);
 
@@ -1015,7 +1036,7 @@ static int i915_drm_suspend(struct drm_device *dev)
 {
 	struct drm_i915_private *dev_priv = to_i915(dev);
 	struct intel_display *display = &dev_priv->display;
-	struct pci_dev *pdev = to_pci_dev(dev_priv->drm.dev);
+	struct pci_dev *pdev = dev_priv->drm.pdev;
 	pci_power_t opregion_target_state;
 
 	disable_rpm_wakeref_asserts(&dev_priv->runtime_pm);
@@ -1066,7 +1087,7 @@ static int i915_drm_suspend(struct drm_device *dev)
 static int i915_drm_suspend_late(struct drm_device *dev, bool hibernation)
 {
 	struct drm_i915_private *dev_priv = to_i915(dev);
-	struct pci_dev *pdev = to_pci_dev(dev_priv->drm.dev);
+	struct pci_dev *pdev = dev_priv->drm.pdev;
 	struct intel_runtime_pm *rpm = &dev_priv->runtime_pm;
 	struct intel_gt *gt;
 	int ret, i;
@@ -1117,6 +1138,7 @@ out:
 	return ret;
 }
 
+#ifdef __linux__
 int i915_driver_suspend_switcheroo(struct drm_i915_private *i915,
 				   pm_message_t state)
 {
@@ -1135,6 +1157,7 @@ int i915_driver_suspend_switcheroo(struct drm_i915_private *i915,
 
 	return i915_drm_suspend_late(&i915->drm, false);
 }
+#endif
 
 static int i915_drm_resume(struct drm_device *dev)
 {
@@ -1223,7 +1246,7 @@ static int i915_drm_resume(struct drm_device *dev)
 static int i915_drm_resume_early(struct drm_device *dev)
 {
 	struct drm_i915_private *dev_priv = to_i915(dev);
-	struct pci_dev *pdev = to_pci_dev(dev_priv->drm.dev);
+	struct pci_dev *pdev = dev_priv->drm.pdev;
 	struct intel_gt *gt;
 	int ret, i;
 
@@ -1304,6 +1327,8 @@ int i915_driver_resume_switcheroo(struct drm_i915_private *i915)
 
 	return i915_drm_resume(&i915->drm);
 }
+
+#ifdef __linux__
 
 static int i915_pm_prepare(struct device *kdev)
 {
@@ -1678,6 +1703,8 @@ static const struct file_operations i915_driver_fops = {
 	.fop_flags = FOP_UNSIGNED_OFFSET,
 };
 
+#endif /* __linux__ */
+
 static int
 i915_gem_reject_pin_ioctl(struct drm_device *dev, void *data,
 			  struct drm_file *file)
@@ -1780,9 +1807,16 @@ static const struct drm_driver i915_drm_driver = {
 	.dumb_create = i915_gem_dumb_create,
 	.dumb_map_offset = i915_gem_dumb_mmap_offset,
 
+#ifdef __OpenBSD__
+	.mmap = i915_gem_mmap,
+	.gem_fault = i915_gem_fault,
+#endif
+
 	.ioctls = i915_ioctls,
 	.num_ioctls = ARRAY_SIZE(i915_ioctls),
+#ifdef __linux__
 	.fops = &i915_driver_fops,
+#endif
 	.name = DRIVER_NAME,
 	.desc = DRIVER_DESC,
 	.date = DRIVER_DATE,
@@ -1790,3 +1824,796 @@ static const struct drm_driver i915_drm_driver = {
 	.minor = DRIVER_MINOR,
 	.patchlevel = DRIVER_PATCHLEVEL,
 };
+
+#ifdef __OpenBSD__
+
+#include <drm/drm_legacy.h> /* for agp */
+#include <drm/drm_utils.h>
+#include <drm/drm_fb_helper.h>
+
+#ifdef __amd64__
+#include "efifb.h"
+#include <machine/biosvar.h>
+#endif
+
+#if NEFIFB > 0
+#include <machine/efifbvar.h>
+#endif
+
+#include "intagp.h"
+
+/*
+ * some functions are only called once on init regardless of how many times
+ * inteldrm attaches in linux this is handled via module_init()/module_exit()
+ */
+int inteldrm_refcnt;
+
+#if NINTAGP > 0
+int	intagpsubmatch(struct device *, void *, void *);
+int	intagp_print(void *, const char *);
+
+int
+intagpsubmatch(struct device *parent, void *match, void *aux)
+{
+	extern struct cfdriver intagp_cd;
+	struct cfdata *cf = match;
+
+	/* only allow intagp to attach */
+	if (cf->cf_driver == &intagp_cd)
+		return ((*cf->cf_attach->ca_match)(parent, match, aux));
+	return (0);
+}
+
+int
+intagp_print(void *vaa, const char *pnp)
+{
+	if (pnp)
+		printf("intagp at %s", pnp);
+	return (UNCONF);
+}
+#endif
+
+int	inteldrm_wsioctl(void *, u_long, caddr_t, int, struct proc *);
+paddr_t	inteldrm_wsmmap(void *, off_t, int);
+int	inteldrm_alloc_screen(void *, const struct wsscreen_descr *,
+	    void **, int *, int *, uint32_t *);
+void	inteldrm_free_screen(void *, void *);
+int	inteldrm_show_screen(void *, void *, int,
+	    void (*)(void *, int, int), void *);
+void	inteldrm_doswitch(void *);
+void	inteldrm_enter_ddb(void *, void *);
+int	inteldrm_load_font(void *, void *, struct wsdisplay_font *);
+int	inteldrm_list_font(void *, struct wsdisplay_font *);
+int	inteldrm_getchar(void *, int, int, struct wsdisplay_charcell *);
+void	inteldrm_burner(void *, u_int, u_int);
+void	inteldrm_burner_cb(void *);
+void	inteldrm_scrollback(void *, void *, int lines);
+extern const struct pci_device_id pciidlist[];
+
+struct wsscreen_descr inteldrm_stdscreen = {
+	"std",
+	0, 0,
+	0,
+	0, 0,
+	WSSCREEN_UNDERLINE | WSSCREEN_HILIT |
+	WSSCREEN_REVERSE | WSSCREEN_WSCOLORS
+};
+
+const struct wsscreen_descr *inteldrm_scrlist[] = {
+	&inteldrm_stdscreen,
+};
+
+struct wsscreen_list inteldrm_screenlist = {
+	nitems(inteldrm_scrlist), inteldrm_scrlist
+};
+
+struct wsdisplay_accessops inteldrm_accessops = {
+	.ioctl = inteldrm_wsioctl,
+	.mmap = inteldrm_wsmmap,
+	.alloc_screen = inteldrm_alloc_screen,
+	.free_screen = inteldrm_free_screen,
+	.show_screen = inteldrm_show_screen,
+	.enter_ddb = inteldrm_enter_ddb,
+	.getchar = inteldrm_getchar,
+	.load_font = inteldrm_load_font,
+	.list_font = inteldrm_list_font,
+	.scrollback = inteldrm_scrollback,
+	.burn_screen = inteldrm_burner
+};
+
+int
+inteldrm_wsioctl(void *v, u_long cmd, caddr_t data, int flag, struct proc *p)
+{
+	struct inteldrm_softc *dev_priv = v;
+	struct backlight_device *bd = dev_priv->backlight;
+	struct rasops_info *ri = &dev_priv->ro;
+	struct wsdisplay_fbinfo *wdf;
+	struct wsdisplay_param *dp = (struct wsdisplay_param *)data;
+
+	switch (cmd) {
+	case WSDISPLAYIO_GTYPE:
+		*(u_int *)data = WSDISPLAY_TYPE_INTELDRM;
+		return 0;
+	case WSDISPLAYIO_GINFO:
+		wdf = (struct wsdisplay_fbinfo *)data;
+		wdf->width = ri->ri_width;
+		wdf->height = ri->ri_height;
+		wdf->depth = ri->ri_depth;
+		wdf->stride = ri->ri_stride;
+		wdf->offset = 0;
+		wdf->cmsize = 0;
+		return 0;
+	case WSDISPLAYIO_GETPARAM:
+		if (ws_get_param && ws_get_param(dp) == 0)
+			return 0;
+
+		if (bd == NULL)
+			return -1;
+
+		switch (dp->param) {
+		case WSDISPLAYIO_PARAM_BRIGHTNESS:
+			dp->min = 0;
+			dp->max = bd->props.max_brightness;
+			dp->curval = bd->ops->get_brightness(bd);
+			return (dp->max > dp->min) ? 0 : -1;
+		}
+		break;
+	case WSDISPLAYIO_SETPARAM:
+		if (ws_set_param && ws_set_param(dp) == 0)
+			return 0;
+
+		if (bd == NULL || dp->curval > bd->props.max_brightness)
+			return -1;
+
+		switch (dp->param) {
+		case WSDISPLAYIO_PARAM_BRIGHTNESS:
+			bd->props.brightness = dp->curval;
+			backlight_update_status(bd);
+			knote_locked(&dev_priv->drm.note, NOTE_CHANGE);
+			return 0;
+		}
+		break;
+	case WSDISPLAYIO_SVIDEO:
+	case WSDISPLAYIO_GVIDEO:
+		return 0;
+	}
+
+	return (-1);
+}
+
+paddr_t
+inteldrm_wsmmap(void *v, off_t off, int prot)
+{
+	return (-1);
+}
+
+int
+inteldrm_alloc_screen(void *v, const struct wsscreen_descr *type,
+    void **cookiep, int *curxp, int *curyp, uint32_t *attrp)
+{
+	struct inteldrm_softc *dev_priv = v;
+	struct rasops_info *ri = &dev_priv->ro;
+
+	return rasops_alloc_screen(ri, cookiep, curxp, curyp, attrp);
+}
+
+void
+inteldrm_free_screen(void *v, void *cookie)
+{
+	struct inteldrm_softc *dev_priv = v;
+	struct rasops_info *ri = &dev_priv->ro;
+
+	return rasops_free_screen(ri, cookie);
+}
+
+int
+inteldrm_show_screen(void *v, void *cookie, int waitok,
+    void (*cb)(void *, int, int), void *cbarg)
+{
+	struct inteldrm_softc *dev_priv = v;
+	struct rasops_info *ri = &dev_priv->ro;
+
+	if (cookie == ri->ri_active)
+		return (0);
+
+	dev_priv->switchcb = cb;
+	dev_priv->switchcbarg = cbarg;
+	dev_priv->switchcookie = cookie;
+	if (cb) {
+		task_add(systq, &dev_priv->switchtask);
+		return (EAGAIN);
+	}
+
+	inteldrm_doswitch(v);
+
+	return (0);
+}
+
+void
+inteldrm_doswitch(void *v)
+{
+	struct inteldrm_softc *dev_priv = v;
+	struct rasops_info *ri = &dev_priv->ro;
+
+	rasops_show_screen(ri, dev_priv->switchcookie, 0, NULL, NULL);
+	intel_fbdev_restore_mode(dev_priv);
+
+	if (dev_priv->switchcb)
+		(*dev_priv->switchcb)(dev_priv->switchcbarg, 0, 0);
+}
+
+void
+inteldrm_enter_ddb(void *v, void *cookie)
+{
+	struct inteldrm_softc *dev_priv = v;
+	struct rasops_info *ri = &dev_priv->ro;
+
+	if (cookie == ri->ri_active)
+		return;
+
+	rasops_show_screen(ri, cookie, 0, NULL, NULL);
+	intel_fbdev_restore_mode(dev_priv);
+}
+
+int
+inteldrm_getchar(void *v, int row, int col, struct wsdisplay_charcell *cell)
+{
+	struct inteldrm_softc *dev_priv = v;
+	struct rasops_info *ri = &dev_priv->ro;
+
+	return rasops_getchar(ri, row, col, cell);
+}
+
+int
+inteldrm_load_font(void *v, void *cookie, struct wsdisplay_font *font)
+{
+	struct inteldrm_softc *dev_priv = v;
+	struct rasops_info *ri = &dev_priv->ro;
+
+	return rasops_load_font(ri, cookie, font);
+}
+
+int
+inteldrm_list_font(void *v, struct wsdisplay_font *font)
+{
+	struct inteldrm_softc *dev_priv = v;
+	struct rasops_info *ri = &dev_priv->ro;
+
+	return rasops_list_font(ri, font);
+}
+
+void
+inteldrm_burner(void *v, u_int on, u_int flags)
+{
+	struct inteldrm_softc *dev_priv = v;
+
+	task_del(systq, &dev_priv->burner_task);
+
+	if (on)
+		dev_priv->burner_fblank = FB_BLANK_UNBLANK;
+	else {
+		if (flags & WSDISPLAY_BURN_VBLANK)
+			dev_priv->burner_fblank = FB_BLANK_VSYNC_SUSPEND;
+		else
+			dev_priv->burner_fblank = FB_BLANK_NORMAL;
+	}
+
+	/*
+	 * Setting the DPMS mode may sleep while waiting for the display
+	 * to come back on so hand things off to a taskq.
+	 */
+	task_add(systq, &dev_priv->burner_task);
+}
+
+void
+inteldrm_burner_cb(void *arg1)
+{
+	struct inteldrm_softc *dev_priv = arg1;
+	struct drm_device *dev = &dev_priv->drm;
+	struct drm_fb_helper *helper = dev->fb_helper;
+
+	drm_fb_helper_blank(dev_priv->burner_fblank, helper->info);
+}
+
+int
+inteldrm_backlight_update_status(struct backlight_device *bd)
+{
+	struct wsdisplay_param dp;
+
+	dp.param = WSDISPLAYIO_PARAM_BRIGHTNESS;
+	dp.curval = bd->props.brightness;
+	ws_set_param(&dp);
+	return 0;
+}
+
+int
+inteldrm_backlight_get_brightness(struct backlight_device *bd)
+{
+	struct wsdisplay_param dp;
+
+	dp.param = WSDISPLAYIO_PARAM_BRIGHTNESS;
+	ws_get_param(&dp);
+	return dp.curval;
+}
+
+const struct backlight_ops inteldrm_backlight_ops = {
+	.update_status = inteldrm_backlight_update_status,
+	.get_brightness = inteldrm_backlight_get_brightness
+};
+
+void
+inteldrm_scrollback(void *v, void *cookie, int lines)
+{
+	struct inteldrm_softc *dev_priv = v;
+	struct rasops_info *ri = &dev_priv->ro;
+
+	rasops_scrollback(ri, cookie, lines);
+}
+
+int	inteldrm_match(struct device *, void *, void *);
+void	inteldrm_attach(struct device *, struct device *, void *);
+int	inteldrm_detach(struct device *, int);
+int	inteldrm_activate(struct device *, int);
+void	inteldrm_attachhook(struct device *);
+
+const struct cfattach inteldrm_ca = {
+	sizeof(struct inteldrm_softc), inteldrm_match, inteldrm_attach,
+	inteldrm_detach, inteldrm_activate
+};
+
+struct cfdriver inteldrm_cd = {
+	NULL, "inteldrm", DV_DULL
+};
+
+int	inteldrm_intr(void *);
+
+/*
+ * Set if the mountroot hook has a fatal error.
+ */
+int	inteldrm_fatal_error;
+
+int
+inteldrm_match(struct device *parent, void *match, void *aux)
+{
+	struct pci_attach_args *pa = aux;
+	const struct pci_device_id *id;
+	struct intel_device_info *info;
+
+	if (inteldrm_fatal_error)
+		return 0;
+
+	id = drm_find_description(PCI_VENDOR(pa->pa_id),
+	    PCI_PRODUCT(pa->pa_id), pciidlist);
+	if (id != NULL) {
+		info = (struct intel_device_info *)id->driver_data;
+		if (info->require_force_probe == 0 &&
+		    pa->pa_function == 0)
+			return 20;
+	}
+
+	return 0;
+}
+
+int drm_gem_init(struct drm_device *);
+void intel_init_stolen_res(struct inteldrm_softc *);
+
+void
+inteldrm_attach(struct device *parent, struct device *self, void *aux)
+{
+	struct inteldrm_softc *dev_priv = (struct inteldrm_softc *)self;
+	struct drm_device *dev;
+	struct pci_attach_args *pa = aux;
+	const struct pci_device_id *id;
+	struct intel_device_info *info;
+	extern int vga_console_attached;
+	int mmio_bar, mmio_size, mmio_type;
+
+	dev_priv->pa = pa;
+	dev_priv->pc = pa->pa_pc;
+	dev_priv->tag = pa->pa_tag;
+	dev_priv->iot = pa->pa_iot;
+	dev_priv->dmat = pa->pa_dmat;
+	dev_priv->bst = pa->pa_memt;
+	dev_priv->memex = pa->pa_memex;
+	dev_priv->vga_regs = &dev_priv->bar;
+
+	id = drm_find_description(PCI_VENDOR(pa->pa_id),
+	    PCI_PRODUCT(pa->pa_id), pciidlist);
+	dev_priv->id = id;
+	info = (struct intel_device_info *)id->driver_data;
+
+	if (PCI_CLASS(pa->pa_class) == PCI_CLASS_DISPLAY &&
+	    PCI_SUBCLASS(pa->pa_class) == PCI_SUBCLASS_DISPLAY_VGA &&
+	    (pci_conf_read(pa->pa_pc, pa->pa_tag, PCI_COMMAND_STATUS_REG)
+	    & (PCI_COMMAND_IO_ENABLE | PCI_COMMAND_MEM_ENABLE))
+	    == (PCI_COMMAND_IO_ENABLE | PCI_COMMAND_MEM_ENABLE)) {
+		dev_priv->primary = 1;
+		dev_priv->console = vga_is_console(pa->pa_iot, -1);
+		vga_console_attached = 1;
+	}
+
+#if NEFIFB > 0
+	if (efifb_is_primary(pa)) {
+		dev_priv->primary = 1;
+		dev_priv->console = efifb_is_console(pa);
+		efifb_detach();
+	}
+#endif
+
+	/*
+	 * Meteor Lake GOP framebuffer doesn't pass efifb pci bar tests
+	 * too early for IS_METEORLAKE which uses runtime info
+	 */
+	if (info->platform == INTEL_METEORLAKE) {
+		dev_priv->primary = 1;
+		dev_priv->console = 1;
+#if NEFIFB > 0
+		efifb_detach();
+#endif
+	}
+
+	printf("\n");
+
+	dev = drm_attach_pci(&i915_drm_driver, pa, 0, dev_priv->primary,
+	    self, &dev_priv->drm);
+	if (dev == NULL) {
+		printf("%s: drm attach failed\n", dev_priv->sc_dev.dv_xname);
+		return;
+	}
+
+	pci_set_drvdata(dev->pdev, dev_priv);
+
+	/* Device parameters start as a copy of module parameters. */
+	i915_params_copy(&dev_priv->params, &i915_modparams);
+	dev_priv->params.request_timeout_ms = 0;
+	dev_priv->params.enable_psr = 0;
+
+	/* Set up device info and initial runtime info. */
+	intel_device_info_driver_create(dev_priv, dev->pdev->device, info);
+
+	/* uc_expand_default_options() with no GuC submission */
+	if (GRAPHICS_VER(dev_priv) >= 12 &&
+	    (INTEL_INFO(dev_priv)->platform != INTEL_TIGERLAKE) &&
+	    (INTEL_INFO(dev_priv)->platform != INTEL_ROCKETLAKE) &&
+	    (INTEL_INFO(dev_priv)->platform != INTEL_XEHPSDV) &&
+	    (INTEL_INFO(dev_priv)->platform != INTEL_PONTEVECCHIO))
+		dev_priv->params.enable_guc = ENABLE_GUC_LOAD_HUC;
+
+	mmio_bar = (GRAPHICS_VER(dev_priv) == 2) ? 0x14 : 0x10;
+
+	/* from intel_uncore_setup_mmio() */
+
+	/*
+	 * Before gen4, the registers and the GTT are behind different BARs.
+	 * However, from gen4 onwards, the registers and the GTT are shared
+	 * in the same BAR, so we want to restrict this ioremap from
+	 * clobbering the GTT which we want ioremap_wc instead. Fortunately,
+	 * the register BAR remains the same size for all the earlier
+	 * generations up to Ironlake.
+	 * For dgfx chips register range is expanded to 4MB, and this larger
+	 * range is also used for integrated gpus beginning with Meteor Lake.
+	 */
+	if (IS_DGFX(dev_priv) || GRAPHICS_VER_FULL(dev_priv) >= IP_VER(12, 70))
+		mmio_size = 4 * 1024 * 1024;
+	else if (GRAPHICS_VER(dev_priv) >= 5)
+		mmio_size = 2 * 1024 * 1024;
+	else
+		mmio_size = 512 * 1024;
+
+	mmio_type = pci_mapreg_type(pa->pa_pc, pa->pa_tag, mmio_bar);
+	if (pci_mapreg_map(pa, mmio_bar, mmio_type, BUS_SPACE_MAP_LINEAR,
+	    &dev_priv->vga_regs->bst, &dev_priv->vga_regs->bsh,
+	    &dev_priv->vga_regs->base, &dev_priv->vga_regs->size, mmio_size)) {
+		printf("%s: can't map registers\n",
+		    dev_priv->sc_dev.dv_xname);
+		return;
+	}
+	dev_priv->uncore.regs = bus_space_vaddr(dev_priv->vga_regs->bst,
+	     dev_priv->vga_regs->bsh);
+	if (dev_priv->uncore.regs == NULL) {
+		printf("%s: bus_space_vaddr registers failed\n",
+		    dev_priv->sc_dev.dv_xname);
+		return;
+	}
+
+#if NINTAGP > 0
+	if (GRAPHICS_VER(dev_priv) <= 5) {
+		config_found_sm(self, aux, intagp_print, intagpsubmatch);
+		dev->agp = drm_legacy_agp_init(dev);
+		if (dev->agp) {
+			if (drm_mtrr_add(dev->agp->info.ai_aperture_base,
+			    dev->agp->info.ai_aperture_size, DRM_MTRR_WC) == 0)
+				dev->agp->mtrr = 1;
+		}
+	}
+#endif
+
+	if (GRAPHICS_VER(dev_priv) < 5)
+		pa->pa_flags &= ~PCI_FLAGS_MSI_ENABLED;
+
+	if (pci_intr_map_msi(pa, &dev_priv->ih) != 0 &&
+	    pci_intr_map(pa, &dev_priv->ih) != 0) {
+		printf("%s: couldn't map interrupt\n",
+		    dev_priv->sc_dev.dv_xname);
+		return;
+	}
+
+	printf("%s: %s, %s, gen %d\n", dev_priv->sc_dev.dv_xname,
+	    pci_intr_string(dev_priv->pc, dev_priv->ih),
+	    intel_platform_name(INTEL_INFO(dev_priv)->platform),
+	    GRAPHICS_VER(dev_priv));
+
+	dev_priv->irqh = pci_intr_establish(dev_priv->pc, dev_priv->ih,
+	    IPL_TTY, inteldrm_intr, dev_priv, dev_priv->sc_dev.dv_xname);
+	if (dev_priv->irqh == NULL) {
+		printf("%s: couldn't establish interrupt\n",
+		    dev_priv->sc_dev.dv_xname);
+		return;
+	}
+	dev->pdev->irq = -1;
+	intel_gmch_bridge_setup(dev_priv);
+	intel_init_stolen_res(dev_priv);
+
+	config_mountroot(self, inteldrm_attachhook);
+}
+
+void
+inteldrm_forcedetach(struct inteldrm_softc *dev_priv)
+{
+#ifdef notyet
+	struct pci_softc *psc = (struct pci_softc *)dev_priv->sc_dev.dv_parent;
+	pcitag_t tag = dev_priv->tag;
+#endif
+	extern int vga_console_attached;
+
+	if (dev_priv->primary) {
+		vga_console_attached = 0;
+#if NEFIFB > 0
+		efifb_reattach();
+#endif
+	}
+
+#ifdef notyet
+	config_detach(&dev_priv->sc_dev, 0);
+	pci_probe_device(psc, tag, NULL, NULL);
+#endif
+}
+
+extern int __init i915_init(void);
+
+void
+inteldrm_attachhook(struct device *self)
+{
+	struct inteldrm_softc *dev_priv = (struct inteldrm_softc *)self;
+	struct rasops_info *ri = &dev_priv->ro;
+	struct wsemuldisplaydev_attach_args aa;
+	const struct pci_device_id *id = dev_priv->id;
+	int orientation_quirk;
+
+	if (inteldrm_refcnt == 0) {
+		i915_init();
+	}
+	inteldrm_refcnt++;
+
+	if (i915_driver_probe(dev_priv, id))
+		goto fail;
+
+	if (ri->ri_bits == NULL)
+		goto fail;
+
+	printf("%s: %dx%d, %dbpp\n", dev_priv->sc_dev.dv_xname,
+	    ri->ri_width, ri->ri_height, ri->ri_depth);
+
+	ri->ri_flg = RI_CENTER | RI_WRONLY | RI_VCONS | RI_CLEAR;
+
+	orientation_quirk = drm_get_panel_orientation_quirk(ri->ri_width,
+	    ri->ri_height);
+	if (orientation_quirk == DRM_MODE_PANEL_ORIENTATION_LEFT_UP)
+		ri->ri_flg |= RI_ROTATE_CCW;
+	else if (orientation_quirk == DRM_MODE_PANEL_ORIENTATION_RIGHT_UP)
+		ri->ri_flg |= RI_ROTATE_CW;
+
+	ri->ri_hw = dev_priv;
+	rasops_init(ri, 160, 160);
+
+	task_set(&dev_priv->switchtask, inteldrm_doswitch, dev_priv);
+	task_set(&dev_priv->burner_task, inteldrm_burner_cb, dev_priv);
+
+	inteldrm_stdscreen.capabilities = ri->ri_caps;
+	inteldrm_stdscreen.nrows = ri->ri_rows;
+	inteldrm_stdscreen.ncols = ri->ri_cols;
+	inteldrm_stdscreen.textops = &ri->ri_ops;
+	inteldrm_stdscreen.fontwidth = ri->ri_font->fontwidth;
+	inteldrm_stdscreen.fontheight = ri->ri_font->fontheight;
+
+	aa.console = dev_priv->console;
+	aa.primary = dev_priv->primary;
+	aa.scrdata = &inteldrm_screenlist;
+	aa.accessops = &inteldrm_accessops;
+	aa.accesscookie = dev_priv;
+	aa.defaultscreens = 0;
+
+	if (dev_priv->console) {
+		uint32_t defattr;
+
+		/*
+		 * Clear the entire screen if we're doing rotation to
+		 * make sure no unrotated content survives.
+		 */
+		if (ri->ri_flg & (RI_ROTATE_CW | RI_ROTATE_CCW))
+			memset(ri->ri_bits, 0, ri->ri_height * ri->ri_stride);
+
+		ri->ri_ops.pack_attr(ri->ri_active, 0, 0, 0, &defattr);
+		wsdisplay_cnattach(&inteldrm_stdscreen, ri->ri_active,
+		    0, 0, defattr);
+	}
+
+	config_found_sm(self, &aa, wsemuldisplaydevprint,
+	    wsemuldisplaydevsubmatch);
+	return;
+
+fail:
+	inteldrm_fatal_error = 1;
+	inteldrm_forcedetach(dev_priv);
+}
+
+int
+inteldrm_detach(struct device *self, int flags)
+{
+	return 0;
+}
+
+int
+inteldrm_activate(struct device *self, int act)
+{
+	struct inteldrm_softc *dev_priv = (struct inteldrm_softc *)self;
+	struct drm_device *dev = &dev_priv->drm;
+	int rv = 0;
+
+	if (dev->dev == NULL || inteldrm_fatal_error)
+		return (0);
+
+	/*
+	 * On hibernate resume activate is called before inteldrm_attachhook().
+	 * Do not try to call i915_drm_suspend() when
+	 * i915_load_modeset_init()/i915_gem_init() have not been called.
+	 */
+	if (dev_priv->display.wq.modeset == NULL)
+		return 0;
+
+	switch (act) {
+	case DVACT_QUIESCE:
+		rv = config_suspend(dev->dev, act);
+		i915_drm_prepare(dev);
+		i915_drm_suspend(dev);
+		i915_drm_suspend_late(dev, false);
+		break;
+	case DVACT_SUSPEND:
+		if (dev->agp)
+			config_suspend(dev->agp->agpdev->sc_chipc, act);
+		break;
+	case DVACT_RESUME:
+		if (dev->agp)
+			config_suspend(dev->agp->agpdev->sc_chipc, act);
+		break;
+	case DVACT_WAKEUP:
+		i915_drm_resume_early(dev);
+		i915_drm_resume(dev);
+		intel_fbdev_restore_mode(dev_priv);
+		rv = config_suspend(dev->dev, act);
+		break;
+	}
+
+	return (rv);
+}
+
+void
+inteldrm_native_backlight(struct inteldrm_softc *dev_priv)
+{
+	struct drm_device *dev = &dev_priv->drm;
+	struct drm_connector_list_iter conn_iter;
+	struct drm_connector *connector;
+
+	drm_connector_list_iter_begin(dev, &conn_iter);
+	drm_for_each_connector_iter(connector, &conn_iter) {
+		struct intel_connector *intel_connector;
+		struct intel_panel *panel;
+		struct backlight_device *bd;
+
+		if (connector->registration_state != DRM_CONNECTOR_REGISTERED)
+			continue;
+
+		intel_connector = to_intel_connector(connector);
+		panel = &intel_connector->panel;
+		bd = panel->backlight.device;
+
+		if (!panel->backlight.present || bd == NULL)
+			continue;
+
+		dev->registered = false;
+		connector->registration_state = DRM_CONNECTOR_UNREGISTERED;
+
+		connector->backlight_device = bd;
+		connector->backlight_property = drm_property_create_range(dev,
+		    0, "Backlight", 0, bd->props.max_brightness);
+		drm_object_attach_property(&connector->base,
+		    connector->backlight_property, bd->props.brightness);
+
+		connector->registration_state = DRM_CONNECTOR_REGISTERED;
+		dev->registered = true;
+
+		/*
+		 * Use backlight from the first connector that has one
+		 * for wscons(4).
+		 */
+		if (dev_priv->backlight == NULL)
+			dev_priv->backlight = bd;
+	}
+	drm_connector_list_iter_end(&conn_iter);
+}
+
+void
+inteldrm_firmware_backlight(struct inteldrm_softc *dev_priv,
+    struct wsdisplay_param *dp)
+{
+	struct drm_device *dev = &dev_priv->drm;
+	struct drm_connector_list_iter conn_iter;
+	struct drm_connector *connector;
+	struct backlight_properties props;
+	struct backlight_device *bd;
+
+	memset(&props, 0, sizeof(props));
+	props.type = BACKLIGHT_FIRMWARE;
+	props.brightness = dp->curval;
+	bd = backlight_device_register(dev->dev->dv_xname, NULL, NULL,
+	    &inteldrm_backlight_ops, &props);
+
+	drm_connector_list_iter_begin(dev, &conn_iter);
+	drm_for_each_connector_iter(connector, &conn_iter) {
+		if (connector->connector_type != DRM_MODE_CONNECTOR_LVDS &&
+		    connector->connector_type != DRM_MODE_CONNECTOR_eDP &&
+		    connector->connector_type != DRM_MODE_CONNECTOR_DSI)
+			continue;
+
+		if (connector->registration_state != DRM_CONNECTOR_REGISTERED)
+			continue;
+
+		dev->registered = false;
+		connector->registration_state = DRM_CONNECTOR_UNREGISTERED;
+
+		connector->backlight_device = bd;
+		connector->backlight_property = drm_property_create_range(dev,
+		    0, "Backlight", dp->min, dp->max);
+		drm_object_attach_property(&connector->base,
+		    connector->backlight_property, dp->curval);
+
+		connector->registration_state = DRM_CONNECTOR_REGISTERED;
+		dev->registered = true;
+	}
+	drm_connector_list_iter_end(&conn_iter);
+}
+
+void
+inteldrm_init_backlight(struct inteldrm_softc *dev_priv)
+{
+	struct wsdisplay_param dp;
+
+	dp.param = WSDISPLAYIO_PARAM_BRIGHTNESS;
+	if (ws_get_param && ws_get_param(&dp) == 0)
+		inteldrm_firmware_backlight(dev_priv, &dp);
+	else
+		inteldrm_native_backlight(dev_priv);
+}
+
+int
+inteldrm_intr(void *arg)
+{
+	struct inteldrm_softc *dev_priv = arg;
+
+	if (dev_priv->irq_handler)
+		return dev_priv->irq_handler(0, dev_priv);
+
+	return 0;
+}
+
+#endif

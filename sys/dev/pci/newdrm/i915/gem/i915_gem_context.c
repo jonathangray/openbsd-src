@@ -89,16 +89,24 @@
 
 #define ALL_L3_SLICES(dev) (1 << NUM_L3_SLICES(dev)) - 1
 
-static struct kmem_cache *slab_luts;
+static struct pool slab_luts;
 
 struct i915_lut_handle *i915_lut_handle_alloc(void)
 {
+#ifdef __linux__
 	return kmem_cache_alloc(slab_luts, GFP_KERNEL);
+#else
+	return pool_get(&slab_luts, PR_WAITOK);
+#endif
 }
 
 void i915_lut_handle_free(struct i915_lut_handle *lut)
 {
+#ifdef __linux__
 	return kmem_cache_free(slab_luts, lut);
+#else
+	pool_put(&slab_luts, lut);
+#endif
 }
 
 static void lut_close(struct i915_gem_context *ctx)
@@ -1433,12 +1441,25 @@ kill_engines(struct i915_gem_engines *engines, bool exit, bool persistent)
 static void kill_context(struct i915_gem_context *ctx)
 {
 	struct i915_gem_engines *pos, *next;
+	static int warn = 1;
 
 	spin_lock_irq(&ctx->stale.lock);
 	GEM_BUG_ON(!i915_gem_context_is_closed(ctx));
 	list_for_each_entry_safe(pos, next, &ctx->stale.engines, link) {
 		if (!i915_sw_fence_await(&pos->fence)) {
 			list_del_init(&pos->link);
+			continue;
+		}
+
+		/*
+		 * XXX don't incorrectly reset chip on
+		 * gm45/vlv/ivb/hsw/bdw cause unknown
+		 */
+		if (IS_GRAPHICS_VER(ctx->i915, 4, 8)) {
+			if (warn) {
+				DRM_DEBUG("%s XXX skipping reset pos %p\n", __func__, pos);
+				warn = 0;
+			}
 			continue;
 		}
 
@@ -1618,11 +1639,11 @@ i915_gem_create_context(struct drm_i915_private *i915,
 	kref_init(&ctx->ref);
 	ctx->i915 = i915;
 	ctx->sched = pc->sched;
-	mutex_init(&ctx->mutex);
+	rw_init(&ctx->mutex, "gemctx");
 	INIT_LIST_HEAD(&ctx->link);
 	INIT_WORK(&ctx->release_work, i915_gem_context_release_work);
 
-	spin_lock_init(&ctx->stale.lock);
+	mtx_init(&ctx->stale.lock, IPL_TTY);
 	INIT_LIST_HEAD(&ctx->stale.engines);
 
 	if (pc->vm) {
@@ -1646,7 +1667,7 @@ i915_gem_create_context(struct drm_i915_private *i915,
 	/* Assign early so intel_context_set_gem can access these flags */
 	ctx->user_flags = pc->user_flags;
 
-	mutex_init(&ctx->engines_mutex);
+	rw_init(&ctx->engines_mutex, "gemeng");
 	if (pc->num_user_engines >= 0) {
 		i915_gem_context_set_user_engines(ctx);
 		e = user_engines(ctx, pc->num_user_engines, pc->user_engines);
@@ -1661,7 +1682,7 @@ i915_gem_create_context(struct drm_i915_private *i915,
 	RCU_INIT_POINTER(ctx->engines, e);
 
 	INIT_RADIX_TREE(&ctx->handles_vma, GFP_KERNEL);
-	mutex_init(&ctx->lut_mutex);
+	rw_init(&ctx->lut_mutex, "lutrw");
 
 	/* NB: Mark all slices as needing a remap so that when the context first
 	 * loads it will restore whatever remap state already exists. If there
@@ -1700,7 +1721,7 @@ err_ctx:
 
 static void init_contexts(struct i915_gem_contexts *gc)
 {
-	spin_lock_init(&gc->lock);
+	mtx_init(&gc->lock, IPL_NONE);
 	INIT_LIST_HEAD(&gc->list);
 }
 
@@ -1722,11 +1743,19 @@ static void gem_context_register(struct i915_gem_context *ctx,
 
 	ctx->file_priv = fpriv;
 
+#ifdef __linux__
 	ctx->pid = get_task_pid(current, PIDTYPE_PID);
 	ctx->client = i915_drm_client_get(fpriv->client);
 
 	snprintf(ctx->name, sizeof(ctx->name), "%s[%d]",
 		 current->comm, pid_nr(ctx->pid));
+#else
+	ctx->pid = curproc->p_p->ps_pid;
+	ctx->client = i915_drm_client_get(fpriv->client);
+
+	snprintf(ctx->name, sizeof(ctx->name), "%s[%d]",
+		 curproc->p_p->ps_comm, ctx->pid);
+#endif
 
 	spin_lock(&ctx->client->ctx_lock);
 	list_add_tail_rcu(&ctx->client_link, &ctx->client->ctx_list);
@@ -1749,7 +1778,7 @@ int i915_gem_context_open(struct drm_i915_private *i915,
 	struct i915_gem_context *ctx;
 	int err;
 
-	mutex_init(&file_priv->proto_context_lock);
+	rw_init(&file_priv->proto_context_lock, "pctxlk");
 	xa_init_flags(&file_priv->proto_context_xa, XA_FLAGS_ALLOC);
 
 	/* 0 reserved for the default context */
@@ -2390,9 +2419,15 @@ int i915_gem_context_create_ioctl(struct drm_device *dev, void *data,
 
 	ext_data.fpriv = file->driver_priv;
 	if (client_is_banned(ext_data.fpriv)) {
+#ifdef __linux__
 		drm_dbg(&i915->drm,
 			"client %s[%d] banned from creating ctx\n",
 			current->comm, task_pid_nr(current));
+#else
+		drm_dbg(&i915->drm,
+			"client %s[%d] banned from creating ctx\n",
+			curproc->p_p->ps_comm, curproc->p_p->ps_pid);
+#endif
 		return -EIO;
 	}
 
@@ -2699,14 +2734,23 @@ i915_gem_engines_iter_next(struct i915_gem_engines_iter *it)
 
 void i915_gem_context_module_exit(void)
 {
+#ifdef __linux__
 	kmem_cache_destroy(slab_luts);
+#else
+	pool_destroy(&slab_luts);
+#endif
 }
 
 int __init i915_gem_context_module_init(void)
 {
+#ifdef __linux__
 	slab_luts = KMEM_CACHE(i915_lut_handle, 0);
 	if (!slab_luts)
 		return -ENOMEM;
+#else
+	pool_init(&slab_luts , sizeof(struct i915_lut_handle),
+	    0, IPL_NONE, 0, "drmlut", NULL);
+#endif
 
 	if (IS_ENABLED(CONFIG_DRM_I915_REPLAY_GPU_HANGS_API)) {
 		pr_notice("**************************************************************\n");

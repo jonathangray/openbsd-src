@@ -67,6 +67,7 @@ static int ggtt_init_hw(struct i915_ggtt *ggtt)
 		ggtt->vm.mm.color_adjust = i915_ggtt_color_adjust;
 
 	if (ggtt->mappable_end) {
+#ifdef __linux__
 		if (!io_mapping_init_wc(&ggtt->iomap,
 					ggtt->gmadr.start,
 					ggtt->mappable_end)) {
@@ -76,6 +77,35 @@ static int ggtt_init_hw(struct i915_ggtt *ggtt)
 
 		ggtt->mtrr = arch_phys_wc_add(ggtt->gmadr.start,
 					      ggtt->mappable_end);
+#else
+		bus_space_handle_t bsh;
+		int i;
+
+		/* XXX would be a lot nicer to get agp info before now */
+		uvm_page_physload(atop(ggtt->gmadr.start),
+		    atop(ggtt->gmadr.start + ggtt->mappable_end),
+		    atop(ggtt->gmadr.start),
+		    atop(ggtt->gmadr.start + ggtt->mappable_end),
+		    PHYSLOAD_DEVICE);
+		/* array of vm pages that physload introduced. */
+		i915->pgs = PHYS_TO_VM_PAGE(ggtt->gmadr.start);
+		KASSERT(i915->pgs != NULL);
+		/*
+		 * XXX mark all pages write combining so user mmaps get the
+		 * right bits. We really need a proper MI api for doing this,
+		 * but for now this allows us to use PAT where available.
+		 */
+		for (i = 0; i < atop(ggtt->mappable_end); i++)
+			atomic_setbits_int(&(i915->pgs[i].pg_flags),
+			    PG_PMAP_WC);
+		if (bus_space_map(i915->bst, ggtt->gmadr.start,
+		    ggtt->mappable_end,
+		    BUS_SPACE_MAP_LINEAR | BUS_SPACE_MAP_PREFETCHABLE, &bsh))
+			panic("can't map aperture");
+		ggtt->iomap.base = ggtt->gmadr.start;
+		ggtt->iomap.size = ggtt->mappable_end;
+		ggtt->iomap.iomem = bus_space_vaddr(i915->bst, bsh);
+#endif
 	}
 
 	intel_ggtt_init_fences(ggtt);
@@ -841,7 +871,7 @@ static int init_ggtt(struct i915_ggtt *ggtt)
 	if (ret)
 		return ret;
 
-	mutex_init(&ggtt->error_mutex);
+	rw_init(&ggtt->error_mutex, "ggtter");
 	if (ggtt->mappable_end) {
 		/*
 		 * Reserve a mappable slot for our lockless error capture.
@@ -1064,10 +1094,12 @@ static void ggtt_cleanup_hw(struct i915_ggtt *ggtt)
 	mutex_unlock(&ggtt->vm.mutex);
 	i915_address_space_fini(&ggtt->vm);
 
+#ifdef notyet
 	arch_phys_wc_del(ggtt->mtrr);
 
 	if (ggtt->iomap.size)
 		io_mapping_fini(&ggtt->iomap);
+#endif
 }
 
 /**
@@ -1146,6 +1178,8 @@ static unsigned int gen6_gttadr_offset(struct drm_i915_private *i915)
 	return gen6_gttmmadr_size(i915) / 2;
 }
 
+#ifdef __linux__
+
 static int ggtt_probe_common(struct i915_ggtt *ggtt, u64 size)
 {
 	struct drm_i915_private *i915 = ggtt->vm.i915;
@@ -1196,33 +1230,119 @@ static int ggtt_probe_common(struct i915_ggtt *ggtt, u64 size)
 	return 0;
 }
 
+#else
+
+static int ggtt_probe_common(struct i915_ggtt *ggtt, u64 size)
+{
+	struct drm_i915_private *i915 = ggtt->vm.i915;
+	struct pci_dev *pdev = i915->drm.pdev;
+	phys_addr_t phys_addr;
+	bus_addr_t addr;
+	bus_size_t len;
+	pcireg_t type;
+	int flags;
+	u32 pte_flags;
+	int ret;
+
+	type = pci_mapreg_type(i915->pc, i915->tag, 0x10);
+	ret = -pci_mapreg_info(i915->pc, i915->tag, 0x10, type,
+	    &addr, &len, NULL);
+	if (ret)
+		return ret;
+
+	GEM_WARN_ON(len != gen6_gttmmadr_size(i915));
+	phys_addr = addr + gen6_gttadr_offset(i915);
+
+	if (needs_wc_ggtt_mapping(i915))
+		flags = BUS_SPACE_MAP_PREFETCHABLE;
+	else
+		flags = 0;
+
+	ret = -bus_space_map(i915->bst, phys_addr, size,
+	    flags | BUS_SPACE_MAP_LINEAR, &ggtt->gsm_bsh);
+	if (ret) {
+		drm_err(&i915->drm, "Failed to map the ggtt page table\n");
+		return ret;
+	}
+	ggtt->gsm = bus_space_vaddr(i915->bst, ggtt->gsm_bsh);
+	ggtt->gsm_size = size;
+	if (!ggtt->gsm) {
+		drm_err(&i915->drm, "Failed to map the ggtt page table\n");
+		return -ENOMEM;
+	}
+
+	kref_init(&ggtt->vm.resv_ref);
+	ret = setup_scratch_page(&ggtt->vm);
+	if (ret) {
+		drm_err(&i915->drm, "Scratch setup failed\n");
+		/* iounmap will also get called at remove, but meh */
+		bus_space_unmap(i915->bst, ggtt->gsm_bsh, size);
+		return ret;
+	}
+
+	pte_flags = 0;
+	if (i915_gem_object_is_lmem(ggtt->vm.scratch[0]))
+		pte_flags |= PTE_LM;
+
+	ggtt->vm.scratch[0]->encode =
+		ggtt->vm.pte_encode(px_dma(ggtt->vm.scratch[0]),
+				    i915_gem_get_pat_index(i915,
+							   I915_CACHE_NONE),
+				    pte_flags);
+
+	return 0;
+}
+
+#endif
+
 static void gen6_gmch_remove(struct i915_address_space *vm)
 {
 	struct i915_ggtt *ggtt = i915_vm_to_ggtt(vm);
 
+#ifdef __linux__
 	iounmap(ggtt->gsm);
+#else
+	bus_space_unmap(vm->i915->bst, ggtt->gsm_bsh, ggtt->gsm_size);
+#endif
 	free_scratch(vm);
 }
 
+#ifdef __linux__
 static struct resource pci_resource(struct pci_dev *pdev, int bar)
 {
 	return DEFINE_RES_MEM(pci_resource_start(pdev, bar),
 			      pci_resource_len(pdev, bar));
 }
+#endif
 
 static int gen8_gmch_probe(struct i915_ggtt *ggtt)
 {
 	struct drm_i915_private *i915 = ggtt->vm.i915;
-	struct pci_dev *pdev = to_pci_dev(i915->drm.dev);
+	struct pci_dev *pdev = i915->drm.pdev;
 	unsigned int size;
 	u16 snb_gmch_ctl;
 
 	if (!HAS_LMEM(i915) && !HAS_LMEMBAR_SMEM_STOLEN(i915)) {
+#ifdef __linux__
 		if (!i915_pci_resource_valid(pdev, GEN4_GMADR_BAR))
 			return -ENXIO;
 
 		ggtt->gmadr = pci_resource(pdev, GEN4_GMADR_BAR);
 		ggtt->mappable_end = resource_size(&ggtt->gmadr);
+#else
+		bus_addr_t base;
+		bus_size_t sz;
+		pcireg_t type;
+		int err;
+
+		type = pci_mapreg_type(i915->pc, i915->tag, 0x18);
+		err = -pci_mapreg_info(i915->pc, i915->tag, 0x18, type,
+		    &base, &sz, NULL);
+		if (err)
+			return err;
+		ggtt->gmadr.start = base;
+		ggtt->mappable_end = sz;
+#endif
 	}
 
 	pci_read_config_word(pdev, SNB_GMCH_CTRL, &snb_gmch_ctl);
@@ -1390,15 +1510,30 @@ static u64 iris_pte_encode(dma_addr_t addr,
 static int gen6_gmch_probe(struct i915_ggtt *ggtt)
 {
 	struct drm_i915_private *i915 = ggtt->vm.i915;
-	struct pci_dev *pdev = to_pci_dev(i915->drm.dev);
+	struct pci_dev *pdev = i915->drm.pdev;
 	unsigned int size;
 	u16 snb_gmch_ctl;
 
+#ifdef __linux__
 	if (!i915_pci_resource_valid(pdev, GEN4_GMADR_BAR))
 		return -ENXIO;
 
 	ggtt->gmadr = pci_resource(pdev, GEN4_GMADR_BAR);
 	ggtt->mappable_end = resource_size(&ggtt->gmadr);
+#else
+	bus_addr_t base;
+	bus_size_t sz;
+	pcireg_t type;
+	int err;
+
+	type = pci_mapreg_type(i915->pc, i915->tag, 0x18);
+	err = -pci_mapreg_info(i915->pc, i915->tag, 0x18, type,
+	    &base, &sz, NULL);
+	if (err)
+		return err;
+	ggtt->gmadr.start = base;
+	ggtt->mappable_end = sz;
+#endif
 
 	/*
 	 * 64/512MB is the current min/max we actually know of, but this is
@@ -1453,7 +1588,9 @@ static int ggtt_probe_hw(struct i915_ggtt *ggtt, struct intel_gt *gt)
 
 	ggtt->vm.gt = gt;
 	ggtt->vm.i915 = i915;
+#ifdef notyet
 	ggtt->vm.dma = i915->drm.dev;
+#endif
 	dma_resv_init(&ggtt->vm._resv);
 
 	if (GRAPHICS_VER(i915) >= 8)

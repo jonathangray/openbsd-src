@@ -167,9 +167,13 @@ static int i915_pxp_tee_component_bind(struct device *i915_kdev,
 	int ret = 0;
 
 	if (!HAS_HECI_PXP(i915)) {
+		STUB();
+		pxp->dev_link = NULL;
+#ifdef notyet
 		pxp->dev_link = device_link_add(i915_kdev, tee_kdev, DL_FLAG_STATELESS);
 		if (drm_WARN_ON(&i915->drm, !pxp->dev_link))
 			return -ENODEV;
+#endif
 	}
 
 	mutex_lock(&pxp->tee_mutex);
@@ -216,7 +220,10 @@ static void i915_pxp_tee_component_unbind(struct device *i915_kdev,
 	mutex_unlock(&pxp->tee_mutex);
 
 	if (pxp->dev_link) {
+		STUB();
+#ifdef notyet
 		device_link_del(pxp->dev_link);
+#endif
 		pxp->dev_link = NULL;
 	}
 }

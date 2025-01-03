@@ -16,7 +16,7 @@
  */
 void intel_dkl_phy_init(struct drm_i915_private *i915)
 {
-	spin_lock_init(&i915->display.dkl.phy_lock);
+	mtx_init(&i915->display.dkl.phy_lock, IPL_NONE);
 }
 
 static void

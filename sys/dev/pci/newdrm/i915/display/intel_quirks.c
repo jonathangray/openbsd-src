@@ -245,7 +245,7 @@ static struct intel_dpcd_quirk intel_dpcd_quirks[] = {
 
 void intel_init_quirks(struct intel_display *display)
 {
-	struct pci_dev *d = to_pci_dev(display->drm->dev);
+	struct pci_dev *d = i915->drm.pdev;
 	int i;
 
 	for (i = 0; i < ARRAY_SIZE(intel_quirks); i++) {

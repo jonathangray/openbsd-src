@@ -455,15 +455,17 @@ void intel_runtime_pm_driver_last_release(struct intel_runtime_pm *rpm)
 void intel_runtime_pm_init_early(struct intel_runtime_pm *rpm)
 {
 	struct drm_i915_private *i915 = rpm_to_i915(rpm);
+#ifdef notyet
 	struct pci_dev *pdev = to_pci_dev(i915->drm.dev);
 	struct device *kdev = &pdev->dev;
 
 	rpm->kdev = kdev;
+#endif
 	rpm->available = HAS_RUNTIME_PM(i915);
 	atomic_set(&rpm->wakeref_count, 0);
 
 	init_intel_runtime_pm_wakeref(rpm);
 	INIT_LIST_HEAD(&rpm->lmem_userfault_list);
-	spin_lock_init(&rpm->lmem_userfault_lock);
+	mtx_init(&rpm->lmem_userfault_lock, IPL_NONE);
 	intel_wakeref_auto_init(&rpm->userfault_wakeref, i915);
 }

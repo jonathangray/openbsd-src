@@ -1019,6 +1019,8 @@ static int i915_hpd_storm_ctl_show(struct seq_file *m, void *data)
 	return 0;
 }
 
+#ifdef notyet
+
 static ssize_t i915_hpd_storm_ctl_write(struct file *file,
 					const char __user *ubuf, size_t len,
 					loff_t *offp)
@@ -1155,6 +1157,8 @@ static const struct file_operations i915_hpd_short_storm_ctl_fops = {
 	.release = single_release,
 	.write = i915_hpd_short_storm_ctl_write,
 };
+
+#endif /* notyet */
 
 void intel_hpd_debugfs_register(struct drm_i915_private *i915)
 {

@@ -42,10 +42,11 @@ struct intel_wakeref_ops {
 
 struct intel_wakeref {
 	atomic_t count;
-	struct mutex mutex;
+	struct rwlock mutex;
 
 	intel_wakeref_t wakeref;
 
+#define drm_i915_private inteldrm_softc
 	struct drm_i915_private *i915;
 	const struct intel_wakeref_ops *ops;
 
@@ -326,7 +327,7 @@ static inline void intel_wakeref_untrack(struct intel_wakeref *wf,
 
 struct intel_wakeref_auto {
 	struct drm_i915_private *i915;
-	struct timer_list timer;
+	struct timeout timer;
 	intel_wakeref_t wakeref;
 	spinlock_t lock;
 	refcount_t count;

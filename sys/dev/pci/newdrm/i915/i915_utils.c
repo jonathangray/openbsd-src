@@ -11,6 +11,8 @@
 #include "i915_reg.h"
 #include "i915_utils.h"
 
+#include <sys/syslog.h>
+
 void add_taint_for_CI(struct drm_i915_private *i915, unsigned int taint)
 {
 	drm_notice(&i915->drm, "CI tainted: %#x by %pS\n",
@@ -47,16 +49,16 @@ bool i915_error_injected(void)
 
 #endif
 
-void cancel_timer(struct timer_list *t)
+void cancel_timer(struct timeout *t)
 {
 	if (!timer_active(t))
 		return;
 
 	del_timer(t);
-	WRITE_ONCE(t->expires, 0);
+	WRITE_ONCE(t->to_time, 0);
 }
 
-void set_timer_ms(struct timer_list *t, unsigned long timeout)
+void set_timer_ms(struct timeout *t, unsigned long timeout)
 {
 	if (!timeout) {
 		cancel_timer(t);
@@ -79,11 +81,14 @@ void set_timer_ms(struct timer_list *t, unsigned long timeout)
 
 bool i915_vtd_active(struct drm_i915_private *i915)
 {
+	return false;
+#ifdef notyet
 	if (device_iommu_mapped(i915->drm.dev))
 		return true;
 
 	/* Running as a guest, we assume the host is enforcing VT'd */
 	return i915_run_as_guest();
+#endif
 }
 
 bool i915_direct_stolen_access(struct drm_i915_private *i915)

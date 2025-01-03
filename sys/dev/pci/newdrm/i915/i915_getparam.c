@@ -16,7 +16,7 @@ int i915_getparam_ioctl(struct drm_device *dev, void *data,
 			struct drm_file *file_priv)
 {
 	struct drm_i915_private *i915 = to_i915(dev);
-	struct pci_dev *pdev = to_pci_dev(dev->dev);
+	struct pci_dev *pdev = i915->drm.pdev;
 	const struct sseu_dev_info *sseu = &to_gt(i915)->info.sseu;
 	drm_i915_getparam_t *param = data;
 	int value = 0;

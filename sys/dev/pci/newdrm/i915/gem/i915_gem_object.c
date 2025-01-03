@@ -42,7 +42,7 @@
 #include "i915_memcpy.h"
 #include "i915_trace.h"
 
-static struct kmem_cache *slab_objects;
+static struct pool slab_objects;
 
 static const struct drm_gem_object_funcs i915_gem_object_funcs;
 
@@ -77,7 +77,11 @@ struct drm_i915_gem_object *i915_gem_object_alloc(void)
 {
 	struct drm_i915_gem_object *obj;
 
+#ifdef __linux__
 	obj = kmem_cache_zalloc(slab_objects, GFP_KERNEL);
+#else
+	obj = pool_get(&slab_objects, PR_WAITOK | PR_ZERO);
+#endif
 	if (!obj)
 		return NULL;
 	obj->base.funcs = &i915_gem_object_funcs;
@@ -87,7 +91,11 @@ struct drm_i915_gem_object *i915_gem_object_alloc(void)
 
 void i915_gem_object_free(struct drm_i915_gem_object *obj)
 {
+#ifdef __linux__
 	return kmem_cache_free(slab_objects, obj);
+#else
+	pool_put(&slab_objects, obj);
+#endif
 }
 
 void i915_gem_object_init(struct drm_i915_gem_object *obj,
@@ -101,7 +109,7 @@ void i915_gem_object_init(struct drm_i915_gem_object *obj,
 	BUILD_BUG_ON(offsetof(typeof(*obj), base) !=
 		     offsetof(typeof(*obj), __do_not_access.base));
 
-	spin_lock_init(&obj->vma.lock);
+	mtx_init(&obj->vma.lock, IPL_NONE);
 	INIT_LIST_HEAD(&obj->vma.list);
 
 	INIT_LIST_HEAD(&obj->mm.link);
@@ -111,9 +119,9 @@ void i915_gem_object_init(struct drm_i915_gem_object *obj,
 #endif
 
 	INIT_LIST_HEAD(&obj->lut_list);
-	spin_lock_init(&obj->lut_lock);
+	mtx_init(&obj->lut_lock, IPL_NONE);
 
-	spin_lock_init(&obj->mmo.lock);
+	mtx_init(&obj->mmo.lock, IPL_NONE);
 	obj->mmo.offsets = RB_ROOT;
 
 	init_rcu_head(&obj->rcu);
@@ -124,9 +132,9 @@ void i915_gem_object_init(struct drm_i915_gem_object *obj,
 
 	obj->mm.madv = I915_MADV_WILLNEED;
 	INIT_RADIX_TREE(&obj->mm.get_page.radix, GFP_KERNEL | __GFP_NOWARN);
-	mutex_init(&obj->mm.get_page.lock);
+	rw_init(&obj->mm.get_page.lock, "mmget");
 	INIT_RADIX_TREE(&obj->mm.get_dma_page.radix, GFP_KERNEL | __GFP_NOWARN);
-	mutex_init(&obj->mm.get_dma_page.lock);
+	rw_init(&obj->mm.get_dma_page.lock, "mmgetd");
 }
 
 /**
@@ -241,7 +249,7 @@ static void i915_gem_close_object(struct drm_gem_object *gem, struct drm_file *f
 	struct i915_lut_handle bookmark = {};
 	struct i915_mmap_offset *mmo, *mn;
 	struct i915_lut_handle *lut, *ln;
-	LIST_HEAD(close);
+	DRM_LIST_HEAD(close);
 
 	spin_lock(&obj->lut_lock);
 	list_for_each_entry_safe(lut, ln, &obj->lut_list, obj_link) {
@@ -300,6 +308,11 @@ void __i915_gem_free_object_rcu(struct rcu_head *head)
 	/* We need to keep this alive for RCU read access from fdinfo. */
 	if (obj->mm.n_placements > 1)
 		kfree(obj->mm.placements);
+
+#ifdef __OpenBSD__
+	if (obj->base.uao)
+		uao_detach(obj->base.uao);
+#endif
 
 	i915_gem_object_free(obj);
 
@@ -880,14 +893,23 @@ void i915_gem_init__objects(struct drm_i915_private *i915)
 
 void i915_objects_module_exit(void)
 {
+#ifdef __linux__
 	kmem_cache_destroy(slab_objects);
+#else
+	pool_destroy(&slab_objects);
+#endif
 }
 
 int __init i915_objects_module_init(void)
 {
+#ifdef __linux__
 	slab_objects = KMEM_CACHE(drm_i915_gem_object, SLAB_HWCACHE_ALIGN);
 	if (!slab_objects)
 		return -ENOMEM;
+#else
+	pool_init(&slab_objects, sizeof(struct drm_i915_gem_object),
+	    CACHELINESIZE, IPL_NONE, 0, "drmobj", NULL);
+#endif
 
 	return 0;
 }

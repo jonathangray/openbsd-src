@@ -202,7 +202,7 @@ struct i915_page_directory {
 	__px_choose_expr(px, struct i915_page_directory *, __x->pt.base, \
 	(void)0)))
 
-struct page *__px_page(struct drm_i915_gem_object *p);
+struct vm_page *__px_page(struct drm_i915_gem_object *p);
 dma_addr_t __px_dma(struct drm_i915_gem_object *p);
 #define px_dma(px) (__px_dma(px_base(px)))
 
@@ -263,7 +263,7 @@ struct i915_address_space {
 
 	unsigned int bind_async_flags;
 
-	struct mutex mutex; /* protects vma and our lists */
+	struct rwlock mutex; /* protects vma and our lists */
 
 	struct kref resv_ref; /* kref to keep the reservation lock alive. */
 	struct dma_resv _resv; /* reservation lock for all pd objects, and buffer pool */
@@ -372,6 +372,8 @@ struct i915_ggtt {
 
 	/** "Graphics Stolen Memory" holds the global PTEs */
 	void __iomem *gsm;
+	bus_space_handle_t gsm_bsh;
+	bus_size_t gsm_size;
 	void (*invalidate)(struct i915_ggtt *ggtt);
 
 	/** PPGTT used for aliasing the PPGTT with the GTT */
@@ -398,7 +400,7 @@ struct i915_ggtt {
 	 */
 	struct list_head userfault_list;
 
-	struct mutex error_mutex;
+	struct rwlock error_mutex;
 	struct drm_mm_node error_capture;
 	struct drm_mm_node uc_fw;
 

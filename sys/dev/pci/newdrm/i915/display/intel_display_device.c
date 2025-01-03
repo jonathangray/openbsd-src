@@ -1336,12 +1336,17 @@ static const struct {
 static const struct intel_display_device_info *
 probe_gmdid_display(struct drm_i915_private *i915, struct intel_display_ip_ver *ip_ver)
 {
-	struct pci_dev *pdev = to_pci_dev(i915->drm.dev);
+	struct pci_dev *pdev = i915->drm.pdev;
 	struct intel_display_ip_ver gmd_id;
 	void __iomem *addr;
 	u32 val;
 	int i;
+	int mmio_bar, mmio_size, mmio_type;
+	bus_space_tag_t bst;
+	bus_space_handle_t bsh;
+	bus_size_t memsize;
 
+#ifdef __linux__
 	addr = pci_iomap_range(pdev, 0, i915_mmio_reg_offset(GMD_ID_DISPLAY), sizeof(u32));
 	if (!addr) {
 		drm_err(&i915->drm, "Cannot map MMIO BAR to read display GMD_ID\n");
@@ -1350,6 +1355,19 @@ probe_gmdid_display(struct drm_i915_private *i915, struct intel_display_ip_ver *
 
 	val = ioread32(addr);
 	pci_iounmap(pdev, addr);
+#else
+	mmio_bar = 0x10;
+	mmio_type = pci_mapreg_type(i915->pc, i915->tag, mmio_bar);
+	if (pci_mapreg_map(i915->pa, mmio_bar, mmio_type, 0,
+	    &bst, &bsh, NULL, &memsize, 0)) {
+		drm_err(&i915->drm, "Cannot map MMIO BAR to read display GMD_ID\n");
+		return &no_display;
+	}
+
+	val = bus_space_read_4(bst, bsh, i915_mmio_reg_offset(GMD_ID_DISPLAY));
+
+	bus_space_unmap(bst, bsh, memsize);
+#endif
 
 	if (val == 0) {
 		drm_dbg_kms(&i915->drm, "Device doesn't have display\n");
@@ -1453,7 +1471,7 @@ static enum intel_step get_pre_gmdid_step(struct intel_display *display,
 void intel_display_device_probe(struct drm_i915_private *i915)
 {
 	struct intel_display *display = &i915->display;
-	struct pci_dev *pdev = to_pci_dev(i915->drm.dev);
+	struct pci_dev *pdev = i915->drm.pdev;
 	const struct intel_display_device_info *info;
 	struct intel_display_ip_ver ip_ver = {};
 	const struct platform_desc *desc;

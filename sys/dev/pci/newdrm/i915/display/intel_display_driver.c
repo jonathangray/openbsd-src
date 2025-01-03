@@ -71,11 +71,13 @@ bool intel_display_driver_probe_defer(struct pci_dev *pdev)
 		return true;
 
 	/* If the LCD panel has a privacy-screen, wait for it */
+#ifdef notyet
 	privacy_screen = drm_privacy_screen_get(&pdev->dev, NULL);
 	if (IS_ERR(privacy_screen) && PTR_ERR(privacy_screen) == -EPROBE_DEFER)
 		return true;
 
 	drm_privacy_screen_put(privacy_screen);
+#endif
 
 	return false;
 }
@@ -183,7 +185,7 @@ void intel_display_driver_early_probe(struct drm_i915_private *i915)
 	if (!HAS_DISPLAY(i915))
 		return;
 
-	spin_lock_init(&i915->display.fb_tracking.lock);
+	mtx_init(&i915->display.fb_tracking.lock, IPL_NONE);
 	mutex_init(&i915->display.backlight.lock);
 	mutex_init(&i915->display.audio.mutex);
 	mutex_init(&i915->display.wm.wm_mutex);

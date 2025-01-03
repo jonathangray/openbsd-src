@@ -260,7 +260,7 @@ ssize_t intel_hdcp_gsc_msg_send(struct drm_i915_private *i915, u8 *msg_in,
 		if (ret != -EAGAIN)
 			break;
 
-		msleep(50);
+		drm_msleep(50);
 
 	} while (++tries < 20);
 

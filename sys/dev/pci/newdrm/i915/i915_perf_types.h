@@ -119,9 +119,11 @@ struct i915_perf_stream_ops {
 	 * @poll_wait: Call poll_wait, passing a wait queue that will be woken
 	 * once there is something ready to read() for the stream
 	 */
+#ifdef notyet
 	void (*poll_wait)(struct i915_perf_stream *stream,
 			  struct file *file,
 			  poll_table *wait);
+#endif
 
 	/**
 	 * @wait_unlocked: For handling a blocking read, wait until there is
@@ -183,7 +185,7 @@ struct i915_perf_stream {
 	/**
 	 * @lock: Lock associated with operations on stream
 	 */
-	struct mutex lock;
+	struct rwlock lock;
 
 	/**
 	 * @sample_flags: Flags representing the `DRM_I915_PERF_PROP_SAMPLE_*`
@@ -436,7 +438,7 @@ struct i915_perf_gt {
 	/*
 	 * Lock associated with anything below within this structure.
 	 */
-	struct mutex lock;
+	struct rwlock lock;
 
 	/**
 	 * @sseu: sseu configuration selected to run while perf is active,
@@ -464,7 +466,7 @@ struct i915_perf {
 	 * Lock associated with adding/modifying/removing OA configs
 	 * in perf->metrics_idr.
 	 */
-	struct mutex metrics_lock;
+	struct rwlock metrics_lock;
 
 	/*
 	 * List of dynamic configurations (struct i915_oa_config), you

@@ -116,7 +116,7 @@ int i915_gem_object_unbind(struct drm_i915_gem_object *obj,
 {
 	struct intel_runtime_pm *rpm = &to_i915(obj->base.dev)->runtime_pm;
 	bool vm_trylock = !!(flags & I915_GEM_OBJECT_UNBIND_VM_TRYLOCK);
-	LIST_HEAD(still_in_list);
+	DRM_LIST_HEAD(still_in_list);
 	intel_wakeref_t wakeref;
 	struct i915_vma *vma;
 	int ret;
@@ -203,7 +203,7 @@ try_again:
 }
 
 static int
-shmem_pread(struct page *page, int offset, int len, char __user *user_data,
+shmem_pread(struct vm_page *page, int offset, int len, char __user *user_data,
 	    bool needs_clflush)
 {
 	char *vaddr;
@@ -216,7 +216,7 @@ shmem_pread(struct page *page, int offset, int len, char __user *user_data,
 
 	ret = __copy_to_user(user_data, vaddr + offset, len);
 
-	kunmap(page);
+	kunmap_va(vaddr);
 
 	return ret ? -EFAULT : 0;
 }
@@ -251,7 +251,7 @@ i915_gem_shmem_pread(struct drm_i915_gem_object *obj,
 	user_data = u64_to_user_ptr(args->data_ptr);
 	offset = offset_in_page(args->offset);
 	for (idx = args->offset >> PAGE_SHIFT; remain; idx++) {
-		struct page *page = i915_gem_object_get_page(obj, idx);
+		struct vm_page *page = i915_gem_object_get_page(obj, idx);
 		unsigned int length = min_t(u64, remain, PAGE_SIZE - offset);
 
 		ret = shmem_pread(page, offset, length, user_data,
@@ -423,7 +423,7 @@ i915_gem_gtt_pread(struct drm_i915_gem_object *obj,
 					     i915_gem_get_pat_index(i915,
 								    I915_CACHE_NONE), 0);
 		} else {
-			page_base += offset & PAGE_MASK;
+			page_base += offset & LINUX_PAGE_MASK;
 		}
 
 		if (gtt_user_read(&ggtt->iomap, page_base, page_offset,
@@ -605,7 +605,7 @@ i915_gem_gtt_pwrite_fast(struct drm_i915_gem_object *obj,
 								    I915_CACHE_NONE), 0);
 			wmb(); /* flush modifications to the GGTT (insert_page) */
 		} else {
-			page_base += offset & PAGE_MASK;
+			page_base += offset & LINUX_PAGE_MASK;
 		}
 		/* If we get a fault while copying data, then (presumably) our
 		 * source page isn't available.  Return the error and we'll
@@ -639,7 +639,7 @@ out_rpm:
  * writing if needs_clflush is set.
  */
 static int
-shmem_pwrite(struct page *page, int offset, int len, char __user *user_data,
+shmem_pwrite(struct vm_page *page, int offset, int len, char __user *user_data,
 	     bool needs_clflush_before,
 	     bool needs_clflush_after)
 {
@@ -655,7 +655,7 @@ shmem_pwrite(struct page *page, int offset, int len, char __user *user_data,
 	if (!ret && needs_clflush_after)
 		drm_clflush_virt_range(vaddr + offset, len);
 
-	kunmap(page);
+	kunmap_va(vaddr);
 
 	return ret ? -EFAULT : 0;
 }
@@ -693,13 +693,13 @@ i915_gem_shmem_pwrite(struct drm_i915_gem_object *obj,
 	 */
 	partial_cacheline_write = 0;
 	if (needs_clflush & CLFLUSH_BEFORE)
-		partial_cacheline_write = boot_cpu_data.x86_clflush_size - 1;
+		partial_cacheline_write = curcpu()->ci_cflushsz - 1;
 
 	user_data = u64_to_user_ptr(args->data_ptr);
 	remain = args->size;
 	offset = offset_in_page(args->offset);
 	for (idx = args->offset >> PAGE_SHIFT; remain; idx++) {
-		struct page *page = i915_gem_object_get_page(obj, idx);
+		struct vm_page *page = i915_gem_object_get_page(obj, idx);
 		unsigned int length = min_t(u64, remain, PAGE_SIZE - offset);
 
 		ret = shmem_pwrite(page, offset, length, user_data,
@@ -1285,7 +1285,7 @@ void i915_gem_driver_release(struct drm_i915_private *dev_priv)
 
 static void i915_gem_init__mm(struct drm_i915_private *i915)
 {
-	spin_lock_init(&i915->mm.obj_lock);
+	mtx_init(&i915->mm.obj_lock, IPL_TTY);
 
 	init_llist_head(&i915->mm.free_list);
 

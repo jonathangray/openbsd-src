@@ -39,10 +39,10 @@
 
 void intel_gt_common_init_early(struct intel_gt *gt)
 {
-	spin_lock_init(gt->irq_lock);
+	mtx_init(gt->irq_lock, IPL_TTY);
 
 	INIT_LIST_HEAD(&gt->closed_vma);
-	spin_lock_init(&gt->closed_lock);
+	mtx_init(&gt->closed_lock, IPL_TTY);
 
 	init_llist_head(&gt->watchdog.list);
 	INIT_WORK(&gt->watchdog.work, intel_gt_watchdog_work);
@@ -312,7 +312,7 @@ static void gen6_check_faults(struct intel_gt *gt)
 			       "\tAddress space: %s\n"
 			       "\tSource ID: %d\n"
 			       "\tType: %d\n",
-			       fault & PAGE_MASK,
+			       (unsigned long)(fault & LINUX_PAGE_MASK),
 			       fault & RING_FAULT_GTTSEL_MASK ?
 			       "GGTT" : "PPGTT",
 			       RING_FAULT_SRCID(fault),
@@ -592,7 +592,7 @@ err:
 
 	for (id = 0; id < ARRAY_SIZE(requests); id++) {
 		struct i915_request *rq;
-		struct file *state;
+		struct uvm_object *state;
 
 		rq = requests[id];
 		if (!rq)
@@ -608,7 +608,11 @@ err:
 			continue;
 
 		/* Keep a copy of the state's backing pages; free the obj */
+#ifdef __linux__
 		state = shmem_create_from_object(rq->context->state->obj);
+#else
+		state = uao_create_from_object(rq->context->state->obj);
+#endif
 		if (IS_ERR(state)) {
 			err = PTR_ERR(state);
 			goto out;
@@ -901,6 +905,8 @@ static int intel_gt_tile_setup(struct intel_gt *gt, phys_addr_t phys_addr)
 	return 0;
 }
 
+#ifdef __linux__
+
 int intel_gt_probe_all(struct drm_i915_private *i915)
 {
 	struct pci_dev *pdev = to_pci_dev(i915->drm.dev);
@@ -984,6 +990,103 @@ err:
 	i915_probe_error(i915, "Failed to initialize %s! (%d)\n", gtdef->name, ret);
 	return ret;
 }
+
+#else
+
+int intel_gt_probe_all(struct drm_i915_private *i915)
+{
+	struct pci_dev *pdev = i915->drm.pdev;
+	struct intel_gt *gt = to_gt(i915);
+	const struct intel_gt_definition *gtdef;
+	phys_addr_t phys_addr;
+	bus_size_t len;
+	pcireg_t type;
+	int flags;
+	unsigned int mmio_bar;
+	unsigned int i;
+	int ret;
+
+	mmio_bar = intel_mmio_bar(GRAPHICS_VER(i915));
+	type = pci_mapreg_type(i915->pc, i915->tag, 0x10 + (mmio_bar * 4));
+	ret = -pci_mapreg_info(i915->pc, i915->tag, 0x10 + (mmio_bar * 4), type,
+	    &phys_addr, &len, NULL);
+	if (ret)
+		return ret;
+
+	/*
+	 * We always have at least one primary GT on any device
+	 * and it has been already initialized early during probe
+	 * in i915_driver_probe()
+	 */
+	gt->i915 = i915;
+	gt->name = "Primary GT";
+	gt->info.engine_mask = INTEL_INFO(i915)->platform_engine_mask;
+
+	gt_dbg(gt, "Setting up %s\n", gt->name);
+	ret = intel_gt_tile_setup(gt, phys_addr);
+	if (ret)
+		return ret;
+
+	i915->gt[0] = gt;
+
+	if (!HAS_EXTRA_GT_LIST(i915))
+		return 0;
+
+	for (i = 1, gtdef = &INTEL_INFO(i915)->extra_gt_list[i - 1];
+	     gtdef->name != NULL;
+	     i++, gtdef = &INTEL_INFO(i915)->extra_gt_list[i - 1]) {
+		gt = drmm_kzalloc(&i915->drm, sizeof(*gt), GFP_KERNEL);
+		if (!gt) {
+			ret = -ENOMEM;
+			goto err;
+		}
+
+		gt->i915 = i915;
+		gt->name = gtdef->name;
+		gt->type = gtdef->type;
+		gt->info.engine_mask = gtdef->engine_mask;
+		gt->info.id = i;
+
+		gt_dbg(gt, "Setting up %s\n", gt->name);
+		if (GEM_WARN_ON(range_overflows_t(resource_size_t,
+						  gtdef->mapping_base,
+						  SZ_16M,
+						  len))) {
+			ret = -ENODEV;
+			goto err;
+		}
+
+		switch (gtdef->type) {
+		case GT_TILE:
+			ret = intel_gt_tile_setup(gt, phys_addr + gtdef->mapping_base);
+			break;
+
+		case GT_MEDIA:
+			ret = intel_sa_mediagt_setup(gt, phys_addr + gtdef->mapping_base,
+						     gtdef->gsi_offset);
+			break;
+
+		case GT_PRIMARY:
+			/* Primary GT should not appear in extra GT list */
+		default:
+			MISSING_CASE(gtdef->type);
+			ret = -ENODEV;
+		}
+
+		if (ret)
+			goto err;
+
+		i915->gt[i] = gt;
+	}
+
+	return 0;
+
+err:
+	i915_probe_error(i915, "Failed to initialize %s! (%d)\n", gtdef->name, ret);
+	return ret;
+}
+
+#endif
 
 int intel_gt_tiles_init(struct drm_i915_private *i915)
 {

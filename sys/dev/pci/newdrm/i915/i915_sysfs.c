@@ -38,6 +38,8 @@
 #include "i915_drv.h"
 #include "i915_sysfs.h"
 
+#ifdef __linux__
+
 struct drm_i915_private *kdev_minor_to_i915(struct device *kdev)
 {
 	struct drm_minor *minor = dev_get_drvdata(kdev);
@@ -155,8 +157,11 @@ static const struct bin_attribute dpf_attrs_1 = {
 	.private = (void *)1
 };
 
+#endif /* __linux__ */
+
 void i915_setup_sysfs(struct drm_i915_private *dev_priv)
 {
+#ifdef __linux__
 	struct device *kdev = dev_priv->drm.primary->kdev;
 	int ret;
 
@@ -183,10 +188,12 @@ void i915_setup_sysfs(struct drm_i915_private *dev_priv)
 	i915_gpu_error_sysfs_setup(dev_priv);
 
 	intel_engines_add_sysfs(dev_priv);
+#endif /* __linux__ */
 }
 
 void i915_teardown_sysfs(struct drm_i915_private *dev_priv)
 {
+#ifdef __linux__
 	struct device *kdev = dev_priv->drm.primary->kdev;
 
 	i915_gpu_error_sysfs_teardown(dev_priv);
@@ -195,4 +202,5 @@ void i915_teardown_sysfs(struct drm_i915_private *dev_priv)
 	device_remove_bin_file(kdev, &dpf_attrs);
 
 	kobject_put(dev_priv->sysfs_gt);
+#endif /* __linux__ */
 }

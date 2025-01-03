@@ -14,6 +14,8 @@
 #include "gem/i915_gem_lmem.h"
 #include "shmem_utils.h"
 
+#ifdef __linux__
+
 struct file *shmem_create_from_data(const char *name, void *data, size_t len)
 {
 	struct file *file;
@@ -166,6 +168,128 @@ int shmem_read(struct file *file, loff_t off, void *dst, size_t len)
 int shmem_write(struct file *file, loff_t off, void *src, size_t len)
 {
 	return __shmem_rw(file, off, src, len, true);
+}
+
+#endif /* __linux__ */
+
+struct uvm_object *
+uao_create_from_data(void *data, size_t len)
+{
+	struct uvm_object *uao;
+	int err;
+
+	uao = uao_create(PAGE_ALIGN(len), 0);
+	if (uao == NULL) {
+		return ERR_PTR(-ENOMEM);
+	}
+
+	err = uao_write(uao, 0, data, len);
+	if (err) {
+		uao_detach(uao);
+		return ERR_PTR(err);
+	}
+
+	return uao;
+}
+
+struct uvm_object *
+uao_create_from_object(struct drm_i915_gem_object *obj)
+{
+	struct uvm_object *uao;
+	void *ptr;
+
+	if (i915_gem_object_is_shmem(obj)) {
+		uao_reference(obj->base.uao);
+		return obj->base.uao;
+	}
+
+	ptr = i915_gem_object_pin_map_unlocked(obj, i915_gem_object_is_lmem(obj) ?
+						I915_MAP_WC : I915_MAP_WB);
+	if (IS_ERR(ptr))
+		return ERR_CAST(ptr);
+
+	uao = uao_create_from_data(ptr, obj->base.size);
+	i915_gem_object_unpin_map(obj);
+
+	return uao;
+}
+
+static int __uao_rw(struct uvm_object *uao, loff_t off,
+		      void *ptr, size_t len,
+		      bool write)
+{
+	struct pglist plist;
+	struct vm_page *page;
+	vaddr_t pgoff = trunc_page(off);
+	size_t olen = round_page(len);
+
+	TAILQ_INIT(&plist);
+	if (uvm_obj_wire(uao, pgoff, olen, &plist))
+		return -ENOMEM;
+
+	TAILQ_FOREACH(page, &plist, pageq) {
+		unsigned int this =
+			min_t(size_t, PAGE_SIZE - offset_in_page(off), len);
+		void *vaddr = kmap(page);
+		
+		if (write) {
+			memcpy(vaddr + offset_in_page(off), ptr, this);
+			set_page_dirty(page);
+		} else {
+			memcpy(ptr, vaddr + offset_in_page(off), this);
+		}
+
+		kunmap_va(vaddr);
+		len -= this;
+		ptr += this;
+		off = 0;
+	}
+
+	uvm_obj_unwire(uao, pgoff, olen);
+
+	return 0;
+}
+
+int uao_read_to_iosys_map(struct uvm_object *uao, loff_t off,
+			    struct iosys_map *map, size_t map_off, size_t len)
+{
+	struct pglist plist;
+	struct vm_page *page;
+	vaddr_t pgoff = trunc_page(off);
+	size_t olen = round_page(len);
+
+	TAILQ_INIT(&plist);
+	if (uvm_obj_wire(uao, pgoff, olen, &plist))
+		return -ENOMEM;
+
+	TAILQ_FOREACH(page, &plist, pageq) {
+		unsigned int this =
+			min_t(size_t, PAGE_SIZE - offset_in_page(off), len);
+		void *vaddr;
+
+		vaddr = kmap(page);
+		iosys_map_memcpy_to(map, map_off, vaddr + offset_in_page(off),
+				    this);
+		kunmap_va(vaddr);
+
+		len -= this;
+		map_off += this;
+		off = 0;
+	}
+
+	uvm_obj_unwire(uao, pgoff, olen);
+
+	return 0;
+}
+
+int uao_read(struct uvm_object *uao, loff_t off, void *dst, size_t len)
+{
+	return __uao_rw(uao, off, dst, len, false);
+}
+
+int uao_write(struct uvm_object *uao, loff_t off, void *src, size_t len)
+{
+	return __uao_rw(uao, off, src, len, true);
 }
 
 #if IS_ENABLED(CONFIG_DRM_I915_SELFTEST)

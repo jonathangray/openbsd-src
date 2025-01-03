@@ -440,26 +440,31 @@ void i915_gem_driver_register__shrinker(struct drm_i915_private *i915)
 		shrinker_register(i915->mm.shrinker);
 	}
 
+#ifdef notyet
 	i915->mm.oom_notifier.notifier_call = i915_gem_shrinker_oom;
 	drm_WARN_ON(&i915->drm, register_oom_notifier(&i915->mm.oom_notifier));
 
 	i915->mm.vmap_notifier.notifier_call = i915_gem_shrinker_vmap;
 	drm_WARN_ON(&i915->drm,
 		    register_vmap_purge_notifier(&i915->mm.vmap_notifier));
+#endif
 }
 
 void i915_gem_driver_unregister__shrinker(struct drm_i915_private *i915)
 {
+#ifdef notyet
 	drm_WARN_ON(&i915->drm,
 		    unregister_vmap_purge_notifier(&i915->mm.vmap_notifier));
 	drm_WARN_ON(&i915->drm,
 		    unregister_oom_notifier(&i915->mm.oom_notifier));
+#endif
 	shrinker_free(i915->mm.shrinker);
 }
 
 void i915_gem_shrinker_taints_mutex(struct drm_i915_private *i915,
-				    struct mutex *mutex)
+				    struct rwlock *mutex)
 {
+#ifdef notyet
 	if (!IS_ENABLED(CONFIG_LOCKDEP))
 		return;
 
@@ -469,6 +474,7 @@ void i915_gem_shrinker_taints_mutex(struct drm_i915_private *i915,
 	mutex_release(&mutex->dep_map, _RET_IP_);
 
 	fs_reclaim_release(GFP_KERNEL);
+#endif
 }
 
 /**

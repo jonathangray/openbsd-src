@@ -27,6 +27,8 @@
 
 #include <drm/drm_util.h>
 
+#define drm_i915_private inteldrm_softc
+
 #include "i915_reg_defs.h"
 #include "intel_display_limits.h"
 

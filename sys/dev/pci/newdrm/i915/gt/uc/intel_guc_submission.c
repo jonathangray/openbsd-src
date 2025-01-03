@@ -2405,7 +2405,7 @@ out_unlock:
 			unsigned int max = min_t(unsigned int, 100,
 						 timeslice_shifted);
 
-			msleep(max_t(unsigned int, max, 1));
+			drm_msleep(max_t(unsigned int, max, 1));
 		}
 		intel_gt_retire_requests(guc_to_gt(guc));
 		goto try_again;
@@ -4826,7 +4826,7 @@ void intel_guc_submission_init_early(struct intel_guc *guc)
 {
 	xa_init_flags(&guc->context_lookup, XA_FLAGS_LOCK_IRQ);
 
-	spin_lock_init(&guc->submission_state.lock);
+	mtx_init(&guc->submission_state.lock, IPL_TTY);
 	INIT_LIST_HEAD(&guc->submission_state.guc_id_list);
 	ida_init(&guc->submission_state.guc_ids);
 	INIT_LIST_HEAD(&guc->submission_state.destroyed_contexts);
@@ -4835,7 +4835,7 @@ void intel_guc_submission_init_early(struct intel_guc *guc)
 	INIT_WORK(&guc->submission_state.reset_fail_worker,
 		  reset_fail_worker_func);
 
-	spin_lock_init(&guc->timestamp.lock);
+	mtx_init(&guc->timestamp.lock, IPL_TTY);
 	INIT_DELAYED_WORK(&guc->timestamp.work, guc_timestamp_ping);
 
 	guc->submission_state.sched_disable_delay_ms = SCHED_DISABLE_DELAY_MS;
@@ -5895,7 +5895,9 @@ guc_create_virtual(struct intel_engine_cs **siblings, unsigned int count,
 
 	ve->base.flags = I915_ENGINE_IS_VIRTUAL;
 
+#ifdef notyet
 	BUILD_BUG_ON(ilog2(VIRTUAL_ENGINES) < I915_NUM_ENGINES);
+#endif
 	ve->base.mask = VIRTUAL_ENGINES;
 
 	intel_context_init(&ve->context, &ve->base);

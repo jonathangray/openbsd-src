@@ -555,7 +555,7 @@ struct intel_hdcp_shim {
 struct intel_hdcp {
 	const struct intel_hdcp_shim *shim;
 	/* Mutex for hdcp state of the connector */
-	struct mutex mutex;
+	struct rwlock mutex;
 	u64 value;
 	struct delayed_work check_work;
 	struct work_struct prop_work;
@@ -1504,7 +1504,7 @@ struct intel_crtc {
 	} wm;
 
 	struct {
-		struct mutex mutex;
+		struct rwlock mutex;
 		struct delayed_work work;
 		enum drrs_refresh_rate refresh_rate;
 		unsigned int frontbuffer_bits;
@@ -1701,7 +1701,7 @@ struct intel_pps {
 
 struct intel_psr {
 	/* Mutex for PSR state of the transcoder */
-	struct mutex lock;
+	struct rwlock lock;
 
 #define I915_PSR_DEBUG_MODE_MASK		0x0f
 #define I915_PSR_DEBUG_DEFAULT			0x00
@@ -1943,7 +1943,7 @@ struct intel_digital_port {
 	struct intel_tc_port *tc;
 
 	/* protects num_hdcp_streams reference count, hdcp_port_data and hdcp_auth_status */
-	struct mutex hdcp_mutex;
+	struct rwlock hdcp_mutex;
 	/* the number of pipes using HDCP signalling out of this port */
 	unsigned int num_hdcp_streams;
 	/* port HDCP auth status */

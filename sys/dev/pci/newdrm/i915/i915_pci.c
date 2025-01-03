@@ -742,6 +742,7 @@ static const struct intel_device_info adl_p_info = {
 
 static const struct intel_device_info dg2_info = {
 	DG2_FEATURES,
+	.require_force_probe = 1,
 };
 
 static const struct intel_device_info ats_m_info = {
@@ -795,7 +796,7 @@ __diag_pop();
  * and subvendor IDs, we need it to come before the more general IVB
  * PCI ID matches, otherwise we'll use the wrong info struct above.
  */
-static const struct pci_device_id pciidlist[] = {
+const struct pci_device_id pciidlist[] = {
 	INTEL_I830_IDS(INTEL_VGA_DEVICE, &i830_info),
 	INTEL_I845G_IDS(INTEL_VGA_DEVICE, &i845g_info),
 	INTEL_I85X_IDS(INTEL_VGA_DEVICE, &i85x_info),
@@ -875,6 +876,7 @@ static const struct pci_device_id pciidlist[] = {
 };
 MODULE_DEVICE_TABLE(pci, pciidlist);
 
+#ifdef __linux__
 static void i915_pci_remove(struct pci_dev *pdev)
 {
 	struct drm_i915_private *i915;
@@ -1047,3 +1049,15 @@ void i915_pci_unregister_driver(void)
 {
 	pci_unregister_driver(&i915_pci_driver);
 }
+
+#else
+
+int i915_pci_register_driver(void)
+{
+	return 0;
+}
+
+void i915_pci_unregister_driver(void)
+{
+}
+#endif

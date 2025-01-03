@@ -98,7 +98,7 @@ struct intel_fbc {
 	 * struct_mutex and it's the outer lock when overlapping
 	 * with stolen_lock.
 	 */
-	struct mutex lock;
+	struct rwlock lock;
 	unsigned int busy_bits;
 
 	struct i915_stolen_fb compressed_fb, compressed_llb;
@@ -1929,7 +1929,7 @@ static struct intel_fbc *intel_fbc_create(struct intel_display *display,
 	fbc->id = fbc_id;
 	fbc->display = display;
 	INIT_WORK(&fbc->underrun_work, intel_fbc_underrun_work_fn);
-	mutex_init(&fbc->lock);
+	rw_init(&fbc->lock, "fbclk");
 
 	if (DISPLAY_VER(display) >= 7)
 		fbc->funcs = &ivb_fbc_funcs;
@@ -1983,6 +1983,8 @@ void intel_fbc_sanitize(struct intel_display *display)
 			intel_fbc_hw_deactivate(fbc);
 	}
 }
+
+#ifdef notyet
 
 static int intel_fbc_debugfs_status_show(struct seq_file *m, void *unused)
 {
@@ -2057,6 +2059,8 @@ DEFINE_DEBUGFS_ATTRIBUTE(intel_fbc_debugfs_false_color_fops,
 			 intel_fbc_debugfs_false_color_get,
 			 intel_fbc_debugfs_false_color_set,
 			 "%llu\n");
+
+#endif /* notyet */
 
 static void intel_fbc_debugfs_add(struct intel_fbc *fbc,
 				  struct dentry *parent)

@@ -3747,6 +3747,8 @@ void intel_dbuf_post_plane_update(struct intel_atomic_state *state)
 	gen9_dbuf_slices_update(i915, new_slices);
 }
 
+#ifdef notyet
+
 static int skl_watermark_ipc_status_show(struct seq_file *m, void *data)
 {
 	struct drm_i915_private *i915 = m->private;
@@ -3796,6 +3798,8 @@ static const struct file_operations skl_watermark_ipc_status_fops = {
 	.release = single_release,
 	.write = skl_watermark_ipc_status_write
 };
+
+#endif /* notyet */
 
 static int intel_sagv_status_show(struct seq_file *m, void *unused)
 {

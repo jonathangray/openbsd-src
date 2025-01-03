@@ -69,6 +69,9 @@ enum gmbus_gpio {
 	GPIOO,
 };
 
+#include <dev/i2c/i2cvar.h>
+#include <dev/i2c/i2c_bitbang.h>
+
 struct gmbus_pin {
 	const char *name;
 	enum gmbus_gpio gpio;
@@ -335,6 +338,100 @@ intel_gpio_post_xfer(struct i2c_adapter *adapter)
 		pnv_gmbus_clock_gating(i915, true);
 }
 
+void	intel_bb_set_bits(void *, uint32_t);
+void	intel_bb_set_dir(void *, uint32_t);
+uint32_t intel_bb_read_bits(void *);
+
+int	intel_acquire_bus(void *, int);
+void	intel_release_bus(void *, int);
+int	intel_send_start(void *, int);
+int	intel_send_stop(void *, int);
+int	intel_initiate_xfer(void *, i2c_addr_t, int);
+int	intel_read_byte(void *, u_int8_t *, int);
+int	intel_write_byte(void *, u_int8_t, int);
+
+#define INTEL_BB_SDA		(1 << I2C_BIT_SDA)
+#define INTEL_BB_SCL		(1 << I2C_BIT_SCL)
+
+struct i2c_bitbang_ops intel_bbops = {
+	intel_bb_set_bits,
+	intel_bb_set_dir,
+	intel_bb_read_bits,
+	{ INTEL_BB_SDA, INTEL_BB_SCL, 0, 0 }
+};
+
+void
+intel_bb_set_bits(void *cookie, uint32_t bits)
+{
+	set_clock(cookie, bits & INTEL_BB_SCL);
+	set_data(cookie, bits & INTEL_BB_SDA);
+}
+
+void
+intel_bb_set_dir(void *cookie, uint32_t bits)
+{
+}
+
+uint32_t
+intel_bb_read_bits(void *cookie)
+{
+	uint32_t bits = 0;
+
+	if (get_clock(cookie))
+		bits |= INTEL_BB_SCL;
+	if (get_data(cookie))
+		bits |= INTEL_BB_SDA;
+
+	return bits;
+}
+
+int
+intel_acquire_bus(void *cookie, int flags)
+{
+	struct intel_gmbus *bus = cookie;
+
+	intel_gpio_pre_xfer(&bus->adapter);
+	return (0);
+}
+
+void
+intel_release_bus(void *cookie, int flags)
+{
+	struct intel_gmbus *bus = cookie;
+
+	intel_gpio_post_xfer(&bus->adapter);
+}
+
+int
+intel_send_start(void *cookie, int flags)
+{
+	return (i2c_bitbang_send_start(cookie, flags, &intel_bbops));
+}
+
+int
+intel_send_stop(void *cookie, int flags)
+{
+	return (i2c_bitbang_send_stop(cookie, flags, &intel_bbops));
+}
+
+int
+intel_initiate_xfer(void *cookie, i2c_addr_t addr, int flags)
+{
+	return (i2c_bitbang_initiate_xfer(cookie, addr, flags, &intel_bbops));
+}
+
+int
+intel_read_byte(void *cookie, u_int8_t *bytep, int flags)
+{
+	return (i2c_bitbang_read_byte(cookie, bytep, flags, &intel_bbops));
+}
+
+int
+intel_write_byte(void *cookie, u_int8_t byte, int flags)
+{
+	return (i2c_bitbang_write_byte(cookie, byte, flags, &intel_bbops));
+}
+
 static void
 intel_gpio_setup(struct intel_gmbus *bus, i915_reg_t gpio_reg)
 {
@@ -344,6 +441,7 @@ intel_gpio_setup(struct intel_gmbus *bus, i915_reg_t gpio_reg)
 
 	bus->gpio_reg = gpio_reg;
 	bus->adapter.algo_data = algo;
+#ifdef __linux__
 	algo->setsda = set_data;
 	algo->setscl = set_clock;
 	algo->getsda = get_data;
@@ -353,6 +451,16 @@ intel_gpio_setup(struct intel_gmbus *bus, i915_reg_t gpio_reg)
 	algo->udelay = I2C_RISEFALL_TIME;
 	algo->timeout = usecs_to_jiffies(2200);
 	algo->data = bus;
+#else
+	algo->ic.ic_cookie = bus;
+	algo->ic.ic_acquire_bus = intel_acquire_bus;
+	algo->ic.ic_release_bus = intel_release_bus;
+	algo->ic.ic_send_start = intel_send_start;
+	algo->ic.ic_send_stop = intel_send_stop;
+	algo->ic.ic_initiate_xfer = intel_initiate_xfer;
+	algo->ic.ic_read_byte = intel_read_byte;
+	algo->ic.ic_write_byte = intel_write_byte;
+#endif
 }
 
 static bool has_gmbus_irq(struct drm_i915_private *i915)
@@ -374,7 +482,7 @@ static int gmbus_wait(struct drm_i915_private *i915, u32 status, u32 irq_en)
 	 * we also need to check for NAKs besides the hw ready/idle signal, we
 	 * need to wake up periodically and check that ourselves.
 	 */
-	if (!has_gmbus_irq(i915))
+	if (!has_gmbus_irq(i915) || cold)
 		irq_en = 0;
 
 	add_wait_queue(&i915->display.gmbus.wait_queue, &wait);
@@ -405,7 +513,7 @@ gmbus_wait_idle(struct drm_i915_private *i915)
 
 	/* Important: The hw handles only the first bit, so set only one! */
 	irq_enable = 0;
-	if (has_gmbus_irq(i915))
+	if (has_gmbus_irq(i915) && !cold)
 		irq_enable = GMBUS_IDLE_EN;
 
 	add_wait_queue(&i915->display.gmbus.wait_queue, &wait);
@@ -865,7 +973,9 @@ static const struct i2c_lock_operations gmbus_lock_ops = {
  */
 int intel_gmbus_setup(struct drm_i915_private *i915)
 {
+#ifdef notyet
 	struct pci_dev *pdev = to_pci_dev(i915->drm.dev);
+#endif
 	unsigned int pin;
 	int ret;
 
@@ -878,7 +988,7 @@ int intel_gmbus_setup(struct drm_i915_private *i915)
 		 */
 		i915->display.gmbus.mmio_base = PCH_DISPLAY_BASE;
 
-	mutex_init(&i915->display.gmbus.mutex);
+	rw_init(&i915->display.gmbus.mutex, "gmbus");
 	init_waitqueue_head(&i915->display.gmbus.wait_queue);
 
 	for (pin = 0; pin < ARRAY_SIZE(i915->display.gmbus.bus); pin++) {
@@ -895,12 +1005,16 @@ int intel_gmbus_setup(struct drm_i915_private *i915)
 			goto err;
 		}
 
+#ifdef notyet
 		bus->adapter.owner = THIS_MODULE;
+#endif
 		snprintf(bus->adapter.name,
 			 sizeof(bus->adapter.name),
 			 "i915 gmbus %s", gmbus_pin->name);
 
+#ifdef notyet
 		bus->adapter.dev.parent = &pdev->dev;
+#endif
 		bus->i915 = i915;
 
 		bus->adapter.algo = &gmbus_algorithm;
