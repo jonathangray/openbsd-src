@@ -757,7 +757,7 @@ static int umsch_mm_init(struct amdgpu_device *adev)
 		return r;
 	}
 
-	mutex_init(&adev->umsch_mm.mutex_hidden);
+	rw_init(&adev->umsch_mm.mutex_hidden, "umschmm");
 
 	umsch_mm_agdb_index_init(adev);
 
