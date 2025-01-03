@@ -427,6 +427,9 @@ int amdgpu_umc_update_ecc_status(struct amdgpu_device *adev,
 int amdgpu_umc_logs_ecc_err(struct amdgpu_device *adev,
 		struct radix_tree_root *ecc_tree, struct ras_ecc_err *ecc_err)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct amdgpu_ras *con = amdgpu_ras_get_context(adev);
 	struct ras_ecc_log_info *ecc_log;
 	int ret;
@@ -441,4 +444,5 @@ int amdgpu_umc_logs_ecc_err(struct amdgpu_device *adev,
 	mutex_unlock(&ecc_log->lock);
 
 	return ret;
+#endif
 }
