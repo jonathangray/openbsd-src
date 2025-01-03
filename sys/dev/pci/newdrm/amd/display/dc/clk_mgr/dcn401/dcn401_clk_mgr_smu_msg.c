@@ -36,7 +36,7 @@ static uint32_t dcn401_smu_wait_for_response(struct clk_mgr_internal *clk_mgr, u
 			break;
 
 		if (delay_us >= 1000)
-			msleep(delay_us/1000);
+			drm_msleep(delay_us/1000);
 		else if (delay_us > 0)
 			udelay(delay_us);
 	} while (max_retries--);
@@ -88,7 +88,7 @@ static uint32_t dcn401_smu_wait_for_response_delay(struct clk_mgr_internal *clk_
 			break;
 
 		if (delay_us >= 1000)
-			msleep(delay_us/1000);
+			drm_msleep(delay_us/1000);
 		else if (delay_us > 0)
 			udelay(delay_us);
 		*total_delay_us += delay_us;
