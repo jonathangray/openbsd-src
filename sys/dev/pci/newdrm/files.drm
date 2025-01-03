@@ -705,7 +705,7 @@ file	dev/pci/newdrm/amd/amdgpu/amdgpu_ids.c		amdgpu
 file	dev/pci/newdrm/amd/amdgpu/amdgpu_ih.c		amdgpu
 #file	dev/pci/newdrm/amd/amdgpu/amdgpu_ioc32.c		amdgpu
 file	dev/pci/newdrm/amd/amdgpu/amdgpu_irq.c		amdgpu
-file	dev/pci/newdrm/amd/amdgpu/amdgpu_isp.c		amdgpu
+#file	dev/pci/newdrm/amd/amdgpu/amdgpu_isp.c		amdgpu CONFIG_DRM_AMD_ISP
 file	dev/pci/newdrm/amd/amdgpu/amdgpu_job.c		amdgpu
 file	dev/pci/newdrm/amd/amdgpu/amdgpu_jpeg.c		amdgpu
 file	dev/pci/newdrm/amd/amdgpu/amdgpu_kms.c		amdgpu
@@ -806,8 +806,8 @@ file	dev/pci/newdrm/amd/amdgpu/ih_v7_0.c		amdgpu
 file	dev/pci/newdrm/amd/amdgpu/imu_v11_0.c		amdgpu
 file	dev/pci/newdrm/amd/amdgpu/imu_v11_0_3.c		amdgpu
 file	dev/pci/newdrm/amd/amdgpu/imu_v12_0.c		amdgpu
-file	dev/pci/newdrm/amd/amdgpu/isp_v4_1_0.c		amdgpu
-file	dev/pci/newdrm/amd/amdgpu/isp_v4_1_1.c		amdgpu
+#file	dev/pci/newdrm/amd/amdgpu/isp_v4_1_0.c		amdgpu CONFIG_DRM_AMD_ISP
+#file	dev/pci/newdrm/amd/amdgpu/isp_v4_1_1.c		amdgpu CONFIG_DRM_AMD_ISP
 file	dev/pci/newdrm/amd/amdgpu/jpeg_v1_0.c		amdgpu
 file	dev/pci/newdrm/amd/amdgpu/jpeg_v2_0.c		amdgpu
 file	dev/pci/newdrm/amd/amdgpu/jpeg_v2_5.c		amdgpu
