@@ -1507,6 +1507,9 @@ static ssize_t amdgpu_gfx_set_run_cleaner_shader(struct device *dev,
 						 const char *buf,
 						 size_t count)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct drm_device *ddev = dev_get_drvdata(dev);
 	struct amdgpu_device *adev = drm_to_adev(ddev);
 	int ret;
@@ -1548,6 +1551,7 @@ static ssize_t amdgpu_gfx_set_run_cleaner_shader(struct device *dev,
 		return ret;
 
 	return count;
+#endif
 }
 
 static ssize_t amdgpu_gfx_get_enforce_isolation(struct device *dev,
@@ -1577,6 +1581,9 @@ static ssize_t amdgpu_gfx_set_enforce_isolation(struct device *dev,
 						struct device_attribute *attr,
 						const char *buf, size_t count)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct drm_device *ddev = dev_get_drvdata(dev);
 	struct amdgpu_device *adev = drm_to_adev(ddev);
 	long partition_values[MAX_XCP] = {0};
@@ -1626,6 +1633,7 @@ static ssize_t amdgpu_gfx_set_enforce_isolation(struct device *dev,
 	mutex_unlock(&adev->enforce_isolation_mutex);
 
 	return count;
+#endif
 }
 
 static DEVICE_ATTR(run_cleaner_shader, 0200,
