@@ -1812,7 +1812,7 @@ int psp_ras_initialize(struct psp_context *psp)
 
 	if (!ret && !ras_cmd->ras_status) {
 		psp->ras_context.context.initialized = true;
-		mutex_init(&psp->ras_context.mutex);
+		rw_init(&psp->ras_context.mutex, "pspras");
 	} else {
 		if (ras_cmd->ras_status)
 			dev_warn(adev->dev, "RAS Init Status: 0x%X\n", ras_cmd->ras_status);
