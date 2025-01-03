@@ -1153,7 +1153,7 @@ file	dev/pci/newdrm/amd/display/dc/dml2/dml21/dml21_wrapper.c		amdgpu
 file	dev/pci/newdrm/amd/display/dc/dml2/dml21/src/dml2_core/dml2_core_dcn4.c	amdgpu
 file	dev/pci/newdrm/amd/display/dc/dml2/dml21/src/dml2_core/dml2_core_dcn4_calcs.c	amdgpu
 file	dev/pci/newdrm/amd/display/dc/dml2/dml21/src/dml2_core/dml2_core_factory.c	amdgpu
-file	dev/pci/newdrm/amd/display/dc/dml2/dml21/src/dml2_core/dml2_core_shared.c	amdgpu
+#file	dev/pci/newdrm/amd/display/dc/dml2/dml21/src/dml2_core/dml2_core_shared.c	amdgpu
 file	dev/pci/newdrm/amd/display/dc/dml2/dml21/src/dml2_core/dml2_core_utils.c	amdgpu
 file	dev/pci/newdrm/amd/display/dc/dml2/dml21/src/dml2_dpmm/dml2_dpmm_dcn4.c	amdgpu
 file	dev/pci/newdrm/amd/display/dc/dml2/dml21/src/dml2_dpmm/dml2_dpmm_factory.c	amdgpu
