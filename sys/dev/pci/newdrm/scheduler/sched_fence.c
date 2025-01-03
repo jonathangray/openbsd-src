@@ -29,21 +29,32 @@
 
 #include <drm/gpu_scheduler.h>
 
-static struct kmem_cache *sched_fence_slab;
+#include <sys/pool.h>
+
+static struct pool sched_fence_slab;
 
 static int __init drm_sched_fence_slab_init(void)
 {
+#ifdef __linux__
 	sched_fence_slab = KMEM_CACHE(drm_sched_fence, SLAB_HWCACHE_ALIGN);
 	if (!sched_fence_slab)
 		return -ENOMEM;
+#else
+	pool_init(&sched_fence_slab, sizeof(struct drm_sched_fence),
+	    CACHELINESIZE, IPL_TTY, 0, "drm_sched_fence", NULL);
+#endif
 
 	return 0;
 }
 
-static void __exit drm_sched_fence_slab_fini(void)
+void __exit drm_sched_fence_slab_fini(void)
 {
 	rcu_barrier();
+#ifdef __linux__
 	kmem_cache_destroy(sched_fence_slab);
+#else
+	pool_destroy(&sched_fence_slab);
+#endif
 }
 
 static void drm_sched_fence_set_parent(struct drm_sched_fence *s_fence,
@@ -98,8 +109,13 @@ static void drm_sched_fence_free_rcu(struct rcu_head *rcu)
 	struct dma_fence *f = container_of(rcu, struct dma_fence, rcu);
 	struct drm_sched_fence *fence = to_drm_sched_fence(f);
 
-	if (!WARN_ON_ONCE(!fence))
+	if (!WARN_ON_ONCE(!fence)) {
+#ifdef __linux__
 		kmem_cache_free(sched_fence_slab, fence);
+#else
+		pool_put(&sched_fence_slab, fence);
+#endif
+	}
 }
 
 /**
@@ -113,8 +129,13 @@ static void drm_sched_fence_free_rcu(struct rcu_head *rcu)
 void drm_sched_fence_free(struct drm_sched_fence *fence)
 {
 	/* This function should not be called if the fence has been initialized. */
-	if (!WARN_ON_ONCE(fence->sched))
+	if (!WARN_ON_ONCE(fence->sched)) {
+#ifdef __linux__
 		kmem_cache_free(sched_fence_slab, fence);
+#else
+		pool_put(&sched_fence_slab, fence);
+#endif
+	}
 }
 
 /**
@@ -208,12 +229,16 @@ struct drm_sched_fence *drm_sched_fence_alloc(struct drm_sched_entity *entity,
 {
 	struct drm_sched_fence *fence = NULL;
 
+#ifdef __linux__
 	fence = kmem_cache_zalloc(sched_fence_slab, GFP_KERNEL);
+#else
+	fence = pool_get(&sched_fence_slab, PR_WAITOK | PR_ZERO);
+#endif
 	if (fence == NULL)
 		return NULL;
 
 	fence->owner = owner;
-	spin_lock_init(&fence->lock);
+	mtx_init(&fence->lock, IPL_TTY);
 
 	return fence;
 }
