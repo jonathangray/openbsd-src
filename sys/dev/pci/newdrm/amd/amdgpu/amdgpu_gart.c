@@ -245,8 +245,10 @@ void amdgpu_gart_table_ram_free(struct amdgpu_device *adev)
 	sg_free_table(sg);
 	kfree(sg);
 	p = virt_to_page(adev->gart.ptr);
+#ifdef __linux__
 	for (x = 0; x < (1UL << order); x++)
 		p[x].mapping = NULL;
+#endif
 	__free_pages(p, order);
 
 	adev->gart.ptr = NULL;
