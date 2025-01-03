@@ -223,6 +223,7 @@ static struct attribute *amdgpu_vram_mgr_attributes[] = {
 	NULL
 };
 
+#ifdef notyet
 static umode_t amdgpu_vram_attrs_is_visible(struct kobject *kobj,
 					    struct attribute *attr, int i)
 {
@@ -236,10 +237,13 @@ static umode_t amdgpu_vram_attrs_is_visible(struct kobject *kobj,
 
 	return attr->mode;
 }
+#endif
 
 const struct attribute_group amdgpu_vram_mgr_attr_group = {
 	.attrs = amdgpu_vram_mgr_attributes,
+#ifdef notyet
 	.is_visible = amdgpu_vram_attrs_is_visible
+#endif
 };
 
 /**
