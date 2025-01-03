@@ -2244,6 +2244,7 @@ static unsigned long amdgpu_fix_asic_type(struct pci_dev *pdev, unsigned long fl
 	return flags;
 }
 
+#ifdef notyet
 static int amdgpu_pci_probe(struct pci_dev *pdev,
 			    const struct pci_device_id *ent)
 {
@@ -3694,9 +3695,9 @@ amdgpu_attachhook(struct device *self)
 
 		/* select 8 bpp console on low vram cards */
 		if (adev->gmc.real_vram_size <= (32*1024*1024))
-			drm_fbdev_generic_setup(adev_to_drm(adev), 8);
+			drm_fbdev_ttm_setup(adev_to_drm(adev), 8);
 		else
-			drm_fbdev_generic_setup(adev_to_drm(adev), 32);
+			drm_fbdev_ttm_setup(adev_to_drm(adev), 32);
 
 		fb_helper = adev_to_drm(adev)->fb_helper;
 		if (fb_helper == NULL) {
