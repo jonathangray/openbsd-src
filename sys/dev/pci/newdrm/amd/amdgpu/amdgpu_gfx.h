@@ -469,7 +469,7 @@ struct amdgpu_gfx {
 	bool				enable_cleaner_shader;
 	struct amdgpu_isolation_work	enforce_isolation[MAX_XCP];
 	/* Mutex for synchronizing KFD scheduler operations */
-	struct mutex                    kfd_sch_mutex;
+	struct rwlock			kfd_sch_mutex;
 	u64				kfd_sch_req_count[MAX_XCP];
 	bool				kfd_sch_inactive[MAX_XCP];
 };

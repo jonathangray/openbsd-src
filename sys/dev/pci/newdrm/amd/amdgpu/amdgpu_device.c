@@ -168,6 +168,8 @@ static ssize_t amdgpu_device_get_pcie_replay_count(struct device *dev,
 static DEVICE_ATTR(pcie_replay_count, 0444,
 		amdgpu_device_get_pcie_replay_count, NULL);
 
+#ifdef __linux__
+
 static ssize_t amdgpu_sysfs_reg_state_get(struct file *f, struct kobject *kobj,
 					  struct bin_attribute *attr, char *buf,
 					  loff_t ppos, size_t count)
@@ -207,6 +209,8 @@ static ssize_t amdgpu_sysfs_reg_state_get(struct file *f, struct kobject *kobj,
 
 BIN_ATTR(reg_state, 0444, amdgpu_sysfs_reg_state_get, NULL,
 	 AMDGPU_SYS_REG_STATE_END);
+
+#endif /* __linux__ */
 
 int amdgpu_reg_state_sysfs_init(struct amdgpu_device *adev)
 {
@@ -277,6 +281,7 @@ static struct attribute *amdgpu_board_attrs[] = {
 	NULL,
 };
 
+#ifdef notyet
 static umode_t amdgpu_board_attrs_is_visible(struct kobject *kobj,
 					     struct attribute *attr, int n)
 {
@@ -289,10 +294,13 @@ static umode_t amdgpu_board_attrs_is_visible(struct kobject *kobj,
 
 	return attr->mode;
 }
+#endif
 
 static const struct attribute_group amdgpu_board_attrs_group = {
 	.attrs = amdgpu_board_attrs,
+#ifdef notyet
 	.is_visible = amdgpu_board_attrs_is_visible
+#endif
 };
 
 static void amdgpu_device_get_pcie_info(struct amdgpu_device *adev);
@@ -5782,6 +5790,7 @@ static int amdgpu_device_health_check(struct list_head *device_list_handle)
 	int ret = 0;
 	u32 status;
 
+#ifdef notyet
 	list_for_each_entry(tmp_adev, device_list_handle, reset_list) {
 		pci_read_config_dword(tmp_adev->pdev, PCI_COMMAND, &status);
 		if (PCI_POSSIBLE_ERROR(status)) {
@@ -5789,6 +5798,7 @@ static int amdgpu_device_health_check(struct list_head *device_list_handle)
 			ret = -ENODEV;
 		}
 	}
+#endif
 
 	return ret;
 }
