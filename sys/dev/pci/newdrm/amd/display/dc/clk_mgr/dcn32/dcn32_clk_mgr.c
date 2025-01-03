@@ -523,7 +523,7 @@ static void dcn32_auto_dpm_test_log(
 		}
 	}
 
-	msleep(5);
+	drm_msleep(5);
 
 	mall_ss_size_bytes = context->bw_ctx.bw.dcn.mall_ss_size_bytes;
 
