@@ -114,7 +114,7 @@ static uint32_t dcn32_smu_wait_for_response_delay(struct clk_mgr_internal *clk_m
 			break;
 
 		if (delay_us >= 1000)
-			msleep(delay_us/1000);
+			drm_msleep(delay_us/1000);
 		else if (delay_us > 0)
 			udelay(delay_us);
 		*total_delay_us += delay_us;
@@ -263,7 +263,7 @@ static bool dcn32_smu_wait_get_hard_min_status(struct clk_mgr_internal *clk_mgr,
 			smu_print("SMU Wait get hard min status: %d timeouts\n", cur_wait_get_hard_min_max_timeouts);
 			break;
 		}
-		msleep(1);
+		drm_msleep(1);
 		total_delay_us += 1000;
 	}
 
