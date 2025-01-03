@@ -131,7 +131,7 @@ int amdgpu_fru_get_product_info(struct amdgpu_device *adev)
 	 * so convert it to a 16-digit HEX string for convenience and
 	 * backwards-compatibility.
 	 */
-	sprintf(fru_info->serial, "%llx", adev->unique_id);
+	snprintf(fru_info->serial, sizeof(fru_info->serial), "%llx", adev->unique_id);
 
 	/* If algo exists, it means that the i2c_adapter's initialized */
 	if (!adev->pm.fru_eeprom_i2c_bus || !adev->pm.fru_eeprom_i2c_bus->algo) {
