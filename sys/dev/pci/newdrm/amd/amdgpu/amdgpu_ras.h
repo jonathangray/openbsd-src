@@ -547,12 +547,16 @@ struct amdgpu_ras {
 	/* Record special requirements of gpu reset caller */
 	uint32_t  gpu_reset_flags;
 
+#ifdef __linux__
 	struct task_struct *page_retirement_thread;
+#else
+	struct proc *page_retirement_thread;
+#endif
 	wait_queue_head_t page_retirement_wq;
 	struct rwlock page_retirement_lock;
 	atomic_t page_retirement_req_cnt;
 	atomic_t poison_creation_count;
-	struct mutex page_rsv_lock;
+	struct rwlock page_rsv_lock;
 #ifdef notyet
 	DECLARE_KFIFO(poison_fifo, struct ras_poison_msg, 128);
 #endif

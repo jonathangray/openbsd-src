@@ -1969,6 +1969,8 @@ static void amdgpu_ras_debugfs_create(struct amdgpu_device *adev,
 			    obj, &amdgpu_ras_debugfs_ops);
 }
 
+#endif /* __linux__ */
+
 static bool amdgpu_ras_aca_is_supported(struct amdgpu_device *adev)
 {
 	bool ret;
@@ -1985,6 +1987,8 @@ static bool amdgpu_ras_aca_is_supported(struct amdgpu_device *adev)
 
 	return ret;
 }
+
+#ifdef __linux__
 
 void amdgpu_ras_debugfs_create_all(struct amdgpu_device *adev)
 {
@@ -2880,11 +2884,15 @@ int amdgpu_ras_put_poison_req(struct amdgpu_device *adev,
 	poison_msg.pasid_fn = pasid_fn;
 	poison_msg.data = data;
 
+#ifdef notyet
 	ret = kfifo_put(&con->poison_fifo, poison_msg);
 	if (!ret) {
 		dev_err(adev->dev, "Poison message fifo is full!\n");
 		return -ENOSPC;
 	}
+#else
+	STUB();
+#endif
 
 	return 0;
 }
@@ -2892,14 +2900,18 @@ int amdgpu_ras_put_poison_req(struct amdgpu_device *adev,
 static int amdgpu_ras_get_poison_req(struct amdgpu_device *adev,
 		struct ras_poison_msg *poison_msg)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct amdgpu_ras *con = amdgpu_ras_get_context(adev);
 
 	return kfifo_get(&con->poison_fifo, poison_msg);
+#endif
 }
 
 static void amdgpu_ras_ecc_log_init(struct ras_ecc_log_info *ecc_log)
 {
-	mutex_init(&ecc_log->lock);
+	rw_init(&ecc_log->lock, "ecclog");
 
 	INIT_RADIX_TREE(&ecc_log->de_page_tree, GFP_KERNEL);
 	ecc_log->de_queried_count = 0;
@@ -2908,6 +2920,8 @@ static void amdgpu_ras_ecc_log_init(struct ras_ecc_log_info *ecc_log)
 
 static void amdgpu_ras_ecc_log_fini(struct ras_ecc_log_info *ecc_log)
 {
+	STUB();
+#ifdef notyet
 	struct radix_tree_iter iter;
 	void __rcu **slot;
 	struct ras_ecc_err *ecc_err;
@@ -2924,11 +2938,15 @@ static void amdgpu_ras_ecc_log_fini(struct ras_ecc_log_info *ecc_log)
 	mutex_destroy(&ecc_log->lock);
 	ecc_log->de_queried_count = 0;
 	ecc_log->prev_de_queried_count = 0;
+#endif
 }
 
 static bool amdgpu_ras_schedule_retirement_dwork(struct amdgpu_ras *con,
 				uint32_t delayed_ms)
 {
+	STUB();
+	return true;
+#ifdef notyet
 	int ret;
 
 	mutex_lock(&con->umc_ecc_log.lock);
@@ -2941,6 +2959,7 @@ static bool amdgpu_ras_schedule_retirement_dwork(struct amdgpu_ras *con,
 			msecs_to_jiffies(delayed_ms));
 
 	return ret ? true : false;
+#endif
 }
 
 static void amdgpu_ras_do_page_retirement(struct work_struct *work)
@@ -3016,7 +3035,7 @@ static int amdgpu_ras_poison_creation_handler(struct amdgpu_device *adev,
 					query_data_timeout = true;
 					break;
 				}
-				msleep(1);
+				drm_msleep(1);
 			}
 		}
 	} while (total_detect_count < need_query_count);
@@ -3035,6 +3054,8 @@ static int amdgpu_ras_poison_creation_handler(struct amdgpu_device *adev,
 
 static void amdgpu_ras_clear_poison_fifo(struct amdgpu_device *adev)
 {
+	STUB();
+#ifdef notyet
 	struct amdgpu_ras *con = amdgpu_ras_get_context(adev);
 	struct ras_poison_msg msg;
 	int ret;
@@ -3042,6 +3063,7 @@ static void amdgpu_ras_clear_poison_fifo(struct amdgpu_device *adev)
 	do {
 		ret = kfifo_get(&con->poison_fifo, &msg);
 	} while (ret);
+#endif
 }
 
 static int amdgpu_ras_poison_consumption_handler(struct amdgpu_device *adev,
@@ -3090,6 +3112,9 @@ static int amdgpu_ras_poison_consumption_handler(struct amdgpu_device *adev,
 
 static int amdgpu_ras_page_retirement_thread(void *param)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct amdgpu_device *adev = (struct amdgpu_device *)param;
 	struct amdgpu_ras *con = amdgpu_ras_get_context(adev);
 	uint32_t poison_creation_count, msg_count;
@@ -3164,6 +3189,7 @@ static int amdgpu_ras_page_retirement_thread(void *param)
 	}
 
 	return 0;
+#endif
 }
 
 int amdgpu_ras_recovery_init(struct amdgpu_device *adev)
@@ -3228,9 +3254,11 @@ int amdgpu_ras_recovery_init(struct amdgpu_device *adev)
 		}
 	}
 
-	mutex_init(&con->page_rsv_lock);
+	rw_init(&con->page_rsv_lock, "pgrsv");
+#ifdef notyet
 	INIT_KFIFO(con->poison_fifo);
-	mutex_init(&con->page_retirement_lock);
+#endif
+	rw_init(&con->page_retirement_lock, "pgret");
 	init_waitqueue_head(&con->page_retirement_wq);
 	atomic_set(&con->page_retirement_req_cnt, 0);
 	atomic_set(&con->poison_creation_count, 0);
@@ -4800,7 +4828,7 @@ static bool amdgpu_ras_boot_error_detected(struct amdgpu_device *adev,
 		if ((reg_data & AMDGPU_RAS_BOOT_STATUS_MASK) == AMDGPU_RAS_BOOT_STEADY_STATUS)
 			return false;
 		else
-			msleep(1);
+			drm_msleep(1);
 	}
 
 	return true;
