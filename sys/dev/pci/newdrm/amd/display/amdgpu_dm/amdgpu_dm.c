@@ -607,6 +607,9 @@ static void dm_crtc_high_irq(void *interrupt_params)
 		return;
 
 	if (acrtc->wb_conn) {
+		STUB();
+		return;
+#ifdef notyet
 		spin_lock_irqsave(&acrtc->wb_conn->job_lock, flags);
 
 		if (acrtc->wb_pending) {
@@ -632,6 +635,7 @@ static void dm_crtc_high_irq(void *interrupt_params)
 			}
 		} else
 			spin_unlock_irqrestore(&acrtc->wb_conn->job_lock, flags);
+#endif
 	}
 
 	vrr_active = amdgpu_dm_crtc_vrr_active_irq(acrtc);
@@ -6952,6 +6956,8 @@ static ssize_t panel_power_savings_show(struct device *device,
 	return sysfs_emit(buf, "%u\n", val);
 }
 
+#ifdef __linux__
+
 static ssize_t panel_power_savings_store(struct device *device,
 					 struct device_attribute *attr,
 					 const char *buf, size_t count)
@@ -6990,6 +6996,8 @@ static const struct attribute_group amdgpu_group = {
 	.name = "amdgpu",
 	.attrs = amdgpu_attrs
 };
+
+#endif
 
 static bool
 amdgpu_dm_should_create_sysfs(struct amdgpu_dm_connector *amdgpu_dm_connector)
@@ -9667,6 +9675,8 @@ static void dm_set_writeback(struct amdgpu_display_manager *dm,
 			      struct drm_connector *connector,
 			      struct drm_connector_state *new_con_state)
 {
+	STUB();
+#ifdef notyet
 	struct drm_writeback_connector *wb_conn = drm_connector_to_writeback(connector);
 	struct amdgpu_device *adev = dm->adev;
 	struct amdgpu_crtc *acrtc;
@@ -9759,6 +9769,7 @@ static void dm_set_writeback(struct amdgpu_display_manager *dm,
 	acrtc->wb_pending = true;
 	acrtc->wb_conn = wb_conn;
 	drm_writeback_queue_job(wb_conn, new_con_state);
+#endif
 }
 
 /**
