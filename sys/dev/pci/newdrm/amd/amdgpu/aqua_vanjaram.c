@@ -803,6 +803,7 @@ static ssize_t aqua_vanjaram_read_pcie_state(struct amdgpu_device *adev,
 	pcie_capability_read_word(us_pdev, PCI_EXP_LNKSTA,
 				  &pcie_regs->link_status);
 
+#ifdef notyet
 	aer_cap = pci_find_ext_capability(us_pdev, PCI_EXT_CAP_ID_ERR);
 	if (aer_cap) {
 		pci_read_config_dword(us_pdev, aer_cap + PCI_ERR_COR_STATUS,
@@ -810,6 +811,7 @@ static ssize_t aqua_vanjaram_read_pcie_state(struct amdgpu_device *adev,
 		pci_read_config_dword(us_pdev, aer_cap + PCI_ERR_UNCOR_STATUS,
 				      &pcie_regs->pcie_uncorr_err_status);
 	}
+#endif
 
 	pci_read_config_dword(us_pdev, PCI_PRIMARY_BUS,
 			      &pcie_regs->sub_bus_number_latency);
