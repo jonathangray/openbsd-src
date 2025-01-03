@@ -67,7 +67,7 @@ struct optc {
 	int vready_offset;
 	int pstate_keepout;
 	struct dc_crtc_timing orginal_patched_timing;
-	enum signal_type signal;
+	enum amd_signal_type signal;
 };
 
 struct dcn_otg_state {
@@ -112,7 +112,7 @@ void optc1_program_timing(struct timing_generator *optc,
 			  int vupdate_offset,
 			  int vupdate_width,
 			  int pstate_keepout,
-			  const enum signal_type signal,
+			  const enum amd_signal_type signal,
 			  bool use_vbios);
 
 void optc1_setup_vertical_interrupt0(struct timing_generator *optc,

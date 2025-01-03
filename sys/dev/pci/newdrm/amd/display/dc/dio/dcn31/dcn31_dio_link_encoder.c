@@ -543,7 +543,7 @@ void dcn31_link_encoder_enable_dp_mst_output(
 
 void dcn31_link_encoder_disable_output(
 	struct link_encoder *enc,
-	enum signal_type signal)
+	enum amd_signal_type signal)
 {
 	struct dcn10_link_encoder *enc10 = TO_DCN10_LINK_ENC(enc);
 

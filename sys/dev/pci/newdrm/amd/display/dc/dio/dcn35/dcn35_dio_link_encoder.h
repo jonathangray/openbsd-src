@@ -141,7 +141,7 @@ void dcn35_link_encoder_init(struct link_encoder *enc);
 void dcn35_link_encoder_set_fgcg(struct link_encoder *enc, bool enabled);
 bool dcn35_is_dig_enabled(struct link_encoder *enc);
 
-enum signal_type dcn35_get_dig_mode(struct link_encoder *enc);
-void dcn35_link_encoder_setup(struct link_encoder *enc, enum signal_type signal);
+enum amd_signal_type dcn35_get_dig_mode(struct link_encoder *enc);
+void dcn35_link_encoder_setup(struct link_encoder *enc, enum amd_signal_type signal);
 
 #endif /* __DC_LINK_ENCODER__DCN35_H__ */

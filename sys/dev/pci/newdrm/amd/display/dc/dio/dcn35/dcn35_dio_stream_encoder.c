@@ -231,7 +231,7 @@ static void enc35_stream_encoder_hdmi_set_stream_attribute(
 
 static void enc35_stream_encoder_enable(
 	struct stream_encoder *enc,
-	enum signal_type signal,
+	enum amd_signal_type signal,
 	bool enable)
 {
 	struct dcn10_stream_encoder *enc1 = DCN10STRENC_FROM_STRENC(enc);

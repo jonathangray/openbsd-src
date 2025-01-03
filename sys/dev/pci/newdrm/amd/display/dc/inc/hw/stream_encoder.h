@@ -225,7 +225,7 @@ struct stream_encoder_funcs {
 
 	void (*enable_stream)(
 		struct stream_encoder *enc,
-		enum signal_type signal,
+		enum amd_signal_type signal,
 		bool enable);
 
 	void (*hdmi_reset_stream_attribute)(

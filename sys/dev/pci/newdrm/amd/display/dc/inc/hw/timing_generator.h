@@ -173,7 +173,7 @@ struct timing_generator_funcs {
 							int vupdate_offset,
 							int vupdate_width,
 							int pstate_keepout,
-							const enum signal_type signal,
+							const enum amd_signal_type signal,
 							bool use_vbios
 	);
 	void (*setup_vertical_interrupt0)(

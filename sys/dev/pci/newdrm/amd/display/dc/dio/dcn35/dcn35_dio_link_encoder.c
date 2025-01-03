@@ -61,7 +61,7 @@ bool dcn35_is_dig_enabled(struct link_encoder *enc)
 	return (enabled == 1);
 }
 
-enum signal_type dcn35_get_dig_mode(
+enum amd_signal_type dcn35_get_dig_mode(
 	struct link_encoder *enc)
 {
 	uint32_t value;
@@ -84,7 +84,7 @@ enum signal_type dcn35_get_dig_mode(
 
 void dcn35_link_encoder_setup(
 	struct link_encoder *enc,
-	enum signal_type signal)
+	enum amd_signal_type signal)
 {
 	struct dcn10_link_encoder *enc10 = TO_DCN10_LINK_ENC(enc);
 

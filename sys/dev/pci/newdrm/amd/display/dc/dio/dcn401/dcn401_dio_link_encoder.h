@@ -123,12 +123,12 @@ void dcn401_link_encoder_enable_dp_output(
 
 void dcn401_link_encoder_setup(
 	struct link_encoder *enc,
-	enum signal_type signal);
+	enum amd_signal_type signal);
 
-enum signal_type dcn401_get_dig_mode(
+enum amd_signal_type dcn401_get_dig_mode(
 	struct link_encoder *enc);
 
 bool dcn401_is_dig_enabled(struct link_encoder *enc);
 
-enum signal_type dcn401_get_dig_mode(struct link_encoder *enc);
+enum amd_signal_type dcn401_get_dig_mode(struct link_encoder *enc);
 #endif /* __DC_LINK_ENCODER__DCN401_H__ */

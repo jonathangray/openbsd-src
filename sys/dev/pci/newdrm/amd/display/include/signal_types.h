@@ -118,7 +118,7 @@ static inline bool dc_is_dvi_signal(enum amd_signal_type signal)
 	}
 }
 
-static inline bool dc_is_tmds_signal(enum signal_type signal)
+static inline bool dc_is_tmds_signal(enum amd_signal_type signal)
 {
 	switch (signal) {
 	case SIGNAL_TYPE_DVI_SINGLE_LINK:
