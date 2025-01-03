@@ -432,7 +432,7 @@ static int gfx_v12_0_ring_test_ring(struct amdgpu_ring *ring)
 		if (tmp == 0xDEADBEEF)
 			break;
 		if (amdgpu_emu_mode == 1)
-			msleep(1);
+			drm_msleep(1);
 		else
 			udelay(1);
 	}
@@ -911,7 +911,7 @@ static int gfx_v12_0_gfx_ring_init(struct amdgpu_device *adev, int ring_id,
 	else
 		ring->doorbell_index = adev->doorbell_index.gfx_ring1 << 1;
 	ring->vm_hub = AMDGPU_GFXHUB(0);
-	sprintf(ring->name, "gfx_%d.%d.%d", ring->me, ring->pipe, ring->queue);
+	snprintf(ring->name, sizeof(ring->name), "gfx_%d.%d.%d", ring->me, ring->pipe, ring->queue);
 
 	irq_type = AMDGPU_CP_IRQ_GFX_ME0_PIPE0_EOP + ring->pipe;
 	r = amdgpu_ring_init(adev, ring, 1024, &adev->gfx.eop_irq, irq_type,
@@ -942,7 +942,7 @@ static int gfx_v12_0_compute_ring_init(struct amdgpu_device *adev, int ring_id,
 	ring->eop_gpu_addr = adev->gfx.mec.hpd_eop_gpu_addr
 				+ (ring_id * GFX12_MEC_HPD_SIZE);
 	ring->vm_hub = AMDGPU_GFXHUB(0);
-	sprintf(ring->name, "comp_%d.%d.%d", ring->me, ring->pipe, ring->queue);
+	snprintf(ring->name, sizeof(ring->name), "comp_%d.%d.%d", ring->me, ring->pipe, ring->queue);
 
 	irq_type = AMDGPU_CP_IRQ_COMPUTE_MEC1_PIPE0_EOP
 		+ ((ring->me - 1) * adev->gfx.mec.num_pipe_per_mec)
@@ -1872,7 +1872,7 @@ static void gfx_v12_0_load_rlc_iram_dram_microcode(struct amdgpu_device *adev)
 
 	for (i = 0; i < fw_size; i++) {
 		if ((amdgpu_emu_mode == 1) && (i % 100 == 99))
-			msleep(1);
+			drm_msleep(1);
 		WREG32_SOC15(GC, 0, regRLC_LX6_IRAM_DATA,
 				le32_to_cpup(fw_data++));
 	}
@@ -1886,7 +1886,7 @@ static void gfx_v12_0_load_rlc_iram_dram_microcode(struct amdgpu_device *adev)
 	WREG32_SOC15(GC, 0, regRLC_LX6_DRAM_ADDR, 0);
 	for (i = 0; i < fw_size; i++) {
 		if ((amdgpu_emu_mode == 1) && (i % 100 == 99))
-			msleep(1);
+			drm_msleep(1);
 		WREG32_SOC15(GC, 0, regRLC_LX6_DRAM_DATA,
 				le32_to_cpup(fw_data++));
 	}
@@ -2171,7 +2171,7 @@ static int gfx_v12_0_wait_for_rlc_autoload_complete(struct amdgpu_device *adev)
 		}
 		udelay(1);
 		if (amdgpu_emu_mode)
-			msleep(10);
+			drm_msleep(10);
 	}
 
 	if (i >= adev->usec_timeout) {
