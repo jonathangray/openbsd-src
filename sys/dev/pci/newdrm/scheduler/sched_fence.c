@@ -33,7 +33,7 @@
 
 static struct pool sched_fence_slab;
 
-static int __init drm_sched_fence_slab_init(void)
+int __init drm_sched_fence_slab_init(void)
 {
 #ifdef __linux__
 	sched_fence_slab = KMEM_CACHE(drm_sched_fence, SLAB_HWCACHE_ALIGN);
