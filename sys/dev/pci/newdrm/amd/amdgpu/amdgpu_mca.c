@@ -235,7 +235,7 @@ int amdgpu_mca_init(struct amdgpu_device *adev)
 
 	for (i = 0; i < ARRAY_SIZE(mca->mca_caches); i++) {
 		mca_cache = &mca->mca_caches[i];
-		mutex_init(&mca_cache->lock);
+		rw_init(&mca_cache->lock, "mcacac");
 		amdgpu_mca_bank_set_init(&mca_cache->mca_set);
 	}
 
