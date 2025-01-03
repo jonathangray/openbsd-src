@@ -225,7 +225,7 @@ static fInt ConvertToFraction(int X) /*Add all range checking here. Is it possib
 {
 	fInt temp;
 
-	if (X <= PPMAX)
+	if (X <= MAX)
 		temp.full = (X << SHIFT_AMOUNT);
 	else
 		temp.full = 0;
@@ -243,7 +243,7 @@ static fInt Convert_ULONG_ToFraction(uint32_t X)
 {
 	fInt temp;
 
-	if (X <= PPMAX)
+	if (X <= MAX)
 		temp.full = (X << SHIFT_AMOUNT);
 	else
 		temp.full = 0;
@@ -271,14 +271,14 @@ static fInt GetScaledFraction(int X, int factor)
 		bNEGATED = !bNEGATED; /*If bNEGATED = true due to X < 0, this will cover the case of negative cancelling negative */
 	}
 
-	if ((X > PPMAX) || factor > PPMAX) {
-		if ((X/factor) <= PPMAX) {
-			while (X > PPMAX) {
+	if ((X > MAX) || factor > MAX) {
+		if ((X/factor) <= MAX) {
+			while (X > MAX) {
 				X = X >> 1;
 				times_shifted++;
 			}
 
-			while (factor > PPMAX) {
+			while (factor > MAX) {
 				factor = factor >> 1;
 				factor_shifted++;
 			}
