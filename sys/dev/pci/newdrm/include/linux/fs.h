@@ -23,6 +23,9 @@ struct file_operations {
 	void *owner;
 };
 
+struct dentry {
+};
+
 #define DEFINE_SIMPLE_ATTRIBUTE(a, b, c, d)
 #define MINORBITS	8
 

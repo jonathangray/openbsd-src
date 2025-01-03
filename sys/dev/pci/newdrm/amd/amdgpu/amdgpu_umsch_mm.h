@@ -173,7 +173,7 @@ struct amdgpu_umsch_mm {
 	uint32_t			vpe_hqd_mask;
 	uint32_t			agdb_index[CONTEXT_PRIORITY_NUM_LEVELS];
 
-	struct mutex			mutex_hidden;
+	struct rwlock			mutex_hidden;
 	struct amdgpu_bo		*dbglog_bo;
 	void				*log_cpu_addr;
 	uint64_t			log_gpu_addr;

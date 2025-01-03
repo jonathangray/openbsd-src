@@ -553,7 +553,9 @@ struct amdgpu_ras {
 	atomic_t page_retirement_req_cnt;
 	atomic_t poison_creation_count;
 	struct mutex page_rsv_lock;
+#ifdef notyet
 	DECLARE_KFIFO(poison_fifo, struct ras_poison_msg, 128);
+#endif
 	struct ras_ecc_log_info  umc_ecc_log;
 	struct delayed_work page_retirement_dwork;
 

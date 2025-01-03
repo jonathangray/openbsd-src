@@ -14,5 +14,7 @@
 
 #define DECLARE_RWSEM(rwl) \
 	struct rwlock rwl = RWLOCK_INITIALIZER(#rwl)
+/* no interface to check if another caller wants the lock */
+#define rwsem_is_contended(rwl)		0
 
 #endif
