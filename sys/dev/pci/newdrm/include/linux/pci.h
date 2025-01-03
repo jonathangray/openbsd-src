@@ -323,6 +323,16 @@ pcie_capability_set_word(struct pci_dev *pdev, int off, u16 val)
 }
 
 static inline int
+pcie_capability_clear_word(struct pci_dev *pdev, int off, u16 c)
+{
+	u16 r;
+	pcie_capability_read_word(pdev, off, &r);
+	r &= ~c;
+	pcie_capability_write_word(pdev, off, r);
+	return 0;
+}
+
+static inline int
 pcie_capability_clear_and_set_word(struct pci_dev *pdev, int off, u16 c, u16 s)
 {
 	u16 r;
