@@ -458,7 +458,7 @@ struct amdgpu_gfx {
 	uint32_t			*ip_dump_compute_queues;
 	uint32_t			*ip_dump_gfx_queues;
 
-	struct mutex			reset_sem_mutex;
+	struct rwlock			reset_sem_mutex;
 
 	/* cleaner shader */
 	struct amdgpu_bo		*cleaner_shader_obj;
