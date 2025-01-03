@@ -99,7 +99,7 @@ void amdgpu_vm_tlb_fence_create(struct amdgpu_device *adev, struct amdgpu_vm *vm
 	f->dependency = *fence;
 	f->pasid = vm->pasid;
 	INIT_WORK(&f->work, amdgpu_tlb_fence_work);
-	spin_lock_init(&f->lock);
+	mtx_init(&f->lock, IPL_TTY);
 
 	dma_fence_init(&f->base, &amdgpu_tlb_fence_ops, &f->lock,
 		       vm->tlb_fence_context, atomic64_read(&vm->tlb_seq));
