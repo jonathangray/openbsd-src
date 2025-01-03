@@ -133,7 +133,7 @@ struct aca_bank_error {
 
 struct aca_error {
 	struct list_head list;
-	struct mutex lock;
+	struct rwlock lock;
 	enum aca_error_type type;
 	int nr_errors;
 };
