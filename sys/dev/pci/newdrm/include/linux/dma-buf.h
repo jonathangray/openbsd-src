@@ -36,6 +36,7 @@ struct dma_buf {
 };
 
 struct dma_buf_attachment {
+	struct dma_buf *dmabuf;
 	void *importer_priv;
 };
 
@@ -77,4 +78,9 @@ dma_buf_detach(struct dma_buf *buf, struct dma_buf_attachment *dba)
 	panic("dma_buf_detach");
 }
 
+static inline bool
+dma_buf_is_dynamic(struct dma_buf *buf)
+{
+	return false;
+}
 #endif
