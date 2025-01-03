@@ -1760,7 +1760,7 @@ int smu_v14_0_baco_enter(struct smu_context *smu)
 	if (ret)
 		return ret;
 
-	msleep(10);
+	drm_msleep(10);
 
 	return ret;
 }
