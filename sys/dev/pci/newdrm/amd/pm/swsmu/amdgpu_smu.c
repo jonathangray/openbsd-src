@@ -1373,6 +1373,9 @@ static int smu_get_thermal_temperature_range(struct smu_context *smu)
  */
 static int smu_wbrf_handle_exclusion_ranges(struct smu_context *smu)
 {
+	STUB();
+	return 0;
+#ifdef notyet
 	struct wbrf_ranges_in_out wbrf_exclusion = {0};
 	struct freq_band_range *wifi_bands = wbrf_exclusion.band_list;
 	struct amdgpu_device *adev = smu->adev;
@@ -1432,6 +1435,7 @@ static int smu_wbrf_handle_exclusion_ranges(struct smu_context *smu)
 	}
 
 	return ret;
+#endif
 }
 
 /**
@@ -1447,6 +1451,9 @@ static int smu_wbrf_handle_exclusion_ranges(struct smu_context *smu)
 static int smu_wbrf_event_handler(struct notifier_block *nb,
 				  unsigned long action, void *_arg)
 {
+	STUB();
+	return NOTIFY_OK;
+#ifdef notyet
 	struct smu_context *smu = container_of(nb, struct smu_context, wbrf_notifier);
 
 	switch (action) {
@@ -1459,6 +1466,7 @@ static int smu_wbrf_event_handler(struct notifier_block *nb,
 	}
 
 	return NOTIFY_OK;
+#endif
 }
 
 /**
@@ -1486,8 +1494,12 @@ static void smu_wbrf_support_check(struct smu_context *smu)
 {
 	struct amdgpu_device *adev = smu->adev;
 
+#ifdef notyet
 	smu->wbrf_supported = smu_is_asic_wbrf_supported(smu) && amdgpu_wbrf &&
 							acpi_amd_wbrf_supported_consumer(adev->dev);
+#else
+	smu->wbrf_supported = false;
+#endif
 
 	if (smu->wbrf_supported)
 		dev_info(adev->dev, "RF interference mitigation is supported\n");
@@ -1508,6 +1520,9 @@ static int smu_wbrf_init(struct smu_context *smu)
 
 	if (!smu->wbrf_supported)
 		return 0;
+	STUB();
+	return 0;
+#ifdef notyet
 
 	INIT_DELAYED_WORK(&smu->wbrf_delayed_work, smu_wbrf_delayed_work_handler);
 
@@ -1525,6 +1540,7 @@ static int smu_wbrf_init(struct smu_context *smu)
 			      msecs_to_jiffies(SMU_WBRF_EVENT_HANDLING_PACE));
 
 	return 0;
+#endif
 }
 
 /**
@@ -1539,7 +1555,9 @@ static void smu_wbrf_fini(struct smu_context *smu)
 	if (!smu->wbrf_supported)
 		return;
 
+#ifdef notyet
 	amd_wbrf_unregister_notifier(&smu->wbrf_notifier);
+#endif
 
 	cancel_delayed_work_sync(&smu->wbrf_delayed_work);
 }
