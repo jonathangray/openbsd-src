@@ -806,6 +806,7 @@ idr_preload(unsigned int gfp_mask)
 		idr_entry_cache = pool_get(&idr_pool, flags);
 }
 
+/* [start, end) */
 int
 idr_alloc(struct idr *idr, void *ptr, int start, int end, gfp_t gfp_mask)
 {
@@ -950,6 +951,13 @@ void
 ida_simple_remove(struct ida *ida, unsigned int id)
 {
 	idr_remove(&ida->idr, id);
+}
+
+/* [start, end] */
+int
+ida_alloc_range(struct ida *ida, unsigned int start, unsigned int end, gfp_t gfp)
+{
+	return idr_alloc(&ida->idr, NULL, start, end + 1, gfp);
 }
 
 int
