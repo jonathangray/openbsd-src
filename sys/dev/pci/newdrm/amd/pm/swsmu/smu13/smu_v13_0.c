@@ -2545,6 +2545,9 @@ int smu_v13_0_enable_uclk_shadow(struct smu_context *smu, bool enable)
 int smu_v13_0_set_wbrf_exclusion_ranges(struct smu_context *smu,
 						 struct freq_band_range *exclusion_ranges)
 {
+	STUB();
+	return 0;
+#ifdef notyet
 	WifiBandEntryTable_t wifi_bands;
 	int valid_entries = 0;
 	int ret, i;
@@ -2583,4 +2586,5 @@ int smu_v13_0_set_wbrf_exclusion_ranges(struct smu_context *smu,
 		dev_warn(smu->adev->dev, "Failed to set wifiband!");
 
 	return ret;
+#endif
 }
