@@ -1631,7 +1631,7 @@ static bool retrieve_link_cap(struct dc_link *link)
 	/* Sink may need to configure internals based on vendor, so allow some
 	 * time before proceeding with possibly vendor specific transactions
 	 */
-	msleep(post_oui_delay);
+	drm_msleep(post_oui_delay);
 
 	for (i = 0; i < read_dpcd_retry_cnt; i++) {
 		status = core_link_read_dpcd(

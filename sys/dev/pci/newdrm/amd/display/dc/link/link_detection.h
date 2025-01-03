@@ -37,7 +37,7 @@ struct dc_sink *link_add_remote_sink(
 void link_remove_remote_sink(struct dc_link *link, struct dc_sink *sink);
 bool link_reset_cur_dp_mst_topology(struct dc_link *link);
 const struct dc_link_status *link_get_status(const struct dc_link *link);
-bool link_is_hdcp14(struct dc_link *link, enum signal_type signal);
-bool link_is_hdcp22(struct dc_link *link, enum signal_type signal);
+bool link_is_hdcp14(struct dc_link *link, enum amd_signal_type signal);
+bool link_is_hdcp22(struct dc_link *link, enum amd_signal_type signal);
 void link_clear_dprx_states(struct dc_link *link);
 #endif /* __DC_LINK_DETECTION_H__ */

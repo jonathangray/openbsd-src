@@ -106,7 +106,7 @@ void setup_hpo_dp_stream_attribute(struct pipe_ctx *pipe_ctx)
 
 void enable_hpo_dp_link_output(struct dc_link *link,
 		const struct link_resource *link_res,
-		enum signal_type signal,
+		enum amd_signal_type signal,
 		enum clock_source_id clock_source,
 		const struct dc_link_settings *link_settings)
 {
@@ -129,7 +129,7 @@ void enable_hpo_dp_link_output(struct dc_link *link,
 
 void disable_hpo_dp_link_output(struct dc_link *link,
 		const struct link_resource *link_res,
-		enum signal_type signal)
+		enum amd_signal_type signal)
 {
 	if (!link_res->hpo_dp_link_enc) {
 		DC_LOG_ERROR("%s: invalid hpo_dp_link_enc\n", __func__);

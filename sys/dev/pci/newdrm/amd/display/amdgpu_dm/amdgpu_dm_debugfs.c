@@ -474,7 +474,7 @@ static ssize_t dp_mst_link_setting(struct file *f, const char __user *buf,
 	mutex_unlock(&aconnector->base.dev->mode_config.mutex);
 	drm_kms_helper_hotplug_event(aconnector->base.dev);
 
-	msleep(100);
+	drm_msleep(100);
 
 	mutex_lock(&aconnector->base.dev->mode_config.mutex);
 	aconnector->base.force = DRM_FORCE_UNSPECIFIED;

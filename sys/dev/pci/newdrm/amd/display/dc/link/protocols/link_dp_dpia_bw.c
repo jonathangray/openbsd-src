@@ -449,7 +449,7 @@ int dpia_handle_usb4_bandwidth_allocation_for_link(struct dc_link *link, int pea
 				timeout--;
 			else
 				break;
-			msleep(10);
+			drm_msleep(10);
 		} while (!get_cm_response_ready_flag(link));
 
 		if (!timeout)
@@ -482,7 +482,7 @@ bool link_dp_dpia_allocate_usb4_bandwidth_for_stream(struct dc_link *link, int r
 			timeout--;
 		else
 			break;
-		msleep(10);
+		drm_msleep(10);
 	} while (!get_cm_response_ready_flag(link));
 
 	if (timeout)

@@ -56,6 +56,7 @@
 
 static void amdgpu_bo_destroy(struct ttm_buffer_object *tbo)
 {
+	struct amdgpu_device *adev = amdgpu_ttm_adev(tbo->bdev);
 	struct amdgpu_bo *bo = ttm_to_amdgpu_bo(tbo);
 
 	amdgpu_bo_kunmap(bo);
@@ -369,7 +370,7 @@ int amdgpu_bo_create_kernel_at(struct amdgpu_device *adev,
 	unsigned int i;
 	int r;
 
-	offset &= PAGE_MASK;
+	offset &= LINUX_PAGE_MASK;
 	size = ALIGN(size, PAGE_SIZE);
 
 	r = amdgpu_bo_create_reserved(adev, size, PAGE_SIZE,
@@ -566,6 +567,7 @@ int amdgpu_bo_create(struct amdgpu_device *adev,
 		return -ENOMEM;
 	drm_gem_private_object_init(adev_to_drm(adev), &bo->tbo.base, size);
 	bo->tbo.base.funcs = &amdgpu_gem_object_funcs;
+	bo->adev = adev;
 	bo->vm_bo = NULL;
 	bo->preferred_domains = bp->preferred_domain ? bp->preferred_domain :
 		bp->domain;
@@ -865,8 +867,10 @@ int amdgpu_bo_pin(struct amdgpu_bo *bo, u32 domain)
 	 */
 	domain = amdgpu_bo_get_preferred_domain(adev, domain);
 
+#ifdef notyet
 	if (bo->tbo.base.import_attach)
 		dma_buf_pin(bo->tbo.base.import_attach);
+#endif
 
 	/* force to pin into visible video ram */
 	if (!(bo->flags & AMDGPU_GEM_CREATE_NO_CPU_ACCESS))
@@ -916,8 +920,10 @@ void amdgpu_bo_unpin(struct amdgpu_bo *bo)
 	if (bo->tbo.pin_count)
 		return;
 
+#ifdef notyet
 	if (bo->tbo.base.import_attach)
 		dma_buf_unpin(bo->tbo.base.import_attach);
+#endif
 
 	if (bo->tbo.resource->mem_type == TTM_PL_VRAM) {
 		atomic64_sub(amdgpu_bo_size(bo), &adev->vram_pin_size);
@@ -958,6 +964,7 @@ int amdgpu_bo_init(struct amdgpu_device *adev)
 {
 	/* On A+A platform, VRAM can be mapped as WB */
 	if (!adev->gmc.xgmi.connected_to_cpu && !adev->gmc.is_app_apu) {
+#ifdef __linux__
 		/* reserve PAT memory space to WC for VRAM */
 		int r = arch_io_reserve_memtype_wc(adev->gmc.aper_base,
 				adev->gmc.aper_size);
@@ -970,6 +977,15 @@ int amdgpu_bo_init(struct amdgpu_device *adev)
 		/* Add an MTRR for the VRAM */
 		adev->gmc.vram_mtrr = arch_phys_wc_add(adev->gmc.aper_base,
 				adev->gmc.aper_size);
+#else
+		paddr_t start, end;
+
+		drm_mtrr_add(adev->gmc.aper_base, adev->gmc.aper_size, DRM_MTRR_WC);
+
+		start = atop(bus_space_mmap(adev->memt, adev->gmc.aper_base, 0, 0, 0));
+		end = start + atop(adev->gmc.aper_size);
+		uvm_page_physload(start, end, start, end, PHYSLOAD_DEVICE);
+#endif
 	}
 
 	DRM_INFO("Detected VRAM RAM=%lluM, BAR=%lluM\n",
@@ -994,8 +1010,12 @@ void amdgpu_bo_fini(struct amdgpu_device *adev)
 
 	if (drm_dev_enter(adev_to_drm(adev), &idx)) {
 		if (!adev->gmc.xgmi.connected_to_cpu && !adev->gmc.is_app_apu) {
+#ifdef __linux__
 			arch_phys_wc_del(adev->gmc.vram_mtrr);
 			arch_io_free_memtype_wc(adev->gmc.aper_base, adev->gmc.aper_size);
+#else
+			drm_mtrr_del(0, adev->gmc.aper_base, adev->gmc.aper_size, DRM_MTRR_WC);
+#endif
 		}
 		drm_dev_exit(idx);
 	}
@@ -1161,10 +1181,12 @@ void amdgpu_bo_move_notify(struct ttm_buffer_object *bo,
 
 	amdgpu_bo_kunmap(abo);
 
+#ifdef notyet
 	if (abo->tbo.base.dma_buf && !abo->tbo.base.import_attach &&
 	    old_mem && old_mem->mem_type != TTM_PL_SYSTEM)
 		dma_buf_move_notify(abo->tbo.base.dma_buf);
-
+#endif
+	
 	/* move_notify is called before move happens */
 	trace_amdgpu_bo_move(abo, new_mem ? new_mem->mem_type : -1,
 			     old_mem ? old_mem->mem_type : -1);

@@ -119,7 +119,7 @@ int amdgpu_dpm_set_gfx_power_up_by_imu(struct amdgpu_device *adev)
 	ret = smu_set_gfx_power_up_by_imu(smu);
 	mutex_unlock(&adev->pm.mutex);
 
-	msleep(10);
+	drm_msleep(10);
 
 	return ret;
 }

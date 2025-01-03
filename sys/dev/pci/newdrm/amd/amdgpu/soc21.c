@@ -908,7 +908,7 @@ static bool soc21_need_reset_on_resume(struct amdgpu_device *adev)
 	if (!(adev->flags & AMD_IS_APU) && adev->in_s3 &&
 	    !adev->suspend_complete) {
 		sol_reg1 = RREG32_SOC15(MP0, 0, regMP0_SMN_C2PMSG_81);
-		msleep(100);
+		drm_msleep(100);
 		sol_reg2 = RREG32_SOC15(MP0, 0, regMP0_SMN_C2PMSG_81);
 
 		return (sol_reg1 != sol_reg2);

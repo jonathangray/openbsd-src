@@ -357,7 +357,7 @@ struct amdgpu_isolation_work {
 };
 
 struct amdgpu_gfx {
-	struct mutex			gpu_clock_mutex;
+	struct rwlock			gpu_clock_mutex;
 	struct amdgpu_gfx_config	config;
 	struct amdgpu_rlc		rlc;
 	struct amdgpu_pfp		pfp;
@@ -427,14 +427,14 @@ struct amdgpu_gfx {
 
 	/* gfx off */
 	bool                            gfx_off_state;      /* true: enabled, false: disabled */
-	struct mutex                    gfx_off_mutex;      /* mutex to change gfxoff state */
+	struct rwlock			gfx_off_mutex;      /* mutex to change gfxoff state */
 	uint32_t                        gfx_off_req_count;  /* default 1, enable gfx off: dec 1, disable gfx off: add 1 */
 	struct delayed_work             gfx_off_delay_work; /* async work to set gfx block off */
 	uint32_t                        gfx_off_residency;  /* last logged residency */
 	uint64_t                        gfx_off_entrycount; /* count of times GPU has get into GFXOFF state */
 
 	/* pipe reservation */
-	struct mutex			pipe_reserve_mutex;
+	struct rwlock			pipe_reserve_mutex;
 	DECLARE_BITMAP			(pipe_reserve_bitmap, AMDGPU_MAX_COMPUTE_QUEUES);
 
 	/*ras */
@@ -450,7 +450,7 @@ struct amdgpu_gfx {
 
 	uint16_t 			xcc_mask;
 	uint32_t			num_xcc_per_xcp;
-	struct mutex			partition_mutex;
+	struct rwlock			partition_mutex;
 	bool				mcbp; /* mid command buffer preemption */
 
 	/* IP reg dump */

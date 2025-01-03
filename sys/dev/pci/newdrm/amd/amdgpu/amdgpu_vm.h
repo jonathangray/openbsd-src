@@ -322,6 +322,12 @@ struct amdgpu_vm_fault_info {
 	unsigned int	vmhub;
 };
 
+struct amdgpu_vm_fault {
+	SIMPLEQ_ENTRY(amdgpu_vm_fault)	vm_fault_entry;
+	uint64_t			val;
+};
+SIMPLEQ_HEAD(amdgpu_vm_faults, amdgpu_vm_fault);
+
 struct amdgpu_vm {
 	/* tree of virtual addresses mapped */
 	struct rb_root_cached	va;
@@ -329,7 +335,7 @@ struct amdgpu_vm {
 	/* Lock to prevent eviction while we are updating page tables
 	 * use vm_eviction_lock/unlock(vm)
 	 */
-	struct mutex		eviction_lock;
+	struct rwlock		eviction_lock;
 	bool			evicting;
 	unsigned int		saved_flags;
 
@@ -393,8 +399,12 @@ struct amdgpu_vm {
 	/* Functions to use for VM table updates */
 	const struct amdgpu_vm_update_funcs	*update_funcs;
 
+#ifdef __linux__
 	/* Up to 128 pending retry page faults */
 	DECLARE_KFIFO(faults, u64, 128);
+#else
+	struct amdgpu_vm_faults faults;
+#endif
 
 	/* Points to the KFD process VM info */
 	struct amdkfd_process_info *process_info;
@@ -628,13 +638,17 @@ static inline uint64_t amdgpu_vm_tlb_seq(struct amdgpu_vm *vm)
 static inline void amdgpu_vm_eviction_lock(struct amdgpu_vm *vm)
 {
 	mutex_lock(&vm->eviction_lock);
+#ifdef notyet
 	vm->saved_flags = memalloc_noreclaim_save();
+#endif
 }
 
 static inline bool amdgpu_vm_eviction_trylock(struct amdgpu_vm *vm)
 {
 	if (mutex_trylock(&vm->eviction_lock)) {
+#ifdef notyet
 		vm->saved_flags = memalloc_noreclaim_save();
+#endif
 		return true;
 	}
 	return false;
@@ -642,7 +656,9 @@ static inline bool amdgpu_vm_eviction_trylock(struct amdgpu_vm *vm)
 
 static inline void amdgpu_vm_eviction_unlock(struct amdgpu_vm *vm)
 {
+#ifdef notyet
 	memalloc_noreclaim_restore(vm->saved_flags);
+#endif
 	mutex_unlock(&vm->eviction_lock);
 }
 

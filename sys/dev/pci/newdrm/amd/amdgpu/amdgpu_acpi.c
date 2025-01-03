@@ -40,9 +40,11 @@
 #include "atom.h"
 
 /* Declare GUID for AMD _DSM method for XCCs */
+#ifdef notyet
 static const guid_t amd_xcc_dsm_guid = GUID_INIT(0x8267f5d5, 0xa556, 0x44f2,
 						 0xb8, 0xb4, 0x45, 0x56, 0x2e,
 						 0x8c, 0x5b, 0xec);
+#endif
 
 #define AMD_XCC_HID_START 3000
 #define AMD_XCC_DSM_GET_NUM_FUNCS 0
@@ -969,6 +971,10 @@ static int amdgpu_acpi_dev_init(struct amdgpu_acpi_dev_info **dev_info,
 	INIT_LIST_HEAD(&tmp->list);
 	tmp->sbdf = sbdf;
 
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
+
 	obj = acpi_evaluate_dsm_typed(xcc_info->handle, &amd_xcc_dsm_guid, 0,
 				      AMD_XCC_DSM_GET_SUPP_MODE, NULL,
 				      ACPI_TYPE_INTEGER);
@@ -1032,11 +1038,15 @@ out:
 	kfree(tmp);
 
 	return ret;
+#endif
 }
 
 static int amdgpu_acpi_get_xcc_info(struct amdgpu_acpi_xcc_info *xcc_info,
 				    u32 *sbdf)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	union acpi_object *obj;
 	acpi_status status;
 	int ret = -ENOENT;
@@ -1084,6 +1094,7 @@ out:
 		ACPI_FREE(obj);
 
 	return ret;
+#endif
 }
 
 static int amdgpu_acpi_enumerate_xcc(void)
@@ -1098,8 +1109,9 @@ static int amdgpu_acpi_enumerate_xcc(void)
 	INIT_LIST_HEAD(&amdgpu_acpi_dev_list);
 	xa_init(&numa_info_xa);
 
+#ifdef notyet
 	for (id = 0; id < AMD_XCC_MAX_HID; id++) {
-		sprintf(hid, "%s%d", "AMD", AMD_XCC_HID_START + id);
+		snprintf(hid, sizeof(hid), "%s%d", "AMD", AMD_XCC_HID_START + id);
 		acpi_dev = acpi_dev_get_first_match_dev(hid, NULL, -1);
 		/* These ACPI objects are expected to be in sequential order. If
 		 * one is not found, no need to check the rest.
@@ -1142,6 +1154,7 @@ static int amdgpu_acpi_enumerate_xcc(void)
 
 		list_add_tail(&xcc_info->list, &dev_info->xcc_list);
 	}
+#endif
 
 	return 0;
 }
@@ -1366,6 +1379,8 @@ static bool amdgpu_atcs_pci_probe_handle(struct pci_dev *pdev)
 	return true;
 }
 
+extern struct cfdriver amdgpu_cd;
+
 
 /**
  * amdgpu_acpi_should_gpu_reset
@@ -1387,6 +1402,12 @@ bool amdgpu_acpi_should_gpu_reset(struct amdgpu_device *adev)
 	if (amdgpu_sriov_vf(adev))
 		return false;
 
+#ifdef __OpenBSD__
+	/* XXX VEGA10 S3 fails if reset is done */
+	if (pm_suspend_target_state == PM_SUSPEND_MEM)
+		return false;
+#endif
+
 #if IS_ENABLED(CONFIG_SUSPEND)
 	return pm_suspend_target_state != PM_SUSPEND_TO_IDLE;
 #else
@@ -1407,6 +1428,7 @@ void amdgpu_acpi_detect(void)
 	struct pci_dev *pdev = NULL;
 	int ret;
 
+#ifdef notyet
 	while ((pdev = pci_get_base_class(PCI_BASE_CLASS_DISPLAY, pdev))) {
 		if ((pdev->class != PCI_CLASS_DISPLAY_VGA << 8) &&
 		    (pdev->class != PCI_CLASS_DISPLAY_OTHER << 8))
@@ -1417,6 +1439,16 @@ void amdgpu_acpi_detect(void)
 		if (!atcs->handle)
 			amdgpu_atcs_pci_probe_handle(pdev);
 	}
+#else
+	{
+		struct amdgpu_device *adev = (void *)amdgpu_cd.cd_devs[0];
+		pdev = adev->pdev;
+		if (!atif->handle)
+			amdgpu_atif_pci_probe_handle(pdev);
+		if (!atcs->handle)
+			amdgpu_atcs_pci_probe_handle(pdev);
+	}
+#endif
 
 	if (atif->functions.sbios_requests && !atif->functions.system_params) {
 		/* XXX check this workraround, if sbios request function is
@@ -1511,6 +1543,7 @@ bool amdgpu_acpi_is_s0ix_active(struct amdgpu_device *adev)
 	if (!(adev->pm.pp_feature & PP_GFXOFF_MASK))
 		return false;
 
+#ifdef __linux__
 	/*
 	 * If ACPI_FADT_LOW_POWER_S0 is not set in the FADT, it is generally
 	 * risky to do any special firmware-related preparations for entering
@@ -1523,6 +1556,7 @@ bool amdgpu_acpi_is_s0ix_active(struct amdgpu_device *adev)
 			      "To use suspend-to-idle change the sleep mode in BIOS setup.\n");
 		return false;
 	}
+#endif
 
 #if !IS_ENABLED(CONFIG_AMD_PMC)
 	dev_err_once(adev->dev,
@@ -1545,6 +1579,21 @@ void amdgpu_choose_low_power_state(struct amdgpu_device *adev)
 	if (adev->in_runpm)
 		return;
 
+	if (amdgpu_acpi_is_s0ix_active(adev))
+		adev->in_s0ix = true;
+	else if (amdgpu_acpi_is_s3_active(adev))
+		adev->in_s3 = true;
+}
+
+/**
+ * amdgpu_choose_low_power_state
+ *
+ * @adev: amdgpu_device_pointer
+ *
+ * Choose the target low power state for the GPU
+ */
+void amdgpu_choose_low_power_state(struct amdgpu_device *adev)
+{
 	if (amdgpu_acpi_is_s0ix_active(adev))
 		adev->in_s0ix = true;
 	else if (amdgpu_acpi_is_s3_active(adev))

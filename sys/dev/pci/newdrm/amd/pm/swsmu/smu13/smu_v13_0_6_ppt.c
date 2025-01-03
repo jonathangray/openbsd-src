@@ -2161,9 +2161,11 @@ static int smu_v13_0_6_i2c_control_init(struct smu_context *smu)
 
 		smu_i2c->adev = adev;
 		smu_i2c->port = i;
-		mutex_init(&smu_i2c->mutex);
+		rw_init(&smu_i2c->mutex, "1306iic");
+#ifdef __linux__
 		control->owner = THIS_MODULE;
 		control->dev.parent = &adev->pdev->dev;
+#endif
 		control->algo = &smu_v13_0_6_i2c_algo;
 		snprintf(control->name, sizeof(control->name), "AMDGPU SMU %d", i);
 		control->quirks = &smu_v13_0_6_i2c_control_quirks;
@@ -2443,6 +2445,8 @@ static ssize_t smu_v13_0_6_get_gpu_metrics(struct smu_context *smu, void **table
 
 static void smu_v13_0_6_restore_pci_config(struct smu_context *smu)
 {
+	STUB();
+#ifdef notyet
 	struct amdgpu_device *adev = smu->adev;
 	int i;
 
@@ -2450,6 +2454,7 @@ static void smu_v13_0_6_restore_pci_config(struct smu_context *smu)
 		pci_write_config_dword(adev->pdev, i * 4,
 				       adev->pdev->saved_config_space[i]);
 	pci_restore_msi_state(adev->pdev);
+#endif
 }
 
 static int smu_v13_0_6_mode2_reset(struct smu_context *smu)
@@ -2469,7 +2474,7 @@ static int smu_v13_0_6_mode2_reset(struct smu_context *smu)
 					       SMU_RESET_MODE_2);
 
 	/* Reset takes a bit longer, wait for 200ms. */
-	msleep(200);
+	drm_msleep(200);
 
 	dev_dbg(smu->adev->dev, "restore config space...\n");
 	/* Restore the config space saved during init */
@@ -2598,7 +2603,7 @@ static int smu_v13_0_6_mode1_reset(struct smu_context *smu)
 					      param, NULL);
 
 	if (!ret)
-		msleep(SMU13_MODE1_RESET_WAIT_TIME_IN_MS);
+		drm_msleep(SMU13_MODE1_RESET_WAIT_TIME_IN_MS);
 
 	return ret;
 }

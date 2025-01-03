@@ -167,7 +167,7 @@ void amdgpu_hmm_unregister(struct amdgpu_bo *bo)
 
 int amdgpu_hmm_range_get_pages(struct mmu_interval_notifier *notifier,
 			       uint64_t start, uint64_t npages, bool readonly,
-			       void *owner, struct page **pages,
+			       void *owner, struct vm_page **pages,
 			       struct hmm_range **phmm_range)
 {
 	struct hmm_range *hmm_range;

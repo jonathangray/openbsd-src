@@ -729,6 +729,8 @@ static inline int amdgpu_ucode_is_valid(uint32_t fw_version)
 	return 0;
 }
 
+#ifdef __linux__
+
 #define FW_VERSION_ATTR(name, mode, field)				\
 static ssize_t show_##name(struct device *dev,				\
 			   struct device_attribute *attr, char *buf)	\
@@ -803,6 +805,8 @@ static const struct attribute_group fw_attr_group = {
 	.attrs = fw_attrs,
 	.is_visible = amdgpu_ucode_sys_visible
 };
+
+#endif /* __linux__ */
 
 int amdgpu_ucode_sysfs_init(struct amdgpu_device *adev)
 {

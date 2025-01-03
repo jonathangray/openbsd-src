@@ -303,7 +303,7 @@ struct amdgpu_smu_i2c_bus {
 	struct i2c_adapter adapter;
 	struct amdgpu_device *adev;
 	int port;
-	struct mutex mutex;
+	struct rwlock mutex;
 };
 
 struct config_table_setting
@@ -330,7 +330,7 @@ struct config_table_setting
 #define OD_OPS_SUPPORT_FAN_MINIMUM_PWM_SET		BIT(9)
 
 struct amdgpu_pm {
-	struct mutex		mutex;
+	struct rwlock		mutex;
 	u32                     current_sclk;
 	u32                     current_mclk;
 	u32                     default_sclk;
@@ -375,7 +375,7 @@ struct amdgpu_pm {
 
 	bool			pp_force_state_enabled;
 
-	struct mutex            stable_pstate_ctx_lock;
+	struct rwlock		stable_pstate_ctx_lock;
 	struct amdgpu_ctx       *stable_pstate_ctx;
 
 	struct config_table_setting config_table;

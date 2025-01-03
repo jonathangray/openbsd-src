@@ -39,7 +39,7 @@ int amdgpu_jpeg_sw_init(struct amdgpu_device *adev)
 	int i, r;
 
 	INIT_DELAYED_WORK(&adev->jpeg.idle_work, amdgpu_jpeg_idle_work_handler);
-	mutex_init(&adev->jpeg.jpeg_pg_lock);
+	rw_init(&adev->jpeg.jpeg_pg_lock, "jpgpg");
 	atomic_set(&adev->jpeg.total_submission_cnt, 0);
 
 	if ((adev->firmware.load_type == AMDGPU_FW_LOAD_PSP) &&
@@ -319,7 +319,8 @@ int amdgpu_jpeg_ras_sw_init(struct amdgpu_device *adev)
 		return err;
 	}
 
-	strcpy(ras->ras_block.ras_comm.name, "jpeg");
+	strlcpy(ras->ras_block.ras_comm.name, "jpeg",
+	    sizeof(ras->ras_block.ras_comm.name));
 	ras->ras_block.ras_comm.block = AMDGPU_RAS_BLOCK__JPEG;
 	ras->ras_block.ras_comm.type = AMDGPU_RAS_ERROR__POISON;
 	adev->jpeg.ras_if = &ras->ras_block.ras_comm;

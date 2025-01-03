@@ -2732,9 +2732,11 @@ static int smu_v13_0_0_i2c_control_init(struct smu_context *smu)
 
 		smu_i2c->adev = adev;
 		smu_i2c->port = i;
-		mutex_init(&smu_i2c->mutex);
+		rw_init(&smu_i2c->mutex, "smu13iic");
+#ifdef __linux__
 		control->owner = THIS_MODULE;
 		control->dev.parent = &adev->pdev->dev;
+#endif
 		control->algo = &smu_v13_0_0_i2c_algo;
 		snprintf(control->name, sizeof(control->name), "AMDGPU SMU %d", i);
 		control->quirks = &smu_v13_0_0_i2c_control_quirks;
@@ -2853,7 +2855,7 @@ static int smu_v13_0_0_mode1_reset(struct smu_context *smu)
 	}
 
 	if (!ret)
-		msleep(SMU13_MODE1_RESET_WAIT_TIME_IN_MS);
+		drm_msleep(SMU13_MODE1_RESET_WAIT_TIME_IN_MS);
 
 	return ret;
 }

@@ -2468,7 +2468,7 @@ int smu_v13_0_mode1_reset(struct smu_context *smu)
 
 	ret = smu_cmn_send_smc_msg(smu, SMU_MSG_Mode1Reset, NULL);
 	if (!ret)
-		msleep(SMU13_MODE1_RESET_WAIT_TIME_IN_MS);
+		drm_msleep(SMU13_MODE1_RESET_WAIT_TIME_IN_MS);
 
 	return ret;
 }

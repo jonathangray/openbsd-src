@@ -38,7 +38,7 @@ static const struct ring_info {
 	{ AMDGPU_RING_PRIO_2, "gfx_high"},
 };
 
-static struct kmem_cache *amdgpu_mux_chunk_slab;
+static struct pool amdgpu_mux_chunk_slab;
 
 static inline struct amdgpu_mux_entry *amdgpu_ring_mux_sw_entry(struct amdgpu_ring_mux *mux,
 								struct amdgpu_ring *ring)
@@ -133,9 +133,9 @@ static void amdgpu_ring_mux_schedule_resubmit(struct amdgpu_ring_mux *mux)
 	mod_timer(&mux->resubmit_timer, jiffies + AMDGPU_MUX_RESUBMIT_JIFFIES_TIMEOUT);
 }
 
-static void amdgpu_mux_resubmit_fallback(struct timer_list *t)
+static void amdgpu_mux_resubmit_fallback(void *arg)
 {
-	struct amdgpu_ring_mux *mux = from_timer(mux, t, resubmit_timer);
+	struct amdgpu_ring_mux *mux = arg;
 
 	if (!spin_trylock(&mux->lock)) {
 		amdgpu_ring_mux_schedule_resubmit(mux);
@@ -159,14 +159,23 @@ int amdgpu_ring_mux_init(struct amdgpu_ring_mux *mux, struct amdgpu_ring *ring,
 	mux->ring_entry_size = entry_size;
 	mux->s_resubmit = false;
 
+#ifdef __linux__
 	amdgpu_mux_chunk_slab = KMEM_CACHE(amdgpu_mux_chunk, SLAB_HWCACHE_ALIGN);
 	if (!amdgpu_mux_chunk_slab) {
 		DRM_ERROR("create amdgpu_mux_chunk cache failed\n");
 		return -ENOMEM;
 	}
+#else
+	pool_init(&amdgpu_mux_chunk_slab, sizeof(struct amdgpu_mux_chunk),
+	    CACHELINESIZE, IPL_TTY, 0, "amdgpu_mux_chunk", NULL);
+#endif
 
-	spin_lock_init(&mux->lock);
+	mtx_init(&mux->lock, IPL_NONE);
+#ifdef __linux__
 	timer_setup(&mux->resubmit_timer, amdgpu_mux_resubmit_fallback, 0);
+#else
+	timeout_set(&mux->resubmit_timer, amdgpu_mux_resubmit_fallback, mux);
+#endif
 
 	return 0;
 }
@@ -181,10 +190,18 @@ void amdgpu_ring_mux_fini(struct amdgpu_ring_mux *mux)
 		e = &mux->ring_entry[i];
 		list_for_each_entry_safe(chunk, chunk2, &e->list, entry) {
 			list_del(&chunk->entry);
+#ifdef __linux__
 			kmem_cache_free(amdgpu_mux_chunk_slab, chunk);
+#else
+			pool_put(&amdgpu_mux_chunk_slab, chunk);
+#endif
 		}
 	}
+#ifdef __linux__
 	kmem_cache_destroy(amdgpu_mux_chunk_slab);
+#else
+	pool_destroy(&amdgpu_mux_chunk_slab);
+#endif
 	kfree(mux->ring_entry);
 	mux->ring_entry = NULL;
 	mux->num_ring_entries = 0;
@@ -444,7 +461,11 @@ void amdgpu_ring_mux_start_ib(struct amdgpu_ring_mux *mux, struct amdgpu_ring *r
 		return;
 	}
 
+#ifdef __linux__
 	chunk = kmem_cache_alloc(amdgpu_mux_chunk_slab, GFP_KERNEL);
+#else
+	chunk = pool_get(&amdgpu_mux_chunk_slab, PR_WAITOK);
+#endif
 	if (!chunk) {
 		DRM_ERROR("alloc amdgpu_mux_chunk_slab failed\n");
 		return;
@@ -475,7 +496,11 @@ static void scan_and_remove_signaled_chunk(struct amdgpu_ring_mux *mux, struct a
 	list_for_each_entry_safe(chunk, tmp, &e->list, entry) {
 		if (chunk->sync_seq <= last_seq) {
 			list_del(&chunk->entry);
+#ifdef __linux__
 			kmem_cache_free(amdgpu_mux_chunk_slab, chunk);
+#else
+			pool_put(&amdgpu_mux_chunk_slab, chunk);
+#endif
 		}
 	}
 }

@@ -316,8 +316,8 @@ struct amdgpu_vcn {
 	uint8_t			 vcn_config[AMDGPU_MAX_VCN_INSTANCES];
 	uint32_t		 vcn_codec_disable_mask[AMDGPU_MAX_VCN_INSTANCES];
 	struct amdgpu_vcn_reg	 internal;
-	struct mutex		 vcn_pg_lock;
-	struct mutex		vcn1_jpeg1_workaround;
+	struct rwlock		 vcn_pg_lock;
+	struct rwlock		 vcn1_jpeg1_workaround;
 	atomic_t		 total_submission_cnt;
 
 	unsigned	harvest_config;

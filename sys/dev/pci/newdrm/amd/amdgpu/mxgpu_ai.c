@@ -107,7 +107,7 @@ static int xgpu_ai_poll_msg(struct amdgpu_device *adev, enum idh_event event)
 		if (!r)
 			return 0;
 
-		msleep(10);
+		drm_msleep(10);
 		timeout -= 10;
 	} while (timeout > 1);
 
@@ -133,7 +133,7 @@ static void xgpu_ai_mailbox_trans_msg (struct amdgpu_device *adev,
 		trn = xgpu_ai_peek_ack(adev);
 		if (trn) {
 			dev_err_ratelimited(adev->dev, "trn=%x ACK should not assert! wait again !\n", trn);
-			msleep(1);
+			drm_msleep(1);
 		}
 	} while(trn);
 
@@ -262,7 +262,7 @@ static int xgpu_ai_wait_reset(struct amdgpu_device *adev)
 			dev_dbg(adev->dev, "Got AI IDH_FLR_NOTIFICATION_CMPL after %d ms\n", AI_MAILBOX_POLL_FLR_TIMEDOUT - timeout);
 			return 0;
 		}
-		msleep(10);
+		drm_msleep(10);
 		timeout -= 10;
 	} while (timeout > 1);
 

@@ -196,14 +196,26 @@ int amdgpu_doorbell_init(struct amdgpu_device *adev)
 		return 0;
 	}
 
+#ifdef __linux__
 	if (pci_resource_flags(adev->pdev, 2) & IORESOURCE_UNSET)
 		return -EINVAL;
+#endif
 
 	amdgpu_asic_init_doorbell_index(adev);
 
 	/* doorbell bar mapping */
+#ifdef __linux__
 	adev->doorbell.base = pci_resource_start(adev->pdev, 2);
 	adev->doorbell.size = pci_resource_len(adev->pdev, 2);
+#else
+	{
+		pcireg_t mtype;
+		mtype = pci_mapreg_type(adev->pdev->pc, adev->pdev->tag, 0x18);
+		if (pci_mapreg_info(adev->pdev->pc, adev->pdev->tag, 0x18,
+		    mtype, &adev->doorbell.base, &adev->doorbell.size, NULL))
+			return -EINVAL;
+	}
+#endif
 
 	adev->doorbell.num_kernel_doorbells =
 		min_t(u32, adev->doorbell.size / sizeof(u32),

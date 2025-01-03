@@ -696,10 +696,12 @@ ret:
  *	to load from storage to PSP: cat srmfile > /sys/class/drm/card0/device/hdcp_srm
  */
 static const struct bin_attribute data_attr = {
+#ifdef notyet
 	.attr = {.name = "hdcp_srm", .mode = 0664},
 	.size = PSP_HDCP_SRM_FIRST_GEN_MAX_SIZE, /* Limit SRM size */
 	.write = srm_data_write,
 	.read = srm_data_read,
+#endif
 };
 
 struct hdcp_workqueue *hdcp_create_workqueue(struct amdgpu_device *adev,
@@ -728,7 +730,7 @@ struct hdcp_workqueue *hdcp_create_workqueue(struct amdgpu_device *adev,
 	hdcp_work->max_link = max_caps;
 
 	for (i = 0; i < max_caps; i++) {
-		mutex_init(&hdcp_work[i].mutex);
+		rw_init(&hdcp_work[i].mutex, "amhdcp");
 
 		INIT_WORK(&hdcp_work[i].cpirq_work, event_cpirq);
 		INIT_WORK(&hdcp_work[i].property_update_work, event_property_update);

@@ -2162,10 +2162,12 @@ static int arcturus_i2c_control_init(struct smu_context *smu)
 
 		smu_i2c->adev = adev;
 		smu_i2c->port = i;
-		mutex_init(&smu_i2c->mutex);
+		rw_init(&smu_i2c->mutex, "arsmuiic");
+#ifdef __linux__
 		control->owner = THIS_MODULE;
 		control->class = I2C_CLASS_HWMON;
 		control->dev.parent = &adev->pdev->dev;
+#endif
 		control->algo = &arcturus_i2c_algo;
 		control->quirks = &arcturus_i2c_control_quirks;
 		snprintf(control->name, sizeof(control->name), "AMDGPU SMU %d", i);

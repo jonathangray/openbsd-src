@@ -88,7 +88,7 @@ struct amdgpu_xcp {
 
 struct amdgpu_xcp_mgr {
 	struct amdgpu_device *adev;
-	struct mutex xcp_lock;
+	struct rwlock xcp_lock;
 	struct amdgpu_xcp_mgr_funcs *funcs;
 
 	struct amdgpu_xcp xcp[MAX_XCP];

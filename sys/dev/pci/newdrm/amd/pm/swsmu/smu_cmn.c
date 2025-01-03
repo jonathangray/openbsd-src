@@ -721,7 +721,7 @@ uint64_t smu_cmn_get_indep_throttler_status(
 	uint64_t indep_status = 0;
 	uint8_t dep_bit = 0;
 
-	for_each_set_bit(dep_bit, &dep_status, 32)
+	for_each_set_bit(dep_bit, (unsigned long *)&dep_status, 32)
 		indep_status |= 1ULL << throttler_map[dep_bit];
 
 	return indep_status;
@@ -1140,6 +1140,9 @@ int smu_cmn_set_mp1_state(struct smu_context *smu,
 
 bool smu_cmn_is_audio_func_enabled(struct amdgpu_device *adev)
 {
+	STUB();
+	return false;
+#ifdef notyet
 	struct pci_dev *p = NULL;
 	bool snd_driver_loaded;
 
@@ -1157,6 +1160,7 @@ bool smu_cmn_is_audio_func_enabled(struct amdgpu_device *adev)
 	pci_dev_put(p);
 
 	return snd_driver_loaded;
+#endif
 }
 
 static char *smu_soc_policy_get_desc(struct smu_dpm_policy *policy, int level)

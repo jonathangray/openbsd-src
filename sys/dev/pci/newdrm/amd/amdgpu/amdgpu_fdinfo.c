@@ -56,6 +56,8 @@ static const char *amdgpu_ip_name[AMDGPU_HW_IP_NUM] = {
 
 void amdgpu_show_fdinfo(struct drm_printer *p, struct drm_file *file)
 {
+	STUB();
+#ifdef notyet
 	struct amdgpu_fpriv *fpriv = file->driver_priv;
 	struct amdgpu_vm *vm = &fpriv->vm;
 
@@ -108,4 +110,5 @@ void amdgpu_show_fdinfo(struct drm_printer *p, struct drm_file *file)
 		drm_printf(p, "drm-engine-%s:\t%lld ns\n", amdgpu_ip_name[hw_ip],
 			   ktime_to_ns(usage[hw_ip]));
 	}
+#endif
 }

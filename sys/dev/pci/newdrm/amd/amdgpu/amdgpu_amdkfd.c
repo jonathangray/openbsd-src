@@ -46,13 +46,18 @@ static bool kfd_initialized;
 
 int amdgpu_amdkfd_init(void)
 {
+#ifdef __linux__
 	struct sysinfo si;
 	int ret;
 
 	si_meminfo(&si);
 	amdgpu_amdkfd_total_mem_size = si.freeram - si.freehigh;
 	amdgpu_amdkfd_total_mem_size *= si.mem_unit;
+#else
+	int ret;
 
+	amdgpu_amdkfd_total_mem_size = ptoa(physmem);
+#endif
 	ret = kgd2kfd_init();
 	kfd_initialized = !ret;
 

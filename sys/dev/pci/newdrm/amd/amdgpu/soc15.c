@@ -753,7 +753,7 @@ static void soc15_get_pcie_usage(struct amdgpu_device *adev, uint64_t *count0,
 	 */
 	WREG32_PCIE(smnPCIE_PERF_COUNT_CNTL, 0x00000005);
 
-	msleep(1000);
+	drm_msleep(1000);
 
 	/* Load the shadow and disable the perf counters
 	 * Write 0x2:
@@ -802,7 +802,7 @@ static void vega20_get_pcie_usage(struct amdgpu_device *adev, uint64_t *count0,
 	 */
 	WREG32_PCIE(smnPCIE_PERF_COUNT_CNTL, 0x00000005);
 
-	msleep(1000);
+	drm_msleep(1000);
 
 	/* Load the shadow and disable the perf counters
 	 * Write 0x2:

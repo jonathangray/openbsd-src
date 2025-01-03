@@ -394,14 +394,14 @@ struct amdgpu_display_manager {
 	 * Guards access to DC functions that can issue register write
 	 * sequences.
 	 */
-	struct mutex dc_lock;
+	struct rwlock dc_lock;
 
 	/**
 	 * @audio_lock:
 	 *
 	 * Guards access to audio instance changes.
 	 */
-	struct mutex audio_lock;
+	struct rwlock audio_lock;
 
 	/**
 	 * @audio_component:
@@ -598,7 +598,7 @@ struct amdgpu_display_manager {
 	 *
 	 * Guards access to DPIA AUX
 	 */
-	struct mutex dpia_aux_lock;
+	struct rwlock dpia_aux_lock;
 
 	/**
 	 * @bb_from_dmub:
@@ -697,7 +697,7 @@ struct amdgpu_dm_connector {
 	struct drm_dp_mst_port *mst_output_port;
 	struct amdgpu_dm_connector *mst_root;
 	struct drm_dp_aux *dsc_aux;
-	struct mutex handle_mst_msg_ready;
+	struct rwlock handle_mst_msg_ready;
 
 	/* TODO see if we can merge with ddc_bus or make a dm_connector */
 	struct amdgpu_i2c_adapter *i2c;
@@ -718,7 +718,7 @@ struct amdgpu_dm_connector {
 	/* Audio instance - protected by audio_lock. */
 	int audio_inst;
 
-	struct mutex hpd_lock;
+	struct rwlock hpd_lock;
 
 	bool fake_enable;
 	bool force_yuv420_output;

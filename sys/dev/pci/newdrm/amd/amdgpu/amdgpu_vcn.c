@@ -119,8 +119,8 @@ int amdgpu_vcn_sw_init(struct amdgpu_device *adev)
 	int i, r;
 
 	INIT_DELAYED_WORK(&adev->vcn.idle_work, amdgpu_vcn_idle_work_handler);
-	mutex_init(&adev->vcn.vcn_pg_lock);
-	mutex_init(&adev->vcn.vcn1_jpeg1_workaround);
+	rw_init(&adev->vcn.vcn_pg_lock, "vcnpg");
+	rw_init(&adev->vcn.vcn1_jpeg1_workaround, "vcnwa");
 	atomic_set(&adev->vcn.total_submission_cnt, 0);
 	for (i = 0; i < adev->vcn.num_vcn_inst; i++)
 		atomic_set(&adev->vcn.inst[i].dpg_enc_submission_cnt, 0);
@@ -1252,7 +1252,8 @@ int amdgpu_vcn_ras_sw_init(struct amdgpu_device *adev)
 		return err;
 	}
 
-	strcpy(ras->ras_block.ras_comm.name, "vcn");
+	strlcpy(ras->ras_block.ras_comm.name, "vcn",
+	    sizeof(ras->ras_block.ras_comm.name));
 	ras->ras_block.ras_comm.block = AMDGPU_RAS_BLOCK__VCN;
 	ras->ras_block.ras_comm.type = AMDGPU_RAS_ERROR__POISON;
 	adev->vcn.ras_if = &ras->ras_block.ras_comm;

@@ -74,7 +74,7 @@
  */
 static int amdgpu_gart_dummy_page_init(struct amdgpu_device *adev)
 {
-	struct page *dummy_page = ttm_glob.dummy_read_page;
+	struct vm_page *dummy_page = ttm_glob.dummy_read_page;
 
 	if (adev->dummy_page_addr)
 		return 0;
@@ -115,13 +115,16 @@ void amdgpu_gart_dummy_page_fini(struct amdgpu_device *adev)
  */
 int amdgpu_gart_table_ram_alloc(struct amdgpu_device *adev)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	unsigned int order = get_order(adev->gart.table_size);
 	gfp_t gfp_flags = GFP_KERNEL | __GFP_ZERO;
 	struct amdgpu_bo *bo = NULL;
 	struct sg_table *sg = NULL;
 	struct amdgpu_bo_param bp;
 	dma_addr_t dma_addr;
-	struct page *p;
+	struct vm_page *p;
 	unsigned long x;
 	int ret;
 
@@ -214,6 +217,7 @@ error:
 	}
 	__free_pages(p, order);
 	return ret;
+#endif
 }
 
 /**
@@ -228,7 +232,7 @@ void amdgpu_gart_table_ram_free(struct amdgpu_device *adev)
 {
 	unsigned int order = get_order(adev->gart.table_size);
 	struct sg_table *sg = adev->gart.bo->tbo.sg;
-	struct page *p;
+	struct vm_page *p;
 	unsigned long x;
 	int ret;
 

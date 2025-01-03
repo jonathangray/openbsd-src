@@ -1306,10 +1306,12 @@ static void gmc_v9_0_override_vm_pte_flags(struct amdgpu_device *adev,
 	/* Only handle real RAM. Mappings of PCIe resources don't have struct
 	 * page or NUMA nodes.
 	 */
+#ifdef notyet
 	if (!page_is_ram(addr >> PAGE_SHIFT)) {
 		dev_dbg_ratelimited(adev->dev, "Page is not RAM.\n");
 		return;
 	}
+#endif
 	nid = pfn_to_nid(addr >> PAGE_SHIFT);
 	dev_dbg_ratelimited(adev->dev, "vm->mem_id=%d, local_node=%d, nid=%d\n",
 			    vm->mem_id, local_node, nid);
@@ -1579,8 +1581,13 @@ static int gmc_v9_0_early_init(void *handle)
 		 * "is_app_apu" can be used to identify the APU in the native
 		 * mode.
 		 */
+#ifdef notyet
 		adev->gmc.is_app_apu = (pkg_type == AMDGPU_PKG_TYPE_APU &&
 					!pci_resource_len(adev->pdev, 0));
+#else
+		adev->gmc.is_app_apu = (pkg_type == AMDGPU_PKG_TYPE_APU &&
+					!adev->fb_aper_size);
+#endif
 	}
 
 	gmc_v9_0_set_gmc_funcs(adev);
@@ -1692,8 +1699,8 @@ static int gmc_v9_0_mc_init(struct amdgpu_device *adev)
 		if (r)
 			return r;
 	}
-	adev->gmc.aper_base = pci_resource_start(adev->pdev, 0);
-	adev->gmc.aper_size = pci_resource_len(adev->pdev, 0);
+	adev->gmc.aper_base = adev->fb_aper_offset;
+	adev->gmc.aper_size = adev->fb_aper_size;
 
 #ifdef CONFIG_X86_64
 	/*
@@ -2000,7 +2007,7 @@ static int gmc_v9_0_sw_init(void *handle)
 
 	adev->mmhub.funcs->init(adev);
 
-	spin_lock_init(&adev->gmc.invalidate_lock);
+	mtx_init(&adev->gmc.invalidate_lock, IPL_NONE);
 
 	if (amdgpu_ip_version(adev, GC_HWIP, 0) == IP_VERSION(9, 4, 3) ||
 	    amdgpu_ip_version(adev, GC_HWIP, 0) == IP_VERSION(9, 4, 4)) {

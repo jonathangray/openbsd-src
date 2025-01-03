@@ -67,7 +67,7 @@ static const u8 DP_SINK_BRANCH_DEV_NAME_7580[] = "7580\x80u";
 
 static const u8 dp_hdmi_dongle_signature_str[] = "DP-HDMI ADAPTOR";
 
-static enum ddc_transaction_type get_ddc_transaction_type(enum signal_type sink_signal)
+static enum ddc_transaction_type get_ddc_transaction_type(enum amd_signal_type sink_signal)
 {
 	enum ddc_transaction_type transaction_type = DDC_TRANSACTION_TYPE_NONE;
 
@@ -100,7 +100,7 @@ static enum ddc_transaction_type get_ddc_transaction_type(enum signal_type sink_
 	return transaction_type;
 }
 
-static enum signal_type get_basic_signal_type(struct graphics_object_id encoder,
+static enum amd_signal_type get_basic_signal_type(struct graphics_object_id encoder,
 					      struct graphics_object_id downstream)
 {
 	if (downstream.type == OBJECT_TYPE_CONNECTOR) {
@@ -164,10 +164,10 @@ static enum signal_type get_basic_signal_type(struct graphics_object_id encoder,
  * @brief
  * Detect output sink type
  */
-static enum signal_type link_detect_sink_signal_type(struct dc_link *link,
+static enum amd_signal_type link_detect_sink_signal_type(struct dc_link *link,
 					 enum dc_detect_reason reason)
 {
-	enum signal_type result;
+	enum amd_signal_type result;
 	struct graphics_object_id enc_id;
 
 	if (link->is_dig_mapping_flexible)
@@ -232,10 +232,10 @@ static enum signal_type link_detect_sink_signal_type(struct dc_link *link,
 	return result;
 }
 
-static enum signal_type decide_signal_from_strap_and_dongle_type(enum display_dongle_type dongle_type,
+static enum amd_signal_type decide_signal_from_strap_and_dongle_type(enum display_dongle_type dongle_type,
 								 struct audio_support *audio_support)
 {
-	enum signal_type signal = SIGNAL_TYPE_NONE;
+	enum amd_signal_type signal = SIGNAL_TYPE_NONE;
 
 	switch (dongle_type) {
 	case DISPLAY_DONGLE_DP_HDMI_DONGLE:
@@ -447,7 +447,7 @@ static void query_dp_dual_mode_adaptor(
 	return;
 }
 
-static enum signal_type dp_passive_dongle_detection(struct ddc_service *ddc,
+static enum amd_signal_type dp_passive_dongle_detection(struct ddc_service *ddc,
 						    struct display_sink_capability *sink_cap,
 						    struct audio_support *audio_support)
 {
@@ -474,7 +474,7 @@ static void link_disconnect_remap(struct dc_sink *prev_sink, struct dc_link *lin
 	link->local_sink = prev_sink;
 }
 
-static void query_hdcp_capability(enum signal_type signal, struct dc_link *link)
+static void query_hdcp_capability(enum amd_signal_type signal, struct dc_link *link)
 {
 	struct hdcp_protection_message msg22;
 	struct hdcp_protection_message msg14;
@@ -540,7 +540,7 @@ static void read_current_link_settings_on_detect(struct dc_link *link)
 			break;
 		}
 
-		msleep(8);
+		drm_msleep(8);
 	}
 
 	// Read DPCD 00100h to find if standard link rates are set
@@ -878,7 +878,7 @@ static bool detect_link_and_local_sink(struct dc_link *link,
 		if (link->connector_signal == SIGNAL_TYPE_EDP &&
 			(link->dpcd_sink_ext_caps.bits.oled == 1)) {
 			dpcd_set_source_specific_data(link);
-			msleep(post_oui_delay);
+			drm_msleep(post_oui_delay);
 			set_default_brightness_aux(link);
 		}
 
@@ -1308,7 +1308,7 @@ void link_clear_dprx_states(struct dc_link *link)
 	memset(&link->dprx_states, 0, sizeof(link->dprx_states));
 }
 
-bool link_is_hdcp14(struct dc_link *link, enum signal_type signal)
+bool link_is_hdcp14(struct dc_link *link, enum amd_signal_type signal)
 {
 	bool ret = false;
 
@@ -1332,7 +1332,7 @@ bool link_is_hdcp14(struct dc_link *link, enum signal_type signal)
 	return ret;
 }
 
-bool link_is_hdcp22(struct dc_link *link, enum signal_type signal)
+bool link_is_hdcp22(struct dc_link *link, enum amd_signal_type signal)
 {
 	bool ret = false;
 

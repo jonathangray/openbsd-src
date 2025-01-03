@@ -1464,7 +1464,7 @@ static bool perform_post_lt_adj_req_sequence(
 				break;
 			}
 
-			msleep(1);
+			drm_msleep(1);
 		}
 
 		if (!req_drv_setting_changed) {
@@ -1505,7 +1505,7 @@ static enum link_training_result dp_transition_to_video_idle(
 		 * DPCD 0202h.
 		 */
 		if (link->connector_signal != SIGNAL_TYPE_EDP && status == LINK_TRAINING_SUCCESS) {
-			msleep(5);
+			drm_msleep(5);
 			if (!link->skip_fallback_on_link_loss)
 				status = dp_check_link_loss_status(link, lt_settings);
 		}
@@ -1596,7 +1596,7 @@ bool perform_link_training_with_retries(
 	bool skip_video_pattern,
 	int attempts,
 	struct pipe_ctx *pipe_ctx,
-	enum signal_type signal,
+	enum amd_signal_type signal,
 	bool do_fallback)
 {
 	int j;
@@ -1642,7 +1642,7 @@ bool perform_link_training_with_retries(
 		if (stream->sink_patches.dppowerup_delay > 0) {
 			int delay_dp_power_up_in_ms = stream->sink_patches.dppowerup_delay;
 
-			msleep(delay_dp_power_up_in_ms);
+			drm_msleep(delay_dp_power_up_in_ms);
 		}
 
 		edp_set_panel_assr(link, pipe_ctx, &panel_mode, true);
@@ -1778,7 +1778,7 @@ bool perform_link_training_with_retries(
 			}
 		}
 
-		msleep(delay_between_attempts);
+		drm_msleep(delay_between_attempts);
 	}
 
 	return false;

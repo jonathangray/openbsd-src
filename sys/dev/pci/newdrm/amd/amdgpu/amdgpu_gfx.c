@@ -124,6 +124,7 @@ void amdgpu_gfx_parse_disable_cu(unsigned int *mask, unsigned int max_se, unsign
 	if (!amdgpu_disable_cu || !*amdgpu_disable_cu)
 		return;
 
+#ifdef notyet
 	p = amdgpu_disable_cu;
 	for (;;) {
 		char *next;
@@ -147,6 +148,7 @@ void amdgpu_gfx_parse_disable_cu(unsigned int *mask, unsigned int max_se, unsign
 			break;
 		p = next + 1;
 	}
+#endif
 }
 
 static bool amdgpu_gfx_is_graphics_multipipe_capable(struct amdgpu_device *adev)
@@ -314,7 +316,7 @@ int amdgpu_gfx_kiq_init_ring(struct amdgpu_device *adev, int xcc_id)
 	struct amdgpu_ring *ring = &kiq->ring;
 	int r = 0;
 
-	spin_lock_init(&kiq->ring_lock);
+	mtx_init(&kiq->ring_lock, IPL_TTY);
 
 	ring->adev = NULL;
 	ring->ring_obj = NULL;
@@ -956,7 +958,8 @@ int amdgpu_gfx_ras_sw_init(struct amdgpu_device *adev)
 		return err;
 	}
 
-	strcpy(ras->ras_block.ras_comm.name, "gfx");
+	strlcpy(ras->ras_block.ras_comm.name, "gfx",
+	    sizeof(ras->ras_block.ras_comm.name));
 	ras->ras_block.ras_comm.block = AMDGPU_RAS_BLOCK__GFX;
 	ras->ras_block.ras_comm.type = AMDGPU_RAS_ERROR__MULTI_UNCORRECTABLE;
 	adev->gfx.ras_if = &ras->ras_block.ras_comm;
@@ -1087,7 +1090,7 @@ uint32_t amdgpu_kiq_rreg(struct amdgpu_device *adev, uint32_t reg, uint32_t xcc_
 
 	might_sleep();
 	while (r < 1 && cnt++ < MAX_KIQ_REG_TRY) {
-		msleep(MAX_KIQ_REG_BAILOUT_INTERVAL);
+		drm_msleep(MAX_KIQ_REG_BAILOUT_INTERVAL);
 		r = amdgpu_fence_wait_polling(ring, seq, MAX_KIQ_REG_WAIT);
 	}
 
@@ -1157,7 +1160,7 @@ void amdgpu_kiq_wreg(struct amdgpu_device *adev, uint32_t reg, uint32_t v, uint3
 	might_sleep();
 	while (r < 1 && cnt++ < MAX_KIQ_REG_TRY) {
 
-		msleep(MAX_KIQ_REG_BAILOUT_INTERVAL);
+		drm_msleep(MAX_KIQ_REG_BAILOUT_INTERVAL);
 		r = amdgpu_fence_wait_polling(ring, seq, MAX_KIQ_REG_WAIT);
 	}
 

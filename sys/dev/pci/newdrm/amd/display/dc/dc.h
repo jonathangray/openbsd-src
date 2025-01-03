@@ -1638,7 +1638,7 @@ struct dc_link {
 	struct dc_sink *local_sink;
 	unsigned int link_index;
 	enum dc_connection_type type;
-	enum signal_type connector_signal;
+	enum amd_signal_type connector_signal;
 	enum dc_irq_source irq_source_hpd;
 	enum dc_irq_source irq_source_hpd_rx;/* aka DP Short Pulse  */
 
@@ -1936,8 +1936,8 @@ bool dc_is_oem_i2c_device_present(
 );
 
 /* return true if the connected receiver supports the hdcp version */
-bool dc_link_is_hdcp14(struct dc_link *link, enum signal_type signal);
-bool dc_link_is_hdcp22(struct dc_link *link, enum signal_type signal);
+bool dc_link_is_hdcp14(struct dc_link *link, enum amd_signal_type signal);
+bool dc_link_is_hdcp22(struct dc_link *link, enum amd_signal_type signal);
 
 /* Notify DC about DP RX Interrupt (aka DP IRQ_HPD).
  *
@@ -2384,7 +2384,7 @@ struct scdc_caps {
  * The sink structure contains EDID and other display device properties
  */
 struct dc_sink {
-	enum signal_type sink_signal;
+	enum amd_signal_type sink_signal;
 	struct dc_edid dc_edid; /* raw edid */
 	struct dc_edid_caps edid_caps; /* parse display caps */
 	struct dc_container_id *dc_container_id;
@@ -2416,7 +2416,7 @@ void dc_sink_retain(struct dc_sink *sink);
 void dc_sink_release(struct dc_sink *sink);
 
 struct dc_sink_init_data {
-	enum signal_type sink_signal;
+	enum amd_signal_type sink_signal;
 	struct dc_link *link;
 	uint32_t dongle_max_pix_clk;
 	bool converter_disable_audio;
@@ -2456,7 +2456,7 @@ void dc_power_down_on_boot(struct dc *dc);
  * HDCP Interfaces
  */
 enum hdcp_message_status dc_process_hdcp_msg(
-		enum signal_type signal,
+		enum amd_signal_type signal,
 		struct dc_link *link,
 		struct hdcp_protection_message *message_info);
 bool dc_is_dmcu_initialized(struct dc *dc);

@@ -160,6 +160,7 @@
 #define dmub_memset(dest, val, bytes) memset((dest), (val), (bytes))
 #endif
 
+#pragma pack(push, 1)
 /**
  * OS/FW agnostic udelay
  */
@@ -217,6 +218,7 @@ union abm_flags {
 
 	unsigned int u32All;
 };
+#pragma pack(pop)
 
 struct abm_save_restore {
 	/**

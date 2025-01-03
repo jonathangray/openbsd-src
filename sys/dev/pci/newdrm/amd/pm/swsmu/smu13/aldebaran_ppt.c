@@ -1568,9 +1568,11 @@ static int aldebaran_i2c_control_init(struct smu_context *smu)
 
 	smu_i2c->adev = adev;
 	smu_i2c->port = 0;
-	mutex_init(&smu_i2c->mutex);
+	rw_init(&smu_i2c->mutex, "aldiic");
+#ifdef __linux__
 	control->owner = THIS_MODULE;
 	control->dev.parent = &adev->pdev->dev;
+#endif
 	control->algo = &aldebaran_i2c_algo;
 	snprintf(control->name, sizeof(control->name), "AMDGPU SMU 0");
 	control->quirks = &aldebaran_i2c_control_quirks;
@@ -1885,7 +1887,7 @@ static int aldebaran_mode1_reset(struct smu_context *smu)
 	}
 
 	if (!ret)
-		msleep(SMU13_MODE1_RESET_WAIT_TIME_IN_MS);
+		drm_msleep(SMU13_MODE1_RESET_WAIT_TIME_IN_MS);
 
 	return ret;
 }
@@ -1904,7 +1906,7 @@ static int aldebaran_mode2_reset(struct smu_context *smu)
 	if (smu->smc_fw_version >= 0x00441400) {
 		ret = smu_cmn_send_msg_without_waiting(smu, (uint16_t)index, SMU_RESET_MODE_2);
 		/* This is similar to FLR, wait till max FLR timeout */
-		msleep(100);
+		drm_msleep(100);
 		dev_dbg(smu->adev->dev, "restore config space...\n");
 		/* Restore the config space saved during init */
 		amdgpu_device_load_pci_state(adev->pdev);

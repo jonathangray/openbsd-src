@@ -300,7 +300,7 @@ int amdgpu_xcp_mgr_init(struct amdgpu_device *adev, int init_mode,
 	xcp_mgr->adev = adev;
 	xcp_mgr->funcs = xcp_funcs;
 	xcp_mgr->mode = init_mode;
-	mutex_init(&xcp_mgr->xcp_lock);
+	rw_init(&xcp_mgr->xcp_lock, "xcp");
 
 	if (init_mode != AMDGPU_XCP_MODE_NONE)
 		amdgpu_xcp_init(xcp_mgr, init_num_xcps, init_mode);

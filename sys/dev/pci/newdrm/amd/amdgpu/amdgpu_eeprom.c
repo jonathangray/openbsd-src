@@ -161,7 +161,7 @@ static int __amdgpu_eeprom_xfer(struct i2c_adapter *i2c_adap, u32 eeprom_addr,
 			 * internal write cycle to complete, as it is
 			 * usually smaller than tWR (tW).
 			 */
-			msleep(10);
+			drm_msleep(10);
 		}
 	}
 

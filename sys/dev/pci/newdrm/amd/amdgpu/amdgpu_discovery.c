@@ -245,6 +245,9 @@ static int amdgpu_discovery_read_binary_from_sysmem(struct amdgpu_device *adev, 
 	pos = tmr_offset + tmr_size - DISCOVERY_TMR_OFFSET;
 
 	/* This region is read-only and reserved from system use */
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	discv_regn = memremap(pos, adev->mman.discovery_tmr_size, MEMREMAP_WC);
 	if (discv_regn) {
 		memcpy(binary, discv_regn, adev->mman.discovery_tmr_size);
@@ -253,6 +256,7 @@ static int amdgpu_discovery_read_binary_from_sysmem(struct amdgpu_device *adev, 
 	}
 
 	return -ENOENT;
+#endif
 }
 
 #define IP_DISCOVERY_V2		2
@@ -278,7 +282,7 @@ static int amdgpu_discovery_read_binary_from_mem(struct amdgpu_device *adev,
 			msg = RREG32(mmMP0_SMN_C2PMSG_33);
 			if (msg & 0x80000000)
 				break;
-			msleep(1);
+			drm_msleep(1);
 		}
 	}
 
@@ -745,6 +749,8 @@ struct ip_hw_instance {
 	u32 base_addr[] __counted_by(num_base_addresses);
 };
 
+#ifdef notyet
+
 struct ip_hw_id {
 	struct kset hw_id_kset;  /* ip_discovery/die/#die/#hw_id/, contains ip_hw_instance */
 	int hw_id;
@@ -1167,8 +1173,12 @@ static int amdgpu_discovery_sysfs_recurse(struct amdgpu_device *adev)
 	return 0;
 }
 
+#endif
+
 static int amdgpu_discovery_sysfs_init(struct amdgpu_device *adev)
 {
+	return 0;
+#ifdef notyet
 	struct kset *die_kset;
 	int res, ii;
 
@@ -1208,7 +1218,10 @@ static int amdgpu_discovery_sysfs_init(struct amdgpu_device *adev)
 Err:
 	kobject_put(&adev->ip_top->kobj);
 	return res;
+#endif
 }
+
+#ifdef notyet
 
 /* -------------------------------------------------- */
 
@@ -1249,8 +1262,11 @@ static void amdgpu_discovery_sysfs_die_free(struct ip_die_entry *ip_die_entry)
 	kobject_put(&ip_die_entry->ip_kset.kobj);
 }
 
+#endif /* notyet */
+
 static void amdgpu_discovery_sysfs_fini(struct amdgpu_device *adev)
 {
+#ifdef notyet
 	struct list_head *el, *tmp;
 	struct kset *die_kset;
 
@@ -1265,6 +1281,7 @@ static void amdgpu_discovery_sysfs_fini(struct amdgpu_device *adev)
 	spin_unlock(&die_kset->list_lock);
 	kobject_put(&adev->ip_top->die_kset.kobj);
 	kobject_put(&adev->ip_top->kobj);
+#endif
 }
 
 /* ================================================== */

@@ -205,6 +205,8 @@ static int amdgpu_reserve_page_direct(struct amdgpu_device *adev, uint64_t addre
 	return 0;
 }
 
+#ifdef __linux__
+
 static ssize_t amdgpu_ras_debugfs_read(struct file *f, char __user *buf,
 					size_t size, loff_t *pos)
 {
@@ -645,6 +647,8 @@ static ssize_t amdgpu_ras_sysfs_read(struct device *dev,
 		return sysfs_emit(buf, "%s: %lu\n%s: %lu\n", "ue", info.ue_count,
 				"ce", info.ce_count);
 }
+
+#endif /* __linux__ */
 
 /* obj begin */
 
@@ -1627,6 +1631,7 @@ int amdgpu_ras_query_error_count(struct amdgpu_device *adev,
 }
 /* query/inject/cure end */
 
+#ifdef __linux__
 
 /* sysfs begin */
 
@@ -1797,6 +1802,8 @@ static int amdgpu_ras_sysfs_remove_dev_attr_node(struct amdgpu_device *adev)
 	return 0;
 }
 
+#endif /* __linux__ */
+
 int amdgpu_ras_sysfs_create(struct amdgpu_device *adev,
 		struct ras_common_if *head)
 {
@@ -1808,6 +1815,9 @@ int amdgpu_ras_sysfs_create(struct amdgpu_device *adev,
 	if (!obj || obj->attr_inuse)
 		return -EINVAL;
 
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	get_obj(obj);
 
 	snprintf(obj->fs_data.sysfs_name, sizeof(obj->fs_data.sysfs_name),
@@ -1832,6 +1842,7 @@ int amdgpu_ras_sysfs_create(struct amdgpu_device *adev,
 	obj->attr_inuse = 1;
 
 	return 0;
+#endif
 }
 
 int amdgpu_ras_sysfs_remove(struct amdgpu_device *adev,
@@ -1845,15 +1856,19 @@ int amdgpu_ras_sysfs_remove(struct amdgpu_device *adev,
 	if (!obj || !obj->attr_inuse)
 		return -EINVAL;
 
+#ifdef __linux__
 	if (adev->dev->kobj.sd)
 		sysfs_remove_file_from_group(&adev->dev->kobj,
 				&obj->sysfs_attr.attr,
 				RAS_FS_NAME);
+#endif
 	obj->attr_inuse = 0;
 	put_obj(obj);
 
 	return 0;
 }
+
+#ifdef __linux__
 
 static int amdgpu_ras_sysfs_remove_all(struct amdgpu_device *adev)
 {
@@ -1990,7 +2005,7 @@ void amdgpu_ras_debugfs_create_all(struct amdgpu_device *adev)
 	list_for_each_entry(obj, &con->head, node) {
 		if (amdgpu_ras_is_supported(adev, obj->head.block) &&
 			(obj->attr_inuse == 1)) {
-			sprintf(fs_info.debugfs_name, "%s_err_inject",
+			snprintf(fs_info.debugfs_name, sizeof(fs_info.debugfs_name), "%s_err_inject",
 					get_ras_block_str(&obj->head));
 			fs_info.head = obj->head;
 			amdgpu_ras_debugfs_create(adev, &fs_info, dir);
@@ -2010,6 +2025,7 @@ void amdgpu_ras_debugfs_create_all(struct amdgpu_device *adev)
 /* ras fs */
 static BIN_ATTR(gpu_vram_bad_pages, S_IRUGO,
 		amdgpu_ras_sysfs_badpages_read, NULL, 0);
+#endif /* __linux__ */
 static DEVICE_ATTR(features, S_IRUGO,
 		amdgpu_ras_sysfs_features_read, NULL);
 static DEVICE_ATTR(version, 0444,
@@ -2020,6 +2036,7 @@ static DEVICE_ATTR(event_state, 0444,
 		   amdgpu_ras_sysfs_event_state_show, NULL);
 static int amdgpu_ras_fs_init(struct amdgpu_device *adev)
 {
+#ifdef __linux__
 	struct amdgpu_ras *con = amdgpu_ras_get_context(adev);
 	struct attribute_group group = {
 		.name = RAS_FS_NAME,
@@ -2067,12 +2084,14 @@ static int amdgpu_ras_fs_init(struct amdgpu_device *adev)
 	r = sysfs_create_group(&adev->dev->kobj, &group);
 	if (r)
 		dev_err(adev->dev, "Failed to create RAS sysfs group!");
+#endif
 
 	return 0;
 }
 
 static int amdgpu_ras_fs_fini(struct amdgpu_device *adev)
 {
+#ifdef __linux__
 	struct amdgpu_ras *con = amdgpu_ras_get_context(adev);
 	struct ras_manager *con_obj, *ip_obj, *tmp;
 
@@ -2085,6 +2104,7 @@ static int amdgpu_ras_fs_fini(struct amdgpu_device *adev)
 	}
 
 	amdgpu_ras_sysfs_remove_all(adev);
+#endif
 	return 0;
 }
 /* ras fs end */
@@ -3173,7 +3193,7 @@ int amdgpu_ras_recovery_init(struct amdgpu_device *adev)
 		goto out;
 	}
 
-	mutex_init(&con->recovery_lock);
+	rw_init(&con->recovery_lock, "rasrec");
 	INIT_WORK(&con->recovery_work, amdgpu_ras_do_recovery);
 	atomic_set(&con->in_recovery, 0);
 	con->eeprom_control.bad_channel_bitmap = 0;
@@ -4393,13 +4413,13 @@ void amdgpu_ras_get_error_type_name(uint32_t err_type, char *err_type_name)
 
 	switch (err_type) {
 	case AMDGPU_RAS_ERROR__SINGLE_CORRECTABLE:
-		sprintf(err_type_name, "correctable");
+		snprintf(err_type_name, 16, "correctable");
 		break;
 	case AMDGPU_RAS_ERROR__MULTI_UNCORRECTABLE:
-		sprintf(err_type_name, "uncorrectable");
+		snprintf(err_type_name, 16, "uncorrectable");
 		break;
 	default:
-		sprintf(err_type_name, "unknown");
+		snprintf(err_type_name, 16, "unknown");
 		break;
 	}
 }

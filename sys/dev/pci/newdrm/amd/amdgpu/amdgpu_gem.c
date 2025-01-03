@@ -43,6 +43,7 @@
 #include "amdgpu_hmm.h"
 #include "amdgpu_xgmi.h"
 
+#ifdef __linux__
 static vm_fault_t amdgpu_gem_fault(struct vm_fault *vmf)
 {
 	struct ttm_buffer_object *bo = vmf->vma->vm_private_data;
@@ -82,6 +83,85 @@ static const struct vm_operations_struct amdgpu_gem_vm_ops = {
 	.close = ttm_bo_vm_close,
 	.access = ttm_bo_vm_access
 };
+#else /* !__linux__ */
+int
+amdgpu_gem_fault(struct uvm_faultinfo *ufi, vaddr_t vaddr, vm_page_t *pps,
+    int npages, int centeridx, vm_fault_t fault_type,
+    vm_prot_t access_type, int flags)
+{
+	struct uvm_object *uobj = ufi->entry->object.uvm_obj;
+	struct ttm_buffer_object *bo = (struct ttm_buffer_object *)uobj;
+	struct drm_device *ddev = bo->base.dev;
+	vm_fault_t ret;
+	int idx;
+
+	ret = ttm_bo_vm_reserve(bo);
+	if (ret) {
+		goto out;
+	}
+
+	if (drm_dev_enter(ddev, &idx)) {
+		ret = amdgpu_bo_fault_reserve_notify(bo);
+		if (ret) {
+			drm_dev_exit(idx);
+			goto unlock;
+		}
+
+		 ret = ttm_bo_vm_fault_reserved(ufi, vaddr,
+						TTM_BO_VM_NUM_PREFAULT, 1);
+
+		 drm_dev_exit(idx);
+	} else {
+		STUB();
+#ifdef notyet
+		ret = ttm_bo_vm_dummy_page(vmf, vmf->vma->vm_page_prot);
+#endif
+	}
+#ifdef __linux__
+	if (ret == VM_FAULT_RETRY && !(vmf->flags & FAULT_FLAG_RETRY_NOWAIT))
+		return ret;
+#endif
+
+unlock:
+	dma_resv_unlock(bo->base.resv);
+out:
+	switch (ret) {
+	case VM_FAULT_NOPAGE:
+		ret = 0;
+		break;
+	case VM_FAULT_RETRY:
+		ret = ERESTART;
+		break;
+	default:
+		ret = EACCES;
+		break;
+	}
+	uvmfault_unlockall(ufi, NULL, uobj);
+	return ret;
+}
+
+void
+amdgpu_gem_vm_reference(struct uvm_object *uobj)
+{
+	struct ttm_buffer_object *bo = (struct ttm_buffer_object *)uobj;
+
+	ttm_bo_get(bo);
+}
+
+void
+amdgpu_gem_vm_detach(struct uvm_object *uobj)
+{
+	struct ttm_buffer_object *bo = (struct ttm_buffer_object *)uobj;
+
+	ttm_bo_put(bo);
+}
+
+static const struct uvm_pagerops amdgpu_gem_vm_ops = {
+	.pgo_fault = amdgpu_gem_fault,
+	.pgo_reference = amdgpu_gem_vm_reference,
+	.pgo_detach = amdgpu_gem_vm_detach
+};
+#endif /* !__linux__ */
 
 static void amdgpu_gem_object_free(struct drm_gem_object *gobj)
 {
@@ -128,6 +208,9 @@ int amdgpu_gem_object_create(struct amdgpu_device *adev, unsigned long size,
 	return 0;
 }
 
+int	drm_file_cmp(struct drm_file *, struct drm_file *);
+SPLAY_PROTOTYPE(drm_file_tree, drm_file, link, drm_file_cmp);
+
 void amdgpu_gem_force_release(struct amdgpu_device *adev)
 {
 	struct drm_device *ddev = adev_to_drm(adev);
@@ -135,7 +218,11 @@ void amdgpu_gem_force_release(struct amdgpu_device *adev)
 
 	mutex_lock(&ddev->filelist_mutex);
 
+#ifdef __linux__
 	list_for_each_entry(file, &ddev->filelist, lhead) {
+#else
+	SPLAY_FOREACH(file, drm_file_tree, &ddev->files) {
+#endif
 		struct drm_gem_object *gobj;
 		int handle;
 
@@ -164,12 +251,16 @@ static int amdgpu_gem_object_open(struct drm_gem_object *obj,
 	struct amdgpu_fpriv *fpriv = file_priv->driver_priv;
 	struct amdgpu_vm *vm = &fpriv->vm;
 	struct amdgpu_bo_va *bo_va;
+#ifdef notyet
 	struct mm_struct *mm;
+#endif
 	int r;
 
+#ifdef notyet
 	mm = amdgpu_ttm_tt_get_usermm(abo->tbo.ttm);
 	if (mm && mm != current->mm)
 		return -EPERM;
+#endif
 
 	if (abo->flags & AMDGPU_GEM_CREATE_VM_ALWAYS_VALID &&
 	    !amdgpu_vm_is_bo_always_valid(vm, abo))
@@ -271,6 +362,7 @@ out_unlock:
 	drm_exec_fini(&exec);
 }
 
+#ifdef __linux__
 static int amdgpu_gem_object_mmap(struct drm_gem_object *obj, struct vm_area_struct *vma)
 {
 	struct amdgpu_bo *bo = gem_to_amdgpu_bo(obj);
@@ -291,6 +383,31 @@ static int amdgpu_gem_object_mmap(struct drm_gem_object *obj, struct vm_area_str
 
 	return drm_gem_ttm_mmap(obj, vma);
 }
+#else
+static int amdgpu_gem_object_mmap(struct drm_gem_object *obj,
+    vm_prot_t accessprot, voff_t off, vsize_t size)
+{
+	struct amdgpu_bo *bo = gem_to_amdgpu_bo(obj);
+
+	if (amdgpu_ttm_tt_get_usermm(bo->tbo.ttm))
+		return -EPERM;
+	if (bo->flags & AMDGPU_GEM_CREATE_NO_CPU_ACCESS)
+		return -EPERM;
+
+	/* Workaround for Thunk bug creating PROT_NONE,MAP_PRIVATE mappings
+	 * for debugger access to invisible VRAM. Should have used MAP_SHARED
+	 * instead. Clearing VM_MAYWRITE prevents the mapping from ever
+	 * becoming writable and makes is_cow_mapping(vm_flags) false.
+	 */
+#ifdef notyet
+	if (is_cow_mapping(vma->vm_flags) &&
+	    !(vma->vm_flags & (VM_READ | VM_WRITE | VM_EXEC)))
+		vma->vm_flags &= ~VM_MAYWRITE;
+#endif
+
+	return drm_gem_ttm_mmap(obj, accessprot, off, size);
+}
+#endif
 
 const struct drm_gem_object_funcs amdgpu_gem_object_funcs = {
 	.free = amdgpu_gem_object_free,
@@ -413,6 +530,8 @@ retry:
 int amdgpu_gem_userptr_ioctl(struct drm_device *dev, void *data,
 			     struct drm_file *filp)
 {
+	return -ENOSYS;
+#ifdef notyet
 	struct ttm_operation_ctx ctx = { true, false };
 	struct amdgpu_device *adev = drm_to_adev(dev);
 	struct drm_amdgpu_gem_userptr *args = data;
@@ -489,6 +608,7 @@ release_object:
 	drm_gem_object_put(gobj);
 
 	return r;
+#endif
 }
 
 int amdgpu_mode_dumb_mmap(struct drm_file *filp,

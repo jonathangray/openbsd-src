@@ -550,7 +550,7 @@ void amdgpu_vm_pt_free_work(struct work_struct *work)
 {
 	struct amdgpu_vm_bo_base *entry, *next;
 	struct amdgpu_vm *vm;
-	LIST_HEAD(pt_freed);
+	DRM_LIST_HEAD(pt_freed);
 
 	vm = container_of(work, struct amdgpu_vm, pt_free_work);
 

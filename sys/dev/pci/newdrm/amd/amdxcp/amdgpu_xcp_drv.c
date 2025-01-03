@@ -56,6 +56,10 @@ int amdgpu_xcp_drm_dev_alloc(struct drm_device **ddev)
 	if (pdev_num >= MAX_XCP_PLATFORM_DEVICE)
 		return -ENODEV;
 
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
+
 	snprintf(dev_name, sizeof(dev_name), "amdgpu_xcp_%d", pdev_num);
 	pdev = platform_device_register_simple(dev_name, -1, NULL, 0);
 	if (IS_ERR(pdev))
@@ -85,11 +89,14 @@ out_unregister:
 	platform_device_unregister(pdev);
 
 	return ret;
+#endif
 }
 EXPORT_SYMBOL(amdgpu_xcp_drm_dev_alloc);
 
 void amdgpu_xcp_drv_release(void)
 {
+	STUB();
+#ifdef notyet
 	for (--pdev_num; pdev_num >= 0; --pdev_num) {
 		struct platform_device *pdev = xcp_dev[pdev_num]->pdev;
 
@@ -98,6 +105,7 @@ void amdgpu_xcp_drv_release(void)
 		xcp_dev[pdev_num] = NULL;
 	}
 	pdev_num = 0;
+#endif
 }
 EXPORT_SYMBOL(amdgpu_xcp_drv_release);
 

@@ -38,7 +38,7 @@ struct amdgpu_bo_list_entry {
 	struct amdgpu_bo		*bo;
 	struct amdgpu_bo_va		*bo_va;
 	uint32_t			priority;
-	struct page			**user_pages;
+	struct vm_page			**user_pages;
 	struct hmm_range		*range;
 	bool				user_invalidated;
 };
@@ -54,7 +54,7 @@ struct amdgpu_bo_list {
 
 	/* Protect access during command submission.
 	 */
-	struct mutex bo_list_mutex;
+	struct rwlock bo_list_mutex;
 
 	struct amdgpu_bo_list_entry entries[] __counted_by(num_entries);
 };
