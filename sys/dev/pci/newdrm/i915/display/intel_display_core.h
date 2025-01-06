@@ -29,7 +29,7 @@
 #include "intel_dmc_wl.h"
 #include "intel_wm_types.h"
 
-struct task_struct;
+struct proc;
 
 struct drm_i915_private;
 struct drm_property;
@@ -315,7 +315,7 @@ struct intel_display {
 
 	struct {
 		bool any_task_allowed;
-		struct task_struct *allowed_task;
+		struct proc *allowed_task;
 	} access;
 
 	struct {

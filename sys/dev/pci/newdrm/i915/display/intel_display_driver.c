@@ -186,11 +186,11 @@ void intel_display_driver_early_probe(struct drm_i915_private *i915)
 		return;
 
 	mtx_init(&i915->display.fb_tracking.lock, IPL_NONE);
-	mutex_init(&i915->display.backlight.lock);
-	mutex_init(&i915->display.audio.mutex);
-	mutex_init(&i915->display.wm.wm_mutex);
-	mutex_init(&i915->display.pps.mutex);
-	mutex_init(&i915->display.hdcp.hdcp_mutex);
+	rw_init(&i915->display.backlight.lock, "blight");
+	rw_init(&i915->display.audio.mutex, "daud");
+	rw_init(&i915->display.wm.wm_mutex, "wmm");
+	rw_init(&i915->display.pps.mutex, "ppsm");
+	rw_init(&i915->display.hdcp.hdcp_mutex, "hdcpc");
 
 	intel_display_irq_init(i915);
 	intel_dkl_phy_init(i915);
@@ -284,7 +284,7 @@ cleanup_bios:
 
 static void set_display_access(struct drm_i915_private *i915,
 			       bool any_task_allowed,
-			       struct task_struct *allowed_task)
+			       struct proc *allowed_task)
 {
 	struct drm_modeset_acquire_ctx ctx;
 	int err;
@@ -339,7 +339,11 @@ void intel_display_driver_disable_user_access(struct drm_i915_private *i915)
 {
 	intel_hpd_disable_detection_work(i915);
 
+#ifdef __linux__
 	set_display_access(i915, false, current);
+#else
+	set_display_access(i915, false, curproc);
+#endif
 }
 
 /**
@@ -375,7 +379,11 @@ void intel_display_driver_suspend_access(struct drm_i915_private *i915)
  */
 void intel_display_driver_resume_access(struct drm_i915_private *i915)
 {
+#ifdef __linux__
 	set_display_access(i915, false, current);
+#else
+	set_display_access(i915, false, curproc);
+#endif
 }
 
 /**
@@ -396,17 +404,29 @@ bool intel_display_driver_check_access(struct drm_i915_private *i915)
 	char allowed_task[TASK_COMM_LEN + 16] = "none";
 
 	if (i915->display.access.any_task_allowed ||
-	    i915->display.access.allowed_task == current)
+	    i915->display.access.allowed_task == curproc)
 		return true;
 
+#ifdef __linux__
 	snprintf(current_task, sizeof(current_task), "%s[%d]",
 		 get_task_comm(comm, current),
 		 task_pid_vnr(current));
+#else
+	snprintf(current_task, sizeof(current_task), "%s[%d]",
+		 curproc->p_p->ps_comm,
+		 curproc->p_p->ps_pid);
+#endif
 
 	if (i915->display.access.allowed_task)
+#ifdef __linux__
 		snprintf(allowed_task, sizeof(allowed_task), "%s[%d]",
 			 get_task_comm(comm, i915->display.access.allowed_task),
 			 task_pid_vnr(i915->display.access.allowed_task));
+#else
+		snprintf(allowed_task, sizeof(allowed_task), "%s[%d]",
+			 i915->display.access.allowed_task->p_p->ps_comm,
+			 i915->display.access.allowed_task->p_p->ps_pid);
+#endif
 
 	drm_dbg_kms(&i915->drm,
 		    "Reject display access from task %s (allowed to %s)\n",
