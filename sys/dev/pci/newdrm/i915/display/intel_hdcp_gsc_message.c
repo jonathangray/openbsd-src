@@ -10,6 +10,8 @@
 #include "intel_display_types.h"
 #include "intel_hdcp_gsc_message.h"
 
+#ifdef notyet
+
 int
 intel_hdcp_gsc_initiate_session(struct device *dev, struct hdcp_port_data *data,
 				struct hdcp2_ake_init *ake_data)
@@ -611,3 +613,5 @@ intel_hdcp_gsc_close_session(struct device *dev, struct hdcp_port_data *data)
 
 	return 0;
 }
+
+#endif /* notyet */
