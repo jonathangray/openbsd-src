@@ -304,7 +304,7 @@ static int swsci(struct intel_display *display,
 		 u32 function, u32 parm, u32 *parm_out)
 {
 	struct opregion_swsci *swsci;
-	struct pci_dev *pdev = display->drm.pdev;
+	struct pci_dev *pdev = display->drm->pdev;
 	u32 scic, dslp;
 	u16 swsci_val;
 	int ret;
@@ -877,7 +877,8 @@ static const struct dmi_system_id intel_no_opregion_vbt[] = {
 int intel_opregion_setup(struct intel_display *display)
 {
 	struct intel_opregion *opregion;
-	struct pci_dev *pdev = display->drm.pdev;
+	struct pci_dev *pdev = display->drm->pdev;
+	struct drm_i915_private *dev_priv = to_i915(display->drm);
 	u32 asls, mboxes;
 	char buf[sizeof(OPREGION_SIGNATURE)];
 	int err = 0;
@@ -916,8 +917,10 @@ int intel_opregion_setup(struct intel_display *display)
 	}
 #else
 	if (bus_space_map(dev_priv->bst, asls, OPREGION_SIZE,
-	    BUS_SPACE_MAP_LINEAR, &dev_priv->opregion_ioh))
-		return -ENOMEM;
+	    BUS_SPACE_MAP_LINEAR, &dev_priv->opregion_ioh)) {
+		err = -ENOMEM;
+		goto err_memremap;
+	}
 	base = bus_space_vaddr(dev_priv->bst, dev_priv->opregion_ioh);
 #endif
 
@@ -1305,6 +1308,7 @@ void intel_opregion_unregister(struct intel_display *display)
 void intel_opregion_cleanup(struct intel_display *display)
 {
 	struct intel_opregion *opregion = display->opregion;
+	struct drm_i915_private *i915 = to_i915(display->drm);
 
 	if (!opregion)
 		return;
