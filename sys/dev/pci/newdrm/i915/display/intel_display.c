@@ -5038,7 +5038,7 @@ pipe_config_cx0pll_mismatch(struct drm_printer *p, bool fastset,
 	struct drm_i915_private *i915 = to_i915(crtc->base.dev);
 	char *chipname = a->use_c10 ? "C10" : "C20";
 
-	pipe_config_mismatch(p, fastset, crtc, name, chipname);
+	pipe_config_mismatch(p, fastset, crtc, name, "%s", chipname);
 
 	drm_printf(p, "expected:\n");
 	intel_cx0pll_dump_hw_state(i915, a);

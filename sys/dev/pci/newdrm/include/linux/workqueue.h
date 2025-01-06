@@ -105,11 +105,12 @@ cancel_work(struct work_struct *work)
 		task_del(work->tq, &work->task);
 }
 
-static inline void
+static inline bool
 cancel_work_sync(struct work_struct *work)
 {
 	if (work->tq != NULL)
-		task_del(work->tq, &work->task);
+		return task_del(work->tq, &work->task);
+	return false;
 }
 
 #define work_pending(work)	task_pending(&(work)->task)
