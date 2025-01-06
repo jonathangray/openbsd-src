@@ -32,7 +32,7 @@ static void rcu_context_free(struct rcu_head *rcu)
 
 	trace_intel_context_free(ce);
 	if (intel_context_has_own_state(ce))
-		fput(ce->default_state);
+		uao_detach(ce->default_state);
 #ifdef __linux__
 	kmem_cache_free(slab_ce, ce);
 #else
