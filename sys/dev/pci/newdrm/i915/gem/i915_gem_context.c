@@ -2140,7 +2140,7 @@ static int set_context_image(struct i915_gem_context *ctx,
 {
 	struct i915_gem_context_param_context_image user;
 	struct intel_context *ce;
-	struct file *shmem_state;
+	struct uvm_object *shmem_state;
 	unsigned long lookup;
 	void *state;
 	int ret = 0;
@@ -2200,7 +2200,7 @@ static int set_context_image(struct i915_gem_context *ctx,
 		goto out_state;
 	}
 
-	shmem_state = shmem_create_from_data(ce->engine->name,
+	shmem_state = uao_create_from_data(ce->engine->name,
 					     state, ce->engine->context_size);
 	if (IS_ERR(shmem_state)) {
 		ret = PTR_ERR(shmem_state);
@@ -2209,7 +2209,7 @@ static int set_context_image(struct i915_gem_context *ctx,
 
 	if (intel_context_set_own_state(ce)) {
 		ret = -EBUSY;
-		fput(shmem_state);
+		uao_detach(shmem_state);
 		goto out_state;
 	}
 
