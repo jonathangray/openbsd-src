@@ -46,6 +46,25 @@ enum switch_power_state {
 	DRM_SWITCH_POWER_DYNAMIC_OFF = 3,
 };
 
+#ifdef __OpenBSD__
+#include <dev/pci/pcivar.h>
+#include <dev/pci/agpvar.h>
+
+struct drm_agp_head {
+	struct agp_softc			*agpdev;
+	const char				*chipset;
+	TAILQ_HEAD(agp_memlist, drm_agp_mem)	 memory;
+	struct agp_info				 info;
+	unsigned long				 base;
+	unsigned long				 mode;
+	unsigned long				 page_mask;
+	int					 acquired;
+	int					 cant_use_aperture;
+	int					 enabled;
+   	int					 mtrr;
+};
+#endif
+
 /**
  * struct drm_device - DRM device structure
  *
