@@ -52,6 +52,7 @@
 #include <linux/processor.h>
 #include <linux/sync_file.h>
 #include <linux/suspend.h>
+#include <linux/slab.h>
 
 #include <drm/drm_device.h>
 #include <drm/drm_connector.h>
@@ -3266,6 +3267,12 @@ void
 memunmap(void *addr)
 {
 	STUB();
+}
+
+void
+kfree_const(const void *addr)
+{
+        kfree(addr);
 }
 
 #include <linux/platform_device.h>

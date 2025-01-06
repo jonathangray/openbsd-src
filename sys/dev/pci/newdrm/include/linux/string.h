@@ -72,6 +72,14 @@ kstrdup(const char *str, int flags)
 	return (p);
 }
 
+static inline const char *
+kstrdup_const(const char *str, int flags)
+{
+	return kstrdup(str, flags);
+}
+
+void kfree_const(const void *);
+
 static inline int
 match_string(const char * const *array,  size_t n, const char *str)
 {
