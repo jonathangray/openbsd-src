@@ -168,7 +168,7 @@ file	dev/pci/newdrm/i915/display/intel_dp_aux_backlight.c	inteldrm
 file	dev/pci/newdrm/i915/display/intel_dp_hdcp.c		inteldrm
 file	dev/pci/newdrm/i915/display/intel_dp_link_training.c	inteldrm
 file	dev/pci/newdrm/i915/display/intel_dp_mst.c		inteldrm
-file	dev/pci/newdrm/i915/display/intel_dp_tunnel.c	inteldrm
+#file	dev/pci/newdrm/i915/display/intel_dp_tunnel.c	inteldrm
 file	dev/pci/newdrm/i915/display/intel_dpio_phy.c	inteldrm
 file	dev/pci/newdrm/i915/display/intel_dpll.c		inteldrm
 file	dev/pci/newdrm/i915/display/intel_dpll_mgr.c	inteldrm
