@@ -128,7 +128,7 @@ void intel_dmc_wl_init(struct intel_display *display)
 		return;
 
 	INIT_DELAYED_WORK(&wl->work, intel_dmc_wl_work);
-	spin_lock_init(&wl->lock);
+	mtx_init(&wl->lock, IPL_TTY);
 	refcount_set(&wl->refcount, 0);
 }
 
