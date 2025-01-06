@@ -1421,7 +1421,7 @@ static enum intel_step get_pre_gmdid_step(struct intel_display *display,
 					  const struct stepping_desc *main,
 					  const struct stepping_desc *sub)
 {
-	struct pci_dev *pdev = to_pci_dev(display->drm->dev);
+	struct pci_dev *pdev = display->drm->pdev;
 	const enum intel_step *map = main->map;
 	int size = main->size;
 	int revision = pdev->revision;
