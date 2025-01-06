@@ -148,7 +148,7 @@ file	dev/pci/newdrm/i915/display/intel_ddi.c		inteldrm
 file	dev/pci/newdrm/i915/display/intel_ddi_buf_trans.c	inteldrm
 file	dev/pci/newdrm/i915/display/intel_display.c	inteldrm
 #file	dev/pci/newdrm/i915/display/intel_display_debugfs.c	inteldrm
-file	dev/pci/newdrm/i915/display/intel_display_debugfs_params.c	inteldrm
+#file	dev/pci/newdrm/i915/display/intel_display_debugfs_params.c	inteldrm
 file	dev/pci/newdrm/i915/display/intel_display_device.c		inteldrm
 file	dev/pci/newdrm/i915/display/intel_display_driver.c		inteldrm
 file	dev/pci/newdrm/i915/display/intel_display_irq.c		inteldrm
