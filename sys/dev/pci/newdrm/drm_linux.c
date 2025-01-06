@@ -3163,9 +3163,6 @@ fd_install(int fd, struct file *fp)
 	struct proc *p = curproc;
 	struct filedesc *fdp = p->p_fd;
 
-	if (fp->f_type != DTYPE_SYNC)
-		return;
-
 	fdplock(fdp);
 	/* all callers use get_unused_fd_flags(O_CLOEXEC) */
 	fdinsert(fdp, fd, UF_EXCLOSE, fp);
@@ -3175,9 +3172,6 @@ fd_install(int fd, struct file *fp)
 void
 fput(struct file *fp)
 {
-	if (fp->f_type != DTYPE_SYNC)
-		return;
-	
 	FRELE(fp, curproc);
 }
 
