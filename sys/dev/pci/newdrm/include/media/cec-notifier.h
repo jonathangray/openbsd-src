@@ -39,4 +39,8 @@ cec_notifier_conn_unregister(struct cec_notifier *cn)
 {
 }
 
+static inline void
+cec_notifier_set_phys_addr(struct cec_notifier *cn, uint16_t paddr)
+{
+}
 #endif
