@@ -315,6 +315,7 @@ static int hsw_ips_debugfs_false_color_set(void *data, u64 val)
 	return ret;
 }
 
+#ifdef notyet
 DEFINE_DEBUGFS_ATTRIBUTE(hsw_ips_debugfs_false_color_fops,
 			 hsw_ips_debugfs_false_color_get,
 			 hsw_ips_debugfs_false_color_set,
@@ -347,8 +348,11 @@ static int hsw_ips_debugfs_status_show(struct seq_file *m, void *unused)
 
 DEFINE_SHOW_ATTRIBUTE(hsw_ips_debugfs_status);
 
+#endif /* notyet */
+
 void hsw_ips_crtc_debugfs_add(struct intel_crtc *crtc)
 {
+#ifdef notyet
 	if (!hsw_crtc_supports_ips(crtc))
 		return;
 
@@ -357,4 +361,5 @@ void hsw_ips_crtc_debugfs_add(struct intel_crtc *crtc)
 
 	debugfs_create_file("i915_ips_status", 0444, crtc->base.debugfs_entry,
 			    crtc, &hsw_ips_debugfs_status_fops);
+#endif
 }
