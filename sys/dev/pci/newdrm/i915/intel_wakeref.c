@@ -208,6 +208,8 @@ void intel_wakeref_auto_fini(struct intel_wakeref_auto *wf)
 void intel_ref_tracker_show(struct ref_tracker_dir *dir,
 			    struct drm_printer *p)
 {
+	STUB();
+#ifdef notyet
 	const size_t buf_size = PAGE_SIZE;
 	char *buf, *sb, *se;
 	size_t count;
@@ -231,4 +233,5 @@ void intel_ref_tracker_show(struct ref_tracker_dir *dir,
 			   count + 1 - buf_size);
 free:
 	kfree(buf);
+#endif
 }
