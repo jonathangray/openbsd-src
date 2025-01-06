@@ -3,6 +3,8 @@
 #ifndef _MEDIA_CEC_NOTIFIER_H
 #define _MEDIA_CEC_NOTIFIER_H
 
+#include <linux/debugfs.h> /* via media/cec.h */
+
 struct cec_notifier;
 
 struct cec_connector_info {
