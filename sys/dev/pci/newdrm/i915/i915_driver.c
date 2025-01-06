@@ -2264,7 +2264,7 @@ inteldrm_attach(struct device *parent, struct device *self, void *aux)
 		return;
 	}
 
-	pci_set_drvdata(dev->pdev, dev_priv);
+	pci_set_drvdata(dev->pdev, &dev_priv->drm);
 
 	/* Device parameters start as a copy of module parameters. */
 	i915_params_copy(&dev_priv->params, &i915_modparams);
@@ -2272,6 +2272,8 @@ inteldrm_attach(struct device *parent, struct device *self, void *aux)
 
 	/* Set up device info and initial runtime info. */
 	intel_device_info_driver_create(dev_priv, dev->pdev->device, info);
+
+	intel_display_device_probe(dev_priv);
 
 	/* uc_expand_default_options() with no GuC submission */
 	if (GRAPHICS_VER(dev_priv) >= 12 &&
