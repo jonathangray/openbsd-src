@@ -276,6 +276,7 @@ int intel_wakeref_wait_for_idle(struct intel_wakeref *wf);
 
 #define INTEL_WAKEREF_DEF ((intel_wakeref_t)(-1))
 
+#ifdef notyet
 static inline intel_wakeref_t intel_ref_tracker_alloc(struct ref_tracker_dir *dir)
 {
 	struct ref_tracker *user = NULL;
@@ -297,6 +298,7 @@ static inline void intel_ref_tracker_free(struct ref_tracker_dir *dir,
 
 void intel_ref_tracker_show(struct ref_tracker_dir *dir,
 			    struct drm_printer *p);
+#endif /* notyet */
 
 #if IS_ENABLED(CONFIG_DRM_I915_DEBUG_WAKEREF)
 
