@@ -1026,6 +1026,8 @@ drm_do_ioctl(struct drm_device *dev, int minor, u_long cmd, caddr_t data)
 		memcpy(adata, data, usize);
 	}
 
+	retcode = func(dev, adata, file_priv);
+
 	if (asize > usize) {
 		memcpy(data, adata, usize);
 		free(adata, M_DRM, asize);
