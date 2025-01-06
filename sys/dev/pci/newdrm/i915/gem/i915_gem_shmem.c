@@ -539,7 +539,11 @@ shmem_pwrite(struct drm_i915_gem_object *obj,
 
 	do {
 		unsigned int len, unwritten;
+#ifdef __linux__
 		struct folio *folio;
+#else
+		struct vm_page *page;
+#endif
 		void *data, *vaddr;
 		int err;
 		char __maybe_unused c;
@@ -565,18 +569,25 @@ shmem_pwrite(struct drm_i915_gem_object *obj,
 #else
 		struct pglist plist;
 		TAILQ_INIT(&plist);
-		if (uvm_obj_wire(obj->base.uao, trunc_page(offset),
-		    trunc_page(offset) + PAGE_SIZE, &plist)) {
+		if (uvm_obj_wire(obj->base.uao, trunc_page(pos),
+		    trunc_page(pos) + PAGE_SIZE, &plist)) {
 			return -ENOMEM;
 		}
 		page = TAILQ_FIRST(&plist);
 #endif
 
+#ifdef __linux__
 		vaddr = kmap_local_folio(folio, offset_in_folio(folio, pos));
 		pagefault_disable();
 		unwritten = __copy_from_user_inatomic(vaddr, user_data, len);
 		pagefault_enable();
 		kunmap_local(vaddr);
+#else
+		vaddr = kmap_atomic(page);
+		unwritten = __copy_from_user_inatomic(vaddr + pg,
+		    user_data, len);
+		kunmap_atomic(vaddr);
+#endif
 
 #ifdef __linux__
 		err = aops->write_end(obj->base.filp, mapping, pos, len,
@@ -584,8 +595,8 @@ shmem_pwrite(struct drm_i915_gem_object *obj,
 		if (err < 0)
 			return err;
 #else
-		uvm_obj_unwire(obj->base.uao, trunc_page(offset),
-		    trunc_page(offset) + PAGE_SIZE);
+		uvm_obj_unwire(obj->base.uao, trunc_page(pos),
+		    trunc_page(pos) + PAGE_SIZE);
 #endif
 
 		/* We don't handle -EFAULT, leave it to the caller to check */
