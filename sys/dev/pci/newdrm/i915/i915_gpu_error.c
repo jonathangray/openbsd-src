@@ -2454,6 +2454,7 @@ void intel_klog_error_capture(struct intel_gt *gt,
 }
 #endif
 
+#ifdef __linux__
 static ssize_t gpu_state_read(struct file *file, char __user *ubuf,
 			      size_t count, loff_t *pos)
 {
@@ -2619,6 +2620,8 @@ static const struct bin_attribute error_state_attr = {
 	.read = error_state_read,
 	.write = error_state_write,
 };
+
+#endif /* __linux__ */
 
 void i915_gpu_error_sysfs_setup(struct drm_i915_private *i915)
 {
