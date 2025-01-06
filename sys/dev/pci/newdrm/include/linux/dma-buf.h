@@ -22,6 +22,7 @@
 #include <sys/systm.h>
 #include <linux/dma-resv.h>
 #include <linux/list.h>
+#include <linux/file.h>
 
 struct dma_buf_ops;
 struct device;
