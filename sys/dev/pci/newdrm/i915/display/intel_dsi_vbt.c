@@ -200,6 +200,8 @@ static const u8 *mipi_exec_delay(struct intel_dsi *intel_dsi, const u8 *data)
 static void soc_gpio_set_value(struct intel_connector *connector, u8 gpio_index,
 			       const char *con_id, u8 idx, bool value)
 {
+	STUB();
+#ifdef notyet
 	struct drm_i915_private *dev_priv = to_i915(connector->base.dev);
 	/* XXX: this table is a quick ugly hack. */
 	static struct gpio_desc *soc_gpio_table[U8_MAX + 1];
@@ -219,12 +221,15 @@ static void soc_gpio_set_value(struct intel_connector *connector, u8 gpio_index,
 
 		soc_gpio_table[gpio_index] = gpio_desc;
 	}
+#endif
 }
 
 static void soc_opaque_gpio_set_value(struct intel_connector *connector,
 				      u8 gpio_index, const char *chip,
 				      const char *con_id, u8 idx, bool value)
 {
+	STUB();
+#ifdef notyet
 	struct gpiod_lookup_table *lookup;
 
 	lookup = kzalloc(struct_size(lookup, table, 2), GFP_KERNEL);
@@ -241,6 +246,7 @@ static void soc_opaque_gpio_set_value(struct intel_connector *connector,
 
 	gpiod_remove_lookup_table(lookup);
 	kfree(lookup);
+#endif
 }
 
 static void vlv_gpio_set_value(struct intel_connector *connector,
@@ -305,6 +311,7 @@ static void chv_gpio_set_value(struct intel_connector *connector,
 		soc_opaque_gpio_set_value(connector, gpio_index, "INT33FF:01", "Panel N",
 					  gpio_index - CHV_GPIO_IDX_START_N, value);
 	}
+#endif
 }
 
 static void bxt_gpio_set_value(struct intel_connector *connector,
