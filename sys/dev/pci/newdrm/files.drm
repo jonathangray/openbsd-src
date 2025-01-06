@@ -2,7 +2,7 @@
 
 #file	dev/pci/newdrm/aperture.c			drm
 file	dev/pci/newdrm/dma-resv.c			drm
-#file	dev/pci/newdrm/drm_agpsupport.c		drm & agp
+file	dev/pci/newdrm/drm_agpsupport.c		drm & agp
 file	dev/pci/newdrm/drm_aperture.c		drm
 file	dev/pci/newdrm/drm_atomic.c		drm
 file	dev/pci/newdrm/drm_atomic_helper.c		drm
