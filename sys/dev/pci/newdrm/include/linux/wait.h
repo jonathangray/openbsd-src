@@ -292,6 +292,12 @@ wake_up_all_locked(wait_queue_head_t *wqh)
 		.private = curproc,			\
 		.func = autoremove_wake_function,	\
 		.entry = LIST_HEAD_INIT((name).entry),	\
-	}						
+	}
 
+#define	DEFINE_WAIT_FUNC(name, fn)			\
+	struct wait_queue_entry name = {		\
+		.private = curproc,			\
+		.func = fn,				\
+		.entry = LIST_HEAD_INIT((name).entry),	\
+	}
 #endif
