@@ -124,4 +124,12 @@ ror32(uint32_t word, unsigned int shift)
 	return (word >> shift) | (word << (32 - shift));
 }
 
+static inline void
+__assign_bit(u_int b, volatile void *p, bool set)
+{
+	if (set)
+		__set_bit(b, p);
+	else
+		__clear_bit(b, p);
+}
 #endif
