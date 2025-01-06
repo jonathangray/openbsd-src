@@ -37,6 +37,18 @@ kmap_atomic(struct vm_page *pg)
 	return kmap_atomic_prot(pg, PAGE_KERNEL);
 }
 
+static inline void *
+kmap_local_page(struct vm_page *pg)
+{
+	return kmap_atomic(pg);
+}
+
+static inline void
+kunmap_local(void *addr)
+{
+	kunmap_atomic(addr);
+}
+
 static inline void
 memcpy_from_page(char *dst, struct vm_page *page, size_t off, size_t len)
 {
