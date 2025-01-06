@@ -9,7 +9,7 @@
 #include <linux/swap.h>
 
 #include <drm/drm_cache.h>
-#include <drm/drm_legacy.h>	/* for drm_dmamem_alloc() */
+#include <drm/drm_drv.h>	/* for drm_dmamem_alloc() */
 
 #include "gt/intel_gt.h"
 #include "i915_drv.h"
