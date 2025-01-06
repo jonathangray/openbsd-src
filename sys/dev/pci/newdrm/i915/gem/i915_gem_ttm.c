@@ -1290,7 +1290,7 @@ vm_fault_ttm(struct uvm_faultinfo *ufi, vaddr_t vaddr, vm_page_t *pps,
 			struct intel_memory_region *mr = obj->mm.placements[i];
 			unsigned int flags;
 
-			if (!mr->io_size && mr->type != INTEL_MEMORY_SYSTEM)
+			if (!resource_size(&mr->io) && mr->type != INTEL_MEMORY_SYSTEM)
 				continue;
 
 			flags = obj->flags;
