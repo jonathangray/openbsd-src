@@ -57,6 +57,15 @@ kmemdup(const void *src, size_t len, int flags)
 }
 
 static inline void *
+kmemdup_array(const void *src, size_t nemb, size_t size, int flags)
+{
+	void *p = mallocarray(nemb, size, M_DRM, flags);
+	if (p)
+		memcpy(p, src, nemb * size);
+	return (p);
+}
+
+static inline void *
 kstrdup(const char *str, int flags)
 {
 	size_t len;
