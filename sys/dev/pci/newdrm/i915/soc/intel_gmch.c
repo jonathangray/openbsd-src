@@ -33,11 +33,6 @@ int intel_gmch_bridge_setup(struct drm_i915_private *i915)
 	return drmm_add_action_or_reset(&i915->drm, intel_gmch_bridge_release,
 					i915->gmch.pdev);
 }
-
-static int mchbar_reg(struct drm_i915_private *i915)
-{
-	return GRAPHICS_VER(i915) >= 4 ? MCHBAR_I965 : MCHBAR_I915;
-}
 #else
 int intel_gmch_bridge_setup(struct drm_i915_private *i915)
 {
@@ -56,6 +51,11 @@ int intel_gmch_bridge_setup(struct drm_i915_private *i915)
 					i915->gmch.pdev);
 }
 #endif
+
+static int mchbar_reg(struct drm_i915_private *i915)
+{
+	return GRAPHICS_VER(i915) >= 4 ? MCHBAR_I965 : MCHBAR_I915;
+}
 
 /* Allocate space for the MCH regs if needed, return nonzero on error */
 static int
@@ -209,9 +209,13 @@ unsigned int intel_gmch_vga_set_decode(struct pci_dev *pdev, bool enable_decode)
 
 	intel_gmch_vga_set_state(i915, enable_decode);
 
+	STUB();
+	return 0;
+#ifdef notyet
 	if (enable_decode)
 		return VGA_RSRC_LEGACY_IO | VGA_RSRC_LEGACY_MEM |
 		       VGA_RSRC_NORMAL_IO | VGA_RSRC_NORMAL_MEM;
 	else
 		return VGA_RSRC_NORMAL_IO | VGA_RSRC_NORMAL_MEM;
+#endif
 }
