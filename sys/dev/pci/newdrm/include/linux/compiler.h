@@ -47,4 +47,8 @@
 #pragma GCC diagnostic ignored "-Wformat-zero-length"
 #endif
 
+#define __diag_push()
+#define __diag_ignore_all(x, y)
+#define __diag_pop()
+
 #endif

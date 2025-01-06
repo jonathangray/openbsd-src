@@ -283,7 +283,7 @@ static int intelfb_create(struct drm_fb_helper *helper,
 	struct drm_framebuffer *fb = ifbdev->helper.fb;
 	struct rasops_info *ri = &dev_priv->ro;
 
-	ri->ri_bits = vaddr;
+	ri->ri_bits = info->screen_base;
 	ri->ri_depth = fb->format->cpp[0] * 8;
 	ri->ri_stride = fb->pitches[0];
 	ri->ri_width = sizes->fb_width;
@@ -627,7 +627,7 @@ static void intel_fbdev_client_unregister(struct drm_client_dev *client)
 {
 	struct drm_fb_helper *fb_helper = drm_fb_helper_from_client(client);
 	struct drm_device *dev = fb_helper->dev;
-	struct pci_dev *pdev = to_pci_dev(dev->dev);
+	struct pci_dev *pdev = dev->pdev;
 
 	if (fb_helper->info) {
 		vga_switcheroo_client_fb_set(pdev, NULL);
@@ -657,7 +657,7 @@ static int intel_fbdev_client_hotplug(struct drm_client_dev *client)
 {
 	struct drm_fb_helper *fb_helper = drm_fb_helper_from_client(client);
 	struct drm_device *dev = client->dev;
-	struct pci_dev *pdev = to_pci_dev(dev->dev);
+	struct pci_dev *pdev = dev->pdev;
 	int ret;
 
 	if (dev->fb_helper)
