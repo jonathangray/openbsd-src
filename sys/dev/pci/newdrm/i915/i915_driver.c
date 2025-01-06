@@ -1827,9 +1827,10 @@ static const struct drm_driver i915_drm_driver = {
 
 #ifdef __OpenBSD__
 
-#include <drm/drm_legacy.h> /* for agp */
+#include <drm/drm_device.h> /* for agp */
 #include <drm/drm_utils.h>
 #include <drm/drm_fb_helper.h>
+#include "display/intel_display_types.h"
 
 #ifdef __amd64__
 #include "efifb.h"
@@ -2033,10 +2034,11 @@ void
 inteldrm_doswitch(void *v)
 {
 	struct inteldrm_softc *dev_priv = v;
+	struct drm_device *dev = &dev_priv->drm;
 	struct rasops_info *ri = &dev_priv->ro;
 
 	rasops_show_screen(ri, dev_priv->switchcookie, 0, NULL, NULL);
-	intel_fbdev_restore_mode(dev_priv);
+	drm_client_dev_restore(dev);
 
 	if (dev_priv->switchcb)
 		(*dev_priv->switchcb)(dev_priv->switchcbarg, 0, 0);
@@ -2046,13 +2048,14 @@ void
 inteldrm_enter_ddb(void *v, void *cookie)
 {
 	struct inteldrm_softc *dev_priv = v;
+	struct drm_device *dev = &dev_priv->drm;
 	struct rasops_info *ri = &dev_priv->ro;
 
 	if (cookie == ri->ri_active)
 		return;
 
 	rasops_show_screen(ri, cookie, 0, NULL, NULL);
-	intel_fbdev_restore_mode(dev_priv);
+	drm_client_dev_restore(dev);
 }
 
 int
@@ -2266,7 +2269,6 @@ inteldrm_attach(struct device *parent, struct device *self, void *aux)
 	/* Device parameters start as a copy of module parameters. */
 	i915_params_copy(&dev_priv->params, &i915_modparams);
 	dev_priv->params.request_timeout_ms = 0;
-	dev_priv->params.enable_psr = 0;
 
 	/* Set up device info and initial runtime info. */
 	intel_device_info_driver_create(dev_priv, dev->pdev->device, info);
@@ -2274,9 +2276,7 @@ inteldrm_attach(struct device *parent, struct device *self, void *aux)
 	/* uc_expand_default_options() with no GuC submission */
 	if (GRAPHICS_VER(dev_priv) >= 12 &&
 	    (INTEL_INFO(dev_priv)->platform != INTEL_TIGERLAKE) &&
-	    (INTEL_INFO(dev_priv)->platform != INTEL_ROCKETLAKE) &&
-	    (INTEL_INFO(dev_priv)->platform != INTEL_XEHPSDV) &&
-	    (INTEL_INFO(dev_priv)->platform != INTEL_PONTEVECCHIO))
+	    (INTEL_INFO(dev_priv)->platform != INTEL_ROCKETLAKE))
 		dev_priv->params.enable_guc = ENABLE_GUC_LOAD_HUC;
 
 	mmio_bar = (GRAPHICS_VER(dev_priv) == 2) ? 0x14 : 0x10;
@@ -2499,7 +2499,7 @@ inteldrm_activate(struct device *self, int act)
 	case DVACT_WAKEUP:
 		i915_drm_resume_early(dev);
 		i915_drm_resume(dev);
-		intel_fbdev_restore_mode(dev_priv);
+		drm_client_dev_restore(dev);
 		rv = config_suspend(dev->dev, act);
 		break;
 	}

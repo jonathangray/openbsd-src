@@ -63,7 +63,10 @@ struct drm_agp_head {
 	int					 enabled;
    	int					 mtrr;
 };
+#if IS_ENABLED(CONFIG_AGP)
+struct drm_agp_head *drm_legacy_agp_init(struct drm_device *dev);
 #endif
+#endif /* __OpenBSD__ */
 
 /**
  * struct drm_device - DRM device structure
