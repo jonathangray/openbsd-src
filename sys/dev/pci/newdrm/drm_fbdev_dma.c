@@ -215,14 +215,14 @@ static int drm_fbdev_dma_helper_fb_probe(struct drm_fb_helper *fb_helper,
 	}
 #else
 	STUB();
-	ret = -ENOSYS;
-	goto err_drm_fb_helper_release_info;
 #endif
 
 	return 0;
 
+#ifdef notyet
 err_drm_fb_helper_release_info:
 	drm_fb_helper_release_info(fb_helper);
+#endif
 err_drm_client_buffer_vunmap:
 	fb_helper->fb = NULL;
 	fb_helper->buffer = NULL;
