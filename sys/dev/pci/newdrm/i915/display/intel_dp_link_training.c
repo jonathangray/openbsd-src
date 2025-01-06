@@ -1721,6 +1721,8 @@ static int i915_dp_force_link_rate_show(struct seq_file *m, void *data)
 	return 0;
 }
 
+#ifdef __linux__
+
 static int parse_link_rate(struct intel_dp *intel_dp, const char __user *ubuf, size_t len)
 {
 	char *kbuf;
@@ -1884,6 +1886,8 @@ static ssize_t i915_dp_force_lane_count_write(struct file *file,
 	return len;
 }
 DEFINE_SHOW_STORE_ATTRIBUTE(i915_dp_force_lane_count);
+
+#endif /* __linux__ */
 
 static int i915_dp_max_link_rate_show(void *data, u64 *val)
 {
