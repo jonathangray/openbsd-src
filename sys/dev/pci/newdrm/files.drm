@@ -1027,7 +1027,7 @@ file	dev/pci/newdrm/amd/display/dc/core/dc_vm_helper.c		amdgpu
 file	dev/pci/newdrm/amd/display/dc/dc_dmub_srv.c		amdgpu
 file	dev/pci/newdrm/amd/display/dc/dc_edid_parser.c		amdgpu
 file	dev/pci/newdrm/amd/display/dc/dc_helper.c			amdgpu
-file	dev/pci/newdrm/amd/display/dc/dc_spl_translate.c		amdgpu
+file	dev/pci/newdrm/amd/display/dc/dc_spl_translate.c		amdgpu & bios
 file	dev/pci/newdrm/amd/display/dc/dccg/dcn20/dcn20_dccg.c	amdgpu & bios
 file	dev/pci/newdrm/amd/display/dc/dccg/dcn201/dcn201_dccg.c	amdgpu & bios
 file	dev/pci/newdrm/amd/display/dc/dccg/dcn21/dcn21_dccg.c	amdgpu & bios
@@ -1140,40 +1140,40 @@ file	dev/pci/newdrm/amd/display/dc/dml/dcn321/dcn321_fpu.c		amdgpu & bios
 file	dev/pci/newdrm/amd/display/dc/dml/dcn35/dcn35_fpu.c		amdgpu & bios
 file	dev/pci/newdrm/amd/display/dc/dml/dcn351/dcn351_fpu.c		amdgpu & bios
 file	dev/pci/newdrm/amd/display/dc/dml/dcn401/dcn401_fpu.c		amdgpu & bios
-file	dev/pci/newdrm/amd/display/dc/dml/display_mode_lib.c		amdgpu
-file	dev/pci/newdrm/amd/display/dc/dml/display_mode_vba.c		amdgpu
-file	dev/pci/newdrm/amd/display/dc/dml/display_rq_dlg_helpers.c		amdgpu
-file	dev/pci/newdrm/amd/display/dc/dml/dml1_display_rq_dlg_calc.c	amdgpu
-file	dev/pci/newdrm/amd/display/dc/dml/dsc/rc_calc_fpu.c		amdgpu
-file	dev/pci/newdrm/amd/display/dc/dml2/display_mode_core.c		amdgpu
-file	dev/pci/newdrm/amd/display/dc/dml2/display_mode_util.c		amdgpu
-file	dev/pci/newdrm/amd/display/dc/dml2/dml21/dml21_translation_helper.c	amdgpu
-file	dev/pci/newdrm/amd/display/dc/dml2/dml21/dml21_utils.c		amdgpu
-file	dev/pci/newdrm/amd/display/dc/dml2/dml21/dml21_wrapper.c		amdgpu
-file	dev/pci/newdrm/amd/display/dc/dml2/dml21/src/dml2_core/dml2_core_dcn4.c	amdgpu
-file	dev/pci/newdrm/amd/display/dc/dml2/dml21/src/dml2_core/dml2_core_dcn4_calcs.c	amdgpu
-file	dev/pci/newdrm/amd/display/dc/dml2/dml21/src/dml2_core/dml2_core_factory.c	amdgpu
-#file	dev/pci/newdrm/amd/display/dc/dml2/dml21/src/dml2_core/dml2_core_shared.c	amdgpu
-file	dev/pci/newdrm/amd/display/dc/dml2/dml21/src/dml2_core/dml2_core_utils.c	amdgpu
-file	dev/pci/newdrm/amd/display/dc/dml2/dml21/src/dml2_dpmm/dml2_dpmm_dcn4.c	amdgpu
-file	dev/pci/newdrm/amd/display/dc/dml2/dml21/src/dml2_dpmm/dml2_dpmm_factory.c	amdgpu
-file	dev/pci/newdrm/amd/display/dc/dml2/dml21/src/dml2_mcg/dml2_mcg_dcn4.c	amdgpu
-file	dev/pci/newdrm/amd/display/dc/dml2/dml21/src/dml2_mcg/dml2_mcg_factory.c	amdgpu
-file	dev/pci/newdrm/amd/display/dc/dml2/dml21/src/dml2_pmo/dml2_pmo_dcn3.c	amdgpu
-file	dev/pci/newdrm/amd/display/dc/dml2/dml21/src/dml2_pmo/dml2_pmo_dcn4_fams2.c	amdgpu
-file	dev/pci/newdrm/amd/display/dc/dml2/dml21/src/dml2_pmo/dml2_pmo_factory.c	amdgpu
-file	dev/pci/newdrm/amd/display/dc/dml2/dml21/src/dml2_standalone_libraries/lib_float_math.c	amdgpu
-file	dev/pci/newdrm/amd/display/dc/dml2/dml21/src/dml2_top/dml2_top_optimization.c	amdgpu
-file	dev/pci/newdrm/amd/display/dc/dml2/dml21/src/dml2_top/dml_top.c		amdgpu
-file	dev/pci/newdrm/amd/display/dc/dml2/dml21/src/dml2_top/dml_top_mcache.c	amdgpu
-file	dev/pci/newdrm/amd/display/dc/dml2/dml21/src/inc/dml2_debug.c		amdgpu
-file	dev/pci/newdrm/amd/display/dc/dml2/dml2_dc_resource_mgmt.c		amdgpu
-file	dev/pci/newdrm/amd/display/dc/dml2/dml2_mall_phantom.c		amdgpu
-file	dev/pci/newdrm/amd/display/dc/dml2/dml2_policy.c			amdgpu
-file	dev/pci/newdrm/amd/display/dc/dml2/dml2_translation_helper.c	amdgpu
-file	dev/pci/newdrm/amd/display/dc/dml2/dml2_utils.c			amdgpu
-file	dev/pci/newdrm/amd/display/dc/dml2/dml2_wrapper.c			amdgpu
-file	dev/pci/newdrm/amd/display/dc/dml2/dml_display_rq_dlg_calc.c	amdgpu
+file	dev/pci/newdrm/amd/display/dc/dml/display_mode_lib.c		amdgpu & bios
+file	dev/pci/newdrm/amd/display/dc/dml/display_mode_vba.c		amdgpu & bios
+file	dev/pci/newdrm/amd/display/dc/dml/display_rq_dlg_helpers.c		amdgpu & bios
+file	dev/pci/newdrm/amd/display/dc/dml/dml1_display_rq_dlg_calc.c	amdgpu & bios
+file	dev/pci/newdrm/amd/display/dc/dml/dsc/rc_calc_fpu.c		amdgpu & bios
+file	dev/pci/newdrm/amd/display/dc/dml2/display_mode_core.c		amdgpu & bios
+file	dev/pci/newdrm/amd/display/dc/dml2/display_mode_util.c		amdgpu & bios
+file	dev/pci/newdrm/amd/display/dc/dml2/dml21/dml21_translation_helper.c	amdgpu & bios
+file	dev/pci/newdrm/amd/display/dc/dml2/dml21/dml21_utils.c		amdgpu & bios
+file	dev/pci/newdrm/amd/display/dc/dml2/dml21/dml21_wrapper.c		amdgpu & bios
+file	dev/pci/newdrm/amd/display/dc/dml2/dml21/src/dml2_core/dml2_core_dcn4.c	amdgpu & bios
+file	dev/pci/newdrm/amd/display/dc/dml2/dml21/src/dml2_core/dml2_core_dcn4_calcs.c	amdgpu & bios
+file	dev/pci/newdrm/amd/display/dc/dml2/dml21/src/dml2_core/dml2_core_factory.c	amdgpu & bios
+#file	dev/pci/newdrm/amd/display/dc/dml2/dml21/src/dml2_core/dml2_core_shared.c	amdgpu & bios
+file	dev/pci/newdrm/amd/display/dc/dml2/dml21/src/dml2_core/dml2_core_utils.c	amdgpu & bios
+file	dev/pci/newdrm/amd/display/dc/dml2/dml21/src/dml2_dpmm/dml2_dpmm_dcn4.c	amdgpu & bios
+file	dev/pci/newdrm/amd/display/dc/dml2/dml21/src/dml2_dpmm/dml2_dpmm_factory.c	amdgpu & bios
+file	dev/pci/newdrm/amd/display/dc/dml2/dml21/src/dml2_mcg/dml2_mcg_dcn4.c	amdgpu & bios
+file	dev/pci/newdrm/amd/display/dc/dml2/dml21/src/dml2_mcg/dml2_mcg_factory.c	amdgpu & bios
+file	dev/pci/newdrm/amd/display/dc/dml2/dml21/src/dml2_pmo/dml2_pmo_dcn3.c	amdgpu & bios
+file	dev/pci/newdrm/amd/display/dc/dml2/dml21/src/dml2_pmo/dml2_pmo_dcn4_fams2.c	amdgpu & bios
+file	dev/pci/newdrm/amd/display/dc/dml2/dml21/src/dml2_pmo/dml2_pmo_factory.c	amdgpu & bios
+file	dev/pci/newdrm/amd/display/dc/dml2/dml21/src/dml2_standalone_libraries/lib_float_math.c	amdgpu & bios
+file	dev/pci/newdrm/amd/display/dc/dml2/dml21/src/dml2_top/dml2_top_optimization.c	amdgpu & bios
+file	dev/pci/newdrm/amd/display/dc/dml2/dml21/src/dml2_top/dml_top.c		amdgpu & bios
+file	dev/pci/newdrm/amd/display/dc/dml2/dml21/src/dml2_top/dml_top_mcache.c	amdgpu & bios
+file	dev/pci/newdrm/amd/display/dc/dml2/dml21/src/inc/dml2_debug.c		amdgpu & bios
+file	dev/pci/newdrm/amd/display/dc/dml2/dml2_dc_resource_mgmt.c		amdgpu & bios
+file	dev/pci/newdrm/amd/display/dc/dml2/dml2_mall_phantom.c		amdgpu & bios
+file	dev/pci/newdrm/amd/display/dc/dml2/dml2_policy.c			amdgpu & bios
+file	dev/pci/newdrm/amd/display/dc/dml2/dml2_translation_helper.c	amdgpu & bios
+file	dev/pci/newdrm/amd/display/dc/dml2/dml2_utils.c			amdgpu & bios
+file	dev/pci/newdrm/amd/display/dc/dml2/dml2_wrapper.c			amdgpu & bios
+file	dev/pci/newdrm/amd/display/dc/dml2/dml_display_rq_dlg_calc.c	amdgpu & bios
 file	dev/pci/newdrm/amd/display/dc/dpp/dcn10/dcn10_dpp.c		amdgpu & bios
 file	dev/pci/newdrm/amd/display/dc/dpp/dcn10/dcn10_dpp_cm.c		amdgpu & bios
 file	dev/pci/newdrm/amd/display/dc/dpp/dcn10/dcn10_dpp_dscl.c		amdgpu & bios
@@ -1202,20 +1202,20 @@ file	dev/pci/newdrm/amd/display/dc/gpio/dce120/hw_factory_dce120.c	amdgpu
 file	dev/pci/newdrm/amd/display/dc/gpio/dce120/hw_translate_dce120.c	amdgpu
 file	dev/pci/newdrm/amd/display/dc/gpio/dce80/hw_factory_dce80.c	amdgpu
 file	dev/pci/newdrm/amd/display/dc/gpio/dce80/hw_translate_dce80.c	amdgpu
-file	dev/pci/newdrm/amd/display/dc/gpio/dcn10/hw_factory_dcn10.c	amdgpu & bios
-file	dev/pci/newdrm/amd/display/dc/gpio/dcn10/hw_translate_dcn10.c	amdgpu & bios
-file	dev/pci/newdrm/amd/display/dc/gpio/dcn20/hw_factory_dcn20.c	amdgpu & bios
-file	dev/pci/newdrm/amd/display/dc/gpio/dcn20/hw_translate_dcn20.c	amdgpu & bios
-file	dev/pci/newdrm/amd/display/dc/gpio/dcn21/hw_factory_dcn21.c	amdgpu & bios
-file	dev/pci/newdrm/amd/display/dc/gpio/dcn21/hw_translate_dcn21.c	amdgpu & bios
-file	dev/pci/newdrm/amd/display/dc/gpio/dcn30/hw_factory_dcn30.c	amdgpu & bios
-file	dev/pci/newdrm/amd/display/dc/gpio/dcn30/hw_translate_dcn30.c	amdgpu & bios
-file	dev/pci/newdrm/amd/display/dc/gpio/dcn315/hw_factory_dcn315.c	amdgpu & bios
-file	dev/pci/newdrm/amd/display/dc/gpio/dcn315/hw_translate_dcn315.c	amdgpu & bios
-file	dev/pci/newdrm/amd/display/dc/gpio/dcn32/hw_factory_dcn32.c	amdgpu & bios
-file	dev/pci/newdrm/amd/display/dc/gpio/dcn32/hw_translate_dcn32.c	amdgpu & bios
-file	dev/pci/newdrm/amd/display/dc/gpio/dcn401/hw_factory_dcn401.c	amdgpu & bios
-file	dev/pci/newdrm/amd/display/dc/gpio/dcn401/hw_translate_dcn401.c	amdgpu & bios
+file	dev/pci/newdrm/amd/display/dc/gpio/dcn10/hw_factory_dcn10.c	amdgpu
+file	dev/pci/newdrm/amd/display/dc/gpio/dcn10/hw_translate_dcn10.c	amdgpu
+file	dev/pci/newdrm/amd/display/dc/gpio/dcn20/hw_factory_dcn20.c	amdgpu
+file	dev/pci/newdrm/amd/display/dc/gpio/dcn20/hw_translate_dcn20.c	amdgpu
+file	dev/pci/newdrm/amd/display/dc/gpio/dcn21/hw_factory_dcn21.c	amdgpu
+file	dev/pci/newdrm/amd/display/dc/gpio/dcn21/hw_translate_dcn21.c	amdgpu
+file	dev/pci/newdrm/amd/display/dc/gpio/dcn30/hw_factory_dcn30.c	amdgpu
+file	dev/pci/newdrm/amd/display/dc/gpio/dcn30/hw_translate_dcn30.c	amdgpu
+file	dev/pci/newdrm/amd/display/dc/gpio/dcn315/hw_factory_dcn315.c	amdgpu
+file	dev/pci/newdrm/amd/display/dc/gpio/dcn315/hw_translate_dcn315.c	amdgpu
+file	dev/pci/newdrm/amd/display/dc/gpio/dcn32/hw_factory_dcn32.c	amdgpu
+file	dev/pci/newdrm/amd/display/dc/gpio/dcn32/hw_translate_dcn32.c	amdgpu
+file	dev/pci/newdrm/amd/display/dc/gpio/dcn401/hw_factory_dcn401.c	amdgpu
+file	dev/pci/newdrm/amd/display/dc/gpio/dcn401/hw_translate_dcn401.c	amdgpu
 file	dev/pci/newdrm/amd/display/dc/gpio/gpio_base.c		amdgpu
 file	dev/pci/newdrm/amd/display/dc/gpio/gpio_service.c		amdgpu
 file	dev/pci/newdrm/amd/display/dc/gpio/hw_ddc.c		amdgpu
@@ -1382,20 +1382,20 @@ file	dev/pci/newdrm/amd/display/dc/spl/spl_fixpt31_32.c			amdgpu
 file	dev/pci/newdrm/amd/display/dc/virtual/virtual_link_encoder.c	amdgpu
 file	dev/pci/newdrm/amd/display/dc/virtual/virtual_link_hwss.c		amdgpu
 file	dev/pci/newdrm/amd/display/dc/virtual/virtual_stream_encoder.c	amdgpu
-file	dev/pci/newdrm/amd/display/dmub/src/dmub_dcn20.c		amdgpu & bios
-file	dev/pci/newdrm/amd/display/dmub/src/dmub_dcn21.c		amdgpu & bios
-file	dev/pci/newdrm/amd/display/dmub/src/dmub_dcn30.c		amdgpu & bios
-file	dev/pci/newdrm/amd/display/dmub/src/dmub_dcn301.c		amdgpu & bios
-file	dev/pci/newdrm/amd/display/dmub/src/dmub_dcn302.c		amdgpu & bios
-file	dev/pci/newdrm/amd/display/dmub/src/dmub_dcn303.c		amdgpu & bios
-file	dev/pci/newdrm/amd/display/dmub/src/dmub_dcn31.c		amdgpu & bios
-file	dev/pci/newdrm/amd/display/dmub/src/dmub_dcn314.c		amdgpu & bios
-file	dev/pci/newdrm/amd/display/dmub/src/dmub_dcn315.c		amdgpu & bios
-file	dev/pci/newdrm/amd/display/dmub/src/dmub_dcn316.c		amdgpu & bios
-file	dev/pci/newdrm/amd/display/dmub/src/dmub_dcn32.c		amdgpu & bios
-file	dev/pci/newdrm/amd/display/dmub/src/dmub_dcn35.c		amdgpu & bios
-file	dev/pci/newdrm/amd/display/dmub/src/dmub_dcn351.c		amdgpu & bios
-file	dev/pci/newdrm/amd/display/dmub/src/dmub_dcn401.c		amdgpu & bios
+file	dev/pci/newdrm/amd/display/dmub/src/dmub_dcn20.c		amdgpu
+file	dev/pci/newdrm/amd/display/dmub/src/dmub_dcn21.c		amdgpu
+file	dev/pci/newdrm/amd/display/dmub/src/dmub_dcn30.c		amdgpu
+file	dev/pci/newdrm/amd/display/dmub/src/dmub_dcn301.c		amdgpu
+file	dev/pci/newdrm/amd/display/dmub/src/dmub_dcn302.c		amdgpu
+file	dev/pci/newdrm/amd/display/dmub/src/dmub_dcn303.c		amdgpu
+file	dev/pci/newdrm/amd/display/dmub/src/dmub_dcn31.c		amdgpu
+file	dev/pci/newdrm/amd/display/dmub/src/dmub_dcn314.c		amdgpu
+file	dev/pci/newdrm/amd/display/dmub/src/dmub_dcn315.c		amdgpu
+file	dev/pci/newdrm/amd/display/dmub/src/dmub_dcn316.c		amdgpu
+file	dev/pci/newdrm/amd/display/dmub/src/dmub_dcn32.c		amdgpu
+file	dev/pci/newdrm/amd/display/dmub/src/dmub_dcn35.c		amdgpu
+file	dev/pci/newdrm/amd/display/dmub/src/dmub_dcn351.c		amdgpu
+file	dev/pci/newdrm/amd/display/dmub/src/dmub_dcn401.c		amdgpu
 file	dev/pci/newdrm/amd/display/dmub/src/dmub_reg.c		amdgpu
 file	dev/pci/newdrm/amd/display/dmub/src/dmub_srv.c		amdgpu
 file	dev/pci/newdrm/amd/display/dmub/src/dmub_srv_stat.c	amdgpu
