@@ -2095,14 +2095,9 @@ static int init_tlb_lookup(struct intel_guc *guc)
 
 	init_waitqueue_head(&wait->wq);
 
-#ifdef notyet
 	/* Preallocate a shared id for use under memory pressure. */
 	err = xa_alloc_cyclic_irq(&guc->tlb_lookup, &guc->serial_slot, wait,
 				  xa_limit_32b, &guc->next_seqno, GFP_KERNEL);
-#else
-	STUB();
-	err = ENOSYS;
-#endif
 	if (err < 0) {
 		kfree(wait);
 		return err;
@@ -4905,7 +4900,7 @@ int intel_guc_tlb_invalidation_done(struct intel_guc *guc,
 static long must_wait_woken(struct wait_queue_entry *wq_entry, long timeout)
 {
 	STUB();
-	return 0;
+	return -ENOSYS;
 #ifdef notyet
 	/*
 	 * This is equivalent to wait_woken() with the exception that
