@@ -129,8 +129,6 @@ static int drm_fbdev_ttm_helper_fb_probe(struct drm_fb_helper *fb_helper,
 	ret = fb_deferred_io_init(info);
 	if (ret)
 		goto err_drm_fb_helper_release_info;
-#else
-	STUB();
 #endif
 
 	return 0;
