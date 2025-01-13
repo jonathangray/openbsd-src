@@ -12,6 +12,7 @@
 
 #include <drm/drm_fbdev_ttm.h>
 
+#ifdef notyet
 /* @user: 1=userspace, 0=fbcon */
 static int drm_fbdev_ttm_fb_open(struct fb_info *info, int user)
 {
@@ -55,6 +56,7 @@ static void drm_fbdev_ttm_fb_destroy(struct fb_info *info)
 	drm_fb_helper_unprepare(fb_helper);
 	kfree(fb_helper);
 }
+#endif /* notyet */
 
 static const struct fb_ops drm_fbdev_ttm_fb_ops = {
 #ifdef notyet
