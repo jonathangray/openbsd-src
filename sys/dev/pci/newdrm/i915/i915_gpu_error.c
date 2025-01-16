@@ -2274,6 +2274,9 @@ void i915_error_state_store(struct i915_gpu_coredump *error)
 void i915_capture_error_state(struct intel_gt *gt,
 			      intel_engine_mask_t engine_mask, u32 dump_flags)
 {
+	/* intel_pool_init and co not handled */
+	STUB();
+#ifdef notyet
 	struct i915_gpu_coredump *error;
 
 	error = i915_gpu_coredump(gt, engine_mask, dump_flags);
@@ -2284,6 +2287,7 @@ void i915_capture_error_state(struct intel_gt *gt,
 
 	i915_error_state_store(error);
 	i915_gpu_coredump_put(error);
+#endif
 }
 
 static struct i915_gpu_coredump *
