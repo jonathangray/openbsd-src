@@ -125,7 +125,7 @@ atomic_dec_if_positive(volatile int *v)
 /* 32 bit powerpc lacks 64 bit atomics */
 #if !defined(__powerpc__) || defined(__powerpc64__)
 
-typedef int64_t atomic64_t;
+typedef int64_t atomic64_t __aligned(8);
 
 #define ATOMIC64_INIT(x)	(x)
 
@@ -133,14 +133,14 @@ typedef int64_t atomic64_t;
 #define atomic64_read(p)	READ_ONCE(*(p))
 
 static inline int64_t
-atomic64_xchg(volatile int64_t *v, int64_t n)
+atomic64_xchg(atomic64_t *v, int64_t n)
 {
 	__sync_synchronize();
 	return __sync_lock_test_and_set(v, n);
 }
 
 static inline int64_t
-atomic64_cmpxchg(volatile int64_t *v, int64_t o, int64_t n)
+atomic64_cmpxchg(atomic64_t *v, int64_t o, int64_t n)
 {
 	return __sync_val_compare_and_swap(v, o, n);
 }
