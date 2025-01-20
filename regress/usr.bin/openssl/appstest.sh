@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $OpenBSD: appstest.sh,v 1.65 2024/08/23 04:57:12 tb Exp $
+# $OpenBSD: appstest.sh,v 1.67 2025/01/19 11:04:35 tb Exp $
 #
 # Copyright (c) 2016 Kinichiro Inoguchi <inoguchi@openbsd.org>
 #
@@ -338,7 +338,7 @@ function test_key {
 
 		echo -n "ec - $curve ... ecparam ... "
 		$openssl_bin ecparam -out $ecparam -name $curve -genkey \
-			-param_enc explicit -conv_form compressed -C
+			-param_enc explicit -conv_form compressed
 		check_exit_status $?
 
 		echo -n "ec ... "
@@ -934,7 +934,7 @@ __EOF__
 	check_exit_status $?
 
 	start_message "x509 ... get detail info about server cert#1"
-	$openssl_bin x509 -in $sv_rsa_cert -text -C -dates -startdate -enddate \
+	$openssl_bin x509 -in $sv_rsa_cert -text -dates -startdate -enddate \
 		-fingerprint -issuer -issuer_hash -issuer_hash_old \
 		-subject -hash -subject_hash -subject_hash_old -ocsp_uri \
 		-ocspid -modulus -pubkey -serial -email -noout -trustout \
@@ -1883,7 +1883,7 @@ function test_version {
 #---------#---------#---------#---------#---------#---------#---------#---------
 
 openssl_bin=${OPENSSL:-/usr/bin/openssl}
-other_openssl_bin=${OTHER_OPENSSL:-/usr/local/bin/eopenssl11}
+other_openssl_bin=${OTHER_OPENSSL:-/usr/local/bin/eopenssl33}
 other_openssl_version=`$other_openssl_bin version | cut -b 1-10`
 
 ecdsa_tests=0

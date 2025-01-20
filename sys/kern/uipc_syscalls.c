@@ -1,4 +1,4 @@
-/*	$OpenBSD: uipc_syscalls.c,v 1.220 2024/11/05 09:14:19 claudio Exp $	*/
+/*	$OpenBSD: uipc_syscalls.c,v 1.222 2025/01/16 16:35:01 bluhm Exp $	*/
 /*	$NetBSD: uipc_syscalls.c,v 1.19 1996/02/09 19:00:48 christos Exp $	*/
 
 /*
@@ -257,7 +257,7 @@ doaccept(struct proc *p, int sock, struct sockaddr *name, socklen_t *anamelen,
 	socklen_t namelen;
 	int error, tmpfd;
 	struct socket *head, *so;
-	int cloexec, nflag, persocket;
+	int cloexec, nflag;
 
 	cloexec = (flags & SOCK_CLOEXEC) ? UF_EXCLOSE : 0;
 
@@ -279,9 +279,7 @@ doaccept(struct proc *p, int sock, struct sockaddr *name, socklen_t *anamelen,
 	nam = m_get(M_WAIT, MT_SONAME);
 
 	head = headfp->f_data;
-	solock(head);
-
-	persocket = solock_persocket(head);
+	solock_shared(head);
 
 	if (isdnssocket(head) || (head->so_options & SO_ACCEPTCONN) == 0) {
 		error = EINVAL;
@@ -315,8 +313,7 @@ doaccept(struct proc *p, int sock, struct sockaddr *name, socklen_t *anamelen,
 	 */
 	so = TAILQ_FIRST(&head->so_q);
 
-	if (persocket)
-		solock(so);
+	solock_nonet(so);
 
 	if (soqremque(so, 1) == 0)
 		panic("accept");
@@ -328,8 +325,7 @@ doaccept(struct proc *p, int sock, struct sockaddr *name, socklen_t *anamelen,
 	/* connection has been removed from the listen queue */
 	knote(&head->so_rcv.sb_klist, 0);
 
-	if (persocket)
-		sounlock(head);
+	sounlock_nonet(head);
 
 	fp->f_type = DTYPE_SOCKET;
 	fp->f_flag = FREAD | FWRITE | nflag;
@@ -338,10 +334,7 @@ doaccept(struct proc *p, int sock, struct sockaddr *name, socklen_t *anamelen,
 
 	error = soaccept(so, nam);
 
-	if (persocket)
-		sounlock(so);
-	else
-		sounlock(head);
+	sounlock_shared(so);
 
 	if (error)
 		goto out;
@@ -364,7 +357,7 @@ doaccept(struct proc *p, int sock, struct sockaddr *name, socklen_t *anamelen,
 	return 0;
 
 out_unlock:
-	sounlock(head);
+	sounlock_shared(head);
 out:
 	fdplock(fdp);
 	fdremove(fdp, tmpfd);

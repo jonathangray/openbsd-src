@@ -1,4 +1,4 @@
-/*	$OpenBSD: kern_sysctl.c,v 1.459 2024/12/28 20:34:05 mvs Exp $	*/
+/*	$OpenBSD: kern_sysctl.c,v 1.462 2025/01/14 18:37:51 mvs Exp $	*/
 /*	$NetBSD: kern_sysctl.c,v 1.17 1996/05/20 17:49:05 mrg Exp $	*/
 
 /*-
@@ -403,6 +403,11 @@ kern_sysctl_dirs(int top_name, int *name, u_int namelen,
 	int error;
 
 	switch (top_name) {
+	case KERN_MALLOCSTATS:
+		return (sysctl_malloc(name, namelen, oldp, oldlenp,
+		    newp, newlen, p));
+	case KERN_POOL:
+		return (sysctl_dopool(name, namelen, oldp, oldlenp));
 #if NAUDIO > 0
 	case KERN_AUDIO:
 		return (sysctl_audio(name, namelen, oldp, oldlenp,
@@ -452,14 +457,9 @@ kern_sysctl_dirs_locked(int top_name, int *name, u_int namelen,
 		return (sysctl_doprof(name, namelen, oldp, oldlenp,
 		    newp, newlen));
 #endif
-	case KERN_MALLOCSTATS:
-		return (sysctl_malloc(name, namelen, oldp, oldlenp,
-		    newp, newlen, p));
 	case KERN_TTY:
 		return (sysctl_tty(name, namelen, oldp, oldlenp,
 		    newp, newlen));
-	case KERN_POOL:
-		return (sysctl_dopool(name, namelen, oldp, oldlenp));
 #if defined(SYSVMSG) || defined(SYSVSEM) || defined(SYSVSHM)
 	case KERN_SYSVIPC_INFO:
 		return (sysctl_sysvipc(name, namelen, oldp, oldlenp));
@@ -1672,9 +1672,10 @@ sysctl_file(int *name, u_int namelen, char *where, size_t *sizep,
 
 	kf = malloc(sizeof(*kf), M_TEMP, M_WAITOK);
 
-#define FILLIT2(fp, fdp, i, vp, pr, so) do {				\
+#define FILLIT(fp, fdp, i, vp, pr) do {					\
 	if (buflen >= elem_size && elem_count > 0) {			\
-		fill_file(kf, fp, fdp, i, vp, pr, p, so, show_pointers);\
+		fill_file(kf, fp, fdp, i, vp, pr, p, NULL,		\
+		    show_pointers);					\
 		error = copyout(kf, dp, outsize);			\
 		if (error)						\
 			break;						\
@@ -1684,62 +1685,59 @@ sysctl_file(int *name, u_int namelen, char *where, size_t *sizep,
 	}								\
 	needed += elem_size;						\
 } while (0)
-#define FILLIT(fp, fdp, i, vp, pr) \
-	FILLIT2(fp, fdp, i, vp, pr, NULL)
-#define FILLSO(so) \
-	FILLIT2(NULL, NULL, 0, NULL, NULL, so)
+
+#define FILLINPTABLE(table)						\
+do {									\
+	struct inpcb_iterator iter = { .inp_table = NULL };		\
+	struct inpcb *inp = NULL;					\
+	struct socket *so;						\
+									\
+	mtx_enter(&(table)->inpt_mtx);					\
+	while ((inp = in_pcb_iterator(table, inp, &iter)) != NULL) {	\
+		if (buflen >= elem_size && elem_count > 0) {		\
+			mtx_enter(&inp->inp_sofree_mtx);		\
+			so = soref(inp->inp_socket);			\
+			mtx_leave(&inp->inp_sofree_mtx);		\
+			if (so == NULL)					\
+				continue;				\
+			mtx_leave(&(table)->inpt_mtx);			\
+			solock_shared(so);				\
+			fill_file(kf, NULL, NULL, 0, NULL, NULL, p,	\
+			    so, show_pointers);				\
+			sounlock_shared(so);				\
+			sorele(so);					\
+			error = copyout(kf, dp, outsize);		\
+			mtx_enter(&(table)->inpt_mtx);			\
+			if (error) {					\
+				in_pcb_iterator_abort((table), inp,	\
+				    &iter);				\
+				break;					\
+			}						\
+			dp += elem_size;				\
+			buflen -= elem_size;				\
+			elem_count--;					\
+		}							\
+		needed += elem_size;					\
+	}								\
+	mtx_leave(&(table)->inpt_mtx);					\
+} while (0)
 
 	switch (op) {
 	case KERN_FILE_BYFILE:
 		/* use the inp-tables to pick up closed connections, too */
 		if (arg == DTYPE_SOCKET) {
-			struct inpcb *inp;
-
-			NET_LOCK();
-			mtx_enter(&tcbtable.inpt_mtx);
-			TAILQ_FOREACH(inp, &tcbtable.inpt_queue, inp_queue)
-				FILLSO(inp->inp_socket);
-			mtx_leave(&tcbtable.inpt_mtx);
+			FILLINPTABLE(&tcbtable);
 #ifdef INET6
-			mtx_enter(&tcb6table.inpt_mtx);
-			TAILQ_FOREACH(inp, &tcb6table.inpt_queue, inp_queue)
-				FILLSO(inp->inp_socket);
-			mtx_leave(&tcb6table.inpt_mtx);
+			FILLINPTABLE(&tcb6table);
 #endif
-			mtx_enter(&udbtable.inpt_mtx);
-			TAILQ_FOREACH(inp, &udbtable.inpt_queue, inp_queue) {
-				if (in_pcb_is_iterator(inp))
-					continue;
-				FILLSO(inp->inp_socket);
-			}
-			mtx_leave(&udbtable.inpt_mtx);
+			FILLINPTABLE(&udbtable);
 #ifdef INET6
-			mtx_enter(&udb6table.inpt_mtx);
-			TAILQ_FOREACH(inp, &udb6table.inpt_queue, inp_queue) {
-				if (in_pcb_is_iterator(inp))
-					continue;
-				FILLSO(inp->inp_socket);
-			}
-			mtx_leave(&udb6table.inpt_mtx);
+			FILLINPTABLE(&udb6table);
 #endif
-			mtx_enter(&rawcbtable.inpt_mtx);
-			TAILQ_FOREACH(inp, &rawcbtable.inpt_queue, inp_queue) {
-				if (in_pcb_is_iterator(inp))
-					continue;
-				FILLSO(inp->inp_socket);
-			}
-			mtx_leave(&rawcbtable.inpt_mtx);
+			FILLINPTABLE(&rawcbtable);
 #ifdef INET6
-			mtx_enter(&rawin6pcbtable.inpt_mtx);
-			TAILQ_FOREACH(inp, &rawin6pcbtable.inpt_queue,
-			    inp_queue) {
-				if (in_pcb_is_iterator(inp))
-					continue;
-				FILLSO(inp->inp_socket);
-			}
-			mtx_leave(&rawin6pcbtable.inpt_mtx);
+			FILLINPTABLE(&rawin6pcbtable);
 #endif
-			NET_UNLOCK();
 		}
 		fp = NULL;
 		while ((fp = fd_iterfile(fp, p)) != NULL) {

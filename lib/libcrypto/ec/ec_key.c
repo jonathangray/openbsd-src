@@ -1,4 +1,4 @@
-/* $OpenBSD: ec_key.c,v 1.48 2024/11/16 10:38:10 tb Exp $ */
+/* $OpenBSD: ec_key.c,v 1.50 2025/01/11 20:57:03 tb Exp $ */
 /*
  * Written by Nils Larsch for the OpenSSL project.
  */
@@ -235,7 +235,7 @@ EC_KEY_generate_key(EC_KEY *eckey)
 }
 LCRYPTO_ALIAS(EC_KEY_generate_key);
 
-int
+static int
 ec_key_gen(EC_KEY *eckey)
 {
 	BIGNUM *priv_key = NULL;
@@ -591,6 +591,8 @@ EC_KEY_new_method(ENGINE *engine)
 	return NULL;
 }
 LCRYPTO_ALIAS(EC_KEY_new_method);
+
+#define EC_KEY_METHOD_DYNAMIC   1
 
 EC_KEY_METHOD *
 EC_KEY_METHOD_new(const EC_KEY_METHOD *meth)

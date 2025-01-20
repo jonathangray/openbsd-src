@@ -1,4 +1,4 @@
-/*	$OpenBSD: rde_peer.c,v 1.42 2024/12/12 20:19:03 claudio Exp $ */
+/*	$OpenBSD: rde_peer.c,v 1.45 2025/01/13 13:50:34 claudio Exp $ */
 
 /*
  * Copyright (c) 2019 Claudio Jeker <claudio@openbsd.org>
@@ -31,8 +31,8 @@ struct peer_tree	 zombietable = RB_INITIALIZER(&zombietable);
 struct rde_peer		*peerself;
 static long		 imsg_pending;
 
-CTASSERT(sizeof(peerself->recv_eor) * 8 > AID_MAX);
-CTASSERT(sizeof(peerself->sent_eor) * 8 > AID_MAX);
+CTASSERT(sizeof(peerself->recv_eor) * 8 >= AID_MAX);
+CTASSERT(sizeof(peerself->sent_eor) * 8 >= AID_MAX);
 
 struct iq {
 	SIMPLEQ_ENTRY(iq)	entry;
@@ -42,7 +42,7 @@ struct iq {
 int
 peer_has_as4byte(struct rde_peer *peer)
 {
-	return (peer->capa.as4byte);
+	return peer->capa.as4byte;
 }
 
 /*
@@ -54,13 +54,27 @@ peer_has_add_path(struct rde_peer *peer, uint8_t aid, int mode)
 {
 	if (aid >= AID_MAX)
 		return 0;
-	return (peer->capa.add_path[aid] & mode);
+	return peer->capa.add_path[aid] & mode;
+}
+
+int
+peer_has_ext_msg(struct rde_peer *peer)
+{
+	return peer->capa.ext_msg;
+}
+
+int
+peer_has_ext_nexthop(struct rde_peer *peer, uint8_t aid)
+{
+	if (aid >= AID_MAX)
+		return 0;
+	return peer->capa.ext_nh[aid];
 }
 
 int
 peer_accept_no_as_set(struct rde_peer *peer)
 {
-	return (peer->flags & PEERFLAG_NO_AS_SET);
+	return peer->flags & PEERFLAG_NO_AS_SET;
 }
 
 void
@@ -147,7 +161,7 @@ peer_add(uint32_t id, struct peer_config *p_conf, struct filter_head *rules)
 
 	if ((peer = peer_get(id))) {
 		memcpy(&peer->conf, p_conf, sizeof(struct peer_config));
-		return (peer);
+		return peer;
 	}
 
 	peer = calloc(1, sizeof(struct rde_peer));
@@ -188,7 +202,7 @@ peer_add(uint32_t id, struct peer_config *p_conf, struct filter_head *rules)
 	if (RB_INSERT(peer_tree, &peertable, peer) != NULL)
 		fatalx("rde peer table corrupted");
 
-	return (peer);
+	return peer;
 }
 
 struct filter_head *

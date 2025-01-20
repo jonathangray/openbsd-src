@@ -1,4 +1,4 @@
-/*	$OpenBSD: uipc_socket2.c,v 1.162 2024/12/30 12:12:35 mvs Exp $	*/
+/*	$OpenBSD: uipc_socket2.c,v 1.166 2025/01/18 10:44:52 bluhm Exp $	*/
 /*	$NetBSD: uipc_socket2.c,v 1.11 1996/02/04 02:17:55 christos Exp $	*/
 
 /*
@@ -100,20 +100,17 @@ soisconnected(struct socket *so)
 	so->so_state |= SS_ISCONNECTED;
 
 	if (head != NULL && so->so_onq == &head->so_q0) {
-		int persocket = solock_persocket(so);
+		KASSERT(solock_persocket(so));
 
-		if (persocket) {
-			soref(head);
+		soref(head);
+		sounlock(so);
+		solock(head);
+		solock(so);
 
-			sounlock(so);
-			solock(head);
-			solock(so);
-
-			if (so->so_onq != &head->so_q0) {
-				sorele(head, 0);
-				return;
-			}
-
+		if (so->so_onq != &head->so_q0) {
+			sounlock(head);
+			sorele(head);
+			return;
 		}
 
 		soqremque(so, 0);
@@ -121,8 +118,8 @@ soisconnected(struct socket *so)
 		sorwakeup(head);
 		wakeup_one(&head->so_timeo);
 
-		if (persocket)
-			sorele(head, 0);
+		sounlock(head);
+		sorele(head);
 	} else {
 		wakeup(&so->so_timeo);
 		sorwakeup(so);
@@ -183,14 +180,8 @@ struct socket *
 sonewconn(struct socket *head, int connstatus, int wait)
 {
 	struct socket *so;
-	int persocket = solock_persocket(head);
 	int soqueue = connstatus ? 1 : 0;
 
-	/*
-	 * XXXSMP as long as `so' and `head' share the same lock, we
-	 * can call soreserve() and pr_attach() below w/o explicitly
-	 * locking `so'.
-	 */
 	soassertlocked(head);
 
 	if (m_pool_used() > 95)
@@ -215,8 +206,7 @@ sonewconn(struct socket *head, int connstatus, int wait)
 	/*
 	 * Lock order will be `head' -> `so' while these sockets are linked.
 	 */
-	if (persocket)
-		solock(so);
+	solock_nonet(so);
 
 	/*
 	 * Inherit watermarks but those may get clamped in low mem situations.
@@ -249,14 +239,12 @@ sonewconn(struct socket *head, int connstatus, int wait)
 		wakeup(&head->so_timeo);
 	}
 
-	if (persocket)
-		sounlock(so);
+	sounlock_nonet(so);
 
 	return (so);
 
 fail:
-	if (persocket)
-		sounlock(so);
+	sounlock_nonet(so);
 	sigio_free(&so->so_sigio);
 	klist_free(&so->so_rcv.sb_klist);
 	klist_free(&so->so_snd.sb_klist);
@@ -359,16 +347,22 @@ solock_shared(struct socket *so)
 	switch (so->so_proto->pr_domain->dom_family) {
 	case PF_INET:
 	case PF_INET6:
-		if (ISSET(so->so_proto->pr_flags, PR_MPSOCKET)) {
-			NET_LOCK_SHARED();
-			rw_enter_write(&so->so_lock);
-		} else
-			NET_LOCK();
-		break;
-	default:
-		rw_enter_write(&so->so_lock);
+		NET_LOCK_SHARED();
 		break;
 	}
+	rw_enter_write(&so->so_lock);
+}
+
+void
+solock_nonet(struct socket *so)
+{
+	switch (so->so_proto->pr_domain->dom_family) {
+	case PF_INET:
+	case PF_INET6:
+		NET_ASSERT_LOCKED();
+		break;
+	}
+	rw_enter_write(&so->so_lock);
 }
 
 int
@@ -416,19 +410,19 @@ sounlock(struct socket *so)
 void
 sounlock_shared(struct socket *so)
 {
+	rw_exit_write(&so->so_lock);
 	switch (so->so_proto->pr_domain->dom_family) {
 	case PF_INET:
 	case PF_INET6:
-		if (ISSET(so->so_proto->pr_flags, PR_MPSOCKET)) {
-			rw_exit_write(&so->so_lock);
-			NET_UNLOCK_SHARED();
-		} else
-			NET_UNLOCK();
-		break;
-	default:
-		rw_exit_write(&so->so_lock);
+		NET_UNLOCK_SHARED();
 		break;
 	}
+}
+
+void
+sounlock_nonet(struct socket *so)
+{
+	rw_exit_write(&so->so_lock);
 }
 
 void
@@ -475,15 +469,11 @@ sosleep_nsec(struct socket *so, void *ident, int prio, const char *wmesg,
 	switch (so->so_proto->pr_domain->dom_family) {
 	case PF_INET:
 	case PF_INET6:
-		if (ISSET(so->so_proto->pr_flags, PR_MPSOCKET) &&
-		    rw_status(&netlock) == RW_READ) {
+		if (rw_status(&netlock) == RW_READ)
 			rw_exit_write(&so->so_lock);
-		}
 		ret = rwsleep_nsec(ident, &netlock, prio, wmesg, nsecs);
-		if (ISSET(so->so_proto->pr_flags, PR_MPSOCKET) &&
-		    rw_status(&netlock) == RW_READ) {
+		if (rw_status(&netlock) == RW_READ)
 			rw_enter_write(&so->so_lock);
-		}
 		break;
 	default:
 		ret = rwsleep_nsec(ident, &so->so_lock, prio, wmesg, nsecs);

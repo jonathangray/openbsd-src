@@ -1,4 +1,4 @@
-/*	$OpenBSD: ufshcivar.h,v 1.10 2024/10/08 00:46:29 jsg Exp $ */
+/*	$OpenBSD: ufshcivar.h,v 1.12 2025/01/18 19:42:39 mglocker Exp $ */
 
 /*
  * Copyright (c) 2022 Marcus Glocker <mglocker@openbsd.org>
@@ -15,6 +15,15 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
+
+/* #define UFSHCI_DEBUG */
+#ifdef UFSHCI_DEBUG
+extern int ufshci_debug;
+#define DPRINTF(l, x...)        do { if ((l) <= ufshci_debug) printf(x); } \
+                                    while (0)
+#else
+#define DPRINTF(l, x...)
+#endif
 
 #define UFSHCI_READ_4(sc, x) \
     bus_space_read_4((sc)->sc_iot, (sc)->sc_ioh, (x))
@@ -35,14 +44,17 @@ struct ufshci_dmamem {
 struct ufshci_softc;
 
 /* SCSI */
+enum ccb_status {
+	CCB_STATUS_FREE,
+	CCB_STATUS_INPROGRESS,
+	CCB_STATUS_READY2FREE,
+	CCB_STATUS_COUNT
+};
 struct ufshci_ccb {
 	SIMPLEQ_ENTRY(ufshci_ccb)	 ccb_entry;
 	bus_dmamap_t			 ccb_dmamap;
 	void				*ccb_cookie;
 	int				 ccb_slot;
-#define CCB_STATUS_FREE		0
-#define CCB_STATUS_INPROGRESS	1
-#define CCB_STATUS_READY2FREE	2
 	int				 ccb_status;
 	void				 (*ccb_done)(struct ufshci_softc *,
 					     struct ufshci_ccb *);
@@ -79,6 +91,13 @@ struct ufshci_softc {
 	struct mutex		 sc_ccb_mtx;
 	struct ufshci_ccb_list	 sc_ccb_list;
 	struct ufshci_ccb	*sc_ccbs;
+
+	/* kstat */
+	uint64_t		*sc_stats_slots;
+	struct mutex		 sc_kstat_mtx_ccb;
+	struct mutex		 sc_kstat_mtx_slot;
+	struct kstat		*sc_kstat_ccb;
+	struct kstat		*sc_kstat_slot;
 };
 
 int	ufshci_intr(void *);

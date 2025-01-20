@@ -1,4 +1,4 @@
-/*	$OpenBSD: tcp_usrreq.c,v 1.236 2025/01/01 13:44:22 bluhm Exp $	*/
+/*	$OpenBSD: tcp_usrreq.c,v 1.240 2025/01/16 11:59:20 bluhm Exp $	*/
 /*	$NetBSD: tcp_usrreq.c,v 1.20 1996/02/13 23:44:16 christos Exp $	*/
 
 /*
@@ -160,6 +160,12 @@ const struct pr_usrreqs tcp6_usrreqs = {
 #endif
 
 const struct sysctl_bounded_args tcpctl_vars[] = {
+	{ TCPCTL_KEEPINITTIME, &tcp_keepinit_sec, 1,
+	    3 * TCPTV_KEEPINIT / TCP_TIME(1) },
+	{ TCPCTL_KEEPIDLE, &tcp_keepidle_sec, 1,
+	    5 * TCPTV_KEEPIDLE / TCP_TIME(1) },
+	{ TCPCTL_KEEPINTVL, &tcp_keepintvl_sec, 1,
+	    3 * TCPTV_KEEPINTVL / TCP_TIME(1) },
 	{ TCPCTL_RFC1323, &tcp_do_rfc1323, 0, 1 },
 	{ TCPCTL_SACK, &tcp_do_sack, 0, 1 },
 	{ TCPCTL_MSSDFLT, &tcp_mssdflt, TCP_MSS, 65535 },
@@ -198,8 +204,10 @@ tcp_sogetpcb(struct socket *so, struct inpcb **rinp, struct tcpcb **rtp)
 	 * structure will point at a subsidiary (struct tcpcb).
 	 */
 	if ((inp = sotoinpcb(so)) == NULL || (tp = intotcpcb(inp)) == NULL) {
-		if (so->so_error)
-			return so->so_error;
+		int error;
+
+		if ((error = READ_ONCE(so->so_error)))
+			return error;
 		return EINVAL;
 	}
 
@@ -680,7 +688,7 @@ tcp_connect(struct socket *so, struct mbuf *nam)
 	soisconnecting(so);
 	tcpstat_inc(tcps_connattempt);
 	tp->t_state = TCPS_SYN_SENT;
-	TCP_TIMER_ARM(tp, TCPT_KEEP, tcptv_keep_init);
+	TCP_TIMER_ARM(tp, TCPT_KEEP, atomic_load_int(&tcp_keepinit));
 	tcp_set_iss_tsm(tp);
 	tcp_sendseqinit(tp);
 	tp->snd_last = tp->snd_una;
@@ -1105,8 +1113,13 @@ tcp_usrclosed(struct tcpcb *tp)
 		 * a full close, we start a timer to make sure sockets are
 		 * not left in FIN_WAIT_2 forever.
 		 */
-		if (tp->t_state == TCPS_FIN_WAIT_2)
-			TCP_TIMER_ARM(tp, TCPT_2MSL, tcp_maxidle);
+		if (tp->t_state == TCPS_FIN_WAIT_2) {
+			int maxidle;
+
+			maxidle = TCPTV_KEEPCNT *
+			    atomic_load_int(&tcp_keepidle);
+			TCP_TIMER_ARM(tp, TCPT_2MSL, maxidle);
+		}
 	}
 	return (tp);
 }
@@ -1120,14 +1133,12 @@ tcp_ident(void *oldp, size_t *oldlenp, void *newp, size_t newlen, int dodrop)
 	int error = 0;
 	struct tcp_ident_mapping tir;
 	struct inpcb *inp;
-	struct tcpcb *tp = NULL;
+	struct socket *so = NULL;
 	struct sockaddr_in *fin, *lin;
 #ifdef INET6
 	struct sockaddr_in6 *fin6, *lin6;
 	struct in6_addr f6, l6;
 #endif
-
-	NET_ASSERT_LOCKED();
 
 	if (dodrop) {
 		if (oldp != NULL || *oldlenp != 0)
@@ -1148,25 +1159,41 @@ tcp_ident(void *oldp, size_t *oldlenp, void *newp, size_t newlen, int dodrop)
 		if ((error = copyin(oldp, &tir, sizeof (tir))) != 0 )
 			return (error);
 	}
+
+	NET_LOCK_SHARED();
+
 	switch (tir.faddr.ss_family) {
 #ifdef INET6
 	case AF_INET6:
+		if (tir.laddr.ss_family != AF_INET6) {
+			NET_UNLOCK_SHARED();
+			return (EAFNOSUPPORT);
+		}
 		fin6 = (struct sockaddr_in6 *)&tir.faddr;
 		error = in6_embedscope(&f6, fin6, NULL, NULL);
-		if (error)
+		if (error) {
+			NET_UNLOCK_SHARED();
 			return EINVAL;	/*?*/
+		}
 		lin6 = (struct sockaddr_in6 *)&tir.laddr;
 		error = in6_embedscope(&l6, lin6, NULL, NULL);
-		if (error)
+		if (error) {
+			NET_UNLOCK_SHARED();
 			return EINVAL;	/*?*/
+		}
 		break;
 #endif
 	case AF_INET:
+		if (tir.laddr.ss_family != AF_INET) {
+			NET_UNLOCK_SHARED();
+			return (EAFNOSUPPORT);
+		}
 		fin = (struct sockaddr_in *)&tir.faddr;
 		lin = (struct sockaddr_in *)&tir.laddr;
 		break;
 	default:
-		return (EINVAL);
+		NET_UNLOCK_SHARED();
+		return (EAFNOSUPPORT);
 	}
 
 	switch (tir.faddr.ss_family) {
@@ -1185,11 +1212,20 @@ tcp_ident(void *oldp, size_t *oldlenp, void *newp, size_t newlen, int dodrop)
 	}
 
 	if (dodrop) {
-		if (inp && (tp = intotcpcb(inp)) &&
-		    ((inp->inp_socket->so_options & SO_ACCEPTCONN) == 0))
+		struct tcpcb *tp = NULL;
+
+		if (inp != NULL) {
+			so = in_pcbsolock_ref(inp);
+			if (so != NULL)
+				tp = intotcpcb(inp);
+		}
+		if (tp != NULL && !ISSET(so->so_options, SO_ACCEPTCONN))
 			tp = tcp_drop(tp, ECONNABORTED);
 		else
 			error = ESRCH;
+
+		in_pcbsounlock_rele(inp, so);
+		NET_UNLOCK_SHARED();
 		in_pcbunref(inp);
 		return (error);
 	}
@@ -1210,18 +1246,23 @@ tcp_ident(void *oldp, size_t *oldlenp, void *newp, size_t newlen, int dodrop)
 		}
 	}
 
-	if (inp != NULL && (inp->inp_socket->so_state & SS_CONNECTOUT)) {
-		tir.ruid = inp->inp_socket->so_ruid;
-		tir.euid = inp->inp_socket->so_euid;
+	if (inp != NULL)
+		so = in_pcbsolock_ref(inp);
+
+	if (so != NULL && ISSET(so->so_state, SS_CONNECTOUT)) {
+		tir.ruid = so->so_ruid;
+		tir.euid = so->so_euid;
 	} else {
 		tir.ruid = -1;
 		tir.euid = -1;
 	}
 
-	*oldlenp = sizeof (tir);
-	error = copyout((void *)&tir, oldp, sizeof (tir));
+	in_pcbsounlock_rele(inp, so);
+	NET_UNLOCK_SHARED();
 	in_pcbunref(inp);
-	return (error);
+
+	*oldlenp = sizeof(tir);
+	return copyout(&tir, oldp, sizeof(tir));
 }
 
 int
@@ -1379,36 +1420,6 @@ tcp_sysctl(int *name, u_int namelen, void *oldp, size_t *oldlenp, void *newp,
 		return (ENOTDIR);
 
 	switch (name[0]) {
-	case TCPCTL_KEEPINITTIME:
-		NET_LOCK();
-		nval = tcptv_keep_init / TCP_TIME(1);
-		error = sysctl_int_bounded(oldp, oldlenp, newp, newlen, &nval,
-		    1, 3 * (TCPTV_KEEP_INIT / TCP_TIME(1)));
-		if (!error)
-			tcptv_keep_init = TCP_TIME(nval);
-		NET_UNLOCK();
-		return (error);
-
-	case TCPCTL_KEEPIDLE:
-		NET_LOCK();
-		nval = tcp_keepidle / TCP_TIME(1);
-		error = sysctl_int_bounded(oldp, oldlenp, newp, newlen, &nval,
-		    1, 5 * (TCPTV_KEEP_IDLE / TCP_TIME(1)));
-		if (!error)
-			tcp_keepidle = TCP_TIME(nval);
-		NET_UNLOCK();
-		return (error);
-
-	case TCPCTL_KEEPINTVL:
-		NET_LOCK();
-		nval = tcp_keepintvl / TCP_TIME(1);
-		error = sysctl_int_bounded(oldp, oldlenp, newp, newlen, &nval,
-		    1, 3 * (TCPTV_KEEPINTVL / TCP_TIME(1)));
-		if (!error)
-			tcp_keepintvl = TCP_TIME(nval);
-		NET_UNLOCK();
-		return (error);
-
 	case TCPCTL_BADDYNAMIC:
 		NET_LOCK();
 		error = sysctl_struct(oldp, oldlenp, newp, newlen,
@@ -1426,16 +1437,10 @@ tcp_sysctl(int *name, u_int namelen, void *oldp, size_t *oldlenp, void *newp,
 		return (error);
 
 	case TCPCTL_IDENT:
-		NET_LOCK();
-		error = tcp_ident(oldp, oldlenp, newp, newlen, 0);
-		NET_UNLOCK();
-		return (error);
+		return tcp_ident(oldp, oldlenp, newp, newlen, 0);
 
 	case TCPCTL_DROP:
-		NET_LOCK();
-		error = tcp_ident(oldp, oldlenp, newp, newlen, 1);
-		NET_UNLOCK();
-		return (error);
+		return tcp_ident(oldp, oldlenp, newp, newlen, 1);
 
 	case TCPCTL_REASS_LIMIT:
 		NET_LOCK();
@@ -1504,10 +1509,22 @@ tcp_sysctl(int *name, u_int namelen, void *oldp, size_t *oldlenp, void *newp,
 		return (error);
 
 	default:
-		NET_LOCK();
 		error = sysctl_bounded_arr(tcpctl_vars, nitems(tcpctl_vars),
 		    name, namelen, oldp, oldlenp, newp, newlen);
-		NET_UNLOCK();
+		switch (name[0]) {
+		case TCPCTL_KEEPINITTIME:
+			atomic_store_int(&tcp_keepinit,
+			    atomic_load_int(&tcp_keepinit_sec) * TCP_TIME(1));
+			break;
+		case TCPCTL_KEEPIDLE:
+			atomic_store_int(&tcp_keepidle,
+			    atomic_load_int(&tcp_keepidle_sec) * TCP_TIME(1));
+			break;
+		case TCPCTL_KEEPINTVL:
+			atomic_store_int(&tcp_keepintvl,
+			    atomic_load_int(&tcp_keepintvl_sec) * TCP_TIME(1));
+			break;
+		}
 		return (error);
 	}
 	/* NOTREACHED */

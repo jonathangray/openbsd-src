@@ -1,4 +1,4 @@
-/* $OpenBSD: ihidev.c,v 1.34 2025/01/02 23:26:50 mglocker Exp $ */
+/* $OpenBSD: ihidev.c,v 1.39 2025/01/13 15:33:34 kirill Exp $ */
 /*
  * HID-over-i2c driver
  *
@@ -55,6 +55,7 @@ enum {
 
 	/* pseudo commands */
 	I2C_HID_REPORT_DESCR	= 0x100,
+	I2C_HID_RESET_RESPONSE	= 0x101,
 };
 
 static int I2C_HID_POWER_ON	= 0x0;
@@ -75,6 +76,17 @@ int	ihidev_maxrepid(void *buf, int len);
 int	ihidev_print(void *aux, const char *pnp);
 int	ihidev_submatch(struct device *parent, void *cf, void *aux);
 
+#define IHIDEV_QUIRK_RE_POWER_ON	0x1
+
+const struct ihidev_quirks {
+	uint16_t		ihq_vid;
+	uint16_t		ihq_pid;
+	int			ihq_quirks;
+} ihidev_devs[] = {
+	/* HONOR MagicBook Art 14 Touchpad (QTEC0002) */
+	{ 0x35cc, 0x0104, IHIDEV_QUIRK_RE_POWER_ON },
+};
+
 const struct cfattach ihidev_ca = {
 	sizeof(struct ihidev_softc),
 	ihidev_match,
@@ -94,6 +106,25 @@ ihidev_match(struct device *parent, void *match, void *aux)
 
 	if (strcmp(ia->ia_name, "ihidev") == 0)
 		return (1);
+
+	return (0);
+}
+
+int
+ihidev_quirks(struct ihidev_softc *sc)
+{
+	const struct ihidev_quirks	*q;
+	uint16_t			 vid, pid;
+	int 				 i, nent;
+
+	nent = nitems(ihidev_devs);
+
+	vid = letoh16(sc->hid_desc.wVendorID);
+	pid = letoh16(sc->hid_desc.wProductID);
+
+	for (i = 0, q = ihidev_devs; i < nent; i++, q++)
+		if (vid == q->ihq_vid && pid == q->ihq_pid)
+			return (q->ihq_quirks);
 
 	return (0);
 }
@@ -446,17 +477,8 @@ ihidev_hid_command(struct ihidev_softc *sc, int hidcmd, void *arg)
 
 		cmd[2] = report_id | rreq->type << 4;
 
-		if (rreq->type == I2C_HID_REPORT_TYPE_FEATURE) {
-			cmd[dataoff++] = htole16(sc->hid_desc.wDataRegister)
-			    & 0xff;
-			cmd[dataoff++] = htole16(sc->hid_desc.wDataRegister)
-			    >> 8;
-		} else {
-			cmd[dataoff++] = htole16(sc->hid_desc.wOutputRegister)
-			    & 0xff;
-			cmd[dataoff++] = htole16(sc->hid_desc.wOutputRegister)
-			    >> 8;
-		}
+		cmd[dataoff++] = htole16(sc->hid_desc.wDataRegister) & 0xff;
+		cmd[dataoff++] = htole16(sc->hid_desc.wDataRegister) >> 8;
 
 		cmd[dataoff++] = report_len & 0xff;
 		cmd[dataoff++] = report_len >> 8;
@@ -516,6 +538,32 @@ ihidev_hid_command(struct ihidev_softc *sc, int hidcmd, void *arg)
 
 		break;
 	}
+	case I2C_HID_RESET_RESPONSE: {
+		int i;
+		uint8_t buf[2] = { 0xff, 0xff };
+
+		DPRINTF(("%s: HID command I2C_HID_RESET_RESPONSE\n",
+		    sc->sc_dev.dv_xname));
+
+		/*
+		 * 7.2.1 states that a device should response for RESET
+		 * in less than 5 seconds. It uses poll instead of
+		 * tsleep because interrupts are blocked during autoconf.
+		 */
+		for (i = 0; i < 50; i++) {
+			ihidev_sleep(sc, 100);
+			res = iic_exec(sc->sc_tag, I2C_OP_READ_WITH_STOP,
+			    sc->sc_addr, NULL, 0, buf, sizeof(buf), 0);
+			DPRINTF(("%s: read attempt %d: 0x%x, 0x%x, res: %d\n",
+			    sc->sc_dev.dv_xname, i, buf[0], buf[1], res));
+			if (!res)
+				res = (buf[0] != 0x00 || buf[1] != 0x00);
+			if (!res)
+				break;
+		}
+
+		break;
+	}
 	default:
 		printf("%s: unknown command %d\n", sc->sc_dev.dv_xname,
 		    hidcmd);
@@ -529,8 +577,6 @@ ihidev_hid_command(struct ihidev_softc *sc, int hidcmd, void *arg)
 int
 ihidev_poweron(struct ihidev_softc *sc)
 {
-	DPRINTF(("%s: resetting\n", sc->sc_dev.dv_xname));
-
 	if (ihidev_hid_command(sc, I2C_HID_CMD_SET_POWER, &I2C_HID_POWER_ON)) {
 		printf("%s: failed to power on\n", sc->sc_dev.dv_xname);
 		return (1);
@@ -545,6 +591,8 @@ ihidev_poweron(struct ihidev_softc *sc)
 int
 ihidev_reset(struct ihidev_softc *sc)
 {
+	DPRINTF(("%s: resetting\n", sc->sc_dev.dv_xname));
+
 	if (ihidev_poweron(sc))
 		return (1);
 
@@ -557,7 +605,11 @@ ihidev_reset(struct ihidev_softc *sc)
 		return (1);
 	}
 
-	ihidev_sleep(sc, 100);
+	if (ihidev_hid_command(sc, I2C_HID_RESET_RESPONSE, 0)) {
+		printf("%s: unexpected reset response\n",
+		    sc->sc_dev.dv_xname);
+		return (1);
+	}
 
 	return (0);
 }
@@ -571,7 +623,7 @@ ihidev_reset(struct ihidev_softc *sc)
 int
 ihidev_hid_desc_parse(struct ihidev_softc *sc)
 {
-	int retries = 3;
+	sc->sc_quirks = ihidev_quirks(sc);
 
 	/* must be v01.00 */
 	if (letoh16(sc->hid_desc.bcdVersion) != 0x0100) {
@@ -598,16 +650,8 @@ ihidev_hid_desc_parse(struct ihidev_softc *sc)
 		return (1);
 	}
 
-	while (retries-- > 0) {
-		if (ihidev_reset(sc)) {
-			if (retries == 0)
-				return(1);
-
-			ihidev_sleep(sc, 10);
-		}
-		else
-			break;
-	}
+	if (ihidev_reset(sc))
+		return (1);
 
 	sc->sc_reportlen = letoh16(sc->hid_desc.wReportDescLength);
 	sc->sc_report = malloc(sc->sc_reportlen, M_DEVBUF, M_WAITOK | M_ZERO);
@@ -616,6 +660,23 @@ ihidev_hid_desc_parse(struct ihidev_softc *sc)
 		printf("%s: failed fetching HID report\n",
 		    sc->sc_dev.dv_xname);
 		return (1);
+	}
+
+	if (sc->sc_quirks & IHIDEV_QUIRK_RE_POWER_ON) {
+		if (ihidev_poweron(sc))
+			return (1);
+
+		/*
+		 * 7.2.8 states that a device shall not respond back
+		 * after receiving the power on command, and must ensure
+		 * that it transitions to power on state in less than 1
+		 * second. The ihidev_poweron function uses a shorter
+		 * sleep, sufficient for the ON-RESET sequence. Here,
+		 * however, it sleeps for the full second to accommodate
+		 * cold boot scenarios on affected devices.
+		 */
+
+		ihidev_sleep(sc, 1000);
 	}
 
 	return (0);
@@ -898,4 +959,35 @@ ihidev_set_report(struct device *dev, int type, int id, void *data, int len)
 	}
 
 	return 0;
+}
+
+int
+ihidev_send_report(struct device *dev, int repid, void *data, int data_len)
+{
+	struct ihidev_softc *sc = (struct ihidev_softc *)dev;
+	uint8_t *finalcmd, cmd[5];
+	int cmd_len, report_len, res;
+
+	cmd_len = sizeof(cmd);
+	report_len = 2 + 1 + data_len;
+
+	cmd[0] = htole16(sc->hid_desc.wOutputRegister) & 0xff;
+	cmd[1] = htole16(sc->hid_desc.wOutputRegister) >> 8;
+	cmd[2] = report_len & 0xff;
+	cmd[3] = report_len >> 8;
+	cmd[4] = repid;
+	
+	finalcmd = malloc(cmd_len + data_len, M_DEVBUF, M_NOWAIT | M_ZERO);
+	if (finalcmd == NULL)
+		return ENOMEM;
+
+	memcpy(finalcmd, cmd, cmd_len);
+	memcpy(finalcmd + cmd_len, data, data_len);
+
+	res = iic_exec(sc->sc_tag, I2C_OP_WRITE_WITH_STOP, sc->sc_addr,
+	    finalcmd, cmd_len + data_len, NULL, 0, 0);
+
+	free(finalcmd, M_DEVBUF, cmd_len + data_len);
+
+	return res;
 }

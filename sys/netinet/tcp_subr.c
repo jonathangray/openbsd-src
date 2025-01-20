@@ -1,4 +1,4 @@
-/*	$OpenBSD: tcp_subr.c,v 1.203 2024/12/28 22:17:09 bluhm Exp $	*/
+/*	$OpenBSD: tcp_subr.c,v 1.205 2025/01/16 11:59:20 bluhm Exp $	*/
 /*	$NetBSD: tcp_subr.c,v 1.22 1996/02/13 23:44:00 christos Exp $	*/
 
 /*
@@ -184,9 +184,6 @@ tcp_init(void)
 
 	/* Initialize the compressed state engine. */
 	syn_cache_init();
-
-	/* Initialize timer state. */
-	tcp_timer_init();
 }
 
 /*
@@ -440,13 +437,15 @@ tcp_newtcpcb(struct inpcb *inp, int wait)
 	tp->t_maxseg = atomic_load_int(&tcp_mssdflt);
 	tp->t_maxopd = 0;
 
+	tp->t_inpcb = inp;
 	for (i = 0; i < TCPT_NTIMERS; i++)
 		TCP_TIMER_INIT(tp, i);
+	timeout_set_flags(&tp->t_timer_reaper, tcp_timer_reaper, tp,
+	    KCLOCK_NONE, TIMEOUT_PROC | TIMEOUT_MPSAFE);
 
 	tp->sack_enable = atomic_load_int(&tcp_do_sack);
 	tp->t_flags = atomic_load_int(&tcp_do_rfc1323) ?
 	    (TF_REQ_SCALE|TF_REQ_TSTMP) : 0;
-	tp->t_inpcb = inp;
 	/*
 	 * Init srtt to TCPTV_SRTTBASE (0), so we can tell that we have no
 	 * rtt estimate.  Set rttvar so that srtt + 2 * rttvar gives
@@ -530,11 +529,11 @@ tcp_close(struct tcpcb *tp)
 
 	m_free(tp->t_template);
 	/* Free tcpcb after all pending timers have been run. */
-	TCP_TIMER_ARM(tp, TCPT_REAPER, 1);
-
+	timeout_add(&tp->t_timer_reaper, 0);
 	inp->inp_ppcb = NULL;
 	soisdisconnected(so);
 	in_pcbdetach(inp);
+	tcpstat_inc(tcps_closed);
 	return (NULL);
 }
 

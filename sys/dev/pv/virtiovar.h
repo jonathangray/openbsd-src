@@ -1,4 +1,4 @@
-/*	$OpenBSD: virtiovar.h,v 1.26 2024/12/20 22:18:27 sf Exp $	*/
+/*	$OpenBSD: virtiovar.h,v 1.28 2025/01/14 12:30:57 sf Exp $	*/
 /*	$NetBSD: virtiovar.h,v 1.1 2011/10/30 12:12:21 hannken Exp $	*/
 
 /*
@@ -103,7 +103,8 @@ struct vq_entry {
 
 struct virtqueue {
 	struct virtio_softc	*vq_owner;
-	unsigned int		vq_num;  /* queue size (# of entries) */
+	unsigned int		vq_num;  /* queue size (# of entries),
+					  * 0 if unused/non-existant */
 	unsigned int		vq_mask; /* (1 << vq_num - 1) */
 	int			vq_index; /* queue number (0, 1, ...) */
 
@@ -164,6 +165,8 @@ struct virtio_ops {
 	int		(*attach_finish)(struct virtio_softc *, struct virtio_attach_args *);
 	int		(*poll_intr)(void *);
 	void		(*intr_barrier)(struct virtio_softc *);
+	int		(*intr_establish)(struct virtio_softc *, struct virtio_attach_args *,
+			    int, struct cpu_info *, int (*)(void *), void *);
 };
 
 #define VIRTIO_CHILD_ERROR	((void*)1)
@@ -180,7 +183,7 @@ struct virtio_softc {
 	int			 sc_indirect;
 	int			 sc_version_1;
 
-	int			 sc_nvqs;	/* set by child */
+	int			 sc_nvqs;	/* size of sc_vqs, set by child */
 	struct virtqueue	*sc_vqs;	/* set by child */
 
 	struct device		*sc_child;	/* set by child,
@@ -206,6 +209,14 @@ struct virtio_softc {
 #define	virtio_get_status(sc)			(sc)->sc_ops->get_status(sc)
 #define	virtio_set_status(sc, i)		(sc)->sc_ops->set_status(sc, i)
 #define	virtio_intr_barrier(sc)			(sc)->sc_ops->intr_barrier(sc)
+
+/*
+ * virtio_intr_establish() only works if va_nintr > 1. If it is called by a
+ * child driver, the transport driver will skip automatic intr allocation and
+ * the child driver must allocate all required interrupts itself. Vector 0 is
+ * always used for the config change interrupt.
+ */
+#define	virtio_intr_establish(sc, va, v, ci, fn, a)	(sc)->sc_ops->intr_establish(sc, va, v, ci, fn, a)
 
 /* only for transport drivers */
 #define	virtio_device_reset(sc)			virtio_set_status((sc), 0)

@@ -1,4 +1,4 @@
-/*	$OpenBSD: rde.c,v 1.646 2024/12/12 20:19:03 claudio Exp $ */
+/*	$OpenBSD: rde.c,v 1.649 2025/01/13 13:50:34 claudio Exp $ */
 
 /*
  * Copyright (c) 2003, 2004 Henning Brauer <henning@openbsd.org>
@@ -1560,6 +1560,12 @@ rde_update_dispatch(struct rde_peer *peer, struct ibuf *buf)
 				pathid = 0;
 
 			switch (aid) {
+			case AID_INET:
+				log_peer_warnx(&peer->conf,
+				    "bad MP withdraw for %s", aid2str(aid));
+				rde_update_err(peer, ERR_UPDATE,
+				    ERR_UPD_OPTATTR, &unreachbuf);
+				goto done;
 			case AID_INET6:
 				if (nlri_get_prefix6(&unreachbuf,
 				    &prefix, &prefixlen) == -1) {
@@ -1598,7 +1604,7 @@ rde_update_dispatch(struct rde_peer *peer, struct ibuf *buf)
 				if (ibuf_skip(&unreachbuf,
 				    ibuf_size(&unreachbuf)) == -1) {
 					log_peer_warnx(&peer->conf,
-					    "bad VPNv6 withdraw prefix");
+					    "bad withdraw prefix");
 					rde_update_err(peer, ERR_UPDATE,
 					    ERR_UPD_OPTATTR, &unreachbuf);
 					goto done;
@@ -1689,7 +1695,7 @@ rde_update_dispatch(struct rde_peer *peer, struct ibuf *buf)
 			goto done;
 		}
 
-		if (aid == AID_INET6) {
+		if (aid == AID_INET6 || aid == AID_INET) {
 			/* inject open policy OTC attribute if needed */
 			if ((state.aspath.flags & F_ATTR_OTC) == 0) {
 				uint32_t tmp;
@@ -1740,6 +1746,20 @@ rde_update_dispatch(struct rde_peer *peer, struct ibuf *buf)
 				pathid = 0;
 
 			switch (aid) {
+			case AID_INET:
+				/*
+				 * rde_get_mp_nexthop already enforces that
+				 * this is only used for RFC 8950.
+				 */
+				if (nlri_get_prefix(&reachbuf,
+				    &prefix, &prefixlen) == -1) {
+					log_peer_warnx(&peer->conf,
+					    "bad IPv4 MP nlri prefix");
+					rde_update_err(peer, ERR_UPDATE,
+					    ERR_UPD_OPTATTR, &reachbuf);
+					goto done;
+				}
+				break;
 			case AID_INET6:
 				if (nlri_get_prefix6(&reachbuf,
 				    &prefix, &prefixlen) == -1) {
@@ -1778,7 +1798,7 @@ rde_update_dispatch(struct rde_peer *peer, struct ibuf *buf)
 				if (ibuf_skip(&reachbuf,
 				    ibuf_size(&reachbuf)) == -1) {
 					log_peer_warnx(&peer->conf,
-					    "bad VPNv6 withdraw prefix");
+					    "bad nlri prefix");
 					rde_update_err(peer, ERR_UPDATE,
 					    ERR_UPD_OPTATTR, &reachbuf);
 					goto done;
@@ -2411,8 +2431,19 @@ rde_get_mp_nexthop(struct ibuf *buf, uint8_t aid,
 	if (ibuf_skip(buf, 1) == -1)
 		return (-1);
 
+	if (aid == AID_INET && peer_has_ext_nexthop(peer, AID_INET) &&
+	    (nhlen == 16 || nhlen == 32))
+		aid = AID_INET6;
+	if (aid == AID_VPN_IPv4 && peer_has_ext_nexthop(peer, AID_VPN_IPv4) &&
+	    (nhlen == 24 || nhlen == 48))
+		aid = AID_VPN_IPv6;
+
 	memset(&nexthop, 0, sizeof(nexthop));
 	switch (aid) {
+	case AID_INET:
+		log_peer_warnx(&peer->conf, "bad multiprotocol nexthop, "
+		    "IPv4 unexpected");
+		return (-1);
 	case AID_INET6:
 		/*
 		 * RFC2545 describes that there may be a link-local
@@ -2466,7 +2497,7 @@ rde_get_mp_nexthop(struct ibuf *buf, uint8_t aid,
 		nexthop.aid = AID_INET;
 		break;
 	case AID_VPN_IPv6:
-		if (nhlen != 24) {
+		if (nhlen != 24 && nhlen != 48) {
 			log_peer_warnx(&peer->conf, "bad %s nexthop, "
 			    "bad size %d", aid2str(aid), nhlen);
 			return (-1);
@@ -3314,6 +3345,10 @@ rde_send_kroute(struct rib *rib, struct prefix *new, struct prefix *old)
 
 	switch (kf.prefix.aid) {
 	case AID_VPN_IPv4:
+		/* XXX FIB can not handle non-IPv4 nexthop */
+		if (kf.nexthop.aid != AID_INET)
+			type = IMSG_KROUTE_DELETE;
+		/* FALLTHROUGH */
 	case AID_VPN_IPv6:
 		if (!(rib->flags & F_RIB_LOCAL))
 			/* not Loc-RIB, no update for VPNs */
@@ -3330,6 +3365,11 @@ rde_send_kroute(struct rib *rib, struct prefix *new, struct prefix *old)
 				    __LINE__);
 		}
 		break;
+	case AID_INET:
+		/* XXX FIB can not handle non-IPv4 nexthop */
+		if (kf.nexthop.aid != AID_INET)
+			type = IMSG_KROUTE_DELETE;
+		/* FALLTHROUGH */
 	default:
 		if (imsg_compose(ibuf_main, type, rib->rtableid, 0, -1,
 		    &kf, sizeof(kf)) == -1)

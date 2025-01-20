@@ -1,4 +1,4 @@
-/* $OpenBSD: bn_recp.c,v 1.19 2023/03/27 10:25:02 tb Exp $ */
+/* $OpenBSD: bn_recp.c,v 1.25 2025/01/08 20:21:28 tb Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -65,8 +65,8 @@
 void
 BN_RECP_CTX_init(BN_RECP_CTX *recp)
 {
-	BN_init(&(recp->N));
-	BN_init(&(recp->Nr));
+	BN_init(&recp->N);
+	BN_init(&recp->Nr);
 	recp->num_bits = 0;
 	recp->flags = 0;
 }
@@ -77,11 +77,11 @@ BN_RECP_CTX_new(void)
 	BN_RECP_CTX *ret;
 
 	if ((ret = malloc(sizeof(BN_RECP_CTX))) == NULL)
-		return (NULL);
+		return NULL;
 
 	BN_RECP_CTX_init(ret);
 	ret->flags = BN_FLG_MALLOCED;
-	return (ret);
+	return ret;
 }
 
 void
@@ -90,8 +90,8 @@ BN_RECP_CTX_free(BN_RECP_CTX *recp)
 	if (recp == NULL)
 		return;
 
-	BN_free(&(recp->N));
-	BN_free(&(recp->Nr));
+	BN_free(&recp->N);
+	BN_free(&recp->Nr);
 	if (recp->flags & BN_FLG_MALLOCED)
 		free(recp);
 }
@@ -99,12 +99,136 @@ BN_RECP_CTX_free(BN_RECP_CTX *recp)
 int
 BN_RECP_CTX_set(BN_RECP_CTX *recp, const BIGNUM *d, BN_CTX *ctx)
 {
-	if (!bn_copy(&(recp->N), d))
+	if (!bn_copy(&recp->N, d))
 		return 0;
-	BN_zero(&(recp->Nr));
-	recp->num_bits = BN_num_bits(d);
+	recp->num_bits = BN_num_bits(&recp->N);
+
+	BN_zero(&recp->Nr);
 	recp->shift = 0;
-	return (1);
+
+	return 1;
+}
+
+/* len is the expected size of the result
+ * We actually calculate with an extra word of precision, so
+ * we can do faster division if the remainder is not required.
+ */
+/* r := 2^len / m */
+static int
+BN_reciprocal(BIGNUM *r, const BIGNUM *m, int len, BN_CTX *ctx)
+{
+	int ret = -1;
+	BIGNUM *t;
+
+	BN_CTX_start(ctx);
+	if ((t = BN_CTX_get(ctx)) == NULL)
+		goto err;
+
+	if (!BN_set_bit(t, len))
+		goto err;
+
+	if (!BN_div_ct(r, NULL, t, m, ctx))
+		goto err;
+
+	ret = len;
+
+err:
+	BN_CTX_end(ctx);
+	return ret;
+}
+
+int
+BN_div_recp(BIGNUM *dv, BIGNUM *rem, const BIGNUM *m, BN_RECP_CTX *recp,
+    BN_CTX *ctx)
+{
+	int i, j, ret = 0;
+	BIGNUM *a, *b, *d, *r;
+
+	BN_CTX_start(ctx);
+	a = BN_CTX_get(ctx);
+	b = BN_CTX_get(ctx);
+	if (dv != NULL)
+		d = dv;
+	else
+		d = BN_CTX_get(ctx);
+	if (rem != NULL)
+		r = rem;
+	else
+		r = BN_CTX_get(ctx);
+	if (a == NULL || b == NULL || d == NULL || r == NULL)
+		goto err;
+
+	if (BN_ucmp(m, &recp->N) < 0) {
+		BN_zero(d);
+		if (!bn_copy(r, m)) {
+			BN_CTX_end(ctx);
+			return 0;
+		}
+		BN_CTX_end(ctx);
+		return 1;
+	}
+
+	/* We want the remainder
+	 * Given input of ABCDEF / ab
+	 * we need multiply ABCDEF by 3 digests of the reciprocal of ab
+	 *
+	 */
+
+	/* i := max(BN_num_bits(m), 2*BN_num_bits(N)) */
+	i = BN_num_bits(m);
+	j = recp->num_bits << 1;
+	if (j > i)
+		i = j;
+
+	/* Nr := round(2^i / N) */
+	if (i != recp->shift)
+		recp->shift = BN_reciprocal(&recp->Nr, &recp->N, i, ctx);
+
+	/* BN_reciprocal returns i, or -1 for an error */
+	if (recp->shift == -1)
+		goto err;
+
+	/* d := |round(round(m / 2^BN_num_bits(N)) * recp->Nr / 2^(i - BN_num_bits(N)))|
+	 *    = |round(round(m / 2^BN_num_bits(N)) * round(2^i / N) / 2^(i - BN_num_bits(N)))|
+	 *   <= |(m / 2^BN_num_bits(N)) * (2^i / N) * (2^BN_num_bits(N) / 2^i)|
+	 *    = |m/N|
+	 */
+	if (!BN_rshift(a, m, recp->num_bits))
+		goto err;
+	if (!BN_mul(b, a, &recp->Nr, ctx))
+		goto err;
+	if (!BN_rshift(d, b, i - recp->num_bits))
+		goto err;
+	d->neg = 0;
+
+	if (!BN_mul(b, &recp->N, d, ctx))
+		goto err;
+	if (!BN_usub(r, m, b))
+		goto err;
+	r->neg = 0;
+
+#if 1
+	j = 0;
+	while (BN_ucmp(r, &recp->N) >= 0) {
+		if (j++ > 2) {
+			BNerror(BN_R_BAD_RECIPROCAL);
+			goto err;
+		}
+		if (!BN_usub(r, r, &recp->N))
+			goto err;
+		if (!BN_add_word(d, 1))
+			goto err;
+	}
+#endif
+
+	BN_set_negative(r, m->neg);
+	BN_set_negative(d, m->neg ^ recp->N.neg);
+
+	ret = 1;
+
+err:
+	BN_CTX_end(ctx);
+	return ret;
 }
 
 int
@@ -134,127 +258,5 @@ BN_mod_mul_reciprocal(BIGNUM *r, const BIGNUM *x, const BIGNUM *y,
 
 err:
 	BN_CTX_end(ctx);
-	return (ret);
-}
-
-int
-BN_div_recp(BIGNUM *dv, BIGNUM *rem, const BIGNUM *m, BN_RECP_CTX *recp,
-    BN_CTX *ctx)
-{
-	int i, j, ret = 0;
-	BIGNUM *a, *b, *d, *r;
-
-	BN_CTX_start(ctx);
-	a = BN_CTX_get(ctx);
-	b = BN_CTX_get(ctx);
-	if (dv != NULL)
-		d = dv;
-	else
-		d = BN_CTX_get(ctx);
-	if (rem != NULL)
-		r = rem;
-	else
-		r = BN_CTX_get(ctx);
-	if (a == NULL || b == NULL || d == NULL || r == NULL)
-		goto err;
-
-	if (BN_ucmp(m, &(recp->N)) < 0) {
-		BN_zero(d);
-		if (!bn_copy(r, m)) {
-			BN_CTX_end(ctx);
-			return 0;
-		}
-		BN_CTX_end(ctx);
-		return (1);
-	}
-
-	/* We want the remainder
-	 * Given input of ABCDEF / ab
-	 * we need multiply ABCDEF by 3 digests of the reciprocal of ab
-	 *
-	 */
-
-	/* i := max(BN_num_bits(m), 2*BN_num_bits(N)) */
-	i = BN_num_bits(m);
-	j = recp->num_bits << 1;
-	if (j > i)
-		i = j;
-
-	/* Nr := round(2^i / N) */
-	if (i != recp->shift)
-		recp->shift = BN_reciprocal(&(recp->Nr), &(recp->N), i, ctx);
-
-	/* BN_reciprocal returns i, or -1 for an error */
-	if (recp->shift == -1)
-		goto err;
-
-	/* d := |round(round(m / 2^BN_num_bits(N)) * recp->Nr / 2^(i - BN_num_bits(N)))|
-	 *    = |round(round(m / 2^BN_num_bits(N)) * round(2^i / N) / 2^(i - BN_num_bits(N)))|
-	 *   <= |(m / 2^BN_num_bits(N)) * (2^i / N) * (2^BN_num_bits(N) / 2^i)|
-	 *    = |m/N|
-	 */
-	if (!BN_rshift(a, m, recp->num_bits))
-		goto err;
-	if (!BN_mul(b, a,&(recp->Nr), ctx))
-		goto err;
-	if (!BN_rshift(d, b, i - recp->num_bits))
-		goto err;
-	d->neg = 0;
-
-	if (!BN_mul(b, &(recp->N), d, ctx))
-		goto err;
-	if (!BN_usub(r, m, b))
-		goto err;
-	r->neg = 0;
-
-#if 1
-	j = 0;
-	while (BN_ucmp(r, &(recp->N)) >= 0) {
-		if (j++ > 2) {
-			BNerror(BN_R_BAD_RECIPROCAL);
-			goto err;
-		}
-		if (!BN_usub(r, r, &(recp->N)))
-			goto err;
-		if (!BN_add_word(d, 1))
-			goto err;
-	}
-#endif
-
-	BN_set_negative(r, m->neg);
-	BN_set_negative(d, m->neg ^ recp->N.neg);
-
-	ret = 1;
-
-err:
-	BN_CTX_end(ctx);
-	return (ret);
-}
-
-/* len is the expected size of the result
- * We actually calculate with an extra word of precision, so
- * we can do faster division if the remainder is not required.
- */
-/* r := 2^len / m */
-int
-BN_reciprocal(BIGNUM *r, const BIGNUM *m, int len, BN_CTX *ctx)
-{
-	int ret = -1;
-	BIGNUM *t;
-
-	BN_CTX_start(ctx);
-	if ((t = BN_CTX_get(ctx)) == NULL)
-		goto err;
-
-	if (!BN_set_bit(t, len))
-		goto err;
-
-	if (!BN_div_ct(r, NULL, t,m, ctx))
-		goto err;
-
-	ret = len;
-
-err:
-	BN_CTX_end(ctx);
-	return (ret);
+	return ret;
 }

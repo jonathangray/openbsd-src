@@ -1,4 +1,4 @@
-/* $OpenBSD: rsa_pmeth.c,v 1.41 2024/08/26 22:01:28 op Exp $ */
+/* $OpenBSD: rsa_pmeth.c,v 1.43 2025/01/17 15:39:19 tb Exp $ */
 /* Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL
  * project 2006.
  */
@@ -637,19 +637,17 @@ pkey_rsa_ctrl_str(EVP_PKEY_CTX *ctx, const char *type, const char *value)
 		RSAerror(RSA_R_VALUE_MISSING);
 		return 0;
 	}
-	if (!strcmp(type, "rsa_padding_mode")) {
+	if (strcmp(type, "rsa_padding_mode") == 0) {
 		int pm;
-		if (!strcmp(value, "pkcs1"))
+		if (strcmp(value, "pkcs1") == 0)
 			pm = RSA_PKCS1_PADDING;
-		else if (!strcmp(value, "none"))
+		else if (strcmp(value, "none") == 0)
 			pm = RSA_NO_PADDING;
-		else if (!strcmp(value, "oeap"))
+		else if (strcmp(value, "oaep") == 0 || strcmp(value, "oeap") == 0)
 			pm = RSA_PKCS1_OAEP_PADDING;
-		else if (!strcmp(value, "oaep"))
-			pm = RSA_PKCS1_OAEP_PADDING;
-		else if (!strcmp(value, "x931"))
+		else if (strcmp(value, "x931") == 0)
 			pm = RSA_X931_PADDING;
-		else if (!strcmp(value, "pss"))
+		else if (strcmp(value, "pss") == 0)
 			pm = RSA_PKCS1_PSS_PADDING;
 		else {
 			RSAerror(RSA_R_UNKNOWN_PADDING_TYPE);
@@ -661,14 +659,19 @@ pkey_rsa_ctrl_str(EVP_PKEY_CTX *ctx, const char *type, const char *value)
 	if (strcmp(type, "rsa_pss_saltlen") == 0) {
 		int saltlen;
 
-		if (!strcmp(value, "digest"))
+		if (strcmp(value, "digest") == 0)
 			saltlen = RSA_PSS_SALTLEN_DIGEST;
-		else if (!strcmp(value, "max"))
+		else if (strcmp(value, "max") == 0)
 			saltlen = RSA_PSS_SALTLEN_MAX;
-		else if (!strcmp(value, "auto"))
+		else if (strcmp(value, "auto") == 0)
 			saltlen = RSA_PSS_SALTLEN_AUTO;
 		else {
-			saltlen = strtonum(value, 0, INT_MAX, &errstr);
+			/*
+			 * Accept the special values -1, -2, -3 since that's
+			 * what atoi() historically did. Lower values are later
+			 * rejected in EVP_PKEY_CTRL_RSA_PSS_SALTLEN anyway.
+			 */
+			saltlen = strtonum(value, -3, INT_MAX, &errstr);
 			if (errstr != NULL) {
 				RSAerror(RSA_R_INVALID_PSS_SALTLEN);
 				return -2;
@@ -718,7 +721,12 @@ pkey_rsa_ctrl_str(EVP_PKEY_CTX *ctx, const char *type, const char *value)
 		if (strcmp(type, "rsa_pss_keygen_saltlen") == 0) {
 			int saltlen;
 
-			saltlen = strtonum(value, 0, INT_MAX, &errstr);
+			/*
+			 * Accept the special values -1, -2, -3 since that's
+			 * what atoi() historically did. Lower values are later
+			 * rejected in EVP_PKEY_CTRL_RSA_PSS_SALTLEN anyway.
+			 */
+			saltlen = strtonum(value, -3, INT_MAX, &errstr);
 			if (errstr != NULL) {
 				RSAerror(RSA_R_INVALID_PSS_SALTLEN);
 				return -2;

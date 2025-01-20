@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 
-# $OpenBSD: security,v 1.44 2024/12/24 17:08:50 krw Exp $
+# $OpenBSD: security,v 1.46 2025/01/12 00:18:15 schwarze Exp $
 #
 # Copyright (c) 2011, 2012, 2014, 2015 Ingo Schwarze <schwarze@openbsd.org>
 # Copyright (c) 2011 Andrew Fresh <andrew@afresh1.com>
@@ -256,7 +256,8 @@ sub check_sh {
 		$umaskset ||= check_umask($filename);
 
 		nag !(open my $fh, '-|', qw(/bin/sh -c),
-			". $filename; echo ENV=\$ENV; echo PATH=\$PATH"),
+			". $filename > /dev/null; " .
+			"echo ENV=\$ENV; echo PATH=\$PATH"),
 		    "cannot spawn /bin/sh: $!"
 		    and next;
 		my @output = <$fh>;
@@ -290,7 +291,7 @@ sub check_ksh {
 		check_umask($filename);
 
 		nag !(open my $fh, '-|', qw(/bin/ksh -c),
-			". $filename; echo PATH=\$PATH"),
+			". $filename > /dev/null; echo PATH=\$PATH"),
 		    "cannot spawn /bin/ksh: $!"
 		    and next;
 		my @output = <$fh>;
@@ -456,11 +457,14 @@ sub check_mailboxes {
 	foreach my $name (readdir $dh) {
 		next if $name =~ /^\.\.?$/;
 		next if $name =~ /.\.lock$/;
+		next if $name eq 'quota.user';
+		next if $name eq 'quota.group';
 		my ($mode, $fuid, $fgid) = (stat "$dir/$name")[2,4,5];
 		unless (defined $mode) {
 			nag !$!{ENOENT}, "stat: $dir/$name: $!";
 			next;
 		}
+		next if S_ISDIR($mode);
 		my $fname = (getpwuid $fuid)[0] // $fuid;
 		my $gname = (getgrgid $fgid)[0] // $fgid;
 		nag $fname ne $name,
