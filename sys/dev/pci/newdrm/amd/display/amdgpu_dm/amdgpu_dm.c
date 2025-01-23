@@ -5019,6 +5019,8 @@ static int amdgpu_dm_initialize_drm_device(struct amdgpu_device *adev)
 		link = dc_get_link_at_index(dm->dc, i);
 
 		if (link->connector_signal == SIGNAL_TYPE_VIRTUAL) {
+		/* XXX writeback connector functions not implemented */
+#ifdef notyet
 			struct amdgpu_dm_wb_connector *wbcon = kzalloc(sizeof(*wbcon), GFP_KERNEL);
 
 			if (!wbcon) {
@@ -5034,6 +5036,7 @@ static int amdgpu_dm_initialize_drm_device(struct amdgpu_device *adev)
 
 			link->psr_settings.psr_feature_enabled = false;
 			link->psr_settings.psr_version = DC_PSR_VERSION_UNSUPPORTED;
+#endif
 
 			continue;
 		}
