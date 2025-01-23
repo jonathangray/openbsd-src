@@ -710,13 +710,10 @@ static void intel_dp_link_config_init(struct intel_dp *intel_dp)
 		}
 	}
 
-	STUB();
-#ifdef notyet
 	sort_r(intel_dp->link.configs, intel_dp->link.num_configs,
 	       sizeof(intel_dp->link.configs[0]),
 	       link_config_cmp_by_bw, NULL,
 	       intel_dp);
-#endif
 }
 
 void intel_dp_link_config_get(struct intel_dp *intel_dp, int idx, int *link_rate, int *lane_count)
