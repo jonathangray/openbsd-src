@@ -81,6 +81,7 @@ file	dev/pci/newdrm/hdmi.c			drm
 file	dev/pci/newdrm/linux_list_sort.c		drm
 file	dev/pci/newdrm/linux_radix.c		drm
 file	dev/pci/newdrm/linux_sort.c		drm
+file	dev/pci/newdrm/linux_sort_r.c		drm
 
 #file	dev/pci/newdrm/display/drm_display_helper_mod.c	drm
 #file	dev/pci/newdrm/display/drm_dp_aux_dev.c		drm
