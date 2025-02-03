@@ -1,4 +1,4 @@
-/*	$OpenBSD: pdu.c,v 1.13 2021/04/12 10:03:33 claudio Exp $ */
+/*	$OpenBSD: pdu.c,v 1.15 2025/01/23 12:17:48 claudio Exp $ */
 
 /*
  * Copyright (c) 2009 Claudio Jeker <claudio@openbsd.org>
@@ -191,25 +191,51 @@ text_to_num(const char *numstr, u_int64_t minval, u_int64_t maxval,
 int
 text_to_bool(const char *buf, const char **errstrp)
 {
-	int val = 0;
+	int val;
 
-	if (!strcmp(buf, "Yes")) {
+	if (strcmp(buf, "Yes") == 0)
 		val = 1;
-		errno = 0;
-	} else if (!strcmp(buf, "No"))
-		errno = 0;
-	else 
-		errno = EINVAL;
-
-	if (errstrp != NULL) {
-		if (errno == 0)
-			*errstrp = NULL;
-		else
+	else if (strcmp(buf, "No") == 0)
+		val = 0;
+	else {
+		if (errstrp != NULL)
 			*errstrp = "invalid";
+		return 0;
 	}
+	if (errstrp != NULL)
+		*errstrp = NULL;
 	return val;
 }
 
+int
+text_to_digest(const char *buf, const char **errstrp)
+{
+	int val = 0;
+	size_t len;
+	const char *p;
+
+	while (buf != NULL) {
+		p = strchr(buf, ',');
+		if (p == NULL)
+			len = strlen(buf);
+		else
+			len = p++ - buf;
+
+		if (strncmp(buf, "None", len) == 0)
+			val |= DIGEST_NONE;
+		else if (strncmp(buf, "CRC32C", len) == 0)
+			val |= DIGEST_CRC32C;
+		else {
+			if (errstrp != NULL)
+				*errstrp = "invalid";
+			return 0;
+		}
+		buf = p;
+	}
+	if (errstrp != NULL)
+		*errstrp = NULL;
+	return val;
+}
 
 /*
  * Internal functions to send/recv pdus.

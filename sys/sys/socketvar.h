@@ -1,4 +1,4 @@
-/*	$OpenBSD: socketvar.h,v 1.139 2025/01/16 16:35:01 bluhm Exp $	*/
+/*	$OpenBSD: socketvar.h,v 1.148 2025/01/31 13:49:18 mvs Exp $	*/
 /*	$NetBSD: socketvar.h,v 1.18 1996/02/09 18:25:38 christos Exp $	*/
 
 /*-
@@ -112,7 +112,6 @@ struct sockbuf {
 #define SB_ASYNC	0x0002		/* ASYNC I/O, need signals */
 #define SB_SPLICE	0x0004		/* buffer is splice source or drain */
 #define SB_NOINTR	0x0008		/* operations not interruptible */
-#define SB_MTXLOCK	0x0010		/* sblock() doesn't need solock() */
 
 /*
  * Kernel structure per socket.
@@ -225,31 +224,15 @@ soref(struct socket *so)
 #define isspliced(so)		((so)->so_sp && (so)->so_sp->ssp_socket)
 #define issplicedback(so)	((so)->so_sp && (so)->so_sp->ssp_soback)
 
-static inline void
-sb_mtx_lock(struct sockbuf *sb)
-{
-	if (sb->sb_flags & SB_MTXLOCK)
-		mtx_enter(&sb->sb_mtx);
-}
-
-static inline void
-sb_mtx_unlock(struct sockbuf *sb)
-{
-	if (sb->sb_flags & SB_MTXLOCK)
-		mtx_leave(&sb->sb_mtx);
-}
-
-void	sbmtxassertlocked(struct socket *so, struct sockbuf *);
+void	sbmtxassertlocked(struct sockbuf *);
 
 /*
  * Do we need to notify the other side when I/O is possible?
  */
 static inline int
-sb_notify(struct socket *so, struct sockbuf *sb)
+sb_notify(struct sockbuf *sb)
 {
 	int rv;
-
-	soassertlocked(so);
 
 	mtx_enter(&sb->sb_mtx);
 	rv = ((sb->sb_flags & (SB_WAIT|SB_ASYNC|SB_SPLICE)) != 0 ||
@@ -267,24 +250,21 @@ sb_notify(struct socket *so, struct sockbuf *sb)
  */
 
 static inline long
-sbspace_locked(struct socket *so, struct sockbuf *sb)
+sbspace_locked(struct sockbuf *sb)
 {
-	if (sb->sb_flags & SB_MTXLOCK)
-		sbmtxassertlocked(so, sb);
-	else
-		soassertlocked_readonly(so);
+	sbmtxassertlocked(sb);
 
 	return lmin(sb->sb_hiwat - sb->sb_cc, sb->sb_mbmax - sb->sb_mbcnt);
 }
 
 static inline long
-sbspace(struct socket *so, struct sockbuf *sb)
+sbspace(struct sockbuf *sb)
 {
 	long ret;
 
-	sb_mtx_lock(sb);
-	ret = sbspace_locked(so, sb);
-	sb_mtx_unlock(sb);
+	mtx_enter(&sb->sb_mtx);
+	ret = sbspace_locked(sb);
+	mtx_leave(&sb->sb_mtx);
 
 	return ret;
 }
@@ -313,7 +293,7 @@ static inline int
 sowriteable(struct socket *so)
 {
 	soassertlocked_readonly(so);
-	return ((sbspace(so, &so->so_snd) >= so->so_snd.sb_lowat &&
+	return ((sbspace(&so->so_snd) >= so->so_snd.sb_lowat &&
 	    ((so->so_state & SS_ISCONNECTED) ||
 	    (so->so_proto->pr_flags & PR_CONNREQUIRED)==0)) ||
 	    (so->so_snd.sb_state & SS_CANTSENDMORE) || so->so_error);
@@ -321,7 +301,7 @@ sowriteable(struct socket *so)
 
 /* adjust counters in sb reflecting allocation of m */
 static inline void
-sballoc(struct socket *so, struct sockbuf *sb, struct mbuf *m)
+sballoc(struct sockbuf *sb, struct mbuf *m)
 {
 	sb->sb_cc += m->m_len;
 	if (m->m_type != MT_CONTROL && m->m_type != MT_SONAME)
@@ -333,7 +313,7 @@ sballoc(struct socket *so, struct sockbuf *sb, struct mbuf *m)
 
 /* adjust counters in sb reflecting freeing of m */
 static inline void
-sbfree(struct socket *so, struct sockbuf *sb, struct mbuf *m)
+sbfree(struct sockbuf *sb, struct mbuf *m)
 {
 	sb->sb_cc -= m->m_len;
 	if (m->m_type != MT_CONTROL && m->m_type != MT_SONAME)
@@ -400,18 +380,17 @@ int	sbappendaddr(struct socket *, struct sockbuf *,
 int	sbappendcontrol(struct socket *, struct sockbuf *, struct mbuf *,
 	    struct mbuf *);
 void	sbappendrecord(struct socket *, struct sockbuf *, struct mbuf *);
-void	sbcompress(struct socket *, struct sockbuf *, struct mbuf *,
-	    struct mbuf *);
+void	sbcompress(struct sockbuf *, struct mbuf *, struct mbuf *);
 struct mbuf *
 	sbcreatecontrol(const void *, size_t, int, int);
-void	sbdrop(struct socket *, struct sockbuf *, int);
-void	sbdroprecord(struct socket *, struct sockbuf *);
+void	sbdrop(struct sockbuf *, int);
+void	sbdroprecord(struct sockbuf *);
 void	sbflush(struct socket *, struct sockbuf *);
 void	sbrelease(struct socket *, struct sockbuf *);
 int	sbcheckreserve(u_long, u_long);
 int	sbchecklowmem(void);
 int	sbreserve(struct socket *, struct sockbuf *, u_long);
-int	sbwait(struct socket *, struct sockbuf *);
+int	sbwait(struct sockbuf *);
 void	soinit(void);
 void	soabort(struct socket *);
 int	soaccept(struct socket *, struct mbuf *);
@@ -457,6 +436,7 @@ void	solock_pair(struct socket *, struct socket *);
 void	sounlock(struct socket *);
 void	sounlock_shared(struct socket *);
 void	sounlock_nonet(struct socket *);
+void	sounlock_pair(struct socket *, struct socket *);
 
 int	sendit(struct proc *, int, struct msghdr *, int, register_t *);
 int	recvit(struct proc *, int, struct msghdr *, caddr_t, register_t *);

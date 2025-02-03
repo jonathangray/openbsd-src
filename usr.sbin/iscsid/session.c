@@ -1,4 +1,4 @@
-/*	$OpenBSD: session.c,v 1.10 2025/01/16 16:17:32 claudio Exp $ */
+/*	$OpenBSD: session.c,v 1.13 2025/01/22 16:06:36 claudio Exp $ */
 
 /*
  * Copyright (c) 2011 Claudio Jeker <claudio@openbsd.org>
@@ -35,7 +35,6 @@
 #include "iscsid.h"
 #include "log.h"
 
-void	session_fsm_callback(int, short, void *);
 int	sess_do_start(struct session *, struct sessev *);
 int	sess_do_conn_loggedin(struct session *, struct sessev *);
 int	sess_do_conn_fail(struct session *, struct sessev *);
@@ -46,46 +45,6 @@ int	sess_do_reinstatement(struct session *, struct sessev *);
 
 const char *sess_state(int);
 const char *sess_event(enum s_event);
-
-struct session *
-session_find(struct initiator *i, char *name)
-{
-	struct session *s;
-
-	TAILQ_FOREACH(s, &i->sessions, entry) {
-		if (strcmp(s->config.SessionName, name) == 0)
-			return s;
-	}
-	return NULL;
-}
-
-struct session *
-session_new(struct initiator *i, u_int8_t st)
-{
-	struct session *s;
-
-	if (!(s = calloc(1, sizeof(*s))))
-		return NULL;
-
-	/* use the same qualifier unless there is a conflict */
-	s->isid_base = i->config.isid_base;
-	s->isid_qual = i->config.isid_qual;
-	s->cmdseqnum = arc4random();
-	s->itt = arc4random();
-	s->initiator = i;
-	s->state = SESS_INIT;
-
-	if (st == SESSION_TYPE_DISCOVERY)
-		s->target = 0;
-	else
-		s->target = s->initiator->target++;
-
-	TAILQ_INSERT_HEAD(&i->sessions, s, entry);
-	TAILQ_INIT(&s->connections);
-	TAILQ_INIT(&s->tasks);
-
-	return s;
-}
 
 void
 session_cleanup(struct session *s)
@@ -204,25 +163,20 @@ session_schedule(struct session *s)
  * The session FSM runs from a callback so that the connection FSM can finish.
  */
 void
-session_fsm(struct session *s, enum s_event ev, struct connection *c,
-    unsigned int timeout)
+session_fsm(struct sessev *sev, enum s_event event, unsigned int timeout)
 {
+	struct session *s = sev->sess;
 	struct timeval tv;
-	struct sessev *sev;
 
 	log_debug("session_fsm[%s]: %s ev %s timeout %d",
 	    s->config.SessionName, sess_state(s->state),
-	    sess_event(ev), timeout);
+	    sess_event(event), timeout);
 
-	if ((sev = malloc(sizeof(*sev))) == NULL)
-		fatal("session_fsm");
-	sev->conn = c;
-	sev->sess = s;
-	sev->event = ev;
+	sev->event = event;
 
 	timerclear(&tv);
 	tv.tv_sec = timeout;
-	if (event_once(-1, EV_TIMEOUT, session_fsm_callback, sev, &tv) == -1)
+	if (evtimer_add(&sev->ev, &tv) == -1)
 		fatal("session_fsm");
 }
 
@@ -276,8 +230,6 @@ session_fsm_callback(int fd, short event, void *arg)
 		    sess_state(s->state), sess_event(sev->event));
 		fatalx("bjork bjork bjork");
 	}
-	free(sev);
-log_debug("sess_fsm: done");
 }
 
 int
@@ -286,7 +238,7 @@ sess_do_start(struct session *s, struct sessev *sev)
 	log_debug("new connection to %s",
 	    log_sockaddr(&s->config.connection.TargetAddr));
 
-	/* initialize the session params */
+	/* initialize the session params, and reset the active state */
 	s->mine = initiator_sess_defaults;
 	s->his = iscsi_sess_defaults;
 	s->active = iscsi_sess_defaults;
@@ -360,7 +312,7 @@ sess_do_conn_fail(struct session *s, struct sessev *sev)
 			state = SESS_LOGGED_IN;
 	}
 
-	session_fsm(s, SESS_EV_START, NULL, s->holdTimer);
+	session_fsm(&s->sev, SESS_EV_START, s->holdTimer);
 	/* exponential back-off on constant failure */
 	if (s->holdTimer < ISCSID_HOLD_TIME_MAX)
 		s->holdTimer = s->holdTimer ? s->holdTimer * 2 : 1;

@@ -1,4 +1,4 @@
-/*	$OpenBSD: tcp_input.c,v 1.423 2025/01/16 11:59:20 bluhm Exp $	*/
+/*	$OpenBSD: tcp_input.c,v 1.429 2025/01/31 11:48:18 mvs Exp $	*/
 /*	$NetBSD: tcp_input.c,v 1.23 1996/02/13 23:43:44 christos Exp $	*/
 
 /*
@@ -962,7 +962,7 @@ findpcb:
 				ND6_HINT(tp);
 
 				mtx_enter(&so->so_snd.sb_mtx);
-				sbdrop(so, &so->so_snd, acked);
+				sbdrop(&so->so_snd, acked);
 				mtx_leave(&so->so_snd.sb_mtx);
 
 				/*
@@ -1011,7 +1011,7 @@ findpcb:
 					TCP_TIMER_ARM(tp, TCPT_REXMT, tp->t_rxtcur);
 
 				tcp_update_sndspace(tp);
-				if (sb_notify(so, &so->so_snd)) {
+				if (sb_notify(&so->so_snd)) {
 					tp->t_flags |= TF_BLOCKOUTPUT;
 					sowwakeup(so);
 					tp->t_flags &= ~TF_BLOCKOUTPUT;
@@ -1024,7 +1024,7 @@ findpcb:
 			}
 		} else if (th->th_ack == tp->snd_una &&
 		    TAILQ_EMPTY(&tp->t_segq) &&
-		    tlen <= sbspace(so, &so->so_rcv)) {
+		    tlen <= sbspace(&so->so_rcv)) {
 			/*
 			 * This is a pure, in-sequence data packet
 			 * with nothing on the reassembly queue and
@@ -1088,7 +1088,7 @@ findpcb:
 	{
 		int win;
 
-		win = sbspace(so, &so->so_rcv);
+		win = sbspace(&so->so_rcv);
 		if (win < 0)
 			win = 0;
 		tp->rcv_wnd = imax(win, (int)(tp->rcv_adv - tp->rcv_nxt));
@@ -1746,12 +1746,12 @@ trimthenstep6:
 			else
 				tp->snd_wnd = 0;
 			mtx_enter(&so->so_snd.sb_mtx);
-			sbdrop(so, &so->so_snd, (int)so->so_snd.sb_cc);
+			sbdrop(&so->so_snd, (int)so->so_snd.sb_cc);
 			mtx_leave(&so->so_snd.sb_mtx);
 			ourfinisacked = 1;
 		} else {
 			mtx_enter(&so->so_snd.sb_mtx);
-			sbdrop(so, &so->so_snd, acked);
+			sbdrop(&so->so_snd, acked);
 			mtx_leave(&so->so_snd.sb_mtx);
 			if (tp->snd_wnd > acked)
 				tp->snd_wnd -= acked;
@@ -1761,7 +1761,7 @@ trimthenstep6:
 		}
 
 		tcp_update_sndspace(tp);
-		if (sb_notify(so, &so->so_snd)) {
+		if (sb_notify(&so->so_snd)) {
 			tp->t_flags |= TF_BLOCKOUTPUT;
 			sowwakeup(so);
 			tp->t_flags &= ~TF_BLOCKOUTPUT;
@@ -3532,16 +3532,18 @@ syn_cache_get(struct sockaddr *src, struct sockaddr *dst, struct tcphdr *th,
 {
 	struct syn_cache *sc;
 	struct syn_cache_head *scp;
-	struct inpcb *inp, *oldinp;
+	struct socket *listenso;
+	struct inpcb *inp, *listeninp;
 	struct tcpcb *tp = NULL;
 	struct mbuf *am;
-	struct socket *oso;
 	u_int rtableid;
 
 	NET_ASSERT_LOCKED();
 
+	inp = sotoinpcb(so);
+
 	mtx_enter(&syn_cache_mtx);
-	sc = syn_cache_lookup(src, dst, &scp, sotoinpcb(so)->inp_rtableid);
+	sc = syn_cache_lookup(src, dst, &scp, inp->inp_rtableid);
 	if (sc == NULL) {
 		mtx_leave(&syn_cache_mtx);
 		return (NULL);
@@ -3571,34 +3573,35 @@ syn_cache_get(struct sockaddr *src, struct sockaddr *dst, struct tcphdr *th,
 	 * connection when the SYN arrived.  If we can't create
 	 * the connection, abort it.
 	 */
-	oso = so;
-	so = sonewconn(so, SS_ISCONNECTED, M_DONTWAIT);
+	listenso = so;
+	listeninp = inp;
+	so = sonewconn(listenso, SS_ISCONNECTED, M_DONTWAIT);
 	if (so == NULL)
 		goto resetandabort;
-
-	oldinp = sotoinpcb(oso);
+	soassertlocked(so);
+	soref(so);
 	inp = sotoinpcb(so);
+	tp = intotcpcb(inp);
 
 #ifdef IPSEC
 	/*
-	 * We need to copy the required security levels
-	 * from the old pcb. Ditto for any other
-	 * IPsec-related information.
+	 * We need to copy the required security levels from the listen pcb.
+	 * Ditto for any other IPsec-related information.
 	 */
-	inp->inp_seclevel = oldinp->inp_seclevel;
+	inp->inp_seclevel = listeninp->inp_seclevel;
 #endif /* IPSEC */
 #ifdef INET6
 	if (ISSET(inp->inp_flags, INP_IPV6)) {
-		KASSERT(ISSET(oldinp->inp_flags, INP_IPV6));
+		KASSERT(ISSET(listeninp->inp_flags, INP_IPV6));
 
-		inp->inp_ipv6.ip6_hlim = oldinp->inp_ipv6.ip6_hlim;
-		inp->inp_hops = oldinp->inp_hops;
+		inp->inp_ipv6.ip6_hlim = listeninp->inp_ipv6.ip6_hlim;
+		inp->inp_hops = listeninp->inp_hops;
 	} else
 #endif
 	{
-		KASSERT(!ISSET(oldinp->inp_flags, INP_IPV6));
+		KASSERT(!ISSET(listeninp->inp_flags, INP_IPV6));
 
-		inp->inp_ip.ip_ttl = oldinp->inp_ip.ip_ttl;
+		inp->inp_ip.ip_ttl = listeninp->inp_ip.ip_ttl;
 		inp->inp_options = ip_srcroute(m);
 		if (inp->inp_options == NULL) {
 			inp->inp_options = sc->sc_ipopts;
@@ -3636,8 +3639,7 @@ syn_cache_get(struct sockaddr *src, struct sockaddr *dst, struct tcphdr *th,
 	}
 	(void) m_free(am);
 
-	tp = intotcpcb(inp);
-	tp->t_flags = sototcpcb(oso)->t_flags & (TF_NOPUSH|TF_NODELAY);
+	tp->t_flags = intotcpcb(listeninp)->t_flags & (TF_NOPUSH|TF_NODELAY);
 	if (sc->sc_request_r_scale != 15) {
 		tp->requested_s_scale = sc->sc_requested_s_scale;
 		tp->request_r_scale = sc->sc_request_r_scale;
@@ -3647,11 +3649,8 @@ syn_cache_get(struct sockaddr *src, struct sockaddr *dst, struct tcphdr *th,
 		tp->t_flags |= TF_REQ_TSTMP|TF_RCVD_TSTMP;
 
 	tp->t_template = tcp_template(tp);
-	if (tp->t_template == 0) {
-		tp = tcp_drop(tp, ENOBUFS);	/* destroys socket */
-		so = NULL;
+	if (tp->t_template == NULL)
 		goto abort;
-	}
 	tp->sack_enable = ISSET(sc->sc_fixflags, SCF_SACK_PERMIT);
 	tp->ts_modulate = sc->sc_modulate;
 	tp->ts_recent = sc->sc_timestamp;
@@ -3700,6 +3699,7 @@ syn_cache_get(struct sockaddr *src, struct sockaddr *dst, struct tcphdr *th,
 		tp->rcv_adv = tp->rcv_nxt + sc->sc_win;
 	tp->last_ack_sent = tp->rcv_nxt;
 
+	in_pcbsounlock_rele(inp, so);
 	tcpstat_inc(tcps_sc_completed);
 	syn_cache_put(sc);
 	return (so);
@@ -3708,9 +3708,10 @@ resetandabort:
 	tcp_respond(NULL, mtod(m, caddr_t), th, (tcp_seq)0, th->th_ack, TH_RST,
 	    m->m_pkthdr.ph_rtableid, now);
 abort:
+	if (tp != NULL)
+		tp = tcp_drop(tp, ECONNABORTED);	/* destroys socket */
 	m_freem(m);
-	if (so != NULL)
-		soabort(so);
+	in_pcbsounlock_rele(inp, so);
 	syn_cache_put(sc);
 	tcpstat_inc(tcps_sc_aborted);
 	return ((struct socket *)(-1));
@@ -3827,7 +3828,7 @@ syn_cache_add(struct sockaddr *src, struct sockaddr *dst, struct tcphdr *th,
 	/*
 	 * Initialize some local state.
 	 */
-	win = sbspace(so, &so->so_rcv);
+	win = sbspace(&so->so_rcv);
 	if (win > TCP_MAXWIN)
 		win = TCP_MAXWIN;
 

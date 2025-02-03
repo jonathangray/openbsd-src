@@ -1,4 +1,4 @@
-/*	$OpenBSD: locore.S,v 1.19 2024/04/06 18:33:54 kettenis Exp $	*/
+/*	$OpenBSD: locore.S,v 1.21 2025/01/22 18:18:58 jca Exp $	*/
 
 /*-
  * Copyright (c) 2015-2018 Ruslan Bukin <br@bsdpad.com>
@@ -192,7 +192,7 @@ initstack:
 	.space	USPACE
 initstack_end:
 
-	.text
+	.rodata
 ENTRY(sigcode)
 	mv	a0, sp
 	addi	a0, a0, SF_SC
@@ -213,7 +213,6 @@ sigfill:
 esigfill:
 	.globl	sigfillsiz
 sigfillsiz:
-	.data
 	.word	esigfill - sigfill
 
 	.data

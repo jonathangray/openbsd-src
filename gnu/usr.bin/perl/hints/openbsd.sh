@@ -190,7 +190,15 @@ esac
 # openbsd has a problem regarding newlocale()
 # https://marc.info/?l=openbsd-bugs&m=155364568608759&w=2
 # which is being fixed.  In the meantime, forbid POSIX 2008 locales
-d_newlocale="$undef"
+#d_newlocale="$undef"
+
+# libc on this platform always keeps these categories in the C locale
+ccflags="$ccflags -DNO_LOCALE_NUMERIC -DNO_LOCALE_COLLATE -DNO_LOCALE_MONETARY -DNO_LOCALE_TIME -DNO_LOCALE_MESSAGES"
+
+# And the only possible mismatched LC_CTYPE locale is C.UTF-8 (as only it and
+# plain C are legal for this category).  All other categories deal only in
+# ASCII characters which are a subset of C.UTF-8.
+ccflags="$ccflags -DLIBC_HANDLES_MISMATCHED_CTYPE"
 
 # OpenBSD's locale support is not that complete yet
 ccflags="-DNO_LOCALE_NUMERIC -DNO_LOCALE_COLLATE $ccflags"

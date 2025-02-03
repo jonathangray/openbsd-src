@@ -1,4 +1,4 @@
-/*	$OpenBSD: if.c,v 1.722 2025/01/16 17:20:23 mvs Exp $	*/
+/*	$OpenBSD: if.c,v 1.725 2025/01/25 10:53:36 mvs Exp $	*/
 /*	$NetBSD: if.c,v 1.35 1996/05/07 05:26:04 thorpej Exp $	*/
 
 /*
@@ -235,6 +235,7 @@ LIST_HEAD(, if_clone) if_cloners =
 int if_cloners_count;	/* [I] number of clonable interfaces */
 
 struct rwlock if_cloners_lock = RWLOCK_INITIALIZER("clonelk");
+struct rwlock if_tmplist_lock = RWLOCK_INITIALIZER("iftmplk");
 
 /* hooks should only be added, deleted, and run from a process context */
 struct mutex if_hooks_mtx = MUTEX_INITIALIZER(IPL_NONE);
@@ -2506,9 +2507,7 @@ ifioctl_get(u_long cmd, caddr_t data)
 		error = if_clone_list((struct if_clonereq *)data);
 		return (error);
 	case SIOCGIFGMEMB:
-		NET_LOCK_SHARED();
 		error = if_getgroupmembers(data);
-		NET_UNLOCK_SHARED();
 		return (error);
 	case SIOCGIFGATTR:
 		NET_LOCK_SHARED();
@@ -2516,9 +2515,7 @@ ifioctl_get(u_long cmd, caddr_t data)
 		NET_UNLOCK_SHARED();
 		return (error);
 	case SIOCGIFGLIST:
-		NET_LOCK_SHARED();
 		error = if_getgrouplist(data);
-		NET_UNLOCK_SHARED();
 		return (error);
 	}
 
@@ -2596,9 +2593,7 @@ ifioctl_get(u_long cmd, caddr_t data)
 		break;
 
 	case SIOCGIFGROUP:
-		NET_LOCK_SHARED();
 		error = if_getgroup(data, ifp);
-		NET_UNLOCK_SHARED();
 		break;
 
 	case SIOCGIFLLPRIO:
@@ -2798,7 +2793,29 @@ if_getdata(struct ifnet *ifp, struct if_data *data)
 {
 	unsigned int i;
 
-	*data = ifp->if_data;
+	data->ifi_type = ifp->if_type;
+	data->ifi_addrlen = ifp->if_addrlen;
+	data->ifi_hdrlen = ifp->if_hdrlen;
+	data->ifi_link_state = ifp->if_link_state;
+	data->ifi_mtu = ifp->if_mtu;
+	data->ifi_metric = ifp->if_metric;
+	data->ifi_baudrate = ifp->if_baudrate;
+	data->ifi_capabilities = ifp->if_capabilities;
+	data->ifi_rdomain = ifp->if_rdomain;
+	data->ifi_lastchange = ifp->if_lastchange;
+
+	data->ifi_ipackets = ifp->if_data_counters[ifc_ipackets];
+	data->ifi_ierrors = ifp->if_data_counters[ifc_ierrors];
+	data->ifi_opackets = ifp->if_data_counters[ifc_opackets];
+	data->ifi_oerrors = ifp->if_data_counters[ifc_oerrors];
+	data->ifi_collisions = ifp->if_data_counters[ifc_collisions];
+	data->ifi_ibytes = ifp->if_data_counters[ifc_ibytes];
+	data->ifi_obytes = ifp->if_data_counters[ifc_obytes];
+	data->ifi_imcasts = ifp->if_data_counters[ifc_imcasts];
+	data->ifi_omcasts = ifp->if_data_counters[ifc_omcasts];
+	data->ifi_iqdrops = ifp->if_data_counters[ifc_iqdrops];
+	data->ifi_oqdrops = ifp->if_data_counters[ifc_oqdrops];
+	data->ifi_noproto = ifp->if_data_counters[ifc_noproto];
 
 	if (ifp->if_counters != NULL) {
 		uint64_t counters[ifc_ncounters];
@@ -2849,6 +2866,19 @@ if_detached_ioctl(struct ifnet *ifp, u_long a, caddr_t b)
 	return ENODEV;
 }
 
+static inline void
+ifgroup_icref(struct ifg_group *ifg)
+{
+	refcnt_take(&ifg->ifg_tmprefcnt);
+}
+
+static inline void
+ifgroup_icrele(struct ifg_group *ifg)
+{
+	if (refcnt_rele(&ifg->ifg_tmprefcnt) != 0)
+		free(ifg, M_IFGROUP, sizeof(*ifg));
+}
+
 /*
  * Create interface group without members
  */
@@ -2864,6 +2894,7 @@ if_creategroup(const char *groupname)
 	ifg->ifg_refcnt = 1;
 	ifg->ifg_carp_demoted = 0;
 	TAILQ_INIT(&ifg->ifg_members);
+	refcnt_init(&ifg->ifg_tmprefcnt);
 #if NPF > 0
 	pfi_attach_ifgroup(ifg);
 #endif
@@ -2964,7 +2995,7 @@ if_delgroup(struct ifnet *ifp, const char *groupname)
 #if NPF > 0
 		pfi_detach_ifgroup(ifgl->ifgl_group);
 #endif
-		free(ifgl->ifgl_group, M_IFGROUP, sizeof(*ifgl->ifgl_group));
+		ifgroup_icrele(ifgl->ifgl_group);
 	}
 
 	free(ifgl, M_IFGROUP, sizeof(*ifgl));
@@ -2979,33 +3010,57 @@ if_delgroup(struct ifnet *ifp, const char *groupname)
 int
 if_getgroup(caddr_t data, struct ifnet *ifp)
 {
-	int			 len, error;
+	TAILQ_HEAD(, ifg_group)	 ifg_tmplist =
+	    TAILQ_HEAD_INITIALIZER(ifg_tmplist);
 	struct ifg_list		*ifgl;
 	struct ifg_req		 ifgrq, *ifgp;
 	struct ifgroupreq	*ifgr = (struct ifgroupreq *)data;
+	struct ifg_group	 *ifg;
+	int			 len, error = 0;
 
 	if (ifgr->ifgr_len == 0) {
+		NET_LOCK_SHARED();
 		TAILQ_FOREACH(ifgl, &ifp->if_groups, ifgl_next)
 			ifgr->ifgr_len += sizeof(struct ifg_req);
+		NET_UNLOCK_SHARED();
 		return (0);
 	}
 
 	len = ifgr->ifgr_len;
 	ifgp = ifgr->ifgr_groups;
+
+	rw_enter_write(&if_tmplist_lock);
+
+	NET_LOCK_SHARED();
 	TAILQ_FOREACH(ifgl, &ifp->if_groups, ifgl_next) {
-		if (len < sizeof(ifgrq))
-			return (EINVAL);
+		ifgroup_icref(ifgl->ifgl_group);
+		TAILQ_INSERT_TAIL(&ifg_tmplist, ifgl->ifgl_group, ifg_tmplist);
+	}
+	NET_UNLOCK_SHARED();
+
+	TAILQ_FOREACH(ifg, &ifg_tmplist, ifg_tmplist) {
+		if (len < sizeof(ifgrq)) {
+			error = EINVAL;
+			break;
+		}
 		bzero(&ifgrq, sizeof ifgrq);
-		strlcpy(ifgrq.ifgrq_group, ifgl->ifgl_group->ifg_group,
+		strlcpy(ifgrq.ifgrq_group, ifg->ifg_group,
 		    sizeof(ifgrq.ifgrq_group));
 		if ((error = copyout((caddr_t)&ifgrq, (caddr_t)ifgp,
 		    sizeof(struct ifg_req))))
-			return (error);
+			break;
 		len -= sizeof(ifgrq);
 		ifgp++;
 	}
 
-	return (0);
+	while ((ifg = TAILQ_FIRST(&ifg_tmplist))){
+		TAILQ_REMOVE(&ifg_tmplist, ifg, ifg_tmplist);
+		ifgroup_icrele(ifg);
+	}
+
+	rw_exit_write(&if_tmplist_lock);
+
+	return (error);
 }
 
 /*
@@ -3014,40 +3069,69 @@ if_getgroup(caddr_t data, struct ifnet *ifp)
 int
 if_getgroupmembers(caddr_t data)
 {
+	TAILQ_HEAD(, ifnet)	if_tmplist =
+	    TAILQ_HEAD_INITIALIZER(if_tmplist);
+	struct ifnet		*ifp;
 	struct ifgroupreq	*ifgr = (struct ifgroupreq *)data;
 	struct ifg_group	*ifg;
 	struct ifg_member	*ifgm;
 	struct ifg_req		 ifgrq, *ifgp;
-	int			 len, error;
+	int			 len, error = 0;
+
+	rw_enter_write(&if_tmplist_lock);
+	NET_LOCK_SHARED();
 
 	TAILQ_FOREACH(ifg, &ifg_head, ifg_next)
 		if (!strcmp(ifg->ifg_group, ifgr->ifgr_name))
 			break;
-	if (ifg == NULL)
-		return (ENOENT);
+	if (ifg == NULL) {
+		error = ENOENT;
+		goto unlock;
+	}
 
 	if (ifgr->ifgr_len == 0) {
 		TAILQ_FOREACH(ifgm, &ifg->ifg_members, ifgm_next)
 			ifgr->ifgr_len += sizeof(ifgrq);
-		return (0);
+		goto unlock;
 	}
+
+	TAILQ_FOREACH (ifgm, &ifg->ifg_members, ifgm_next) {
+		if_ref(ifgm->ifgm_ifp);
+		TAILQ_INSERT_TAIL(&if_tmplist, ifgm->ifgm_ifp, if_tmplist);
+	}
+	NET_UNLOCK_SHARED();
 
 	len = ifgr->ifgr_len;
 	ifgp = ifgr->ifgr_groups;
-	TAILQ_FOREACH(ifgm, &ifg->ifg_members, ifgm_next) {
-		if (len < sizeof(ifgrq))
-			return (EINVAL);
+
+	TAILQ_FOREACH (ifp, &if_tmplist, if_tmplist) {
+		if (len < sizeof(ifgrq)) {
+			error = EINVAL;
+			break;
+		}
 		bzero(&ifgrq, sizeof ifgrq);
-		strlcpy(ifgrq.ifgrq_member, ifgm->ifgm_ifp->if_xname,
+		strlcpy(ifgrq.ifgrq_member, ifp->if_xname,
 		    sizeof(ifgrq.ifgrq_member));
 		if ((error = copyout((caddr_t)&ifgrq, (caddr_t)ifgp,
 		    sizeof(struct ifg_req))))
-			return (error);
+			break;
 		len -= sizeof(ifgrq);
 		ifgp++;
 	}
 
-	return (0);
+	while ((ifp = TAILQ_FIRST(&if_tmplist))) {
+		TAILQ_REMOVE(&if_tmplist, ifp, if_tmplist);
+		if_put(ifp);
+	}
+	rw_exit_write(&if_tmplist_lock);
+
+	return (error);
+
+unlock:
+	NET_UNLOCK_SHARED();
+	rw_exit_write(&if_tmplist_lock);
+
+	return (error);
 }
 
 int
@@ -3100,33 +3184,56 @@ if_setgroupattribs(caddr_t data)
 int
 if_getgrouplist(caddr_t data)
 {
+	TAILQ_HEAD(, ifg_group)	 ifg_tmplist =
+	    TAILQ_HEAD_INITIALIZER(ifg_tmplist);
 	struct ifgroupreq	*ifgr = (struct ifgroupreq *)data;
 	struct ifg_group	*ifg;
 	struct ifg_req		 ifgrq, *ifgp;
-	int			 len, error;
+	int			 len, error = 0;
 
 	if (ifgr->ifgr_len == 0) {
+		NET_LOCK_SHARED();
 		TAILQ_FOREACH(ifg, &ifg_head, ifg_next)
 			ifgr->ifgr_len += sizeof(ifgrq);
+		NET_UNLOCK_SHARED();
 		return (0);
 	}
 
 	len = ifgr->ifgr_len;
 	ifgp = ifgr->ifgr_groups;
+
+	rw_enter_write(&if_tmplist_lock);
+
+	NET_LOCK_SHARED();
 	TAILQ_FOREACH(ifg, &ifg_head, ifg_next) {
-		if (len < sizeof(ifgrq))
-			return (EINVAL);
+		ifgroup_icref(ifg);
+		TAILQ_INSERT_TAIL(&ifg_tmplist, ifg, ifg_tmplist);
+	}
+	NET_UNLOCK_SHARED();
+
+	TAILQ_FOREACH(ifg, &ifg_tmplist, ifg_tmplist) {
+		if (len < sizeof(ifgrq)) {
+			error = EINVAL;
+			break;
+		}
 		bzero(&ifgrq, sizeof ifgrq);
 		strlcpy(ifgrq.ifgrq_group, ifg->ifg_group,
 		    sizeof(ifgrq.ifgrq_group));
 		if ((error = copyout((caddr_t)&ifgrq, (caddr_t)ifgp,
 		    sizeof(struct ifg_req))))
-			return (error);
+			break;
 		len -= sizeof(ifgrq);
 		ifgp++;
 	}
 
-	return (0);
+	while ((ifg = TAILQ_FIRST(&ifg_tmplist))){
+		TAILQ_REMOVE(&ifg_tmplist, ifg, ifg_tmplist);
+		ifgroup_icrele(ifg);
+	}
+
+	rw_exit_write(&if_tmplist_lock);
+
+	return (error);
 }
 
 void

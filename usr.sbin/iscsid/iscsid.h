@@ -1,4 +1,4 @@
-/*	$OpenBSD: iscsid.h,v 1.20 2025/01/16 16:19:39 claudio Exp $ */
+/*	$OpenBSD: iscsid.h,v 1.24 2025/01/28 20:41:44 claudio Exp $ */
 
 /*
  * Copyright (c) 2009 Claudio Jeker <claudio@openbsd.org>
@@ -181,6 +181,9 @@ struct session_config {
 	u_int8_t		 disabled;
 };
 
+#define DIGEST_NONE		0x1
+#define DIGEST_CRC32C		0x2
+
 #define SESSION_TYPE_NORMAL	0
 #define SESSION_TYPE_DISCOVERY	1
 
@@ -226,6 +229,7 @@ struct initiator {
 };
 
 struct sessev {
+	struct event		 ev;
 	struct session		*sess;
 	struct connection	*conn;
 	enum s_event		 event;
@@ -233,13 +237,13 @@ struct sessev {
 
 struct session {
 	TAILQ_ENTRY(session)	 entry;
+	struct sessev		 sev;
 	struct connection_head	 connections;
 	struct taskq		 tasks;
 	struct session_config	 config;
 	struct session_params	 mine;
 	struct session_params	 his;
 	struct session_params	 active;
-	struct initiator	*initiator;
 	u_int32_t		 cmdseqnum;
 	u_int32_t		 itt;
 	u_int32_t		 isid_base;	/* only 24 bits */
@@ -264,6 +268,7 @@ struct session_poll {
 struct connection {
 	struct event		 ev;
 	struct event		 wev;
+	struct sessev		 sev;
 	TAILQ_ENTRY(connection)	 entry;
 	struct connection_params mine;
 	struct connection_params his;
@@ -323,11 +328,16 @@ void	iscsi_merge_sess_params(struct session_params *,
 void	iscsi_merge_conn_params(struct connection_params *,
 	    struct connection_params *, struct connection_params *);
 
-struct initiator *initiator_init(void);
-void	initiator_cleanup(struct initiator *);
-void	initiator_shutdown(struct initiator *);
-int	initiator_isdown(struct initiator *);
-struct session *initiator_t2s(u_int);
+void	initiator_init(void);
+void	initiator_cleanup(void);
+void	initiator_set_config(struct initiator_config *);
+struct initiator_config *initiator_get_config(void);
+void	initiator_shutdown(void);
+int	initiator_isdown(void);
+struct session	*initiator_new_session(u_int8_t);
+struct session	*initiator_find_session(char *);
+struct session	*initiator_t2s(u_int);
+struct session_head	*initiator_get_sessions(void);
 void	initiator_login(struct connection *);
 void	initiator_discovery(struct session *);
 void	initiator_logout(struct session *, struct connection *, u_int8_t);
@@ -341,16 +351,14 @@ void	control_queue(void *, struct pdu *);
 int	control_compose(void *, u_int16_t, void *, size_t);
 int	control_build(void *, u_int16_t, int, struct ctrldata *);
 
-struct session	*session_find(struct initiator *, char *);
-struct session	*session_new(struct initiator *, u_int8_t);
 void	session_cleanup(struct session *);
 int	session_shutdown(struct session *);
 void	session_config(struct session *, struct session_config *);
 void	session_task_issue(struct session *, struct task *);
 void	session_logout_issue(struct session *, struct task *);
 void	session_schedule(struct session *);
-void	session_fsm(struct session *, enum s_event, struct connection *,
-	    unsigned int);
+void	session_fsm(struct sessev *, enum s_event, unsigned int);
+void	session_fsm_callback(int, short, void *);
 
 void	conn_new(struct session *, struct connection_config *);
 void	conn_free(struct connection *);
@@ -359,7 +367,7 @@ void	conn_task_issue(struct connection *, struct task *);
 void	conn_task_schedule(struct connection *);
 void	conn_task_cleanup(struct connection *, struct task *);
 int	conn_parse_kvp(struct connection *, struct kvp *);
-int	conn_gen_kvp(struct connection *, struct kvp *, size_t *);
+int	kvp_set_from_mine(struct kvp *, const char *, struct connection *);
 void	conn_pdu_write(struct connection *, struct pdu *);
 void	conn_fail(struct connection *);
 void	conn_fsm(struct connection *, enum c_event);
@@ -369,6 +377,7 @@ int	text_to_pdu(struct kvp *, struct pdu *);
 struct kvp *pdu_to_text(char *, size_t);
 u_int64_t	text_to_num(const char *, u_int64_t, u_int64_t, const char **);
 int		text_to_bool(const char *, const char **);
+int		text_to_digest(const char *, const char **);
 void	pdu_free_queue(struct pduq *);
 ssize_t	pdu_read(struct connection *);
 ssize_t	pdu_write(struct connection *);

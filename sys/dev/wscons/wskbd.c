@@ -1,4 +1,4 @@
-/* $OpenBSD: wskbd.c,v 1.120 2024/12/30 02:46:00 guenther Exp $ */
+/* $OpenBSD: wskbd.c,v 1.122 2025/01/26 08:50:02 jsg Exp $ */
 /* $NetBSD: wskbd.c,v 1.80 2005/05/04 01:52:16 augustss Exp $ */
 
 /*
@@ -625,7 +625,6 @@ wskbd_detach(struct device  *self, int flags)
 	struct wskbd_softc *sc = (struct wskbd_softc *)self;
 	struct wseventvar *evar;
 	int maj, mn;
-	int s;
 
 #if NWSMUX > 0
 	/* Tell parent mux we're leaving. */
@@ -647,18 +646,19 @@ wskbd_detach(struct device  *self, int flags)
 
 	evar = sc->sc_base.me_evp;
 	if (evar != NULL) {
-		s = spltty();
 		if (--sc->sc_refcnt >= 0) {
 			/* Wake everyone by generating a dummy event. */
+
+			mtx_enter(&evar->ws_mtx);
 			if (++evar->ws_put >= WSEVENT_QSIZE)
 				evar->ws_put = 0;
-			WSEVENT_WAKEUP(evar);
+			mtx_leave(&evar->ws_mtx);
+			wsevent_wakeup(evar);
 			/* Wait for processes to go away. */
 			if (tsleep_nsec(sc, PZERO, "wskdet", SEC_TO_NSEC(60)))
 				printf("wskbd_detach: %s didn't detach\n",
 				       sc->sc_base.me_dv.dv_xname);
 		}
-		splx(s);
 	}
 
 	free(sc->sc_map, M_DEVBUF,
@@ -763,10 +763,12 @@ wskbd_deliver_event(struct wskbd_softc *sc, u_int type, int value)
 	}
 #endif
 
+	mtx_enter(&evar->ws_mtx);
 	put = evar->ws_put;
 	ev = &evar->ws_q[put];
 	put = (put + 1) % WSEVENT_QSIZE;
 	if (put == evar->ws_get) {
+		mtx_leave(&evar->ws_mtx);
 		log(LOG_WARNING, "%s: event queue overflow\n",
 		    sc->sc_base.me_dv.dv_xname);
 		return;
@@ -775,7 +777,8 @@ wskbd_deliver_event(struct wskbd_softc *sc, u_int type, int value)
 	ev->value = value;
 	nanotime(&ev->time);
 	evar->ws_put = put;
-	WSEVENT_WAKEUP(evar);
+	mtx_leave(&evar->ws_mtx);
+	wsevent_wakeup(evar);
 }
 
 #ifdef WSDISPLAY_COMPAT_RAWKBD
@@ -862,7 +865,7 @@ wskbdopen(dev_t dev, int flags, int mode, struct proc *p)
 		return (EBUSY);
 
 	evar = &sc->sc_base.me_evar;
-	if (wsevent_init(evar))
+	if (wsevent_init_flags(evar, WSEVENT_MPSAFE))
 		return (EBUSY);
 
 	error = wskbd_do_open(sc, evar);
@@ -1005,7 +1008,9 @@ wskbd_do_ioctl_sc(struct wskbd_softc *sc, u_long cmd, caddr_t data, int flag,
 	case FIOASYNC:
 		if (sc->sc_base.me_evp == NULL)
 			return (EINVAL);
+		mtx_enter(&sc->sc_base.me_evp->ws_mtx);
 		sc->sc_base.me_evp->ws_async = *(int *)data != 0;
+		mtx_leave(&sc->sc_base.me_evp->ws_mtx);
 		return (0);
 
 	case FIOGETOWN:

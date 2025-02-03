@@ -1,4 +1,4 @@
-/*	$OpenBSD: kroute.c,v 1.310 2024/09/04 15:06:36 claudio Exp $ */
+/*	$OpenBSD: kroute.c,v 1.312 2025/01/27 15:22:11 claudio Exp $ */
 
 /*
  * Copyright (c) 2003, 2004 Henning Brauer <henning@openbsd.org>
@@ -476,6 +476,9 @@ kr_change(u_int rtableid, struct kroute_full *kf)
 		return (krVPN4_change(kt, kf));
 	case AID_VPN_IPv6:
 		return (krVPN6_change(kt, kf));
+	case AID_EVPN:
+		/* XXX ignored for now */
+		return (0);
 	}
 	log_warnx("%s: not handled AID", __func__);
 	return (-1);
@@ -1335,8 +1338,13 @@ ktable_postload(void)
 		if (kt->state == RECONF_DELETE) {
 			ktable_free(i - 1);
 			continue;
-		} else if (kt->state == RECONF_REINIT)
-			kt->fib_sync = kt->fib_conf;
+		} else if (kt->state == RECONF_REINIT) {
+			if (kt->fib_sync != kt->fib_conf) {
+				kt->fib_sync = kt->fib_conf;
+				if (kt->fib_sync)
+					fetchtable(kt);
+			}
+		}
 
 		/* cleanup old networks */
 		TAILQ_FOREACH_SAFE(n, &kt->krn, entry, xn) {
@@ -1896,6 +1904,9 @@ kroute_remove(struct ktable *kt, struct kroute_full *kf, int any)
 	case AID_VPN_IPv6:
 		multipath = kroute6_remove(kt, kf, any);
 		break;
+	case AID_EVPN:
+		/* XXX ignored for now */
+		return (0);
 	default:
 		log_warnx("%s: not handled AID", __func__);
 		return (-1);

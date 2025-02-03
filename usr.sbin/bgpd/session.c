@@ -1,4 +1,4 @@
-/*	$OpenBSD: session.c,v 1.507 2025/01/13 13:50:34 claudio Exp $ */
+/*	$OpenBSD: session.c,v 1.509 2025/01/31 20:07:18 claudio Exp $ */
 
 /*
  * Copyright (c) 2003, 2004, 2005 Henning Brauer <henning@openbsd.org>
@@ -1446,7 +1446,7 @@ session_sendmsg(struct ibuf *msg, struct peer *p, enum msg_type msgtype)
 	struct mrt		*mrt;
 
 	LIST_FOREACH(mrt, &mrthead, entry) {
-		if (!(mrt->type == MRT_ALL_OUT || (msgtype == MSG_UPDATE &&
+		if (!(mrt->type == MRT_ALL_OUT || (msgtype == BGP_UPDATE &&
 		    mrt->type == MRT_UPDATE_OUT)))
 			continue;
 		if ((mrt->peer_id == 0 && mrt->group_id == 0) ||
@@ -1636,7 +1636,7 @@ session_open(struct peer *p)
 		len += 2;
 	}
 
-	if ((buf = session_newmsg(MSG_OPEN, len)) == NULL) {
+	if ((buf = session_newmsg(BGP_OPEN, len)) == NULL) {
 		ibuf_free(opb);
 		bgp_fsm(p, EVNT_CON_FATAL, NULL);
 		return;
@@ -1680,7 +1680,7 @@ session_open(struct peer *p)
 		return;
 	}
 
-	session_sendmsg(buf, p, MSG_OPEN);
+	session_sendmsg(buf, p, BGP_OPEN);
 	p->stats.msg_sent_open++;
 }
 
@@ -1689,12 +1689,12 @@ session_keepalive(struct peer *p)
 {
 	struct ibuf		*buf;
 
-	if ((buf = session_newmsg(MSG_KEEPALIVE, MSGSIZE_KEEPALIVE)) == NULL) {
+	if ((buf = session_newmsg(BGP_KEEPALIVE, MSGSIZE_KEEPALIVE)) == NULL) {
 		bgp_fsm(p, EVNT_CON_FATAL, NULL);
 		return;
 	}
 
-	session_sendmsg(buf, p, MSG_KEEPALIVE);
+	session_sendmsg(buf, p, BGP_KEEPALIVE);
 	start_timer_keepalive(p);
 	p->stats.msg_sent_keepalive++;
 }
@@ -1723,7 +1723,7 @@ session_update(uint32_t peerid, struct ibuf *ibuf)
 		return;
 	}
 
-	if ((buf = session_newmsg(MSG_UPDATE, MSGSIZE_HEADER + len)) == NULL) {
+	if ((buf = session_newmsg(BGP_UPDATE, MSGSIZE_HEADER + len)) == NULL) {
 		bgp_fsm(p, EVNT_CON_FATAL, NULL);
 		return;
 	}
@@ -1734,7 +1734,7 @@ session_update(uint32_t peerid, struct ibuf *ibuf)
 		return;
 	}
 
-	session_sendmsg(buf, p, MSG_UPDATE);
+	session_sendmsg(buf, p, BGP_UPDATE);
 	start_timer_keepalive(p);
 	p->stats.msg_sent_update++;
 }
@@ -1825,7 +1825,7 @@ session_notification(struct peer *p, uint8_t errcode, uint8_t subcode,
 		datalen += ibuf_size(ibuf);
 	}
 
-	if ((buf = session_newmsg(MSG_NOTIFICATION,
+	if ((buf = session_newmsg(BGP_NOTIFICATION,
 	    MSGSIZE_NOTIFICATION_MIN + datalen)) == NULL) {
 		bgp_fsm(p, EVNT_CON_FATAL, NULL);
 		return;
@@ -1848,7 +1848,7 @@ session_notification(struct peer *p, uint8_t errcode, uint8_t subcode,
 		return;
 	}
 
-	session_sendmsg(buf, p, MSG_NOTIFICATION);
+	session_sendmsg(buf, p, BGP_NOTIFICATION);
 	p->stats.msg_sent_notification++;
 	p->stats.last_sent_errcode = errcode;
 	p->stats.last_sent_suberr = subcode;
@@ -1899,7 +1899,7 @@ session_rrefresh(struct peer *p, uint8_t aid, uint8_t subtype)
 	if (aid2afi(aid, &afi, &safi) == -1)
 		fatalx("session_rrefresh: bad afi/safi pair");
 
-	if ((buf = session_newmsg(MSG_RREFRESH, MSGSIZE_RREFRESH)) == NULL) {
+	if ((buf = session_newmsg(BGP_RREFRESH, MSGSIZE_RREFRESH)) == NULL) {
 		bgp_fsm(p, EVNT_CON_FATAL, NULL);
 		return;
 	}
@@ -1914,7 +1914,7 @@ session_rrefresh(struct peer *p, uint8_t aid, uint8_t subtype)
 		return;
 	}
 
-	session_sendmsg(buf, p, MSG_RREFRESH);
+	session_sendmsg(buf, p, BGP_RREFRESH);
 	p->stats.msg_sent_rrefresh++;
 }
 
@@ -2094,7 +2094,7 @@ session_process_msg(struct peer *p)
 		/* dump to MRT as soon as we have a full packet */
 		LIST_FOREACH(mrt, &mrthead, entry) {
 			if (!(mrt->type == MRT_ALL_IN ||
-			    (msgtype == MSG_UPDATE &&
+			    (msgtype == BGP_UPDATE &&
 			    mrt->type == MRT_UPDATE_IN)))
 				continue;
 			if ((mrt->peer_id == 0 && mrt->group_id == 0) ||
@@ -2106,23 +2106,23 @@ session_process_msg(struct peer *p)
 		ibuf_skip(msg, MSGSIZE_HEADER);
 
 		switch (msgtype) {
-		case MSG_OPEN:
+		case BGP_OPEN:
 			bgp_fsm(p, EVNT_RCVD_OPEN, msg);
 			p->stats.msg_rcvd_open++;
 			break;
-		case MSG_UPDATE:
+		case BGP_UPDATE:
 			bgp_fsm(p, EVNT_RCVD_UPDATE, msg);
 			p->stats.msg_rcvd_update++;
 			break;
-		case MSG_NOTIFICATION:
+		case BGP_NOTIFICATION:
 			bgp_fsm(p, EVNT_RCVD_NOTIFICATION, msg);
 			p->stats.msg_rcvd_notification++;
 			break;
-		case MSG_KEEPALIVE:
+		case BGP_KEEPALIVE:
 			bgp_fsm(p, EVNT_RCVD_KEEPALIVE, msg);
 			p->stats.msg_rcvd_keepalive++;
 			break;
-		case MSG_RREFRESH:
+		case BGP_RREFRESH:
 			parse_rrefresh(p, msg);
 			p->stats.msg_rcvd_rrefresh++;
 			break;
@@ -2173,35 +2173,35 @@ parse_header(struct ibuf *msg, void *arg, int *fd)
 	}
 
 	switch (type) {
-	case MSG_OPEN:
+	case BGP_OPEN:
 		if (len < MSGSIZE_OPEN_MIN || len > MAX_PKTSIZE) {
 			log_peer_warnx(&peer->conf,
 			    "received OPEN: illegal len: %u byte", len);
 			goto badlen;
 		}
 		break;
-	case MSG_NOTIFICATION:
+	case BGP_NOTIFICATION:
 		if (len < MSGSIZE_NOTIFICATION_MIN) {
 			log_peer_warnx(&peer->conf,
 			    "received NOTIFICATION: illegal len: %u byte", len);
 			goto badlen;
 		}
 		break;
-	case MSG_UPDATE:
+	case BGP_UPDATE:
 		if (len < MSGSIZE_UPDATE_MIN) {
 			log_peer_warnx(&peer->conf,
 			    "received UPDATE: illegal len: %u byte", len);
 			goto badlen;
 		}
 		break;
-	case MSG_KEEPALIVE:
+	case BGP_KEEPALIVE:
 		if (len != MSGSIZE_KEEPALIVE) {
 			log_peer_warnx(&peer->conf,
 			    "received KEEPALIVE: illegal len: %u byte", len);
 			goto badlen;
 		}
 		break;
-	case MSG_RREFRESH:
+	case BGP_RREFRESH:
 		if (len < MSGSIZE_RREFRESH_MIN) {
 			log_peer_warnx(&peer->conf,
 			    "received RREFRESH: illegal len: %u byte", len);
@@ -2572,7 +2572,7 @@ int
 parse_capabilities(struct peer *peer, struct ibuf *buf, uint32_t *as)
 {
 	struct ibuf	 capabuf;
-	uint16_t	 afi, nhafi, tmp16, gr_header;
+	uint16_t	 afi, nhafi, gr_header;
 	uint8_t		 capa_code, capa_len;
 	uint8_t		 safi, aid, role, flags;
 
@@ -2616,6 +2616,7 @@ parse_capabilities(struct peer *peer, struct ibuf *buf, uint32_t *as)
 			break;
 		case CAPA_EXT_NEXTHOP:
 			while (ibuf_size(&capabuf) > 0) {
+				uint16_t tmp16;
 				if (ibuf_get_n16(&capabuf, &afi) == -1 ||
 				    ibuf_get_n16(&capabuf, &tmp16) == -1 ||
 				    ibuf_get_n16(&capabuf, &nhafi) == -1) {
@@ -2626,7 +2627,8 @@ parse_capabilities(struct peer *peer, struct ibuf *buf, uint32_t *as)
 					    sizeof(peer->capa.peer.ext_nh));
 					break;
 				}
-				if (afi2aid(afi, tmp16, &aid) == -1 ||
+				safi = tmp16;
+				if (afi2aid(afi, safi, &aid) == -1 ||
 				    !(aid == AID_INET || aid == AID_VPN_IPv4)) {
 					log_peer_warnx(&peer->conf,
 					    "Received %s capability: "

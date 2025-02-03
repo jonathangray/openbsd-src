@@ -1,4 +1,4 @@
-/*	$OpenBSD: kern_sig.c,v 1.355 2025/01/06 13:17:56 claudio Exp $	*/
+/*	$OpenBSD: kern_sig.c,v 1.359 2025/01/25 19:21:40 claudio Exp $	*/
 /*	$NetBSD: kern_sig.c,v 1.54 1996/04/22 01:38:32 christos Exp $	*/
 
 /*
@@ -125,7 +125,7 @@ void proc_stop(struct proc *p, int);
 void proc_stop_sweep(void *);
 void *proc_stop_si;
 
-void process_continue(struct proc *, int);
+void process_continue(struct process *, int);
 
 void setsigctx(struct proc *, int, struct sigctx *);
 void postsig_done(struct proc *, int, sigset_t, int);
@@ -1119,7 +1119,7 @@ ptsignal_locked(struct proc *p, int signum, enum signal_type type)
 				unsleep(p);
 			}
 
-			process_continue(p, P_SUSPSIG);
+			process_continue(pr, P_SUSPSIG);
 			wakeparent = 1;
 			goto out;
 		}
@@ -1509,26 +1509,25 @@ proc_trap(struct proc *p, int signum)
 	signum = pr->ps_xsig;
 	pr->ps_xsig = 0;
 	if ((p->p_flag & P_TRACESINGLE) == 0)
-		single_thread_clear(p, 0);
+		single_thread_clear(p);
 	atomic_clearbits_int(&p->p_flag, P_TRACESINGLE);
 
 	return signum;
 }
 
 /*
- * Continue all threads of a process that were stopped because of `flag'."
+ * Continue all threads of a process that were stopped because of `flag'.
  */
 void
-process_continue(struct proc *p, int flag)
+process_continue(struct process *pr, int flag)
 {
-	struct process *pr = p->p_p;
-	struct proc *q;
+	struct proc *q, *p = NULL;
 
 	MUTEX_ASSERT_LOCKED(&pr->ps_mtx);
 
-	/* wake all if called from a different process */
-	if (curproc != p)
-		p = NULL;
+	/* skip curproc if it is part of pr */
+	if (curproc->p_p == pr)
+		p = curproc;
 
 	TAILQ_FOREACH(q, &pr->ps_threads, p_thr_link) {
 		if (q == p)
@@ -1538,20 +1537,25 @@ process_continue(struct proc *p, int flag)
 		atomic_clearbits_int(&q->p_flag, flag);
 
 		/*
-		 * clearing either makes the thread runnable or puts
-		 * it back into some sleep queue
-		 */
-		/*
 		 * XXX in ptsignal the SCHED_LOCK is already held so we can't
 		 * grab it here until that is fixed.
 		 */
 		/* XXX SCHED_LOCK(); */
 		SCHED_ASSERT_LOCKED();
-		if (q->p_wchan == NULL)
-			setrunnable(q);
-		else {
-			atomic_clearbits_int(&q->p_flag, P_WSLEEP);
-			q->p_stat = SSLEEP;
+		/*
+		 * Stopping a process is not an atomic operation so
+		 * it is possible that some threads are not stopped
+		 * when process_continue is called. These threads
+		 * need to be skipped.
+		 *
+		 * Clearing either makes the thread runnable or puts
+		 * it back into some sleep queue.
+		 */
+		if (q->p_stat == SSTOP) {
+			if (q->p_wchan == NULL)
+				setrunnable(q);
+			else
+				q->p_stat = SSLEEP;
 		}
 		/* XXX SCHED_UNLOCK(); */
 	}
@@ -2123,15 +2127,21 @@ single_thread_check_locked(struct proc *p, int deep)
 	if (pr->ps_single == NULL || pr->ps_single == p)
 		return (0);
 
-	do {
-		/* if we're in deep, we need to unwind to the edge */
-		if (deep) {
-			if (pr->ps_flags & PS_SINGLEUNWIND)
-				return (ERESTART);
-			if (pr->ps_flags & PS_SINGLEEXIT)
-				return (EINTR);
-		}
+	/* if we're in deep, we need to unwind to the edge */
+	if (deep) {
+		int err = 0;
 
+		if (pr->ps_flags & PS_SINGLEUNWIND ||
+		    pr->ps_flags & PS_SINGLEEXIT)
+			return (ERESTART);
+		SCHED_LOCK();
+		if (p->p_stat != SSTOP)
+			err = EWOULDBLOCK;
+		SCHED_UNLOCK();
+		return (err);
+	}
+
+	do {
 		if (pr->ps_flags & PS_SINGLEEXIT) {
 			mtx_leave(&pr->ps_mtx);
 			KERNEL_LOCK();
@@ -2284,7 +2294,7 @@ single_thread_wait(struct process *pr, int recheck)
 }
 
 void
-single_thread_clear(struct proc *p, int flag)
+single_thread_clear(struct proc *p)
 {
 	struct process *pr = p->p_p;
 
@@ -2296,7 +2306,7 @@ single_thread_clear(struct proc *p, int flag)
 	atomic_clearbits_int(&pr->ps_flags, PS_SINGLEUNWIND | PS_SINGLEEXIT);
 
 	SCHED_LOCK();
-	process_continue(p, P_SUSPSINGLE);
+	process_continue(pr, P_SUSPSINGLE);
 	SCHED_UNLOCK();
 
 	mtx_leave(&pr->ps_mtx);

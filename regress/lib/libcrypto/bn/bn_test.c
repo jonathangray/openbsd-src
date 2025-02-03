@@ -1,4 +1,4 @@
-/*	$OpenBSD: bn_test.c,v 1.19 2023/04/25 17:17:21 tb Exp $	*/
+/*	$OpenBSD: bn_test.c,v 1.22 2025/01/22 13:02:14 tb Exp $	*/
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -224,7 +224,7 @@ main(int argc, char *argv[])
 		goto err;
 	(void)BIO_flush(out);
 
-	message(out, "BN_div_recp");
+	message(out, "BN_div_reciprocal");
 	if (!test_div_recp(out, ctx))
 		goto err;
 	(void)BIO_flush(out);
@@ -581,9 +581,6 @@ test_div_recp(BIO *bp, BN_CTX *ctx)
 	if ((e = BN_CTX_get(ctx)) == NULL)
 		goto err;
 
-	if ((recp = BN_RECP_CTX_new()) == NULL)
-		goto err;
-
 	for (i = 0; i < num0 + num1; i++) {
 		if (i < num1) {
 			CHECK_GOTO(BN_bntest_rand(a, 400, 0, 0));
@@ -592,10 +589,9 @@ test_div_recp(BIO *bp, BN_CTX *ctx)
 			CHECK_GOTO(BN_add_word(a, i));
 		} else
 			CHECK_GOTO(BN_bntest_rand(b, 50 + 3 * (i - num1), 0, 0));
-		BN_set_negative(a, rand_neg());
-		BN_set_negative(b, rand_neg());
-		CHECK_GOTO(BN_RECP_CTX_set(recp, b, ctx));
-		CHECK_GOTO(BN_div_recp(d, c, a, recp, ctx));
+		BN_RECP_CTX_free(recp);
+		CHECK_GOTO(recp = BN_RECP_CTX_create(b));
+		CHECK_GOTO(BN_div_reciprocal(d, c, a, recp, ctx));
 		if (bp != NULL) {
 			if (!results) {
 				CHECK_GOTO(BN_print(bp, a));

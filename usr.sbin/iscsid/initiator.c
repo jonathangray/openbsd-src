@@ -1,4 +1,4 @@
-/*	$OpenBSD: initiator.c,v 1.16 2025/01/16 16:19:39 claudio Exp $ */
+/*	$OpenBSD: initiator.c,v 1.21 2025/01/28 20:41:44 claudio Exp $ */
 
 /*
  * Copyright (c) 2009 Claudio Jeker <claudio@openbsd.org>
@@ -33,7 +33,7 @@
 #include "iscsid.h"
 #include "log.h"
 
-struct initiator *initiator;
+static struct initiator *initiator;
 
 struct task_login {
 	struct task		 task;
@@ -48,6 +48,7 @@ struct task_logout {
 	u_int8_t		 reason;
 };
 
+int		 conn_is_leading(struct connection *);
 struct kvp	*initiator_login_kvp(struct connection *, u_int8_t);
 struct pdu	*initiator_login_build(struct connection *,
 		    struct task_login *);
@@ -58,11 +59,10 @@ void	initiator_login_cb(struct connection *, void *, struct pdu *);
 void	initiator_discovery_cb(struct connection *, void *, struct pdu *);
 void	initiator_logout_cb(struct connection *, void *, struct pdu *);
 
-
 struct session_params		initiator_sess_defaults;
 struct connection_params	initiator_conn_defaults;
 
-struct initiator *
+void
 initiator_init(void)
 {
 	if (!(initiator = calloc(1, sizeof(*initiator))))
@@ -78,24 +78,34 @@ initiator_init(void)
 	initiator_conn_defaults = iscsi_conn_defaults;
 	initiator_sess_defaults.MaxConnections = ISCSID_DEF_CONNS;
 	initiator_conn_defaults.MaxRecvDataSegmentLength = 65536;
-
-	return initiator;
 }
 
 void
-initiator_cleanup(struct initiator *i)
+initiator_cleanup(void)
 {
 	struct session *s;
 
-	while ((s = TAILQ_FIRST(&i->sessions)) != NULL) {
-		TAILQ_REMOVE(&i->sessions, s, entry);
+	while ((s = TAILQ_FIRST(&initiator->sessions)) != NULL) {
+		TAILQ_REMOVE(&initiator->sessions, s, entry);
 		session_cleanup(s);
 	}
 	free(initiator);
 }
 
 void
-initiator_shutdown(struct initiator *i)
+initiator_set_config(struct initiator_config *ic)
+{
+	initiator->config = *ic;
+}
+
+struct initiator_config *
+initiator_get_config(void)
+{
+	return &initiator->config;
+}
+
+void
+initiator_shutdown(void)
 {
 	struct session *s;
 
@@ -106,7 +116,7 @@ initiator_shutdown(struct initiator *i)
 }
 
 int
-initiator_isdown(struct initiator *i)
+initiator_isdown(void)
 {
 	struct session *s;
 	int inprogres = 0;
@@ -119,6 +129,49 @@ initiator_isdown(struct initiator *i)
 }
 
 struct session *
+initiator_new_session(u_int8_t st)
+{
+	struct session *s;
+
+	if (!(s = calloc(1, sizeof(*s))))
+		return NULL;
+
+	/* use the same qualifier unless there is a conflict */
+	s->isid_base = initiator->config.isid_base;
+	s->isid_qual = initiator->config.isid_qual;
+	s->cmdseqnum = arc4random();
+	s->itt = arc4random();
+	s->state = SESS_INIT;
+
+	s->sev.sess = s;
+	evtimer_set(&s->sev.ev, session_fsm_callback, &s->sev);
+
+	if (st == SESSION_TYPE_DISCOVERY)
+		s->target = 0;
+	else
+		s->target = initiator->target++;
+
+	TAILQ_INIT(&s->connections);
+	TAILQ_INIT(&s->tasks);
+
+	TAILQ_INSERT_HEAD(&initiator->sessions, s, entry);
+
+	return s;
+}
+
+struct session *
+initiator_find_session(char *name)
+{
+	struct session *s;
+
+	TAILQ_FOREACH(s, &initiator->sessions, entry) {
+		if (strcmp(s->config.SessionName, name) == 0)
+			return s;
+	}
+	return NULL;
+}
+
+struct session *
 initiator_t2s(u_int target)
 {
 	struct session *s;
@@ -128,6 +181,12 @@ initiator_t2s(u_int target)
 			return s;
 	}
 	return NULL;
+}
+
+struct session_head *
+initiator_get_sessions(void)
+{
+	return &initiator->sessions;
 }
 
 void
@@ -250,47 +309,76 @@ initiator_nop_in_imm(struct connection *c, struct pdu *p)
 	conn_task_issue(c, t);
 }
 
+int
+conn_is_leading(struct connection *c)
+{
+	return c == TAILQ_FIRST(&c->session->connections);
+}
+
+#define MINE_NOT_DEFAULT(c, k) ((c)->mine.k != iscsi_conn_defaults.k)
+
 struct kvp *
 initiator_login_kvp(struct connection *c, u_int8_t stage)
 {
-	struct kvp *kvp;
-	size_t nkvp;
+	struct kvp *kvp = NULL;
+	size_t i = 0, len;
+	const char *discovery[] = {"SessionType", "InitiatorName",
+	    "AuthMethod", NULL};
+	const char *leading_only[] = {"MaxConnections", "InitialR2T",
+	    "ImmediateData", "MaxBurstLength", "FirstBurstLength",
+	    "DefaultTime2Wait", "DefaultTime2Retain", "MaxOutstandingR2T",
+	    "DataPDUInOrder", "DataSequenceInOrder", "ErrorRecoveryLevel",
+	    NULL};
+	const char *opneg_always[] = {"HeaderDigest", "DataDigest", NULL};
+	const char *secneg[] = {"SessionType", "InitiatorName", "TargetName",
+	    "AuthMethod", NULL};
+	const char **p, **q;
 
 	switch (stage) {
 	case ISCSI_LOGIN_STG_SECNEG:
-		if (!(kvp = calloc(4, sizeof(*kvp))))
-			return NULL;
-		kvp[0].key = "AuthMethod";
-		kvp[0].value = "None";
-		kvp[1].key = "InitiatorName";
-		kvp[1].value = c->session->config.InitiatorName;
-
 		if (c->session->config.SessionType == SESSION_TYPE_DISCOVERY) {
-			kvp[2].key = "SessionType";
-			kvp[2].value = "Discovery";
+			len = sizeof(discovery) / sizeof(*discovery);
+			q = discovery;
 		} else {
-			kvp[2].key = "TargetName";
-			kvp[2].value = c->session->config.TargetName;
+			len = sizeof(secneg) / sizeof(*secneg);
+			q = secneg;
 		}
+		if (!(kvp = calloc(len + 1, sizeof(*kvp))))
+			return NULL;
+		for (p = q; *p != NULL; i++, p++)
+			if (kvp_set_from_mine(&kvp[i], *p, c))
+				goto fail;
 		break;
 	case ISCSI_LOGIN_STG_OPNEG:
-		if (conn_gen_kvp(c, NULL, &nkvp) == -1)
+		len = sizeof(opneg_always) / sizeof(*opneg_always);
+		if (conn_is_leading(c))
+			len += sizeof(leading_only) / sizeof(*leading_only);
+		if (MINE_NOT_DEFAULT(c, MaxRecvDataSegmentLength))
+			len++;
+		if (!(kvp = calloc(len + 1, sizeof(*kvp))))
 			return NULL;
-		nkvp += 1; /* add slot for terminator */
-		if (!(kvp = calloc(nkvp, sizeof(*kvp))))
-			return NULL;
-		if (conn_gen_kvp(c, kvp, &nkvp) == -1) {
-			kvp_free(kvp);
-			return NULL;
-		}
+		for (p = opneg_always; *p != NULL; i++, p++)
+			if (kvp_set_from_mine(&kvp[i], *p, c))
+				goto fail;
+		if (conn_is_leading(c))
+			for (p = leading_only; *p != NULL; i++, p++)
+				if (kvp_set_from_mine(&kvp[i], *p, c))
+					goto fail;
+		if (MINE_NOT_DEFAULT(c, MaxRecvDataSegmentLength) &&
+		    kvp_set_from_mine(&kvp[i], "MaxRecvDataSegmentLength", c))
+			goto fail;
 		break;
 	default:
 		log_warnx("initiator_login_kvp: exit stage left");
 		return NULL;
 	} 
 	return kvp;
+fail:
+	kvp_free(kvp);
+	return NULL;
 }
 
+#undef MINE_NOT_DEFAULT
 struct pdu *
 initiator_login_build(struct connection *c, struct task_login *tl)
 {
@@ -512,10 +600,10 @@ initiator_logout_cb(struct connection *c, void *arg, struct pdu *p)
 	case ISCSI_LOGOUT_RESP_SUCCESS:
 		if (tl->reason == ISCSI_LOGOUT_CLOSE_SESS) {
 			conn_fsm(c, CONN_EV_LOGGED_OUT);
-			session_fsm(c->session, SESS_EV_CLOSED, NULL, 0);
+			session_fsm(&c->session->sev, SESS_EV_CLOSED, 0);
 		} else {
 			conn_fsm(tl->c, CONN_EV_LOGGED_OUT);
-			session_fsm(c->session, SESS_EV_CONN_CLOSED, tl->c, 0);
+			session_fsm(&tl->c->sev, SESS_EV_CONN_CLOSED, 0);
 		}
 		break;
 	case ISCSI_LOGOUT_RESP_UNKN_CID:

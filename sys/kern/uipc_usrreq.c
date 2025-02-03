@@ -1,4 +1,4 @@
-/*	$OpenBSD: uipc_usrreq.c,v 1.212 2025/01/01 13:44:22 bluhm Exp $	*/
+/*	$OpenBSD: uipc_usrreq.c,v 1.215 2025/01/31 13:40:33 bluhm Exp $	*/
 /*	$NetBSD: uipc_usrreq.c,v 1.18 1996/02/09 19:00:50 christos Exp $	*/
 
 /*
@@ -656,7 +656,7 @@ uipc_abort(struct socket *so)
 	struct unpcb *unp = sotounpcb(so);
 
 	unp_detach(unp);
-	sofree(so, 0);
+	sofree(so, 1);
 }
 
 int
@@ -890,18 +890,17 @@ unp_connect(struct socket *so, struct mbuf *nam, struct proc *p)
 
 		if ((so2->so_options & SO_ACCEPTCONN) == 0 ||
 		    (so3 = sonewconn(so2, 0, M_WAIT)) == NULL) {
+			sounlock(so2);
 			error = ECONNREFUSED;
-		}
-
-		sounlock(so2);
-
-		if (error != 0)
 			goto put;
+		}
 
 		/*
 		 * Since `so2' is protected by vnode(9) lock, `so3'
 		 * can't be PRU_ABORT'ed here.
 		 */
+		sounlock(so2);
+		sounlock(so3);
 		solock_pair(so, so3);
 
 		unp2 = sotounpcb(so2);
@@ -925,22 +924,15 @@ unp_connect(struct socket *so, struct mbuf *nam, struct proc *p)
 		}
 
 		so2 = so3;
-	} else {
-		if (so2 != so)
-			solock_pair(so, so2);
-		else
-			solock(so);
-	}
+	} else
+		solock_pair(so, so2);
 
 	error = unp_connect2(so, so2);
-
-	sounlock(so);
 
 	/*
 	 * `so2' can't be PRU_ABORT'ed concurrently
 	 */
-	if (so2 != so)
-		sounlock(so2);
+	sounlock_pair(so, so2);
 put:
 	vput(vp);
 unlock:

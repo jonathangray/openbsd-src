@@ -1,4 +1,4 @@
-/*	$OpenBSD: connection.c,v 1.22 2025/01/16 16:19:39 claudio Exp $ */
+/*	$OpenBSD: connection.c,v 1.25 2025/01/28 20:41:44 claudio Exp $ */
 
 /*
  * Copyright (c) 2009 Claudio Jeker <claudio@openbsd.org>
@@ -66,10 +66,15 @@ conn_new(struct session *s, struct connection_config *cc)
 	c->cid = arc4random();
 	c->config = *cc;
 	c->mine = initiator_conn_defaults;
-	c->mine.HeaderDigest = s->config.HeaderDigest;
-	c->mine.DataDigest = s->config.DataDigest;
+	if (s->config.HeaderDigest != 0)
+		c->mine.HeaderDigest = s->config.HeaderDigest;
+	if (s->config.DataDigest != 0)
+		c->mine.DataDigest = s->config.DataDigest;
 	c->his = iscsi_conn_defaults;
-	c->active = iscsi_conn_defaults;
+
+	c->sev.sess = s;
+	c->sev.conn = c;
+	evtimer_set(&c->sev.ev, session_fsm_callback, &c->sev);
 
 	TAILQ_INIT(&c->pdu_w);
 	TAILQ_INIT(&c->tasks);
@@ -113,6 +118,7 @@ conn_free(struct connection *c)
 	pdu_readbuf_free(&c->prbuf);
 	pdu_free_queue(&c->pdu_w);
 
+	event_del(&c->sev.ev);
 	event_del(&c->ev);
 	event_del(&c->wev);
 	if (c->fd != -1)
@@ -262,7 +268,6 @@ do {								\
 			    (p)->key, (p)->value, err);		\
 			errors++;				\
 		}						\
-log_debug("SET_NUM: %s = %llu", #v, (u_int64_t)(x)->his.v);	\
 	}							\
 } while (0)
 
@@ -275,7 +280,18 @@ do {								\
 			    (p)->key, (p)->value, err);		\
 			errors++;				\
 		}						\
-log_debug("SET_BOOL: %s = %u", #v, (int)(x)->his.v);		\
+	}							\
+} while (0)
+
+#define SET_DIGEST(p, x, v)					\
+do {								\
+	if (!strcmp((p)->key, #v)) {				\
+		(x)->his.v = text_to_digest((p)->value, &err);	\
+		if (err) {					\
+			log_warnx("bad param %s=%s: %s",	\
+			    (p)->key, (p)->value, err);		\
+			errors++;				\
+		}						\
 	}							\
 } while (0)
 
@@ -304,6 +320,8 @@ log_debug("conn_parse_kvp: %s = %s", k->key, k->value);
 		SET_BOOL(k, s, DataSequenceInOrder);
 		SET_NUM(k, s, ErrorRecoveryLevel, 0, 2);
 		SET_NUM(k, c, MaxRecvDataSegmentLength, 512, 16777215);
+		SET_DIGEST(k, c, HeaderDigest);
+		SET_DIGEST(k, c, DataDigest);
 	}
 
 	if (errors) {
@@ -315,42 +333,109 @@ log_debug("conn_parse_kvp: %s = %s", k->key, k->value);
 
 #undef SET_NUM
 #undef SET_BOOL
+#undef SET_DIGEST
+
+#define GET_BOOL_P(dst, req, k, src, f)				\
+do {								\
+	if (f == 0 && !strcmp(req, #k)) {			\
+	(dst)->key = #k;					\
+	(dst)->value = ((src)->mine.k) ? "Yes" : "No";		\
+	f++;							\
+	}							\
+} while (0)
+
+#define GET_DIGEST_P(dst, req, k, src, f)				\
+do {									\
+	if (f == 0 && !strcmp(req, #k)) {				\
+		(dst)->key = #k;					\
+		(dst)->value =						\
+		    ((src)->mine.k == DIGEST_NONE) ? "None" : "CRC32C,None";\
+		f++;							\
+	}								\
+} while (0)
+
+#define GET_NUM_P(dst, req, k, src, f, e)				\
+do {									\
+	if (f == 0 && !strcmp(req, #k)) {				\
+		(dst)->key = #k;					\
+		if (asprintf(&((dst)->value), "%u", (src)->mine.k) == -1)\
+			e++;						\
+		else							\
+			(dst)->flags |= KVP_VALUE_ALLOCED;		\
+		f++;							\
+	}								\
+} while (0)
+
+#define GET_STR_C(dst, req, k, src, f)				\
+do {								\
+	if (f == 0 && !strcmp(req, #k)) {			\
+		(dst)->key = #k;				\
+		(dst)->value = (src)->config.k;			\
+		f++;						\
+	}							\
+} while (0)
+
+#define GET_STYPE_C(dst, req, k, src, f)				\
+do {									\
+	if (f == 0 && !strcmp(req, #k)) {				\
+		(dst)->key = #k;					\
+		(dst)->value = ((src)->config.k == SESSION_TYPE_DISCOVERY)\
+		    ? "Discovery" : "Normal";				\
+		f++;							\
+	}								\
+} while (0)
 
 int
-conn_gen_kvp(struct connection *c, struct kvp *kvp, size_t *nkvp)
+kvp_set_from_mine(struct kvp *kvp, const char *key, struct connection *c)
 {
-	struct session *s = c->session;
-	size_t i = 0;
+	int e = 0, f = 0;
 
-	if (s->mine.MaxConnections != iscsi_sess_defaults.MaxConnections) {
-		if (kvp && i < *nkvp) {
-			kvp[i].key = "MaxConnections";
-			if (asprintf(&kvp[i].value, "%hu",
-			    s->mine.MaxConnections) == -1) {
-				kvp[i].value = NULL;
-				return -1;
-			}
-			kvp[i].flags |= KVP_VALUE_ALLOCED;
-		}
-		i++;
+	if (kvp->flags & KVP_KEY_ALLOCED)
+		free(kvp->key);
+	kvp->key = NULL;
+	if (kvp->flags & KVP_VALUE_ALLOCED)
+		free(kvp->value);
+	kvp->value = NULL;
+	kvp->flags = 0;
+
+	/* XXX handle at least CHAP */
+	if (!strcmp(key, "AuthMethod")) {
+		kvp->key = "AuthMethod";
+		kvp->value = "None";
+		return 0;
 	}
-	if (c->mine.MaxRecvDataSegmentLength !=
-	    iscsi_conn_defaults.MaxRecvDataSegmentLength) {
-		if (kvp && i < *nkvp) {
-			kvp[i].key = "MaxRecvDataSegmentLength";
-			if (asprintf(&kvp[i].value, "%u",
-			    c->mine.MaxRecvDataSegmentLength) == -1) {
-				kvp[i].value = NULL;
-				return -1;
-			}
-			kvp[i].flags |= KVP_VALUE_ALLOCED;
-		}
-		i++;
+	GET_DIGEST_P(kvp, key, HeaderDigest, c, f);
+	GET_DIGEST_P(kvp, key, DataDigest, c, f);
+	GET_NUM_P(kvp, key, MaxConnections, c->session, f, e);
+	GET_STR_C(kvp, key, TargetName, c->session, f);
+	GET_STR_C(kvp, key, InitiatorName, c->session, f);
+	GET_BOOL_P(kvp, key, InitialR2T, c->session, f);
+	GET_BOOL_P(kvp, key, ImmediateData, c->session, f);
+	GET_NUM_P(kvp, key, MaxRecvDataSegmentLength, c, f, e);
+	GET_NUM_P(kvp, key, MaxBurstLength, c->session, f, e);
+	GET_NUM_P(kvp, key, FirstBurstLength, c->session, f, e);
+	GET_NUM_P(kvp, key, DefaultTime2Wait, c->session, f, e);
+	GET_NUM_P(kvp, key, DefaultTime2Retain, c->session, f, e);
+	GET_NUM_P(kvp, key, MaxOutstandingR2T, c->session, f, e);
+	GET_BOOL_P(kvp, key, DataPDUInOrder, c->session, f);
+	GET_BOOL_P(kvp, key, DataSequenceInOrder, c->session, f);
+	GET_NUM_P(kvp, key, ErrorRecoveryLevel, c->session, f, e);
+	GET_STYPE_C(kvp, key, SessionType, c->session, f);
+	/* XXX handle TaskReporting */
+
+	if (f == 0) {
+		errno = EINVAL;
+		return 1;
 	}
 
-	*nkvp = i;
-	return 0;
+	return e;
 }
+
+#undef GET_BOOL_P
+#undef GET_DIGEST_P
+#undef GET_NUM_P
+#undef GET_STR_C
+#undef GET_STYPE_C
 
 void
 conn_pdu_write(struct connection *c, struct pdu *p)
@@ -435,7 +520,7 @@ c_do_connect(struct connection *c, enum c_event ev)
 	if (c->fd == -1) {
 		log_warnx("connect(%s), lost socket",
 		    log_sockaddr(&c->config.TargetAddr));
-		session_fsm(c->session, SESS_EV_CONN_FAIL, c, 0);
+		session_fsm(&c->sev, SESS_EV_CONN_FAIL, 0);
 		return CONN_FREE;
 	}
 	if (c->config.LocalAddr.ss_len != 0) {
@@ -443,7 +528,7 @@ c_do_connect(struct connection *c, enum c_event ev)
 		    c->config.LocalAddr.ss_len) == -1) {
 			log_warn("bind(%s)",
 			    log_sockaddr(&c->config.LocalAddr));
-			session_fsm(c->session, SESS_EV_CONN_FAIL, c, 0);
+			session_fsm(&c->sev, SESS_EV_CONN_FAIL, 0);
 			return CONN_FREE;
 		}
 	}
@@ -456,7 +541,7 @@ c_do_connect(struct connection *c, enum c_event ev)
 		} else {
 			log_warn("connect(%s)",
 			    log_sockaddr(&c->config.TargetAddr));
-			session_fsm(c->session, SESS_EV_CONN_FAIL, c, 0);
+			session_fsm(&c->sev, SESS_EV_CONN_FAIL, 0);
 			return CONN_FREE;
 		}
 	}
@@ -477,7 +562,7 @@ int
 c_do_loggedin(struct connection *c, enum c_event ev)
 {
 	iscsi_merge_conn_params(&c->active, &c->mine, &c->his);
-	session_fsm(c->session, SESS_EV_CONN_LOGGED_IN, c, 0);
+	session_fsm(&c->sev, SESS_EV_CONN_LOGGED_IN, 0);
 
 	return CONN_LOGGED_IN;
 }
@@ -525,7 +610,7 @@ c_do_fail(struct connection *c, enum c_event ev)
 	taskq_cleanup(&c->tasks);
 
 	/* session will take care of cleaning up the mess */
-	session_fsm(c->session, SESS_EV_CONN_FAIL, c, 0);
+	session_fsm(&c->sev, SESS_EV_CONN_FAIL, 0);
 
 	if (ev == CONN_EV_FREE || c->state & CONN_NEVER_LOGGED_IN)
 		return CONN_FREE;
