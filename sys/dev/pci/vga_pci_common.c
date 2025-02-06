@@ -21,9 +21,9 @@
 #include <dev/pci/pcivar.h>
 #include <dev/pci/pcidevs.h>
 
-#include <dev/pci/newdrm/i915/i915_devlist.h>
-#include <dev/pci/newdrm/radeon/radeon_devlist.h>
-#include <dev/pci/newdrm/amd/amdgpu/amdgpu_devlist.h>
+#include <dev/pci/drm/i915/i915_devlist.h>
+#include <dev/pci/drm/radeon/radeon_devlist.h>
+#include <dev/pci/drm/amd/amdgpu/amdgpu_devlist.h>
 
 static const struct pci_matchid aperture_blacklist[] = {
 	/* server adapters found in mga200 drm driver */

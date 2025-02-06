@@ -22,59 +22,59 @@ _machdir?=	$S/arch/${_mach}
 _archdir?=	$S/arch/${_arch}
 
 INCLUDES=	-nostdinc -I$S -I${.OBJDIR} -I$S/arch \
-		-I$S/dev/pci/newdrm/include \
-		-I$S/dev/pci/newdrm/include/uapi \
-		-I$S/dev/pci/newdrm/amd/include/asic_reg \
-		-I$S/dev/pci/newdrm/amd/include \
-		-I$S/dev/pci/newdrm/amd/amdgpu \
-		-I$S/dev/pci/newdrm/amd/display \
-		-I$S/dev/pci/newdrm/amd/display/include \
-		-I$S/dev/pci/newdrm/amd/display/dc \
-		-I$S/dev/pci/newdrm/amd/display/amdgpu_dm \
-		-I$S/dev/pci/newdrm/amd/pm/inc \
-		-I$S/dev/pci/newdrm/amd/pm/legacy-dpm \
-		-I$S/dev/pci/newdrm/amd/pm/swsmu \
-		-I$S/dev/pci/newdrm/amd/pm/swsmu/inc \
-		-I$S/dev/pci/newdrm/amd/pm/swsmu/smu11 \
-		-I$S/dev/pci/newdrm/amd/pm/swsmu/smu12 \
-		-I$S/dev/pci/newdrm/amd/pm/swsmu/smu13 \
-		-I$S/dev/pci/newdrm/amd/pm/swsmu/smu14 \
-		-I$S/dev/pci/newdrm/amd/pm/powerplay/inc \
-		-I$S/dev/pci/newdrm/amd/pm/powerplay/hwmgr \
-		-I$S/dev/pci/newdrm/amd/pm/powerplay/smumgr \
-		-I$S/dev/pci/newdrm/amd/pm/swsmu/inc \
-		-I$S/dev/pci/newdrm/amd/pm/swsmu/inc/pmfw_if \
-		-I$S/dev/pci/newdrm/amd/display/dc/inc \
-		-I$S/dev/pci/newdrm/amd/display/dc/inc/hw \
-		-I$S/dev/pci/newdrm/amd/display/dc/clk_mgr \
-		-I$S/dev/pci/newdrm/amd/display/dc/dccg \
-		-I$S/dev/pci/newdrm/amd/display/dc/dio \
-		-I$S/dev/pci/newdrm/amd/display/dc/dpp \
-		-I$S/dev/pci/newdrm/amd/display/dc/dsc \
-		-I$S/dev/pci/newdrm/amd/display/dc/dwb \
-		-I$S/dev/pci/newdrm/amd/display/dc/hubbub \
-		-I$S/dev/pci/newdrm/amd/display/dc/hpo \
-		-I$S/dev/pci/newdrm/amd/display/dc/hwss \
-		-I$S/dev/pci/newdrm/amd/display/dc/hubp \
-		-I$S/dev/pci/newdrm/amd/display/dc/dml2 \
-		-I$S/dev/pci/newdrm/amd/display/dc/dml2/dml21 \
-		-I$S/dev/pci/newdrm/amd/display/dc/dml2/dml21/inc \
-		-I$S/dev/pci/newdrm/amd/display/dc/dml2/dml21/src/dml2_core \
-		-I$S/dev/pci/newdrm/amd/display/dc/dml2/dml21/src/dml2_dpmm \
-		-I$S/dev/pci/newdrm/amd/display/dc/dml2/dml21/src/dml2_mcg \
-		-I$S/dev/pci/newdrm/amd/display/dc/dml2/dml21/src/dml2_pmo \
-		-I$S/dev/pci/newdrm/amd/display/dc/dml2/dml21/src/dml2_standalone_libraries \
-		-I$S/dev/pci/newdrm/amd/display/dc/dml2/dml21/src/inc \
-		-I$S/dev/pci/newdrm/amd/display/dc/mmhubbub \
-		-I$S/dev/pci/newdrm/amd/display/dc/mpc \
-		-I$S/dev/pci/newdrm/amd/display/dc/opp \
-		-I$S/dev/pci/newdrm/amd/display/dc/optc \
-		-I$S/dev/pci/newdrm/amd/display/dc/pg \
-		-I$S/dev/pci/newdrm/amd/display/dc/resource \
-		-I$S/dev/pci/newdrm/amd/display/modules/inc \
-		-I$S/dev/pci/newdrm/amd/display/modules/hdcp \
-		-I$S/dev/pci/newdrm/amd/display/dmub/inc \
-		-I$S/dev/pci/newdrm/i915
+		-I$S/dev/pci/drm/include \
+		-I$S/dev/pci/drm/include/uapi \
+		-I$S/dev/pci/drm/amd/include/asic_reg \
+		-I$S/dev/pci/drm/amd/include \
+		-I$S/dev/pci/drm/amd/amdgpu \
+		-I$S/dev/pci/drm/amd/display \
+		-I$S/dev/pci/drm/amd/display/include \
+		-I$S/dev/pci/drm/amd/display/dc \
+		-I$S/dev/pci/drm/amd/display/amdgpu_dm \
+		-I$S/dev/pci/drm/amd/pm/inc \
+		-I$S/dev/pci/drm/amd/pm/legacy-dpm \
+		-I$S/dev/pci/drm/amd/pm/swsmu \
+		-I$S/dev/pci/drm/amd/pm/swsmu/inc \
+		-I$S/dev/pci/drm/amd/pm/swsmu/smu11 \
+		-I$S/dev/pci/drm/amd/pm/swsmu/smu12 \
+		-I$S/dev/pci/drm/amd/pm/swsmu/smu13 \
+		-I$S/dev/pci/drm/amd/pm/swsmu/smu14 \
+		-I$S/dev/pci/drm/amd/pm/powerplay/inc \
+		-I$S/dev/pci/drm/amd/pm/powerplay/hwmgr \
+		-I$S/dev/pci/drm/amd/pm/powerplay/smumgr \
+		-I$S/dev/pci/drm/amd/pm/swsmu/inc \
+		-I$S/dev/pci/drm/amd/pm/swsmu/inc/pmfw_if \
+		-I$S/dev/pci/drm/amd/display/dc/inc \
+		-I$S/dev/pci/drm/amd/display/dc/inc/hw \
+		-I$S/dev/pci/drm/amd/display/dc/clk_mgr \
+		-I$S/dev/pci/drm/amd/display/dc/dccg \
+		-I$S/dev/pci/drm/amd/display/dc/dio \
+		-I$S/dev/pci/drm/amd/display/dc/dpp \
+		-I$S/dev/pci/drm/amd/display/dc/dsc \
+		-I$S/dev/pci/drm/amd/display/dc/dwb \
+		-I$S/dev/pci/drm/amd/display/dc/hubbub \
+		-I$S/dev/pci/drm/amd/display/dc/hpo \
+		-I$S/dev/pci/drm/amd/display/dc/hwss \
+		-I$S/dev/pci/drm/amd/display/dc/hubp \
+		-I$S/dev/pci/drm/amd/display/dc/dml2 \
+		-I$S/dev/pci/drm/amd/display/dc/dml2/dml21 \
+		-I$S/dev/pci/drm/amd/display/dc/dml2/dml21/inc \
+		-I$S/dev/pci/drm/amd/display/dc/dml2/dml21/src/dml2_core \
+		-I$S/dev/pci/drm/amd/display/dc/dml2/dml21/src/dml2_dpmm \
+		-I$S/dev/pci/drm/amd/display/dc/dml2/dml21/src/dml2_mcg \
+		-I$S/dev/pci/drm/amd/display/dc/dml2/dml21/src/dml2_pmo \
+		-I$S/dev/pci/drm/amd/display/dc/dml2/dml21/src/dml2_standalone_libraries \
+		-I$S/dev/pci/drm/amd/display/dc/dml2/dml21/src/inc \
+		-I$S/dev/pci/drm/amd/display/dc/mmhubbub \
+		-I$S/dev/pci/drm/amd/display/dc/mpc \
+		-I$S/dev/pci/drm/amd/display/dc/opp \
+		-I$S/dev/pci/drm/amd/display/dc/optc \
+		-I$S/dev/pci/drm/amd/display/dc/pg \
+		-I$S/dev/pci/drm/amd/display/dc/resource \
+		-I$S/dev/pci/drm/amd/display/modules/inc \
+		-I$S/dev/pci/drm/amd/display/modules/hdcp \
+		-I$S/dev/pci/drm/amd/display/dmub/inc \
+		-I$S/dev/pci/drm/i915
 CPPFLAGS=	${INCLUDES} ${IDENT} ${PARAM} -D_KERNEL -MD -MP
 CWARNFLAGS=	-Werror -Wall -Wimplicit-function-declaration \
 		-Wno-pointer-sign \
@@ -221,95 +221,95 @@ kcov.o: $S/dev/kcov.c
 
 HARDFLOAT_CFLAGS= -msse -msse2
 
-display_mode_vba.o: $S/dev/pci/newdrm/amd/display/dc/dml/display_mode_vba.c
+display_mode_vba.o: $S/dev/pci/drm/amd/display/dc/dml/display_mode_vba.c
 	${NORMAL_C} ${HARDFLOAT_CFLAGS}
-dcn10_fpu.o: $S/dev/pci/newdrm/amd/display/dc/dml/dcn10/dcn10_fpu.c
+dcn10_fpu.o: $S/dev/pci/drm/amd/display/dc/dml/dcn10/dcn10_fpu.c
 	${NORMAL_C} ${HARDFLOAT_CFLAGS}
-dcn20_fpu.o: $S/dev/pci/newdrm/amd/display/dc/dml/dcn20/dcn20_fpu.c
+dcn20_fpu.o: $S/dev/pci/drm/amd/display/dc/dml/dcn20/dcn20_fpu.c
 	${NORMAL_C} ${HARDFLOAT_CFLAGS}
-display_mode_vba_20.o: $S/dev/pci/newdrm/amd/display/dc/dml/dcn20/display_mode_vba_20.c
+display_mode_vba_20.o: $S/dev/pci/drm/amd/display/dc/dml/dcn20/display_mode_vba_20.c
 	${NORMAL_C} ${HARDFLOAT_CFLAGS}
-display_rq_dlg_calc_20.o: $S/dev/pci/newdrm/amd/display/dc/dml/dcn20/display_rq_dlg_calc_20.c
+display_rq_dlg_calc_20.o: $S/dev/pci/drm/amd/display/dc/dml/dcn20/display_rq_dlg_calc_20.c
 	${NORMAL_C} ${HARDFLOAT_CFLAGS}
-display_mode_vba_20v2.o: $S/dev/pci/newdrm/amd/display/dc/dml/dcn20/display_mode_vba_20v2.c
+display_mode_vba_20v2.o: $S/dev/pci/drm/amd/display/dc/dml/dcn20/display_mode_vba_20v2.c
 	${NORMAL_C} ${HARDFLOAT_CFLAGS}
-display_rq_dlg_calc_20v2.o: $S/dev/pci/newdrm/amd/display/dc/dml/dcn20/display_rq_dlg_calc_20v2.c
+display_rq_dlg_calc_20v2.o: $S/dev/pci/drm/amd/display/dc/dml/dcn20/display_rq_dlg_calc_20v2.c
 	${NORMAL_C} ${HARDFLOAT_CFLAGS}
-display_mode_vba_21.o: $S/dev/pci/newdrm/amd/display/dc/dml/dcn21/display_mode_vba_21.c
+display_mode_vba_21.o: $S/dev/pci/drm/amd/display/dc/dml/dcn21/display_mode_vba_21.c
 	${NORMAL_C} ${HARDFLOAT_CFLAGS}
-display_rq_dlg_calc_21.o: $S/dev/pci/newdrm/amd/display/dc/dml/dcn21/display_rq_dlg_calc_21.c
+display_rq_dlg_calc_21.o: $S/dev/pci/drm/amd/display/dc/dml/dcn21/display_rq_dlg_calc_21.c
 	${NORMAL_C} ${HARDFLOAT_CFLAGS}
-display_mode_vba_30.o: $S/dev/pci/newdrm/amd/display/dc/dml/dcn30/display_mode_vba_30.c
+display_mode_vba_30.o: $S/dev/pci/drm/amd/display/dc/dml/dcn30/display_mode_vba_30.c
 	${NORMAL_C} ${HARDFLOAT_CFLAGS}
-display_rq_dlg_calc_30.o: $S/dev/pci/newdrm/amd/display/dc/dml/dcn30/display_rq_dlg_calc_30.c
+display_rq_dlg_calc_30.o: $S/dev/pci/drm/amd/display/dc/dml/dcn30/display_rq_dlg_calc_30.c
 	${NORMAL_C} ${HARDFLOAT_CFLAGS}
-display_mode_vba_31.o: $S/dev/pci/newdrm/amd/display/dc/dml/dcn31/display_mode_vba_31.c
+display_mode_vba_31.o: $S/dev/pci/drm/amd/display/dc/dml/dcn31/display_mode_vba_31.c
 	${NORMAL_C} ${HARDFLOAT_CFLAGS}
-display_rq_dlg_calc_31.o: $S/dev/pci/newdrm/amd/display/dc/dml/dcn31/display_rq_dlg_calc_31.c
+display_rq_dlg_calc_31.o: $S/dev/pci/drm/amd/display/dc/dml/dcn31/display_rq_dlg_calc_31.c
 	${NORMAL_C} ${HARDFLOAT_CFLAGS}
-display_mode_vba_314.o: $S/dev/pci/newdrm/amd/display/dc/dml/dcn314/display_mode_vba_314.c
+display_mode_vba_314.o: $S/dev/pci/drm/amd/display/dc/dml/dcn314/display_mode_vba_314.c
 	${NORMAL_C} ${HARDFLOAT_CFLAGS}
-display_rq_dlg_calc_314.o: $S/dev/pci/newdrm/amd/display/dc/dml/dcn314/display_rq_dlg_calc_314.c
+display_rq_dlg_calc_314.o: $S/dev/pci/drm/amd/display/dc/dml/dcn314/display_rq_dlg_calc_314.c
 	${NORMAL_C} ${HARDFLOAT_CFLAGS}
-dcn314_fpu.o: $S/dev/pci/newdrm/amd/display/dc/dml/dcn314/dcn314_fpu.c
+dcn314_fpu.o: $S/dev/pci/drm/amd/display/dc/dml/dcn314/dcn314_fpu.c
 	${NORMAL_C} ${HARDFLOAT_CFLAGS}
-dcn30_fpu.o: $S/dev/pci/newdrm/amd/display/dc/dml/dcn30/dcn30_fpu.c
+dcn30_fpu.o: $S/dev/pci/drm/amd/display/dc/dml/dcn30/dcn30_fpu.c
 	${NORMAL_C} ${HARDFLOAT_CFLAGS}
-dcn32_fpu.o: $S/dev/pci/newdrm/amd/display/dc/dml/dcn32/dcn32_fpu.c
+dcn32_fpu.o: $S/dev/pci/drm/amd/display/dc/dml/dcn32/dcn32_fpu.c
 	${NORMAL_C} ${HARDFLOAT_CFLAGS}
-display_mode_vba_32.o: $S/dev/pci/newdrm/amd/display/dc/dml/dcn32/display_mode_vba_32.c
+display_mode_vba_32.o: $S/dev/pci/drm/amd/display/dc/dml/dcn32/display_mode_vba_32.c
 	${NORMAL_C} ${HARDFLOAT_CFLAGS}
-display_rq_dlg_calc_32.o: $S/dev/pci/newdrm/amd/display/dc/dml/dcn32/display_rq_dlg_calc_32.c
+display_rq_dlg_calc_32.o: $S/dev/pci/drm/amd/display/dc/dml/dcn32/display_rq_dlg_calc_32.c
 	${NORMAL_C} ${HARDFLOAT_CFLAGS}
-display_mode_vba_util_32.o: $S/dev/pci/newdrm/amd/display/dc/dml/dcn32/display_mode_vba_util_32.c
+display_mode_vba_util_32.o: $S/dev/pci/drm/amd/display/dc/dml/dcn32/display_mode_vba_util_32.c
 	${NORMAL_C} ${HARDFLOAT_CFLAGS}
-dcn321_fpu.o: $S/dev/pci/newdrm/amd/display/dc/dml/dcn321/dcn321_fpu.c
+dcn321_fpu.o: $S/dev/pci/drm/amd/display/dc/dml/dcn321/dcn321_fpu.c
 	${NORMAL_C} ${HARDFLOAT_CFLAGS}
-dcn31_fpu.o: $S/dev/pci/newdrm/amd/display/dc/dml/dcn31/dcn31_fpu.c
+dcn31_fpu.o: $S/dev/pci/drm/amd/display/dc/dml/dcn31/dcn31_fpu.c
 	${NORMAL_C} ${HARDFLOAT_CFLAGS}
-dcn301_fpu.o: $S/dev/pci/newdrm/amd/display/dc/dml/dcn301/dcn301_fpu.c
+dcn301_fpu.o: $S/dev/pci/drm/amd/display/dc/dml/dcn301/dcn301_fpu.c
 	${NORMAL_C} ${HARDFLOAT_CFLAGS}
-dcn302_fpu.o: $S/dev/pci/newdrm/amd/display/dc/dml/dcn302/dcn302_fpu.c
+dcn302_fpu.o: $S/dev/pci/drm/amd/display/dc/dml/dcn302/dcn302_fpu.c
 	${NORMAL_C} ${HARDFLOAT_CFLAGS}
-dcn303_fpu.o: $S/dev/pci/newdrm/amd/display/dc/dml/dcn303/dcn303_fpu.c
+dcn303_fpu.o: $S/dev/pci/drm/amd/display/dc/dml/dcn303/dcn303_fpu.c
 	${NORMAL_C} ${HARDFLOAT_CFLAGS}
-rc_calc_fpu.o: $S/dev/pci/newdrm/amd/display/dc/dml/dsc/rc_calc_fpu.c
+rc_calc_fpu.o: $S/dev/pci/drm/amd/display/dc/dml/dsc/rc_calc_fpu.c
 	${NORMAL_C} ${HARDFLOAT_CFLAGS}
-dcn_calcs.o: $S/dev/pci/newdrm/amd/display/dc/dml/calcs/dcn_calcs.c
+dcn_calcs.o: $S/dev/pci/drm/amd/display/dc/dml/calcs/dcn_calcs.c
 	${NORMAL_C} ${HARDFLOAT_CFLAGS}
-dcn_calc_auto.o: $S/dev/pci/newdrm/amd/display/dc/dml/calcs/dcn_calc_auto.c
+dcn_calc_auto.o: $S/dev/pci/drm/amd/display/dc/dml/calcs/dcn_calc_auto.c
 	${NORMAL_C} ${HARDFLOAT_CFLAGS}
-dcn_calc_math.o: $S/dev/pci/newdrm/amd/display/dc/dml/calcs/dcn_calc_math.c
+dcn_calc_math.o: $S/dev/pci/drm/amd/display/dc/dml/calcs/dcn_calc_math.c
 	${NORMAL_C} ${HARDFLOAT_CFLAGS}
-dml1_display_rq_dlg_calc.o: $S/dev/pci/newdrm/amd/display/dc/dml/dml1_display_rq_dlg_calc.c
+dml1_display_rq_dlg_calc.o: $S/dev/pci/drm/amd/display/dc/dml/dml1_display_rq_dlg_calc.c
 	${NORMAL_C} ${HARDFLOAT_CFLAGS}
-display_rq_dlg_helpers.o: $S/dev/pci/newdrm/amd/display/dc/dml/display_rq_dlg_helpers.c
+display_rq_dlg_helpers.o: $S/dev/pci/drm/amd/display/dc/dml/display_rq_dlg_helpers.c
 	${NORMAL_C} ${HARDFLOAT_CFLAGS}
-dcn35_fpu.o: $S/dev/pci/newdrm/amd/display/dc/dml/dcn35/dcn35_fpu.c
+dcn35_fpu.o: $S/dev/pci/drm/amd/display/dc/dml/dcn35/dcn35_fpu.c
 	${NORMAL_C} ${HARDFLOAT_CFLAGS}
-dcn351_fpu.o: $S/dev/pci/newdrm/amd/display/dc/dml/dcn351/dcn351_fpu.c
+dcn351_fpu.o: $S/dev/pci/drm/amd/display/dc/dml/dcn351/dcn351_fpu.c
 	${NORMAL_C} ${HARDFLOAT_CFLAGS}
-display_mode_core.o: $S/dev/pci/newdrm/amd/display/dc/dml2/display_mode_core.c
+display_mode_core.o: $S/dev/pci/drm/amd/display/dc/dml2/display_mode_core.c
 	${NORMAL_C} ${HARDFLOAT_CFLAGS}
-display_mode_util.o:  $S/dev/pci/newdrm/amd/display/dc/dml2/display_mode_util.c
+display_mode_util.o:  $S/dev/pci/drm/amd/display/dc/dml2/display_mode_util.c
 	${NORMAL_C} ${HARDFLOAT_CFLAGS}
-dml2_core_dcn4.o: $S/dev/pci/newdrm/amd/display/dc/dml2/dml21/src/dml2_core/dml2_core_dcn4.c
+dml2_core_dcn4.o: $S/dev/pci/drm/amd/display/dc/dml2/dml21/src/dml2_core/dml2_core_dcn4.c
 	${NORMAL_C} ${HARDFLOAT_CFLAGS}
-dml2_core_dcn4_calcs.o: $S/dev/pci/newdrm/amd/display/dc/dml2/dml21/src/dml2_core/dml2_core_dcn4_calcs.c
+dml2_core_dcn4_calcs.o: $S/dev/pci/drm/amd/display/dc/dml2/dml21/src/dml2_core/dml2_core_dcn4_calcs.c
 	${NORMAL_C} ${HARDFLOAT_CFLAGS}
-dml2_core_utils.o: $S/dev/pci/newdrm/amd/display/dc/dml2/dml21/src/dml2_core/dml2_core_utils.c
+dml2_core_utils.o: $S/dev/pci/drm/amd/display/dc/dml2/dml21/src/dml2_core/dml2_core_utils.c
 	${NORMAL_C} ${HARDFLOAT_CFLAGS}
-dml2_dpmm_dcn4.o: $S/dev/pci/newdrm/amd/display/dc/dml2/dml21/src/dml2_dpmm/dml2_dpmm_dcn4.c
+dml2_dpmm_dcn4.o: $S/dev/pci/drm/amd/display/dc/dml2/dml21/src/dml2_dpmm/dml2_dpmm_dcn4.c
 	${NORMAL_C} ${HARDFLOAT_CFLAGS}
-dml2_pmo_dcn4_fams2.o: $S/dev/pci/newdrm/amd/display/dc/dml2/dml21/src/dml2_pmo/dml2_pmo_dcn4_fams2.c
+dml2_pmo_dcn4_fams2.o: $S/dev/pci/drm/amd/display/dc/dml2/dml21/src/dml2_pmo/dml2_pmo_dcn4_fams2.c
 	${NORMAL_C} ${HARDFLOAT_CFLAGS}
-lib_float_math.o: $S/dev/pci/newdrm/amd/display/dc/dml2/dml21/src/dml2_standalone_libraries/lib_float_math.c
+lib_float_math.o: $S/dev/pci/drm/amd/display/dc/dml2/dml21/src/dml2_standalone_libraries/lib_float_math.c
 	${NORMAL_C} ${HARDFLOAT_CFLAGS}
-dml_top_mcache.o: $S/dev/pci/newdrm/amd/display/dc/dml2/dml21/src/dml2_top/dml_top_mcache.c
+dml_top_mcache.o: $S/dev/pci/drm/amd/display/dc/dml2/dml21/src/dml2_top/dml_top_mcache.c
 	${NORMAL_C} ${HARDFLOAT_CFLAGS}
-dml2_utils.o: $S/dev/pci/newdrm/amd/display/dc/dml2/dml2_utils.c
+dml2_utils.o: $S/dev/pci/drm/amd/display/dc/dml2/dml2_utils.c
 	${NORMAL_C} ${HARDFLOAT_CFLAGS}
-dml_display_rq_dlg_calc.o: $S/dev/pci/newdrm/amd/display/dc/dml2/dml_display_rq_dlg_calc.c
+dml_display_rq_dlg_calc.o: $S/dev/pci/drm/amd/display/dc/dml2/dml_display_rq_dlg_calc.c
 	${NORMAL_C} ${HARDFLOAT_CFLAGS}
 
 clean:
