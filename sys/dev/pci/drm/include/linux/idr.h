@@ -77,6 +77,7 @@ void ida_destroy(struct ida *);
 int ida_simple_get(struct ida *, unsigned int, unsigned int, gfp_t);
 void ida_simple_remove(struct ida *, unsigned int);
 
+int ida_alloc_range(struct ida *, unsigned int, unsigned int, gfp_t);
 int ida_alloc_min(struct ida *, unsigned int, gfp_t);
 int ida_alloc_max(struct ida *, unsigned int, gfp_t);
 void ida_free(struct ida *, unsigned int);

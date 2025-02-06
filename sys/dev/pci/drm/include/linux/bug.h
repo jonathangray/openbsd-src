@@ -51,6 +51,8 @@ do {									\
 	unlikely(__ret);						\
 })
 
+#define WARN_RATELIMIT(condition, fmt...)	WARN_ONCE(condition, ##fmt)
+
 #define _WARN_STR(x) #x
 
 #define WARN_ON(condition) ({						\

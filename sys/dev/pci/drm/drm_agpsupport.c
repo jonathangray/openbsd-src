@@ -44,8 +44,6 @@
 #include <drm/drm_file.h>
 #include <drm/drm_print.h>
 
-#include "drm_legacy.h"
-
 #if IS_ENABLED(CONFIG_AGP)
 
 int

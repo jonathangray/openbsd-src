@@ -43,4 +43,9 @@ isprint(int c)
 	return (0);
 }
 
+static inline int
+isspace(int c)
+{
+	return (c == ' ' || c == '\t');
+}
 #endif
