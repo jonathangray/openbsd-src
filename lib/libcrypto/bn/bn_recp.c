@@ -1,4 +1,4 @@
-/* $OpenBSD: bn_recp.c,v 1.30 2025/01/22 12:53:16 tb Exp $ */
+/* $OpenBSD: bn_recp.c,v 1.33 2025/02/04 20:22:20 tb Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -104,34 +104,6 @@ BN_RECP_CTX_free(BN_RECP_CTX *recp)
 	freezero(recp, sizeof(*recp));
 }
 
-/* len is the expected size of the result
- * We actually calculate with an extra word of precision, so
- * we can do faster division if the remainder is not required.
- */
-/* r := 2^len / m */
-static int
-BN_reciprocal(BIGNUM *r, const BIGNUM *m, int len, BN_CTX *ctx)
-{
-	int ret = -1;
-	BIGNUM *t;
-
-	BN_CTX_start(ctx);
-	if ((t = BN_CTX_get(ctx)) == NULL)
-		goto err;
-
-	if (!BN_set_bit(t, len))
-		goto err;
-
-	if (!BN_div_ct(r, NULL, t, m, ctx))
-		goto err;
-
-	ret = len;
-
-err:
-	BN_CTX_end(ctx);
-	return ret;
-}
-
 int
 BN_div_reciprocal(BIGNUM *dv, BIGNUM *rem, const BIGNUM *m, BN_RECP_CTX *recp,
     BN_CTX *ctx)
@@ -139,34 +111,33 @@ BN_div_reciprocal(BIGNUM *dv, BIGNUM *rem, const BIGNUM *m, BN_RECP_CTX *recp,
 	int i, j, ret = 0;
 	BIGNUM *a, *b, *d, *r;
 
-	BN_CTX_start(ctx);
-	a = BN_CTX_get(ctx);
-	b = BN_CTX_get(ctx);
-	if (dv != NULL)
-		d = dv;
-	else
-		d = BN_CTX_get(ctx);
-	if (rem != NULL)
-		r = rem;
-	else
-		r = BN_CTX_get(ctx);
-	if (a == NULL || b == NULL || d == NULL || r == NULL)
-		goto err;
-
 	if (BN_ucmp(m, recp->N) < 0) {
-		BN_zero(d);
-		if (!bn_copy(r, m)) {
-			BN_CTX_end(ctx);
-			return 0;
-		}
-		BN_CTX_end(ctx);
+		if (dv != NULL)
+			BN_zero(dv);
+		if (rem != NULL)
+			return bn_copy(rem, m);
 		return 1;
 	}
 
-	/* We want the remainder
-	 * Given input of ABCDEF / ab
-	 * we need multiply ABCDEF by 3 digests of the reciprocal of ab
-	 *
+	BN_CTX_start(ctx);
+	if ((a = BN_CTX_get(ctx)) == NULL)
+		goto err;
+	if ((b = BN_CTX_get(ctx)) == NULL)
+		goto err;
+
+	if ((d = dv) == NULL)
+		d = BN_CTX_get(ctx);
+	if (d == NULL)
+		goto err;
+
+	if ((r = rem) == NULL)
+		r = BN_CTX_get(ctx);
+	if (r == NULL)
+		goto err;
+
+	/*
+	 * We want the remainder. Given input of ABCDEF / ab we need to
+	 * multiply ABCDEF by 3 digits of the reciprocal of ab.
 	 */
 
 	/* i := max(BN_num_bits(m), 2*BN_num_bits(N)) */
@@ -175,18 +146,21 @@ BN_div_reciprocal(BIGNUM *dv, BIGNUM *rem, const BIGNUM *m, BN_RECP_CTX *recp,
 	if (j > i)
 		i = j;
 
-	/* Nr := round(2^i / N) */
-	if (i != recp->shift)
-		recp->shift = BN_reciprocal(recp->Nr, recp->N, i, ctx);
+	/* Compute Nr := (1 << i) / N if necessary. */
+	if (i != recp->shift) {
+		BN_zero(recp->Nr);
+		if (!BN_set_bit(recp->Nr, i))
+			goto err;
+		if (!BN_div_ct(recp->Nr, NULL, recp->Nr, recp->N, ctx))
+			goto err;
+		recp->shift = i;
+	}
 
-	/* BN_reciprocal returns i, or -1 for an error */
-	if (recp->shift == -1)
-		goto err;
-
-	/* d := |round(round(m / 2^BN_num_bits(N)) * recp->Nr / 2^(i - BN_num_bits(N)))|
-	 *    = |round(round(m / 2^BN_num_bits(N)) * round(2^i / N) / 2^(i - BN_num_bits(N)))|
-	 *   <= |(m / 2^BN_num_bits(N)) * (2^i / N) * (2^BN_num_bits(N) / 2^i)|
-	 *    = |m/N|
+	/*
+	 * d := |((m >> BN_num_bits(N)) * recp->Nr)     >> (i - BN_num_bits(N))|
+	 *    = |((m >> BN_num_bits(N)) * (1 << i) / N) >> (i - BN_num_bits(N))|
+	 *   <= |(m / 2^BN_num_bits(N)) * (2^i / N) * 2^BN_num_bits(N) / 2^i |
+	 *    = |m / N|
 	 */
 	if (!BN_rshift(a, m, recp->num_bits))
 		goto err;
