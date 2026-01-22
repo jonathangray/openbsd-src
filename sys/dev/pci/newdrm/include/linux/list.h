@@ -248,6 +248,9 @@ list_del_init(struct list_head *entry) {
 #define list_last_entry(ptr, type, member) \
 	list_entry((ptr)->prev, type, member)
 
+#define list_last_entry_or_null(ptr, type, member) \
+	(list_empty(ptr) ? NULL : list_last_entry(ptr, type, member))
+
 static inline void
 __list_splice(const struct list_head *list, struct list_head *prev,
     struct list_head *next)
