@@ -897,6 +897,9 @@ EXPORT_SYMBOL(mipi_dsi_generic_read);
  */
 u32 drm_mipi_dsi_get_input_bus_fmt(enum mipi_dsi_pixel_format dsi_format)
 {
+	STUB();
+	return 0;
+#ifdef notyet
 	switch (dsi_format) {
 	case MIPI_DSI_FMT_RGB888:
 		return MEDIA_BUS_FMT_RGB888_1X24;
@@ -914,6 +917,7 @@ u32 drm_mipi_dsi_get_input_bus_fmt(enum mipi_dsi_pixel_format dsi_format)
 		/* Unsupported DSI Format */
 		return 0;
 	}
+#endif
 }
 EXPORT_SYMBOL(drm_mipi_dsi_get_input_bus_fmt);
 
