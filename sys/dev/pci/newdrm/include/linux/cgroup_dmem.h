@@ -14,4 +14,15 @@ dmem_cgroup_unregister_region(void *r)
 {
 }
 
+static inline bool
+dmem_cgroup_state_evict_valuable(void *a, void *b, bool c, bool *d)
+{
+	return true;
+}
+
+static inline void
+dmem_cgroup_pool_state_put(void *a)
+{
+}
+
 #endif
