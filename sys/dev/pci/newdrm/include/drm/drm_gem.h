@@ -514,9 +514,11 @@ void drm_gem_object_release(struct drm_gem_object *obj);
 void drm_gem_object_free(struct kref *kref);
 int drm_gem_object_init(struct drm_device *dev,
 			struct drm_gem_object *obj, size_t size);
+#ifdef __linux__
 int drm_gem_object_init_with_mnt(struct drm_device *dev,
 				 struct drm_gem_object *obj, size_t size,
 				 struct vfsmount *gemfs);
+#endif
 void drm_gem_private_object_init(struct drm_device *dev,
 				 struct drm_gem_object *obj, size_t size);
 void drm_gem_private_object_fini(struct drm_gem_object *obj);
