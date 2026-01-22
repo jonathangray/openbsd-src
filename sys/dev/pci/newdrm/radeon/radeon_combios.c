@@ -35,11 +35,13 @@
 #include "radeon_legacy_encoders.h"
 #include "atom.h"
 
-#ifdef CONFIG_PPC_PMAC
+#if defined(CONFIG_PPC_PMAC) && defined(__linux__)
 /* not sure which of these are needed */
 #include <asm/machdep.h>
 #include <asm/pmac_feature.h>
 #include <asm/prom.h>
+#elif defined(CONFIG_PPC_PMAC)
+#include <linux/of.h>
 #endif /* CONFIG_PPC_PMAC */
 
 /* old legacy ATI BIOS routines */
@@ -396,10 +398,17 @@ radeon_bios_get_hardcoded_edid(struct radeon_device *rdev)
 	return drm_edid_duplicate(drm_edid_raw(rdev->mode_info.bios_hardcoded_edid));
 }
 
+#ifdef __clang__
+static inline struct radeon_i2c_bus_rec combios_setup_i2c_bus(struct radeon_device *rdev,
+						       enum radeon_combios_ddc ddc,
+						       u32 clk_mask,
+						       u32 data_mask)
+#else
 static struct radeon_i2c_bus_rec combios_setup_i2c_bus(struct radeon_device *rdev,
 						       enum radeon_combios_ddc ddc,
 						       u32 clk_mask,
 						       u32 data_mask)
+#endif
 {
 	struct radeon_i2c_bus_rec i2c;
 	int ddc_line = 0;
@@ -2683,6 +2692,7 @@ void radeon_combios_get_power_modes(struct radeon_device *rdev)
 			else
 				i2c_bus = combios_setup_i2c_bus(rdev, gpio, 0, 0);
 			rdev->pm.i2c_bus = radeon_i2c_lookup(rdev, &i2c_bus);
+#ifdef notyet
 			if (rdev->pm.i2c_bus) {
 				struct i2c_board_info info = { };
 				const char *name = thermal_controller_names[thermal_controller];
@@ -2690,6 +2700,7 @@ void radeon_combios_get_power_modes(struct radeon_device *rdev)
 				strscpy(info.type, name, sizeof(info.type));
 				i2c_new_client_device(&rdev->pm.i2c_bus->adapter, &info);
 			}
+#endif
 		}
 	} else {
 		/* boards with a thermal chip, but no overdrive table */
@@ -2700,6 +2711,7 @@ void radeon_combios_get_power_modes(struct radeon_device *rdev)
 		    (rdev->pdev->subsystem_device == 0xc002)) {
 			i2c_bus = combios_setup_i2c_bus(rdev, DDC_MONID, 0, 0);
 			rdev->pm.i2c_bus = radeon_i2c_lookup(rdev, &i2c_bus);
+#ifdef notyet
 			if (rdev->pm.i2c_bus) {
 				struct i2c_board_info info = { };
 				const char *name = "f75375";
@@ -2709,6 +2721,7 @@ void radeon_combios_get_power_modes(struct radeon_device *rdev)
 				DRM_INFO("Possible %s thermal controller at 0x%02x\n",
 					 name, info.addr);
 			}
+#endif
 		}
 	}
 
