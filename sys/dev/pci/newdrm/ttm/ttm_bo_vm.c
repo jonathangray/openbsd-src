@@ -526,11 +526,10 @@ vm_fault_t ttm_bo_vm_fault_reserved(struct uvm_faultinfo *ufi,
 		struct ttm_operation_ctx ctx = {
 			.interruptible = true,
 			.no_wait_gpu = false,
-			.force_alloc = true
 		};
 
 		ttm = bo->ttm;
-		err = ttm_tt_populate(bdev, bo->ttm, &ctx);
+		err = ttm_bo_populate(bo, &ctx);
 		if (err) {
 			if (err == -EINTR || err == -ERESTARTSYS ||
 			    err == -EAGAIN)
@@ -762,7 +761,7 @@ ttm_bo_vm_reference(struct uvm_object *uobj)
 	struct ttm_buffer_object *bo =
 	    (struct ttm_buffer_object *)uobj;
 
-	ttm_bo_get(bo);
+	drm_gem_object_get(&bo->base);
 }
 
 void
@@ -770,7 +769,7 @@ ttm_bo_vm_detach(struct uvm_object *uobj)
 {
 	struct ttm_buffer_object *bo = (struct ttm_buffer_object *)uobj;
 
-	ttm_bo_put(bo);
+	drm_gem_object_put(&bo->base);
 }
 
 const struct uvm_pagerops ttm_bo_vm_ops = {
@@ -823,7 +822,7 @@ int ttm_bo_mmap_obj(struct ttm_buffer_object *bo)
 		return -EINVAL;
 #endif
 
-	ttm_bo_get(bo);
+	drm_gem_object_get(&bo->base);
 
 	/*
 	 * Drivers may want to override the vm_ops field. Otherwise we
