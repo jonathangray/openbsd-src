@@ -1056,7 +1056,11 @@ void drm_file_err(struct drm_file *file_priv, const char *fmt, ...)
 	va_list args;
 	struct va_format vaf;
 	struct pid *pid;
+#ifdef __linux__
 	struct task_struct *task;
+#else
+	struct proc *task;
+#endif
 	struct drm_device *dev = file_priv->minor->dev;
 
 	va_start(args, fmt);
@@ -1066,13 +1070,21 @@ void drm_file_err(struct drm_file *file_priv, const char *fmt, ...)
 	mutex_lock(&file_priv->client_name_lock);
 	rcu_read_lock();
 	pid = rcu_dereference(file_priv->pid);
+#ifdef __linux__
 	task = pid_task(pid, PIDTYPE_TGID);
 
 	drm_err(dev, "comm: %s pid: %d client-id:%llu client: %s ... %pV",
 		task ? task->comm : "Unset",
 		task ? task->pid : 0, file_priv->client_id,
 		file_priv->client_name ?: "Unset", &vaf);
-
+#else
+	task = NULL;
+	drm_err(dev, "comm: %s pid: %d client-id:%llu client: %s ... ",
+		task ? task->p_p->ps_comm : "Unset",
+		task ? task->p_p->ps_pid : 0, file_priv->client_id,
+		file_priv->client_name ?: "Unset");
+	vprintf(fmt, args);
+#endif
 	va_end(args);
 	rcu_read_unlock();
 	mutex_unlock(&file_priv->client_name_lock);
