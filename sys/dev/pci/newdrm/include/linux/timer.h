@@ -24,9 +24,9 @@
 #include <sys/kernel.h>
 #include <linux/ktime.h>
 
-#define del_timer_sync(x)	timeout_del_barrier((x))
+#define timer_delete_sync(x)	timeout_del_barrier((x))
 #define timer_shutdown_sync(x)	timeout_del_barrier((x))
-#define del_timer(x)		timeout_del((x))
+#define timer_delete(x)		timeout_del((x))
 #define timer_pending(x)	timeout_pending((x))
 
 static inline int
