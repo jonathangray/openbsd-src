@@ -7,6 +7,7 @@
 #define CONFIG_DRM_FBDEV_EMULATION		1
 #define CONFIG_DRM_CLIENT			1
 #define CONFIG_DRM_CLIENT_SETUP			1
+#define CONFIG_DRM_CLIENT_DEFAULT		"fbdev"
 
 #ifdef notyet
 /* causes Intel GuC init to fail with large fbs */

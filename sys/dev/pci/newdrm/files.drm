@@ -84,6 +84,10 @@ file	dev/pci/newdrm/linux_radix.c		drm
 file	dev/pci/newdrm/linux_sort.c		drm
 file	dev/pci/newdrm/linux_sort_r.c		drm
 
+file	dev/pci/newdrm/clients/drm_client_setup.c	drm
+file	dev/pci/newdrm/clients/drm_fbdev_client.c	drm
+#file	dev/pci/newdrm/clients/drm_log.c		drm
+
 #file	dev/pci/newdrm/display/drm_display_helper_mod.c	drm
 #file	dev/pci/newdrm/display/drm_dp_aux_dev.c		drm
 file	dev/pci/newdrm/display/drm_dp_dual_mode_helper.c	drm
