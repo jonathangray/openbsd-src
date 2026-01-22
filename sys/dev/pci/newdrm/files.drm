@@ -42,7 +42,7 @@ file	dev/pci/newdrm/drm_gem.c			drm
 file	dev/pci/newdrm/drm_gem_atomic_helper.c	drm
 file	dev/pci/newdrm/drm_gem_dma_helper.c	drm
 file	dev/pci/newdrm/drm_gem_framebuffer_helper.c	drm
-file	dev/pci/newdrm/drm_gpusvm.c		drm
+#file	dev/pci/newdrm/drm_gpusvm.c		drm
 #file	dev/pci/newdrm/drm_gpuvm.c			drm
 #file	dev/pci/newdrm/drm_ioc32.c			drm
 file	dev/pci/newdrm/drm_ioctl.c			drm
@@ -57,7 +57,7 @@ file	dev/pci/newdrm/drm_modes.c			drm
 file	dev/pci/newdrm/drm_modeset_helper.c	drm
 file	dev/pci/newdrm/drm_modeset_lock.c		drm
 file	dev/pci/newdrm/drm_mtrr.c			drm
-file	dev/pci/newdrm/drm_pagemap.c		drm
+#file	dev/pci/newdrm/drm_pagemap.c		drm
 file	dev/pci/newdrm/drm_panel.c			drm
 file	dev/pci/newdrm/drm_panel_orientation_quirks.c	drm
 #file	dev/pci/newdrm/drm_panic.c			drm
