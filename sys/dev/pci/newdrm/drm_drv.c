@@ -260,8 +260,6 @@ static int drm_minor_register(struct drm_device *dev, enum drm_minor_type type)
 	ret = device_add(minor->kdev);
 	if (ret)
 		goto err_debugfs;
-#else
-	drm_debugfs_root = NULL;
 #endif
 
 	/* replace NULL with @minor so lookups will succeed from now on */
@@ -594,10 +592,13 @@ EXPORT_SYMBOL(drm_dev_unplug);
  */
 void drm_dev_set_dma_dev(struct drm_device *dev, struct device *dma_dev)
 {
+	STUB();
+#ifdef notyet
 	dma_dev = get_device(dma_dev);
 
 	put_device(dev->dma_dev);
 	dev->dma_dev = dma_dev;
+#endif
 }
 EXPORT_SYMBOL(drm_dev_set_dma_dev);
 
@@ -774,9 +775,11 @@ static void drm_dev_init_release(struct drm_device *dev, void *res)
 	drm_fs_inode_free(dev->anon_inode);
 
 	put_device(dev->dma_dev);
-#endif
 	dev->dma_dev = NULL;
 	put_device(dev->dev);
+#else
+	dev->dma_dev = NULL;
+#endif
 	/* Prevent use-after-free in drm_managed_release when debugging is
 	 * enabled. Slightly awkward, but can't really be helped. */
 	dev->dev = NULL;
@@ -1574,7 +1577,6 @@ drm_attach(struct device *parent, struct device *self, void *aux)
 
 	mtx_init(&dev->quiesce_mtx, IPL_NONE);
 	mtx_init(&dev->event_lock, IPL_TTY);
-	rw_init(&dev->struct_mutex, "drmdevlk");
 	rw_init(&dev->filelist_mutex, "drmflist");
 	rw_init(&dev->clientlist_mutex, "drmclist");
 	rw_init(&dev->master_mutex, "drmmast");
@@ -1864,9 +1866,9 @@ drmkqfilter(dev_t kdev, struct knote *kn)
 
 	switch (kn->kn_filter) {
 	case EVFILT_READ:
-		mutex_lock(&dev->struct_mutex);
+		mutex_lock(&dev->filelist_mutex);
 		file_priv = drm_find_file_by_minor(dev, minor(kdev));
-		mutex_unlock(&dev->struct_mutex);
+		mutex_unlock(&dev->filelist_mutex);
 		if (file_priv == NULL)
 			return (ENXIO);
 
