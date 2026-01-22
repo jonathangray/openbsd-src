@@ -420,9 +420,13 @@ void *__devm_drm_panel_alloc(struct device *dev, size_t size, size_t offset,
 	panel->funcs = funcs;
 	kref_init(&panel->refcount);
 
+#ifdef notyet
 	err = devm_add_action_or_reset(dev, drm_panel_put_void, panel);
 	if (err)
 		return ERR_PTR(err);
+#else
+	STUB();
+#endif
 
 	drm_panel_init(panel, dev, funcs, connector_type);
 
@@ -515,6 +519,9 @@ EXPORT_SYMBOL(of_drm_get_panel_orientation);
 /* Find panel by fwnode. This should be identical to of_drm_find_panel(). */
 static struct drm_panel *find_panel_by_fwnode(const struct fwnode_handle *fwnode)
 {
+	STUB();
+	return ERR_PTR(-ENOSYS);
+#ifdef notyet
 	struct drm_panel *panel;
 
 	if (!fwnode_device_is_available(fwnode))
@@ -532,11 +539,15 @@ static struct drm_panel *find_panel_by_fwnode(const struct fwnode_handle *fwnode
 	mutex_unlock(&panel_lock);
 
 	return ERR_PTR(-EPROBE_DEFER);
+#endif
 }
 
 /* Find panel by follower device */
 static struct drm_panel *find_panel_by_dev(struct device *follower_dev)
 {
+	STUB();
+	return ERR_PTR(-ENOSYS);
+#ifdef notyet
 	struct fwnode_handle *fwnode;
 	struct drm_panel *panel;
 
@@ -548,6 +559,7 @@ static struct drm_panel *find_panel_by_dev(struct device *follower_dev)
 	fwnode_handle_put(fwnode);
 
 	return panel;
+#endif
 }
 
 /**
