@@ -1,13 +1,19 @@
 #ifndef _DRM_DEVICE_H_
 #define _DRM_DEVICE_H_
 
+#include <sys/types.h>
+#include <sys/event.h>
+
 #include <linux/list.h>
 #include <linux/kref.h>
 #include <linux/mutex.h>
 #include <linux/idr.h>
 #include <linux/sched.h>
+#include <linux/pci.h>
 
 #include <drm/drm_mode_config.h>
+
+#include <sys/pool.h>
 
 struct drm_driver;
 struct drm_minor;
@@ -63,6 +69,28 @@ enum switch_power_state {
 	DRM_SWITCH_POWER_DYNAMIC_OFF = 3,
 };
 
+#ifdef __OpenBSD__
+#include <dev/pci/pcivar.h>
+#include <dev/pci/agpvar.h>
+
+struct drm_agp_head {
+	struct agp_softc			*agpdev;
+	const char				*chipset;
+	TAILQ_HEAD(agp_memlist, drm_agp_mem)	 memory;
+	struct agp_info				 info;
+	unsigned long				 base;
+	unsigned long				 mode;
+	unsigned long				 page_mask;
+	int					 acquired;
+	int					 cant_use_aperture;
+	int					 enabled;
+   	int					 mtrr;
+};
+#if IS_ENABLED(CONFIG_AGP)
+struct drm_agp_head *drm_legacy_agp_init(struct drm_device *dev);
+#endif
+#endif /* __OpenBSD__ */
+
 /**
  * struct drm_device - DRM device structure
  *
@@ -70,14 +98,18 @@ enum switch_power_state {
  * may contain multiple heads.
  */
 struct drm_device {
+	struct device *dev;
+
 	/** @if_version: Highest interface version set */
 	int if_version;
 
 	/** @ref: Object ref-count */
 	struct kref ref;
 
+#ifdef __linux__
 	/** @dev: Device structure of bus-device */
 	struct device *dev;
+#endif
 
 	/**
 	 * @dma_dev:
@@ -118,6 +150,17 @@ struct drm_device {
 
 	/** @driver: DRM driver managing the device */
 	const struct drm_driver *driver;
+
+	bus_dma_tag_t		dmat;
+	bus_space_tag_t		bst;
+
+	struct klist note;
+	struct pci_dev  _pdev;
+	struct pci_dev *pdev;
+
+	struct mutex	quiesce_mtx;
+	int		quiesce;
+	int		quiesce_count;
 
 	/**
 	 * @dev_private:
@@ -197,7 +240,7 @@ struct drm_device {
 	 *
 	 * Lock for &drm_minor.master and &drm_file.is_master
 	 */
-	struct mutex master_mutex;
+	struct rwlock master_mutex;
 
 	/**
 	 * @open_count:
@@ -208,13 +251,17 @@ struct drm_device {
 	atomic_t open_count;
 
 	/** @filelist_mutex: Protects @filelist. */
-	struct mutex filelist_mutex;
+	struct rwlock filelist_mutex;
 	/**
 	 * @filelist:
 	 *
 	 * List of userspace clients, linked through &drm_file.lhead.
 	 */
+#ifdef __linux__
 	struct list_head filelist;
+#else
+	SPLAY_HEAD(drm_file_tree, drm_file)	files;
+#endif
 
 	/**
 	 * @filelist_internal:
@@ -229,7 +276,7 @@ struct drm_device {
 	 *
 	 * Protects &clientlist access.
 	 */
-	struct mutex clientlist_mutex;
+	struct rwlock clientlist_mutex;
 
 	/**
 	 * @clientlist:
@@ -316,8 +363,10 @@ struct drm_device {
 	/** @mode_config: Current mode config */
 	struct drm_mode_config mode_config;
 
+	struct pool objpl;
+
 	/** @object_name_lock: GEM information */
-	struct mutex object_name_lock;
+	struct rwlock object_name_lock;
 
 	/** @object_name_idr: GEM information */
 	struct idr object_name_idr;
@@ -352,6 +401,8 @@ struct drm_device {
 	 * Root directory for debugfs files.
 	 */
 	struct dentry *debugfs_root;
+
+	struct drm_agp_head *agp;
 };
 
 void drm_dev_set_dma_dev(struct drm_device *dev, struct device *dma_dev);

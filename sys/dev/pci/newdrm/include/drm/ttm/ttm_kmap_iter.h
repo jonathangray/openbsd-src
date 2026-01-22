@@ -29,7 +29,7 @@ struct ttm_kmap_iter_ops {
 	 * @i: The location within the resource to map. PAGE_SIZE granularity.
 	 */
 	void (*map_local)(struct ttm_kmap_iter *res_iter,
-			  struct iosys_map *dmap, pgoff_t i);
+			  struct iosys_map *dmap, pgoff_t i, bus_space_tag_t);
 	/**
 	 * @unmap_local: Unmap a PAGE_SIZE part of the resource previously
 	 * mapped using kmap_local.
@@ -39,7 +39,7 @@ struct ttm_kmap_iter_ops {
 	 * the operation.
 	 */
 	void (*unmap_local)(struct ttm_kmap_iter *res_iter,
-			    struct iosys_map *dmap);
+			    struct iosys_map *dmap, bus_space_tag_t);
 	bool maps_tt;
 };
 

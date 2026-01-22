@@ -47,7 +47,9 @@ struct ttm_pool_tt_restore;
  */
 struct ttm_tt {
 	/** @pages: Array of pages backing the data. */
-	struct page **pages;
+	struct vm_page **pages;
+	/** @orders: Array of order values. */
+	unsigned long *orders;
 	/**
 	 * @page_flags: The page flags.
 	 *
@@ -111,7 +113,7 @@ struct ttm_tt {
 	/** @dma_address: The DMA (bus) addresses of the pages. */
 	dma_addr_t *dma_address;
 	/** @swap_storage: Pointer to shmem struct file for swap storage. */
-	struct file *swap_storage;
+	struct uvm_object *swap_storage;
 	/**
 	 * @backup: Pointer to backup struct for backed up tts.
 	 * Could be unified with @swap_storage. Meanwhile, the driver's
@@ -126,6 +128,10 @@ struct ttm_tt {
 	enum ttm_caching caching;
 	/** @restore: Partial restoration from backup state. TTM private */
 	struct ttm_pool_tt_restore *restore;
+
+	bus_dma_tag_t dmat;
+	bus_dmamap_t map;
+	bus_dma_segment_t *segs;
 };
 
 /**

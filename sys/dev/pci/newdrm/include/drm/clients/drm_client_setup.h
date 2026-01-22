@@ -4,6 +4,7 @@
 #define DRM_CLIENT_SETUP_H
 
 #include <linux/types.h>
+#include <linux/kconfig.h>
 
 struct drm_device;
 struct drm_format_info;

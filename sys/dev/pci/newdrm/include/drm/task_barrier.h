@@ -46,18 +46,24 @@ struct task_barrier {
 static inline void task_barrier_signal_turnstile(struct semaphore *turnstile,
 						 unsigned int n)
 {
+	STUB();
+#ifdef notyet
 	int i;
 
 	for (i = 0 ; i < n; i++)
 		up(turnstile);
+#endif
 }
 
 static inline void task_barrier_init(struct task_barrier *tb)
 {
 	tb->n = 0;
 	atomic_set(&tb->count, 0);
+	STUB();
+#ifdef notyet
 	sema_init(&tb->enter_turnstile, 0);
 	sema_init(&tb->exit_turnstile, 0);
+#endif
 }
 
 static inline void task_barrier_add_task(struct task_barrier *tb)
@@ -80,7 +86,10 @@ static inline void task_barrier_enter(struct task_barrier *tb)
 	if (atomic_inc_return(&tb->count) == tb->n)
 		task_barrier_signal_turnstile(&tb->enter_turnstile, tb->n);
 
+	STUB();
+#ifdef notyet
 	down(&tb->enter_turnstile);
+#endif
 }
 
 /*
@@ -94,7 +103,10 @@ static inline void task_barrier_exit(struct task_barrier *tb)
 	if (atomic_dec_return(&tb->count) == 0)
 		task_barrier_signal_turnstile(&tb->exit_turnstile, tb->n);
 
+	STUB();
+#ifdef notyet
 	down(&tb->exit_turnstile);
+#endif
 }
 
 /* Convinieince function when nothing to be done in between entry and exit */
