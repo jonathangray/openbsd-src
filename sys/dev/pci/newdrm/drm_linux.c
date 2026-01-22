@@ -299,7 +299,7 @@ kthread_run(int (*func)(void *), void *data, const char *name)
 }
 
 struct kthread_worker *
-kthread_create_worker(unsigned int flags, const char *fmt, ...)
+kthread_run_worker(unsigned int flags, const char *fmt, ...)
 {
 	char name[MAXCOMLEN+1];
 	va_list ap;
