@@ -771,7 +771,9 @@ void drm_connector_cleanup(struct drm_connector *connector)
 		    DRM_CONNECTOR_REGISTERED))
 		drm_connector_unregister(connector);
 
+#ifdef notyet
 	platform_device_unregister(connector->hdmi_audio.codec_pdev);
+#endif
 
 	if (connector->privacy_screen) {
 		drm_privacy_screen_put(connector->privacy_screen);

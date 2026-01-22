@@ -1785,7 +1785,7 @@ struct drm_connector_hdmi_audio {
 	 *
 	 * Mutex to protect @last_state, @plugged_cb and @plugged_cb_dev.
 	 */
-	struct mutex lock;
+	struct rwlock lock;
 
 	/**
 	 * @plugged_cb:
@@ -1871,7 +1871,7 @@ struct drm_connector_cec {
 	/**
 	 * @mutex: protects all fields in this structure.
 	 */
-	struct mutex mutex;
+	struct rwlock mutex;
 
 	/**
 	 * @funcs: CEC Control Functions
