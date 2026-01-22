@@ -521,7 +521,7 @@ int drm_lspcon_set_mode(const struct drm_device *dev, struct i2c_adapter *adapte
 			return ret;
 		} else {
 			if (current_mode != mode) {
-				msleep(10);
+				drm_msleep(10);
 				time_out -= 10;
 			} else {
 				drm_dbg_kms(dev, "LSPCON mode changed to %s\n",

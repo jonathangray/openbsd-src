@@ -15,6 +15,8 @@
  * struct fb_ops
  */
 
+#ifdef __linux__
+
 static int drm_fbdev_dma_fb_open(struct fb_info *info, int user)
 {
 	struct drm_fb_helper *fb_helper = info->par;
@@ -61,7 +63,10 @@ static void drm_fbdev_dma_fb_destroy(struct fb_info *info)
 	kfree(fb_helper);
 }
 
+#endif /* __linux__ */
+
 static const struct fb_ops drm_fbdev_dma_fb_ops = {
+#ifdef notyet
 	.owner = THIS_MODULE,
 	.fb_open = drm_fbdev_dma_fb_open,
 	.fb_release = drm_fbdev_dma_fb_release,
@@ -70,8 +75,12 @@ static const struct fb_ops drm_fbdev_dma_fb_ops = {
 	__FB_DEFAULT_DMAMEM_OPS_DRAW,
 	.fb_mmap = drm_fbdev_dma_fb_mmap,
 	.fb_destroy = drm_fbdev_dma_fb_destroy,
+#else
+	DRM_FB_HELPER_DEFAULT_OPS,
+#endif
 };
 
+#ifdef __linux__
 FB_GEN_DEFAULT_DEFERRED_DMAMEM_OPS(drm_fbdev_dma_shadowed,
 				   drm_fb_helper_damage_range,
 				   drm_fb_helper_damage_area);
@@ -95,14 +104,19 @@ static void drm_fbdev_dma_shadowed_fb_destroy(struct fb_info *info)
 	drm_fb_helper_unprepare(fb_helper);
 	kfree(fb_helper);
 }
+#endif /* __linux__ */
 
 static const struct fb_ops drm_fbdev_dma_shadowed_fb_ops = {
+#ifdef notyet
 	.owner = THIS_MODULE,
 	.fb_open = drm_fbdev_dma_fb_open,
 	.fb_release = drm_fbdev_dma_fb_release,
 	FB_DEFAULT_DEFERRED_OPS(drm_fbdev_dma_shadowed),
 	DRM_FB_HELPER_DEFAULT_OPS,
 	.fb_destroy = drm_fbdev_dma_shadowed_fb_destroy,
+#else
+	DRM_FB_HELPER_DEFAULT_OPS,
+#endif
 };
 
 /*
@@ -233,7 +247,9 @@ static int drm_fbdev_dma_driver_fbdev_probe_tail_shadowed(struct drm_fb_helper *
 	struct fb_info *info = fb_helper->info;
 	size_t screen_size = buffer->gem->size;
 	void *screen_buffer;
+#ifdef notyet
 	int ret;
+#endif
 
 	/*
 	 * Deferred I/O requires struct page for framebuffer memory,
@@ -252,6 +268,7 @@ static int drm_fbdev_dma_driver_fbdev_probe_tail_shadowed(struct drm_fb_helper *
 	info->screen_buffer = screen_buffer;
 	info->fix.smem_len = screen_size;
 
+#ifdef notyet
 	fb_helper->fbdefio.delay = HZ / 20;
 	fb_helper->fbdefio.deferred_io = drm_fb_helper_deferred_io;
 
@@ -265,6 +282,9 @@ static int drm_fbdev_dma_driver_fbdev_probe_tail_shadowed(struct drm_fb_helper *
 err_vfree:
 	vfree(screen_buffer);
 	return ret;
+#else
+	return 0;
+#endif
 }
 
 int drm_fbdev_dma_driver_fbdev_probe(struct drm_fb_helper *fb_helper,

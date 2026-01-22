@@ -37,6 +37,7 @@
 #include <linux/platform_device.h>
 #include <linux/property.h>
 #include <linux/uaccess.h>
+#include <linux/backlight.h>
 
 #include <video/cmdline.h>
 
@@ -79,7 +80,7 @@
  * take the connector_list_lock.
  */
 static DEFINE_MUTEX(connector_list_lock);
-static LIST_HEAD(connector_list);
+static DRM_LIST_HEAD(connector_list);
 
 struct drm_conn_prop_enum_list {
 	int type;
@@ -279,12 +280,12 @@ static int drm_connector_init_only(struct drm_device *dev,
 	INIT_LIST_HEAD(&connector->global_connector_list_entry);
 	INIT_LIST_HEAD(&connector->probed_modes);
 	INIT_LIST_HEAD(&connector->modes);
-	mutex_init(&connector->mutex);
-	mutex_init(&connector->cec.mutex);
-	mutex_init(&connector->eld_mutex);
-	mutex_init(&connector->edid_override_mutex);
-	mutex_init(&connector->hdmi.infoframes.lock);
-	mutex_init(&connector->hdmi_audio.lock);
+	rw_init(&connector->mutex, "cnlk");
+	rw_init(&connector->cec.mutex, "ceclk");
+	rw_init(&connector->eld_mutex, "eldlk");
+	rw_init(&connector->edid_override_mutex, "eolk");
+	rw_init(&connector->hdmi.infoframes.lock, "hilk");
+	rw_init(&connector->hdmi_audio.lock, "halk");
 	connector->edid_blob_ptr = NULL;
 	connector->epoch_counter = 0;
 	connector->tile_blob_ptr = NULL;
@@ -605,8 +606,17 @@ int drmm_connector_hdmi_init(struct drm_device *dev,
 		return ret;
 
 	connector->hdmi.supported_formats = supported_formats;
+#ifdef notyet
 	strtomem_pad(connector->hdmi.vendor, vendor, 0);
 	strtomem_pad(connector->hdmi.product, product, 0);
+#else
+	/* strlen bounds checks above */
+	memset(connector->hdmi.vendor, 0, DRM_CONNECTOR_HDMI_VENDOR_LEN);
+	memcpy(connector->hdmi.vendor, vendor, strlen(vendor));
+
+	memset(connector->hdmi.product, 0, DRM_CONNECTOR_HDMI_PRODUCT_LEN);
+	memcpy(connector->hdmi.product, product, strlen(product));
+#endif
 
 	/*
 	 * drm_connector_attach_max_bpc_property() requires the
@@ -3240,6 +3250,13 @@ int drm_connector_set_obj_prop(struct drm_mode_object *obj,
 	/* Do DPMS ourselves */
 	if (property == connector->dev->mode_config.dpms_property) {
 		ret = (*connector->funcs->dpms)(connector, (int)value);
+#ifdef __OpenBSD__
+	} else if (property == connector->backlight_property) {
+		connector->backlight_device->props.brightness = value;
+		backlight_schedule_update_status(connector->backlight_device);
+		knote_locked(&connector->dev->note, NOTE_CHANGE);
+		ret = 0;
+#endif
 	} else if (connector->funcs->set_property)
 		ret = connector->funcs->set_property(connector, property, value);
 

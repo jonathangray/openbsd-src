@@ -198,7 +198,7 @@
  */
 
 static DEFINE_MUTEX(bridge_lock);
-static LIST_HEAD(bridge_list);
+static DRM_LIST_HEAD(bridge_list);
 
 static void __drm_bridge_free(struct kref *kref)
 {
@@ -300,7 +300,7 @@ void drm_bridge_add(struct drm_bridge *bridge)
 
 	drm_bridge_get(bridge);
 
-	mutex_init(&bridge->hpd_mutex);
+	rw_init(&bridge->hpd_mutex, "brhpd");
 
 	if (bridge->ops & DRM_BRIDGE_OP_HDMI)
 		bridge->ycbcr_420_allowed = !!(bridge->supported_formats &
@@ -312,10 +312,12 @@ void drm_bridge_add(struct drm_bridge *bridge)
 }
 EXPORT_SYMBOL(drm_bridge_add);
 
+#ifdef notyet
 static void drm_bridge_remove_void(void *bridge)
 {
 	drm_bridge_remove(bridge);
 }
+#endif
 
 /**
  * devm_drm_bridge_add - devm managed version of drm_bridge_add()
@@ -331,7 +333,12 @@ static void drm_bridge_remove_void(void *bridge)
 int devm_drm_bridge_add(struct device *dev, struct drm_bridge *bridge)
 {
 	drm_bridge_add(bridge);
+#ifdef notyet
 	return devm_add_action_or_reset(dev, drm_bridge_remove_void, bridge);
+#else
+	STUB();
+	return -ENOSYS;
+#endif
 }
 EXPORT_SYMBOL(devm_drm_bridge_add);
 

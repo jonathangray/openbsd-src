@@ -212,7 +212,7 @@ void drm_prime_remove_buf_handle(struct drm_prime_file_private *prime_fpriv,
 
 void drm_prime_init_file_private(struct drm_prime_file_private *prime_fpriv)
 {
-	mutex_init(&prime_fpriv->lock);
+	rw_init(&prime_fpriv->lock, "primlk");
 	prime_fpriv->dmabufs = RB_ROOT;
 	prime_fpriv->handles = RB_ROOT;
 }
@@ -247,7 +247,9 @@ struct dma_buf *drm_gem_dmabuf_export(struct drm_device *dev,
 
 	drm_dev_get(dev);
 	drm_gem_object_get(obj);
+#ifdef __linux__
 	dma_buf->file->f_mapping = obj->dev->anon_inode->i_mapping;
+#endif
 
 	return dma_buf;
 }
@@ -449,12 +451,14 @@ struct dma_buf *drm_gem_prime_handle_to_dmabuf(struct drm_device *dev,
 	}
 
 	mutex_lock(&dev->object_name_lock);
+#ifdef notyet
 	/* re-export the original imported object */
 	if (obj->import_attach) {
 		dmabuf = obj->import_attach->dmabuf;
 		get_dma_buf(dmabuf);
 		goto out_have_obj;
 	}
+#endif
 
 	if (obj->dma_buf) {
 		get_dma_buf(obj->dma_buf);
@@ -607,8 +611,12 @@ int drm_gem_map_attach(struct dma_buf *dma_buf,
 	 * drm_gem_map_dma_buf() requires obj->get_sg_table(), but drivers
 	 * that implement their own ->map_dma_buf() do not.
 	 */
+#ifdef notyet
 	if (dma_buf->ops->map_dma_buf == drm_gem_map_dma_buf &&
 	    !obj->funcs->get_sg_table)
+#else
+	if (!obj->funcs->get_sg_table)
+#endif
 		return -ENOSYS;
 
 	if (!obj->funcs->pin)
@@ -649,6 +657,8 @@ void drm_gem_map_detach(struct dma_buf *dma_buf,
 	dma_resv_unlock(obj->resv);
 }
 EXPORT_SYMBOL(drm_gem_map_detach);
+
+#ifdef notyet
 
 /**
  * drm_gem_map_dma_buf - map_dma_buf implementation for GEM
@@ -712,6 +722,8 @@ void drm_gem_unmap_dma_buf(struct dma_buf_attachment *attach,
 }
 EXPORT_SYMBOL(drm_gem_unmap_dma_buf);
 
+#endif /* notyet */
+
 /**
  * drm_gem_dmabuf_vmap - dma_buf vmap implementation for GEM
  * @dma_buf: buffer to be mapped
@@ -747,6 +759,7 @@ void drm_gem_dmabuf_vunmap(struct dma_buf *dma_buf, struct iosys_map *map)
 }
 EXPORT_SYMBOL(drm_gem_dmabuf_vunmap);
 
+#ifdef __linux__
 /**
  * drm_gem_prime_mmap - PRIME mmap function for GEM drivers
  * @obj: GEM object
@@ -804,6 +817,17 @@ out:
 	return ret;
 }
 EXPORT_SYMBOL(drm_gem_prime_mmap);
+#else
+struct uvm_object *
+drm_gem_prime_mmap(struct file *filp, vm_prot_t accessprot, voff_t off,
+    vsize_t size)
+{
+	STUB();
+	return NULL;
+}
+#endif
+
+#ifdef notyet
 
 /**
  * drm_gem_dmabuf_mmap - dma_buf mmap implementation for GEM
@@ -823,15 +847,21 @@ int drm_gem_dmabuf_mmap(struct dma_buf *dma_buf, struct vm_area_struct *vma)
 }
 EXPORT_SYMBOL(drm_gem_dmabuf_mmap);
 
+#endif /* notyet */
+
 static const struct dma_buf_ops drm_gem_prime_dmabuf_ops =  {
+#ifdef notyet
 	.attach = drm_gem_map_attach,
 	.detach = drm_gem_map_detach,
 	.map_dma_buf = drm_gem_map_dma_buf,
 	.unmap_dma_buf = drm_gem_unmap_dma_buf,
+#endif
 	.release = drm_gem_dmabuf_release,
+#ifdef notyet
 	.mmap = drm_gem_dmabuf_mmap,
 	.vmap = drm_gem_dmabuf_vmap,
 	.vunmap = drm_gem_dmabuf_vunmap,
+#endif
 };
 
 /**
@@ -847,8 +877,11 @@ static const struct dma_buf_ops drm_gem_prime_dmabuf_ops =  {
  * This is useful for implementing &drm_gem_object_funcs.get_sg_table.
  */
 struct sg_table *drm_prime_pages_to_sg(struct drm_device *dev,
-				       struct page **pages, unsigned int nr_pages)
+				       struct vm_page **pages, unsigned int nr_pages)
 {
+	STUB();
+	return NULL;
+#ifdef notyet
 	struct sg_table *sg;
 	size_t max_segment = 0;
 	int err;
@@ -869,6 +902,7 @@ struct sg_table *drm_prime_pages_to_sg(struct drm_device *dev,
 		sg = ERR_PTR(err);
 	}
 	return sg;
+#endif
 }
 EXPORT_SYMBOL(drm_prime_pages_to_sg);
 
@@ -884,6 +918,9 @@ EXPORT_SYMBOL(drm_prime_pages_to_sg);
  */
 unsigned long drm_prime_get_contiguous_size(struct sg_table *sgt)
 {
+	STUB();
+	return 0;
+#ifdef notyet
 	dma_addr_t expected = sg_dma_address(sgt->sgl);
 	struct scatterlist *sg;
 	unsigned long size = 0;
@@ -900,6 +937,7 @@ unsigned long drm_prime_get_contiguous_size(struct sg_table *sgt)
 		size += len;
 	}
 	return size;
+#endif
 }
 EXPORT_SYMBOL(drm_prime_get_contiguous_size);
 
@@ -917,8 +955,10 @@ struct dma_buf *drm_gem_prime_export(struct drm_gem_object *obj,
 {
 	struct drm_device *dev = obj->dev;
 	struct dma_buf_export_info exp_info = {
+#ifdef __linux__
 		.exp_name = KBUILD_MODNAME, /* white lie for debug */
 		.owner = dev->driver->fops->owner,
+#endif
 		.ops = &drm_gem_prime_dmabuf_ops,
 		.size = obj->size,
 		.flags = flags,
@@ -969,7 +1009,9 @@ struct drm_gem_object *drm_gem_prime_import_dev(struct drm_device *dev,
 					    struct device *attach_dev)
 {
 	struct dma_buf_attachment *attach;
+#ifdef notyet
 	struct sg_table *sgt;
+#endif
 	struct drm_gem_object *obj;
 	int ret;
 
@@ -983,13 +1025,16 @@ struct drm_gem_object *drm_gem_prime_import_dev(struct drm_device *dev,
 		return obj;
 	}
 
+#ifdef notyet
 	if (!dev->driver->gem_prime_import_sg_table)
 		return ERR_PTR(-EINVAL);
+#endif
 
 	attach = dma_buf_attach(dma_buf, attach_dev);
 	if (IS_ERR(attach))
 		return ERR_CAST(attach);
 
+#ifdef notyet
 	get_dma_buf(dma_buf);
 
 	sgt = dma_buf_map_attachment_unlocked(attach, DMA_BIDIRECTIONAL);
@@ -1016,6 +1061,10 @@ fail_detach:
 	dma_buf_put(dma_buf);
 
 	return ERR_PTR(ret);
+#else
+	ret = 0;
+	panic(__func__);
+#endif
 }
 EXPORT_SYMBOL(drm_gem_prime_import_dev);
 
@@ -1052,11 +1101,14 @@ EXPORT_SYMBOL(drm_gem_prime_import);
  * in the struct page if they are not handled by the exporting driver.
  */
 int __deprecated drm_prime_sg_to_page_array(struct sg_table *sgt,
-					    struct page **pages,
+					    struct vm_page **pages,
 					    int max_entries)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct sg_page_iter page_iter;
-	struct page **p = pages;
+	struct vm_page **p = pages;
 
 	for_each_sgtable_page(sgt, &page_iter, 0) {
 		if (WARN_ON(p - pages >= max_entries))
@@ -1064,6 +1116,7 @@ int __deprecated drm_prime_sg_to_page_array(struct sg_table *sgt,
 		*p++ = sg_page_iter_page(&page_iter);
 	}
 	return 0;
+#endif
 }
 EXPORT_SYMBOL(drm_prime_sg_to_page_array);
 
@@ -1081,6 +1134,9 @@ EXPORT_SYMBOL(drm_prime_sg_to_page_array);
 int drm_prime_sg_to_dma_addr_array(struct sg_table *sgt, dma_addr_t *addrs,
 				   int max_entries)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct sg_dma_page_iter dma_iter;
 	dma_addr_t *a = addrs;
 
@@ -1090,6 +1146,7 @@ int drm_prime_sg_to_dma_addr_array(struct sg_table *sgt, dma_addr_t *addrs,
 		*a++ = sg_page_iter_dma_address(&dma_iter);
 	}
 	return 0;
+#endif
 }
 EXPORT_SYMBOL(drm_prime_sg_to_dma_addr_array);
 
@@ -1103,6 +1160,8 @@ EXPORT_SYMBOL(drm_prime_sg_to_dma_addr_array);
  */
 void drm_prime_gem_destroy(struct drm_gem_object *obj, struct sg_table *sg)
 {
+	STUB();
+#ifdef notyet
 	struct dma_buf_attachment *attach;
 	struct dma_buf *dma_buf;
 
@@ -1113,5 +1172,6 @@ void drm_prime_gem_destroy(struct drm_gem_object *obj, struct sg_table *sg)
 	dma_buf_detach(attach->dmabuf, attach);
 	/* remove the reference */
 	dma_buf_put(dma_buf);
+#endif
 }
 EXPORT_SYMBOL(drm_prime_gem_destroy);

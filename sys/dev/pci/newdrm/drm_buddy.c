@@ -10,6 +10,8 @@
 #include <linux/module.h>
 #include <linux/sizes.h>
 
+#include <sys/pool.h>
+
 #include <drm/drm_buddy.h>
 
 enum drm_buddy_free_tree {
@@ -18,7 +20,7 @@ enum drm_buddy_free_tree {
 	DRM_BUDDY_MAX_FREE_TREES,
 };
 
-static struct kmem_cache *slab_blocks;
+static struct pool slab_blocks;
 
 #define for_each_free_tree(tree) \
 	for ((tree) = 0; (tree) < DRM_BUDDY_MAX_FREE_TREES; (tree)++)
@@ -32,7 +34,11 @@ static struct drm_buddy_block *drm_block_alloc(struct drm_buddy *mm,
 
 	BUG_ON(order > DRM_BUDDY_MAX_ORDER);
 
+#ifdef __linux__
 	block = kmem_cache_zalloc(slab_blocks, GFP_KERNEL);
+#else
+	block = pool_get(&slab_blocks, PR_WAITOK | PR_ZERO);
+#endif
 	if (!block)
 		return NULL;
 
@@ -49,7 +55,11 @@ static struct drm_buddy_block *drm_block_alloc(struct drm_buddy *mm,
 static void drm_block_free(struct drm_buddy *mm,
 			   struct drm_buddy_block *block)
 {
+#ifdef __linux__
 	kmem_cache_free(slab_blocks, block);
+#else
+	pool_put(&slab_blocks, block);
+#endif
 }
 
 static enum drm_buddy_free_tree
@@ -606,7 +616,7 @@ __alloc_range_bias(struct drm_buddy *mm,
 	u64 req_size = mm->chunk_size << order;
 	struct drm_buddy_block *block;
 	struct drm_buddy_block *buddy;
-	LIST_HEAD(dfs);
+	DRM_LIST_HEAD(dfs);
 	int err;
 	int i;
 
@@ -807,7 +817,7 @@ static int __alloc_range(struct drm_buddy *mm,
 	struct drm_buddy_block *block;
 	struct drm_buddy_block *buddy;
 	u64 total_allocated = 0;
-	LIST_HEAD(allocated);
+	DRM_LIST_HEAD(allocated);
 	u64 end;
 	int err;
 
@@ -899,7 +909,7 @@ static int __drm_buddy_alloc_range(struct drm_buddy *mm,
 				   u64 *total_allocated_on_err,
 				   struct list_head *blocks)
 {
-	LIST_HEAD(dfs);
+	DRM_LIST_HEAD(dfs);
 	int i;
 
 	for (i = 0; i < mm->n_roots; ++i)
@@ -917,7 +927,7 @@ static int __alloc_contig_try_harder(struct drm_buddy *mm,
 	u64 rhs_offset, lhs_offset, lhs_size, filled;
 	struct drm_buddy_block *block;
 	unsigned int tree, order;
-	LIST_HEAD(blocks_lhs);
+	DRM_LIST_HEAD(blocks_lhs);
 	unsigned long pages;
 	u64 modify_size;
 	int err;
@@ -999,7 +1009,7 @@ int drm_buddy_block_trim(struct drm_buddy *mm,
 	struct drm_buddy_block *parent;
 	struct drm_buddy_block *block;
 	u64 block_start, block_end;
-	LIST_HEAD(dfs);
+	DRM_LIST_HEAD(dfs);
 	u64 new_start;
 	int err;
 
@@ -1108,7 +1118,7 @@ int drm_buddy_alloc_blocks(struct drm_buddy *mm,
 	struct drm_buddy_block *block = NULL;
 	u64 original_size, original_min_size;
 	unsigned int min_order, order;
-	LIST_HEAD(allocated);
+	DRM_LIST_HEAD(allocated);
 	unsigned long pages;
 	int err;
 
@@ -1213,7 +1223,7 @@ int drm_buddy_alloc_blocks(struct drm_buddy *mm,
 	if (!(flags & DRM_BUDDY_TRIM_DISABLE) &&
 	    original_size != size) {
 		struct list_head *trim_list;
-		LIST_HEAD(temp);
+		DRM_LIST_HEAD(temp);
 		u64 trim_size;
 
 		trim_list = &allocated;
@@ -1304,16 +1314,25 @@ void drm_buddy_print(struct drm_buddy *mm, struct drm_printer *p)
 }
 EXPORT_SYMBOL(drm_buddy_print);
 
-static void drm_buddy_module_exit(void)
+void drm_buddy_module_exit(void)
 {
+#ifdef __linux__
 	kmem_cache_destroy(slab_blocks);
+#else
+	pool_destroy(&slab_blocks);
+#endif
 }
 
-static int __init drm_buddy_module_init(void)
+int __init drm_buddy_module_init(void)
 {
+#ifdef __linux__
 	slab_blocks = KMEM_CACHE(drm_buddy_block, 0);
 	if (!slab_blocks)
 		return -ENOMEM;
+#else
+	pool_init(&slab_blocks, sizeof(struct drm_buddy_block),
+	    CACHELINESIZE, IPL_NONE, 0, "drmbb", NULL);
+#endif
 
 	return 0;
 }
