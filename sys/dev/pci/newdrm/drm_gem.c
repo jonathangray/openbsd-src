@@ -370,7 +370,7 @@ void drm_gem_private_object_init(struct drm_device *dev,
 	kref_init(&obj->refcount);
 	obj->handle_count = 0;
 	obj->size = size;
-	mutex_init(&obj->gpuva.lock);
+	rw_init(&obj->gpuva.lock, "gpuva");
 	dma_resv_init(&obj->_resv);
 	if (!obj->resv)
 		obj->resv = &obj->_resv;

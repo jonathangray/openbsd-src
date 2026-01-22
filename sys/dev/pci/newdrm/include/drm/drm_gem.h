@@ -441,7 +441,7 @@ struct drm_gem_object {
 		 * do not allocate memory while holding this lock. Otherwise,
 		 * the &dma_resv lock should be used.
 		 */
-		struct mutex lock;
+		struct rwlock lock;
 	} gpuva;
 
 	/**
