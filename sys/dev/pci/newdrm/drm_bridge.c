@@ -259,6 +259,9 @@ static void drm_bridge_put_void(void *data)
 void *__devm_drm_bridge_alloc(struct device *dev, size_t size, size_t offset,
 			      const struct drm_bridge_funcs *funcs)
 {
+	STUB();
+	return ERR_PTR(-ENOSYS);
+#ifdef notyet
 	void *container;
 	struct drm_bridge *bridge;
 	int err;
@@ -282,6 +285,7 @@ void *__devm_drm_bridge_alloc(struct device *dev, size_t size, size_t offset,
 		return ERR_PTR(err);
 
 	return container;
+#endif
 }
 EXPORT_SYMBOL(__devm_drm_bridge_alloc);
 
@@ -946,6 +950,9 @@ static int select_bus_fmt_recursive(struct drm_bridge *first_bridge,
 				    struct drm_connector_state *conn_state,
 				    u32 out_bus_fmt)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	unsigned int i, num_in_bus_fmts = 0;
 	struct drm_bridge_state *cur_state;
 	struct drm_bridge *prev_bridge __free(drm_bridge_put) =
@@ -1024,6 +1031,7 @@ static int select_bus_fmt_recursive(struct drm_bridge *first_bridge,
 
 	kfree(in_bus_fmts);
 	return ret;
+#endif
 }
 
 /*
@@ -1433,7 +1441,10 @@ EXPORT_SYMBOL(of_drm_find_bridge);
  */
 void devm_drm_put_bridge(struct device *dev, struct drm_bridge *bridge)
 {
+	STUB();
+#ifdef notyet
 	devm_release_action(dev, drm_bridge_put_void, bridge);
+#endif
 }
 EXPORT_SYMBOL(devm_drm_put_bridge);
 
