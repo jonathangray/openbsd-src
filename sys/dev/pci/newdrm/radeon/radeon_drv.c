@@ -1262,6 +1262,7 @@ radeondrm_attachhook(struct device *self)
 {
 	struct wsemuldisplaydev_attach_args aa;
 	struct rasops_info *ri = &rdev->ro;
+	const struct drm_format_info *format;
 
 	task_set(&rdev->switchtask, radeondrm_doswitch, ri);
 
@@ -1271,7 +1272,14 @@ radeondrm_attachhook(struct device *self)
 
 	drm_dev_register(dev, rdev->flags);
 
-	radeon_fbdev_setup(rdev);
+	if (rdev->mc.real_vram_size <= (8 * 1024 * 1024))
+		format = drm_format_info(DRM_FORMAT_C8);
+	else if (ASIC_IS_RN50(rdev) || rdev->mc.real_vram_size <= (32 * 1024 * 1024))
+		format = drm_format_info(DRM_FORMAT_RGB565);
+	else
+		format = NULL;
+
+	drm_client_setup(dev, format);
 
 	if (ri->ri_bits == NULL)
 		return;
