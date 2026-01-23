@@ -52,6 +52,8 @@ void	rkdrm_attach(struct device *, struct device *, void *);
 void	rkdrm_attachhook(struct device *);
 
 int	rkdrm_unload(struct drm_device *);
+int	rkdrm_fb_probe(struct drm_fb_helper *,
+	    struct drm_fb_helper_surface_size *);
 
 struct drm_driver rkdrm_driver = {
 	.driver_features = DRIVER_ATOMIC | DRIVER_MODESET | DRIVER_GEM,
@@ -60,10 +62,10 @@ struct drm_driver rkdrm_driver = {
 	.dumb_map_offset = drm_gem_dumb_map_offset,
 
 	.gem_fault = drm_gem_dma_fault,
+	.fbdev_probe = rkdrm_fb_probe,
 
 	.name = DRIVER_NAME,
 	.desc = DRIVER_DESC,
-	.date = DRIVER_DATE,
 	.major = DRIVER_MAJOR,
 	.minor = DRIVER_MINOR,
 	.patchlevel = DRIVER_PATCHLEVEL,
@@ -139,7 +141,7 @@ struct drm_framebuffer_funcs rkdrm_framebuffer_funcs = {
 
 struct drm_framebuffer *
 rkdrm_fb_create(struct drm_device *ddev, struct drm_file *file,
-    const struct drm_mode_fb_cmd2 *cmd)
+    const struct drm_format_info *info, const struct drm_mode_fb_cmd2 *cmd)
 {
 	struct rkdrm_framebuffer *fb;
 	struct drm_gem_object *gem_obj;
@@ -153,7 +155,7 @@ rkdrm_fb_create(struct drm_device *ddev, struct drm_file *file,
 		return NULL;
 
 	fb = malloc(sizeof(*fb), M_DRM, M_ZERO | M_WAITOK);
-	drm_helper_mode_fill_fb_struct(ddev, &fb->base, cmd);
+	drm_helper_mode_fill_fb_struct(ddev, &fb->base, info, cmd);
 	fb->base.format = drm_format_info(DRM_FORMAT_ARGB8888);
 	fb->base.obj[0] = gem_obj;
 	fb->obj = to_drm_gem_dma_obj(gem_obj);
@@ -183,10 +185,7 @@ struct drm_mode_config_funcs rkdrm_mode_config_funcs = {
 	.atomic_commit = drm_atomic_helper_commit,
 };
 
-int rkdrm_fb_probe(struct drm_fb_helper *, struct drm_fb_helper_surface_size *);
-
 struct drm_fb_helper_funcs rkdrm_fb_helper_funcs = {
-	.fb_probe = rkdrm_fb_probe,
 };
 
 int
