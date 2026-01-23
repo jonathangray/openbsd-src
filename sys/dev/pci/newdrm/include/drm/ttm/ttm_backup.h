@@ -19,10 +19,10 @@
  *
  * Return: An (invalid) struct page pointer.
  */
-static inline struct page *
+static inline struct vm_page *
 ttm_backup_handle_to_page_ptr(unsigned long handle)
 {
-	return (struct page *)(handle << 1 | 1);
+	return (struct vm_page *)(handle << 1 | 1);
 }
 
 /**
@@ -32,7 +32,7 @@ ttm_backup_handle_to_page_ptr(unsigned long handle)
  * Return: true if the struct page pointer is a handld returned from
  * ttm_backup_handle_to_page_ptr(). False otherwise.
  */
-static inline bool ttm_backup_page_ptr_is_handle(const struct page *page)
+static inline bool ttm_backup_page_ptr_is_handle(const struct vm_page *page)
 {
 	return (unsigned long)page & 1;
 }
@@ -47,7 +47,7 @@ static inline bool ttm_backup_page_ptr_is_handle(const struct page *page)
  * ttm_backup_copy_page() functions.
  */
 static inline unsigned long
-ttm_backup_page_ptr_to_handle(const struct page *page)
+ttm_backup_page_ptr_to_handle(const struct vm_page *page)
 {
 	WARN_ON(!ttm_backup_page_ptr_is_handle(page));
 	return (unsigned long)page >> 1;
@@ -55,11 +55,11 @@ ttm_backup_page_ptr_to_handle(const struct page *page)
 
 void ttm_backup_drop(struct file *backup, pgoff_t handle);
 
-int ttm_backup_copy_page(struct file *backup, struct page *dst,
+int ttm_backup_copy_page(struct file *backup, struct vm_page *dst,
 			 pgoff_t handle, bool intr);
 
 s64
-ttm_backup_backup_page(struct file *backup, struct page *page,
+ttm_backup_backup_page(struct file *backup, struct vm_page *page,
 		       bool writeback, pgoff_t idx, gfp_t page_gfp,
 		       gfp_t alloc_gfp);
 

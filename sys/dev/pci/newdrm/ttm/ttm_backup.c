@@ -51,7 +51,7 @@ void ttm_backup_drop(struct file *backup, pgoff_t handle)
  * Return: 0 on success, Negative error code on failure, notably
  * -EINTR if @intr was set to true and a signal is pending.
  */
-int ttm_backup_copy_page(struct file *backup, struct page *dst,
+int ttm_backup_copy_page(struct file *backup, struct vm_page *dst,
 			 pgoff_t handle, bool intr)
 {
 	STUB();
@@ -100,7 +100,7 @@ int ttm_backup_copy_page(struct file *backup, struct page *dst,
  * the folio size- and usage.
  */
 s64
-ttm_backup_backup_page(struct file *backup, struct page *page,
+ttm_backup_backup_page(struct file *backup, struct vm_page *page,
 		       bool writeback, pgoff_t idx, gfp_t page_gfp,
 		       gfp_t alloc_gfp)
 {
