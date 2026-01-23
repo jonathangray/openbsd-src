@@ -30,11 +30,14 @@ static pgoff_t ttm_backup_handle_to_shmem_idx(pgoff_t handle)
  */
 void ttm_backup_drop(struct file *backup, pgoff_t handle)
 {
+	STUB();
+#ifdef notyet
 	loff_t start = ttm_backup_handle_to_shmem_idx(handle);
 
 	start <<= PAGE_SHIFT;
 	shmem_truncate_range(file_inode(backup), start,
 			     start + PAGE_SIZE - 1);
+#endif
 }
 
 /**
@@ -51,6 +54,9 @@ void ttm_backup_drop(struct file *backup, pgoff_t handle)
 int ttm_backup_copy_page(struct file *backup, struct page *dst,
 			 pgoff_t handle, bool intr)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct address_space *mapping = backup->f_mapping;
 	struct folio *from_folio;
 	pgoff_t idx = ttm_backup_handle_to_shmem_idx(handle);
@@ -63,6 +69,7 @@ int ttm_backup_copy_page(struct file *backup, struct page *dst,
 	folio_put(from_folio);
 
 	return 0;
+#endif
 }
 
 /**
@@ -97,6 +104,9 @@ ttm_backup_backup_page(struct file *backup, struct page *page,
 		       bool writeback, pgoff_t idx, gfp_t page_gfp,
 		       gfp_t alloc_gfp)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct address_space *mapping = backup->f_mapping;
 	unsigned long handle = 0;
 	struct folio *to_folio;
@@ -132,6 +142,7 @@ ttm_backup_backup_page(struct file *backup, struct page *page,
 	folio_put(to_folio);
 
 	return handle;
+#endif
 }
 
 /**
@@ -178,5 +189,9 @@ EXPORT_SYMBOL_GPL(ttm_backup_bytes_avail);
  */
 struct file *ttm_backup_shmem_create(loff_t size)
 {
+	STUB();
+	return ERR_PTR(-ENOSYS);
+#ifdef notyet
 	return shmem_file_setup("ttm shmem backup", size, 0);
+#endif
 }
