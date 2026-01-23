@@ -368,7 +368,7 @@ static void ttm_pool_unmap(struct ttm_pool *pool, dma_addr_t dma_addr,
 #else
 
 static int ttm_pool_map(struct ttm_pool *pool, unsigned int order,
-			struct vm_page *p, dma_addr_t **dma_addr)
+			struct vm_page *p, dma_addr_t *dma_addr)
 {
 	struct ttm_pool_dma *dma;
 	dma_addr_t addr;
@@ -377,10 +377,7 @@ static int ttm_pool_map(struct ttm_pool *pool, unsigned int order,
 	dma = (struct ttm_pool_dma *)p->objt.rbt_parent;
 	addr = dma->addr;
 
-	for (i = 1 << order; i ; --i) {
-		*(*dma_addr)++ = addr;
-		addr += PAGE_SIZE;
-	}
+	*dma_addr = addr;
 
 	return 0;
 }
@@ -552,6 +549,8 @@ static unsigned int ttm_pool_page_order(struct ttm_pool *pool, struct vm_page *p
  */
 static void ttm_pool_split_for_swap(struct ttm_pool *pool, struct vm_page *p)
 {
+	STUB();
+#ifdef notyet
 	unsigned int order = ttm_pool_page_order(pool, p);
 	pgoff_t nr;
 
@@ -562,6 +561,7 @@ static void ttm_pool_split_for_swap(struct ttm_pool *pool, struct vm_page *p)
 	nr = 1UL << order;
 	while (nr--)
 		(p++)->private = 0;
+#endif
 }
 
 /**
@@ -596,6 +596,9 @@ static bool ttm_pool_restore_valid(const struct ttm_pool_tt_restore *restore)
 static pgoff_t ttm_pool_unmap_and_free(struct ttm_pool *pool, struct vm_page *page,
 				       const dma_addr_t *dma_addr, enum ttm_caching caching)
 {
+	STUB();
+	return 0;
+#ifdef notyet
 	struct ttm_pool_type *pt = NULL;
 	unsigned int order;
 	pgoff_t nr;
@@ -618,6 +621,7 @@ static pgoff_t ttm_pool_unmap_and_free(struct ttm_pool *pool, struct vm_page *pa
 		ttm_pool_free_page(pool, caching, order, page);
 
 	return nr;
+#endif
 }
 
 /* Populate the page-array using the most recent allocated multi-order page. */
@@ -628,10 +632,8 @@ static void ttm_pool_allocated_page_commit(struct vm_page *allocated,
 {
 	pgoff_t i;
 
-	for (i = 0; i < nr; ++i) {
+	for (i = 0; i < nr; ++i)
 		*alloc->pages++ = allocated++;
-		*alloc->orders++ = order;
-	}
 
 	alloc->remaining_pages -= nr;
 
@@ -654,6 +656,9 @@ static int ttm_pool_restore_commit(struct ttm_pool_tt_restore *restore,
 				   struct ttm_pool_alloc_state *alloc)
 
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	pgoff_t i, nr = 1UL << restore->order;
 	struct vm_page **first_page = alloc->pages;
 	struct vm_page *p;
@@ -717,6 +722,7 @@ static int ttm_pool_restore_commit(struct ttm_pool_tt_restore *restore,
 	restore->alloced_pages += nr;
 
 	return 0;
+#endif
 }
 
 /* If restoring, save information needed for ttm_pool_restore_commit(). */
@@ -1141,14 +1147,20 @@ long ttm_pool_backup(struct ttm_pool *pool, struct ttm_tt *tt,
 				continue;
 			}
 
+#ifdef __linux__
 			order = ttm_pool_page_order(pool, page);
+#else
+			order = tt->orders[i];
+#endif
 			num_pages = 1UL << order;
 			if (tt->dma_address)
 				ttm_pool_unmap(pool, tt->dma_address[i],
 					       num_pages);
 			if (flags->purge) {
 				shrunken += num_pages;
+#ifdef __linux__
 				page->private = 0;
+#endif
 				__free_pages(page, order);
 				memset(tt->pages + i, 0,
 				       num_pages * sizeof(*tt->pages));
@@ -1190,7 +1202,11 @@ long ttm_pool_backup(struct ttm_pool *pool, struct ttm_tt *tt,
 		}
 		handle = shandle;
 		tt->pages[i] = ttm_backup_handle_to_page_ptr(handle);
+#ifdef notyet
 		put_page(page);
+#else
+		STUB();
+#endif
 		shrunken++;
 	}
 
