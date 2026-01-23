@@ -37,7 +37,6 @@
 #include <linux/debugfs.h>
 #include <linux/highmem.h>
 #include <linux/sched/mm.h>
-#include <linux/seq_file.h>
 
 #ifdef CONFIG_X86
 #include <asm/set_memory.h>
@@ -86,6 +85,7 @@ struct ttm_pool_alloc_state {
 	dma_addr_t *dma_addr;
 	pgoff_t remaining_pages;
 	enum ttm_caching tt_caching;
+	unsigned int *orders;
 };
 
 /**
@@ -158,7 +158,6 @@ static struct page *ttm_pool_alloc_page(struct ttm_pool *pool, gfp_t gfp_flags,
 		p = alloc_pages_node(pool->nid, gfp_flags, order);
 		if (p)
 			p->private = order;
-
 		return p;
 	}
 
@@ -594,24 +593,30 @@ static bool ttm_pool_restore_valid(const struct ttm_pool_tt_restore *restore)
 
 /* DMA unmap and free a multi-order page, either to the relevant pool or to system. */
 static pgoff_t ttm_pool_unmap_and_free(struct ttm_pool *pool, struct vm_page *page,
-				       const dma_addr_t *dma_addr, enum ttm_caching caching)
+				       const dma_addr_t *dma_addr, enum ttm_caching caching,
+				       unsigned int tt_order)
 {
-	STUB();
-	return 0;
-#ifdef notyet
 	struct ttm_pool_type *pt = NULL;
 	unsigned int order;
 	pgoff_t nr;
 
 	if (pool) {
+#ifdef __linux__
 		order = ttm_pool_page_order(pool, page);
+#else
+		order = tt_order;
+#endif
 		nr = (1UL << order);
 		if (dma_addr)
 			ttm_pool_unmap(pool, *dma_addr, nr);
 
 		pt = ttm_pool_select_type(pool, caching, order);
 	} else {
+#ifdef __linux__
 		order = page->private;
+#else
+		order = tt_order;
+#endif
 		nr = (1UL << order);
 	}
 
@@ -621,7 +626,6 @@ static pgoff_t ttm_pool_unmap_and_free(struct ttm_pool *pool, struct vm_page *pa
 		ttm_pool_free_page(pool, caching, order, page);
 
 	return nr;
-#endif
 }
 
 /* Populate the page-array using the most recent allocated multi-order page. */
@@ -631,9 +635,12 @@ static void ttm_pool_allocated_page_commit(struct vm_page *allocated,
 					   pgoff_t nr)
 {
 	pgoff_t i;
+	unsigned int order = order_base_2(nr);
 
-	for (i = 0; i < nr; ++i)
+	for (i = 0; i < nr; ++i) {
 		*alloc->pages++ = allocated++;
+		*alloc->orders++ = order;
+	}
 
 	alloc->remaining_pages -= nr;
 
@@ -820,7 +827,7 @@ static void ttm_pool_free_range(struct ttm_pool *pool, struct ttm_tt *tt,
 			dma_addr_t *dma_addr = tt->dma_address ?
 				tt->dma_address + i : NULL;
 
-			nr = ttm_pool_unmap_and_free(pool, p, dma_addr, caching);
+			nr = ttm_pool_unmap_and_free(pool, p, dma_addr, caching, tt->orders[i]);
 		}
 	}
 }
@@ -833,6 +840,7 @@ static void ttm_pool_alloc_state_init(const struct ttm_tt *tt,
 	alloc->dma_addr = tt->dma_address;
 	alloc->remaining_pages = tt->num_pages;
 	alloc->tt_caching = tt->caching;
+	alloc->orders = tt->orders;
 }
 
 /*
@@ -857,7 +865,7 @@ static int __ttm_pool_alloc(struct ttm_pool *pool, struct ttm_tt *tt,
 	bool allow_pools;
 	struct vm_page *p;
 	int r;
-	unsigned long *orders = tt->orders;
+	unsigned int *orders = tt->orders;
 
 	WARN_ON(!alloc->remaining_pages || ttm_tt_is_populated(tt));
 #ifdef __linux__
@@ -1065,7 +1073,7 @@ void ttm_pool_drop_backed_up(struct ttm_tt *tt)
 		dma_addr_t *dma_addr = tt->dma_address ? &restore->first_dma : NULL;
 
 		ttm_pool_unmap_and_free(restore->pool, restore->alloced_page,
-					dma_addr, restore->page_caching);
+					dma_addr, restore->page_caching, restore->order);
 		restore->restored_pages = 1UL << restore->order;
 	}
 

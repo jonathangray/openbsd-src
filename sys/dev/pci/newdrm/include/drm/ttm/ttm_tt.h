@@ -49,7 +49,7 @@ struct ttm_tt {
 	/** @pages: Array of pages backing the data. */
 	struct vm_page **pages;
 	/** @orders: Array of order values. */
-	unsigned long *orders;
+	unsigned int *orders;
 	/**
 	 * @page_flags: The page flags.
 	 *

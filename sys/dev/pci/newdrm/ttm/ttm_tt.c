@@ -118,7 +118,7 @@ static int ttm_tt_alloc_page_directory(struct ttm_tt *ttm)
 	if (!ttm->pages)
 		return -ENOMEM;
 	ttm->orders = kvmalloc_array(ttm->num_pages,
-	    sizeof(unsigned long), GFP_KERNEL | __GFP_ZERO);
+	    sizeof(*ttm->orders), GFP_KERNEL | __GFP_ZERO);
 	if (!ttm->orders)
 		return -ENOMEM;
 	return 0;
