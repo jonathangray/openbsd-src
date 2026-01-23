@@ -338,7 +338,7 @@ struct drm_connector_helper_funcs anxdp_connector_helper_funcs = {
 };
 
 int
-anxdp_bridge_attach(struct drm_bridge *bridge,
+anxdp_bridge_attach(struct drm_bridge *bridge, struct drm_encoder *encoder,
     enum drm_bridge_attach_flags flags)
 {
 	struct anxdp_softc *sc = bridge->driver_private;
@@ -357,7 +357,7 @@ anxdp_bridge_attach(struct drm_bridge *bridge,
 	    connector->connector_type);
 	drm_connector_helper_add(connector, &anxdp_connector_helper_funcs);
 
-	error = drm_connector_attach_encoder(connector, bridge->encoder);
+	error = drm_connector_attach_encoder(connector, encoder);
 	if (error != 0)
 		return error;
 
