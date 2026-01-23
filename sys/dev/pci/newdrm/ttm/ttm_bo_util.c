@@ -907,6 +907,9 @@ static int ttm_lru_walk_ticketlock(struct ttm_bo_lru_cursor *curs,
 s64 ttm_lru_walk_for_evict(struct ttm_lru_walk *walk, struct ttm_device *bdev,
 			   struct ttm_resource_manager *man, s64 target)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct ttm_bo_lru_cursor cursor;
 	struct ttm_buffer_object *bo;
 	s64 progress = 0;
@@ -924,6 +927,7 @@ s64 ttm_lru_walk_for_evict(struct ttm_lru_walk *walk, struct ttm_device *bdev,
 		return PTR_ERR(bo);
 
 	return progress;
+#endif
 }
 EXPORT_SYMBOL(ttm_lru_walk_for_evict);
 
