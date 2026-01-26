@@ -52,4 +52,6 @@
 #define __diag_ignore_all(x, y)
 #define __diag_pop()
 
+#define OPTIMIZER_HIDE_VAR(x)
+
 #endif
