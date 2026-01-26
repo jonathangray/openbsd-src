@@ -81,6 +81,20 @@ memdup_array_user(const void *src, size_t nemb, size_t size)
 }
 
 static inline void *
+memdup_user(void *src, size_t size)
+{
+	char *p = malloc(size, M_DRM, M_WAITOK | M_CANFAIL);
+	if (p == NULL)
+		return ERR_PTR(-ENOMEM);
+
+	if (copyin(src, p, size) != 0) {
+		free(p, M_DRM, size);
+		return ERR_PTR(-EFAULT);
+	}
+	return (p);
+}
+
+static inline void *
 memdup_user_nul(const void *src, size_t size)
 {
 	char *p = malloc(size + 1, M_DRM, M_WAITOK | M_CANFAIL);
