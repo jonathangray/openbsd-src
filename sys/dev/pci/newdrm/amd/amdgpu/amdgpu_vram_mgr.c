@@ -565,8 +565,14 @@ static int amdgpu_vram_mgr_new(struct ttm_resource_manager *man,
 			remaining_size -= size;
 	}
 
+#ifdef __linux__
 	vres->task.pid = task_pid_nr(current);
 	get_task_comm(vres->task.comm, current);
+#else
+	vres->task.pid = curproc->p_p->ps_pid;
+	strlcpy(vres->task.comm, curproc->p_p->ps_comm,
+	    sizeof(vres->task.comm));
+#endif
 	list_add_tail(&vres->vres_node, &mgr->allocated_vres_list);
 
 	if (bo->flags & AMDGPU_GEM_CREATE_VRAM_CONTIGUOUS && adjust_dcc_size) {
