@@ -54,7 +54,7 @@ struct amdgpu_cper {
 	bool enabled;
 
 	atomic_t unique_id;
-	struct mutex cper_lock;
+	struct rwlock cper_lock;
 
 	/* Lifetime CPERs generated */
 	uint32_t count;
@@ -64,7 +64,7 @@ struct amdgpu_cper {
 
 	void *ring[CPER_MAX_ALLOWED_COUNT];
 	struct amdgpu_ring ring_buf;
-	struct mutex ring_lock;
+	struct rwlock ring_lock;
 };
 
 void amdgpu_cper_entry_fill_hdr(struct amdgpu_device *adev,

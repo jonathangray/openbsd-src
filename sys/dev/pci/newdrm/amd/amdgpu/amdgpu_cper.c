@@ -24,12 +24,16 @@
 #include <linux/list.h>
 #include "amdgpu.h"
 
+#define umin(a, b)	(((a)<(b))?(a):(b))
+
+#ifdef notyet
 static const guid_t MCE			= CPER_NOTIFY_MCE;
 static const guid_t CMC			= CPER_NOTIFY_CMC;
 static const guid_t BOOT		= BOOT_TYPE;
 
 static const guid_t CRASHDUMP		= AMD_CRASHDUMP;
 static const guid_t RUNTIME		= AMD_GPU_NONSTANDARD_ERROR;
+#endif
 
 static void __inc_entry_length(struct cper_hdr *hdr, uint32_t size)
 {
@@ -38,6 +42,8 @@ static void __inc_entry_length(struct cper_hdr *hdr, uint32_t size)
 
 static void amdgpu_cper_get_timestamp(struct cper_timestamp *timestamp)
 {
+	memset(timestamp, 0, sizeof(*timestamp));
+#ifdef notyet
 	struct tm tm;
 	time64_t now = ktime_get_real_seconds();
 
@@ -50,6 +56,7 @@ static void amdgpu_cper_get_timestamp(struct cper_timestamp *timestamp)
 	timestamp->month = 1 + tm.tm_mon;
 	timestamp->year = (1900 + tm.tm_year) % 100;
 	timestamp->century = (1900 + tm.tm_year) / 100;
+#endif
 }
 
 void amdgpu_cper_entry_fill_hdr(struct amdgpu_device *adev,
@@ -85,6 +92,7 @@ void amdgpu_cper_entry_fill_hdr(struct amdgpu_device *adev,
 	snprintf(hdr->creator_id, 16, "%s", CPER_CREATOR_ID_AMDGPU);
 
 	switch (type) {
+#ifdef notyet
 	case AMDGPU_CPER_TYPE_BOOT:
 		hdr->notify_type = BOOT;
 		break;
@@ -98,6 +106,7 @@ void amdgpu_cper_entry_fill_hdr(struct amdgpu_device *adev,
 		else
 			hdr->notify_type = MCE;
 		break;
+#endif
 	default:
 		dev_err(adev->dev, "Unknown CPER Type\n");
 		break;
@@ -142,6 +151,9 @@ int amdgpu_cper_entry_fill_fatal_section(struct amdgpu_device *adev,
 					 uint32_t idx,
 					 struct cper_sec_crashdump_reg_data reg_data)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct cper_sec_desc *section_desc;
 	struct cper_sec_crashdump_fatal *section;
 
@@ -160,6 +172,7 @@ int amdgpu_cper_entry_fill_fatal_section(struct amdgpu_device *adev,
 	__inc_entry_length(hdr, SEC_DESC_LEN + FATAL_SEC_LEN);
 
 	return 0;
+#endif
 }
 
 int amdgpu_cper_entry_fill_runtime_section(struct amdgpu_device *adev,
@@ -169,6 +182,9 @@ int amdgpu_cper_entry_fill_runtime_section(struct amdgpu_device *adev,
 					   uint32_t *reg_dump,
 					   uint32_t reg_count)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct cper_sec_desc *section_desc;
 	struct cper_sec_nonstd_err *section;
 	bool poison;
@@ -197,12 +213,16 @@ int amdgpu_cper_entry_fill_runtime_section(struct amdgpu_device *adev,
 	__inc_entry_length(hdr, SEC_DESC_LEN + NONSTD_SEC_LEN);
 
 	return 0;
+#endif
 }
 
 int amdgpu_cper_entry_fill_bad_page_threshold_section(struct amdgpu_device *adev,
 						      struct cper_hdr *hdr,
 						      uint32_t idx)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct cper_sec_desc *section_desc;
 	struct cper_sec_nonstd_err *section;
 	uint32_t socket_id;
@@ -248,6 +268,7 @@ int amdgpu_cper_entry_fill_bad_page_threshold_section(struct amdgpu_device *adev
 	__inc_entry_length(hdr, SEC_DESC_LEN + NONSTD_SEC_LEN);
 
 	return 0;
+#endif
 }
 
 struct cper_hdr *amdgpu_cper_alloc_entry(struct amdgpu_device *adev,
@@ -542,7 +563,7 @@ static int amdgpu_cper_ring_init(struct amdgpu_device *adev)
 {
 	struct amdgpu_ring *ring = &(adev->cper.ring_buf);
 
-	mutex_init(&adev->cper.ring_lock);
+	rw_init(&adev->cper.ring_lock, "cperring");
 
 	ring->adev = NULL;
 	ring->ring_obj = NULL;
@@ -550,7 +571,7 @@ static int amdgpu_cper_ring_init(struct amdgpu_device *adev)
 	ring->no_scheduler = true;
 	ring->funcs = &cper_ring_funcs;
 
-	sprintf(ring->name, "cper");
+	snprintf(ring->name, sizeof(ring->name), "cper");
 	return amdgpu_ring_init(adev, ring, CPER_MAX_RING_SIZE, NULL, 0,
 				AMDGPU_RING_PRIO_DEFAULT, NULL);
 }
@@ -568,7 +589,7 @@ int amdgpu_cper_init(struct amdgpu_device *adev)
 		return r;
 	}
 
-	mutex_init(&adev->cper.cper_lock);
+	rw_init(&adev->cper.cper_lock, "cper");
 
 	adev->cper.enabled = true;
 	adev->cper.max_count = CPER_MAX_ALLOWED_COUNT;
