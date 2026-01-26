@@ -4,6 +4,7 @@
 #define _LINUX_SYSFS_H
 
 #include <linux/kernfs.h>
+#include <linux/stat.h>
 
 struct attribute {
 	const char *name;

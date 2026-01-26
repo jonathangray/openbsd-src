@@ -1908,11 +1908,13 @@ int amdgpu_gfx_sysfs_init(struct amdgpu_device *adev)
 
 void amdgpu_gfx_sysfs_fini(struct amdgpu_device *adev)
 {
+#ifdef notyet
 	if (adev->dev->kobj.sd) {
 		amdgpu_gfx_sysfs_xcp_fini(adev);
 		amdgpu_gfx_sysfs_isolation_shader_fini(adev);
 		amdgpu_gfx_sysfs_reset_mask_fini(adev);
 	}
+#endif
 }
 
 int amdgpu_gfx_cleaner_shader_sw_init(struct amdgpu_device *adev,
