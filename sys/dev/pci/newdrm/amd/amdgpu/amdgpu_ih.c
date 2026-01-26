@@ -80,7 +80,7 @@ int amdgpu_ih_ring_init(struct amdgpu_device *adev, struct amdgpu_ih_ring *ih,
 			return -ENOMEM;
 		ih->dmah = dmah;
 		dma_addr = dmah->map->dm_segs[0].ds_addr;
-		ih->ring = (volatile uint32_t *)dmah->kva;
+		ih->ring = (uint32_t *)dmah->kva;
 #endif
 
 		ih->gpu_addr = dma_addr;
