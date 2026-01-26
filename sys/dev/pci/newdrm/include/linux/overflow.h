@@ -19,6 +19,15 @@
 })
 #endif
 
+static inline size_t
+size_mul(size_t x, size_t y)
+{
+	size_t r;
+	if (check_mul_overflow(x, y, &r))
+		return SIZE_MAX;
+	return r;
+}
+
 /* SPDX-License-Identifier: MIT */
 /*
  * Copyright © 2021 Intel Corporation

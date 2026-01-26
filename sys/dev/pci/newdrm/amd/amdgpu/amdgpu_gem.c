@@ -255,7 +255,7 @@ amdgpu_gem_vm_reference(struct uvm_object *uobj)
 {
 	struct ttm_buffer_object *bo = (struct ttm_buffer_object *)uobj;
 
-	ttm_bo_get(bo);
+	drm_gem_object_get(&bo->base);
 }
 
 void
@@ -263,7 +263,7 @@ amdgpu_gem_vm_detach(struct uvm_object *uobj)
 {
 	struct ttm_buffer_object *bo = (struct ttm_buffer_object *)uobj;
 
-	ttm_bo_put(bo);
+	drm_gem_object_put(&bo->base);
 }
 
 static const struct uvm_pagerops amdgpu_gem_vm_ops = {
