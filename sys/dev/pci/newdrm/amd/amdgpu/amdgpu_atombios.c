@@ -166,7 +166,7 @@ void amdgpu_atombios_oem_i2c_init(struct amdgpu_device *adev, u8 i2c_id)
 			i2c = amdgpu_atombios_get_bus_rec_for_i2c_gpio(gpio);
 
 			if (i2c.valid && i2c.i2c_id == i2c_id) {
-				sprintf(stmp, "OEM 0x%x", i2c.i2c_id);
+				snprintf(stmp, sizeof(stmp), "OEM 0x%x", i2c.i2c_id);
 				adev->i2c_bus[i] = amdgpu_i2c_create(adev_to_drm(adev), &i2c, stmp);
 				break;
 			}
@@ -1834,6 +1834,7 @@ static struct attribute *amdgpu_vbios_version_attrs[] = {
 	&dev_attr_vbios_version.attr, &dev_attr_vbios_build.attr, NULL
 };
 
+#ifdef notyet
 static umode_t amdgpu_vbios_version_attrs_is_visible(struct kobject *kobj,
 						     struct attribute *attr,
 						     int index)
@@ -1848,10 +1849,13 @@ static umode_t amdgpu_vbios_version_attrs_is_visible(struct kobject *kobj,
 
 	return attr->mode;
 }
+#endif
 
 const struct attribute_group amdgpu_vbios_version_attr_group = {
 	.attrs = amdgpu_vbios_version_attrs,
+#ifdef notyet
 	.is_visible = amdgpu_vbios_version_attrs_is_visible,
+#endif
 };
 
 int amdgpu_atombios_sysfs_init(struct amdgpu_device *adev)
