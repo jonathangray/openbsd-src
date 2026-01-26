@@ -198,7 +198,7 @@ static int vcn_v5_0_1_sw_init(struct amdgpu_ip_block *ip_block)
 				32 * vcn_inst;
 
 		ring->vm_hub = AMDGPU_MMHUB0(adev->vcn.inst[i].aid_id);
-		sprintf(ring->name, "vcn_unified_%d", adev->vcn.inst[i].aid_id);
+		snprintf(ring->name, sizeof(ring->name), "vcn_unified_%d", adev->vcn.inst[i].aid_id);
 
 		r = amdgpu_ring_init(adev, ring, 512, &adev->vcn.inst[i].irq, 0,
 					AMDGPU_RING_PRIO_DEFAULT, &adev->vcn.inst[i].sched_score);
@@ -1043,7 +1043,7 @@ static int vcn_v5_0_1_start(struct amdgpu_vcn_inst *vinst)
 				break;
 			mdelay(100);
 			if (amdgpu_emu_mode == 1)
-				msleep(20);
+				drm_msleep(20);
 		}
 
 		if (amdgpu_emu_mode == 1) {
