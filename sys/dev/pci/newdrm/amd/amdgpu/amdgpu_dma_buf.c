@@ -100,9 +100,8 @@ static int amdgpu_dma_buf_attach(struct dma_buf *dmabuf,
 	if (!amdgpu_dmabuf_is_xgmi_accessible(attach_adev, bo) &&
 	    pci_p2pdma_distance(adev->pdev, attach->dev, false) < 0)
 		attach->peer2peer = false;
-#endif
-
 	amdgpu_vm_bo_update_shared(bo);
+#endif
 
 	return 0;
 }
@@ -133,9 +132,11 @@ static int amdgpu_dma_buf_pin(struct dma_buf_attachment *attach)
 	if (!IS_ENABLED(CONFIG_DMABUF_MOVE_NOTIFY)) {
 		domains &= ~AMDGPU_GEM_DOMAIN_VRAM;
 	} else {
+#ifdef notyet
 		list_for_each_entry(attach, &dmabuf->attachments, node)
 			if (!attach->peer2peer)
 				domains &= ~AMDGPU_GEM_DOMAIN_VRAM;
+#endif
 	}
 
 	if (domains & AMDGPU_GEM_DOMAIN_VRAM)
