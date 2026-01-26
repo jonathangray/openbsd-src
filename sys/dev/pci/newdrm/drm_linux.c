@@ -735,6 +735,20 @@ is_vmalloc_addr(const void *p)
 		return false;
 }
 
+void *
+vmemdup_array_user(const void *src, size_t n, size_t size)
+{
+	void *p = kvmalloc_array(n, size, GFP_KERNEL);
+	if (p == NULL)
+		return ERR_PTR(-ENOMEM);
+
+	if (copyin(src, p, n * size) != 0) {
+		free(p, M_DRM, n * size);
+		return ERR_PTR(-EFAULT);
+	}
+	return (p);
+}
+
 void
 print_hex_dump(const char *level, const char *prefix_str, int prefix_type,
     int rowsize, int groupsize, const void *buf, size_t len, bool ascii)

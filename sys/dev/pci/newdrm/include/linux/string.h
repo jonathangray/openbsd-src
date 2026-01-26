@@ -165,4 +165,6 @@ strscpy_pad(char *dst, const char *src, size_t dstsize)
 	return strscpy(dst, src, dstsize);
 }
 
+void *vmemdup_array_user(const void *, size_t, size_t);
+
 #endif
