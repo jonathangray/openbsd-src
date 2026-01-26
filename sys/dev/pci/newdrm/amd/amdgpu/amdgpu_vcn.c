@@ -133,7 +133,7 @@ int amdgpu_vcn_sw_init(struct amdgpu_device *adev, int i)
 	unsigned int fw_shared_size, log_offset;
 	int r;
 
-	rw_init(&adev->vcn.inst[i].vcn1_jpeg1_workaround, "vcnwa);
+	rw_init(&adev->vcn.inst[i].vcn1_jpeg1_workaround, "vcnwa");
 	rw_init(&adev->vcn.inst[i].vcn_pg_lock, "vcnpg");
 	rw_init(&adev->vcn.inst[i].engine_reset_mutex, "vcner");
 	atomic_set(&adev->vcn.inst[i].total_submission_cnt, 0);
@@ -1382,10 +1382,12 @@ int amdgpu_vcn_sysfs_reset_mask_init(struct amdgpu_device *adev)
 
 void amdgpu_vcn_sysfs_reset_mask_fini(struct amdgpu_device *adev)
 {
+#ifdef notyet
 	if (adev->dev->kobj.sd) {
 		if (adev->vcn.num_vcn_inst)
 			device_remove_file(adev->dev, &dev_attr_vcn_reset_mask);
 	}
+#endif
 }
 
 /*
