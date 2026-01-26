@@ -116,6 +116,13 @@ i2c_add_adapter(struct i2c_adapter *adap)
 	return 0;
 }
 
+/* XXX cleanup on unload */
+static inline int
+devm_i2c_add_adapter(struct device *dev, struct i2c_adapter *adap)
+{
+	return 0;
+}
+
 static inline void
 i2c_del_adapter(struct i2c_adapter *adap)
 {
