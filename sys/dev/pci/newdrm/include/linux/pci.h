@@ -137,6 +137,8 @@ struct pci_dev {
 
 #define PCI_PRIMARY_BUS		PCI_PRIBUS_1
 
+#define PCI_POSSIBLE_ERROR(r)	((r) == 0xffffffff)
+
 static inline int
 pci_read_config_dword(struct pci_dev *pdev, int reg, u32 *val)
 {

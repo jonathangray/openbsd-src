@@ -31,6 +31,12 @@
  * linux/seq_file.h
  */
 #include <linux/seq_file.h>
+/*
+ * normally suspend.h is indirectly included via
+ * linux/regulator/consumer.h
+ * linux/suspend.h
+ */
+#include <linux/suspend.h>
 #include <linux/acpi.h>
 #include <linux/device.h>
 

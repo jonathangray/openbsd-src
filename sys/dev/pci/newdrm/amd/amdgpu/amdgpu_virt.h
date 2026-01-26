@@ -260,7 +260,9 @@ struct amdgpu_virt_ras {
 
 #define AMDGPU_VIRT_CAPS_LIST(X) X(AMDGPU_VIRT_CAP_POWER_LIMIT)
 
+#ifdef notyet
 DECLARE_ATTR_CAP_CLASS(amdgpu_virt, AMDGPU_VIRT_CAPS_LIST);
+#endif
 
 /* GPU virtualization */
 struct amdgpu_virt {
@@ -280,7 +282,9 @@ struct amdgpu_virt {
 	const struct amdgpu_virt_ops	*ops;
 	struct amdgpu_vf_error_buffer	vf_errors;
 	struct amdgpu_virt_fw_reserve	fw_reserve;
+#ifdef notyet
 	struct amdgpu_virt_caps virt_caps;
+#endif
 	uint32_t gim_feature;
 	uint32_t reg_access_mode;
 	int req_init_data_ver;

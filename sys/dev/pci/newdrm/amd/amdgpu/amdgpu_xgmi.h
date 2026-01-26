@@ -127,7 +127,9 @@ uint32_t amdgpu_xgmi_get_max_bandwidth(struct amdgpu_device *adev);
 void amgpu_xgmi_set_max_speed_width(struct amdgpu_device *adev,
 				    uint16_t max_speed, uint8_t max_width);
 
+#ifdef notyet
 /* Cleanup macro for use with __free(xgmi_put_hive) */
 DEFINE_FREE(xgmi_put_hive, struct amdgpu_hive_info *, if (_T) amdgpu_put_xgmi_hive(_T))
+#endif
 
 #endif
