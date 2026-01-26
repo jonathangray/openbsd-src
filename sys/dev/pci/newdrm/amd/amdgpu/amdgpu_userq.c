@@ -943,7 +943,7 @@ amdgpu_userq_evict(struct amdgpu_userq_mgr *uq_mgr,
 int amdgpu_userq_mgr_init(struct amdgpu_userq_mgr *userq_mgr, struct drm_file *file_priv,
 			  struct amdgpu_device *adev)
 {
-	mutex_init(&userq_mgr->userq_mutex);
+	rw_init(&userq_mgr->userq_mutex, "userqmgr");
 	idr_init_base(&userq_mgr->userq_idr, 1);
 	userq_mgr->adev = adev;
 	userq_mgr->file = file_priv;
