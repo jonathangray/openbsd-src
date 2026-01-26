@@ -1908,12 +1908,15 @@ static bool amdgpu_device_aspm_support_quirk(struct amdgpu_device *adev)
 		return true;
 
 #if IS_ENABLED(CONFIG_X86)
+#ifdef __linux__
 	struct cpuinfo_x86 *c = &cpu_data(0);
+#endif
 
 	if (!(amdgpu_ip_version(adev, GC_HWIP, 0) == IP_VERSION(12, 0, 0) ||
 		  amdgpu_ip_version(adev, GC_HWIP, 0) == IP_VERSION(12, 0, 1)))
 		return false;
 
+#ifdef __linux__
 	if (c->x86 == 6 &&
 		adev->pm.pcie_gen_mask & CAIL_PCIE_LINK_SPEED_SUPPORT_GEN5) {
 		switch (c->x86_model) {
@@ -1926,6 +1929,21 @@ static bool amdgpu_device_aspm_support_quirk(struct amdgpu_device *adev)
 		default:
 			return false;
 		}
+#else
+	struct cpu_info *ci = curcpu();
+	if (ci->ci_family == 6 &&
+		adev->pm.pcie_gen_mask & CAIL_PCIE_LINK_SPEED_SUPPORT_GEN5) {
+		switch (ci->ci_model) {
+		case 0x97: /* ALDERLAKE */
+		case 0x9a: /* ALDERLAKE_L */
+		case 0xb7: /* RAPTORLAKE */
+		case 0xba: /* RAPTORLAKE_P */
+		case 0xbf: /* RAPTORLAKE_S */
+			return true;
+		default:
+			return false;
+		}
+#endif
 	} else {
 		return false;
 	}
@@ -4509,7 +4527,7 @@ int amdgpu_device_init(struct amdgpu_device *adev,
 	rw_init(&adev->firmware.mutex, "agfw");
 	rw_init(&adev->pm.mutex, "agpm");
 	rw_init(&adev->gfx.gpu_clock_mutex, "gfxclk");
-	rw_init(&adev->srbm_mutex, "srbm);
+	rw_init(&adev->srbm_mutex, "srbm");
 	rw_init(&adev->gfx.pipe_reserve_mutex, "pipers");
 	rw_init(&adev->gfx.gfx_off_mutex, "gfxoff");
 	rw_init(&adev->gfx.partition_mutex, "gfxpar");
@@ -4529,10 +4547,10 @@ int amdgpu_device_init(struct amdgpu_device *adev,
 		amdgpu_sync_create(&adev->isolation[i].active);
 		amdgpu_sync_create(&adev->isolation[i].prev);
 	}
-	rw_init(&adev->gfx.userq_sch_mutex);
-	rw_init(&adev->gfx.workload_profile_mutex);
-	rw_init(&adev->vcn.workload_profile_mutex);
-	rw_init(&adev->userq_mutex);
+	rw_init(&adev->gfx.userq_sch_mutex, "gfxuq");
+	rw_init(&adev->gfx.workload_profile_mutex, "gfxwp");
+	rw_init(&adev->vcn.workload_profile_mutex, "vcnwp");
+	rw_init(&adev->userq_mutex, "userq");
 
 	amdgpu_device_init_apu_flags(adev);
 
