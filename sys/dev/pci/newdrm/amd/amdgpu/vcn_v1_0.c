@@ -154,9 +154,9 @@ static int vcn_v1_0_sw_init(struct amdgpu_ip_block *ip_block)
 #ifdef __linux__
 	adev->vcn.inst[0].idle_work.work.func = vcn_v1_0_idle_work_handler;
 #else
-	task_set(&adev->vcn.idle_work.work.task,
+	task_set(&adev->vcn.inst[0].idle_work.work.task,
 	    (void (*)(void *))vcn_v1_0_idle_work_handler,
-	    &adev->vcn.idle_work.work);
+	    &adev->vcn.inst[0].idle_work.work);
 #endif
 
 	amdgpu_vcn_setup_ucode(adev, 0);

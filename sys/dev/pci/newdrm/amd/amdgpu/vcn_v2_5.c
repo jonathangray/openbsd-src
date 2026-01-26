@@ -306,7 +306,13 @@ static int vcn_v2_5_sw_init(struct amdgpu_ip_block *ip_block)
 			return r;
 
 		/* Override the work func */
+#ifdef __linux__
 		adev->vcn.inst[j].idle_work.work.func = vcn_v2_5_idle_work_handler;
+#else
+		task_set(&adev->vcn.inst[j].idle_work.work.task,
+		    (void (*)(void *))vcn_v2_5_idle_work_handler,
+		    &adev->vcn.inst[j].idle_work.work);
+#endif
 
 		amdgpu_vcn_setup_ucode(adev, j);
 
