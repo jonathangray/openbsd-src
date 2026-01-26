@@ -1455,7 +1455,7 @@ static int sdma_v4_4_2_sw_init(struct amdgpu_ip_block *ip_block)
 	}
 
 	for (i = 0; i < adev->sdma.num_instances; i++) {
-		mutex_init(&adev->sdma.instance[i].engine_reset_mutex);
+		rw_init(&adev->sdma.instance[i].engine_reset_mutex, "sdmaer");
 		/* Initialize guilty flags for GFX and PAGE queues */
 		adev->sdma.instance[i].gfx_guilty = false;
 		adev->sdma.instance[i].page_guilty = false;

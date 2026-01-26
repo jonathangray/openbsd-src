@@ -70,7 +70,7 @@ struct amdgpu_sdma_instance {
 	struct amdgpu_bo	*sdma_fw_obj;
 	uint64_t		sdma_fw_gpu_addr;
 	uint32_t		*sdma_fw_ptr;
-	struct mutex		engine_reset_mutex;
+	struct rwlock		engine_reset_mutex;
 	/* track guilty state of GFX and PAGE queues */
 	bool			gfx_guilty;
 	bool			page_guilty;
