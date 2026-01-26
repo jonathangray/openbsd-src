@@ -31,4 +31,10 @@ unregister_pm_notifier(struct notifier_block *n)
 	return 0;
 }
 
+static inline bool
+pm_resume_via_firmware(void)
+{
+	return true;
+}
+
 #endif
