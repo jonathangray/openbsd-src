@@ -7350,6 +7350,8 @@ void amdgpu_pci_resume(struct pci_dev *pdev)
 
 static void amdgpu_device_cache_switch_state(struct amdgpu_device *adev)
 {
+	STUB();
+#ifdef notyet
 	struct pci_dev *swus, *swds;
 	int r;
 
@@ -7379,6 +7381,7 @@ static void amdgpu_device_cache_switch_state(struct amdgpu_device *adev)
 	adev->pcie_reset_ctx.swus_pcistate = pci_store_saved_state(swus);
 
 	adev->pcie_reset_ctx.swus = swus;
+#endif
 }
 
 static void amdgpu_device_load_switch_state(struct amdgpu_device *adev)
@@ -7389,6 +7392,8 @@ static void amdgpu_device_load_switch_state(struct amdgpu_device *adev)
 	if (!adev->pcie_reset_ctx.swds_pcistate ||
 	    !adev->pcie_reset_ctx.swus_pcistate)
 		return;
+	STUB();
+#ifdef notyet
 
 	pdev = adev->pcie_reset_ctx.swus;
 	r = pci_load_saved_state(pdev, adev->pcie_reset_ctx.swus_pcistate);
@@ -7405,6 +7410,7 @@ static void amdgpu_device_load_switch_state(struct amdgpu_device *adev)
 		pci_restore_state(pdev);
 	else
 		dev_warn(adev->dev, "Failed to load SWDS state, err:%d\n", r);
+#endif
 }
 
 bool amdgpu_device_cache_pci_state(struct pci_dev *pdev)
