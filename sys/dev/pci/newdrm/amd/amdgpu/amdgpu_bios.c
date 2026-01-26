@@ -173,7 +173,7 @@ static bool amdgpu_read_bios_from_vram(struct amdgpu_device *adev)
 	memcpy_fromio(adev->bios, bios, size);
 	bus_space_unmap(bst, bsh, size);
 
-	if (!check_atom_bios(adev->bios, size)) {
+	if (!check_atom_bios(adev, size)) {
 		kfree(adev->bios);
 		return false;
 	}
@@ -241,7 +241,7 @@ bool amdgpu_read_bios(struct amdgpu_device *adev)
 	bus_space_read_region_1(adev->memt, romh, 0, adev->bios, size);
 	bus_space_unmap(adev->memt, romh, size);
 
-	if (!check_atom_bios(adev->bios, size)) {
+	if (!check_atom_bios(adev, size)) {
 		kfree(adev->bios);
 		return false;
 	}
@@ -341,7 +341,7 @@ static bool amdgpu_read_platform_bios(struct amdgpu_device *adev)
 
 	memcpy_fromio(adev->bios, bios, size);
 
-	if (!check_atom_bios(adev->bios, size)) {
+	if (!check_atom_bios(adev, size)) {
 		kfree(adev->bios);
 		return false;
 	}
