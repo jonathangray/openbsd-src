@@ -287,7 +287,7 @@ struct dm_process_phy_transition_init_params {
 	uint32_t phy_id;
 	uint8_t action;
 	uint32_t sym_clock_10khz;
-	enum signal_type signal;
+	enum amd_signal_type signal;
 	enum dc_lane_count display_port_lanes_count;
 	enum dc_link_rate display_port_link_rate;
 	uint32_t transition_bitmask;

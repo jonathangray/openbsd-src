@@ -1031,7 +1031,7 @@ static void disable_link_output_symclk_on_tx_off(struct dc_link *link, enum dp_l
 
 void dcn401_disable_link_output(struct dc_link *link,
 		const struct link_resource *link_res,
-		enum signal_type signal)
+		enum amd_signal_type signal)
 {
 	struct dc *dc = link->ctx->dc;
 	const struct link_hwss *link_hwss = get_link_hwss(link, link_res);

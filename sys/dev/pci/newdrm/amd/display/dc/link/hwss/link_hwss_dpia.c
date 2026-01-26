@@ -85,7 +85,7 @@ static void set_dio_dpia_lane_settings(struct dc_link *link,
 
 static void enable_dpia_link_output(struct dc_link *link,
 		const struct link_resource *link_res,
-		enum signal_type signal,
+		enum amd_signal_type signal,
 		enum clock_source_id clock_source,
 		const struct dc_link_settings *link_settings)
 {
@@ -120,7 +120,7 @@ static void enable_dpia_link_output(struct dc_link *link,
 
 static void disable_dpia_link_output(struct dc_link *link,
 		const struct link_resource *link_res,
-		enum signal_type signal)
+		enum amd_signal_type signal)
 {
 	struct link_encoder *link_enc = link_res->dio_link_enc;
 	DC_LOGGER_INIT(link->ctx->logger);

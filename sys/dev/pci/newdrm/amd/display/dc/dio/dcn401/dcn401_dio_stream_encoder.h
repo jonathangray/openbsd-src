@@ -224,7 +224,7 @@ void enc401_stream_encoder_dp_unblank(
 		const struct encoder_unblank_param *param);
 void enc401_stream_encoder_enable(
 	struct stream_encoder *enc,
-	enum signal_type signal,
+	enum amd_signal_type signal,
 	bool enable);
 void enc401_set_dig_input_mode(struct stream_encoder *enc, unsigned int pix_per_container);
 void enc401_stream_encoder_map_to_link(

@@ -165,7 +165,7 @@ void dcn35_link_encoder_enable_dp_mst_output(
  */
 void dcn35_link_encoder_disable_output(
 	struct link_encoder *enc,
-	enum signal_type signal);
+	enum amd_signal_type signal);
 
 /*
  * Enable DP transmitter and its encoder for dpia port.

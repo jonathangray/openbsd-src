@@ -57,7 +57,7 @@ void dcn401_setup_hpo_hw_control(const struct dce_hwseq *hws, bool enable);
 
 void dcn401_disable_link_output(struct dc_link *link,
 		const struct link_resource *link_res,
-		enum signal_type signal);
+		enum amd_signal_type signal);
 
 void dcn401_set_cursor_position(struct pipe_ctx *pipe_ctx);
 
