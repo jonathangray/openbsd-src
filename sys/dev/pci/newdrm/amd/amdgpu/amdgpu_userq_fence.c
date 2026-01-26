@@ -33,10 +33,11 @@
 #include "amdgpu_userq_fence.h"
 
 static const struct dma_fence_ops amdgpu_userq_fence_ops;
-static struct kmem_cache *amdgpu_userq_fence_slab;
+static struct pool amdgpu_userq_fence_slab;
 
 int amdgpu_userq_fence_slab_init(void)
 {
+#ifdef __linux__
 	amdgpu_userq_fence_slab = kmem_cache_create("amdgpu_userq_fence",
 						    sizeof(struct amdgpu_userq_fence),
 						    0,
@@ -44,6 +45,10 @@ int amdgpu_userq_fence_slab_init(void)
 						    NULL);
 	if (!amdgpu_userq_fence_slab)
 		return -ENOMEM;
+#else
+	pool_init(&amdgpu_userq_fence_slab, sizeof(struct amdgpu_userq_fence),
+	    CACHELINESIZE, IPL_TTY, 0, "amdgpu_userq_fence", NULL);
+#endif
 
 	return 0;
 }
@@ -51,7 +56,11 @@ int amdgpu_userq_fence_slab_init(void)
 void amdgpu_userq_fence_slab_fini(void)
 {
 	rcu_barrier();
+#ifdef __linux__
 	kmem_cache_destroy(amdgpu_userq_fence_slab);
+#else
+	pool_destroy(&amdgpu_userq_fence_slab);
+#endif
 }
 
 static inline struct amdgpu_userq_fence *to_amdgpu_userq_fence(struct dma_fence *f)
@@ -96,11 +105,16 @@ int amdgpu_userq_fence_driver_alloc(struct amdgpu_device *adev,
 
 	kref_init(&fence_drv->refcount);
 	INIT_LIST_HEAD(&fence_drv->fences);
-	spin_lock_init(&fence_drv->fence_list_lock);
+	mtx_init(&fence_drv->fence_list_lock, IPL_TTY);
 
 	fence_drv->adev = adev;
 	fence_drv->context = dma_fence_context_alloc(1);
+#ifdef __linux__
 	get_task_comm(fence_drv->timeline_name, current);
+#else
+	strlcpy(fence_drv->timeline_name, curproc->p_p->ps_comm,
+	    sizeof(fence_drv->timeline_name));
+#endif
 
 	xa_lock_irqsave(&adev->userq_xa, flags);
 	r = xa_err(__xa_store(&adev->userq_xa, userq->doorbell_index,
@@ -227,7 +241,11 @@ void amdgpu_userq_fence_driver_put(struct amdgpu_userq_fence_driver *fence_drv)
 
 static int amdgpu_userq_fence_alloc(struct amdgpu_userq_fence **userq_fence)
 {
+#ifdef __linux__
 	*userq_fence = kmem_cache_alloc(amdgpu_userq_fence_slab, GFP_ATOMIC);
+#else
+	*userq_fence = pool_get(&amdgpu_userq_fence_slab, PR_NOWAIT);
+#endif
 	return *userq_fence ? 0 : -ENOMEM;
 }
 
@@ -243,7 +261,7 @@ static int amdgpu_userq_fence_create(struct amdgpu_usermode_queue *userq,
 	if (!fence_drv)
 		return -EINVAL;
 
-	spin_lock_init(&userq_fence->lock);
+	mtx_init(&userq_fence->lock, IPL_TTY);
 	INIT_LIST_HEAD(&userq_fence->link);
 	fence = &userq_fence->base;
 	userq_fence->fence_drv = fence_drv;
@@ -334,7 +352,11 @@ static void amdgpu_userq_fence_free(struct rcu_head *rcu)
 	amdgpu_userq_fence_driver_put(fence_drv);
 
 	kvfree(userq_fence->fence_drv_array);
+#ifdef __linux__
 	kmem_cache_free(amdgpu_userq_fence_slab, userq_fence);
+#else
+	pool_put(&amdgpu_userq_fence_slab, userq_fence);
+#endif
 }
 
 static void amdgpu_userq_fence_release(struct dma_fence *f)
@@ -559,7 +581,11 @@ int amdgpu_userq_signal_ioctl(struct drm_device *dev, void *data,
 	r = amdgpu_userq_fence_create(queue, userq_fence, wptr, &fence);
 	if (r) {
 		mutex_unlock(&userq_mgr->userq_mutex);
+#ifdef __linux__
 		kmem_cache_free(amdgpu_userq_fence_slab, userq_fence);
+#else
+		pool_put(&amdgpu_userq_fence_slab, userq_fence);
+#endif
 		goto put_gobj_write;
 	}
 
