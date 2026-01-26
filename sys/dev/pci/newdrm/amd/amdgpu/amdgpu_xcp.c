@@ -764,13 +764,17 @@ static ssize_t xcp_cfg_res_sysfs_attr_show(struct kobject *kobj,
 	return attribute->show(xcp_res, buf);
 }
 
+#ifdef notyet
 static const struct sysfs_ops xcp_cfg_res_sysfs_ops = {
 	.show = xcp_cfg_res_sysfs_attr_show,
 };
+#endif
 
 static const struct kobj_type xcp_cfg_res_sysfs_ktype = {
+#ifdef notyet
 	.sysfs_ops = &xcp_cfg_res_sysfs_ops,
 	.default_groups = xcp_cfg_res_sysfs_groups,
+#endif
 };
 
 const char *xcp_res_names[] = {
@@ -870,8 +874,10 @@ static ssize_t xcp_config_store(struct kobject *kobj,
 	return size;
 }
 
+#ifdef notyet
 static struct kobj_attribute xcp_cfg_sysfs_mode =
 	__ATTR_RW_MODE(xcp_config, 0644);
+#endif
 
 static void xcp_cfg_sysfs_release(struct kobject *kobj)
 {
@@ -882,9 +888,12 @@ static void xcp_cfg_sysfs_release(struct kobject *kobj)
 
 static const struct kobj_type xcp_cfg_sysfs_ktype = {
 	.release = xcp_cfg_sysfs_release,
+#ifdef notyet
 	.sysfs_ops = &kobj_sysfs_ops,
+#endif
 };
 
+#ifdef notyet
 static struct kobj_attribute supp_part_sysfs_mode =
 	__ATTR_RO(supported_xcp_configs);
 
@@ -896,6 +905,7 @@ static const struct attribute *xcp_attrs[] = {
 	&xcp_cfg_sysfs_mode.attr,
 	NULL,
 };
+#endif
 
 static void amdgpu_xcp_cfg_sysfs_init(struct amdgpu_device *adev)
 {
@@ -906,6 +916,8 @@ static void amdgpu_xcp_cfg_sysfs_init(struct amdgpu_device *adev)
 	if (!adev->xcp_mgr)
 		return;
 
+	STUB();
+#ifdef notyet
 	xcp_cfg = kzalloc(sizeof(*xcp_cfg), GFP_KERNEL);
 	if (!xcp_cfg)
 		return;
@@ -963,6 +975,7 @@ err:
 	sysfs_remove_files(&xcp_cfg->kobj, xcp_attrs);
 err1:
 	kobject_put(&xcp_cfg->kobj);
+#endif
 }
 
 static void amdgpu_xcp_cfg_sysfs_fini(struct amdgpu_device *adev)
@@ -1018,6 +1031,7 @@ static umode_t amdgpu_xcp_attrs_is_visible(struct kobject *kobj,
 	return attr->mode;
 }
 
+#ifdef notyet
 static struct kobj_attribute xcp_sysfs_metrics = __ATTR_RO(xcp_metrics);
 
 static struct attribute *amdgpu_xcp_attrs[] = {
@@ -1033,6 +1047,7 @@ static const struct attribute_group amdgpu_xcp_attrs_group = {
 static const struct kobj_type xcp_sysfs_ktype = {
 	.sysfs_ops = &kobj_sysfs_ops,
 };
+#endif
 
 static void amdgpu_xcp_sysfs_entries_fini(struct amdgpu_xcp_mgr *xcp_mgr, int n)
 {
@@ -1049,6 +1064,8 @@ static void amdgpu_xcp_sysfs_entries_fini(struct amdgpu_xcp_mgr *xcp_mgr, int n)
 
 static void amdgpu_xcp_sysfs_entries_init(struct amdgpu_xcp_mgr *xcp_mgr)
 {
+	STUB();
+#ifdef notyet
 	struct amdgpu_xcp *xcp;
 	int i, r;
 
@@ -1070,6 +1087,7 @@ static void amdgpu_xcp_sysfs_entries_init(struct amdgpu_xcp_mgr *xcp_mgr)
 	return;
 out:
 	kobject_put(&xcp->kobj);
+#endif
 }
 
 static void amdgpu_xcp_sysfs_entries_update(struct amdgpu_xcp_mgr *xcp_mgr)
