@@ -187,6 +187,9 @@ int amdgpu_dm_wb_connector_init(struct amdgpu_display_manager *dm,
 				struct amdgpu_dm_wb_connector *wbcon,
 				uint32_t link_index)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct dc *dc = dm->dc;
 	struct dc_link *link = dc_get_link_at_index(dc, link_index);
 	int res = 0;
@@ -212,4 +215,5 @@ int amdgpu_dm_wb_connector_init(struct amdgpu_display_manager *dm,
 		wbcon->base.base.funcs->reset(&wbcon->base.base);
 
 	return 0;
+#endif
 }

@@ -35,6 +35,9 @@ static int amdgpu_sched_process_priority_override(struct amdgpu_device *adev,
 						  int fd,
 						  int32_t priority)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	CLASS(fd, f)(fd);
 	struct amdgpu_fpriv *fpriv;
 	struct amdgpu_ctx_mgr *mgr;
@@ -56,6 +59,7 @@ static int amdgpu_sched_process_priority_override(struct amdgpu_device *adev,
 	mutex_unlock(&mgr->lock);
 
 	return 0;
+#endif
 }
 
 static int amdgpu_sched_context_priority_override(struct amdgpu_device *adev,
@@ -63,6 +67,9 @@ static int amdgpu_sched_context_priority_override(struct amdgpu_device *adev,
 						  unsigned ctx_id,
 						  int32_t priority)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	CLASS(fd, f)(fd);
 	struct amdgpu_fpriv *fpriv;
 	struct amdgpu_ctx *ctx;
@@ -83,6 +90,7 @@ static int amdgpu_sched_context_priority_override(struct amdgpu_device *adev,
 	amdgpu_ctx_priority_override(ctx, priority);
 	amdgpu_ctx_put(ctx);
 	return 0;
+#endif
 }
 
 int amdgpu_sched_ioctl(struct drm_device *dev, void *data,

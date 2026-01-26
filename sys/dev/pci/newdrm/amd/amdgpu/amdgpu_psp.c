@@ -621,7 +621,7 @@ int psp_wait_for_spirom_update(struct psp_context *psp, uint32_t reg_index,
 		val = RREG32(reg_index);
 		if ((val & mask) == reg_val)
 			return 0;
-		msleep(1);
+		drm_msleep(1);
 	}
 
 	return -ETIME;
@@ -1991,7 +1991,7 @@ int psp_ras_initialize(struct psp_context *psp)
 
 	if (!ret && !ras_cmd->ras_status) {
 		psp->ras_context.context.initialized = true;
-		mutex_init(&psp->ras_context.mutex);
+		rw_init(&psp->ras_context.mutex, "pspras");
 	} else {
 		if (ras_cmd->ras_status)
 			dev_warn(adev->dev, "RAS Init Status: 0x%X\n", ras_cmd->ras_status);
@@ -2104,7 +2104,7 @@ static int psp_hdcp_initialize(struct psp_context *psp)
 	ret = psp_ta_load(psp, &psp->hdcp_context.context);
 	if (!ret) {
 		psp->hdcp_context.context.initialized = true;
-		mutex_init(&psp->hdcp_context.mutex);
+		rw_init(&psp->hdcp_context.mutex, "pspcp");
 	}
 
 	return ret;
@@ -2178,7 +2178,7 @@ static int psp_dtm_initialize(struct psp_context *psp)
 	ret = psp_ta_load(psp, &psp->dtm_context.context);
 	if (!ret) {
 		psp->dtm_context.context.initialized = true;
-		mutex_init(&psp->dtm_context.mutex);
+		rw_init(&psp->dtm_context.mutex, "pspdtm");
 	}
 
 	return ret;
@@ -2249,7 +2249,7 @@ static int psp_rap_initialize(struct psp_context *psp)
 	ret = psp_ta_load(psp, &psp->rap_context.context);
 	if (!ret) {
 		psp->rap_context.context.initialized = true;
-		mutex_init(&psp->rap_context.mutex);
+		rw_init(&psp->rap_context.mutex, "psprap");
 	} else
 		return ret;
 
@@ -2340,6 +2340,15 @@ static int psp_securedisplay_initialize(struct psp_context *psp)
 		return 0;
 	}
 
+#ifdef __OpenBSD__
+	/*
+	 * with 20230117 or later firmware or later on renoir:
+	 *
+	 * *WARNING* psp gfx command LOAD_TA(0x1) failed and response status is (0x7)
+	 */
+	return 0;
+#endif
+
 	psp->securedisplay_context.context.mem_context.shared_mem_size =
 		PSP_SECUREDISPLAY_SHARED_MEM_SIZE;
 	psp->securedisplay_context.context.ta_load_type = GFX_CMD_ID_LOAD_TA;
@@ -2354,7 +2363,7 @@ static int psp_securedisplay_initialize(struct psp_context *psp)
 	ret = psp_ta_load(psp, &psp->securedisplay_context.context);
 	if (!ret && !psp->securedisplay_context.context.resp_status) {
 		psp->securedisplay_context.context.initialized = true;
-		mutex_init(&psp->securedisplay_context.mutex);
+		rw_init(&psp->securedisplay_context.mutex, "pscm");
 	} else {
 		/* don't try again */
 		psp->securedisplay_context.context.bin_desc.size_bytes = 0;
@@ -4185,6 +4194,9 @@ static ssize_t amdgpu_psp_vbflash_write(struct file *filp, struct kobject *kobj,
 					const struct bin_attribute *bin_attr,
 					char *buffer, loff_t pos, size_t count)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct device *dev = kobj_to_dev(kobj);
 	struct drm_device *ddev = dev_get_drvdata(dev);
 	struct amdgpu_device *adev = drm_to_adev(ddev);
@@ -4215,12 +4227,16 @@ static ssize_t amdgpu_psp_vbflash_write(struct file *filp, struct kobject *kobj,
 	dev_dbg(adev->dev, "IFWI staged for update\n");
 
 	return count;
+#endif
 }
 
 static ssize_t amdgpu_psp_vbflash_read(struct file *filp, struct kobject *kobj,
 				       const struct bin_attribute *bin_attr, char *buffer,
 				       loff_t pos, size_t count)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct device *dev = kobj_to_dev(kobj);
 	struct drm_device *ddev = dev_get_drvdata(dev);
 	struct amdgpu_device *adev = drm_to_adev(ddev);
@@ -4263,6 +4279,7 @@ rel_buf:
 
 	dev_dbg(adev->dev, "PSP IFWI flash process done\n");
 	return 0;
+#endif
 }
 
 /**
@@ -4270,12 +4287,14 @@ rel_buf:
  * Writing to this file will stage an IFWI for update. Reading from this file
  * will trigger the update process.
  */
+#ifdef notyet
 static const struct bin_attribute psp_vbflash_bin_attr = {
 	.attr = {.name = "psp_vbflash", .mode = 0660},
 	.size = 0,
 	.write = amdgpu_psp_vbflash_write,
 	.read = amdgpu_psp_vbflash_read,
 };
+#endif
 
 /**
  * DOC: psp_vbflash_status
@@ -4301,16 +4320,20 @@ static ssize_t amdgpu_psp_vbflash_status(struct device *dev,
 }
 static DEVICE_ATTR(psp_vbflash_status, 0440, amdgpu_psp_vbflash_status, NULL);
 
+#ifdef notyet
 static const struct bin_attribute *const bin_flash_attrs[] = {
 	&psp_vbflash_bin_attr,
 	NULL
 };
+#endif
 
 static struct attribute *flash_attrs[] = {
 	&dev_attr_psp_vbflash_status.attr,
 	&dev_attr_usbc_pd_fw.attr,
 	NULL
 };
+
+#ifdef notyet
 
 static umode_t amdgpu_flash_attr_is_visible(struct kobject *kobj, struct attribute *attr, int idx)
 {
@@ -4341,6 +4364,8 @@ const struct attribute_group amdgpu_flash_attr_group = {
 	.is_bin_visible = amdgpu_bin_flash_attr_is_visible,
 	.is_visible = amdgpu_flash_attr_is_visible,
 };
+
+#endif /* notyet */
 
 #if defined(CONFIG_DEBUG_FS)
 static int psp_read_spirom_debugfs_open(struct inode *inode, struct file *filp)

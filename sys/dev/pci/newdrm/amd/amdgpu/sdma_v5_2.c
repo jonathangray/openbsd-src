@@ -753,7 +753,7 @@ static int sdma_v5_2_load_microcode(struct amdgpu_device *adev)
 
 		for (j = 0; j < fw_size; j++) {
 			if (amdgpu_emu_mode == 1 && j % 500 == 0)
-				msleep(1);
+				drm_msleep(1);
 			WREG32(sdma_v5_2_get_reg_offset(adev, i, mmSDMA0_UCODE_DATA), le32_to_cpup(fw_data++));
 		}
 
@@ -835,7 +835,7 @@ static int sdma_v5_2_start(struct amdgpu_device *adev)
 
 		/* The value of mmSDMA_F32_CNTL is invalid the moment after loading fw */
 		if (amdgpu_emu_mode == 1)
-			msleep(1000);
+			drm_msleep(1000);
 	}
 
 	ip_block = amdgpu_device_ip_get_ip_block(adev, AMD_IP_BLOCK_TYPE_SDMA);
@@ -949,7 +949,7 @@ static int sdma_v5_2_ring_test_ring(struct amdgpu_ring *ring)
 		if (tmp == 0xDEADBEEF)
 			break;
 		if (amdgpu_emu_mode == 1)
-			msleep(1);
+			drm_msleep(1);
 		else
 			udelay(1);
 	}
@@ -1332,7 +1332,7 @@ static int sdma_v5_2_sw_init(struct amdgpu_ip_block *ip_block)
 			(adev->doorbell_index.sdma_engine[i] << 1); //get DWORD offset
 
 		ring->vm_hub = AMDGPU_GFXHUB(0);
-		sprintf(ring->name, "sdma%d", i);
+		snprintf(ring->name, sizeof(ring->name), "sdma%d", i);
 		r = amdgpu_ring_init(adev, ring, 1024, &adev->sdma.trap_irq,
 				     AMDGPU_SDMA_IRQ_INSTANCE0 + i,
 				     AMDGPU_RING_PRIO_DEFAULT, NULL);

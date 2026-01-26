@@ -440,14 +440,14 @@ struct amdgpu_display_manager {
 	 * Guards access to DC functions that can issue register write
 	 * sequences.
 	 */
-	struct mutex dc_lock;
+	struct rwlock dc_lock;
 
 	/**
 	 * @audio_lock:
 	 *
 	 * Guards access to audio instance changes.
 	 */
-	struct mutex audio_lock;
+	struct rwlock audio_lock;
 
 	/**
 	 * @audio_component:
@@ -651,7 +651,7 @@ struct amdgpu_display_manager {
 	 *
 	 * Guards access to DPIA AUX
 	 */
-	struct mutex dpia_aux_lock;
+	struct rwlock dpia_aux_lock;
 
 	/**
 	 * @bb_from_dmub:
@@ -772,7 +772,7 @@ struct amdgpu_dm_connector {
 	struct drm_dp_aux *dsc_aux;
 	uint32_t mst_local_bw;
 	uint16_t vc_full_pbn;
-	struct mutex handle_mst_msg_ready;
+	struct rwlock handle_mst_msg_ready;
 
 	/* branch device specific data */
 	uint32_t branch_ieee_oui;
@@ -796,7 +796,7 @@ struct amdgpu_dm_connector {
 	/* Audio instance - protected by audio_lock. */
 	int audio_inst;
 
-	struct mutex hpd_lock;
+	struct rwlock hpd_lock;
 
 	bool fake_enable;
 	bool force_yuv420_output;

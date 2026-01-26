@@ -419,7 +419,7 @@ static int psp_v11_0_mode1_reset(struct psp_context *psp)
 	/*send the mode 1 reset command*/
 	WREG32(offset, GFX_CTRL_CMD_ID_MODE1_RST);
 
-	msleep(500);
+	drm_msleep(500);
 
 	return 0;
 }
@@ -628,7 +628,7 @@ static int psp_v11_0_load_usbc_pd_fw(struct psp_context *psp, uint64_t fw_pri_mc
 
 	/* FW load takes very long time */
 	do {
-		msleep(1000);
+		drm_msleep(1000);
 		reg_status = RREG32_SOC15(MP0, 0, mmMP0_SMN_C2PMSG_35);
 
 		if (reg_status & 0x80000000)

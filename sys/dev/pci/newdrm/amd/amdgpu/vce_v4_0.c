@@ -467,7 +467,7 @@ static int vce_v4_0_sw_init(struct amdgpu_ip_block *ip_block)
 
 		ring = &adev->vce.ring[i];
 		ring->vm_hub = AMDGPU_MMHUB0(0);
-		sprintf(ring->name, "vce%d", i);
+		snprintf(ring->name, sizeof(ring->name), "vce%d", i);
 		if (amdgpu_sriov_vf(adev)) {
 			/* DOORBELL only works under SRIOV */
 			ring->use_doorbell = true;

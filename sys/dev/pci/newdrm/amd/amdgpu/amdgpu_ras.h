@@ -490,7 +490,7 @@ struct ras_ecc_err {
 };
 
 struct ras_ecc_log_info {
-	struct mutex lock;
+	struct rwlock lock;
 	struct radix_tree_root de_page_tree;
 	uint64_t de_queried_count;
 	uint64_t consumption_q_count;
@@ -526,7 +526,7 @@ struct amdgpu_ras {
 	struct amdgpu_device *adev;
 	/* error handler data */
 	struct ras_err_handler_data *eh_data;
-	struct mutex recovery_lock;
+	struct rwlock recovery_lock;
 
 	uint32_t flags;
 	bool reboot;
@@ -560,14 +560,20 @@ struct amdgpu_ras {
 	/* Record special requirements of gpu reset caller */
 	uint32_t  gpu_reset_flags;
 
+#ifdef __linux__
 	struct task_struct *page_retirement_thread;
+#else
+	struct proc *page_retirement_thread;
+#endif
 	wait_queue_head_t page_retirement_wq;
-	struct mutex page_retirement_lock;
+	struct rwlock page_retirement_lock;
 	atomic_t page_retirement_req_cnt;
 	atomic_t poison_creation_count;
 	atomic_t poison_consumption_count;
-	struct mutex page_rsv_lock;
+	struct rwlock page_rsv_lock;
+#ifdef notyet
 	DECLARE_KFIFO(poison_fifo, struct ras_poison_msg, 128);
+#endif
 	struct ras_ecc_log_info  umc_ecc_log;
 	struct delayed_work page_retirement_dwork;
 
@@ -586,10 +592,10 @@ struct amdgpu_ras {
 	int bad_page_num;
 
 	struct list_head critical_region_head;
-	struct mutex critical_region_lock;
+	struct rwlock critical_region_lock;
 
 	/* Protect poison injection */
-	struct mutex poison_lock;
+	struct rwlock poison_lock;
 };
 
 struct ras_fs_data {

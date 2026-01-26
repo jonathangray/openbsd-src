@@ -856,7 +856,7 @@ static int sdma_v7_0_start(struct amdgpu_device *adev)
 		}
 
 		if (amdgpu_emu_mode == 1)
-			msleep(1000);
+			drm_msleep(1000);
 	}
 
 	/* unhalt the MEs */
@@ -972,7 +972,7 @@ static int sdma_v7_0_ring_test_ring(struct amdgpu_ring *ring)
 		if (tmp == 0xDEADBEEF)
 			break;
 		if (amdgpu_emu_mode == 1)
-			msleep(1);
+			drm_msleep(1);
 		else
 			udelay(1);
 	}
@@ -1326,7 +1326,7 @@ static int sdma_v7_0_sw_init(struct amdgpu_ip_block *ip_block)
 			(adev->doorbell_index.sdma_engine[i] << 1); // get DWORD offset
 
 		ring->vm_hub = AMDGPU_GFXHUB(0);
-		sprintf(ring->name, "sdma%d", i);
+		snprintf(ring->name, sizeof(ring->name), "sdma%d", i);
 		r = amdgpu_ring_init(adev, ring, 1024,
 				     &adev->sdma.trap_irq,
 				     AMDGPU_SDMA_IRQ_INSTANCE0 + i,

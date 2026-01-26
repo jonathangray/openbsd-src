@@ -262,6 +262,8 @@ static int amdgpu_check_address_validity(struct amdgpu_device *adev,
 	return 0;
 }
 
+#ifdef __linux__
+
 static ssize_t amdgpu_ras_debugfs_read(struct file *f, char __user *buf,
 					size_t size, loff_t *pos)
 {
@@ -710,6 +712,8 @@ static ssize_t amdgpu_ras_sysfs_read(struct device *dev,
 		return sysfs_emit(buf, "%s: %lu\n%s: %lu\n", "ue", info.ue_count,
 				"ce", info.ce_count);
 }
+
+#endif /* __linux__ */
 
 /* obj begin */
 
@@ -1753,6 +1757,7 @@ int amdgpu_ras_query_error_count(struct amdgpu_device *adev,
 }
 /* query/inject/cure end */
 
+#ifdef __linux__
 
 /* sysfs begin */
 
@@ -1923,6 +1928,8 @@ static int amdgpu_ras_sysfs_remove_dev_attr_node(struct amdgpu_device *adev)
 	return 0;
 }
 
+#endif /* __linux__ */
+
 int amdgpu_ras_sysfs_create(struct amdgpu_device *adev,
 		struct ras_common_if *head)
 {
@@ -1937,6 +1944,9 @@ int amdgpu_ras_sysfs_create(struct amdgpu_device *adev,
 	if (amdgpu_sriov_vf(adev) && !amdgpu_virt_ras_telemetry_block_en(adev, head->block))
 		return 0;
 
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	get_obj(obj);
 
 	snprintf(obj->fs_data.sysfs_name, sizeof(obj->fs_data.sysfs_name),
@@ -1961,6 +1971,7 @@ int amdgpu_ras_sysfs_create(struct amdgpu_device *adev,
 	obj->attr_inuse = 1;
 
 	return 0;
+#endif
 }
 
 int amdgpu_ras_sysfs_remove(struct amdgpu_device *adev,
@@ -1974,15 +1985,19 @@ int amdgpu_ras_sysfs_remove(struct amdgpu_device *adev,
 	if (!obj || !obj->attr_inuse)
 		return -EINVAL;
 
+#ifdef __linux__
 	if (adev->dev->kobj.sd)
 		sysfs_remove_file_from_group(&adev->dev->kobj,
 				&obj->sysfs_attr.attr,
 				RAS_FS_NAME);
+#endif
 	obj->attr_inuse = 0;
 	put_obj(obj);
 
 	return 0;
 }
+
+#ifdef __linux__
 
 static int amdgpu_ras_sysfs_remove_all(struct amdgpu_device *adev)
 {
@@ -2083,6 +2098,8 @@ static void amdgpu_ras_debugfs_create(struct amdgpu_device *adev,
 			    obj, &amdgpu_ras_debugfs_ops);
 }
 
+#endif /* __linux__ */
+
 static bool amdgpu_ras_aca_is_supported(struct amdgpu_device *adev)
 {
 	bool ret;
@@ -2100,6 +2117,8 @@ static bool amdgpu_ras_aca_is_supported(struct amdgpu_device *adev)
 
 	return ret;
 }
+
+#ifdef __linux__
 
 void amdgpu_ras_debugfs_create_all(struct amdgpu_device *adev)
 {
@@ -2120,7 +2139,7 @@ void amdgpu_ras_debugfs_create_all(struct amdgpu_device *adev)
 	list_for_each_entry(obj, &con->head, node) {
 		if (amdgpu_ras_is_supported(adev, obj->head.block) &&
 			(obj->attr_inuse == 1)) {
-			sprintf(fs_info.debugfs_name, "%s_err_inject",
+			snprintf(fs_info.debugfs_name, sizeof(fs_info.debugfs_name), "%s_err_inject",
 					get_ras_block_str(&obj->head));
 			fs_info.head = obj->head;
 			amdgpu_ras_debugfs_create(adev, &fs_info, dir);
@@ -2140,6 +2159,7 @@ void amdgpu_ras_debugfs_create_all(struct amdgpu_device *adev)
 /* ras fs */
 static const BIN_ATTR(gpu_vram_bad_pages, S_IRUGO,
 		      amdgpu_ras_sysfs_badpages_read, NULL, 0);
+#endif /* __linux__ */
 static DEVICE_ATTR(features, S_IRUGO,
 		amdgpu_ras_sysfs_features_read, NULL);
 static DEVICE_ATTR(version, 0444,
@@ -2150,6 +2170,7 @@ static DEVICE_ATTR(event_state, 0444,
 		   amdgpu_ras_sysfs_event_state_show, NULL);
 static int amdgpu_ras_fs_init(struct amdgpu_device *adev)
 {
+#ifdef __linux__
 	struct amdgpu_ras *con = amdgpu_ras_get_context(adev);
 	struct attribute_group group = {
 		.name = RAS_FS_NAME,
@@ -2196,12 +2217,14 @@ static int amdgpu_ras_fs_init(struct amdgpu_device *adev)
 	r = sysfs_create_group(&adev->dev->kobj, &group);
 	if (r)
 		dev_err(adev->dev, "Failed to create RAS sysfs group!");
+#endif
 
 	return 0;
 }
 
 static int amdgpu_ras_fs_fini(struct amdgpu_device *adev)
 {
+#ifdef __linux__
 	struct amdgpu_ras *con = amdgpu_ras_get_context(adev);
 	struct ras_manager *con_obj, *ip_obj, *tmp;
 
@@ -2214,6 +2237,7 @@ static int amdgpu_ras_fs_fini(struct amdgpu_device *adev)
 	}
 
 	amdgpu_ras_sysfs_remove_all(adev);
+#endif
 	return 0;
 }
 /* ras fs end */
@@ -2741,7 +2765,7 @@ static void amdgpu_ras_do_recovery(struct work_struct *work)
 		if (amdgpu_ras_get_error_query_mode(adev, &error_query_mode)) {
 			if (error_query_mode == AMDGPU_RAS_FIRMWARE_ERROR_QUERY) {
 				/* wait 500ms to ensure pmfw polling mca bank info done */
-				msleep(500);
+				drm_msleep(500);
 			}
 		}
 
@@ -3309,11 +3333,15 @@ int amdgpu_ras_put_poison_req(struct amdgpu_device *adev,
 	poison_msg.pasid_fn = pasid_fn;
 	poison_msg.data = data;
 
+#ifdef notyet
 	ret = kfifo_put(&con->poison_fifo, poison_msg);
 	if (!ret) {
 		dev_err(adev->dev, "Poison message fifo is full!\n");
 		return -ENOSPC;
 	}
+#else
+	STUB();
+#endif
 
 	return 0;
 }
@@ -3321,14 +3349,18 @@ int amdgpu_ras_put_poison_req(struct amdgpu_device *adev,
 static int amdgpu_ras_get_poison_req(struct amdgpu_device *adev,
 		struct ras_poison_msg *poison_msg)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct amdgpu_ras *con = amdgpu_ras_get_context(adev);
 
 	return kfifo_get(&con->poison_fifo, poison_msg);
+#endif
 }
 
 static void amdgpu_ras_ecc_log_init(struct ras_ecc_log_info *ecc_log)
 {
-	mutex_init(&ecc_log->lock);
+	rw_init(&ecc_log->lock, "ecclog");
 
 	INIT_RADIX_TREE(&ecc_log->de_page_tree, GFP_KERNEL);
 	ecc_log->de_queried_count = 0;
@@ -3337,6 +3369,8 @@ static void amdgpu_ras_ecc_log_init(struct ras_ecc_log_info *ecc_log)
 
 static void amdgpu_ras_ecc_log_fini(struct ras_ecc_log_info *ecc_log)
 {
+	STUB();
+#ifdef notyet
 	struct radix_tree_iter iter;
 	void __rcu **slot;
 	struct ras_ecc_err *ecc_err;
@@ -3353,11 +3387,15 @@ static void amdgpu_ras_ecc_log_fini(struct ras_ecc_log_info *ecc_log)
 	mutex_destroy(&ecc_log->lock);
 	ecc_log->de_queried_count = 0;
 	ecc_log->consumption_q_count = 0;
+#endif
 }
 
 static bool amdgpu_ras_schedule_retirement_dwork(struct amdgpu_ras *con,
 				uint32_t delayed_ms)
 {
+	STUB();
+	return true;
+#ifdef notyet
 	int ret;
 
 	mutex_lock(&con->umc_ecc_log.lock);
@@ -3370,6 +3408,7 @@ static bool amdgpu_ras_schedule_retirement_dwork(struct amdgpu_ras *con,
 			msecs_to_jiffies(delayed_ms));
 
 	return ret ? true : false;
+#endif
 }
 
 static void amdgpu_ras_do_page_retirement(struct work_struct *work)
@@ -3426,7 +3465,7 @@ static int amdgpu_ras_poison_creation_handler(struct amdgpu_device *adev,
 		if (de_queried_count && consumption_q_count)
 			break;
 
-		msleep(100);
+		drm_msleep(100);
 	} while (--timeout);
 
 	if (de_queried_count)
@@ -3440,6 +3479,8 @@ static int amdgpu_ras_poison_creation_handler(struct amdgpu_device *adev,
 
 static void amdgpu_ras_clear_poison_fifo(struct amdgpu_device *adev)
 {
+	STUB();
+#ifdef notyet
 	struct amdgpu_ras *con = amdgpu_ras_get_context(adev);
 	struct ras_poison_msg msg;
 	int ret;
@@ -3447,6 +3488,7 @@ static void amdgpu_ras_clear_poison_fifo(struct amdgpu_device *adev)
 	do {
 		ret = kfifo_get(&con->poison_fifo, &msg);
 	} while (ret);
+#endif
 }
 
 static int amdgpu_ras_poison_consumption_handler(struct amdgpu_device *adev,
@@ -3499,6 +3541,9 @@ static int amdgpu_ras_poison_consumption_handler(struct amdgpu_device *adev,
 
 static int amdgpu_ras_page_retirement_thread(void *param)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct amdgpu_device *adev = (struct amdgpu_device *)param;
 	struct amdgpu_ras *con = amdgpu_ras_get_context(adev);
 	uint32_t poison_creation_count, msg_count;
@@ -3579,6 +3624,7 @@ static int amdgpu_ras_page_retirement_thread(void *param)
 	}
 
 	return 0;
+#endif
 }
 
 int amdgpu_ras_init_badpage_info(struct amdgpu_device *adev)
@@ -3655,8 +3701,8 @@ int amdgpu_ras_recovery_init(struct amdgpu_device *adev, bool init_bp_info)
 		goto out;
 	}
 
-	mutex_init(&con->recovery_lock);
-	mutex_init(&con->poison_lock);
+	rw_init(&con->recovery_lock, "rasrec");
+	rw_init(&con->poison_lock, "raspsn");
 	INIT_WORK(&con->recovery_work, amdgpu_ras_do_recovery);
 	atomic_set(&con->in_recovery, 0);
 	atomic_set(&con->rma_in_recovery, 0);
@@ -3671,9 +3717,11 @@ int amdgpu_ras_recovery_init(struct amdgpu_device *adev, bool init_bp_info)
 			goto free;
 	}
 
-	mutex_init(&con->page_rsv_lock);
+	rw_init(&con->page_rsv_lock, "pgrsv");
+#ifdef notyet
 	INIT_KFIFO(con->poison_fifo);
-	mutex_init(&con->page_retirement_lock);
+#endif
+	rw_init(&con->page_retirement_lock, "pgret");
 	init_waitqueue_head(&con->page_retirement_wq);
 	atomic_set(&con->page_retirement_req_cnt, 0);
 	atomic_set(&con->poison_creation_count, 0);
@@ -4181,7 +4229,7 @@ int amdgpu_ras_init(struct amdgpu_device *adev)
 	con->init_task_pid = task_pid_nr(current);
 	get_task_comm(con->init_task_comm, current);
 
-	mutex_init(&con->critical_region_lock);
+	rw_init(&con->critical_region_lock, "rascr");
 	INIT_LIST_HEAD(&con->critical_region_head);
 
 	dev_info(adev->dev, "RAS INFO: ras initialized successfully, "
@@ -4964,13 +5012,13 @@ void amdgpu_ras_get_error_type_name(uint32_t err_type, char *err_type_name)
 
 	switch (err_type) {
 	case AMDGPU_RAS_ERROR__SINGLE_CORRECTABLE:
-		sprintf(err_type_name, "correctable");
+		snprintf(err_type_name, 16, "correctable");
 		break;
 	case AMDGPU_RAS_ERROR__MULTI_UNCORRECTABLE:
-		sprintf(err_type_name, "uncorrectable");
+		snprintf(err_type_name, 16, "uncorrectable");
 		break;
 	default:
-		sprintf(err_type_name, "unknown");
+		snprintf(err_type_name, 16, "unknown");
 		break;
 	}
 }
@@ -5351,7 +5399,7 @@ static bool amdgpu_ras_boot_error_detected(struct amdgpu_device *adev,
 		if ((reg_data & AMDGPU_RAS_BOOT_STATUS_MASK) == AMDGPU_RAS_BOOT_STEADY_STATUS)
 			return false;
 		else
-			msleep(1);
+			drm_msleep(1);
 	}
 
 	return true;

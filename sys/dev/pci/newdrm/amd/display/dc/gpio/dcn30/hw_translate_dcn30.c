@@ -23,6 +23,8 @@
  *
  */
 
+#include <generated/autoconf.h>
+
 /*
  * Pre-requisites: headers required by header of this unit
  */

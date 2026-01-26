@@ -22,6 +22,8 @@
  *
  */
 
+#include <generated/autoconf.h>
+
 #include "dm_services.h"
 
 #include "include/logger_interface.h"

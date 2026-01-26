@@ -178,6 +178,7 @@
 #define dmub_memcmp(lhs, rhs, bytes) memcmp((lhs), (rhs), (bytes))
 #endif
 
+#pragma pack(push, 1)
 /**
  * OS/FW agnostic udelay
  */
@@ -240,6 +241,7 @@ union abm_flags {
 
 	unsigned int u32All;
 };
+#pragma pack(pop)
 
 struct abm_save_restore {
 	/**

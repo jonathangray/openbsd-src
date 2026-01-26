@@ -49,7 +49,7 @@ static DEFINE_MUTEX(xgmi_mutex);
 
 #define AMDGPU_MAX_XGMI_DEVICE_PER_HIVE		4
 
-static LIST_HEAD(xgmi_hive_list);
+static DRM_LIST_HEAD(xgmi_hive_list);
 
 static const int xgmi_pcs_err_status_reg_vg20[] = {
 	smnXGMI0_PCS_GOPX16_PCS_ERROR_STATUS,
@@ -389,7 +389,9 @@ int amdgpu_get_xgmi_link_status(struct amdgpu_device *adev, int global_link_num)
 
 static struct attribute amdgpu_xgmi_hive_id = {
 	.name = "xgmi_hive_id",
+#ifdef notyet
 	.mode = S_IRUGO
+#endif
 };
 
 static struct attribute *amdgpu_xgmi_hive_attrs[] = {
@@ -422,14 +424,18 @@ static void amdgpu_xgmi_hive_release(struct kobject *kobj)
 	kfree(hive);
 }
 
+#ifdef notyet
 static const struct sysfs_ops amdgpu_xgmi_hive_ops = {
 	.show = amdgpu_xgmi_show_attrs,
 };
+#endif
 
 static const struct kobj_type amdgpu_xgmi_hive_type = {
 	.release = amdgpu_xgmi_hive_release,
+#ifdef notyet
 	.sysfs_ops = &amdgpu_xgmi_hive_ops,
 	.default_groups = amdgpu_xgmi_hive_groups,
+#endif
 };
 
 static ssize_t amdgpu_xgmi_show_device_id(struct device *dev,
@@ -458,6 +464,9 @@ static ssize_t amdgpu_xgmi_show_num_hops(struct device *dev,
 					struct device_attribute *attr,
 					char *buf)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef __linux__
 	struct drm_device *ddev = dev_get_drvdata(dev);
 	struct amdgpu_device *adev = drm_to_adev(ddev);
 	struct psp_xgmi_topology_info *top = &adev->psp.xgmi_context.top_info;
@@ -467,12 +476,16 @@ static ssize_t amdgpu_xgmi_show_num_hops(struct device *dev,
 		sprintf(buf + 3 * i, "%02x ", top->nodes[i].num_hops);
 
 	return sysfs_emit(buf, "%s\n", buf);
+#endif
 }
 
 static ssize_t amdgpu_xgmi_show_num_links(struct device *dev,
 					struct device_attribute *attr,
 					char *buf)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef __linux__
 	struct drm_device *ddev = dev_get_drvdata(dev);
 	struct amdgpu_device *adev = drm_to_adev(ddev);
 	struct psp_xgmi_topology_info *top = &adev->psp.xgmi_context.top_info;
@@ -482,6 +495,7 @@ static ssize_t amdgpu_xgmi_show_num_links(struct device *dev,
 		sprintf(buf + 3 * i, "%02x ", top->nodes[i].num_links);
 
 	return sysfs_emit(buf, "%s\n", buf);
+#endif
 }
 
 static ssize_t amdgpu_xgmi_show_connected_port_num(struct device *dev,
@@ -563,6 +577,9 @@ static DEVICE_ATTR(xgmi_port_num, S_IRUGO, amdgpu_xgmi_show_connected_port_num, 
 static int amdgpu_xgmi_sysfs_add_dev_info(struct amdgpu_device *adev,
 					 struct amdgpu_hive_info *hive)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	int ret = 0;
 	char node[10] = { 0 };
 
@@ -611,7 +628,7 @@ static int amdgpu_xgmi_sysfs_add_dev_info(struct amdgpu_device *adev,
 		}
 	}
 
-	sprintf(node, "node%d", atomic_read(&hive->number_devices));
+	snprintf(node, sizeof(node), "node%d", atomic_read(&hive->number_devices));
 	/* Create sysfs link form the hive folder to yourself */
 	ret = sysfs_create_link(&hive->kobj, &adev->dev->kobj, node);
 	if (ret) {
@@ -636,11 +653,13 @@ remove_file:
 
 success:
 	return ret;
+#endif
 }
 
 static void amdgpu_xgmi_sysfs_rem_dev_info(struct amdgpu_device *adev,
 					  struct amdgpu_hive_info *hive)
 {
+#ifdef __linux__
 	char node[10];
 	memset(node, 0, sizeof(node));
 
@@ -657,7 +676,7 @@ static void amdgpu_xgmi_sysfs_rem_dev_info(struct amdgpu_device *adev,
 
 	sprintf(node, "node%d", atomic_read(&hive->number_devices));
 	sysfs_remove_link(&hive->kobj, node);
-
+#endif
 }
 
 
@@ -669,6 +688,10 @@ struct amdgpu_hive_info *amdgpu_get_xgmi_hive(struct amdgpu_device *adev)
 
 	if (!adev->gmc.xgmi.hive_id)
 		return NULL;
+
+	STUB();
+	return NULL;
+#ifdef notyet
 
 	if (adev->hive) {
 		kobject_get(&adev->hive->kobj);
@@ -733,7 +756,7 @@ struct amdgpu_hive_info *amdgpu_get_xgmi_hive(struct amdgpu_device *adev)
 	hive->hive_id = adev->gmc.xgmi.hive_id;
 	INIT_LIST_HEAD(&hive->device_list);
 	INIT_LIST_HEAD(&hive->node);
-	mutex_init(&hive->hive_lock);
+	rw_init(&hive->hive_lock, "aghive");
 	atomic_set(&hive->number_devices, 0);
 	task_barrier_init(&hive->tb);
 	hive->pstate = AMDGPU_XGMI_PSTATE_UNKNOWN;
@@ -752,6 +775,7 @@ pro_end:
 		kobject_get(&hive->kobj);
 	mutex_unlock(&xgmi_mutex);
 	return hive;
+#endif
 }
 
 void amdgpu_put_xgmi_hive(struct amdgpu_hive_info *hive)
@@ -1632,7 +1656,8 @@ int amdgpu_xgmi_ras_sw_init(struct amdgpu_device *adev)
 		return err;
 	}
 
-	strcpy(ras->ras_block.ras_comm.name, "xgmi_wafl");
+	strlcpy(ras->ras_block.ras_comm.name, "xgmi_wafl",
+	    sizeof(ras->ras_block.ras_comm.name));
 	ras->ras_block.ras_comm.block = AMDGPU_RAS_BLOCK__XGMI_WAFL;
 	ras->ras_block.ras_comm.type = AMDGPU_RAS_ERROR__MULTI_UNCORRECTABLE;
 	adev->gmc.xgmi.ras_if = &ras->ras_block.ras_comm;

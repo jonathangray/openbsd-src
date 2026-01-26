@@ -22,6 +22,8 @@
  * Authors: AMD
  *
  */
+#include <generated/autoconf.h>
+
 #include "dm_services.h"
 #include "include/gpio_types.h"
 #include "../hw_factory.h"

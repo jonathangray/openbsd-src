@@ -224,7 +224,7 @@ static int vcn_v4_0_sw_init(struct amdgpu_ip_block *ip_block)
 		else
 			ring->doorbell_index = (adev->doorbell_index.vcn.vcn_ring0_1 << 1) + 2 + 8 * i;
 		ring->vm_hub = AMDGPU_MMHUB0(0);
-		sprintf(ring->name, "vcn_unified_%d", i);
+		snprintf(ring->name, sizeof(ring->name), "vcn_unified_%d", i);
 
 		r = amdgpu_ring_init(adev, ring, 512, &adev->vcn.inst[i].irq, 0,
 						AMDGPU_RING_PRIO_0, &adev->vcn.inst[i].sched_score);
@@ -1237,7 +1237,7 @@ static int vcn_v4_0_start(struct amdgpu_vcn_inst *vinst)
 				break;
 			mdelay(10);
 			if (amdgpu_emu_mode == 1)
-				msleep(1);
+				drm_msleep(1);
 		}
 
 		if (amdgpu_emu_mode == 1) {

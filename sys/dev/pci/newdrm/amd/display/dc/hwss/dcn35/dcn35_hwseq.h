@@ -49,7 +49,7 @@ void dcn35_init_hw(struct dc *dc);
 
 void dcn35_disable_link_output(struct dc_link *link,
 		const struct link_resource *link_res,
-		enum signal_type signal);
+		enum amd_signal_type signal);
 
 void dcn35_power_down_on_boot(struct dc *dc);
 

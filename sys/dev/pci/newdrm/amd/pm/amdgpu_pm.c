@@ -97,6 +97,8 @@ const char * const amdgpu_pp_profile_name[] = {
 	"UNCAPPED",
 };
 
+#ifdef __linux__
+
 /**
  * amdgpu_pm_dev_state_check - Check if device can be accessed.
  * @adev: Target device.
@@ -4661,8 +4663,12 @@ err_out:
 	return ret;
 }
 
+#endif /* __linux__ */
+
 int amdgpu_pm_sysfs_init(struct amdgpu_device *adev)
 {
+	return 0;
+#ifdef __linux__
 	enum amdgpu_sriov_vf_mode mode;
 	uint32_t mask = 0;
 	uint32_t tmp;
@@ -4760,16 +4766,19 @@ err_out0:
 		hwmon_device_unregister(adev->pm.int_hwmon_dev);
 
 	return ret;
+#endif
 }
 
 void amdgpu_pm_sysfs_fini(struct amdgpu_device *adev)
 {
+#ifdef __linux__
 	amdgpu_od_set_fini(adev);
 
 	if (adev->pm.int_hwmon_dev)
 		hwmon_device_unregister(adev->pm.int_hwmon_dev);
 
 	amdgpu_device_attr_remove_groups(adev, &adev->pm.pm_attr_list);
+#endif
 }
 
 /*

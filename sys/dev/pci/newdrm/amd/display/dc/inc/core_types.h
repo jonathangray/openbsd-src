@@ -49,7 +49,7 @@
 #include "link_encoder.h"
 #include "stream_encoder.h"
 #include "clock_source.h"
-#include "audio.h"
+#include <hw/audio.h>
 #include "dm_pp_smu.h"
 #include "dm_cp_psp.h"
 #include "link_hwss.h"

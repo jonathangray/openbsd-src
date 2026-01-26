@@ -614,7 +614,7 @@ int amdgpu_aca_get_error_data(struct amdgpu_device *adev, struct aca_handle *han
 
 static void aca_error_init(struct aca_error *aerr, enum aca_error_type type)
 {
-	mutex_init(&aerr->lock);
+	rw_init(&aerr->lock, "acaerr");
 	INIT_LIST_HEAD(&aerr->list);
 	aerr->type = type;
 	aerr->nr_errors = 0;
@@ -686,6 +686,9 @@ static ssize_t aca_sysfs_read(struct device *dev,
 
 static int add_aca_sysfs(struct amdgpu_device *adev, struct aca_handle *handle)
 {
+	STUB();
+	return 0;
+#ifdef notyet
 	struct device_attribute *aca_attr = &handle->aca_attr;
 
 	snprintf(handle->attr_name, sizeof(handle->attr_name) - 1, "aca_%s", handle->name);
@@ -697,6 +700,7 @@ static int add_aca_sysfs(struct amdgpu_device *adev, struct aca_handle *handle)
 	return sysfs_add_file_to_group(&adev->dev->kobj,
 				       &aca_attr->attr,
 				       "ras");
+#endif
 }
 
 int amdgpu_aca_add_handle(struct amdgpu_device *adev, struct aca_handle *handle,
@@ -726,6 +730,7 @@ static void remove_aca_handle(struct aca_handle *handle)
 
 static void remove_aca_sysfs(struct aca_handle *handle)
 {
+#ifdef notyet
 	struct amdgpu_device *adev = handle->adev;
 	struct device_attribute *aca_attr = &handle->aca_attr;
 
@@ -733,6 +738,7 @@ static void remove_aca_sysfs(struct aca_handle *handle)
 		sysfs_remove_file_from_group(&adev->dev->kobj,
 					     &aca_attr->attr,
 					     "ras");
+#endif
 }
 
 void amdgpu_aca_remove_handle(struct aca_handle *handle)

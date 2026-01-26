@@ -211,7 +211,7 @@ static int vcn_v4_0_3_sw_init(struct amdgpu_ip_block *ip_block)
 				32 * vcn_inst;
 
 		ring->vm_hub = AMDGPU_MMHUB0(adev->vcn.inst[i].aid_id);
-		sprintf(ring->name, "vcn_unified_%d", adev->vcn.inst[i].aid_id);
+		snprintf(ring->name, sizeof(ring->name), "vcn_unified_%d", adev->vcn.inst[i].aid_id);
 
 		/* There are no per-instance irq source IDs on 4.0.3, the IH
 		 * packets use a separate field to differentiate instances.

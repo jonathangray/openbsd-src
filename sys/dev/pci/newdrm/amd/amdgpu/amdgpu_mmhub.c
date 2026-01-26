@@ -36,7 +36,8 @@ int amdgpu_mmhub_ras_sw_init(struct amdgpu_device *adev)
 		return err;
 	}
 
-	strcpy(ras->ras_block.ras_comm.name, "mmhub");
+	strlcpy(ras->ras_block.ras_comm.name, "mmhub",
+	    sizeof(ras->ras_block.ras_comm.name));
 	ras->ras_block.ras_comm.block = AMDGPU_RAS_BLOCK__MMHUB;
 	ras->ras_block.ras_comm.type = AMDGPU_RAS_ERROR__MULTI_UNCORRECTABLE;
 	adev->mmhub.ras_if = &ras->ras_block.ras_comm;

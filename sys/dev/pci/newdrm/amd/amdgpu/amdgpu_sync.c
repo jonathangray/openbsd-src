@@ -40,7 +40,7 @@ struct amdgpu_sync_entry {
 	struct dma_fence	*fence;
 };
 
-static struct kmem_cache *amdgpu_sync_slab;
+static struct pool amdgpu_sync_slab;
 
 /**
  * amdgpu_sync_create - zero init sync object
@@ -169,7 +169,12 @@ int amdgpu_sync_fence(struct amdgpu_sync *sync, struct dma_fence *f,
 	if (amdgpu_sync_add_later(sync, f))
 		return 0;
 
+#ifdef __linux__
 	e = kmem_cache_alloc(amdgpu_sync_slab, flags);
+#else
+	e = pool_get(&amdgpu_sync_slab,
+	    (flags & GFP_NOWAIT) ? PR_NOWAIT : PR_WAITOK);
+#endif
 	if (!e)
 		return -ENOMEM;
 
@@ -301,7 +306,11 @@ static void amdgpu_sync_entry_free(struct amdgpu_sync_entry *e)
 {
 	hash_del(&e->node);
 	dma_fence_put(e->fence);
+#ifdef __linux__
 	kmem_cache_free(amdgpu_sync_slab, e);
+#else
+	pool_put(&amdgpu_sync_slab, e);
+#endif
 }
 
 /**
@@ -365,7 +374,11 @@ struct dma_fence *amdgpu_sync_get_fence(struct amdgpu_sync *sync)
 		f = e->fence;
 
 		hash_del(&e->node);
+#ifdef __linux__
 		kmem_cache_free(amdgpu_sync_slab, e);
+#else
+		pool_put(&amdgpu_sync_slab, e);
+#endif
 
 		if (!dma_fence_is_signaled(f))
 			return f;
@@ -496,9 +509,14 @@ void amdgpu_sync_free(struct amdgpu_sync *sync)
  */
 int amdgpu_sync_init(void)
 {
+#ifdef __linux__
 	amdgpu_sync_slab = KMEM_CACHE(amdgpu_sync_entry, SLAB_HWCACHE_ALIGN);
 	if (!amdgpu_sync_slab)
 		return -ENOMEM;
+#else
+	pool_init(&amdgpu_sync_slab, sizeof(struct amdgpu_sync_entry),
+	    CACHELINESIZE, IPL_TTY, 0, "amdgpu_sync", NULL);
+#endif
 
 	return 0;
 }
@@ -510,5 +528,9 @@ int amdgpu_sync_init(void)
  */
 void amdgpu_sync_fini(void)
 {
+#ifdef __linux__
 	kmem_cache_destroy(amdgpu_sync_slab);
+#else
+	pool_destroy(&amdgpu_sync_slab);
+#endif
 }

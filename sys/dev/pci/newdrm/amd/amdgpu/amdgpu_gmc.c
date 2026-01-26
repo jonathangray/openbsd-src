@@ -784,7 +784,7 @@ int amdgpu_gmc_flush_gpu_tlb_pasid(struct amdgpu_device *adev, uint16_t pasid,
 		might_sleep();
 		while (r < 1 && cnt++ < MAX_KIQ_REG_TRY &&
 		       !amdgpu_reset_pending(adev->reset_domain)) {
-			msleep(MAX_KIQ_REG_BAILOUT_INTERVAL);
+			drm_msleep(MAX_KIQ_REG_BAILOUT_INTERVAL);
 			r = amdgpu_fence_wait_polling(ring, seq, MAX_KIQ_REG_WAIT);
 		}
 
@@ -838,7 +838,7 @@ void amdgpu_gmc_fw_reg_write_reg_wait(struct amdgpu_device *adev,
 	while (r < 1 && cnt++ < MAX_KIQ_REG_TRY &&
 	       !amdgpu_reset_pending(adev->reset_domain)) {
 
-		msleep(MAX_KIQ_REG_BAILOUT_INTERVAL);
+		drm_msleep(MAX_KIQ_REG_BAILOUT_INTERVAL);
 		r = amdgpu_fence_wait_polling(ring, seq, MAX_KIQ_REG_WAIT);
 	}
 
@@ -1018,6 +1018,15 @@ void amdgpu_gmc_get_vbios_allocations(struct amdgpu_device *adev)
 		size = 0;
 	} else {
 		size = amdgpu_gmc_get_vbios_fb_size(adev);
+
+#ifdef __amd64__
+		/*
+		 * XXX Workaround for machines where the framebuffer
+		 * size reported by the hardware is incorrect.
+		 */
+		extern psize_t efifb_stolen();
+		size = max(size, efifb_stolen());
+#endif
 
 		if (adev->mman.keep_stolen_vga_memory)
 			size = max(size, (unsigned)AMDGPU_VBIOS_VGA_ALLOCATION);

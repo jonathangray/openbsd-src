@@ -354,7 +354,7 @@ static int smu10_disable_gfx_off(struct pp_hwmgr *hwmgr)
 
 		/* confirm gfx is back to "on" state */
 		while (!smu10_is_gfx_on(hwmgr))
-			msleep(1);
+			drm_msleep(1);
 	}
 
 	return 0;
@@ -1048,13 +1048,13 @@ static int smu10_print_clock_levels(struct pp_hwmgr *hwmgr,
 		else
 			i = 1;
 
-		size += sprintf(buf + size, "0: %uMhz %s\n",
+		size += snprintf(buf + size, PAGE_SIZE - size, "0: %uMhz %s\n",
 					data->gfx_min_freq_limit/100,
 					i == 0 ? "*" : "");
-		size += sprintf(buf + size, "1: %uMhz %s\n",
+		size += snprintf(buf + size, PAGE_SIZE - size, "1: %uMhz %s\n",
 					i == 1 ? now : SMU10_UMD_PSTATE_GFXCLK,
 					i == 1 ? "*" : "");
-		size += sprintf(buf + size, "2: %uMhz %s\n",
+		size += snprintf(buf + size, PAGE_SIZE - size, "2: %uMhz %s\n",
 					data->gfx_max_freq_limit/100,
 					i == 2 ? "*" : "");
 		break;
@@ -1064,7 +1064,7 @@ static int smu10_print_clock_levels(struct pp_hwmgr *hwmgr,
 			return ret;
 
 		for (i = 0; i < mclk_table->count; i++)
-			size += sprintf(buf + size, "%d: %uMhz %s\n",
+			size += snprintf(buf + size, PAGE_SIZE - size, "%d: %uMhz %s\n",
 					i,
 					mclk_table->entries[i].clk / 100,
 					((mclk_table->entries[i].clk / 100)
@@ -1079,10 +1079,10 @@ static int smu10_print_clock_levels(struct pp_hwmgr *hwmgr,
 			if (ret)
 				return ret;
 
-			size += sprintf(buf + size, "%s:\n", "OD_SCLK");
-			size += sprintf(buf + size, "0: %10uMhz\n",
+			size += snprintf(buf + size, PAGE_SIZE - size, "%s:\n", "OD_SCLK");
+			size += snprintf(buf + size, PAGE_SIZE - size, "0: %10uMhz\n",
 			(data->gfx_actual_soft_min_freq > 0) ? data->gfx_actual_soft_min_freq : min_freq);
-			size += sprintf(buf + size, "1: %10uMhz\n",
+			size += snprintf(buf + size, PAGE_SIZE - size, "1: %10uMhz\n",
 			(data->gfx_actual_soft_max_freq > 0) ? data->gfx_actual_soft_max_freq : max_freq);
 		}
 		break;
@@ -1095,8 +1095,8 @@ static int smu10_print_clock_levels(struct pp_hwmgr *hwmgr,
 			if (ret)
 				return ret;
 
-			size += sprintf(buf + size, "%s:\n", "OD_RANGE");
-			size += sprintf(buf + size, "SCLK: %7uMHz %10uMHz\n",
+			size += snprintf(buf + size, PAGE_SIZE - size, "%s:\n", "OD_RANGE");
+			size += snprintf(buf + size, PAGE_SIZE - size, "SCLK: %7uMHz %10uMHz\n",
 				min_freq, max_freq);
 		}
 		break;

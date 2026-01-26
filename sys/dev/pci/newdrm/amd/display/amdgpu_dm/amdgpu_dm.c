@@ -660,6 +660,9 @@ static void dm_crtc_high_irq(void *interrupt_params)
 		return;
 
 	if (acrtc->wb_conn) {
+		STUB();
+		return;
+#ifdef notyet
 		spin_lock_irqsave(&acrtc->wb_conn->job_lock, flags);
 
 		if (acrtc->wb_pending) {
@@ -685,6 +688,7 @@ static void dm_crtc_high_irq(void *interrupt_params)
 			}
 		} else
 			spin_unlock_irqrestore(&acrtc->wb_conn->job_lock, flags);
+#endif
 	}
 
 	vrr_active = amdgpu_dm_crtc_vrr_active_irq(acrtc);
@@ -1605,7 +1609,7 @@ static void dm_handle_hpd_rx_offload_work(struct work_struct *work)
 		if (aconnector->timing_changed) {
 			/* force connector disconnect and reconnect */
 			force_connector_state(aconnector, DRM_FORCE_OFF);
-			msleep(100);
+			drm_msleep(100);
 			force_connector_state(aconnector, DRM_FORCE_UNSPECIFIED);
 		}
 
@@ -1671,7 +1675,7 @@ static struct hpd_rx_irq_offload_work_queue *hpd_rx_irq_create_workqueue(struct 
 			goto out_err;
 		}
 
-		spin_lock_init(&hpd_rx_offload_wq[i].offload_lock);
+		mtx_init(&hpd_rx_offload_wq[i].offload_lock, IPL_TTY);
 	}
 
 	return hpd_rx_offload_wq;
@@ -1888,9 +1892,9 @@ static int amdgpu_dm_init(struct amdgpu_device *adev)
 	memset(&init_data, 0, sizeof(init_data));
 	memset(&init_params, 0, sizeof(init_params));
 
-	mutex_init(&adev->dm.dpia_aux_lock);
-	mutex_init(&adev->dm.dc_lock);
-	mutex_init(&adev->dm.audio_lock);
+	rw_init(&adev->dm.dpia_aux_lock, "dmdpia");
+	rw_init(&adev->dm.dc_lock, "dmdc");
+	rw_init(&adev->dm.audio_lock, "dmaud");
 
 	if (amdgpu_dm_irq_init(adev)) {
 		drm_err(adev_to_drm(adev), "failed to initialize DM IRQ support.\n");
@@ -2256,7 +2260,11 @@ static void amdgpu_dm_fini(struct amdgpu_device *adev)
 	}
 #endif
 	if (adev->dm.hdcp_workqueue) {
+#ifdef notyet
 		hdcp_destroy(&adev->dev->kobj, adev->dm.hdcp_workqueue);
+#else
+		hdcp_destroy(NULL, adev->dm.hdcp_workqueue);
+#endif
 		adev->dm.hdcp_workqueue = NULL;
 	}
 
@@ -3573,9 +3581,15 @@ static int dm_resume(struct amdgpu_ip_block *ip_block)
 		    aconnector->mst_root)
 			continue;
 
+#ifdef notyet
 		scoped_guard(mutex, &aconnector->mst_mgr.lock) {
 			init = !aconnector->mst_mgr.mst_primary;
 		}
+#else
+		mutex_lock(&aconnector->mst_mgr.lock);
+		init = !aconnector->mst_mgr.mst_primary;
+		mutex_unlock(&aconnector->mst_mgr.lock);
+#endif
 		if (init)
 			dm_helpers_dp_mst_start_top_mgr(aconnector->dc_link->ctx,
 				aconnector->dc_link, false);
@@ -4893,7 +4907,14 @@ static void amdgpu_dm_update_backlight_caps(struct amdgpu_display_manager *dm,
 	amdgpu_acpi_get_backlight_caps(caps);
 
 	/* validate the firmware value is sane */
+#ifdef notyet
 	if (caps->caps_valid) {
+#else
+	/*
+	 * ATIF levels can be too low, on t495 ac: 100 (39%), dc: 32 (12%)
+	 */
+	if (0) {
+#endif
 		int spread = caps->max_input_signal - caps->min_input_signal;
 
 		if (caps->max_input_signal > AMDGPU_DM_DEFAULT_MAX_BACKLIGHT ||
@@ -5447,6 +5468,15 @@ static int amdgpu_dm_initialize_drm_device(struct amdgpu_device *adev)
 		}
 	}
 
+#ifdef __OpenBSD__
+	/*
+	 * ThinkPad X13 Gen 6 (21RM) with GC 11.5.2, DCN 3.5.0
+	 * hangs if reboot is attempted after X is started when
+	 * PSR is enabled.
+	 */
+	psr_feature_enabled = false;
+#endif
+
 	/* Determine whether to enable Replay support by default. */
 	if (!(amdgpu_dc_debug_mask & DC_DISABLE_REPLAY)) {
 		switch (amdgpu_ip_version(adev, DCE_HWIP, 0)) {
@@ -5479,6 +5509,8 @@ static int amdgpu_dm_initialize_drm_device(struct amdgpu_device *adev)
 		link = dc_get_link_at_index(dm->dc, i);
 
 		if (link->connector_signal == SIGNAL_TYPE_VIRTUAL) {
+		/* XXX writeback connector functions not implemented */
+#ifdef notyet
 			struct amdgpu_dm_wb_connector *wbcon = kzalloc(sizeof(*wbcon), GFP_KERNEL);
 
 			if (!wbcon) {
@@ -5491,6 +5523,7 @@ static int amdgpu_dm_initialize_drm_device(struct amdgpu_device *adev)
 				kfree(wbcon);
 				continue;
 			}
+#endif
 
 			link->psr_settings.psr_feature_enabled = false;
 			link->psr_settings.psr_version = DC_PSR_VERSION_UNSUPPORTED;
@@ -7444,6 +7477,8 @@ static ssize_t panel_power_savings_show(struct device *device,
 	return sysfs_emit(buf, "%u\n", val);
 }
 
+#ifdef __linux__
+
 static ssize_t panel_power_savings_store(struct device *device,
 					 struct device_attribute *attr,
 					 const char *buf, size_t count)
@@ -7482,6 +7517,8 @@ static const struct attribute_group amdgpu_group = {
 	.name = "amdgpu",
 	.attrs = amdgpu_attrs
 };
+
+#endif
 
 static bool
 amdgpu_dm_should_create_sysfs(struct amdgpu_dm_connector *amdgpu_dm_connector)
@@ -8312,7 +8349,7 @@ static int dm_update_mst_vcpi_slots_for_dsc(struct drm_atomic_state *state,
 	return 0;
 }
 
-static int to_drm_connector_type(enum signal_type st)
+static int to_drm_connector_type(enum amd_signal_type st)
 {
 	switch (st) {
 	case SIGNAL_TYPE_HDMI_TYPE_A:
@@ -8695,8 +8732,8 @@ void amdgpu_dm_connector_init_helper(struct amdgpu_display_manager *dm,
 	aconnector->pack_sdp_v1_3 = false;
 	aconnector->as_type = ADAPTIVE_SYNC_TYPE_NONE;
 	memset(&aconnector->vsdb_info, 0, sizeof(aconnector->vsdb_info));
-	mutex_init(&aconnector->hpd_lock);
-	mutex_init(&aconnector->handle_mst_msg_ready);
+	rw_init(&aconnector->hpd_lock, "dmhpd");
+	rw_init(&aconnector->handle_mst_msg_ready, "dmmr");
 
 	aconnector->hdmi_hpd_debounce_delay_ms = AMDGPU_DM_HDMI_HPD_DEBOUNCE_MS;
 	INIT_DELAYED_WORK(&aconnector->hdmi_hpd_debounce_work, hdmi_hpd_debounce_work);
@@ -8854,8 +8891,10 @@ create_i2c(struct ddc_service *ddc_service, bool oem)
 	i2c = kzalloc(sizeof(struct amdgpu_i2c_adapter), GFP_KERNEL);
 	if (!i2c)
 		return NULL;
+#ifdef notyet
 	i2c->base.owner = THIS_MODULE;
 	i2c->base.dev.parent = &adev->pdev->dev;
+#endif
 	i2c->base.algo = &amdgpu_dm_i2c_algo;
 	if (oem)
 		snprintf(i2c->base.name, sizeof(i2c->base.name), "AMDGPU DM i2c OEM bus");
@@ -10319,6 +10358,8 @@ static void dm_set_writeback(struct amdgpu_display_manager *dm,
 			      struct drm_connector *connector,
 			      struct drm_connector_state *new_con_state)
 {
+	STUB();
+#ifdef notyet
 	struct drm_writeback_connector *wb_conn = drm_connector_to_writeback(connector);
 	struct amdgpu_device *adev = dm->adev;
 	struct amdgpu_crtc *acrtc;
@@ -10411,6 +10452,7 @@ static void dm_set_writeback(struct amdgpu_display_manager *dm,
 	acrtc->wb_pending = true;
 	acrtc->wb_conn = wb_conn;
 	drm_writeback_queue_job(wb_conn, new_con_state);
+#endif
 }
 
 static void amdgpu_dm_update_hdcp(struct drm_atomic_state *state)
@@ -12721,7 +12763,8 @@ static bool dm_edid_parser_send_cea(struct amdgpu_display_manager *dm,
 		vsdb->min_refresh_rate_hz = output->amd_vsdb.min_frame_rate;
 		vsdb->max_refresh_rate_hz = output->amd_vsdb.max_frame_rate;
 	} else {
-		drm_warn(adev_to_drm(dm->adev), "Unknown EDID CEA parser results\n");
+		if (output->type != 0)
+			drm_warn(adev_to_drm(dm->adev), "Unknown EDID CEA parser results\n");
 		return false;
 	}
 

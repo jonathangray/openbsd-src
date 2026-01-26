@@ -33,6 +33,12 @@
 #include <linux/pci.h>
 #include <linux/slab.h>
 #include <linux/acpi.h>
+
+#if defined(__amd64__) || defined(__i386__)
+#include <dev/isa/isareg.h>
+#include <dev/isa/isavar.h>
+#endif
+
 /*
  * BIOS.
  */
@@ -98,6 +104,7 @@ void amdgpu_bios_release(struct amdgpu_device *adev)
  * present.
  * For SR-IOV, the vbios image is also put in VRAM in the VF.
  */
+#ifdef __linux__
 static bool amdgpu_read_bios_from_vram(struct amdgpu_device *adev)
 {
 	uint8_t __iomem *bios;
@@ -134,7 +141,48 @@ static bool amdgpu_read_bios_from_vram(struct amdgpu_device *adev)
 
 	return true;
 }
+#else
+static bool amdgpu_read_bios_from_vram(struct amdgpu_device *adev)
+{
+	uint8_t __iomem *bios;
+	resource_size_t size = 256 * 1024; /* ??? */
+	bus_space_handle_t bsh;
+	bus_space_tag_t bst = adev->memt;
 
+	if (!(adev->flags & AMD_IS_APU))
+		if (amdgpu_device_need_post(adev))
+			return false;
+
+	adev->bios = NULL;
+
+	if (bus_space_map(bst, adev->fb_aper_offset, size, BUS_SPACE_MAP_LINEAR, &bsh) != 0)
+		return false;
+
+	bios = bus_space_vaddr(adev->memt, bsh);
+	if (bios == NULL) {
+		bus_space_unmap(bst, bsh, size);
+		return false;
+	}
+
+	adev->bios = kmalloc(size, GFP_KERNEL);
+	if (!adev->bios) {
+		bus_space_unmap(bst, bsh, size);
+		return false;
+	}
+	adev->bios_size = size;
+	memcpy_fromio(adev->bios, bios, size);
+	bus_space_unmap(bst, bsh, size);
+
+	if (!check_atom_bios(adev->bios, size)) {
+		kfree(adev->bios);
+		return false;
+	}
+
+	return true;
+}
+#endif
+
+#ifdef __linux__
 bool amdgpu_read_bios(struct amdgpu_device *adev)
 {
 	uint8_t __iomem *bios;
@@ -162,6 +210,45 @@ bool amdgpu_read_bios(struct amdgpu_device *adev)
 
 	return true;
 }
+#else
+bool amdgpu_read_bios(struct amdgpu_device *adev)
+{
+	size_t size;
+	pcireg_t address, mask;
+	bus_space_handle_t romh;
+	int rc;
+
+	adev->bios = NULL;
+	/* XXX: some cards may return 0 for rom size? ddx has a workaround */
+
+	address = pci_conf_read(adev->pc, adev->pa_tag, PCI_ROM_REG);
+	pci_conf_write(adev->pc, adev->pa_tag, PCI_ROM_REG, ~PCI_ROM_ENABLE);
+	mask = pci_conf_read(adev->pc, adev->pa_tag, PCI_ROM_REG);
+	address |= PCI_ROM_ENABLE;
+	pci_conf_write(adev->pc, adev->pa_tag, PCI_ROM_REG, address);
+
+	size = PCI_ROM_SIZE(mask);
+	if (size == 0)
+		return false;
+	rc = bus_space_map(adev->memt, PCI_ROM_ADDR(address), size, 0, &romh);
+	if (rc != 0) {
+		printf(": can't map PCI ROM (%d)\n", rc);
+		return false;
+	}
+
+	adev->bios = kzalloc(size, GFP_KERNEL);
+	adev->bios_size = size;
+	bus_space_read_region_1(adev->memt, romh, 0, adev->bios, size);
+	bus_space_unmap(adev->memt, romh, size);
+
+	if (!check_atom_bios(adev->bios, size)) {
+		kfree(adev->bios);
+		return false;
+	}
+
+	return true;
+}
+#endif
 
 static bool amdgpu_read_bios_from_rom(struct amdgpu_device *adev)
 {
@@ -203,6 +290,7 @@ static bool amdgpu_read_bios_from_rom(struct amdgpu_device *adev)
 	return true;
 }
 
+#ifdef __linux__
 static bool amdgpu_read_platform_bios(struct amdgpu_device *adev)
 {
 	phys_addr_t rom = adev->pdev->rom;
@@ -236,6 +324,35 @@ free_bios:
 
 	return false;
 }
+#else
+static bool amdgpu_read_platform_bios(struct amdgpu_device *adev)
+{
+#if defined(__amd64__) || defined(__i386__)
+	uint8_t __iomem *bios;
+	bus_size_t size = 256 * 1024; /* ??? */
+
+	adev->bios = NULL;
+
+	bios = (u8 *)ISA_HOLE_VADDR(0xc0000);
+
+	adev->bios = kzalloc(size, GFP_KERNEL);
+	if (adev->bios == NULL)
+		return false;
+
+	memcpy_fromio(adev->bios, bios, size);
+
+	if (!check_atom_bios(adev->bios, size)) {
+		kfree(adev->bios);
+		return false;
+	}
+
+	adev->bios_size = size;
+
+	return true;
+#endif
+	return false;
+}
+#endif
 
 #ifdef CONFIG_ACPI
 /* ATRM is used to get the BIOS on the discrete cards in
@@ -299,6 +416,7 @@ static bool amdgpu_atrm_get_bios(struct amdgpu_device *adev)
 	if (dev_is_removable(&adev->pdev->dev))
 		return false;
 
+#ifdef notyet
 	while ((pdev = pci_get_base_class(PCI_BASE_CLASS_DISPLAY, pdev))) {
 		if ((pdev->class != PCI_CLASS_DISPLAY_VGA << 8) &&
 		    (pdev->class != PCI_CLASS_DISPLAY_OTHER << 8))
@@ -314,6 +432,19 @@ static bool amdgpu_atrm_get_bios(struct amdgpu_device *adev)
 			break;
 		}
 	}
+#else
+	{
+		pdev = adev->pdev;
+		dhandle = ACPI_HANDLE(&pdev->dev);
+
+		if (dhandle) {
+			status = acpi_get_handle(dhandle, "ATRM", &atrm_handle);
+			if (ACPI_SUCCESS(status)) {
+				found = true;
+			}
+		}
+	}
+#endif
 
 	if (!found)
 		return false;
@@ -449,9 +580,13 @@ success:
 
 static bool amdgpu_prefer_rom_resource(struct amdgpu_device *adev)
 {
+#ifdef __linux__
 	struct resource *res = &adev->pdev->resource[PCI_ROM_RESOURCE];
 
 	return (res->flags & IORESOURCE_ROM_SHADOW);
+#else
+	return false;
+#endif
 }
 
 static bool amdgpu_get_bios_dgpu(struct amdgpu_device *adev)

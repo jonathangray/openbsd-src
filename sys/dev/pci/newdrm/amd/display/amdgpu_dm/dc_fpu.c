@@ -39,7 +39,15 @@
  * management.
  */
 
+#ifdef notyet
 static DEFINE_PER_CPU(int, fpu_recursion_depth);
+#else
+static int fpu_recursion_depth;
+
+#define __this_cpu_read(x)		atomic_read(&x)
+#define __this_cpu_inc_return(x)	atomic_inc_return(&x)
+#define __this_cpu_dec_return(x)	atomic_dec_return(&x)
+#endif
 
 /**
  * dc_assert_fp_enabled - Check if FPU protection is enabled
@@ -49,7 +57,7 @@ static DEFINE_PER_CPU(int, fpu_recursion_depth);
  * function for checking if the caller invoked it after DC_FP_START(). For
  * example, take a look at dcn20_fpu.c file.
  */
-inline void dc_assert_fp_enabled(void)
+void dc_assert_fp_enabled(void)
 {
 	int depth;
 

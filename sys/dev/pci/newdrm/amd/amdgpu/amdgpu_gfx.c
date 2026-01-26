@@ -116,6 +116,7 @@ void amdgpu_gfx_parse_disable_cu(unsigned int *mask, unsigned int max_se, unsign
 	if (!amdgpu_disable_cu || !*amdgpu_disable_cu)
 		return;
 
+#ifdef notyet
 	p = amdgpu_disable_cu;
 	for (;;) {
 		char *next;
@@ -139,6 +140,7 @@ void amdgpu_gfx_parse_disable_cu(unsigned int *mask, unsigned int max_se, unsign
 			break;
 		p = next + 1;
 	}
+#endif
 }
 
 static bool amdgpu_gfx_is_graphics_multipipe_capable(struct amdgpu_device *adev)
@@ -307,7 +309,7 @@ int amdgpu_gfx_kiq_init_ring(struct amdgpu_device *adev, int xcc_id)
 	struct amdgpu_ring *ring = &kiq->ring;
 	int r = 0;
 
-	spin_lock_init(&kiq->ring_lock);
+	mtx_init(&kiq->ring_lock, IPL_TTY);
 
 	ring->adev = NULL;
 	ring->ring_obj = NULL;
@@ -971,7 +973,8 @@ int amdgpu_gfx_ras_sw_init(struct amdgpu_device *adev)
 		return err;
 	}
 
-	strcpy(ras->ras_block.ras_comm.name, "gfx");
+	strlcpy(ras->ras_block.ras_comm.name, "gfx",
+	    sizeof(ras->ras_block.ras_comm.name));
 	ras->ras_block.ras_comm.block = AMDGPU_RAS_BLOCK__GFX;
 	ras->ras_block.ras_comm.type = AMDGPU_RAS_ERROR__MULTI_UNCORRECTABLE;
 	adev->gfx.ras_if = &ras->ras_block.ras_comm;
@@ -1105,7 +1108,7 @@ uint32_t amdgpu_kiq_rreg(struct amdgpu_device *adev, uint32_t reg, uint32_t xcc_
 		if (amdgpu_in_reset(adev))
 			goto failed_kiq_read;
 
-		msleep(MAX_KIQ_REG_BAILOUT_INTERVAL);
+		drm_msleep(MAX_KIQ_REG_BAILOUT_INTERVAL);
 		r = amdgpu_fence_wait_polling(ring, seq, MAX_KIQ_REG_WAIT);
 	}
 
@@ -1177,7 +1180,7 @@ void amdgpu_kiq_wreg(struct amdgpu_device *adev, uint32_t reg, uint32_t v, uint3
 		if (amdgpu_in_reset(adev))
 			goto failed_kiq_write;
 
-		msleep(MAX_KIQ_REG_BAILOUT_INTERVAL);
+		drm_msleep(MAX_KIQ_REG_BAILOUT_INTERVAL);
 		r = amdgpu_fence_wait_polling(ring, seq, MAX_KIQ_REG_WAIT);
 	}
 
@@ -1563,6 +1566,9 @@ static ssize_t amdgpu_gfx_set_run_cleaner_shader(struct device *dev,
 						 const char *buf,
 						 size_t count)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct drm_device *ddev = dev_get_drvdata(dev);
 	struct amdgpu_device *adev = drm_to_adev(ddev);
 	int ret;
@@ -1607,6 +1613,7 @@ static ssize_t amdgpu_gfx_set_run_cleaner_shader(struct device *dev,
 		return ret;
 
 	return count;
+#endif
 }
 
 /**
@@ -1667,6 +1674,9 @@ static ssize_t amdgpu_gfx_set_enforce_isolation(struct device *dev,
 						struct device_attribute *attr,
 						const char *buf, size_t count)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	struct drm_device *ddev = dev_get_drvdata(dev);
 	struct amdgpu_device *adev = drm_to_adev(ddev);
 	long partition_values[MAX_XCP] = {0};
@@ -1729,6 +1739,7 @@ static ssize_t amdgpu_gfx_set_enforce_isolation(struct device *dev,
 	amdgpu_mes_update_enforce_isolation(adev);
 
 	return count;
+#endif
 }
 
 static ssize_t amdgpu_gfx_get_gfx_reset_mask(struct device *dev,
@@ -2115,7 +2126,7 @@ amdgpu_gfx_enforce_isolation_wait_for_kfd(struct amdgpu_device *adev,
 	mutex_unlock(&adev->enforce_isolation_mutex);
 
 	if (wait)
-		msleep(GFX_SLICE_PERIOD_MS);
+		drm_msleep(GFX_SLICE_PERIOD_MS);
 }
 
 /**

@@ -76,7 +76,7 @@ struct amdgpu_ring_mux {
 	bool                    s_resubmit;
 	uint32_t                seqno_to_resubmit;
 	u64                     wptr_resubmit;
-	struct timer_list       resubmit_timer;
+	struct timeout		resubmit_timer;
 
 	bool                    pending_trailing_fence_signaled;
 };

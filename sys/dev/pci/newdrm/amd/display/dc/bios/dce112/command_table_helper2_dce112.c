@@ -33,7 +33,7 @@
 
 #include "../command_table_helper2.h"
 
-static uint8_t signal_type_to_atom_dig_mode(enum signal_type s)
+static uint8_t signal_type_to_atom_dig_mode(enum amd_signal_type s)
 {
 	uint8_t atom_dig_mode = ATOM_TRANSMITTER_DIGMODE_V6_DP;
 

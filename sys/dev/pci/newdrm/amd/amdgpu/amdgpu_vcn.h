@@ -320,21 +320,21 @@ struct amdgpu_vcn_inst {
 	uint8_t			vcn_config;
 	uint32_t		vcn_codec_disable_mask;
 	atomic_t		total_submission_cnt;
-	struct mutex		vcn_pg_lock;
+	struct rwlock		vcn_pg_lock;
 	enum amd_powergating_state cur_state;
 	struct delayed_work	idle_work;
 	unsigned		fw_version;
 	unsigned		num_enc_rings;
 	bool			indirect_sram;
 	struct amdgpu_vcn_reg	 internal;
-	struct mutex		vcn1_jpeg1_workaround;
+	struct rwlock		vcn1_jpeg1_workaround;
 	int (*pause_dpg_mode)(struct amdgpu_vcn_inst *vinst,
 			      struct dpg_pause_state *new_state);
 	int (*set_pg_state)(struct amdgpu_vcn_inst *vinst,
 			    enum amd_powergating_state state);
 	int (*reset)(struct amdgpu_vcn_inst *vinst);
 	bool using_unified_queue;
-	struct mutex		engine_reset_mutex;
+	struct rwlock		engine_reset_mutex;
 };
 
 struct amdgpu_vcn_ras {
@@ -363,7 +363,7 @@ struct amdgpu_vcn {
 	unsigned		fw_version;
 
 	bool			workload_profile_active;
-	struct mutex            workload_profile_mutex;
+	struct rwlock		workload_profile_mutex;
 	u32 reg_count;
 	const struct amdgpu_hwip_reg_entry *reg_list;
 };

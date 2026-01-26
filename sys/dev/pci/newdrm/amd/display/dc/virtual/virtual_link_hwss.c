@@ -39,7 +39,7 @@ void virtual_reset_stream_encoder(struct pipe_ctx *pipe_ctx)
 
 static void virtual_disable_link_output(struct dc_link *link,
 	const struct link_resource *link_res,
-	enum signal_type signal)
+	enum amd_signal_type signal)
 {
 }
 

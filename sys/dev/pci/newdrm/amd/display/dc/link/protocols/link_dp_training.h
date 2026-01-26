@@ -33,7 +33,7 @@ bool perform_link_training_with_retries(
 	bool skip_video_pattern,
 	int attempts,
 	struct pipe_ctx *pipe_ctx,
-	enum signal_type signal,
+	enum amd_signal_type signal,
 	bool do_fallback);
 
 enum link_training_result dp_perform_link_training(

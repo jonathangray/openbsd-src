@@ -109,7 +109,7 @@ struct amdgpu_ras_eeprom_control {
 
 	/* Protect table access via this mutex.
 	 */
-	struct mutex ras_tbl_mutex;
+	struct rwlock ras_tbl_mutex;
 
 	/* Record channel info which occurred bad pages
 	 */

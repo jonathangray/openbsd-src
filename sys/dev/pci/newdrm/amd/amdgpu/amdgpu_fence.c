@@ -290,10 +290,9 @@ bool amdgpu_fence_process(struct amdgpu_ring *ring)
  *
  * Checks for fence activity.
  */
-static void amdgpu_fence_fallback(struct timer_list *t)
+static void amdgpu_fence_fallback(void *arg)
 {
-	struct amdgpu_ring *ring = timer_container_of(ring, t,
-						      fence_drv.fallback_timer);
+	struct amdgpu_ring *ring = arg;
 
 	if (amdgpu_fence_process(ring))
 		dev_warn(ring->adev->dev,
@@ -491,10 +490,15 @@ int amdgpu_fence_driver_init_ring(struct amdgpu_ring *ring)
 	atomic_set(&ring->fence_drv.last_seq, 0);
 	ring->fence_drv.initialized = false;
 
+#ifdef __linux__
 	timer_setup(&ring->fence_drv.fallback_timer, amdgpu_fence_fallback, 0);
+#else
+	timeout_set(&ring->fence_drv.fallback_timer, amdgpu_fence_fallback,
+	    ring);
+#endif
 
 	ring->fence_drv.num_fences_mask = ring->num_hw_submission * 2 - 1;
-	spin_lock_init(&ring->fence_drv.lock);
+	mtx_init(&ring->fence_drv.lock, IPL_TTY);
 	ring->fence_drv.fences = kcalloc(ring->num_hw_submission * 2, sizeof(void *),
 					 GFP_KERNEL);
 
@@ -597,6 +601,8 @@ void amdgpu_fence_driver_hw_fini(struct amdgpu_device *adev)
 /* Will either stop and flush handlers for amdgpu interrupt or reanble it */
 void amdgpu_fence_driver_isr_toggle(struct amdgpu_device *adev, bool stop)
 {
+	STUB();
+#ifdef notyet
 	int i;
 
 	for (i = 0; i < AMDGPU_MAX_RINGS; i++) {
@@ -610,6 +616,7 @@ void amdgpu_fence_driver_isr_toggle(struct amdgpu_device *adev, bool stop)
 		else
 			enable_irq(adev->irq.irq);
 	}
+#endif
 }
 
 void amdgpu_fence_driver_sw_fini(struct amdgpu_device *adev)

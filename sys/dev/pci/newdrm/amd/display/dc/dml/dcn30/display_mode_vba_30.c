@@ -23,6 +23,8 @@
  *
  */
 
+#include <generated/autoconf.h>
+
 #include "dc.h"
 #include "../display_mode_lib.h"
 #include "display_mode_vba_30.h"

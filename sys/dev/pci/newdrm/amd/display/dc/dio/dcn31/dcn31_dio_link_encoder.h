@@ -274,7 +274,7 @@ void dcn31_link_encoder_enable_dp_mst_output(
  */
 void dcn31_link_encoder_disable_output(
 	struct link_encoder *enc,
-	enum signal_type signal);
+	enum amd_signal_type signal);
 
 /*
  * Check whether USB-C DP Alt mode is disabled

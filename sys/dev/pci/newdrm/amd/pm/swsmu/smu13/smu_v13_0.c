@@ -2373,7 +2373,7 @@ int smu_v13_0_mode1_reset(struct smu_context *smu)
 
 	ret = smu_cmn_send_smc_msg(smu, SMU_MSG_Mode1Reset, NULL);
 	if (!ret)
-		msleep(SMU13_MODE1_RESET_WAIT_TIME_IN_MS);
+		drm_msleep(SMU13_MODE1_RESET_WAIT_TIME_IN_MS);
 
 	return ret;
 }
@@ -2459,6 +2459,9 @@ int smu_v13_0_enable_uclk_shadow(struct smu_context *smu, bool enable)
 int smu_v13_0_set_wbrf_exclusion_ranges(struct smu_context *smu,
 						 struct freq_band_range *exclusion_ranges)
 {
+	STUB();
+	return 0;
+#ifdef notyet
 	WifiBandEntryTable_t wifi_bands;
 	int valid_entries = 0;
 	int ret, i;
@@ -2497,6 +2500,7 @@ int smu_v13_0_set_wbrf_exclusion_ranges(struct smu_context *smu,
 		dev_warn(smu->adev->dev, "Failed to set wifiband!");
 
 	return ret;
+#endif
 }
 
 void smu_v13_0_reset_custom_level(struct smu_context *smu)

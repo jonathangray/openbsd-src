@@ -56,13 +56,14 @@ struct amdgpu_mman {
 	struct ttm_pool			*ttm_pools;
 	bool				initialized;
 	void __iomem			*aper_base_kaddr;
+	bus_space_handle_t		aper_bsh;
 
 	/* buffer handling */
 	const struct amdgpu_buffer_funcs	*buffer_funcs;
 	struct amdgpu_ring			*buffer_funcs_ring;
 	bool					buffer_funcs_enabled;
 
-	struct mutex				gtt_window_lock;
+	struct rwlock				gtt_window_lock;
 	/* High priority scheduler entity for buffer moves */
 	struct drm_sched_entity			high_pr;
 	/* Low priority scheduler entity for VRAM clearing */

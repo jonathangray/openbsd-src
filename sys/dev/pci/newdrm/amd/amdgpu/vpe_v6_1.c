@@ -192,7 +192,7 @@ static int vpe_v6_1_load_microcode(struct amdgpu_vpe *vpe)
 
 			while (size_dw--) {
 				if (amdgpu_emu_mode && size_dw % 500 == 0)
-					msleep(1);
+					drm_msleep(1);
 				WREG32(vpe_get_reg_offset(vpe, j, regVPEC_UCODE_DATA), le32_to_cpup(data++));
 			}
 		}

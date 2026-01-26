@@ -161,7 +161,7 @@ void optc1_program_timing(
 	int vupdate_offset,
 	int vupdate_width,
 	int pstate_keepout,
-	const enum signal_type signal,
+	const enum amd_signal_type signal,
 	bool use_vbios)
 {
 	struct dc_crtc_timing patched_crtc_timing;

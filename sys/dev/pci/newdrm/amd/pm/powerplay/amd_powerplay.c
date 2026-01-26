@@ -56,7 +56,7 @@ static int amd_powerplay_create(struct amdgpu_device *adev)
 		return -ENOMEM;
 	}
 
-	mutex_init(&hwmgr->msg_lock);
+	rw_init(&hwmgr->msg_lock, "ppmsg");
 	hwmgr->chip_family = adev->family;
 	hwmgr->chip_id = adev->asic_type;
 	hwmgr->feature_mask = adev->pm.pp_feature;

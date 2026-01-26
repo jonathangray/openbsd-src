@@ -412,7 +412,7 @@ static int uvd_v6_0_sw_init(struct amdgpu_ip_block *ip_block)
 	}
 
 	ring = &adev->uvd.inst->ring;
-	sprintf(ring->name, "uvd");
+	snprintf(ring->name, sizeof(ring->name), "uvd");
 	r = amdgpu_ring_init(adev, ring, 512, &adev->uvd.inst->irq, 0,
 			     AMDGPU_RING_PRIO_DEFAULT, NULL);
 	if (r)
@@ -425,7 +425,7 @@ static int uvd_v6_0_sw_init(struct amdgpu_ip_block *ip_block)
 	if (uvd_v6_0_enc_support(adev)) {
 		for (i = 0; i < adev->uvd.num_enc_rings; ++i) {
 			ring = &adev->uvd.inst->ring_enc[i];
-			sprintf(ring->name, "uvd_enc%d", i);
+			snprintf(ring->name, sizeof(ring->name), "uvd_enc%d", i);
 			r = amdgpu_ring_init(adev, ring, 512,
 					     &adev->uvd.inst->irq, 0,
 					     AMDGPU_RING_PRIO_DEFAULT, NULL);

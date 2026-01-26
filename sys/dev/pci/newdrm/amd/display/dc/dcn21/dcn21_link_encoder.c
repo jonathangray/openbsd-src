@@ -288,7 +288,7 @@ static void dcn21_link_encoder_enable_dp_mst_output(
 }
 
 static void dcn21_link_encoder_disable_output(struct link_encoder *enc,
-					      enum signal_type signal)
+					      enum amd_signal_type signal)
 {
 	dcn10_link_encoder_disable_output(enc, signal);
 

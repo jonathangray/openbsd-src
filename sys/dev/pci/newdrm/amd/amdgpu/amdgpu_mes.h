@@ -66,7 +66,7 @@ enum amdgpu_mes_pipe {
 struct amdgpu_mes {
 	struct amdgpu_device            *adev;
 
-	struct mutex                    mutex_hidden;
+	struct rwlock			mutex_hidden;
 
 	struct idr                      pasid_idr;
 	struct idr                      gang_id_idr;
@@ -123,7 +123,9 @@ struct amdgpu_mes {
 	uint64_t			query_status_fence_gpu_addr[AMDGPU_MAX_MES_PIPES];
 	uint64_t			*query_status_fence_ptr[AMDGPU_MAX_MES_PIPES];
 
+#ifdef notyet
 	uint32_t			saved_flags;
+#endif
 
 	/* initialize kiq pipe */
 	int                             (*kiq_hw_init)(struct amdgpu_device *adev);
@@ -491,12 +493,16 @@ int amdgpu_mes_doorbell_process_slice(struct amdgpu_device *adev);
 static inline void amdgpu_mes_lock(struct amdgpu_mes *mes)
 {
 	mutex_lock(&mes->mutex_hidden);
+#ifdef notyet
 	mes->saved_flags = memalloc_noreclaim_save();
+#endif
 }
 
 static inline void amdgpu_mes_unlock(struct amdgpu_mes *mes)
 {
+#ifdef notyet
 	memalloc_noreclaim_restore(mes->saved_flags);
+#endif
 	mutex_unlock(&mes->mutex_hidden);
 }
 

@@ -122,7 +122,7 @@ void dcn401_link_encoder_enable_dp_output(
 
 void dcn401_link_encoder_setup(
 	struct link_encoder *enc,
-	enum signal_type signal)
+	enum amd_signal_type signal)
 {
 	struct dcn10_link_encoder *enc10 = TO_DCN10_LINK_ENC(enc);
 
@@ -165,7 +165,7 @@ bool dcn401_is_dig_enabled(struct link_encoder *enc)
 	return (clk_enabled == 1 && dig_enabled == 1);
 }
 
-enum signal_type dcn401_get_dig_mode(
+enum amd_signal_type dcn401_get_dig_mode(
 	struct link_encoder *enc)
 {
 	struct dcn10_link_encoder *enc10 = TO_DCN10_LINK_ENC(enc);
