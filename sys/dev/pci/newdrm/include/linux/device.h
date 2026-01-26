@@ -31,6 +31,8 @@ struct device_attribute {
 	struct device_attribute dev_attr_##_name
 #define DEVICE_ATTR_RO(_name) \
 	struct device_attribute dev_attr_##_name
+#define DEVICE_ATTR_RW(_name) \
+	struct device_attribute dev_attr_##_name
 
 #define device_create_file(a, b)	0
 #define device_remove_file(a, b)
