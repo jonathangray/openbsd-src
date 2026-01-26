@@ -1343,7 +1343,7 @@ file	dev/pci/newdrm/amd/display/dc/resource/dcn351/dcn351_resource.c	amdgpu & bi
 file	dev/pci/newdrm/amd/display/dc/resource/dcn36/dcn36_resource.c	amdgpu & bios
 file	dev/pci/newdrm/amd/display/dc/resource/dcn401/dcn401_resource.c	amdgpu & bios
 file	dev/pci/newdrm/amd/display/dc/soc_and_ip_translator/dcn401/dcn401_soc_and_ip_translator.c	amdgpu & bios
-file	dev/pci/newdrm/amd/display/dc/soc_and_ip_translator/dcn42/dcn42_soc_and_ip_translator.c	amdgpu & bios
+#file	dev/pci/newdrm/amd/display/dc/soc_and_ip_translator/dcn42/dcn42_soc_and_ip_translator.c	amdgpu & bios
 file	dev/pci/newdrm/amd/display/dc/soc_and_ip_translator/soc_and_ip_translator.c	amdgpu
 file	dev/pci/newdrm/amd/display/dc/sspl/dc_spl.c			amdgpu
 file	dev/pci/newdrm/amd/display/dc/sspl/dc_spl_filters.c		amdgpu
