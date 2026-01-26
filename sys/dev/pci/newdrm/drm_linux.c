@@ -1901,6 +1901,14 @@ dma_fence_init(struct dma_fence *fence, const struct dma_fence_ops *ops,
 	INIT_LIST_HEAD(&fence->cb_list);
 }
 
+void
+dma_fence_init64(struct dma_fence *fence, const struct dma_fence_ops *ops,
+    struct mutex *lock, uint64_t context, uint64_t seqno)
+{
+	dma_fence_init(fence, ops, lock, context, seqno);
+	set_bit(DMA_FENCE_FLAG_SEQ64_BIT, &fence->flags);
+}
+
 int
 dma_fence_add_callback(struct dma_fence *fence, struct dma_fence_cb *cb,
     dma_fence_func_t func)
@@ -2335,7 +2343,7 @@ dma_fence_chain_init(struct dma_fence_chain *chain, struct dma_fence *prev,
 
 	/* if prev is a chain */
 	if (to_dma_fence_chain(prev) != NULL) {
-		if (__dma_fence_is_later(seqno, prev->seqno, prev->ops)) {
+		if (__dma_fence_is_later(prev, seqno, prev->seqno)) {
 			chain->prev_seqno = prev->seqno;
 			context = prev->context;
 		} else {
@@ -2491,7 +2499,6 @@ const struct dma_fence_ops dma_fence_chain_ops = {
 	.enable_signaling = dma_fence_chain_enable_signaling,
 	.signaled = dma_fence_chain_signaled,
 	.release = dma_fence_chain_release,
-	.use_64bit_seqno = true,
 };
 
 bool

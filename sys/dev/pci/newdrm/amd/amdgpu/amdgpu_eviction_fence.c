@@ -166,8 +166,13 @@ amdgpu_eviction_fence_create(struct amdgpu_eviction_fence_mgr *evf_mgr)
 		return NULL;
 
 	ev_fence->evf_mgr = evf_mgr;
+#ifdef __linux__
 	get_task_comm(ev_fence->timeline_name, current);
-	spin_lock_init(&ev_fence->lock);
+#else
+	strlcpy(ev_fence->timeline_name, curproc->p_p->ps_comm,
+	    sizeof(ev_fence->timeline_name));
+#endif
+	mtx_init(&ev_fence->lock, IPL_NONE);
 	dma_fence_init64(&ev_fence->base, &amdgpu_eviction_fence_ops,
 			 &ev_fence->lock, evf_mgr->ev_fence_ctx,
 			 atomic_inc_return(&evf_mgr->ev_fence_seq));
@@ -234,7 +239,7 @@ int amdgpu_eviction_fence_init(struct amdgpu_eviction_fence_mgr *evf_mgr)
 	/* This needs to be done one time per open */
 	atomic_set(&evf_mgr->ev_fence_seq, 0);
 	evf_mgr->ev_fence_ctx = dma_fence_context_alloc(1);
-	spin_lock_init(&evf_mgr->ev_fence_lock);
+	mtx_init(&evf_mgr->ev_fence_lock, IPL_NONE);
 
 	INIT_DELAYED_WORK(&evf_mgr->suspend_work, amdgpu_eviction_fence_suspend_worker);
 	return 0;

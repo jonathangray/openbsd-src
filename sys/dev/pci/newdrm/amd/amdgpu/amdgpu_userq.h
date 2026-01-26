@@ -96,7 +96,7 @@ struct amdgpu_userq_funcs {
 /* Usermode queues for gfx */
 struct amdgpu_userq_mgr {
 	struct idr			userq_idr;
-	struct mutex			userq_mutex;
+	struct rwlock			userq_mutex;
 	struct amdgpu_device		*adev;
 	struct delayed_work		resume_work;
 	struct list_head		list;
