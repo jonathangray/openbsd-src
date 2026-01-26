@@ -28,7 +28,6 @@ usleep_range(unsigned long min, unsigned long max)
 static inline void
 usleep_range_state(unsigned long min, unsigned long max, unsigned int state)
 {
-	WARN_ON(state != TASK_UNINTERRUPTIBLE);
 	usleep_range(min, max);
 }
 
