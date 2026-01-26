@@ -3465,10 +3465,6 @@ amdgpu_attach(struct device *parent, struct device *self, void *aux)
 
 	/* from amdgpu_pci_probe(), aspm test done later */
 
-	if (!amdgpu_virtual_display &&
-	     amdgpu_device_asic_has_dc_support(adev->family))
-		supports_atomic = true;
-
 	if ((adev->flags & AMD_EXP_HW_SUPPORT) && !amdgpu_exp_hw_support) {
 		DRM_INFO("This hardware requires experimental hardware support.\n");
 		return;
@@ -3492,6 +3488,10 @@ amdgpu_attach(struct device *parent, struct device *self, void *aux)
 	if (amdgpu_aspm == -1 && !pcie_aspm_enabled(adev->pdev))
 		amdgpu_aspm = 0;
 
+	if (!amdgpu_virtual_display &&
+	     amdgpu_device_asic_has_dc_support(adev->pdev, adev->family))
+		supports_atomic = true;
+
 	if (!supports_atomic)
 		dev->driver_features &= ~DRIVER_ATOMIC;
 
@@ -3508,7 +3508,7 @@ amdgpu_attach(struct device *parent, struct device *self, void *aux)
 			return;
 		}
 
-		if (amdgpu_fence_slab_init()) {
+		if (amdgpu_userq_fence_slab_init()) {
 			amdgpu_sync_fini();
 			printf("%s: amdgpu_fence_slab_init failed\n",
 			    adev->self.dv_xname);
@@ -3804,6 +3804,7 @@ amdgpu_attachhook(struct device *self)
 	 */
 	if (adev->mode_info.mode_config_initialized &&
 	    !list_empty(&adev_to_drm(adev)->mode_config.connector_list)) {
+		const struct drm_format_info *format;
 
 		/*
 		 * in linux via amdgpu_pci_probe -> drm_dev_register
@@ -3816,9 +3817,11 @@ amdgpu_attachhook(struct device *self)
 
 		/* select 8 bpp console on low vram cards */
 		if (adev->gmc.real_vram_size <= (32*1024*1024))
-			drm_fbdev_ttm_setup(adev_to_drm(adev), 8);
+			format = drm_format_info(DRM_FORMAT_C8);
 		else
-			drm_fbdev_ttm_setup(adev_to_drm(adev), 32);
+			format = NULL;
+
+		drm_client_setup(adev_to_drm(adev), format);
 
 		fb_helper = adev_to_drm(adev)->fb_helper;
 		if (fb_helper == NULL) {
@@ -3944,8 +3947,10 @@ amdgpu_detach(struct device *self, int flags)
 
 	if (amdgpu_refcnt == 0) {
 		amdgpu_unregister_atpx_handler();
+		amdgpu_acpi_release();
 		amdgpu_sync_fini();
-		amdgpu_fence_slab_fini();
+		amdgpu_userq_fence_slab_fini();
+		amdgpu_xcp_drv_release();
 
 		drm_sched_fence_slab_fini();
 	}
