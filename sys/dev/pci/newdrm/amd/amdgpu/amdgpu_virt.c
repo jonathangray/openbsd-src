@@ -838,7 +838,7 @@ static void amdgpu_virt_init_ras(struct amdgpu_device *adev)
 	ratelimit_set_flags(&adev->virt.ras.ras_chk_criti_rs,
 			    RATELIMIT_MSG_ON_RELEASE);
 
-	mutex_init(&adev->virt.ras.ras_telemetry_mutex);
+	rw_init(&adev->virt.ras.ras_telemetry_mutex, "rastel");
 
 	adev->virt.ras.cper_rptr = 0;
 }

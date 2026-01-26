@@ -254,7 +254,7 @@ struct amdgpu_virt_ras {
 	struct ratelimit_state ras_error_cnt_rs;
 	struct ratelimit_state ras_cper_dump_rs;
 	struct ratelimit_state ras_chk_criti_rs;
-	struct mutex ras_telemetry_mutex;
+	struct rwlock ras_telemetry_mutex;
 	uint64_t cper_rptr;
 };
 
