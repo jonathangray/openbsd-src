@@ -37,4 +37,12 @@ str_enable_disable(bool x)
 	return "disable";
 }
 
+static inline char *
+str_read_write(bool x)
+{
+	if (x)
+		return "read";
+	return "write";
+}
+
 #endif
