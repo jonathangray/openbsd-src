@@ -249,8 +249,14 @@ static int amdgpu_check_address_validity(struct amdgpu_device *adev,
 			 * the calling process.
 			 */
 			if ((flags == BYPASS_ALLOCATED_ADDRESS) &&
+#ifdef __linux__
 			    ((blk_info.task.pid != task_pid_nr(current)) ||
 				strncmp(blk_info.task.comm, current->comm, TASK_COMM_LEN)))
+#else
+			    ((blk_info.task.pid != curproc->p_p->ps_pid) ||
+				strncmp(blk_info.task.comm, curproc->p_p->ps_comm,
+				    sizeof(curproc->p_p->ps_comm))))
+#endif
 				return -EACCES;
 			else if ((flags == BYPASS_INITIALIZATION_ADDRESS) &&
 				(blk_info.task.pid == con->init_task_pid) &&
@@ -4226,8 +4232,14 @@ int amdgpu_ras_init(struct amdgpu_device *adev)
 			goto release_con;
 	}
 
+#ifdef __linux__
 	con->init_task_pid = task_pid_nr(current);
 	get_task_comm(con->init_task_comm, current);
+#else
+	con->init_task_pid = curproc->p_p->ps_pid;
+	strlcpy(con->init_task_comm, curproc->p_p->ps_comm,
+	    sizeof(con->init_task_comm));
+#endif
 
 	rw_init(&con->critical_region_lock, "rascr");
 	INIT_LIST_HEAD(&con->critical_region_head);
