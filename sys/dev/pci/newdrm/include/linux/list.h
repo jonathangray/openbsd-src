@@ -75,6 +75,13 @@ list_is_last(const struct list_head *list,
 	return list->next == head;
 }
 
+static inline int
+list_is_head(const struct list_head *list,
+    const struct list_head *head)
+{
+	return list == head;
+}
+
 static inline void
 __list_add(struct list_head *new, struct list_head *prev,
     struct list_head *next)
