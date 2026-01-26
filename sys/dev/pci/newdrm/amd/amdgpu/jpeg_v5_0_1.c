@@ -182,7 +182,7 @@ static int jpeg_v5_0_1_sw_init(struct amdgpu_ip_block *ip_block)
 					(adev->doorbell_index.vcn.vcn_ring0_1 << 1) +
 					2 + j + 32 * jpeg_inst;
 			}
-			sprintf(ring->name, "jpeg_dec_%d.%d", adev->jpeg.inst[i].aid_id, j);
+			snprintf(ring->name, sizeof(ring->name), "jpeg_dec_%d.%d", adev->jpeg.inst[i].aid_id, j);
 			r = amdgpu_ring_init(adev, ring, 512, &adev->jpeg.inst->irq, 0,
 					     AMDGPU_RING_PRIO_DEFAULT, NULL);
 			if (r)
