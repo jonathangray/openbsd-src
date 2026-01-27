@@ -3392,7 +3392,7 @@ static void apply_delay_after_dpcd_poweroff(struct amdgpu_device *adev,
 
 	ppatch = &sink->edid_caps.panel_patch;
 	if (ppatch->wait_after_dpcd_poweroff_ms) {
-		msleep(ppatch->wait_after_dpcd_poweroff_ms);
+		drm_msleep(ppatch->wait_after_dpcd_poweroff_ms);
 		drm_dbg_driver(adev_to_drm(adev),
 			       "%s: adding a %ds delay as w/a for panel\n",
 			       __func__,
