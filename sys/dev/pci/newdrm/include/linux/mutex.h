@@ -58,4 +58,19 @@ mutex_cleanup(struct rwlock **p)
 	struct rwlock *_guard_p __cleanup(mutex_cleanup) = rwl
 #define guard(type) _guard
 
+#define _scoped_guard(type, rwl, varname)				\
+        mutex_lock(rwl);						\
+        int varname = 1;						\
+        for (struct rwlock *_guard_p __cleanup(mutex_cleanup) = (rwl);	\
+            varname;varname--)						\
+
+#ifndef __COUNTER__
+#define __COUNTER__ __LINE
+#endif
+
+#define __guardname(num)	_scoped_guard_loop##num
+#define _guardname(num)		__guardname(num)
+#define guardname()		_guardname(__COUNTER__)
+#define scoped_guard(type, rwl)	_scoped_guard((type), (rwl), guardname())
+
 #endif
