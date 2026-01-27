@@ -59,6 +59,7 @@ file	dev/pci/newdrm/drm_modeset_lock.c		drm
 file	dev/pci/newdrm/drm_mtrr.c			drm
 #file	dev/pci/newdrm/drm_pagemap.c		drm
 file	dev/pci/newdrm/drm_panel.c			drm
+file	dev/pci/newdrm/drm_panel_backlight_quirks.c	drm
 file	dev/pci/newdrm/drm_panel_orientation_quirks.c	drm
 #file	dev/pci/newdrm/drm_panic.c			drm
 file	dev/pci/newdrm/drm_pci.c			drm
@@ -700,6 +701,7 @@ file	dev/pci/newdrm/amd/amdgpu/amdgpu_vce.c		amdgpu
 file	dev/pci/newdrm/amd/amdgpu/amdgpu_vcn.c		amdgpu
 file	dev/pci/newdrm/amd/amdgpu/amdgpu_vf_error.c	amdgpu
 file	dev/pci/newdrm/amd/amdgpu/amdgpu_virt.c		amdgpu
+file	dev/pci/newdrm/amd/amdgpu/amdgpu_vkms.c		amdgpu
 file	dev/pci/newdrm/amd/amdgpu/amdgpu_vm.c		amdgpu
 file	dev/pci/newdrm/amd/amdgpu/amdgpu_vm_cpu.c		amdgpu
 file	dev/pci/newdrm/amd/amdgpu/amdgpu_vm_pt.c		amdgpu
