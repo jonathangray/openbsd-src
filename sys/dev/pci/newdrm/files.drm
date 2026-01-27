@@ -731,7 +731,7 @@ file	dev/pci/newdrm/amd/amdgpu/df_v3_6.c		amdgpu
 file	dev/pci/newdrm/amd/amdgpu/df_v4_15.c		amdgpu
 file	dev/pci/newdrm/amd/amdgpu/df_v4_3.c		amdgpu
 file	dev/pci/newdrm/amd/amdgpu/df_v4_6_2.c		amdgpu
-file	dev/pci/newdrm/amd/amdgpu/dimgrey_cavefish_reg_init.c	amdgpu
+#file	dev/pci/newdrm/amd/amdgpu/dimgrey_cavefish_reg_init.c	amdgpu
 file	dev/pci/newdrm/amd/amdgpu/emu_soc.c		amdgpu
 file	dev/pci/newdrm/amd/amdgpu/gfx_v10_0.c		amdgpu
 file	dev/pci/newdrm/amd/amdgpu/gfx_v11_0.c		amdgpu
@@ -1026,7 +1026,7 @@ file	dev/pci/newdrm/amd/display/dc/dce/dce_mem_input.c		amdgpu
 file	dev/pci/newdrm/amd/display/dc/dce/dce_opp.c		amdgpu
 file	dev/pci/newdrm/amd/display/dc/dce/dce_panel_cntl.c		amdgpu
 file	dev/pci/newdrm/amd/display/dc/dce/dce_scl_filters.c	amdgpu
-file	dev/pci/newdrm/amd/display/dc/dce/dce_scl_filters_old.c	amdgpu
+#file	dev/pci/newdrm/amd/display/dc/dce/dce_scl_filters_old.c	amdgpu
 file	dev/pci/newdrm/amd/display/dc/dce/dce_stream_encoder.c	amdgpu
 file	dev/pci/newdrm/amd/display/dc/dce/dce_transform.c		amdgpu
 file	dev/pci/newdrm/amd/display/dc/dce/dmub_abm.c		amdgpu
@@ -1047,7 +1047,7 @@ file	dev/pci/newdrm/amd/display/dc/dce112/dce112_compressor.c		amdgpu
 file	dev/pci/newdrm/amd/display/dc/dce120/dce120_timing_generator.c	amdgpu
 file	dev/pci/newdrm/amd/display/dc/dce80/dce80_timing_generator.c	amdgpu
 file	dev/pci/newdrm/amd/display/dc/dcn10/dcn10_cm_common.c		amdgpu & bios
-file	dev/pci/newdrm/amd/display/dc/dcn10/dcn10_dwb.c			amdgpu & bios
+#file	dev/pci/newdrm/amd/display/dc/dcn10/dcn10_dwb.c			amdgpu & bios
 file	dev/pci/newdrm/amd/display/dc/dcn10/dcn10_hw_sequencer_debug.c	amdgpu & bios
 file	dev/pci/newdrm/amd/display/dc/dcn10/dcn10_ipp.c			amdgpu & bios
 file	dev/pci/newdrm/amd/display/dc/dcn20/dcn20_dwb.c			amdgpu & bios
@@ -1135,7 +1135,7 @@ file	dev/pci/newdrm/amd/display/dc/dml2/dml21/src/dml2_pmo/dml2_pmo_dcn4_fams2.c
 file	dev/pci/newdrm/amd/display/dc/dml2/dml21/src/dml2_pmo/dml2_pmo_factory.c	amdgpu & bios
 file	dev/pci/newdrm/amd/display/dc/dml2/dml21/src/dml2_standalone_libraries/lib_float_math.c	amdgpu & bios
 file	dev/pci/newdrm/amd/display/dc/dml2/dml21/src/dml2_top/dml2_top_interfaces.c	amdgpu & bios
-file	dev/pci/newdrm/amd/display/dc/dml2/dml21/src/dml2_top/dml2_top_legacy.c	amdgpu & bios
+#file	dev/pci/newdrm/amd/display/dc/dml2/dml21/src/dml2_top/dml2_top_legacy.c	amdgpu & bios
 file	dev/pci/newdrm/amd/display/dc/dml2/dml21/src/dml2_top/dml2_top_soc15.c	amdgpu & bios
 file	dev/pci/newdrm/amd/display/dc/dml2/dml2_dc_resource_mgmt.c		amdgpu & bios
 file	dev/pci/newdrm/amd/display/dc/dml2/dml2_mall_phantom.c		amdgpu & bios
@@ -1388,7 +1388,7 @@ file	dev/pci/newdrm/amd/display/modules/hdcp/hdcp_log.c		amdgpu
 file	dev/pci/newdrm/amd/display/modules/hdcp/hdcp_psp.c		amdgpu
 file	dev/pci/newdrm/amd/display/modules/info_packet/info_packet.c	amdgpu
 file	dev/pci/newdrm/amd/display/modules/power/power_helpers.c	amdgpu
-file	dev/pci/newdrm/amd/display/modules/vmid/vmid.c		amdgpu
+#file	dev/pci/newdrm/amd/display/modules/vmid/vmid.c		amdgpu
 file	dev/pci/newdrm/amd/pm/amdgpu_dpm.c				amdgpu
 file	dev/pci/newdrm/amd/pm/amdgpu_dpm_internal.c		amdgpu
 file	dev/pci/newdrm/amd/pm/amdgpu_pm.c				amdgpu
