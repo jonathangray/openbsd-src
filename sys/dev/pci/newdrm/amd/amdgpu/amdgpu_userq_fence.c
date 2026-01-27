@@ -664,6 +664,9 @@ free_syncobj_handles:
 int amdgpu_userq_wait_ioctl(struct drm_device *dev, void *data,
 			    struct drm_file *filp)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	u32 *syncobj_handles, *timeline_points, *timeline_handles, *bo_handles_read, *bo_handles_write;
 	u32 num_syncobj, num_read_bo_handles, num_write_bo_handles;
 	struct drm_amdgpu_userq_fence_info *fence_info = NULL;
@@ -1033,4 +1036,5 @@ free_bo_handles_read:
 	kfree(bo_handles_read);
 
 	return r;
+#endif
 }
