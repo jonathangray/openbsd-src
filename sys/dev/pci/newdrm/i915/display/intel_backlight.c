@@ -244,7 +244,7 @@ static void i9xx_set_backlight(const struct drm_connector_state *conn_state, u32
 		return;
 
 	if (panel->backlight.combination_mode) {
-		struct pci_dev *pdev = display->drm->dev.pdev;
+		struct pci_dev *pdev = display->drm->pdev;
 		u8 lbpc;
 
 		lbpc = level * 0xfe / panel->backlight.pwm_level_max + 1;

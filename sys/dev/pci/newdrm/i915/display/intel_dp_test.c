@@ -547,6 +547,8 @@ bool intel_dp_test_short_pulse(struct intel_dp *intel_dp)
 	return reprobe_needed;
 }
 
+#ifdef __linux__
+
 static ssize_t i915_displayport_test_active_write(struct file *file,
 						  const char __user *ubuf,
 						  size_t len, loff_t *offp)
@@ -750,8 +752,11 @@ static const struct {
 	{"i915_dp_test_active", &i915_displayport_test_active_fops},
 };
 
+#endif /* __linux__ */
+
 void intel_dp_test_debugfs_register(struct intel_display *display)
 {
+#ifdef __linux__
 	int i;
 
 	for (i = 0; i < ARRAY_SIZE(intel_display_debugfs_files); i++) {
@@ -761,4 +766,5 @@ void intel_dp_test_debugfs_register(struct intel_display *display)
 				    display,
 				    intel_display_debugfs_files[i].fops);
 	}
+#endif
 }
