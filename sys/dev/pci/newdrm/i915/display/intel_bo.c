@@ -34,10 +34,12 @@ void intel_bo_flush_if_display(struct drm_gem_object *obj)
 	i915_gem_object_flush_if_display(to_intel_bo(obj));
 }
 
+#ifdef notyet
 int intel_bo_fb_mmap(struct drm_gem_object *obj, struct vm_area_struct *vma)
 {
 	return i915_gem_fb_mmap(to_intel_bo(obj), vma);
 }
+#endif
 
 int intel_bo_read_from_page(struct drm_gem_object *obj, u64 offset, void *dst, int size)
 {
