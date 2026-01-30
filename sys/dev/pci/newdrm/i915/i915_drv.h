@@ -299,7 +299,7 @@ struct drm_i915_private {
 	} vlv_iosf_sb;
 
 	/* Sideband mailbox protection */
-	struct mutex sb_lock;
+	struct rwlock sb_lock;
 
 	/** Cached value of IMR to avoid reads in updating the bitfield */
 	u32 irq_mask;
