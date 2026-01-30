@@ -360,7 +360,7 @@ static void *i915_gem_object_map_pfn(struct drm_i915_gem_object *obj,
 }
 
 struct intel_panic {
-	struct page **pages;
+	struct vm_page **pages;
 	int page;
 	void *vaddr;
 };
@@ -374,11 +374,11 @@ static void i915_panic_kunmap(struct intel_panic *panic)
 	}
 }
 
-static struct page **i915_gem_object_panic_pages(struct drm_i915_gem_object *obj)
+static struct vm_page **i915_gem_object_panic_pages(struct drm_i915_gem_object *obj)
 {
 	unsigned long n_pages = obj->base.size >> PAGE_SHIFT, i;
-	struct page *page;
-	struct page **pages;
+	struct vm_page *page;
+	struct vm_page **pages;
 	struct sgt_iter iter;
 
 	/* For a 3840x2160 32 bits Framebuffer, this should require ~64K */

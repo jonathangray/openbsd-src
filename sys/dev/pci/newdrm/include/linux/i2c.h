@@ -21,17 +21,6 @@
 #include <sys/stdint.h>
 #include <sys/rwlock.h>
 /*
- * normally seq_file.h is indirectly included via
- *
- * linux/regulator/consumer.h
- * linux/suspend.h
- * linux/swap.h
- * linux/memcontrol.h
- * linux/cgroup.h
- * linux/seq_file.h
- */
-#include <linux/seq_file.h>
-/*
  * normally suspend.h is indirectly included via
  * linux/regulator/consumer.h
  * linux/suspend.h
