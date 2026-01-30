@@ -64,7 +64,7 @@ static void i9xx_display_restore_swf(struct intel_display *display)
 
 void i9xx_display_sr_save(struct intel_display *display)
 {
-	struct pci_dev *pdev = to_pci_dev(display->drm->dev);
+	struct pci_dev *pdev = display->drm->pdev;
 
 	if (!HAS_DISPLAY(display))
 		return;
@@ -81,7 +81,7 @@ void i9xx_display_sr_save(struct intel_display *display)
 
 void i9xx_display_sr_restore(struct intel_display *display)
 {
-	struct pci_dev *pdev = to_pci_dev(display->drm->dev);
+	struct pci_dev *pdev = display->drm->pdev;
 
 	if (!HAS_DISPLAY(display))
 		return;
