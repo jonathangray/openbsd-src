@@ -7,6 +7,7 @@
 #define __INTEL_OVERLAY_H__
 
 #include <linux/types.h>
+#include <linux/kconfig.h>
 
 struct drm_device;
 struct drm_file;
