@@ -310,13 +310,6 @@ static enum hrtimer_restart __rq_watchdog_expired(struct hrtimer *hrtimer)
 	return HRTIMER_NORESTART;
 }
 
-static void __rq_init_watchdog(struct i915_request *rq)
-{
-	struct i915_request_watchdog *wdg = &rq->watchdog;
-
-	hrtimer_setup(&wdg->timer, __rq_watchdog_expired, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
-}
-
 #else
 
 static void
@@ -335,6 +328,17 @@ __rq_watchdog_expired(void *arg)
 
 #endif
 
+static void __rq_init_watchdog(struct i915_request *rq)
+{
+	struct i915_request_watchdog *wdg = &rq->watchdog;
+
+#ifdef __linux__
+	hrtimer_setup(&wdg->timer, __rq_watchdog_expired, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
+#else
+	timeout_set(&wdg->timer, __rq_watchdog_expired, rq);
+#endif
+}
+
 static void __rq_arm_watchdog(struct i915_request *rq)
 {
 	struct i915_request_watchdog *wdg = &rq->watchdog;
@@ -345,11 +349,15 @@ static void __rq_arm_watchdog(struct i915_request *rq)
 
 	i915_request_get(rq);
 
+#ifdef __linux__
 	hrtimer_start_range_ns(&wdg->timer,
 			       ns_to_ktime(ce->watchdog.timeout_us *
 					   NSEC_PER_USEC),
 			       NSEC_PER_MSEC,
 			       HRTIMER_MODE_REL);
+#else
+	timeout_add_msec(&wdg->timer, 1);
+#endif
 }
 
 static void __rq_cancel_watchdog(struct i915_request *rq)
