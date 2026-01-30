@@ -76,7 +76,7 @@ struct intel_memory_region {
 	bool private; /* not for userspace */
 
 	struct {
-		struct mutex lock; /* Protects access to objects */
+		struct rwlock lock; /* Protects access to objects */
 		struct list_head list;
 	} objects;
 

@@ -88,7 +88,7 @@ static void engine_retire(struct work_struct *work)
 static bool add_retire(struct intel_engine_cs *engine,
 		       struct intel_timeline *tl)
 {
-#define STUB ((struct intel_timeline *)1)
+#define RSTUB ((struct intel_timeline *)1)
 	struct intel_timeline *first;
 
 	/*
@@ -97,7 +97,7 @@ static bool add_retire(struct intel_engine_cs *engine,
 	 * retirement queue: either this engine or another.
 	 */
 
-	if (cmpxchg(&tl->retire, NULL, STUB)) /* already queued */
+	if (cmpxchg(&tl->retire, NULL, RSTUB)) /* already queued */
 		return false;
 
 	intel_timeline_get(tl);
@@ -136,7 +136,7 @@ long intel_gt_retire_requests_timeout(struct intel_gt *gt, long timeout,
 	struct intel_gt_timelines *timelines = &gt->timelines;
 	struct intel_timeline *tl, *tn;
 	unsigned long active_count = 0;
-	LIST_HEAD(free);
+	DRM_LIST_HEAD(free);
 
 	flush_submission(gt, timeout); /* kick the ksoftirqd tasklets */
 	spin_lock(&timelines->lock);

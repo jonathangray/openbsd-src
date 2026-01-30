@@ -1243,6 +1243,8 @@ static int intel_audio_component_get_eld(struct device *kdev, int port,
 	return ret;
 }
 
+#ifdef notyet
+
 static const struct drm_audio_component_ops intel_audio_component_ops = {
 	.owner = THIS_MODULE,
 	.get_power = intel_audio_component_get_power,
@@ -1314,6 +1316,8 @@ static const struct component_ops intel_audio_component_bind_ops = {
 #define AUD_FREQ_GEN12          (AUD_FREQ_8T | AUD_FREQ_PULLCLKS(0) | AUD_FREQ_BCLK_96M)
 #define AUD_FREQ_TGL_BROKEN     (AUD_FREQ_8T | AUD_FREQ_PULLCLKS(2) | AUD_FREQ_BCLK_96M)
 
+#endif /* notyet */
+
 /**
  * intel_audio_component_init - initialize and register the audio component
  * @display: display device
@@ -1332,6 +1336,7 @@ static const struct component_ops intel_audio_component_bind_ops = {
  */
 static void intel_audio_component_init(struct intel_display *display)
 {
+#ifdef notyet
 	u32 aud_freq, aud_freq_init;
 
 	if (DISPLAY_VER(display) >= 9) {
@@ -1356,10 +1361,12 @@ static void intel_audio_component_init(struct intel_display *display)
 
 	/* init with current cdclk */
 	intel_audio_cdclk_change_post(display);
+#endif
 }
 
 static void intel_audio_component_register(struct intel_display *display)
 {
+#ifdef notyet
 	int ret;
 
 	ret = component_add_typed(display->drm->dev,
@@ -1373,6 +1380,7 @@ static void intel_audio_component_register(struct intel_display *display)
 	}
 
 	display->audio.component_registered = true;
+#endif
 }
 
 /**

@@ -214,7 +214,7 @@ ssize_t intel_hdcp_gsc_msg_send(struct intel_hdcp_gsc_context *gsc_context,
 		if (ret != -EAGAIN)
 			break;
 
-		msleep(50);
+		drm_msleep(50);
 
 	} while (++tries < 20);
 

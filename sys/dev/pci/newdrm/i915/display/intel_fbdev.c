@@ -122,6 +122,7 @@ static int intel_fbdev_pan_display(struct fb_var_screeninfo *var,
 	return ret;
 }
 
+#ifdef notyet
 static int intel_fbdev_mmap(struct fb_info *info, struct vm_area_struct *vma)
 {
 	struct drm_fb_helper *fb_helper = info->par;
@@ -153,16 +154,22 @@ static void intel_fbdev_fb_destroy(struct fb_info *info)
 __diag_push();
 __diag_ignore_all("-Woverride-init", "Allow field initialization overrides for fb ops");
 
+#endif /* notyet */
+
 static const struct fb_ops intelfb_ops = {
+#ifdef notyet
 	.owner = THIS_MODULE,
 	__FB_DEFAULT_DEFERRED_OPS_RDWR(intel_fbdev),
 	DRM_FB_HELPER_DEFAULT_OPS,
+#endif
 	.fb_set_par = intel_fbdev_set_par,
+#ifdef notyet
 	.fb_blank = intel_fbdev_blank,
 	.fb_pan_display = intel_fbdev_pan_display,
 	__FB_DEFAULT_DEFERRED_OPS_DRAW(intel_fbdev),
 	.fb_mmap = intel_fbdev_mmap,
 	.fb_destroy = intel_fbdev_fb_destroy,
+#endif
 };
 
 __diag_pop();
@@ -278,8 +285,10 @@ int intel_fbdev_driver_fbdev_probe(struct drm_fb_helper *helper,
 	} else {
 		drm_dbg_kms(display->drm, "re-using BIOS fb\n");
 		prealloc = true;
+#ifdef __linux__
 		sizes->fb_width = fb->base.width;
 		sizes->fb_height = fb->base.height;
+#endif
 	}
 
 	/* Pin the GGTT vma for our access via info->screen_base.
@@ -333,7 +342,36 @@ int intel_fbdev_driver_fbdev_probe(struct drm_fb_helper *helper,
 	ifbdev->vma_flags = flags;
 
 	intel_display_rpm_put(display, wakeref);
+{
+	struct drm_framebuffer *fb = ifbdev->helper.fb;
+	struct rasops_info *ri = &dev_priv->ro;
 
+	ri->ri_bits = info->screen_base;
+	ri->ri_depth = fb->format->cpp[0] * 8;
+	ri->ri_stride = fb->pitches[0];
+	ri->ri_width = sizes->fb_width;
+	ri->ri_height = sizes->fb_height;
+
+	switch (fb->format->format) {
+	case DRM_FORMAT_XRGB8888:
+		ri->ri_rnum = 8;
+		ri->ri_rpos = 16;
+		ri->ri_gnum = 8;
+		ri->ri_gpos = 8;
+		ri->ri_bnum = 8;
+		ri->ri_bpos = 0;
+		break;
+	case DRM_FORMAT_RGB565:
+		ri->ri_rnum = 5;
+		ri->ri_rpos = 11;
+		ri->ri_gnum = 6;
+		ri->ri_gpos = 5;
+		ri->ri_bnum = 5;
+		ri->ri_bpos = 0;
+		break;
+	}
+	intel_fbdev_invalidate(ifbdev);
+}
 	return 0;
 
 out_unpin:

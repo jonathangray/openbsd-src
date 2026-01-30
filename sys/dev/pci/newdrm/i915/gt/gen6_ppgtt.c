@@ -435,7 +435,7 @@ struct i915_ppgtt *gen6_ppgtt_create(struct intel_gt *gt)
 	if (!ppgtt)
 		return ERR_PTR(-ENOMEM);
 
-	mutex_init(&ppgtt->flush);
+	rw_init(&ppgtt->flush, "ppgfl");
 
 	ppgtt_init(&ppgtt->base, gt, 0);
 	ppgtt->base.vm.pd_shift = ilog2(SZ_4K * SZ_4K / sizeof(gen6_pte_t));

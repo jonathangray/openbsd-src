@@ -212,7 +212,7 @@ struct intel_overlay {
 static void i830_overlay_clock_gating(struct intel_display *display,
 				      bool enable)
 {
-	struct pci_dev *pdev = to_pci_dev(display->drm->dev);
+	struct pci_dev *pdev = display->drm->pdev;
 	u8 val;
 
 	/* WA_OVERLAY_CLKGATE:alm */

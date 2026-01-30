@@ -62,6 +62,9 @@ static int iopagetest(struct intel_memory_region *mem,
 		      resource_size_t offset,
 		      const void *caller)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	const u8 val[] = { 0x0, 0xa5, 0xc3, 0xf0 };
 	void __iomem *va;
 	int err;
@@ -87,6 +90,7 @@ static int iopagetest(struct intel_memory_region *mem,
 
 	iounmap(va);
 	return err;
+#endif
 }
 
 static resource_size_t random_page(resource_size_t last)
@@ -273,7 +277,7 @@ intel_memory_region_create(struct drm_i915_private *i915,
 	snprintf(mem->uabi_name, sizeof(mem->uabi_name), "%s%u",
 		 intel_memory_type_str(type), instance);
 
-	mutex_init(&mem->objects.lock);
+	rw_init(&mem->objects.lock, "memobj");
 	INIT_LIST_HEAD(&mem->objects.list);
 
 	if (ops->init) {
@@ -327,7 +331,9 @@ void intel_memory_region_destroy(struct intel_memory_region *mem)
 	if (mem->ops->release)
 		ret = mem->ops->release(mem);
 
+#ifdef notyet
 	GEM_WARN_ON(!list_empty_careful(&mem->objects.list));
+#endif
 	mutex_destroy(&mem->objects.lock);
 	if (!ret)
 		kfree(mem);
@@ -395,12 +401,27 @@ int intel_memory_regions_hw_probe(struct drm_i915_private *i915)
 		region_size = resource_size(&mem->region) >> 20;
 		io_size = resource_size(&mem->io) >> 20;
 
+#ifdef __linux__
 		if (resource_size(&mem->io))
 			drm_dbg(&i915->drm, "Memory region(%d): %s: %llu MiB %pR, io: %llu MiB %pR\n",
 				mem->id, mem->name, region_size, &mem->region, io_size, &mem->io);
 		else
 			drm_dbg(&i915->drm, "Memory region(%d): %s: %llu MiB %pR, io: n/a\n",
 				mem->id, mem->name, region_size, &mem->region);
+#else
+		if (resource_size(&mem->io)) {
+			drm_dbg(&i915->drm, "Memory region(%d): %s: %llu MiB "
+				"[0x%lx-0x%lx], io: %llu MiB [0x%lx-0x%lx]\n",
+				mem->id, mem->name, region_size,
+				mem->region.start, mem->region.end,
+				io_size, mem->io.start, mem->io.end);
+		} else {
+			drm_dbg(&i915->drm, "Memory region(%d): %s: %llu MiB "
+				"[0x%lx-0x%lx], io: n/a\n",
+				mem->id, mem->name, region_size,
+				mem->region.start, mem->region.end);
+		}
+#endif
 	}
 
 	return 0;

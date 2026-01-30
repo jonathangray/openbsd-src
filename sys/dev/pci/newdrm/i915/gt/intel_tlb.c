@@ -151,7 +151,12 @@ void intel_gt_invalidate_tlb_full(struct intel_gt *gt, u32 seqno)
 			mmio_invalidate_full(gt);
 		}
 
+#ifdef notyet
 		write_seqcount_invalidate(&gt->tlb.seqno);
+#else
+		barrier();
+		gt->tlb.seqno.seq.sequence += 2;
+#endif
 unlock:
 		mutex_unlock(&gt->tlb.invalidate_lock);
 	}
@@ -159,7 +164,7 @@ unlock:
 
 void intel_gt_init_tlb(struct intel_gt *gt)
 {
-	mutex_init(&gt->tlb.invalidate_lock);
+	rw_init(&gt->tlb.invalidate_lock, "gttlb");
 	seqcount_mutex_init(&gt->tlb.seqno, &gt->tlb.invalidate_lock);
 }
 

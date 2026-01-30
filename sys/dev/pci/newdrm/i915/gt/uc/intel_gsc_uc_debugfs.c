@@ -24,10 +24,13 @@ static int gsc_info_show(struct seq_file *m, void *data)
 
 	return 0;
 }
+#ifdef notyet
 DEFINE_INTEL_GT_DEBUGFS_ATTRIBUTE(gsc_info);
+#endif
 
 void intel_gsc_uc_debugfs_register(struct intel_gsc_uc *gsc_uc, struct dentry *root)
 {
+#ifdef notyet
 	static const struct intel_gt_debugfs_file files[] = {
 		{ "gsc_info", &gsc_info_fops, NULL },
 	};
@@ -36,4 +39,5 @@ void intel_gsc_uc_debugfs_register(struct intel_gsc_uc *gsc_uc, struct dentry *r
 		return;
 
 	intel_gt_debugfs_register_files(root, files, ARRAY_SIZE(files), gsc_uc);
+#endif
 }

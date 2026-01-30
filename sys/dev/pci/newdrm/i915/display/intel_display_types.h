@@ -449,7 +449,7 @@ struct intel_digital_port;
 struct intel_hdcp {
 	const struct intel_hdcp_shim *shim;
 	/* Mutex for hdcp state of the connector */
-	struct mutex mutex;
+	struct rwlock mutex;
 	u64 value;
 	struct delayed_work check_work;
 	struct work_struct prop_work;
@@ -1435,7 +1435,7 @@ struct intel_crtc {
 	} wm;
 
 	struct {
-		struct mutex mutex;
+		struct rwlock mutex;
 		struct delayed_work work;
 		enum drrs_refresh_rate refresh_rate;
 		unsigned int frontbuffer_bits;
@@ -1640,7 +1640,7 @@ struct intel_pps {
 
 struct intel_psr {
 	/* Mutex for PSR state of the transcoder */
-	struct mutex lock;
+	struct rwlock lock;
 
 #define I915_PSR_DEBUG_MODE_MASK		0x0f
 #define I915_PSR_DEBUG_DEFAULT			0x00
@@ -1727,8 +1727,13 @@ struct intel_dp {
 		/* common rate,lane_count configs in bw order */
 		int num_configs;
 #define INTEL_DP_MAX_LANE_COUNT			4
+#ifdef notyet
 #define INTEL_DP_MAX_SUPPORTED_LANE_CONFIGS	(ilog2(INTEL_DP_MAX_LANE_COUNT) + 1)
 #define INTEL_DP_LANE_COUNT_EXP_BITS		order_base_2(INTEL_DP_MAX_SUPPORTED_LANE_CONFIGS)
+#else
+#define INTEL_DP_MAX_SUPPORTED_LANE_CONFIGS	3
+#define INTEL_DP_LANE_COUNT_EXP_BITS		2
+#endif
 #define INTEL_DP_LINK_RATE_IDX_BITS		(BITS_PER_TYPE(u8) - INTEL_DP_LANE_COUNT_EXP_BITS)
 #define INTEL_DP_MAX_LINK_CONFIGS		(DP_MAX_SUPPORTED_RATES * \
 						 INTEL_DP_MAX_SUPPORTED_LANE_CONFIGS)
@@ -1898,7 +1903,7 @@ struct intel_digital_port {
 
 	struct {
 		/* protects num_streams reference count, port_data and auth_status */
-		struct mutex mutex;
+		struct rwlock mutex;
 		/* the number of pipes using HDCP signalling out of this port */
 		unsigned int num_streams;
 		/* port HDCP auth status */

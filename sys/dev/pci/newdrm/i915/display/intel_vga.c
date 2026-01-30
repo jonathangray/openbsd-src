@@ -44,7 +44,7 @@ static bool has_vga_pipe_sel(struct intel_display *display)
 /* Disable the VGA plane that we never use */
 void intel_vga_disable(struct intel_display *display)
 {
-	struct pci_dev *pdev = to_pci_dev(display->drm->dev);
+	struct pci_dev *pdev = display->drm->pdev;
 	i915_reg_t vga_reg = intel_vga_cntrl_reg(display);
 	enum pipe pipe;
 	u32 tmp;
@@ -66,9 +66,15 @@ void intel_vga_disable(struct intel_display *display)
 
 	/* WaEnableVGAAccessThroughIOPort:ctg,elk,ilk,snb,ivb,vlv,hsw */
 	vga_get_uninterruptible(pdev, VGA_RSRC_LEGACY_IO);
+#ifdef __linux__
 	outb(0x01, VGA_SEQ_I);
 	sr1 = inb(VGA_SEQ_D);
 	outb(sr1 | VGA_SR01_SCREEN_OFF, VGA_SEQ_D);
+#else
+	outb(VGA_SEQ_I, 0x01);
+	sr1 = inb(VGA_SEQ_D);
+	outb(VGA_SEQ_D, sr1 | VGA_SR01_SCREEN_OFF);
+#endif
 	vga_put(pdev, VGA_RSRC_LEGACY_IO);
 	udelay(300);
 
@@ -78,7 +84,7 @@ void intel_vga_disable(struct intel_display *display)
 
 void intel_vga_reset_io_mem(struct intel_display *display)
 {
-	struct pci_dev *pdev = to_pci_dev(display->drm->dev);
+	struct pci_dev *pdev = display->drm->pdev;
 
 	/*
 	 * After we re-enable the power well, if we touch VGA register 0x3d5
@@ -91,14 +97,18 @@ void intel_vga_reset_io_mem(struct intel_display *display)
 	 * and error messages.
 	 */
 	vga_get_uninterruptible(pdev, VGA_RSRC_LEGACY_IO);
+#ifdef __linux__
 	outb(inb(VGA_MIS_R), VGA_MIS_W);
+#else
+	outb(VGA_MIS_W, inb(VGA_MIS_R));
+#endif
 	vga_put(pdev, VGA_RSRC_LEGACY_IO);
 }
 
 int intel_vga_register(struct intel_display *display)
 {
 
-	struct pci_dev *pdev = to_pci_dev(display->drm->dev);
+	struct pci_dev *pdev = display->drm->pdev;
 	int ret;
 
 	/*
@@ -118,7 +128,7 @@ int intel_vga_register(struct intel_display *display)
 
 void intel_vga_unregister(struct intel_display *display)
 {
-	struct pci_dev *pdev = to_pci_dev(display->drm->dev);
+	struct pci_dev *pdev = display->drm->pdev;
 
 	vga_client_unregister(pdev);
 }

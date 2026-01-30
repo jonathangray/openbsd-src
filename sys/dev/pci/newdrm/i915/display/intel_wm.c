@@ -251,6 +251,8 @@ static int cur_wm_latency_show(struct seq_file *m, void *data)
 	return 0;
 }
 
+#ifdef notyet
+
 static int pri_wm_latency_open(struct inode *inode, struct file *file)
 {
 	struct intel_display *display = inode->i_private;
@@ -386,6 +388,8 @@ static const struct file_operations i915_cur_wm_latency_fops = {
 	.release = single_release,
 	.write = cur_wm_latency_write
 };
+
+#endif /* notyet */
 
 void intel_wm_debugfs_register(struct intel_display *display)
 {

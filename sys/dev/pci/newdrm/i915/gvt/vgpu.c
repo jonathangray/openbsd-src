@@ -276,7 +276,7 @@ struct intel_vgpu *intel_gvt_create_idle_vgpu(struct intel_gvt *gvt)
 
 	vgpu->id = IDLE_VGPU_IDR;
 	vgpu->gvt = gvt;
-	mutex_init(&vgpu->vgpu_lock);
+	rw_init(&vgpu->vgpu_lock, "vgpu");
 
 	for (i = 0; i < I915_NUM_ENGINES; i++)
 		INIT_LIST_HEAD(&vgpu->submission.workload_q_head[i]);
@@ -328,8 +328,8 @@ int intel_gvt_create_vgpu(struct intel_vgpu *vgpu,
 
 	vgpu->id = ret;
 	vgpu->sched_ctl.weight = conf->weight;
-	mutex_init(&vgpu->vgpu_lock);
-	mutex_init(&vgpu->dmabuf_lock);
+	rw_init(&vgpu->vgpu_lock, "vgpulk");
+	rw_init(&vgpu->dmabuf_lock, "vgpudb");
 	INIT_LIST_HEAD(&vgpu->dmabuf_obj_list_head);
 	INIT_RADIX_TREE(&vgpu->page_track_tree, GFP_KERNEL);
 	idr_init_base(&vgpu->object_idr, 1);

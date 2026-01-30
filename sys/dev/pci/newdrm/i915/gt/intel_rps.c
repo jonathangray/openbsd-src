@@ -27,7 +27,9 @@
 #include "intel_pcode.h"
 #include "intel_rps.h"
 #include "vlv_iosf_sb.h"
+#ifdef __linux__
 #include "../../../platform/x86/intel_ips.h"
+#endif
 
 #define BUSY_MAX_EI	20u /* ms */
 
@@ -75,9 +77,9 @@ static void set(struct intel_uncore *uncore, i915_reg_t reg, u32 val)
 	intel_uncore_write_fw(uncore, reg, val);
 }
 
-static void rps_timer(struct timer_list *t)
+static void rps_timer(void *arg)
 {
-	struct intel_rps *rps = timer_container_of(rps, t, timer);
+	struct intel_rps *rps = arg;
 	struct intel_gt *gt = rps_to_gt(rps);
 	struct intel_engine_cs *engine;
 	ktime_t dt, last, timestamp;
@@ -1991,11 +1993,15 @@ void gen5_rps_irq_handler(struct intel_rps *rps)
 
 void intel_rps_init_early(struct intel_rps *rps)
 {
-	mutex_init(&rps->lock);
-	mutex_init(&rps->power.mutex);
+	rw_init(&rps->lock, "rpslk");
+	rw_init(&rps->power.mutex, "rpspwr");
 
 	INIT_WORK(&rps->work, rps_work);
+#ifdef __linux__
 	timer_setup(&rps->timer, rps_timer, 0);
+#else
+	timeout_set(&rps->timer, rps_timer, rps);
+#endif
 
 	atomic_set(&rps->num_waiters, 0);
 }
@@ -2740,6 +2746,7 @@ static struct drm_i915_private __rcu *ips_mchdev;
 static void
 ips_ping_for_i915_load(void)
 {
+#ifdef __linux__
 	void (*link)(void);
 
 	link = symbol_get(ips_link_to_i915_driver);
@@ -2747,6 +2754,7 @@ ips_ping_for_i915_load(void)
 		link();
 		symbol_put(ips_link_to_i915_driver);
 	}
+#endif
 }
 
 void intel_rps_driver_register(struct intel_rps *rps)

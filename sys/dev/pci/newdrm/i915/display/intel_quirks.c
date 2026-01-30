@@ -256,7 +256,7 @@ static const struct intel_dpcd_quirk intel_dpcd_quirks[] = {
 
 void intel_init_quirks(struct intel_display *display)
 {
-	struct pci_dev *d = to_pci_dev(display->drm->dev);
+	struct pci_dev *d = display->drm->pdev;
 	int i;
 
 	for (i = 0; i < ARRAY_SIZE(intel_quirks); i++) {
@@ -279,7 +279,7 @@ void intel_init_dpcd_quirks(struct intel_dp *intel_dp,
 			    const struct drm_dp_dpcd_ident *ident)
 {
 	struct intel_display *display = to_intel_display(intel_dp);
-	struct pci_dev *d = to_pci_dev(display->drm->dev);
+	struct pci_dev *d = display->drm->pdev;
 	int i;
 
 	for (i = 0; i < ARRAY_SIZE(intel_dpcd_quirks); i++) {

@@ -457,7 +457,7 @@ intel_dp_link_down(struct intel_encoder *encoder,
 		intel_set_pch_fifo_underrun_reporting(display, PIPE_A, true);
 	}
 
-	msleep(intel_dp->pps.panel_power_down_delay);
+	drm_msleep(intel_dp->pps.panel_power_down_delay);
 
 	if (display->platform.valleyview || display->platform.cherryview)
 		vlv_pps_port_disable(encoder, old_crtc_state);

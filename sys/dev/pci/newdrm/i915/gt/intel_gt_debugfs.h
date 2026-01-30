@@ -42,9 +42,11 @@ struct intel_gt_debugfs_file {
 	bool (*eval)(void *data);
 };
 
+#ifdef notyet
 void intel_gt_debugfs_register_files(struct dentry *root,
 				     const struct intel_gt_debugfs_file *files,
 				     unsigned long count, void *data);
+#endif
 
 /* functions that need to be accessed by the upper level non-gt interfaces */
 int intel_gt_debugfs_reset_show(struct intel_gt *gt, u64 *val);

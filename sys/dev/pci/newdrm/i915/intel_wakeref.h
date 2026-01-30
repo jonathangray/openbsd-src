@@ -39,7 +39,7 @@ struct intel_wakeref_ops {
 
 struct intel_wakeref {
 	atomic_t count;
-	struct mutex mutex;
+	struct rwlock mutex;
 
 	intel_wakeref_t wakeref;
 
@@ -272,6 +272,7 @@ int intel_wakeref_wait_for_idle(struct intel_wakeref *wf);
 
 #define INTEL_WAKEREF_DEF ERR_PTR(-ENOENT)
 
+#ifdef notyet
 static inline intel_wakeref_t intel_ref_tracker_alloc(struct ref_tracker_dir *dir)
 {
 	struct ref_tracker *user = NULL;
@@ -295,6 +296,7 @@ static inline void intel_ref_tracker_free(struct ref_tracker_dir *dir,
 
 void intel_ref_tracker_show(struct ref_tracker_dir *dir,
 			    struct drm_printer *p);
+#endif /* notyet */
 
 #if IS_ENABLED(CONFIG_DRM_I915_DEBUG_WAKEREF)
 
@@ -325,7 +327,7 @@ static inline void intel_wakeref_untrack(struct intel_wakeref *wf,
 
 struct intel_wakeref_auto {
 	struct drm_i915_private *i915;
-	struct timer_list timer;
+	struct timeout timer;
 	intel_wakeref_t wakeref;
 	spinlock_t lock;
 	refcount_t count;

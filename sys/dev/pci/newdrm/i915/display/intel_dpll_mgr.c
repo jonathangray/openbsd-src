@@ -4318,7 +4318,7 @@ void intel_dpll_init(struct intel_display *display)
 	const struct dpll_info *dpll_info;
 	int i;
 
-	mutex_init(&display->dpll.lock);
+	rw_init(&display->dpll.lock, "dplllk");
 
 	if (DISPLAY_VER(display) >= 14 || display->platform.dg2)
 		/* No shared DPLLs on DG2; port PLLs are part of the PHY */

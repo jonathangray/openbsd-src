@@ -298,7 +298,7 @@ int intel_guc_slpc_init(struct intel_guc_slpc *slpc)
 
 	slpc->power_profile = SLPC_POWER_PROFILES_BASE;
 
-	mutex_init(&slpc->lock);
+	rw_init(&slpc->lock, "slpc");
 	INIT_WORK(&slpc->boost_work, slpc_boost_work);
 
 	return err;

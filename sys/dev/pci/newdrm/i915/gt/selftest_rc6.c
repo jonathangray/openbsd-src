@@ -74,7 +74,7 @@ int live_rc6_manual(void *arg)
 
 	dt = ktime_get();
 	rc0_sample_energy[0] = librapl_energy_uJ();
-	msleep(sleep_time);
+	drm_msleep(sleep_time);
 	rc0_sample_energy[1] = librapl_energy_uJ() - rc0_sample_energy[0];
 	dt = ktime_sub(ktime_get(), dt);
 	res[1] = rc6_residency(rc6);
@@ -108,7 +108,7 @@ int live_rc6_manual(void *arg)
 	intel_uncore_forcewake_flush(rc6_to_uncore(rc6), FORCEWAKE_ALL);
 	dt = ktime_get();
 	rc6_sample_energy[0] = librapl_energy_uJ();
-	msleep(sleep_time);
+	drm_msleep(sleep_time);
 	rc6_freq = intel_rps_read_actual_frequency_fw(rps);
 	rc6_sample_energy[1] = librapl_energy_uJ() - rc6_sample_energy[0];
 	dt = ktime_sub(ktime_get(), dt);

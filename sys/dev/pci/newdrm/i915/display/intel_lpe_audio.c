@@ -82,6 +82,9 @@
 static struct platform_device *
 lpe_audio_platdev_create(struct intel_display *display)
 {
+	STUB();
+	return NULL;
+#ifdef notyet
 	struct pci_dev *pdev = to_pci_dev(display->drm->dev);
 	struct platform_device_info pinfo = {};
 	struct resource *rsc;
@@ -124,7 +127,7 @@ lpe_audio_platdev_create(struct intel_display *display)
 	pdata->port[0].pipe = -1;
 	pdata->port[1].pipe = -1;
 	pdata->port[2].pipe = -1;
-	spin_lock_init(&pdata->lpe_audio_slock);
+	mtx_init(&pdata->lpe_audio_slock, IPL_TTY);
 
 	platdev = platform_device_register_full(&pinfo);
 	kfree(rsc);
@@ -139,6 +142,7 @@ lpe_audio_platdev_create(struct intel_display *display)
 	pm_runtime_no_callbacks(&platdev->dev);
 
 	return platdev;
+#endif
 }
 
 static void lpe_audio_platdev_destroy(struct intel_display *display)
@@ -151,9 +155,12 @@ static void lpe_audio_platdev_destroy(struct intel_display *display)
 	 * than us fiddle with its internals.
 	 */
 
+#ifdef __linux__
 	platform_device_unregister(display->audio.lpe.platdev);
+#endif
 }
 
+#ifdef __linux__
 static void lpe_audio_irq_unmask(struct irq_data *d)
 {
 }
@@ -167,9 +174,13 @@ static struct irq_chip lpe_audio_irqchip = {
 	.irq_mask = lpe_audio_irq_mask,
 	.irq_unmask = lpe_audio_irq_unmask,
 };
+#endif
 
 static int lpe_audio_irq_init(struct intel_display *display)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	int irq = display->audio.lpe.irq;
 
 	irq_set_chip_and_handler_name(irq, &lpe_audio_irqchip,
@@ -177,10 +188,13 @@ static int lpe_audio_irq_init(struct intel_display *display)
 				      "hdmi_lpe_audio_irq_handler");
 
 	return 0;
+#endif
 }
 
 static bool lpe_audio_detect(struct intel_display *display)
 {
+	return false;
+#ifdef notyet
 	int lpe_present = false;
 
 	if (display->platform.valleyview || display->platform.cherryview) {
@@ -199,10 +213,14 @@ static bool lpe_audio_detect(struct intel_display *display)
 		}
 	}
 	return lpe_present;
+#endif
 }
 
 static int lpe_audio_setup(struct intel_display *display)
 {
+	STUB();
+	return -ENOSYS;
+#ifdef notyet
 	int ret;
 
 	display->audio.lpe.irq = irq_alloc_desc(0);
@@ -247,6 +265,7 @@ err:
 	display->audio.lpe.irq = -1;
 	display->audio.lpe.platdev = NULL;
 	return ret;
+#endif
 }
 
 /**
@@ -258,6 +277,8 @@ err:
  */
 void intel_lpe_audio_irq_handler(struct intel_display *display)
 {
+	STUB();
+#ifdef notyet
 	int ret;
 
 	if (!HAS_LPE_AUDIO(display))
@@ -267,6 +288,7 @@ void intel_lpe_audio_irq_handler(struct intel_display *display)
 	if (ret)
 		drm_err_ratelimited(display->drm,
 				    "error handling LPE audio irq: %d\n", ret);
+#endif
 }
 
 /**
@@ -299,6 +321,8 @@ int intel_lpe_audio_init(struct intel_display *display)
  */
 void intel_lpe_audio_teardown(struct intel_display *display)
 {
+	STUB();
+#ifdef notyet
 	if (!HAS_LPE_AUDIO(display))
 		return;
 
@@ -308,6 +332,7 @@ void intel_lpe_audio_teardown(struct intel_display *display)
 
 	display->audio.lpe.irq = -1;
 	display->audio.lpe.platdev = NULL;
+#endif
 }
 
 /**
@@ -326,6 +351,7 @@ void intel_lpe_audio_notify(struct intel_display *display,
 			    enum transcoder cpu_transcoder, enum port port,
 			    const void *eld, int ls_clock, bool dp_output)
 {
+#ifdef notyet
 	unsigned long irqflags;
 	struct intel_hdmi_lpe_audio_pdata *pdata;
 	struct intel_hdmi_lpe_audio_port_pdata *ppdata;
@@ -365,4 +391,5 @@ void intel_lpe_audio_notify(struct intel_display *display,
 		pdata->notify_audio_lpe(display->audio.lpe.platdev, port - PORT_B);
 
 	spin_unlock_irqrestore(&pdata->lpe_audio_slock, irqflags);
+#endif
 }

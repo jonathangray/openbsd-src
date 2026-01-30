@@ -34,6 +34,13 @@
 	for ((__i) = 0; (__i) < (__display)->dpll.num_dpll && \
 		     ((__pll) = &(__display)->dpll.dplls[(__i)]) ; (__i)++)
 
+/*FIXME: Move this to a more appropriate place. */
+#define abs_diff(a, b) ({			\
+	typeof(a) __a = (a);			\
+	typeof(b) __b = (b);			\
+	(void) (&__a == &__b);			\
+	__a > __b ? (__a - __b) : (__b - __a); })
+
 enum tc_port;
 struct drm_printer;
 struct intel_atomic_state;

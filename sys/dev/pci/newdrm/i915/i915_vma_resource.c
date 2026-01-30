@@ -13,7 +13,7 @@
 
 #include "gt/intel_gtt.h"
 
-static struct kmem_cache *slab_vma_resources;
+static struct pool slab_vma_resources;
 
 /**
  * DOC:
@@ -36,9 +36,69 @@ static struct kmem_cache *slab_vma_resources;
  */
 #define VMA_RES_START(_node) ((_node)->start - (_node)->guard)
 #define VMA_RES_LAST(_node) ((_node)->start + (_node)->node_size + (_node)->guard - 1)
+#ifdef __linux__
 INTERVAL_TREE_DEFINE(struct i915_vma_resource, rb,
 		     u64, __subtree_last,
 		     VMA_RES_START, VMA_RES_LAST, static, vma_res_itree);
+#else
+static struct i915_vma_resource *
+vma_res_itree_iter_first(struct rb_root_cached *root, uint64_t start,
+    uint64_t last)
+{
+	struct i915_vma_resource *node;
+	struct rb_node *rb;
+
+	for (rb = rb_first_cached(root); rb; rb = rb_next(rb)) {
+		node = rb_entry(rb, typeof(*node), rb);
+		if (VMA_RES_LAST(node) >= start && VMA_RES_START(node) <= last)
+			return node;
+	}
+	return NULL;
+}
+
+static struct i915_vma_resource *
+vma_res_itree_iter_next(struct i915_vma_resource *node, uint64_t start,
+    uint64_t last)
+{
+	struct rb_node *rb = &node->rb;
+
+	for (rb = rb_next(rb); rb; rb = rb_next(rb)) {
+		node = rb_entry(rb, typeof(*node), rb);
+		if (VMA_RES_LAST(node) >= start && VMA_RES_START(node) <= last)
+			return node;
+	}
+	return NULL;
+}
+
+static void
+vma_res_itree_remove(struct i915_vma_resource *node,
+    struct rb_root_cached *root)
+{
+	rb_erase_cached(&node->rb, root);
+}
+
+static void
+vma_res_itree_insert(struct i915_vma_resource *node,
+    struct rb_root_cached *root)
+{
+	struct rb_node **iter = &root->rb_root.rb_node;
+	struct rb_node *parent = NULL;
+	struct i915_vma_resource *iter_node;
+
+	while (*iter) {
+		parent = *iter;
+		iter_node = rb_entry(*iter, struct i915_vma_resource, rb);
+
+		if (node->start < iter_node->start)
+			iter = &(*iter)->rb_left;
+		else
+			iter = &(*iter)->rb_right;
+	}
+
+	rb_link_node(&node->rb, parent, iter);
+	rb_insert_color_cached(&node->rb, root, false);
+}
+#endif
 
 /* Callbacks for the unbind dma-fence. */
 
@@ -50,8 +110,13 @@ INTERVAL_TREE_DEFINE(struct i915_vma_resource, rb,
  */
 struct i915_vma_resource *i915_vma_resource_alloc(void)
 {
+#ifdef __linux__
 	struct i915_vma_resource *vma_res =
 		kmem_cache_zalloc(slab_vma_resources, GFP_KERNEL);
+#else
+	struct i915_vma_resource *vma_res =
+		pool_get(&slab_vma_resources, PR_WAITOK | PR_ZERO);
+#endif
 
 	return vma_res ? vma_res : ERR_PTR(-ENOMEM);
 }
@@ -62,8 +127,13 @@ struct i915_vma_resource *i915_vma_resource_alloc(void)
  */
 void i915_vma_resource_free(struct i915_vma_resource *vma_res)
 {
+#ifdef __linux__
 	if (vma_res)
 		kmem_cache_free(slab_vma_resources, vma_res);
+#else
+	if (vma_res)
+		pool_put(&slab_vma_resources, vma_res);
+#endif
 }
 
 static const char *get_driver_name(struct dma_fence *fence)
@@ -261,7 +331,7 @@ struct dma_fence *i915_vma_resource_unbind(struct i915_vma_resource *vma_res,
  */
 void __i915_vma_resource_init(struct i915_vma_resource *vma_res)
 {
-	spin_lock_init(&vma_res->lock);
+	mtx_init(&vma_res->lock, IPL_TTY);
 	dma_fence_init(&vma_res->unbind_fence, &unbind_fence_ops,
 		       &vma_res->lock, 0, 0);
 	refcount_set(&vma_res->hold_count, 1);
@@ -412,14 +482,23 @@ int i915_vma_resource_bind_dep_await(struct i915_address_space *vm,
 
 void i915_vma_resource_module_exit(void)
 {
+#ifdef __linux__
 	kmem_cache_destroy(slab_vma_resources);
+#else
+	pool_destroy(&slab_vma_resources);
+#endif
 }
 
 int __init i915_vma_resource_module_init(void)
 {
+#ifdef __linux__
 	slab_vma_resources = KMEM_CACHE(i915_vma_resource, SLAB_HWCACHE_ALIGN);
 	if (!slab_vma_resources)
 		return -ENOMEM;
+#else
+	pool_init(&slab_vma_resources, sizeof(struct i915_vma_resource),
+	    0, IPL_NONE, 0, "svmar", NULL);
+#endif
 
 	return 0;
 }

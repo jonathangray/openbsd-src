@@ -17,7 +17,7 @@
  */
 void intel_dkl_phy_init(struct intel_display *display)
 {
-	spin_lock_init(&display->dkl.phy_lock);
+	mtx_init(&display->dkl.phy_lock, IPL_NONE);
 }
 
 static void

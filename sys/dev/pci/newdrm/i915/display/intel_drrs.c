@@ -304,7 +304,7 @@ void intel_drrs_flush(struct intel_display *display,
 void intel_drrs_crtc_init(struct intel_crtc *crtc)
 {
 	INIT_DELAYED_WORK(&crtc->drrs.work, intel_drrs_downclock_work);
-	mutex_init(&crtc->drrs.mutex);
+	rw_init(&crtc->drrs.mutex, "drrs");
 	crtc->drrs.cpu_transcoder = INVALID_TRANSCODER;
 }
 

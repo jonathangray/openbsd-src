@@ -75,11 +75,13 @@ bool intel_display_driver_probe_defer(struct pci_dev *pdev)
 		return true;
 
 	/* If the LCD panel has a privacy-screen, wait for it */
+#ifdef notyet
 	privacy_screen = drm_privacy_screen_get(&pdev->dev, NULL);
 	if (IS_ERR(privacy_screen) && PTR_ERR(privacy_screen) == -EPROBE_DEFER)
 		return true;
 
 	drm_privacy_screen_put(privacy_screen);
+#endif
 
 	return false;
 }
@@ -184,12 +186,12 @@ void intel_display_driver_early_probe(struct intel_display *display)
 	if (!HAS_DISPLAY(display))
 		return;
 
-	spin_lock_init(&display->fb_tracking.lock);
-	mutex_init(&display->backlight.lock);
-	mutex_init(&display->audio.mutex);
-	mutex_init(&display->wm.wm_mutex);
-	mutex_init(&display->pps.mutex);
-	mutex_init(&display->hdcp.hdcp_mutex);
+	mtx_init(&display->fb_tracking.lock, IPL_NONE);
+	rw_init(&display->backlight.lock, "blight");
+	rw_init(&display->audio.mutex, "daud");
+	rw_init(&display->wm.wm_mutex, "wmm");
+	rw_init(&display->pps.mutex, "ppsm");
+	rw_init(&display->hdcp.hdcp_mutex, "hdcpc");
 
 	intel_display_irq_init(display);
 	intel_dkl_phy_init(display);
@@ -322,7 +324,7 @@ cleanup_bios:
 
 static void set_display_access(struct intel_display *display,
 			       bool any_task_allowed,
-			       struct task_struct *allowed_task)
+			       struct proc *allowed_task)
 {
 	struct drm_modeset_acquire_ctx ctx;
 	int err;
@@ -377,7 +379,11 @@ void intel_display_driver_disable_user_access(struct intel_display *display)
 {
 	intel_hpd_disable_detection_work(display);
 
+#ifdef __linux__
 	set_display_access(display, false, current);
+#else
+	set_display_access(display, false, curproc);
+#endif
 }
 
 /**
@@ -413,7 +419,11 @@ void intel_display_driver_suspend_access(struct intel_display *display)
  */
 void intel_display_driver_resume_access(struct intel_display *display)
 {
+#ifdef __linux__
 	set_display_access(display, false, current);
+#else
+	set_display_access(display, false, curproc);
+#endif
 }
 
 /**
@@ -433,16 +443,28 @@ bool intel_display_driver_check_access(struct intel_display *display)
 	char allowed_task[TASK_COMM_LEN + 16] = "none";
 
 	if (display->access.any_task_allowed ||
-	    display->access.allowed_task == current)
+	    display->access.allowed_task == curproc)
 		return true;
 
+#ifdef __linux__
 	snprintf(current_task, sizeof(current_task), "%s[%d]",
 		 current->comm, task_pid_vnr(current));
+#else
+	snprintf(current_task, sizeof(current_task), "%s[%d]",
+		 curproc->p_p->ps_comm,
+		 curproc->p_p->ps_pid);
+#endif
 
 	if (display->access.allowed_task)
+#ifdef __linux__
 		snprintf(allowed_task, sizeof(allowed_task), "%s[%d]",
 			 display->access.allowed_task->comm,
 			 task_pid_vnr(display->access.allowed_task));
+#else
+		snprintf(allowed_task, sizeof(allowed_task), "%s[%d]",
+			 display->access.allowed_task->p_p->ps_comm,
+			 display->access.allowed_task->p_p->ps_pid);
+#endif
 
 	drm_dbg_kms(display->drm,
 		    "Reject display access from task %s (allowed to %s)\n",

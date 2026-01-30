@@ -74,7 +74,7 @@ int intel_huc_fw_auth_via_gsccs(struct intel_huc *huc)
 		if (msg_out->header.flags & GSC_OUTFLAG_MSG_PENDING) {
 			msg_in->header.gsc_message_handle = msg_out->header.gsc_message_handle;
 			err = -EBUSY;
-			msleep(50);
+			drm_msleep(50);
 		}
 	} while (--retry && err == -EBUSY);
 

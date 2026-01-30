@@ -1339,8 +1339,10 @@ static void dmc_load_work_fn(struct work_struct *work)
 		drm_notice(display->drm,
 			   "Failed to load DMC firmware %s (%pe). Disabling runtime power management.\n",
 			   dmc->fw_path, ERR_PTR(err));
+#ifdef __linux__
 		drm_notice(display->drm, "DMC firmware homepage: %s",
 			   INTEL_DMC_FIRMWARE_URL);
+#endif
 		return;
 	}
 
@@ -1580,6 +1582,8 @@ static bool intel_dmc_get_dc6_allowed_count(struct intel_display *display, u32 *
 	return true;
 }
 
+#ifdef notyet
+
 static int intel_dmc_debugfs_status_show(struct seq_file *m, void *unused)
 {
 	struct intel_display *display = m->private;
@@ -1657,6 +1661,8 @@ out:
 }
 
 DEFINE_SHOW_ATTRIBUTE(intel_dmc_debugfs_status);
+
+#endif /* notyet */
 
 void intel_dmc_debugfs_register(struct intel_display *display)
 {

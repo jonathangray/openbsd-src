@@ -269,6 +269,8 @@ int intel_sseu_status(struct seq_file *m, struct intel_gt *gt)
 	return 0;
 }
 
+#ifdef notyet
+
 static int sseu_status_show(struct seq_file *m, void *unused)
 {
 	struct intel_gt *gt = m->private;
@@ -288,12 +290,17 @@ static int sseu_topology_show(struct seq_file *m, void *unused)
 }
 DEFINE_INTEL_GT_DEBUGFS_ATTRIBUTE(sseu_topology);
 
+#endif /* notyet */
+
 void intel_sseu_debugfs_register(struct intel_gt *gt, struct dentry *root)
 {
+	STUB();
+#ifdef notyet
 	static const struct intel_gt_debugfs_file files[] = {
 		{ "sseu_status", &sseu_status_fops, NULL },
 		{ "sseu_topology", &sseu_topology_fops, NULL },
 	};
 
 	intel_gt_debugfs_register_files(root, files, ARRAY_SIZE(files), gt);
+#endif
 }

@@ -42,7 +42,7 @@ struct intel_huc {
 
 	struct {
 		struct i915_sw_fence fence;
-		struct hrtimer timer;
+		struct timeout timer;
 		struct notifier_block nb;
 		enum intel_huc_delayed_load_status status;
 	} delayed_load;

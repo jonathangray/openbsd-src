@@ -59,7 +59,7 @@ static int igt_mock_fill(void *arg)
 	resource_size_t rem;
 	unsigned long max_pages;
 	unsigned long page_num;
-	LIST_HEAD(objects);
+	DRM_LIST_HEAD(objects);
 	int err = 0;
 
 	page_size = PAGE_SIZE;
@@ -238,8 +238,8 @@ static int igt_mock_contiguous(void *arg)
 	struct intel_memory_region *mem = arg;
 	struct drm_i915_gem_object *obj;
 	unsigned long n_objects;
-	LIST_HEAD(objects);
-	LIST_HEAD(holes);
+	DRM_LIST_HEAD(objects);
+	DRM_LIST_HEAD(holes);
 	I915_RND_STATE(prng);
 	resource_size_t total;
 	resource_size_t min;
@@ -383,7 +383,7 @@ static int igt_mock_splintered_region(void *arg)
 	 * power-of-two.
 	 */
 
-	size = (SZ_4G - 1) & PAGE_MASK;
+	size = (SZ_4G - 1) & LINUX_PAGE_MASK;
 	mem = mock_region_create(i915, 0, size, PAGE_SIZE, 0, 0);
 	if (IS_ERR(mem))
 		return PTR_ERR(mem);

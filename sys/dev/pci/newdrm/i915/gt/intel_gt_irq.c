@@ -287,7 +287,9 @@ void gen11_gt_irq_postinstall(struct intel_gt *gt)
 		gsc_mask = GSC_IRQ_INTF(0) | GSC_IRQ_INTF(1);
 	}
 
+#ifdef notyet
 	BUILD_BUG_ON(irqs & 0xffff0000);
+#endif
 
 	/* Enable RCS, BCS, VCS and VECS class interrupts. */
 	intel_uncore_write(uncore, GEN11_RENDER_COPY_INTR_ENABLE, dmask);

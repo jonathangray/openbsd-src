@@ -665,13 +665,13 @@ static void ns2501_dpms(struct intel_dvo_device *dvo, bool enable)
 		ns2501_writeb(dvo, NS2501_REG41, ns->conf->syncb);
 
 		ns2501_writeb(dvo, NS2501_REG34, NS2501_34_ENABLE_OUTPUT);
-		msleep(15);
+		drm_msleep(15);
 
 		ns2501_writeb(dvo, NS2501_REG8,
 				ns->conf->conf | NS2501_8_BPAS);
 		if (!(ns->conf->conf & NS2501_8_BPAS))
 			ns2501_writeb(dvo, NS2501_REG8, ns->conf->conf);
-		msleep(200);
+		drm_msleep(200);
 
 		ns2501_writeb(dvo, NS2501_REG34,
 			NS2501_34_ENABLE_OUTPUT | NS2501_34_ENABLE_BACKLIGHT);
@@ -679,11 +679,11 @@ static void ns2501_dpms(struct intel_dvo_device *dvo, bool enable)
 		ns2501_writeb(dvo, NS2501_REGC0, ns->conf->sync);
 	} else {
 		ns2501_writeb(dvo, NS2501_REG34, NS2501_34_ENABLE_OUTPUT);
-		msleep(200);
+		drm_msleep(200);
 
 		ns2501_writeb(dvo, NS2501_REG8, NS2501_8_VEN | NS2501_8_HEN |
 				NS2501_8_BPAS);
-		msleep(15);
+		drm_msleep(15);
 
 		ns2501_writeb(dvo, NS2501_REG34, 0x00);
 	}

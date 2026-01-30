@@ -100,7 +100,7 @@ static int intel_timeline_init(struct intel_timeline *timeline,
 
 	timeline->fence_context = dma_fence_context_alloc(1);
 
-	mutex_init(&timeline->mutex);
+	rw_init(&timeline->mutex, "itmln");
 
 	INIT_ACTIVE_FENCE(&timeline->last_request);
 	INIT_LIST_HEAD(&timeline->requests);
@@ -116,7 +116,7 @@ void intel_gt_init_timelines(struct intel_gt *gt)
 {
 	struct intel_gt_timelines *timelines = &gt->timelines;
 
-	spin_lock_init(&timelines->lock);
+	mtx_init(&timelines->lock, IPL_NONE);
 	INIT_LIST_HEAD(&timelines->active_list);
 }
 
@@ -416,7 +416,7 @@ void intel_gt_show_timelines(struct intel_gt *gt,
 {
 	struct intel_gt_timelines *timelines = &gt->timelines;
 	struct intel_timeline *tl, *tn;
-	LIST_HEAD(free);
+	DRM_LIST_HEAD(free);
 
 	spin_lock(&timelines->lock);
 	list_for_each_entry_safe(tl, tn, &timelines->active_list, link) {

@@ -2996,6 +2996,12 @@ static const struct bdb_header *get_bdb_header(const struct vbt_header *vbt)
 static const char vbt_signature[] = "$VBT";
 static const int vbt_signature_len = 4;
 
+#include <dev/isa/isareg.h>
+#include <dev/isa/isavar.h>
+
+#define VGA_BIOS_ADDR	0xc0000
+#define VGA_BIOS_LEN	0x10000
+
 /**
  * intel_bios_is_valid_vbt - does the given buffer contain a valid VBT
  * @display:	display device

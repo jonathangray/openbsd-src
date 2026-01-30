@@ -507,12 +507,12 @@ static void icl_tc_cold_exit(struct intel_display *display)
 		ret = intel_pcode_write(display->drm, ICL_PCODE_EXIT_TCCOLD, 0);
 		if (ret != -EAGAIN || ++tries == 3)
 			break;
-		msleep(1);
+		drm_msleep(1);
 	}
 
 	/* Spec states that TC cold exit can take up to 1ms to complete */
 	if (!ret)
-		msleep(1);
+		drm_msleep(1);
 
 	/* TODO: turn failure into a error as soon i915 CI updates ICL IFWI */
 	drm_dbg_kms(display->drm, "TC cold block %s\n", ret ? "failed" :
@@ -1289,7 +1289,11 @@ static void vlv_display_power_well_deinit(struct intel_display *display)
 	vlv_pps_reset_all(display);
 
 	/* Prevent us from re-enabling polling on accident in late suspend */
+#ifdef __linux__
 	if (!display->drm->dev->power.is_suspended)
+#else
+	if (!cold)
+#endif
 		intel_hpd_poll_enable(display);
 }
 
@@ -1799,7 +1803,7 @@ tgl_tc_cold_request(struct intel_display *display, bool block)
 		if (++tries == 3)
 			break;
 
-		msleep(1);
+		drm_msleep(1);
 	}
 
 	if (ret)

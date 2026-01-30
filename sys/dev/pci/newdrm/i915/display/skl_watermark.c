@@ -3965,6 +3965,8 @@ void skl_wm_init(struct intel_display *display)
 	display->funcs.wm = &skl_wm_funcs;
 }
 
+#ifdef notyet
+
 static int skl_watermark_ipc_status_show(struct seq_file *m, void *data)
 {
 	struct intel_display *display = m->private;
@@ -4013,6 +4015,8 @@ static const struct file_operations skl_watermark_ipc_status_fops = {
 	.release = single_release,
 	.write = skl_watermark_ipc_status_write
 };
+
+#endif /* notyet */
 
 static int intel_sagv_status_show(struct seq_file *m, void *unused)
 {

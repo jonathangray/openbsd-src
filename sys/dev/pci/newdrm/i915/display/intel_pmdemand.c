@@ -137,7 +137,7 @@ int intel_pmdemand_init(struct intel_display *display)
 
 void intel_pmdemand_init_early(struct intel_display *display)
 {
-	mutex_init(&display->pmdemand.lock);
+	rw_init(&display->pmdemand.lock, "pmdem");
 	init_waitqueue_head(&display->pmdemand.waitqueue);
 }
 

@@ -46,7 +46,7 @@ struct i915_page_directory *__alloc_pd(int count)
 		return NULL;
 	}
 
-	spin_lock_init(&pd->lock);
+	mtx_init(&pd->lock, IPL_NONE);
 	return pd;
 }
 

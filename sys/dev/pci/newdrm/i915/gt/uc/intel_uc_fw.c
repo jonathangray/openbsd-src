@@ -969,8 +969,10 @@ int intel_uc_fw_fetch(struct intel_uc_fw *uc_fw)
 			   uc_fw->file_selected.ver.major,
 			   uc_fw->file_selected.ver.minor,
 			   uc_fw->file_selected.ver.patch);
+#ifdef __linux__
 		gt_info(gt, "Consider updating your linux-firmware pkg or downloading from %s\n",
 			INTEL_UC_FIRMWARE_URL);
+#endif
 	}
 
 	if (HAS_LMEM(i915)) {
@@ -1000,8 +1002,10 @@ fail:
 
 	gt_probe_error(gt, "%s firmware %s: fetch failed %pe\n",
 		       intel_uc_fw_type_repr(uc_fw->type), uc_fw->file_selected.path, ERR_PTR(err));
+#ifdef __linux__
 	gt_info(gt, "%s firmware(s) can be downloaded from %s\n",
 		intel_uc_fw_type_repr(uc_fw->type), INTEL_UC_FIRMWARE_URL);
+#endif
 
 	release_firmware(fw);		/* OK even if fw is NULL */
 	return err;
@@ -1345,7 +1349,7 @@ size_t intel_uc_fw_copy_rsa(struct intel_uc_fw *uc_fw, void *dst, u32 max_len)
 	idx = offset >> PAGE_SHIFT;
 	offset = offset_in_page(offset);
 	if (i915_gem_object_has_struct_page(uc_fw->obj)) {
-		struct page *page;
+		struct vm_page *page;
 
 		for_each_sgt_page(page, iter, uc_fw->obj->mm.pages) {
 			u32 len = min_t(u32, size, PAGE_SIZE - offset);

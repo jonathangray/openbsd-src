@@ -272,6 +272,7 @@ struct i915_ttm_memcpy_arg {
 	bool clear;
 	struct i915_refct_sgt *src_rsgt;
 	struct i915_refct_sgt *dst_rsgt;
+	bus_space_tag_t memt;
 };
 
 /**
@@ -305,7 +306,7 @@ struct i915_ttm_memcpy_work {
 static void i915_ttm_move_memcpy(struct i915_ttm_memcpy_arg *arg)
 {
 	ttm_move_memcpy(arg->clear, arg->num_pages,
-			arg->dst_iter, arg->src_iter);
+			arg->dst_iter, arg->src_iter, arg->memt);
 }
 
 static void i915_ttm_memcpy_init(struct i915_ttm_memcpy_arg *arg,
@@ -337,6 +338,8 @@ static void i915_ttm_memcpy_init(struct i915_ttm_memcpy_arg *arg,
 	arg->dst_rsgt = i915_refct_sgt_get(dst_rsgt);
 	arg->src_rsgt = clear ? NULL :
 		i915_ttm_resource_get_st(obj, bo->resource);
+
+	arg->memt = bo->bdev->memt;
 }
 
 static void i915_ttm_memcpy_release(struct i915_ttm_memcpy_arg *arg)
@@ -436,7 +439,7 @@ i915_ttm_memcpy_work_arm(struct i915_ttm_memcpy_work *work,
 {
 	int ret;
 
-	spin_lock_init(&work->lock);
+	mtx_init(&work->lock, IPL_TTY);
 	dma_fence_init(&work->fence, &dma_fence_memcpy_ops, &work->lock, 0, 0);
 	dma_fence_get(&work->fence);
 	ret = dma_fence_add_callback(dep, &work->cb, __memcpy_cb);

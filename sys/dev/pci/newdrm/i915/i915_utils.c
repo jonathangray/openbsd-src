@@ -11,6 +11,8 @@
 #include "i915_reg.h"
 #include "i915_utils.h"
 
+#include <sys/syslog.h>
+
 void add_taint_for_CI(struct drm_i915_private *i915, unsigned int taint)
 {
 	drm_notice(&i915->drm, "CI tainted: %#x by %pS\n",
@@ -49,11 +51,14 @@ bool i915_error_injected(void)
 
 bool i915_vtd_active(struct drm_i915_private *i915)
 {
+	return false;
+#ifdef notyet
 	if (device_iommu_mapped(i915->drm.dev))
 		return true;
 
 	/* Running as a guest, we assume the host is enforcing VT'd */
 	return i915_run_as_guest();
+#endif
 }
 
 bool i915_direct_stolen_access(struct drm_i915_private *i915)

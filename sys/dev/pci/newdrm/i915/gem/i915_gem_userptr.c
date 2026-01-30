@@ -396,6 +396,8 @@ static const struct drm_i915_gem_object_ops i915_gem_userptr_ops = {
 
 #endif
 
+#ifdef notyet
+
 static int
 probe_range(struct mm_struct *mm, unsigned long addr, unsigned long len)
 {
@@ -420,6 +422,7 @@ probe_range(struct mm_struct *mm, unsigned long addr, unsigned long len)
 		return -EFAULT;
 	return 0;
 }
+#endif
 
 /*
  * Creates a new mm object that wraps some normal memory from the process
@@ -509,9 +512,14 @@ i915_gem_userptr_ioctl(struct drm_device *dev,
 		 * Check that the range pointed to represents real struct
 		 * pages and not iomappings (at this moment in time!)
 		 */
+#ifdef notyet
 		ret = probe_range(current->mm, args->user_ptr, args->user_size);
 		if (ret)
 			return ret;
+#else
+		STUB();
+		return -ENOSYS;
+#endif
 	}
 
 #ifdef CONFIG_MMU_NOTIFIER

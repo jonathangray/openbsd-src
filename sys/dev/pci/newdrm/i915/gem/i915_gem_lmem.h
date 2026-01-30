@@ -12,7 +12,7 @@ struct drm_i915_private;
 struct drm_i915_gem_object;
 struct intel_memory_region;
 
-void __iomem *
+void *
 i915_gem_object_lmem_io_map(struct drm_i915_gem_object *obj,
 			    unsigned long n,
 			    unsigned long size);

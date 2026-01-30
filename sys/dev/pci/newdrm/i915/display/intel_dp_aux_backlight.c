@@ -36,6 +36,7 @@
 
 #include <drm/drm_print.h>
 
+#include <linux/kconfig.h>
 #include "intel_backlight.h"
 #include "intel_display_core.h"
 #include "intel_display_types.h"

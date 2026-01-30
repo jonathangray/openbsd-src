@@ -98,7 +98,7 @@ struct intel_context {
 	struct i915_address_space *vm;
 	struct i915_gem_context __rcu *gem_context;
 
-	struct file *default_state;
+	struct uvm_object *default_state;
 
 	/*
 	 * @signal_lock protects the list of requests that need signaling,
@@ -165,7 +165,7 @@ struct intel_context {
 	unsigned int active_count; /* protected by timeline->mutex */
 
 	atomic_t pin_count;
-	struct mutex pin_mutex; /* guards pinning and associated on-gpuing */
+	struct rwlock pin_mutex; /* guards pinning and associated on-gpuing */
 
 	/**
 	 * active: Active tracker for the rq activity (inc. external) on this

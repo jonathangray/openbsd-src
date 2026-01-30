@@ -29,6 +29,7 @@ static struct intel_gt *llc_to_gt(struct intel_llc *llc)
 
 static unsigned int cpu_max_MHz(void)
 {
+#ifdef notyet
 	struct cpufreq_policy *policy;
 	unsigned int max_khz;
 
@@ -45,6 +46,10 @@ static unsigned int cpu_max_MHz(void)
 	}
 
 	return max_khz / 1000;
+#else
+	/* XXX we ideally want the max not cpuspeed... */
+	return cpuspeed;
+#endif
 }
 
 static bool get_ia_constants(struct intel_llc *llc,
