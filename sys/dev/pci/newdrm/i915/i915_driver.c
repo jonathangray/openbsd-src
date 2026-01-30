@@ -802,16 +802,17 @@ int i915_driver_probe(struct drm_i915_private *i915, const struct pci_device_id 
 		pr_err("Failed to enable graphics device: %pe\n", ERR_PTR(ret));
 		return ret;
 	}
-#else
-	struct pci_dev *pdev = i915->drm.pdev;
-	int ret;
-#endif
 
 	i915 = i915_driver_create(pdev, ent);
 	if (IS_ERR(i915)) {
 		pci_disable_device(pdev);
 		return PTR_ERR(i915);
 	}
+#else
+	struct intel_display *display;
+	struct pci_dev *pdev = i915->drm.pdev;
+	int ret;
+#endif
 
 	display = i915->display;
 
@@ -2243,6 +2244,7 @@ inteldrm_attach(struct device *parent, struct device *self, void *aux)
 {
 	struct drm_i915_private *dev_priv = (struct drm_i915_private *)self;
 	struct drm_device *dev;
+	struct intel_display *display;
 	struct pci_attach_args *pa = aux;
 	const struct pci_device_id *id;
 	struct intel_device_info *info;
@@ -2311,7 +2313,13 @@ inteldrm_attach(struct device *parent, struct device *self, void *aux)
 	/* Set up device info and initial runtime info. */
 	intel_device_info_driver_create(dev_priv, dev->pdev->device, info);
 
-	intel_display_device_probe(dev_priv);
+	display = intel_display_device_probe(dev->pdev);
+	if (IS_ERR(display)) {
+		printf("%s: display probe failed\n", dev_priv->sc_dev.dv_xname);
+		return;
+	}
+
+	dev_priv->display = display;
 
 	/*
 	 * with GuC submission, init sometimes fails on Alder Lake-P
@@ -2519,7 +2527,8 @@ inteldrm_activate(struct device *self, int act)
 	 * Do not try to call i915_drm_suspend() when
 	 * i915_load_modeset_init()/i915_gem_init() have not been called.
 	 */
-	if (dev_priv->display.wq.modeset == NULL)
+	if (dev_priv->display == NULL ||
+	    dev_priv->display->wq.modeset == NULL)
 		return 0;
 
 #ifdef DDB
