@@ -25,7 +25,7 @@
 #ifndef __PCIIDS_H__
 #define __PCIIDS_H__
 
-#ifdef __KERNEL__
+#ifdef _KERNEL
 #define INTEL_PCI_DEVICE(_id, _info) { \
 	PCI_DEVICE(PCI_VENDOR_ID_INTEL, (_id)), \
 	.driver_data = (kernel_ulong_t)(_info), \

@@ -22,6 +22,7 @@
 #include "intel_display_types.h"
 #include "intel_fbc.h"
 #include "intel_step.h"
+#include "i915_drv.h"
 
 __diag_push();
 __diag_ignore_all("-Woverride-init", "Allow field initialization overrides for display info");
@@ -1512,6 +1513,7 @@ static const struct {
 static const struct intel_display_device_info *
 probe_gmdid_display(struct intel_display *display, struct intel_display_ip_ver *ip_ver)
 {
+	struct drm_i915_private *i915 = to_i915(display->drm);
 	struct pci_dev *pdev = display->drm->pdev;
 	struct intel_display_ip_ver gmd_id;
 	void __iomem *addr;
@@ -1534,11 +1536,12 @@ probe_gmdid_display(struct intel_display *display, struct intel_display_ip_ver *
 	pci_iounmap(pdev, addr);
 #else
 	mmio_bar = 0x10;
-	mmio_type = pci_mapreg_type(i915->pc, i915->tag, mmio_bar);
+	mmio_type = pci_mapreg_type(pdev->pc, pdev->tag, mmio_bar);
 	if (pci_mapreg_map(i915->pa, mmio_bar, mmio_type, 0,
 	    &bst, &bsh, NULL, &memsize, 0)) {
-		drm_err(&i915->drm, "Cannot map MMIO BAR to read display GMD_ID\n");
-		return &no_display;
+		drm_err(display->drm,
+			"Cannot map MMIO BAR to read display GMD_ID\n");
+		return NULL;
 	}
 
 	val = bus_space_read_4(bst, bsh, i915_mmio_reg_offset(GMD_ID_DISPLAY));
@@ -1682,7 +1685,7 @@ struct intel_display *intel_display_device_probe(struct pci_dev *pdev)
 	display->drm = pci_get_drvdata(pdev);
 
 	intel_display_params_copy(&display->params);
-	i915->display.params.enable_psr = 0;
+	display->params.enable_psr = 0;
 
 	if (has_no_display(pdev)) {
 		drm_dbg_kms(display->drm, "Device doesn't have display\n");

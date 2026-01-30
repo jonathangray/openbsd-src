@@ -543,6 +543,8 @@ pci_match_id(const struct pci_device_id *ids, struct pci_dev *pdev)
 	return NULL;
 }
 
+#define PCI_BASE_CLASS_DISPLAY PCI_CLASS_DISPLAY
+
 #define PCI_CLASS_DISPLAY_VGA \
     ((PCI_CLASS_DISPLAY << 8) | PCI_SUBCLASS_DISPLAY_VGA)
 #define PCI_CLASS_DISPLAY_OTHER \
