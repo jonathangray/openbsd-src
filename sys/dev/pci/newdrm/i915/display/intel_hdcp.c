@@ -1566,7 +1566,7 @@ static int hdcp2_authentication_key_exchange(struct intel_connector *connector)
 	 */
 	for (i = 0; i < max_retries; i++) {
 		if (!intel_hdcp2_get_capability(connector)) {
-			msleep(50);
+			drm_msleep(50);
 			continue;
 		}
 
@@ -2263,7 +2263,6 @@ static int i915_hdcp_component_bind(struct device *drv_kdev,
 	mutex_unlock(&display->hdcp.hdcp_mutex);
 
 	return 0;
-#endif
 }
 
 static void i915_hdcp_component_unbind(struct device *drv_kdev,
@@ -2344,6 +2343,7 @@ static int initialize_hdcp_port_data(struct intel_connector *connector,
 	}
 
 	return 0;
+#endif
 }
 
 static bool is_hdcp2_supported(struct intel_display *display)
