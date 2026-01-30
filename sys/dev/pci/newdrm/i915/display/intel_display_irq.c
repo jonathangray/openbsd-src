@@ -2370,7 +2370,7 @@ void dg1_de_irq_postinstall(struct intel_display *display)
 
 void intel_display_irq_init(struct intel_display *display)
 {
-	spin_lock_init(&display->irq.lock);
+	mtx_init(&display->irq.lock, IPL_TTY);
 
 	display->drm->vblank_disable_immediate = true;
 
