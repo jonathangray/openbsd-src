@@ -335,6 +335,8 @@ static int force_link_bpp_show(struct seq_file *m, void *data)
 	return 0;
 }
 
+#ifdef __linux__
+
 static int str_to_fxp_q4_nonneg_int(const char *str, int *val_x16)
 {
 	unsigned int val;
@@ -413,6 +415,8 @@ static int user_str_to_fxp_q4_nonneg(const char __user *ubuf, size_t len, int *v
 	return err;
 }
 
+#endif /* __linux__ */
+
 static bool connector_supports_dsc(struct intel_connector *connector)
 {
 	struct intel_display *display = to_intel_display(connector);
@@ -429,6 +433,8 @@ static bool connector_supports_dsc(struct intel_connector *connector)
 		return false;
 	}
 }
+
+#ifdef __linux__
 
 static ssize_t
 force_link_bpp_write(struct file *file, const char __user *ubuf, size_t len, loff_t *offp)
@@ -468,6 +474,8 @@ force_link_bpp_write(struct file *file, const char __user *ubuf, size_t len, lof
 	return len;
 }
 DEFINE_SHOW_STORE_ATTRIBUTE(force_link_bpp);
+
+#endif /* __linux__ */
 
 void intel_link_bw_connector_debugfs_add(struct intel_connector *connector)
 {
