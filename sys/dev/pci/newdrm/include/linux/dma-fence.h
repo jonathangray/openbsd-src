@@ -144,4 +144,16 @@ dma_fence_end_signalling(bool x)
 {
 }
 
+static inline const char *
+dma_fence_driver_name(struct dma_fence *fence)
+{
+	return fence->ops->get_driver_name(fence);
+}
+
+static inline const char *
+dma_fence_timeline_name(struct dma_fence *fence)
+{
+	return fence->ops->get_timeline_name(fence);
+}
+
 #endif
