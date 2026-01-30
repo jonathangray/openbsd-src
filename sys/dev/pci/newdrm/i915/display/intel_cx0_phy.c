@@ -2195,19 +2195,29 @@ static void intel_c10pll_dump_hw_state(struct intel_display *display,
 			    i + 2, hw_state->pll[i + 2], i + 3, hw_state->pll[i + 3]);
 }
 
+static int
+intel_pch_match(struct pci_attach_args *pa)
+{
+	if (PCI_VENDOR(pa->pa_id) == PCI_VENDOR_INTEL &&
+	    PCI_CLASS(pa->pa_class) == PCI_CLASS_BRIDGE &&
+	    PCI_SUBCLASS(pa->pa_class) == PCI_SUBCLASS_BRIDGE_ISA)
+		return 1;
+	return 0;
+}
+
 /*
  * Some ARLs SoCs have the same drm PCI IDs, so need a helper to differentiate based
  * on the host bridge device ID to get the correct txx_mics value.
  */
 static bool is_arrowlake_s_by_host_bridge(void)
 {
-	struct pci_dev *pdev = NULL;
-	u16 host_bridge_pci_dev_id;
+	struct pci_attach_args pa;
+	u16 host_bridge_pci_dev_id = 0;
 
-	while ((pdev = pci_get_class(PCI_CLASS_BRIDGE_HOST << 8, pdev)))
-		host_bridge_pci_dev_id = pdev->device;
+	if (pci_find_device(&pa, intel_pch_match))
+		host_bridge_pci_dev_id = PCI_PRODUCT(pa.pa_id);
 
-	return pdev && IS_ARROWLAKE_S_BY_HOST_BRIDGE_ID(host_bridge_pci_dev_id);
+	return IS_ARROWLAKE_S_BY_HOST_BRIDGE_ID(host_bridge_pci_dev_id);
 }
 
 static u16 intel_c20_hdmi_tmds_tx_cgf_1(struct intel_crtc_state *crtc_state)
