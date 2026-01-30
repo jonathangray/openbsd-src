@@ -215,7 +215,7 @@ int vlv_iosf_sb_write(struct drm_device *drm, enum vlv_iosf_sb_unit unit, u32 ad
 void vlv_iosf_sb_init(struct drm_i915_private *i915)
 {
 	if (IS_VALLEYVIEW(i915) || IS_CHERRYVIEW(i915))
-		mutex_init(&i915->vlv_iosf_sb.lock);
+		rw_init(&i915->vlv_iosf_sb.lock, "vlviosf");
 
 	if (IS_VALLEYVIEW(i915))
 		cpu_latency_qos_add_request(&i915->vlv_iosf_sb.qos, PM_QOS_DEFAULT_VALUE);
