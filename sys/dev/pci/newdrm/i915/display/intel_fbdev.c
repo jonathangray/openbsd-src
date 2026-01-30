@@ -57,6 +57,7 @@
 #include "intel_fbdev.h"
 #include "intel_fbdev_fb.h"
 #include "intel_frontbuffer.h"
+#include "i915_drv.h"
 
 struct intel_fbdev {
 	struct intel_framebuffer *fb;
@@ -343,8 +344,9 @@ int intel_fbdev_driver_fbdev_probe(struct drm_fb_helper *helper,
 
 	intel_display_rpm_put(display, wakeref);
 {
-	struct drm_framebuffer *fb = ifbdev->helper.fb;
-	struct rasops_info *ri = &dev_priv->ro;
+	struct drm_framebuffer *fb = helper->fb;
+	struct drm_i915_private *i915 = to_i915(display->drm);
+	struct rasops_info *ri = &i915->ro;
 
 	ri->ri_bits = info->screen_base;
 	ri->ri_depth = fb->format->cpp[0] * 8;
