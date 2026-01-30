@@ -54,4 +54,12 @@
 
 #define OPTIMIZER_HIDE_VAR(x)
 
+#ifndef __COUNTER__
+#define __COUNTER__	__LINE
+#endif
+
+#define ____UNIQUE_ID(prefix, num)	prefix##num
+#define ___UNIQUE_ID(prefix, num)	____UNIQUE_ID(prefix, num)
+#define __UNIQUE_ID(prefix)		___UNIQUE_ID(prefix, __COUNTER__)
+
 #endif
