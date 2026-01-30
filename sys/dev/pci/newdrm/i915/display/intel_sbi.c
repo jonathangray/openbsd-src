@@ -81,7 +81,7 @@ void intel_sbi_write(struct intel_display *display, u16 reg, u32 value,
 
 void intel_sbi_init(struct intel_display *display)
 {
-	mutex_init(&display->sbi.lock);
+	rw_init(&display->sbi.lock, "dsbi");
 }
 
 void intel_sbi_fini(struct intel_display *display)

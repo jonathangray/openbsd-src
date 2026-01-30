@@ -546,7 +546,7 @@ struct intel_display {
 
 	struct {
 		/* LPT/WPT IOSF sideband protection */
-		struct mutex lock;
+		struct rwlock lock;
 	} sbi;
 
 	struct {
