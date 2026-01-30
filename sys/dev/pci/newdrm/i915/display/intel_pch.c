@@ -314,7 +314,7 @@ void intel_pch_detect(struct intel_display *display)
 	 */
 	if (pci_find_device(&pa, intel_pch_match)) {
 		id = PCI_PRODUCT(pa.pa_id) & INTEL_PCH_DEVICE_ID_MASK;
-		subsys = pci_conf_read(pa.pa_pc, pa.pa_tag, PCI_SUBSYS_ID_REG)
+		subsys = pci_conf_read(pa.pa_pc, pa.pa_tag, PCI_SUBSYS_ID_REG);
 
 		pch_type = intel_pch_type(display, id);
 		if (pch_type != PCH_NONE) {
