@@ -1768,7 +1768,7 @@ void intel_ddi_buf_trans_init(struct intel_encoder *encoder)
 	} else if (display->platform.haswell) {
 		encoder->get_buf_trans = hsw_get_buf_trans;
 	} else {
-		struct pci_dev *pdev = to_pci_dev(display->drm->dev);
+		struct pci_dev *pdev = display->drm->pdev;
 
 		MISSING_CASE(pdev->device);
 	}

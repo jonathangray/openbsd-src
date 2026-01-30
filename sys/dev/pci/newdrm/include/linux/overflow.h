@@ -3,6 +3,8 @@
 #ifndef _LINUX_OVERFLOW_H
 #define _LINUX_OVERFLOW_H
 
+#include <linux/limits.h>
+
 #define array_size(x, y)	((x) * (y))
 
 #define struct_size(p, member, n) \
