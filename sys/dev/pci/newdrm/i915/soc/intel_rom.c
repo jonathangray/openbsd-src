@@ -9,6 +9,12 @@
 #include "intel_rom.h"
 #include "intel_uncore.h"
 
+#include <dev/isa/isareg.h>
+#include <dev/isa/isavar.h>
+
+#define VGA_BIOS_ADDR	0xc0000
+#define VGA_BIOS_LEN	0x10000
+
 struct intel_rom {
 	/* for PCI ROM */
 	struct pci_dev *pdev;
@@ -82,7 +88,9 @@ static void pci_read_block(struct intel_rom *rom, void *data,
 
 static void pci_free(struct intel_rom *rom)
 {
+#ifdef __linux__
 	pci_unmap_rom(rom->pdev, rom->oprom);
+#endif
 }
 
 struct intel_rom *intel_rom_pci(struct drm_i915_private *i915)
@@ -93,9 +101,14 @@ struct intel_rom *intel_rom_pci(struct drm_i915_private *i915)
 	if (!rom)
 		return NULL;
 
-	rom->pdev = to_pci_dev(i915->drm.dev);
+	rom->pdev = i915->drm.pdev;
 
+#ifdef __linux__
 	rom->oprom = pci_map_rom(rom->pdev, &rom->size);
+#else
+	rom->oprom = (u8 *)ISA_HOLE_VADDR(VGA_BIOS_ADDR);
+	rom->size = VGA_BIOS_LEN;
+#endif
 	if (!rom->oprom) {
 		kfree(rom);
 		return NULL;
