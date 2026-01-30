@@ -117,7 +117,7 @@ struct intel_digital_port *intel_dig_port_alloc(void)
 	dig_port->aux_ch = AUX_CH_NONE;
 	dig_port->max_lanes = 4;
 
-	mutex_init(&dig_port->hdcp.mutex);
+	rw_init(&dig_port->hdcp.mutex, "dhdcp");
 
 	return dig_port;
 }
