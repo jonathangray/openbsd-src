@@ -5,16 +5,16 @@
 
 #include "i915_timer_util.h"
 
-void cancel_timer(struct timer_list *t)
+void cancel_timer(struct timeout *t)
 {
 	if (!timer_active(t))
 		return;
 
 	timer_delete(t);
-	WRITE_ONCE(t->expires, 0);
+	WRITE_ONCE(t->to_time, 0);
 }
 
-void set_timer_ms(struct timer_list *t, unsigned long timeout)
+void set_timer_ms(struct timeout *t, unsigned long timeout)
 {
 	if (!timeout) {
 		cancel_timer(t);

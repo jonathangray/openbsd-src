@@ -7,15 +7,19 @@
 #include <linux/timer.h>
 #include <asm/rwonce.h>
 
-void cancel_timer(struct timer_list *t);
-void set_timer_ms(struct timer_list *t, unsigned long timeout);
+void cancel_timer(struct timeout *t);
+void set_timer_ms(struct timeout *t, unsigned long timeout);
 
-static inline bool timer_active(const struct timer_list *t)
+static inline bool timer_active(const struct timeout *t)
 {
+#ifdef __linux__
 	return READ_ONCE(t->expires);
+#else
+	return READ_ONCE(t->to_time);
+#endif
 }
 
-static inline bool timer_expired(const struct timer_list *t)
+static inline bool timer_expired(const struct timeout *t)
 {
 	return timer_active(t) && !timer_pending(t);
 }
