@@ -10,7 +10,7 @@ fwnode_handle_put(struct fwnode_handle *h)
 {
 }
 
-const struct fwnode_handle *
+static inline const struct fwnode_handle *
 dev_fwnode(struct device *d)
 {
 	return NULL;
