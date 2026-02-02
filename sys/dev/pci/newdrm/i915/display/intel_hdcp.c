@@ -2750,6 +2750,8 @@ void intel_hdcp_handle_cp_irq(struct intel_connector *connector)
 	queue_delayed_work(display->wq.unordered, &hdcp->check_work, 0);
 }
 
+#ifdef notyet
+
 static void __intel_hdcp_info(struct seq_file *m, struct intel_connector *connector,
 			      bool remote_req)
 {
@@ -2899,3 +2901,5 @@ void intel_hdcp_connector_debugfs_add(struct intel_connector *connector)
 				    connector, &intel_hdcp_force_14_fops);
 	}
 }
+
+#endif /* notyet */
