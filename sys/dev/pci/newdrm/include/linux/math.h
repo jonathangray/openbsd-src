@@ -19,7 +19,12 @@
 static inline unsigned long
 int_sqrt(unsigned long x)
 {
-	unsigned long r = x / 2;
+	unsigned long r;
+
+	if (x <= 1)
+		return x;
+
+	r = x / 2;
 	/*
 	 * while next < current
 	 * (r + (x / r)) / 2 < r
