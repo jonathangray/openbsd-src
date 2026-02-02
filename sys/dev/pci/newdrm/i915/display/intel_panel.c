@@ -520,6 +520,11 @@ int intel_panel_register(struct intel_connector *connector)
 		struct device *dev = connector->base.kdev;
 		struct drm_panel *base;
 
+#ifdef __OpenBSD__
+		STUB();
+		return 0;
+#endif
+
 		/* Sanity check. */
 		if (drm_WARN_ON(display->drm, !dev))
 			goto out;
