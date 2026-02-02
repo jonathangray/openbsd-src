@@ -73,6 +73,8 @@
 	(__p == __o);							\
 })
 
+#define try_cmpxchg64(p, op, n)	try_cmpxchg(p, op, n)
+
 static inline bool
 atomic_try_cmpxchg(volatile int *p, int *op, int n)
 {
