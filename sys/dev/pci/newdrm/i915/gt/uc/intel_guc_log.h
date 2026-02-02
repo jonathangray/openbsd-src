@@ -48,7 +48,7 @@ struct intel_guc_log {
 	 * This lock replaces the legacy struct_mutex usage in
 	 * intel_guc_log system.
 	 */
-	struct mutex guc_lock;
+	struct rwlock guc_lock;
 
 	/* Allocation settings */
 	struct {
