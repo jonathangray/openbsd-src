@@ -476,9 +476,15 @@ shmem_pwrite(struct drm_i915_gem_object *obj,
 	     const struct drm_i915_gem_pwrite *arg)
 {
 	char __user *user_data = u64_to_user_ptr(arg->data_ptr);
+#ifdef __linux__
 	struct file *file = obj->base.filp;
 	struct kiocb kiocb;
 	struct iov_iter iter;
+#else
+	u64 remain;
+	loff_t pos;
+	unsigned int pg;
+#endif
 	ssize_t written;
 	u64 size = arg->size;
 
@@ -503,6 +509,7 @@ shmem_pwrite(struct drm_i915_gem_object *obj,
 	if (obj->mm.madv != I915_MADV_WILLNEED)
 		return -EFAULT;
 
+#ifdef __linux__
 	if (size > MAX_RW_COUNT)
 		return -EFBIG;
 
@@ -521,6 +528,56 @@ shmem_pwrite(struct drm_i915_gem_object *obj,
 
 	if (written < 0)
 		return written;
+#else
+	remain = arg->size;
+	pos = arg->offset;
+	pg = offset_in_page(pos);
+
+	do {
+		unsigned int len, unwritten;
+		struct pglist plist;
+		struct vm_page *page;
+		void *data, *vaddr;
+		int err;
+		char __maybe_unused c;
+
+		len = PAGE_SIZE - pg;
+		if (len > remain)
+			len = remain;
+
+		/* Prefault the user page to reduce potential recursion */
+		err = __get_user(c, user_data);
+		if (err)
+			return err;
+
+		err = __get_user(c, user_data + len - 1);
+		if (err)
+			return err;
+
+		TAILQ_INIT(&plist);
+		if (uvm_obj_wire(obj->base.uao, trunc_page(pos),
+		    trunc_page(pos) + PAGE_SIZE, &plist)) {
+			return -ENOMEM;
+		}
+		page = TAILQ_FIRST(&plist);
+		vaddr = kmap_atomic(page);
+		unwritten = __copy_from_user_inatomic(vaddr + pg,
+		    user_data, len);
+		kunmap_atomic(vaddr);
+
+		uvm_obj_unwire(obj->base.uao, trunc_page(pos),
+		    trunc_page(pos) + PAGE_SIZE);
+
+		/* We don't handle -EFAULT, leave it to the caller to check */
+		if (unwritten)
+			return -ENODEV;
+
+		remain -= len;
+		user_data += len;
+		pos += len;
+		pg = 0;
+	} while (remain);
+#endif
 
 	return 0;
 }
