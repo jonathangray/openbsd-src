@@ -3,6 +3,8 @@
 #ifndef _LINUX_IOPOLL_H
 #define _LINUX_IOPOLL_H
 
+/* allowed to sleep */
+
 #define poll_timeout_us(op, cond, sleep_us, timeout_us, sleep_before)	\
 ({									\
 	struct timeval __end, __now, __timeout_tv;			\
@@ -38,5 +40,9 @@
 
 #define readx_poll_timeout(op, addr, val, cond, sleep_us, timeout_us)	\
 	poll_timeout_us((val) = (op)(addr), cond, sleep_us, timeout_us, false)
+
+/* not allowed to sleep */
+#define poll_timeout_us_atomic(op, cond, sleep_us, timeout_us, sleep_before)	\
+	poll_timeout_us(op, cond, sleep_us, timeout_us, sleep_before)
 
 #endif
