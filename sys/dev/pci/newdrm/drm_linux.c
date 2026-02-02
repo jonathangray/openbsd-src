@@ -57,6 +57,7 @@
 #include <linux/sync_file.h>
 #include <linux/suspend.h>
 #include <linux/slab.h>
+#include <linux/seq_buf.h>
 
 #include <drm/drm_device.h>
 #include <drm/drm_connector.h>
@@ -3551,6 +3552,22 @@ component_master_add_with_match(struct device *dev,
 	}
 
 	return 0;
+}
+
+void
+seq_buf_printf(struct seq_buf *s, const char *fmt, ...)
+{
+	int r;
+	va_list ap;
+	va_start(ap, fmt);
+	r = vsnprintf(s->buf + s->pos, s->size - s->pos, fmt, ap);
+	va_end(ap);
+
+	s->pos += r;
+	if (s->pos >= s->size) {
+		s->pos = s->size - 1;
+		s->overflowed = 1;
+	}
 }
 
 #ifdef __HAVE_FDT
