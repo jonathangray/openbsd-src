@@ -1,4 +1,4 @@
-/* $OpenBSD: fuse_private.h,v 1.26 2025/12/08 06:37:05 helg Exp $ */
+/* $OpenBSD: fuse_private.h,v 1.28 2026/01/29 06:04:27 helg Exp $ */
 /*
  * Copyright (c) 2013 Sylvestre Gallon <ccna.syl@gmail.com>
  *
@@ -42,13 +42,14 @@ struct fuse_vnode {
 
 struct fuse_dirhandle {
 	struct fuse *fuse;
-	fuse_fill_dir_t filler;
-	void *buf;
-	int full;
-	uint32_t size;
-	uint32_t start;
-	uint32_t idx;
-	off_t off;
+	fuse_fill_dir_t filler; /* needed by getdir */
+	void *buf;		/* buffer for dirents */
+	int full;		/* whether the buffer is full*/
+	uint32_t size;		/* buffer size */
+	uint32_t start;		/* start offset */
+	uint32_t idx;		/* current offset */
+	uint32_t len;		/* buffer space used */
+	fuse_ino_t ino;		/* directory inode */
 };
 
 SIMPLEQ_HEAD(fuse_vn_head, fuse_vnode);
@@ -56,16 +57,17 @@ SPLAY_HEAD(dict, dictentry);
 SPLAY_HEAD(tree, treeentry);
 
 struct fuse_session {
-	void *args;
+	struct fuse_lowlevel_ops llops;
+	struct fuse_chan	*chan;
+	void			*userdata;
+	int			 init;
+	int			 exit;
 };
 
 struct fuse_chan {
-	char *dir;
-	struct fuse_args *args;
-
-	int fd;
-	int init;
-	int dead;
+	struct fuse_session	*se;
+	int			fd;
+	int			dead;
 };
 
 struct fuse_config {
@@ -95,7 +97,6 @@ struct fuse_mount_opts {
 };
 
 struct fuse {
-	struct fuse_chan	*fc;
 	struct fuse_operations	op;
 
 	int			compat;
@@ -106,20 +107,28 @@ struct fuse {
 	void			*private_data;
 
 	struct fuse_config	conf;
-	struct fuse_session	se;
+	struct fuse_session	*se;
+};
+
+/* fuse_lowlevel.h */
+struct fuse_req {
+	struct fuse_ctx		ctx;
+	struct fusebuf		*fbuf;
+	struct fuse_session	*se;
+	struct fuse_chan	*ch;
 };
 
 #define	FUSE_MAX_OPS	39
 #define FUSE_ROOT_INO ((ino_t)1)
 
 /* fuse_ops.c */
-int	ifuse_exec_opcode(struct fuse *, struct fusebuf *);
+const fuse_req_t ifuse_req(void);
 
 /* fuse_subr.c */
 struct fuse_vnode	*alloc_vn(struct fuse *, const char *, ino_t, ino_t);
 void			 ref_vn(struct fuse_vnode *);
 void			 unref_vn(struct fuse *, struct fuse_vnode *);
-struct fuse_vnode	*get_vn_by_name_and_parent(struct fuse *, uint8_t *,
+struct fuse_vnode	*get_vn_by_name_and_parent(struct fuse *, const char *,
     ino_t);
 void			remove_vnode_from_name_tree(struct fuse *,
     struct fuse_vnode *);
@@ -174,5 +183,32 @@ PROTO(fuse_is_lib_option);
 
 /* FUSE low-level */
 PROTO(fuse_chan_fd);
+PROTO(fuse_chan_recv);
+PROTO(fuse_chan_send);
+PROTO(fuse_req_ctx);
+PROTO(fuse_req_userdata);
+PROTO(fuse_reply_err);
+PROTO(fuse_reply_buf);
+PROTO(fuse_reply_attr);
+PROTO(fuse_reply_entry);
+PROTO(fuse_reply_open);
+PROTO(fuse_reply_write);
+PROTO(fuse_reply_readlink);
+PROTO(fuse_reply_statfs);
+PROTO(fuse_reply_none);
+PROTO(fuse_add_direntry);
+PROTO(fuse_lowlevel_new);
+PROTO(fuse_session_destroy);
+PROTO(fuse_session_add_chan);
+PROTO(fuse_session_remove_chan);
+PROTO(fuse_session_exit);
+PROTO(fuse_session_exited);
+PROTO(fuse_session_reset);
+PROTO(fuse_session_loop);
+PROTO(fuse_session_process);
+
+/* Unsupported */
+PROTO(fuse_reply_create);
+PROTO(fuse_reply_bmap);
 
 #endif /* _FUSE_SUBR_ */

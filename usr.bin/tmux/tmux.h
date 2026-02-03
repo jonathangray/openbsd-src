@@ -1,4 +1,4 @@
-/* $OpenBSD: tmux.h,v 1.1286 2026/01/20 16:32:05 nicm Exp $ */
+/* $OpenBSD: tmux.h,v 1.1289 2026/02/02 10:08:30 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -929,7 +929,7 @@ struct screen_sel;
 struct screen_titles;
 struct screen {
 	char				*title;
-	char *path;
+	char				*path;
 	struct screen_titles		*titles;
 
 	struct grid			*grid;	  /* grid data */
@@ -1500,6 +1500,19 @@ struct key_event {
 	size_t			 len;
 };
 
+/* Visible range array element. */
+struct visible_range {
+	u_int	px;	/* start */
+	u_int	nx;	/* length */
+};
+
+/* Visible areas not obstructed. */
+struct visible_ranges {
+	struct visible_range	*ranges;  /* dynamically allocated array */
+	u_int			 used;    /* number of entries in ranges */
+	u_int			 size;    /* allocated capacity of ranges */
+};
+
 /* Terminal definition. */
 struct tty_term {
 	char		*name;
@@ -1564,6 +1577,7 @@ struct tty {
 	size_t		 discarded;
 
 	struct termios	 tio;
+	struct visible_ranges r;
 
 	struct grid_cell cell;
 	struct grid_cell last_cell;
@@ -1880,22 +1894,15 @@ struct client_window {
 };
 RB_HEAD(client_windows, client_window);
 
-/* Visible areas not obstructed by overlays. */
-#define OVERLAY_MAX_RANGES 3
-struct overlay_ranges {
-	u_int	px[OVERLAY_MAX_RANGES];
-	u_int	nx[OVERLAY_MAX_RANGES];
-};
-
 /* Client connection. */
 typedef int (*prompt_input_cb)(struct client *, void *, const char *, int);
 typedef void (*prompt_free_cb)(void *);
-typedef void (*overlay_check_cb)(struct client*, void *, u_int, u_int, u_int,
-	    struct overlay_ranges *);
+typedef struct visible_ranges *(*overlay_check_cb)(struct client*, void *,
+    u_int, u_int, u_int);
 typedef struct screen *(*overlay_mode_cb)(struct client *, void *, u_int *,
-	    u_int *);
+    u_int *);
 typedef void (*overlay_draw_cb)(struct client *, void *,
-	    struct screen_redraw_ctx *);
+    struct screen_redraw_ctx *);
 typedef int (*overlay_key_cb)(struct client *, void *, struct key_event *);
 typedef void (*overlay_free_cb)(struct client *, void *);
 typedef void (*overlay_resize_cb)(struct client *, void *);
@@ -2220,10 +2227,36 @@ struct spawn_context {
 #define SPAWN_ZOOM 0x80
 };
 
-/* Mode tree sort order. */
-struct mode_tree_sort_criteria {
-	u_int	field;
-	int	reversed;
+/* Paste buffer. */
+struct paste_buffer {
+	char		*data;
+	size_t		 size;
+
+	char		*name;
+	time_t		 created;
+	int		 automatic;
+	u_int		 order;
+
+	RB_ENTRY(paste_buffer) name_entry;
+	RB_ENTRY(paste_buffer) time_entry;
+};
+
+/* Sort orders. */
+enum sort_order {
+	SORT_ACTIVITY,
+	SORT_CREATION,
+ 	SORT_INDEX,
+	SORT_NAME,
+	SORT_ORDER,
+	SORT_SIZE,
+	SORT_END,
+};
+
+/* Sort criteria. */
+struct sort_criteria {
+	enum sort_order	 order;
+	int		 reversed;
+	enum sort_order	*order_seq; /* available sort orders */
 };
 
 /* tmux.c */
@@ -2279,7 +2312,6 @@ void	cfg_print_causes(struct cmdq_item *);
 void	cfg_show_causes(struct session *);
 
 /* paste.c */
-struct paste_buffer;
 const char	*paste_buffer_name(struct paste_buffer *);
 u_int		 paste_buffer_order(struct paste_buffer *);
 time_t		 paste_buffer_created(struct paste_buffer *);
@@ -2294,6 +2326,24 @@ int		 paste_rename(const char *, const char *, char **);
 int		 paste_set(char *, size_t, const char *, char **);
 void		 paste_replace(struct paste_buffer *, char *, size_t);
 char		*paste_make_sample(struct paste_buffer *);
+
+/* sort.c */
+void			  sort_next_order(struct sort_criteria *);
+enum sort_order		  sort_order_from_string(const char *);
+const char		 *sort_order_to_string(enum sort_order);
+int			  sort_would_window_tree_swap(struct sort_criteria *,
+			      struct winlink *, struct winlink *);
+struct paste_buffer	**sort_get_buffers(u_int *, struct sort_criteria *);
+struct client		**sort_get_clients(u_int *, struct sort_criteria *);
+struct session		**sort_get_sessions(u_int *, struct sort_criteria *);
+struct window_pane	**sort_get_panes(u_int *, struct sort_criteria *);
+struct window_pane	**sort_get_panes_session(struct session *, u_int *,
+			      struct sort_criteria *);
+struct window_pane	**sort_get_panes_window(struct window *, u_int *,
+			      struct sort_criteria *);
+struct winlink		**sort_get_winlinks(u_int *, struct sort_criteria *);
+struct winlink		**sort_get_winlinks_session(struct session *, u_int *,
+			      struct sort_criteria *);
 
 /* format.c */
 #define FORMAT_STATUS 0x1
@@ -2487,6 +2537,8 @@ void	tty_reset(struct tty *);
 void	tty_region_off(struct tty *);
 void	tty_margin_off(struct tty *);
 void	tty_cursor(struct tty *, u_int, u_int);
+int	tty_fake_bce(const struct tty *, const struct grid_cell *, u_int);
+void	tty_repeat_space(struct tty *, u_int);
 void	tty_clipboard_query(struct tty *);
 void	tty_putcode(struct tty *, enum tty_code_code);
 void	tty_putcode_i(struct tty *, enum tty_code_code, int);
@@ -2511,7 +2563,15 @@ void	tty_repeat_requests(struct tty *, int);
 void	tty_stop_tty(struct tty *);
 void	tty_set_title(struct tty *, const char *);
 void	tty_set_path(struct tty *, const char *);
+void	tty_default_attributes(struct tty *, const struct grid_cell *,
+	    struct colour_palette *, u_int, struct hyperlinks *);
 void	tty_update_mode(struct tty *, int, struct screen *);
+const struct grid_cell *tty_check_codeset(struct tty *,
+	    const struct grid_cell *);
+struct visible_ranges *tty_check_overlay_range(struct tty *, u_int, u_int,
+	    u_int);
+
+/* tty-draw.c */
 void	tty_draw_line(struct tty *, struct screen *, u_int, u_int, u_int,
 	    u_int, u_int, const struct grid_cell *, struct colour_palette *);
 void	tty_sync_start(struct tty *);
@@ -2858,8 +2918,10 @@ void	 server_client_set_overlay(struct client *, u_int, overlay_check_cb,
 	     overlay_mode_cb, overlay_draw_cb, overlay_key_cb,
 	     overlay_free_cb, overlay_resize_cb, void *);
 void	 server_client_clear_overlay(struct client *);
+void	 server_client_ensure_ranges(struct visible_ranges *, u_int);
+int	 server_client_ranges_is_empty(struct visible_ranges *);
 void	 server_client_overlay_range(u_int, u_int, u_int, u_int, u_int, u_int,
-	     u_int, struct overlay_ranges *);
+	     u_int, struct visible_ranges *);
 void	 server_client_set_key_table(struct client *, const char *);
 const char *server_client_get_key_table(struct client *);
 int	 server_client_check_nested(struct client *);
@@ -3002,7 +3064,7 @@ int	 grid_cells_look_equal(const struct grid_cell *,
 struct grid *grid_create(u_int, u_int, u_int);
 void	 grid_destroy(struct grid *);
 int	 grid_compare(struct grid *, struct grid *);
-void	 grid_collect_history(struct grid *);
+void	 grid_collect_history(struct grid *, int);
 void	 grid_remove_history(struct grid *, u_int );
 void	 grid_scroll_history(struct grid *, u_int);
 void	 grid_scroll_history_region(struct grid *, u_int, u_int, u_int);
@@ -3171,7 +3233,7 @@ void	 screen_set_selection(struct screen *, u_int, u_int, u_int, u_int,
 void	 screen_clear_selection(struct screen *);
 void	 screen_hide_selection(struct screen *);
 int	 screen_check_selection(struct screen *, u_int, u_int);
-void	 screen_select_cell(struct screen *, struct grid_cell *,
+int	 screen_select_cell(struct screen *, struct grid_cell *,
 	     const struct grid_cell *);
 void	 screen_alternate_on(struct screen *, struct grid_cell *, int);
 void	 screen_alternate_off(struct screen *, struct grid_cell *, int);
@@ -3328,7 +3390,7 @@ u_int		 layout_set_next(struct window *);
 u_int		 layout_set_previous(struct window *);
 
 /* mode-tree.c */
-typedef void (*mode_tree_build_cb)(void *, struct mode_tree_sort_criteria *,
+typedef void (*mode_tree_build_cb)(void *, struct sort_criteria *,
 				   uint64_t *, const char *);
 typedef void (*mode_tree_draw_cb)(void *, void *, struct screen_write_ctx *,
 	     u_int, u_int);
@@ -3336,7 +3398,8 @@ typedef int (*mode_tree_search_cb)(void *, void *, const char *, int);
 typedef void (*mode_tree_menu_cb)(void *, struct client *, key_code);
 typedef u_int (*mode_tree_height_cb)(void *, u_int);
 typedef key_code (*mode_tree_key_cb)(void *, void *, u_int);
-typedef int (*mode_tree_swap_cb)(void *, void *);
+typedef int (*mode_tree_swap_cb)(void *, void *, struct sort_criteria *);
+typedef void (*mode_tree_sort_cb)(struct sort_criteria *);
 typedef void (*mode_tree_each_cb)(void *, void *, struct client *, key_code);
 u_int	 mode_tree_count_tagged(struct mode_tree_data *);
 void	*mode_tree_get_current(struct mode_tree_data *);
@@ -3352,8 +3415,8 @@ int	 mode_tree_down(struct mode_tree_data *, int);
 struct mode_tree_data *mode_tree_start(struct window_pane *, struct args *,
 	     mode_tree_build_cb, mode_tree_draw_cb, mode_tree_search_cb,
 	     mode_tree_menu_cb, mode_tree_height_cb, mode_tree_key_cb,
-	     mode_tree_swap_cb, void *, const struct menu_item *, const char **,
-	     u_int, struct screen **);
+	     mode_tree_swap_cb, mode_tree_sort_cb, void *, 
+	     const struct menu_item *, struct screen **);
 void	 mode_tree_zoom(struct mode_tree_data *, struct args *);
 void	 mode_tree_build(struct mode_tree_data *);
 void	 mode_tree_free(struct mode_tree_data *);
@@ -3463,8 +3526,9 @@ void		 session_add_ref(struct session *, const char *);
 void		 session_remove_ref(struct session *, const char *);
 char		*session_check_name(const char *);
 void		 session_update_activity(struct session *, struct timeval *);
-struct session	*session_next_session(struct session *);
-struct session	*session_previous_session(struct session *);
+struct session	*session_next_session(struct session *, struct sort_criteria *);
+struct session	*session_previous_session(struct session *,
+		     struct sort_criteria *);
 struct winlink	*session_attach(struct session *, struct window *, int,
 		     char **);
 int		 session_detach(struct session *, struct winlink *);
@@ -3485,6 +3549,7 @@ u_int		 session_group_count(struct session_group *);
 u_int		 session_group_attached_count(struct session_group *);
 void		 session_renumber_windows(struct session *);
 void		 session_theme_changed(struct session *);
+void		 session_update_history(struct session *);
 
 /* utf8.c */
 enum utf8_state	 utf8_towc (const struct utf8_data *, wchar_t *);
@@ -3556,8 +3621,8 @@ int		 menu_display(struct menu *, int, int, struct cmdq_item *,
 		    const char *, const char *, struct cmd_find_state *,
 		    menu_choice_cb, void *);
 struct screen	*menu_mode_cb(struct client *, void *, u_int *, u_int *);
-void		 menu_check_cb(struct client *, void *, u_int, u_int, u_int,
-		    struct overlay_ranges *);
+struct visible_ranges *menu_check_cb(struct client *, void *, u_int, u_int,
+		    u_int);
 void		 menu_draw_cb(struct client *, void *,
 		    struct screen_redraw_ctx *);
 void		 menu_free_cb(struct client *, void *);

@@ -1,4 +1,4 @@
-/*	$OpenBSD: extern.h,v 1.272 2026/01/20 16:49:03 tb Exp $ */
+/*	$OpenBSD: extern.h,v 1.276 2026/01/28 08:28:34 tb Exp $ */
 /*
  * Copyright (c) 2019 Kristaps Dzonsons <kristaps@bsd.lv>
  *
@@ -714,9 +714,13 @@ struct tal	*tal_read(struct ibuf *);
 void		 cert_buffer(struct ibuf *, const struct cert *);
 void		 cert_free(struct cert *);
 void		 auth_tree_free(struct auth_tree *);
+struct cert	*cert_parse_ca_or_brk(const char *, const unsigned char *,
+		    size_t);
 struct cert	*cert_parse_ee_cert(const char *, int, X509 *);
+struct cert	*cert_parse_ta(const char *, const unsigned char *, size_t,
+		    const unsigned char *, size_t);
 struct cert	*cert_parse(const char *, const unsigned char *, size_t);
-struct cert	*ta_parse(const char *, struct cert *, const unsigned char *,
+struct cert	*ta_validate(const char *, struct cert *, const unsigned char *,
 		    size_t);
 struct cert	*cert_read(struct ibuf *);
 void		 cert_insert_brks(struct brk_tree *, struct cert *);
@@ -797,9 +801,6 @@ int		 valid_spl(const char *, struct cert *, struct spl *);
 unsigned char	*cms_parse_validate(struct cert **, const char *, int,
 		    const unsigned char *, size_t, const ASN1_OBJECT *,
 		    size_t *, time_t *);
-int		 cms_parse_validate_detached(struct cert **, const char *, int,
-		    const unsigned char *, size_t, const ASN1_OBJECT *, BIO *,
-		    time_t *);
 
 /* Work with RFC 3779 IP addresses, prefixes, ranges. */
 

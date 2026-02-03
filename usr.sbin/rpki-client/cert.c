@@ -1,4 +1,4 @@
-/*	$OpenBSD: cert.c,v 1.212 2026/01/20 16:49:03 tb Exp $ */
+/*	$OpenBSD: cert.c,v 1.223 2026/01/29 09:52:41 tb Exp $ */
 /*
  * Copyright (c) 2022,2025 Theo Buehler <tb@openbsd.org>
  * Copyright (c) 2021 Job Snijders <job@openbsd.org>
@@ -1882,20 +1882,16 @@ cert_parse_ee_cert(const char *fn, int talid, X509 *x)
 }
 
 /*
- * Parse and partially validate an RPKI X509 certificate (either a trust
- * anchor or a certificate) as defined in RFC 6487.
- * Returns the parse results or NULL on failure.
+ * This is a generic parser for resource certificates and can only do as much
+ * validation as can be extracted from the bare DER. Callers should at least
+ * check the cert->purpose and consider any further validation.
  */
-struct cert *
-cert_parse(const char *fn, const unsigned char *der, size_t len)
+static struct cert *
+cert_deserialize_and_parse(const char *fn, const unsigned char *der, size_t len)
 {
 	struct cert		*cert = NULL;
 	const unsigned char	*oder;
 	X509			*x = NULL;
-
-	/* just fail for empty buffers, the warning was printed elsewhere */
-	if (der == NULL)
-		return NULL;
 
 	oder = der;
 	if ((x = d2i_X509(NULL, &der, len)) == NULL) {
@@ -1914,17 +1910,72 @@ cert_parse(const char *fn, const unsigned char *der, size_t len)
 	if ((cert = cert_parse_internal(fn, x)) == NULL)
 		goto out;
 
-	if (cert->purpose == CERT_PURPOSE_EE) {
-		warnx("%s: unexpected EE cert", fn);
-		goto out;
-	}
-
 	X509_free(x);
 	return cert;
 
  out:
 	cert_free(cert);
 	X509_free(x);
+	return NULL;
+}
+
+/*
+ * Parse a certificate file from its DER. Intended for .cer in a Manifest
+ * fileList, so it must be a CA cert or a BGPsec router cert.
+ * Returns cert on success or NULL on failure.
+ */
+struct cert *
+cert_parse_ca_or_brk(const char *fn, const unsigned char *der, size_t len)
+{
+	struct cert *cert = NULL;
+
+	/* Handle possible parse_load_file() failure which already warned. */
+	if (der == NULL)
+		return NULL;
+
+	if ((cert = cert_deserialize_and_parse(fn, der, len)) == NULL)
+		goto out;
+
+	if (cert->purpose != CERT_PURPOSE_CA &&
+	    cert->purpose != CERT_PURPOSE_BGPSEC_ROUTER) {
+		warnx("%s: want CA or BGPsec Router cert, got %s",
+		    fn, purpose2str(cert->purpose));
+		goto out;
+	}
+
+	return cert;
+
+ out:
+	cert_free(cert);
+	return NULL;
+}
+
+/*
+ * Parse and partially validate an RPKI X509 certificate (either a trust
+ * anchor or a certificate) as defined in RFC 6487.
+ * Returns the parse results or NULL on failure.
+ */
+struct cert *
+cert_parse(const char *fn, const unsigned char *der, size_t len)
+{
+	struct cert		*cert = NULL;
+
+	/* just fail for empty buffers, the warning was printed elsewhere */
+	if (der == NULL)
+		return NULL;
+
+	if ((cert = cert_deserialize_and_parse(fn, der, len)) == NULL)
+		goto out;
+
+	if (cert->purpose == CERT_PURPOSE_EE) {
+		warnx("%s: unexpected EE cert", fn);
+		goto out;
+	}
+
+	return cert;
+
+ out:
+	cert_free(cert);
 	return NULL;
 }
 
@@ -1937,72 +1988,111 @@ static int
 ta_check_pubkey(const char *fn, struct cert *cert, const unsigned char *spki,
     size_t spkisz)
 {
-	EVP_PKEY	*pk, *opk;
+	EVP_PKEY	*cert_pkey, *tal_pkey;
 	int		 rv = 0;
 
-	/* first check pubkey against the one from the TAL */
-	pk = d2i_PUBKEY(NULL, &spki, spkisz);
-	if (pk == NULL) {
+	/*
+	 * We should really verify that the TAL's SPKI is byte-identical with
+	 * the cert's SPKI. There's no sane way to access the original DER, so
+	 * comparing internal representations is the best thing we can do.
+	 */
+	tal_pkey = d2i_PUBKEY(NULL, &spki, spkisz);
+	if (tal_pkey == NULL) {
 		warnx("%s: RFC 6487 (trust anchor): bad TAL pubkey", fn);
-		goto badcert;
+		goto out;
 	}
-	if ((opk = X509_get0_pubkey(cert->x509)) == NULL) {
+	if ((cert_pkey = X509_get0_pubkey(cert->x509)) == NULL) {
 		warnx("%s: RFC 6487 (trust anchor): missing pubkey", fn);
-		goto badcert;
+		goto out;
 	}
-	if (EVP_PKEY_cmp(pk, opk) != 1) {
+	if (EVP_PKEY_cmp(cert_pkey, tal_pkey) != 1) {
 		warnx("%s: RFC 6487 (trust anchor): "
 		    "pubkey does not match TAL pubkey", fn);
-		goto badcert;
+		goto out;
 	}
 
 	/*
 	 * Do not replace with a <= 0 check since OpenSSL 3 broke that:
 	 * https://github.com/openssl/openssl/issues/24575
 	 */
-	if (X509_verify(cert->x509, pk) != 1) {
+	if (X509_verify(cert->x509, tal_pkey) != 1) {
 		warnx("%s: failed to verify signature", fn);
-		goto badcert;
+		goto out;
 	}
 
 	rv = 1;
- badcert:
-	EVP_PKEY_free(pk);
+ out:
+	EVP_PKEY_free(tal_pkey);
 	return rv;
 }
 
-struct cert *
-ta_parse(const char *fn, struct cert *p, const unsigned char *spki,
-    size_t spkisz)
+static int
+ta_check_validity(const char *fn, struct cert *cert)
 {
 	time_t		 now = get_current_time();
 
-	if (p == NULL)
+	if (cert->notbefore > now) {
+		warnx("%s: certificate not yet valid", fn);
+		return 0;
+	}
+	if (cert->notafter < now) {
+		warnx("%s: certificate has expired", fn);
+		return 0;
+	}
+
+	return 1;
+}
+
+/*
+ * Validate a TA against the subjectPublicKeyInfo from the TAL.
+ * Check that the SPKIs match, and that the cert is self-signed
+ * and currently valid.
+ * Returns cert passed in on success or NULL on failure.
+ */
+struct cert *
+ta_validate(const char *fn, struct cert *cert, const unsigned char *spki,
+    size_t spkisz)
+{
+	if (cert == NULL)
 		return NULL;
 
-	if (p->purpose != CERT_PURPOSE_TA) {
+	if (cert->purpose != CERT_PURPOSE_TA) {
 		warnx("%s: expected trust anchor purpose, got %s", fn,
-		    purpose2str(p->purpose));
-		goto badcert;
+		    purpose2str(cert->purpose));
+		goto out;
 	}
 
-	if (!ta_check_pubkey(fn, p, spki, spkisz))
-		goto badcert;
+	if (!ta_check_pubkey(fn, cert, spki, spkisz))
+		goto out;
+	if (!ta_check_validity(fn, cert))
+		goto out;
 
-	if (p->notbefore > now) {
-		warnx("%s: certificate not yet valid", fn);
-		goto badcert;
-	}
-	if (p->notafter < now) {
-		warnx("%s: certificate has expired", fn);
-		goto badcert;
-	}
+	return cert;
 
-	return p;
-
- badcert:
-	cert_free(p);
+ out:
+	cert_free(cert);
 	return NULL;
+}
+
+/*
+ * Parse a TA from its DER and validate it against SPKI from the TAL and
+ * current time.
+ * Returns a validated TA cert on success or NULL on failure.
+ */
+struct cert	*
+cert_parse_ta(const char *fn, const unsigned char *der, size_t len,
+    const unsigned char *spki, size_t spkisz)
+{
+	struct cert *cert = NULL;
+
+	/* Handle possible load_file() failure. Will warn later if needed. */
+	if (der == NULL)
+		return NULL;
+
+	if ((cert = cert_deserialize_and_parse(fn, der, len)) == NULL)
+		return NULL;
+
+	return ta_validate(fn, cert, spki, spkisz);
 }
 
 /*
@@ -2010,25 +2100,25 @@ ta_parse(const char *fn, struct cert *p, const unsigned char *spki,
  * Passing NULL is a noop.
  */
 void
-cert_free(struct cert *p)
+cert_free(struct cert *cert)
 {
-	if (p == NULL)
+	if (cert == NULL)
 		return;
 
-	free(p->crl);
-	free(p->repo);
-	free(p->path);
-	free(p->mft);
-	free(p->notify);
-	free(p->signedobj);
-	free(p->ips);
-	free(p->ases);
-	free(p->aia);
-	free(p->aki);
-	free(p->ski);
-	free(p->pubkey);
-	X509_free(p->x509);
-	free(p);
+	free(cert->crl);
+	free(cert->repo);
+	free(cert->path);
+	free(cert->mft);
+	free(cert->notify);
+	free(cert->signedobj);
+	free(cert->ips);
+	free(cert->ases);
+	free(cert->aia);
+	free(cert->aki);
+	free(cert->ski);
+	free(cert->pubkey);
+	X509_free(cert->x509);
+	free(cert);
 }
 
 /*
@@ -2036,46 +2126,47 @@ cert_free(struct cert *p)
  * See cert_read() for the other side of the pipe.
  */
 void
-cert_buffer(struct ibuf *b, const struct cert *p)
+cert_buffer(struct ibuf *b, const struct cert *cert)
 {
-	io_simple_buffer(b, &p->notafter, sizeof(p->notafter));
-	io_simple_buffer(b, &p->purpose, sizeof(p->purpose));
-	io_simple_buffer(b, &p->talid, sizeof(p->talid));
-	io_simple_buffer(b, &p->certid, sizeof(p->certid));
-	io_simple_buffer(b, &p->repoid, sizeof(p->repoid));
-	io_simple_buffer(b, &p->num_ips, sizeof(p->num_ips));
-	io_simple_buffer(b, &p->num_ases, sizeof(p->num_ases));
+	io_simple_buffer(b, &cert->notafter, sizeof(cert->notafter));
+	io_simple_buffer(b, &cert->purpose, sizeof(cert->purpose));
+	io_simple_buffer(b, &cert->talid, sizeof(cert->talid));
+	io_simple_buffer(b, &cert->certid, sizeof(cert->certid));
+	io_simple_buffer(b, &cert->repoid, sizeof(cert->repoid));
+	io_simple_buffer(b, &cert->num_ips, sizeof(cert->num_ips));
+	io_simple_buffer(b, &cert->num_ases, sizeof(cert->num_ases));
 
-	io_simple_buffer(b, p->ips, p->num_ips * sizeof(p->ips[0]));
-	io_simple_buffer(b, p->ases, p->num_ases * sizeof(p->ases[0]));
+	io_simple_buffer(b, cert->ips, cert->num_ips * sizeof(cert->ips[0]));
+	io_simple_buffer(b, cert->ases, cert->num_ases * sizeof(cert->ases[0]));
 
-	io_str_buffer(b, p->path);
+	io_str_buffer(b, cert->path);
 
-	if (p->purpose == CERT_PURPOSE_TA) {
-		io_str_buffer(b, p->mft);
-		io_opt_str_buffer(b, p->notify);
-		io_str_buffer(b, p->repo);
+	if (cert->purpose == CERT_PURPOSE_TA) {
+		io_str_buffer(b, cert->mft);
+		io_opt_str_buffer(b, cert->notify);
+		io_str_buffer(b, cert->repo);
 		/* No CRL distribution point or AIA for TA certs. */
-		io_opt_str_buffer(b, p->aki);
-		io_str_buffer(b, p->ski);
-	} else if (p->purpose == CERT_PURPOSE_CA) {
-		io_str_buffer(b, p->mft);
-		io_opt_str_buffer(b, p->notify);
-		io_str_buffer(b, p->repo);
-		io_str_buffer(b, p->crl);
-		io_str_buffer(b, p->aia);
-		io_str_buffer(b, p->aki);
-		io_str_buffer(b, p->ski);
-		io_simple_buffer(b, &p->mfthash, sizeof(p->mfthash));
-	} else if (p->purpose == CERT_PURPOSE_BGPSEC_ROUTER) {
+		io_opt_str_buffer(b, cert->aki);
+		io_str_buffer(b, cert->ski);
+	} else if (cert->purpose == CERT_PURPOSE_CA) {
+		io_str_buffer(b, cert->mft);
+		io_opt_str_buffer(b, cert->notify);
+		io_str_buffer(b, cert->repo);
+		io_str_buffer(b, cert->crl);
+		io_str_buffer(b, cert->aia);
+		io_str_buffer(b, cert->aki);
+		io_str_buffer(b, cert->ski);
+		io_simple_buffer(b, &cert->mfthash, sizeof(cert->mfthash));
+	} else if (cert->purpose == CERT_PURPOSE_BGPSEC_ROUTER) {
 		/* No SIA, so no mft, notify, repo. */
-		io_str_buffer(b, p->crl);
-		io_str_buffer(b, p->aia);
-		io_str_buffer(b, p->aki);
-		io_str_buffer(b, p->ski);
-		io_str_buffer(b, p->pubkey);
+		io_str_buffer(b, cert->crl);
+		io_str_buffer(b, cert->aia);
+		io_str_buffer(b, cert->aki);
+		io_str_buffer(b, cert->ski);
+		io_str_buffer(b, cert->pubkey);
 	} else {
-		errx(1, "%s: unexpected %s", __func__, purpose2str(p->purpose));
+		errx(1, "%s: unexpected %s", __func__,
+		    purpose2str(cert->purpose));
 	}
 }
 
@@ -2087,61 +2178,66 @@ cert_buffer(struct ibuf *b, const struct cert *p)
 struct cert *
 cert_read(struct ibuf *b)
 {
-	struct cert	*p;
+	struct cert	*cert;
 
-	if ((p = calloc(1, sizeof(struct cert))) == NULL)
+	if ((cert = calloc(1, sizeof(struct cert))) == NULL)
 		err(1, NULL);
 
-	io_read_buf(b, &p->notafter, sizeof(p->notafter));
-	io_read_buf(b, &p->purpose, sizeof(p->purpose));
-	io_read_buf(b, &p->talid, sizeof(p->talid));
-	io_read_buf(b, &p->certid, sizeof(p->certid));
-	io_read_buf(b, &p->repoid, sizeof(p->repoid));
-	io_read_buf(b, &p->num_ips, sizeof(p->num_ips));
-	io_read_buf(b, &p->num_ases, sizeof(p->num_ases));
+	io_read_buf(b, &cert->notafter, sizeof(cert->notafter));
+	io_read_buf(b, &cert->purpose, sizeof(cert->purpose));
+	io_read_buf(b, &cert->talid, sizeof(cert->talid));
+	io_read_buf(b, &cert->certid, sizeof(cert->certid));
+	io_read_buf(b, &cert->repoid, sizeof(cert->repoid));
+	io_read_buf(b, &cert->num_ips, sizeof(cert->num_ips));
+	io_read_buf(b, &cert->num_ases, sizeof(cert->num_ases));
 
-	if (p->num_ips > 0) {
-		if ((p->ips = calloc(p->num_ips, sizeof(p->ips[0]))) == NULL)
+	if (cert->num_ips > 0) {
+		cert->ips = calloc(cert->num_ips, sizeof(cert->ips[0]));
+		if (cert->ips == NULL)
 			err(1, NULL);
-		io_read_buf(b, p->ips, p->num_ips * sizeof(p->ips[0]));
+		io_read_buf(b, cert->ips,
+		    cert->num_ips * sizeof(cert->ips[0]));
 	}
 
-	if (p->num_ases > 0) {
-		if ((p->ases = calloc(p->num_ases, sizeof(p->ases[0]))) == NULL)
+	if (cert->num_ases > 0) {
+		cert->ases = calloc(cert->num_ases, sizeof(cert->ases[0]));
+		if (cert->ases == NULL)
 			err(1, NULL);
-		io_read_buf(b, p->ases, p->num_ases * sizeof(p->ases[0]));
+		io_read_buf(b, cert->ases,
+		    cert->num_ases * sizeof(cert->ases[0]));
 	}
 
-	io_read_str(b, &p->path);
+	io_read_str(b, &cert->path);
 
-	if (p->purpose == CERT_PURPOSE_TA) {
-		io_read_str(b, &p->mft);
-		io_read_opt_str(b, &p->notify);
-		io_read_str(b, &p->repo);
+	if (cert->purpose == CERT_PURPOSE_TA) {
+		io_read_str(b, &cert->mft);
+		io_read_opt_str(b, &cert->notify);
+		io_read_str(b, &cert->repo);
 		/* No CRL distribution point or AIA for TA certs. */
-		io_read_opt_str(b, &p->aki);
-		io_read_str(b, &p->ski);
-	} else if (p->purpose == CERT_PURPOSE_CA) {
-		io_read_str(b, &p->mft);
-		io_read_opt_str(b, &p->notify);
-		io_read_str(b, &p->repo);
-		io_read_str(b, &p->crl);
-		io_read_str(b, &p->aia);
-		io_read_str(b, &p->aki);
-		io_read_str(b, &p->ski);
-		io_read_buf(b, &p->mfthash, sizeof(p->mfthash));
-	} else if (p->purpose == CERT_PURPOSE_BGPSEC_ROUTER) {
+		io_read_opt_str(b, &cert->aki);
+		io_read_str(b, &cert->ski);
+	} else if (cert->purpose == CERT_PURPOSE_CA) {
+		io_read_str(b, &cert->mft);
+		io_read_opt_str(b, &cert->notify);
+		io_read_str(b, &cert->repo);
+		io_read_str(b, &cert->crl);
+		io_read_str(b, &cert->aia);
+		io_read_str(b, &cert->aki);
+		io_read_str(b, &cert->ski);
+		io_read_buf(b, &cert->mfthash, sizeof(cert->mfthash));
+	} else if (cert->purpose == CERT_PURPOSE_BGPSEC_ROUTER) {
 		/* No SIA, so no mft, notify, repo. */
-		io_read_str(b, &p->crl);
-		io_read_str(b, &p->aia);
-		io_read_str(b, &p->aki);
-		io_read_str(b, &p->ski);
-		io_read_str(b, &p->pubkey);
+		io_read_str(b, &cert->crl);
+		io_read_str(b, &cert->aia);
+		io_read_str(b, &cert->aki);
+		io_read_str(b, &cert->ski);
+		io_read_str(b, &cert->pubkey);
 	} else {
-		errx(1, "%s: unexpected %s", __func__, purpose2str(p->purpose));
+		errx(1, "%s: unexpected %s", __func__,
+		    purpose2str(cert->purpose));
 	}
 
-	return p;
+	return cert;
 }
 
 static inline int

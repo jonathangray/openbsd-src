@@ -1,4 +1,4 @@
-/* $OpenBSD: session.c,v 1.100 2025/03/30 22:01:55 nicm Exp $ */
+/* $OpenBSD: session.c,v 1.102 2026/02/02 10:08:30 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -295,36 +295,48 @@ session_update_activity(struct session *s, struct timeval *from)
 
 /* Find the next usable session. */
 struct session *
-session_next_session(struct session *s)
+session_next_session(struct session *s, struct sort_criteria *sort_crit)
 {
-	struct session *s2;
+	struct session	**l;
+	u_int		  n, i;
 
 	if (RB_EMPTY(&sessions) || !session_alive(s))
 		return (NULL);
 
-	s2 = RB_NEXT(sessions, &sessions, s);
-	if (s2 == NULL)
-		s2 = RB_MIN(sessions, &sessions);
-	if (s2 == s)
-		return (NULL);
-	return (s2);
+	l = sort_get_sessions(&n, sort_crit);
+	for (i = 0; i < n; i++) {
+		if (l[i] == s)
+			break;
+	}
+	if (i == n)
+		fatalx("session %s not found in sorted list", s->name);
+	i++;
+	if (i == n)
+		i = 0;
+	return (l[i]);
 }
 
 /* Find the previous usable session. */
 struct session *
-session_previous_session(struct session *s)
+session_previous_session(struct session *s, struct sort_criteria *sort_crit)
 {
-	struct session *s2;
+	struct session	**l;
+	u_int		  n, i;
 
 	if (RB_EMPTY(&sessions) || !session_alive(s))
 		return (NULL);
 
-	s2 = RB_PREV(sessions, &sessions, s);
-	if (s2 == NULL)
-		s2 = RB_MAX(sessions, &sessions);
-	if (s2 == s)
-		return (NULL);
-	return (s2);
+	l = sort_get_sessions(&n, sort_crit);
+	for (i = 0; i < n; i++) {
+		if (l[i] == s)
+			break;
+	}
+	if (i == n)
+		fatalx("session %s not found in sorted list", s->name);
+	if (i == 0)
+		i = n;
+	i--;
+	return (l[i]);
 }
 
 /* Attach a window to a session. */
@@ -765,6 +777,32 @@ session_theme_changed(struct session *s)
 		RB_FOREACH(wl, winlinks, &s->windows) {
 			TAILQ_FOREACH(wp, &wl->window->panes, entry)
 			    wp->flags |= PANE_THEMECHANGED;
+		}
+	}
+}
+
+/* Update history for all panes. */
+void
+session_update_history(struct session *s)
+{
+	struct winlink		*wl;
+	struct window_pane	*wp;
+	struct grid		*gd;
+	u_int			 limit, osize;
+
+	limit = options_get_number(s->options, "history-limit");
+	RB_FOREACH(wl, winlinks, &s->windows) {
+		TAILQ_FOREACH(wp, &wl->window->panes, entry) {
+			gd = wp->base.grid;
+
+			osize = gd->hsize;
+			gd->hlimit = limit;
+			grid_collect_history(gd, 1);
+
+			if (gd->hsize != osize) {
+				log_debug("%s: %%%u %u -> %u", __func__, wp->id,
+				    osize, gd->hsize);
+			}
 		}
 	}
 }

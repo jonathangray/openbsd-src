@@ -1,4 +1,4 @@
-/* $OpenBSD: server-client.c,v 1.442 2026/01/20 22:50:08 nicm Exp $ */
+/* $OpenBSD: server-client.c,v 1.444 2026/01/23 10:45:53 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -165,38 +165,58 @@ server_client_clear_overlay(struct client *c)
 	server_redraw_client(c);
 }
 
+/* Are these ranges empty? That is, nothing is visible. */
+int
+server_client_ranges_is_empty(struct visible_ranges *r)
+{
+	u_int	i;
+
+	for (i = 0; i < r->used; i++) {
+		if (r->ranges[i].nx != 0)
+			return (0);
+	}
+	return (1);
+}
+
+/* Ensure we have space for at least n ranges. */
+void
+server_client_ensure_ranges(struct visible_ranges *r, u_int n)
+{
+	if (r->size >= n)
+		return;
+	r->ranges = xrecallocarray(r->ranges, r->size, n, sizeof *r->ranges);
+	r->size = n;
+}
+
 /*
  * Given overlay position and dimensions, return parts of the input range which
  * are visible.
  */
 void
 server_client_overlay_range(u_int x, u_int y, u_int sx, u_int sy, u_int px,
-    u_int py, u_int nx, struct overlay_ranges *r)
+    u_int py, u_int nx, struct visible_ranges *r)
 {
 	u_int	ox, onx;
 
-	/* Return up to 2 ranges. */
-	r->px[2] = 0;
-	r->nx[2] = 0;
-
 	/* Trivial case of no overlap in the y direction. */
 	if (py < y || py > y + sy - 1) {
-		r->px[0] = px;
-		r->nx[0] = nx;
-		r->px[1] = 0;
-		r->nx[1] = 0;
+		server_client_ensure_ranges(r, 1);
+		r->ranges[0].px = px;
+		r->ranges[0].nx = nx;
+		r->used = 1;
 		return;
 	}
+	server_client_ensure_ranges(r, 2);
 
 	/* Visible bit to the left of the popup. */
 	if (px < x) {
-		r->px[0] = px;
-		r->nx[0] = x - px;
-		if (r->nx[0] > nx)
-			r->nx[0] = nx;
+		r->ranges[0].px = px;
+		r->ranges[0].nx = x - px;
+		if (r->ranges[0].nx > nx)
+			r->ranges[0].nx = nx;
 	} else {
-		r->px[0] = 0;
-		r->nx[0] = 0;
+		r->ranges[0].px = 0;
+		r->ranges[0].nx = 0;
 	}
 
 	/* Visible bit to the right of the popup. */
@@ -205,12 +225,13 @@ server_client_overlay_range(u_int x, u_int y, u_int sx, u_int sy, u_int px,
 		ox = px;
 	onx = px + nx;
 	if (onx > ox) {
-		r->px[1] = ox;
-		r->nx[1] = onx - ox;
+		r->ranges[1].px = ox;
+		r->ranges[1].nx = onx - ox;
 	} else {
-		r->px[1] = 0;
-		r->nx[1] = 0;
+		r->ranges[1].px = 0;
+		r->ranges[1].nx = 0;
 	}
+	r->used = 2;
 }
 
 /* Check if this client is inside this server. */
@@ -2417,16 +2438,6 @@ server_client_key_callback(struct cmdq_item *item, void *data)
 		event->key = key;
 	}
 
-	/* Handle theme reporting keys. */
-	if (key == KEYC_REPORT_LIGHT_THEME) {
-		server_client_report_theme(c, THEME_LIGHT);
-		goto out;
-	}
-	if (key == KEYC_REPORT_DARK_THEME) {
-		server_client_report_theme(c, THEME_DARK);
-		goto out;
-	}
-
 	/* Find affected pane. */
 	if (!KEYC_IS_MOUSE(key) || cmd_find_from_mouse(&fs, m, 0) != 0)
 		cmd_find_from_client(&fs, c, 0);
@@ -2644,6 +2655,19 @@ server_client_handle_key(struct client *c, struct key_event *event)
 	/* Check the client is good to accept input. */
 	if (s == NULL || (c->flags & CLIENT_UNATTACHEDFLAGS))
 		return (0);
+
+	/*
+	 * Handle theme reporting keys before overlays so they work even when a
+	 * popup is open.
+	 */
+	if (event->key == KEYC_REPORT_LIGHT_THEME) {
+		server_client_report_theme(c, THEME_LIGHT);
+		return (0);
+	}
+	if (event->key == KEYC_REPORT_DARK_THEME) {
+		server_client_report_theme(c, THEME_DARK);
+		return (0);
+	}
 
 	/*
 	 * Key presses in overlay mode and the command prompt are a special

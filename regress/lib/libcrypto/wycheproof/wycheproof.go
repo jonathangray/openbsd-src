@@ -1,4 +1,4 @@
-/* $OpenBSD: wycheproof.go,v 1.196 2026/01/01 12:47:52 tb Exp $ */
+/* $OpenBSD: wycheproof.go,v 1.201 2026/01/22 09:08:56 tb Exp $ */
 /*
  * Copyright (c) 2018,2023 Joel Sing <jsing@openbsd.org>
  * Copyright (c) 2018,2019,2022-2025 Theo Buehler <tb@openbsd.org>
@@ -20,7 +20,9 @@
 package main
 
 /*
-#cgo LDFLAGS: -lcrypto
+#cgo CFLAGS: -I"../../../../lib/libcrypto/bytestring"
+#cgo CFLAGS: -I"../../../../lib/libcrypto/mlkem"
+#cgo LDFLAGS: -lcrypto -static
 
 #include <limits.h>
 #include <string.h>
@@ -41,6 +43,8 @@ package main
 #include <openssl/pem.h>
 #include <openssl/x509.h>
 #include <openssl/rsa.h>
+
+#include "mlkem_internal.h"
 
 int
 wp_EVP_PKEY_CTX_set_hkdf_md(EVP_PKEY_CTX *pctx, const EVP_MD *md)
@@ -2387,8 +2391,11 @@ func runMLKEMTestGroup(rank C.int, wt *wycheproofTestMLKEM) bool {
 	ek, _ := mustDecodeHexString(wt.Ek, "ek")
 
 	if C.MLKEM_private_key_from_seed(privKey, (*C.uchar)(unsafe.Pointer(&seed[0])), C.size_t(seedLen)) != 1 {
-		fmt.Printf("%s - MLKEM_private_key_from_seed failed\n", wt)
-		return false
+		if wt.Result != "invalid" {
+			fmt.Printf("%s - MLKEM_private_key_from_seed failed\n", wt)
+			return false;
+		}
+		return true
 	}
 
 	if C.MLKEM_public_from_private(privKey, pubKey) != 1 {
@@ -2416,8 +2423,11 @@ func runMLKEMTestGroup(rank C.int, wt *wycheproofTestMLKEM) bool {
 	var sharedSecretLen C.size_t
 	defer C.free(unsafe.Pointer(sharedSecret))
 	if C.MLKEM_decap(privKey, (*C.uchar)(unsafe.Pointer(&c[0])), C.size_t(cLen), (**C.uchar)(unsafe.Pointer(&sharedSecret)), (*C.size_t)(unsafe.Pointer(&sharedSecretLen))) != 1 {
-		fmt.Printf("%s - MLKEM_decap failed\n", wt)
-		return false
+		if wt.Result != "invalid" {
+			fmt.Printf("%s - MLKEM_decap failed\n", wt)
+			return false
+		}
+		return true
 	}
 	gotK := unsafe.Slice((*byte)(unsafe.Pointer(sharedSecret)), sharedSecretLen)
 
@@ -2438,10 +2448,48 @@ func runMLKEMEncapsTestGroup(rank C.int, wt *wycheproofTestMLKEM) bool {
 		log.Fatal("MLKEM_public_key_new failed")
 	}
 
-	ek, ekLen := mustDecodeHexString(wt.C, "eK")
+	ek, ekLen := mustDecodeHexString(wt.Ek, "eK")
 
-	if C.MLKEM_parse_public_key(pubKey, (*C.uchar)(unsafe.Pointer(&ek[0])), (C.size_t)(ekLen)) != 0 || wt.Result != "invalid" {
-		fmt.Printf("FAIL: %s MLKEM_parse_public_key succeeded\n", wt)
+	if C.MLKEM_parse_public_key(pubKey, (*C.uchar)(unsafe.Pointer(&ek[0])), (C.size_t)(ekLen)) != 1 {
+		if wt.Result != "invalid" {
+			fmt.Printf("FAIL: %s: MLKEM_parse_public_key failed !!!\n", wt)
+			return false;
+		}
+		return true
+	}
+
+	m, _ := mustDecodeHexString(wt.M, "m")
+
+	var cipherText, sharedSecret *C.uint8_t
+	var cipherTextLen, sharedSecretLen C.size_t
+	defer C.free(unsafe.Pointer(cipherText))
+	defer C.free(unsafe.Pointer(sharedSecret))
+
+	if C.MLKEM_encap_external_entropy(pubKey, (*C.uchar)(unsafe.Pointer(&m[0])), &cipherText, &cipherTextLen, &sharedSecret, &sharedSecretLen) != 1 {
+		fmt.Printf("FAIL: %s: MLKEM_encap_external_entropy\n", wt)
+		return false
+	}
+
+	if cipherTextLen != C.MLKEM_public_key_ciphertext_length(pubKey) {
+		fmt.Printf("FAIL: %s: ciphertext length mismatch\n", wt)
+		return false
+	}
+	gotC := unsafe.Slice((*byte)(unsafe.Pointer(cipherText)), cipherTextLen)
+
+	c, _ := mustDecodeHexString(wt.C, "c")
+	if bytes.Equal(c, gotC) != (wt.Result != "invalid") {
+		fmt.Printf("%s: ciphertext mismatch\nwant:\n%s\ngot:\n%s\n", wt, hex.Dump(c), hex.Dump(gotC))
+	}
+
+	if sharedSecretLen != C.MLKEM_SHARED_SECRET_LENGTH {
+		fmt.Printf("FAIL: %s: shared secret length mismatch\n", wt)
+		return false
+	}
+	gotK := unsafe.Slice((*byte)(unsafe.Pointer(sharedSecret)), sharedSecretLen)
+
+	k, _ := mustDecodeHexString(wt.K, "k")
+	if bytes.Equal(k, gotK) != (wt.Result != "invalid") {
+		fmt.Printf("%s: shared secret mismatch\nwant:\n%s\ngot:\n%s\n", wt, hex.Dump(k), hex.Dump(gotK))
 		return false
 	}
 
@@ -2449,6 +2497,59 @@ func runMLKEMEncapsTestGroup(rank C.int, wt *wycheproofTestMLKEM) bool {
 }
 
 func runMLKEMDecapsValidationTest(rank C.int, wt *wycheproofTestMLKEM) bool {
+	return true
+}
+
+func runMLKEMKeyGenTest(rank C.int, wt *wycheproofTestMLKEM) bool {
+	privKey := C.MLKEM_private_key_new(rank)
+	defer C.MLKEM_private_key_free(privKey)
+	if privKey == nil {
+		log.Fatal("MLKEM_private_key_new failed")
+	}
+
+	pubKey := C.MLKEM_public_key_new(rank)
+	defer C.MLKEM_public_key_free(pubKey)
+	if pubKey == nil {
+		log.Fatal("MLKEM_public_key_new failed")
+	}
+
+	seed, seedLen := mustDecodeHexString(wt.Seed, "seed")
+
+	if C.MLKEM_private_key_from_seed(privKey, (*C.uchar)(unsafe.Pointer(&seed[0])), (C.size_t)(seedLen)) != 1 {
+		fmt.Printf("FAIL: %s - MLKEM_private_key_from_seed failed\n", wt)
+		return false
+	}
+
+	if C.MLKEM_public_from_private(privKey, pubKey) != 1 {
+		fmt.Printf("FAIL: %s - MLKEM_private_key_from_seed failed\n", wt)
+		return false
+	}
+
+	var encodedPrivateKey, encodedPublicKey *C.uint8_t
+	var encodedPrivateKeyLen, encodedPublicKeyLen C.size_t
+	defer C.free(unsafe.Pointer(encodedPrivateKey))
+	defer C.free(unsafe.Pointer(encodedPublicKey))
+
+	if C.MLKEM_marshal_private_key(privKey, &encodedPrivateKey, &encodedPrivateKeyLen) != 1 {
+		fmt.Printf("FAIL: %s - MLKEM_marshal_private_key failed\n", wt)
+		return false
+	}
+	if C.MLKEM_marshal_public_key(pubKey, &encodedPublicKey, &encodedPublicKeyLen) != 1 {
+		fmt.Printf("FAIL: %s - MLKEM_marshal_public_key failed\n", wt)
+		return false
+	}
+
+	gotDk := unsafe.Slice((*byte)(unsafe.Pointer(encodedPrivateKey)), encodedPrivateKeyLen)
+	gotEk := unsafe.Slice((*byte)(unsafe.Pointer(encodedPublicKey)), encodedPublicKeyLen)
+
+	dK, _ := mustDecodeHexString(wt.Dk, "dK")
+	eK, _ := mustDecodeHexString(wt.Ek, "eK")
+	
+	if (bytes.Equal(dK, gotDk) && bytes.Equal(eK, gotEk)) != (wt.Result != "invalid") {
+		fmt.Printf("FAIL: %s - encoded keys differ", wt);
+		return false
+	}
+
 	return true
 }
 
@@ -2478,6 +2579,8 @@ func (wtg *wycheproofTestGroupMLKEM) run(algorithm string, variant testVariant) 
 		runTest = runMLKEMEncapsTestGroup
 	case "MLKEMDecapsValidationTest":
 		runTest = runMLKEMDecapsValidationTest
+	case "MLKEMKeyGen":
+		runTest = runMLKEMKeyGenTest
 	default:
 		log.Fatalf("Unknown ML-KEM test type %v", wtg.Type)
 	}

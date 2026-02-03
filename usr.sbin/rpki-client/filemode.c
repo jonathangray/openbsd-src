@@ -1,4 +1,4 @@
-/*	$OpenBSD: filemode.c,v 1.77 2026/01/20 16:49:03 tb Exp $ */
+/*	$OpenBSD: filemode.c,v 1.80 2026/01/28 08:28:34 tb Exp $ */
 /*
  * Copyright (c) 2019 Claudio Jeker <claudio@openbsd.org>
  * Copyright (c) 2019 Kristaps Dzonsons <kristaps@bsd.lv>
@@ -261,8 +261,7 @@ parse_load_ta(struct tal *tal)
 	}
 
 	/* Extract certificate data. */
-	cert = cert_parse(file, f, flen);
-	cert = ta_parse(file, cert, tal->spki, tal->spkisz);
+	cert = cert_parse_ta(file, f, flen, tal->spki, tal->spkisz);
 	if (cert == NULL)
 		goto out;
 
@@ -283,11 +282,11 @@ out:
 static struct tal *
 find_tal(struct cert *cert)
 {
-	EVP_PKEY	*pk, *opk;
+	EVP_PKEY	*cert_pkey, *tal_pkey;
 	struct tal	*tal;
 	int		 i;
 
-	if ((opk = X509_get0_pubkey(cert->x509)) == NULL)
+	if ((cert_pkey = X509_get0_pubkey(cert->x509)) == NULL)
 		return NULL;
 
 	for (i = 0; i < TALSZ_MAX; i++) {
@@ -297,14 +296,14 @@ find_tal(struct cert *cert)
 			break;
 		tal = talobj[i];
 		spki = tal->spki;
-		pk = d2i_PUBKEY(NULL, &spki, tal->spkisz);
-		if (pk == NULL)
+		tal_pkey = d2i_PUBKEY(NULL, &spki, tal->spkisz);
+		if (tal_pkey == NULL)
 			continue;
-		if (EVP_PKEY_cmp(pk, opk) == 1) {
-			EVP_PKEY_free(pk);
+		if (EVP_PKEY_cmp(cert_pkey, tal_pkey) == 1) {
+			EVP_PKEY_free(tal_pkey);
 			return tal;
 		}
-		EVP_PKEY_free(pk);
+		EVP_PKEY_free(tal_pkey);
 	}
 	return NULL;
 }
@@ -613,7 +612,7 @@ proc_parser_file(char *file, unsigned char *in_buf, size_t len)
 		expires = NULL;
 		notafter = NULL;
 		if ((tal = find_tal(cert)) != NULL) {
-			cert = ta_parse(file, cert, tal->spki, tal->spkisz);
+			cert = ta_validate(file, cert, tal->spki, tal->spkisz);
 			status = (cert != NULL);
 			if (status) {
 				expires = &cert->expires;

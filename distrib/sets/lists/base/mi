@@ -770,7 +770,7 @@
 ./usr/lib/libfido2.so.8.0
 ./usr/lib/libform.so.7.0
 ./usr/lib/libformw.so.7.0
-./usr/lib/libfuse.so.3.0
+./usr/lib/libfuse.so.4.0
 ./usr/lib/libiberty.so.13.0
 ./usr/lib/libkvm.so.18.0
 ./usr/lib/libm.so.10.1
@@ -788,7 +788,7 @@
 ./usr/lib/libreadline.so.6.0
 ./usr/lib/librpcsvc.so.3.0
 ./usr/lib/libskey.so.7.0
-./usr/lib/libsndio.so.8.0
+./usr/lib/libsndio.so.9.0
 ./usr/lib/libssl.so.60.2
 ./usr/lib/libtermcap.so.16.0
 ./usr/lib/libtermlib.so.16.0
@@ -801,14 +801,18 @@
 ./usr/lib/pkgconfig
 ./usr/lib/pkgconfig/expat.pc
 ./usr/lib/pkgconfig/form.pc
+./usr/lib/pkgconfig/formw.pc
 ./usr/lib/pkgconfig/fuse.pc
 ./usr/lib/pkgconfig/libcrypto.pc
 ./usr/lib/pkgconfig/libelf.pc
 ./usr/lib/pkgconfig/libssl.pc
 ./usr/lib/pkgconfig/menu.pc
+./usr/lib/pkgconfig/menuw.pc
 ./usr/lib/pkgconfig/ncurses.pc
+./usr/lib/pkgconfig/ncursesw.pc
 ./usr/lib/pkgconfig/openssl.pc
 ./usr/lib/pkgconfig/panel.pc
+./usr/lib/pkgconfig/panelw.pc
 ./usr/lib/pkgconfig/sndio.pc
 ./usr/lib/pkgconfig/zlib.pc
 ./usr/lib/rcrt0.o
