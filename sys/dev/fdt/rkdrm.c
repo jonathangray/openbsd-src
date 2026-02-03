@@ -479,6 +479,7 @@ rkdrm_fb_probe(struct drm_fb_helper *helper, struct drm_fb_helper_surface_size *
 	struct rkdrm_framebuffer *sfb = to_rkdrm_framebuffer(helper->fb);
 	struct drm_mode_fb_cmd2 mode_cmd = { 0 };
 	struct drm_framebuffer *fb = helper->fb;
+	const struct drm_format_info *format_info;
 	unsigned int bytes_per_pixel;
 	struct fb_info *info;
 	size_t size;
@@ -502,8 +503,8 @@ rkdrm_fb_probe(struct drm_fb_helper *helper, struct drm_fb_helper_surface_size *
 		return -ENOMEM;
 	}
 
-	drm_helper_mode_fill_fb_struct(ddev, fb, &mode_cmd);
-	fb->format = drm_format_info(DRM_FORMAT_ARGB8888);
+	format_info = drm_format_info(DRM_FORMAT_ARGB8888);
+	drm_helper_mode_fill_fb_struct(ddev, fb, format_info, &mode_cmd);
 	fb->obj[0] = &sfb->obj->base;
 	error = drm_framebuffer_init(ddev, fb, &rkdrm_framebuffer_funcs);
 	if (error != 0) {
