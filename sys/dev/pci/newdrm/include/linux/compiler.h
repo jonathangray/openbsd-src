@@ -46,6 +46,7 @@
 #pragma clang diagnostic ignored "-Wgnu-variable-sized-type-not-at-end"
 #else
 #pragma GCC diagnostic ignored "-Wformat-zero-length"
+#pragma GCC diagnostic ignored "-Wunused-variable"
 #endif
 
 #define __diag_push()
