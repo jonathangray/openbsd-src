@@ -241,6 +241,7 @@ void drm_bridge_put(struct drm_bridge *bridge)
 }
 EXPORT_SYMBOL(drm_bridge_put);
 
+#ifdef notyet
 /**
  * drm_bridge_put_void - wrapper to drm_bridge_put() taking a void pointer
  *
@@ -255,6 +256,7 @@ static void drm_bridge_put_void(void *data)
 
 	drm_bridge_put(bridge);
 }
+#endif
 
 void *__devm_drm_bridge_alloc(struct device *dev, size_t size, size_t offset,
 			      const struct drm_bridge_funcs *funcs)
@@ -1448,6 +1450,8 @@ void devm_drm_put_bridge(struct device *dev, struct drm_bridge *bridge)
 }
 EXPORT_SYMBOL(devm_drm_put_bridge);
 
+#ifdef notyet
+
 static void drm_bridge_debugfs_show_bridge(struct drm_printer *p,
 					   struct drm_bridge *bridge,
 					   unsigned int idx)
@@ -1507,6 +1511,8 @@ static int encoder_bridges_show(struct seq_file *m, void *data)
 	return 0;
 }
 DEFINE_SHOW_ATTRIBUTE(encoder_bridges);
+
+#endif /* notyet */
 
 void drm_bridge_debugfs_params(struct dentry *root)
 {

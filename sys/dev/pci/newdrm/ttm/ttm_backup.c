@@ -9,6 +9,7 @@
 #include <linux/page-flags.h>
 #include <linux/swap.h>
 
+#ifdef notyet
 /*
  * Need to map shmem indices to handle since a handle value
  * of 0 means error, following the swp_entry_t convention.
@@ -22,6 +23,7 @@ static pgoff_t ttm_backup_handle_to_shmem_idx(pgoff_t handle)
 {
 	return handle - 1;
 }
+#endif
 
 /**
  * ttm_backup_drop() - release memory associated with a handle
