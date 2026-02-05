@@ -65,6 +65,7 @@ static int apple_drm_gem_dumb_create(struct drm_file *file_priv,
 
 static const struct drm_driver apple_drm_driver = {
 	DRM_GEM_DMA_DRIVER_OPS_WITH_DUMB_CREATE(apple_drm_gem_dumb_create),
+	DRM_FBDEV_DMA_DRIVER_OPS,
 	.name			= DRIVER_NAME,
 	.desc			= DRIVER_DESC,
 	.major			= 1,
