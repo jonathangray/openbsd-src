@@ -3581,15 +3581,9 @@ static int dm_resume(struct amdgpu_ip_block *ip_block)
 		    aconnector->mst_root)
 			continue;
 
-#ifdef notyet
 		scoped_guard(mutex, &aconnector->mst_mgr.lock) {
 			init = !aconnector->mst_mgr.mst_primary;
 		}
-#else
-		mutex_lock(&aconnector->mst_mgr.lock);
-		init = !aconnector->mst_mgr.mst_primary;
-		mutex_unlock(&aconnector->mst_mgr.lock);
-#endif
 		if (init)
 			dm_helpers_dp_mst_start_top_mgr(aconnector->dc_link->ctx,
 				aconnector->dc_link, false);
