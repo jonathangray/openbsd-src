@@ -49,7 +49,6 @@
 #include <linux/notifier.h>
 #include <linux/backlight.h>
 #include <linux/shrinker.h>
-#include <linux/fb.h>
 #include <linux/xarray.h>
 #include <linux/interval_tree.h>
 #include <linux/kthread.h>
