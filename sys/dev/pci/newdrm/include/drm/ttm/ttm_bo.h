@@ -522,7 +522,6 @@ struct ttm_buffer_object *ttm_bo_lru_cursor_next(struct ttm_bo_lru_cursor *curs)
 /*
  * Defines needed to use autocleanup (linux/cleanup.h) with struct ttm_bo_lru_cursor.
  */
-#ifdef notyet
 DEFINE_CLASS(ttm_bo_lru_cursor, struct ttm_bo_lru_cursor *,
 	     if (_T) {ttm_bo_lru_cursor_fini(_T); },
 	     ttm_bo_lru_cursor_init(curs, man, arg),
@@ -531,7 +530,6 @@ DEFINE_CLASS(ttm_bo_lru_cursor, struct ttm_bo_lru_cursor *,
 static inline void *
 class_ttm_bo_lru_cursor_lock_ptr(class_ttm_bo_lru_cursor_t *_T)
 { return *_T; }
-#endif
 #define class_ttm_bo_lru_cursor_is_conditional false
 
 /**
