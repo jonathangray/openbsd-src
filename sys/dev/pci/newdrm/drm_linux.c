@@ -58,6 +58,7 @@
 #include <linux/suspend.h>
 #include <linux/slab.h>
 #include <linux/seq_buf.h>
+#include <linux/platform_device.h>
 
 #include <drm/drm_device.h>
 #include <drm/drm_connector.h>
@@ -3308,8 +3309,6 @@ kfree_const(const void *addr)
         kfree(addr);
 }
 
-#include <linux/platform_device.h>
-
 bus_dma_tag_t
 dma_tag_lookup(struct device *dev)
 {
@@ -3572,10 +3571,18 @@ seq_buf_printf(struct seq_buf *s, const char *fmt, ...)
 
 #ifdef __HAVE_FDT
 
-#include <linux/platform_device.h>
 #include <dev/ofw/openfirm.h>
 #include <dev/ofw/fdt.h>
+#include <dev/ofw/ofw_clock.h>
+#include <dev/ofw/ofw_misc.h>
+#include <dev/ofw/ofw_gpio.h>
 #include <machine/fdt.h>
+
+#include <linux/clk.h>
+#include <linux/of.h>
+#include <linux/gpio/consumer.h>
+
+struct bus_type platform_bus_type;
 
 LIST_HEAD(, platform_device) pdev_list = LIST_HEAD_INITIALIZER(pdev_list);
 
@@ -3630,9 +3637,6 @@ devm_platform_ioremap_resource_byname(struct platform_device *pdev,
 	return bus_space_vaddr(pdev->iot, ioh);
 }
 
-#include <dev/ofw/ofw_clock.h>
-#include <linux/clk.h>
-
 struct clk *
 devm_clk_get(struct device *dev, const char *name)
 {
@@ -3649,9 +3653,6 @@ clk_get_rate(struct clk *clk)
 {
 	return clk->freq;
 }
-
-#include <linux/gpio/consumer.h>
-#include <dev/ofw/ofw_gpio.h>
 
 struct gpio_desc {
 	uint32_t gpios[4];
@@ -3719,13 +3720,6 @@ devm_phy_optional_get(struct device *dev, const char *name)
 
 	return phy;
 }
-
-struct bus_type platform_bus_type;
-
-#include <dev/ofw/ofw_misc.h>
-
-#include <linux/of.h>
-#include <linux/platform_device.h>
 
 struct device_node *
 __of_devnode(void *arg)
