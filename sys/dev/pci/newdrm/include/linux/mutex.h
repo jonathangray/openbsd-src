@@ -61,16 +61,15 @@ class_mutex_destructor(struct rwlock **p)
 }
 typedef struct rwlock * class_mutex_t;
 
-#define _guard(rwl) \
-	mutex_lock(rwl); \
-	struct rwlock *_guard_p __cleanup(class_mutex_destructor) = rwl
-#define guard(type) _guard
+#define _guard(_type) \
+	class_##_type##_t _guard_p __cleanup(class_##_type##_destructor) = \
+	    class_##_type##_constructor
+#define guard(_type) _guard(_type)
 
-#define _scoped_guard(type, rwl, varname)				\
-        mutex_lock(rwl);						\
-        int varname = 1;						\
-        for (struct rwlock *_guard_p __cleanup(class_mutex_destructor) = (rwl);	\
-            varname;varname--)						\
+#define _scoped_guard(_type, _varname, _args...)			\
+        int _varname = 1;						\
+        for (class_##_type##_t _guard_p __cleanup(class_##_type##_destructor) = \
+	    class_##_type##_constructor(_args); _varname;_varname--)
 
 #ifndef __COUNTER__
 #define __COUNTER__ __LINE
@@ -79,6 +78,6 @@ typedef struct rwlock * class_mutex_t;
 #define __guardname(num)	_scoped_guard_loop##num
 #define _guardname(num)		__guardname(num)
 #define guardname()		_guardname(__COUNTER__)
-#define scoped_guard(type, rwl)	_scoped_guard((type), (rwl), guardname())
+#define scoped_guard(_type, _args...)	_scoped_guard(_type, guardname(), _args)
 
 #endif
