@@ -32,4 +32,23 @@ class_##_name##_destructor(_type *p)				\
 	_exit;							\
 }
 
+#define _guard(_type) \
+	class_##_type##_t _guard_p __cleanup(class_##_type##_destructor) = \
+	    class_##_type##_constructor
+#define guard(_type) _guard(_type)
+
+#define _scoped_guard(_type, _varname, _args...)			\
+        int _varname = 1;						\
+        for (class_##_type##_t _guard_p __cleanup(class_##_type##_destructor) = \
+	    class_##_type##_constructor(_args); _varname;_varname--)
+
+#ifndef __COUNTER__
+#define __COUNTER__ __LINE
+#endif
+
+#define __guardname(num)	_scoped_guard_loop##num
+#define _guardname(num)		__guardname(num)
+#define guardname()		_guardname(__COUNTER__)
+#define scoped_guard(_type, _args...)	_scoped_guard(_type, guardname(), _args)
+
 #endif
