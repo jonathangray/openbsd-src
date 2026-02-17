@@ -1,4 +1,4 @@
-/*	$OpenBSD: kern_sysctl.c,v 1.483 2025/09/23 08:00:48 mpi Exp $	*/
+/*	$OpenBSD: kern_sysctl.c,v 1.485 2026/02/11 22:34:41 deraadt Exp $	*/
 /*	$NetBSD: kern_sysctl.c,v 1.17 1996/05/20 17:49:05 mrg Exp $	*/
 
 /*-
@@ -100,6 +100,7 @@
 #include <netinet/tcp_var.h>
 #include <netinet/udp.h>
 #include <netinet/udp_var.h>
+#include <netinet/ip_divert.h>
 #include <netinet6/ip6_var.h>
 
 #ifdef DDB
@@ -194,7 +195,7 @@ sysctl_vslock(void *addr, size_t len)
 	KERNEL_LOCK();
 
 	if (addr) {
-		if (atop(len) > uvmexp.wiredmax - uvmexp.wired) {
+		if (atop(len) > uvmexp.wiredmax - atomic_load_sint(&uvmexp.wired)) {
 			error = ENOMEM;
 			goto out;
 		}
@@ -864,7 +865,7 @@ hw_sysctl(int *name, u_int namelen, void *oldp, size_t *oldlenp, void *newp,
 		return (sysctl_rdint(oldp, oldlenp, newp, ptoa(physmem)));
 	case HW_USERMEM:
 		return (sysctl_rdint(oldp, oldlenp, newp,
-		    ptoa(physmem - uvmexp.wired)));
+		    ptoa(physmem - atomic_load_sint(&uvmexp.wired))));
 #ifndef SMALL_KERNEL
 	case HW_SENSORS:
 		return (sysctl_sensors(name + 1, namelen - 1, oldp, oldlenp,
@@ -924,7 +925,7 @@ hw_sysctl(int *name, u_int namelen, void *oldp, size_t *oldlenp, void *newp,
 		    ptoa((psize_t)physmem)));
 	case HW_USERMEM64:
 		return (sysctl_rdquad(oldp, oldlenp, newp,
-		    ptoa((psize_t)physmem - uvmexp.wired)));
+		    ptoa((psize_t)physmem - atomic_load_sint(&uvmexp.wired))));
 	default:
 		return sysctl_bounded_arr(hw_vars, nitems(hw_vars), name,
 		    namelen, oldp, oldlenp, newp, newlen);
@@ -1768,6 +1769,12 @@ do {									\
 			FILLINPTABLE(&rawcbtable);
 #ifdef INET6
 			FILLINPTABLE(&rawin6pcbtable);
+#endif
+#if NPF > 0
+			FILLINPTABLE(&divbtable);
+#ifdef INET6
+			FILLINPTABLE(&divb6table);
+#endif
 #endif
 		}
 		fp = NULL;

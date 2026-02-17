@@ -1,4 +1,4 @@
-/* $OpenBSD: sshd.c,v 1.624 2025/12/16 08:32:50 dtucker Exp $ */
+/* $OpenBSD: sshd.c,v 1.626 2026/02/09 21:21:39 dtucker Exp $ */
 /*
  * Copyright (c) 2000, 2001, 2002 Markus Friedl.  All rights reserved.
  * Copyright (c) 2002 Niels Provos.  All rights reserved.
@@ -49,11 +49,6 @@
 #include <unistd.h>
 #include <limits.h>
 
-#ifdef WITH_OPENSSL
-#include <openssl/bn.h>
-#include <openssl/evp.h>
-#endif
-
 #include "xmalloc.h"
 #include "ssh.h"
 #include "sshpty.h"
@@ -77,6 +72,9 @@
 #include "addr.h"
 #include "srclimit.h"
 #include "atomicio.h"
+#ifdef GSSAPI
+#include "ssh-gss.h"
+#endif
 #include "monitor_wrap.h"
 
 /* Re-exec fds */

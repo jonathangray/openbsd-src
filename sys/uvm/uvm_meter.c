@@ -1,4 +1,4 @@
-/*	$OpenBSD: uvm_meter.c,v 1.54 2025/06/12 20:37:59 deraadt Exp $	*/
+/*	$OpenBSD: uvm_meter.c,v 1.56 2026/02/17 03:28:41 deraadt Exp $	*/
 /*	$NetBSD: uvm_meter.c,v 1.21 2001/07/14 06:36:03 matt Exp $	*/
 
 /*
@@ -236,11 +236,13 @@ uvm_total(struct vmtotal *totalp)
 	/*
 	 * Calculate object memory usage statistics.
 	 */
-	totalp->t_free = uvmexp.free;
-	totalp->t_vm = uvmexp.npages - uvmexp.free + uvmexp.swpginuse;
-	totalp->t_avm = uvmexp.active + uvmexp.swpginuse;	/* XXX */
-	totalp->t_rm = uvmexp.npages - uvmexp.free;
-	totalp->t_arm = uvmexp.active;
+	totalp->t_free = atomic_load_sint(&uvmexp.free);
+	totalp->t_vm = uvmexp.npages - atomic_load_sint(&uvmexp.free) +
+	    atomic_load_sint(&uvmexp.swpginuse);
+	totalp->t_avm = atomic_load_sint(&uvmexp.active) +
+	    atomic_load_sint(&uvmexp.swpginuse);	/* XXX */
+	totalp->t_rm = uvmexp.npages - atomic_load_sint(&uvmexp.free);
+	totalp->t_arm = atomic_load_sint(&uvmexp.active);
 	totalp->t_vmshr = 0;		/* XXX */
 	totalp->t_avmshr = 0;		/* XXX */
 	totalp->t_rmshr = 0;		/* XXX */
@@ -334,8 +336,8 @@ uvmexp_print(int (*pr)(const char *, ...))
 	    uexp.pdbusy, uexp.pdfreed, uexp.pdreact, uexp.pddeact);
 	(*pr)("    pageouts=%d, pending=%d, nswget=%d\n", uexp.pdpageouts,
 	    uexp.pdpending, uexp.nswget);
-	(*pr)("    nswapdev=%d\n",
-	    uexp.nswapdev);
+	(*pr)("    nswapdev=%d, swpskip=%d\n",
+	    uexp.nswapdev, uexp.swpskip);
 	(*pr)("    swpages=%d, swpginuse=%d, swpgonly=%d paging=%d\n",
 	    uexp.swpages, uexp.swpginuse, uexp.swpgonly, uexp.paging);
 

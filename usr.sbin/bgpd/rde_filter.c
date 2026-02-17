@@ -1,4 +1,4 @@
-/*	$OpenBSD: rde_filter.c,v 1.138 2025/12/03 14:16:21 claudio Exp $ */
+/*	$OpenBSD: rde_filter.c,v 1.146 2026/02/16 14:23:56 claudio Exp $ */
 
 /*
  * Copyright (c) 2004 Claudio Jeker <claudio@openbsd.org>
@@ -21,27 +21,70 @@
 #include <sys/types.h>
 #include <sys/queue.h>
 
+#include <errno.h>
 #include <limits.h>
 #include <stdlib.h>
 #include <string.h>
+#include <siphash.h>
 
 #include "bgpd.h"
 #include "rde.h"
 #include "log.h"
+#include "chash.h"
 
-int	filterset_equal(struct filter_set_head *, struct filter_set_head *);
+static int	rde_filterset_equal(const struct rde_filter_set *,
+	    const struct rde_filter_set *);
+static void	rde_filterset_ref(struct rde_filter_set *);
+
+struct rde_filter_set_elm {
+	enum action_types	type;
+	union {
+		uint8_t				 prepend;
+		uint8_t				 origin;
+		uint16_t			 id;
+		uint32_t			 metric;
+		int32_t				 relative;
+		struct nexthop			*nh_ref;
+		struct community		 community;
+	}			action;
+};
+
+struct rde_filter_set {
+	uint64_t			hash;
+	size_t				len;
+	int				refcnt;
+	struct rde_filter_set_elm	set[0];
+};
+
+struct rde_filter_rule {
+	struct filter_match		 match;
+	struct rde_filter_set		*rde_set;
+	enum filter_actions		 action;
+	uint8_t				 quick;
+};
+
+struct rde_filter {
+	uint64_t			hash;
+	size_t				len;
+	int				refcnt;
+	struct rde_filter_rule		rules[0];
+};
 
 void
-rde_apply_set(struct filter_set_head *sh, struct rde_peer *peer,
+rde_apply_set(const struct rde_filter_set *rfs, struct rde_peer *peer,
     struct rde_peer *from, struct filterstate *state, uint8_t aid)
 {
-	struct filter_set	*set;
 	u_char			*np;
+	size_t			 i;
 	uint32_t		 prep_as;
 	uint16_t		 nl;
 	uint8_t			 prepend;
 
-	TAILQ_FOREACH(set, sh, entry) {
+	if (rfs == NULL)
+		return;
+	for (i = 0; i < rfs->len; i++) {
+		const struct rde_filter_set_elm *set = &rfs->set[i];
+
 		switch (set->type) {
 		case ACTION_SET_LOCALPREF:
 			state->aspath.lpref = set->action.metric;
@@ -134,7 +177,7 @@ rde_apply_set(struct filter_set_head *sh, struct rde_peer *peer,
 			state->aspath.aspath = aspath_get(np, nl);
 			free(np);
 			break;
-		case ACTION_SET_NEXTHOP_REF:
+		case ACTION_SET_NEXTHOP:
 		case ACTION_SET_NEXTHOP_REJECT:
 		case ACTION_SET_NEXTHOP_BLACKHOLE:
 		case ACTION_SET_NEXTHOP_NOMODIFY:
@@ -150,23 +193,35 @@ rde_apply_set(struct filter_set_head *sh, struct rde_peer *peer,
 			community_delete(&state->communities,
 			    &set->action.community, peer);
 			break;
-		case ACTION_PFTABLE_ID:
+		case ACTION_PFTABLE:
 			pftable_unref(state->aspath.pftableid);
 			state->aspath.pftableid = pftable_ref(set->action.id);
 			break;
-		case ACTION_RTLABEL_ID:
+		case ACTION_RTLABEL:
 			rtlabel_unref(state->aspath.rtlabelid);
 			state->aspath.rtlabelid = rtlabel_ref(set->action.id);
 			break;
 		case ACTION_SET_ORIGIN:
 			state->aspath.origin = set->action.origin;
 			break;
-		case ACTION_SET_NEXTHOP:
-		case ACTION_PFTABLE:
-		case ACTION_RTLABEL:
-			fatalx("unexpected filter action in RDE");
 		}
 	}
+}
+
+/* use to match the import filters for vpn imports */
+int
+rde_l3vpn_import(struct rde_community *comm, struct l3vpn *rd)
+{
+	size_t i;
+
+	if (rd->rde_import == NULL)
+		return (0);
+	for (i = 0; i < rd->rde_import->len; i++) {
+		struct rde_filter_set_elm *s = &rd->rde_import->set[i];
+		if (community_match(comm, &s->action.community, 0))
+			return (1);
+	}
+	return (0);
 }
 
 /* return 1 when prefix matches filter_prefix, 0 if not */
@@ -202,71 +257,66 @@ rde_prefix_match(struct filter_prefix *fp, struct bgpd_addr *prefix,
 }
 
 static int
-rde_filter_match(struct filter_rule *f, struct rde_peer *peer,
+rde_filter_match(struct filter_match *match, struct rde_peer *peer,
     struct rde_peer *from, struct filterstate *state,
     struct bgpd_addr *prefix, uint8_t plen)
 {
 	struct rde_aspath *asp = &state->aspath;
 	int i;
 
-	if (f->peer.ebgp && !peer->conf.ebgp)
-		return (0);
-	if (f->peer.ibgp && peer->conf.ebgp)
-		return (0);
-
-	if (f->match.ovs.is_set) {
-		if ((state->vstate & ROA_MASK) != f->match.ovs.validity)
+	if (match->ovs.is_set) {
+		if ((state->vstate & ROA_MASK) != match->ovs.validity)
 			return (0);
 	}
 
-	if (f->match.avs.is_set) {
-		if (((state->vstate >> 4) & ASPA_MASK) != f->match.avs.validity)
+	if (match->avs.is_set) {
+		if (((state->vstate >> 4) & ASPA_MASK) != match->avs.validity)
 			return (0);
 	}
 
-	if (asp != NULL && f->match.as.type != AS_UNDEF) {
-		if (aspath_match(asp->aspath, &f->match.as,
+	if (asp != NULL && match->as.type != AS_UNDEF) {
+		if (aspath_match(asp->aspath, &match->as,
 		    peer->conf.remote_as) == 0)
 			return (0);
 	}
 
-	if (asp != NULL && f->match.aslen.type != ASLEN_NONE)
-		if (aspath_lenmatch(asp->aspath, f->match.aslen.type,
-		    f->match.aslen.aslen) == 0)
+	if (asp != NULL && match->aslen.type != ASLEN_NONE)
+		if (aspath_lenmatch(asp->aspath, match->aslen.type,
+		    match->aslen.aslen) == 0)
 			return (0);
 
 	for (i = 0; i < MAX_COMM_MATCH; i++) {
-		if (f->match.community[i].flags == 0)
+		if (match->community[i].flags == 0)
 			break;
 		if (community_match(&state->communities,
-		    &f->match.community[i], peer) == 0)
+		    &match->community[i], peer) == 0)
 			return (0);
 	}
 
-	if (f->match.maxcomm != 0) {
-		if (f->match.maxcomm >
+	if (match->maxcomm != 0) {
+		if (match->maxcomm >
 		    community_count(&state->communities, COMMUNITY_TYPE_BASIC))
 			return (0);
 	}
-	if (f->match.maxextcomm != 0) {
-		if (f->match.maxextcomm >
+	if (match->maxextcomm != 0) {
+		if (match->maxextcomm >
 		    community_count(&state->communities, COMMUNITY_TYPE_EXT))
 			return (0);
 	}
-	if (f->match.maxlargecomm != 0) {
-		if (f->match.maxlargecomm >
+	if (match->maxlargecomm != 0) {
+		if (match->maxlargecomm >
 		    community_count(&state->communities, COMMUNITY_TYPE_LARGE))
 			return (0);
 	}
 
-	if (f->match.nexthop.flags != 0) {
+	if (match->nexthop.flags != 0) {
 		struct bgpd_addr *nexthop, *cmpaddr;
 		if (state->nexthop == NULL)
 			/* no nexthop, skip */
 			return (0);
 		nexthop = &state->nexthop->exit_nexthop;
-		if (f->match.nexthop.flags == FILTER_NEXTHOP_ADDR)
-			cmpaddr = &f->match.nexthop.addr;
+		if (match->nexthop.flags == FILTER_NEXTHOP_ADDR)
+			cmpaddr = &match->nexthop.addr;
 		else
 			cmpaddr = &from->remote_addr;
 		if (cmpaddr->aid != nexthop->aid)
@@ -289,8 +339,8 @@ rde_filter_match(struct filter_rule *f, struct rde_peer *peer,
 	}
 
 	/* origin-set lookups match only on ROA_VALID */
-	if (asp != NULL && f->match.originset.ps != NULL) {
-		if (trie_roa_check(&f->match.originset.ps->th, prefix, plen,
+	if (asp != NULL && match->originset.ps != NULL) {
+		if (trie_roa_check(&match->originset.ps->th, prefix, plen,
 		    aspath_origin(asp->aspath)) != ROA_VALID)
 			return (0);
 	}
@@ -298,13 +348,13 @@ rde_filter_match(struct filter_rule *f, struct rde_peer *peer,
 	/*
 	 * prefixset and prefix filter rules are mutual exclusive
 	 */
-	if (f->match.prefixset.flags != 0) {
-		if (f->match.prefixset.ps == NULL ||
-		    !trie_match(&f->match.prefixset.ps->th, prefix, plen,
-		    (f->match.prefixset.flags & PREFIXSET_FLAG_LONGER)))
+	if (match->prefixset.flags != 0) {
+		if (match->prefixset.ps == NULL ||
+		    !trie_match(&match->prefixset.ps->th, prefix, plen,
+		    (match->prefixset.flags & PREFIXSET_FLAG_LONGER)))
 			return (0);
-	} else if (f->match.prefix.addr.aid != 0)
-		return (rde_prefix_match(&f->match.prefix, prefix, plen));
+	} else if (match->prefix.addr.aid != 0)
+		return (rde_prefix_match(&match->prefix, prefix, plen));
 
 	/* matched somewhen or is anymatch rule  */
 	return (1);
@@ -318,12 +368,12 @@ rde_filter_skip_rule(struct rde_peer *peer, struct filter_rule *f)
 	if (peer == NULL || f == NULL)
 		return (0);
 
-	if (f->peer.groupid != 0 &&
-	    f->peer.groupid != peer->conf.groupid)
-		return (1);
-
 	if (f->peer.peerid != 0 &&
 	    f->peer.peerid != peer->conf.id)
+		return (1);
+
+	if (f->peer.groupid != 0 &&
+	    f->peer.groupid != peer->conf.groupid)
 		return (1);
 
 	if (f->peer.remote_as != 0 &&
@@ -402,7 +452,7 @@ rde_filter_equal(struct filter_head *a, struct filter_head *b)
 			return (0);
 		}
 
-		if (!filterset_equal(&fa->set, &fb->set))
+		if (!rde_filterset_equal(fa->rde_set, fb->rde_set))
 			return (0);
 
 		fa = TAILQ_NEXT(fa, entry);
@@ -410,6 +460,117 @@ rde_filter_equal(struct filter_head *a, struct filter_head *b)
 	}
 	return (1);
 }
+
+static SIPHASH_KEY	rfkey;
+
+static inline uint64_t
+rde_filter_hash(const struct rde_filter *rf)
+{
+	return rf->hash;
+}
+
+static uint64_t
+rde_filter_calc_hash(const struct rde_filter *rf)
+{
+	return SipHash24(&rfkey, rf->rules, rf->len * sizeof(rf->rules[0]));
+}
+
+CH_HEAD(rde_filtertable, rde_filter);
+CH_PROTOTYPE(rde_filtertable, rde_filter, rde_filter_hash);
+
+static struct rde_filtertable filter = CH_INITIALIZER(&filter);
+
+static void
+rde_filter_free(struct rde_filter *rf)
+{
+	if (rf == NULL)
+		return;
+
+	rdemem.filter_size -= sizeof(*rf) + rf->len * sizeof(rf->rules[0]);
+	rdemem.filter_cnt--;
+	free(rf);
+}
+
+static void
+rde_filter_ref(struct rde_filter *rf)
+{
+	rf->refcnt++;
+	rdemem.filter_refs++;
+}
+
+void
+rde_filter_unref(struct rde_filter *rf)
+{
+	rf->refcnt--;
+	rdemem.filter_refs--;
+	if (rf->refcnt <= 0) {
+		CH_REMOVE(rde_filtertable, &filter, rf);
+		rde_filter_free(rf);
+	}
+}
+
+struct rde_filter *
+rde_filter_new(size_t count)
+{
+	struct rde_filter *rf;
+
+	if ((rf = calloc(1, sizeof(*rf) + count * sizeof(rf->rules[0]))) ==
+	    NULL)
+		fatal(NULL);
+
+	rdemem.filter_size += sizeof(*rf) + count * sizeof(rf->rules[0]);
+	rdemem.filter_cnt++;
+
+	rf->len = count;
+	return rf;
+}
+
+struct rde_filter *
+rde_filter_getcache(struct rde_filter *rf)
+{
+	struct rde_filter *nrf;
+
+	rf->hash = rde_filter_calc_hash(rf);
+	if ((nrf = CH_FIND(rde_filtertable, &filter, rf)) == NULL) {
+		if (CH_INSERT(rde_filtertable, &filter, rf, NULL) != 1)
+			fatalx("%s: already present filter", __func__);
+	} else {
+		rde_filter_free(rf);
+		rf = nrf;
+	}
+	rde_filter_ref(rf);
+	return rf;
+}
+
+void
+rde_filter_fill(struct rde_filter *rf, size_t index,
+    const struct filter_rule *fr)
+{
+	struct rde_filter_rule	*rule;
+
+	if (rf->len <= index)
+		fatalx(__func__);
+
+	rule = &rf->rules[index];
+	rule->match = fr->match;
+	rule->rde_set = fr->rde_set;
+	rde_filterset_ref(rule->rde_set);
+	rule->action = fr->action;
+	rule->quick = fr->quick;
+}
+
+static int
+rde_filtertable_equal(const struct rde_filter *arf,
+    const struct rde_filter *brf)
+{
+	if (arf->len != brf->len)
+		return 0;
+	return memcmp(arf->rules, brf->rules,
+	    arf->len * sizeof(arf->rules[0])) == 0;
+}
+
+CH_GENERATE(rde_filtertable, rde_filter, rde_filtertable_equal,
+    rde_filter_hash);
 
 void
 rde_filterstate_init(struct filterstate *state)
@@ -487,6 +648,8 @@ filterlist_free(struct filter_head *fh)
 	while ((r = TAILQ_FIRST(fh)) != NULL) {
 		TAILQ_REMOVE(fh, r, entry);
 		filterset_free(&r->set);
+		if (r->rde_set != NULL)
+			rde_filterset_unref(r->rde_set);
 		free(r);
 	}
 	free(fh);
@@ -503,14 +666,48 @@ filterset_free(struct filter_set_head *sh)
 
 	while ((s = TAILQ_FIRST(sh)) != NULL) {
 		TAILQ_REMOVE(sh, s, entry);
-		if (s->type == ACTION_RTLABEL_ID)
-			rtlabel_unref(s->action.id);
-		else if (s->type == ACTION_PFTABLE_ID)
-			pftable_unref(s->action.id);
-		else if (s->type == ACTION_SET_NEXTHOP_REF)
-			nexthop_unref(s->action.nh_ref);
 		free(s);
 	}
+}
+
+const char *
+filterset_name(enum action_types type)
+{
+	switch (type) {
+	case ACTION_SET_LOCALPREF:
+	case ACTION_SET_RELATIVE_LOCALPREF:
+		return ("localpref");
+	case ACTION_SET_MED:
+	case ACTION_SET_RELATIVE_MED:
+		return ("metric");
+	case ACTION_SET_WEIGHT:
+	case ACTION_SET_RELATIVE_WEIGHT:
+		return ("weight");
+	case ACTION_SET_PREPEND_SELF:
+		return ("prepend-self");
+	case ACTION_SET_PREPEND_PEER:
+		return ("prepend-peer");
+	case ACTION_SET_AS_OVERRIDE:
+		return ("as-override");
+	case ACTION_SET_NEXTHOP:
+	case ACTION_SET_NEXTHOP_REJECT:
+	case ACTION_SET_NEXTHOP_BLACKHOLE:
+	case ACTION_SET_NEXTHOP_NOMODIFY:
+	case ACTION_SET_NEXTHOP_SELF:
+		return ("nexthop");
+	case ACTION_SET_COMMUNITY:
+		return ("community");
+	case ACTION_DEL_COMMUNITY:
+		return ("community delete");
+	case ACTION_PFTABLE:
+		return ("pftable");
+	case ACTION_RTLABEL:
+		return ("rtlabel");
+	case ACTION_SET_ORIGIN:
+		return ("origin");
+	}
+
+	fatalx("filterset_name: got lost");
 }
 
 /*
@@ -563,7 +760,8 @@ filterset_move(struct filter_set_head *source, struct filter_set_head *dest)
  * copy filterset from source to dest. dest will be initialized first.
  */
 void
-filterset_copy(struct filter_set_head *source, struct filter_set_head *dest)
+filterset_copy(const struct filter_set_head *source,
+    struct filter_set_head *dest)
 {
 	struct filter_set	*s, *t;
 
@@ -574,211 +772,242 @@ filterset_copy(struct filter_set_head *source, struct filter_set_head *dest)
 	TAILQ_FOREACH(s, source, entry) {
 		if ((t = malloc(sizeof(struct filter_set))) == NULL)
 			fatal(NULL);
-		memcpy(t, s, sizeof(struct filter_set));
-		if (t->type == ACTION_RTLABEL_ID)
-			rtlabel_ref(t->action.id);
-		else if (t->type == ACTION_PFTABLE_ID)
-			pftable_ref(t->action.id);
-		else if (t->type == ACTION_SET_NEXTHOP_REF)
-			nexthop_ref(t->action.nh_ref);
+		*t = *s;
 		TAILQ_INSERT_TAIL(dest, t, entry);
 	}
 }
 
-int
-filterset_equal(struct filter_set_head *ah, struct filter_set_head *bh)
+static int
+rde_filterset_equal(const struct rde_filter_set *afs,
+    const struct rde_filter_set *bfs)
 {
-	struct filter_set	*a, *b;
-	const char		*as, *bs;
+	const struct rde_filter_set_elm *a, *b;
+	size_t i;
 
-	for (a = TAILQ_FIRST(ah), b = TAILQ_FIRST(bh);
-	    a != NULL && b != NULL;
-	    a = TAILQ_NEXT(a, entry), b = TAILQ_NEXT(b, entry)) {
+	if (afs->len != bfs->len)
+		return 0;
+
+	a = afs->set;
+	b = bfs->set;
+	for (i = 0; i < afs->len; i++, a++, b++) {
+		if (a->type != b->type)
+			return 0;
+
 		switch (a->type) {
 		case ACTION_SET_PREPEND_SELF:
 		case ACTION_SET_PREPEND_PEER:
-			if (a->type == b->type &&
-			    a->action.prepend == b->action.prepend)
+			if (a->action.prepend == b->action.prepend)
 				continue;
 			break;
 		case ACTION_SET_AS_OVERRIDE:
-			if (a->type == b->type)
-				continue;
-			break;
+			continue;
 		case ACTION_SET_LOCALPREF:
 		case ACTION_SET_MED:
 		case ACTION_SET_WEIGHT:
-			if (a->type == b->type &&
-			    a->action.metric == b->action.metric)
+			if (a->action.metric == b->action.metric)
 				continue;
 			break;
 		case ACTION_SET_RELATIVE_LOCALPREF:
 		case ACTION_SET_RELATIVE_MED:
 		case ACTION_SET_RELATIVE_WEIGHT:
-			if (a->type == b->type &&
-			    a->action.relative == b->action.relative)
+			if (a->action.relative == b->action.relative)
 				continue;
 			break;
 		case ACTION_SET_NEXTHOP:
-			if (a->type == b->type &&
-			    memcmp(&a->action.nexthop, &b->action.nexthop,
-			    sizeof(a->action.nexthop)) == 0)
-				continue;
-			break;
-		case ACTION_SET_NEXTHOP_REF:
-			if (a->type == b->type &&
-			    a->action.nh_ref == b->action.nh_ref)
+			if (a->action.nh_ref == b->action.nh_ref)
 				continue;
 			break;
 		case ACTION_SET_NEXTHOP_BLACKHOLE:
 		case ACTION_SET_NEXTHOP_REJECT:
 		case ACTION_SET_NEXTHOP_NOMODIFY:
 		case ACTION_SET_NEXTHOP_SELF:
-			if (a->type == b->type)
-				continue;
-			break;
+			continue;
 		case ACTION_DEL_COMMUNITY:
 		case ACTION_SET_COMMUNITY:
-			if (a->type == b->type &&
-			    memcmp(&a->action.community, &b->action.community,
+			if (memcmp(&a->action.community, &b->action.community,
 			    sizeof(a->action.community)) == 0)
 				continue;
 			break;
-		case ACTION_PFTABLE:
-		case ACTION_PFTABLE_ID:
-			if (b->type == ACTION_PFTABLE)
-				bs = b->action.pftable;
-			else if (b->type == ACTION_PFTABLE_ID)
-				bs = pftable_id2name(b->action.id);
-			else
-				break;
-
-			if (a->type == ACTION_PFTABLE)
-				as = a->action.pftable;
-			else
-				as = pftable_id2name(a->action.id);
-
-			if (strcmp(as, bs) == 0)
-				continue;
-			break;
 		case ACTION_RTLABEL:
-		case ACTION_RTLABEL_ID:
-			if (b->type == ACTION_RTLABEL)
-				bs = b->action.rtlabel;
-			else if (b->type == ACTION_RTLABEL_ID)
-				bs = rtlabel_id2name(b->action.id);
-			else
-				break;
-
-			if (a->type == ACTION_RTLABEL)
-				as = a->action.rtlabel;
-			else
-				as = rtlabel_id2name(a->action.id);
-
-			if (strcmp(as, bs) == 0)
+		case ACTION_PFTABLE:
+			if (a->action.id == b->action.id)
 				continue;
 			break;
 		case ACTION_SET_ORIGIN:
-			if (a->type == b->type &&
-			    a->action.origin == b->action.origin)
+			if (a->action.origin == b->action.origin)
 				continue;
 			break;
 		}
 		/* compare failed */
-		return (0);
+		return 0;
 	}
-	if (a != NULL || b != NULL)
-		return (0);
-	return (1);
+	return 1;
 }
 
-const char *
-filterset_name(enum action_types type)
-{
-	switch (type) {
-	case ACTION_SET_LOCALPREF:
-	case ACTION_SET_RELATIVE_LOCALPREF:
-		return ("localpref");
-	case ACTION_SET_MED:
-	case ACTION_SET_RELATIVE_MED:
-		return ("metric");
-	case ACTION_SET_WEIGHT:
-	case ACTION_SET_RELATIVE_WEIGHT:
-		return ("weight");
-	case ACTION_SET_PREPEND_SELF:
-		return ("prepend-self");
-	case ACTION_SET_PREPEND_PEER:
-		return ("prepend-peer");
-	case ACTION_SET_AS_OVERRIDE:
-		return ("as-override");
-	case ACTION_SET_NEXTHOP:
-	case ACTION_SET_NEXTHOP_REF:
-	case ACTION_SET_NEXTHOP_REJECT:
-	case ACTION_SET_NEXTHOP_BLACKHOLE:
-	case ACTION_SET_NEXTHOP_NOMODIFY:
-	case ACTION_SET_NEXTHOP_SELF:
-		return ("nexthop");
-	case ACTION_SET_COMMUNITY:
-		return ("community");
-	case ACTION_DEL_COMMUNITY:
-		return ("community delete");
-	case ACTION_PFTABLE:
-	case ACTION_PFTABLE_ID:
-		return ("pftable");
-	case ACTION_RTLABEL:
-	case ACTION_RTLABEL_ID:
-		return ("rtlabel");
-	case ACTION_SET_ORIGIN:
-		return ("origin");
-	}
+static SIPHASH_KEY	fskey;
 
-	fatalx("filterset_name: got lost");
+static inline uint64_t
+rde_filterset_hash(const struct rde_filter_set *rfs)
+{
+	return rfs->hash;
 }
 
-int
-filterset_send(struct imsgbuf *imsgbuf, struct filter_set_head *set)
+uint64_t
+rde_filterset_calc_hash(const struct rde_filter_set *rfs)
 {
-	struct filter_set	*s;
+	return SipHash24(&fskey, rfs->set, rfs->len * sizeof(*rfs->set));
+}
 
-	TAILQ_FOREACH(s, set, entry)
-		if (imsg_compose(imsgbuf, IMSG_FILTER_SET, 0, 0, -1, s,
-		    sizeof(*s)) == -1)
-			return (-1);
-	return (0);
+CH_HEAD(rde_filterset, rde_filter_set);
+CH_PROTOTYPE(rde_filterset, rde_filter_set, rde_filterset_hash);
+
+static struct rde_filterset filterset = CH_INITIALIZER(&filterset);
+
+static void
+rde_filterset_free(struct rde_filter_set *rfs)
+{
+	struct rde_filter_set_elm *rfse;
+	size_t i;
+
+	if (rfs == NULL)
+		return;
+
+	rdemem.filter_set_size -= sizeof(*rfs) + rfs->len * sizeof(*rfse);
+	rdemem.filter_set_cnt--;
+
+	rfse = rfs->set;
+	for (i = 0; i < rfs->len; i++, rfse++) {
+		if (rfse->type == ACTION_RTLABEL)
+			rtlabel_unref(rfse->action.id);
+		else if (rfse->type == ACTION_PFTABLE)
+			pftable_unref(rfse->action.id);
+		else if (rfse->type == ACTION_SET_NEXTHOP)
+			nexthop_unref(rfse->action.nh_ref);
+	}
+	free(rfs);
+}
+
+static void
+rde_filterset_ref(struct rde_filter_set *rfs)
+{
+	rfs->refcnt++;
+	rdemem.filter_set_refs++;
 }
 
 void
-filterset_recv(struct imsg *imsg, struct filter_set_head *set)
+rde_filterset_unref(struct rde_filter_set *rfs)
 {
-	struct filter_set	*s;
-
-	if ((s = malloc(sizeof(*s))) == NULL)
-		fatal(NULL);
-	if (imsg_get_data(imsg, s, sizeof(*s)) == -1) {
-		log_warnx("rde_dispatch: wrong imsg len");
-		free(s);
+	if (rfs == NULL)
 		return;
+	rfs->refcnt--;
+	rdemem.filter_set_refs--;
+	if (rfs->refcnt <= 0) {
+		CH_REMOVE(rde_filterset, &filterset, rfs);
+		rde_filterset_free(rfs);
 	}
-	switch (s->type) {
+}
+
+static void
+rde_filterset_conv(const struct filter_set *set,
+    struct rde_filter_set_elm *rfse)
+{
+	rfse->type = set->type;
+	switch (set->type) {
+	case ACTION_SET_PREPEND_SELF:
+	case ACTION_SET_PREPEND_PEER:
+		rfse->action.prepend = set->action.prepend;
+		break;
+	case ACTION_SET_AS_OVERRIDE:
+		break;
+	case ACTION_SET_LOCALPREF:
+	case ACTION_SET_MED:
+	case ACTION_SET_WEIGHT:
+		rfse->action.metric = set->action.metric;
+		break;
+	case ACTION_SET_RELATIVE_LOCALPREF:
+	case ACTION_SET_RELATIVE_MED:
+	case ACTION_SET_RELATIVE_WEIGHT:
+		rfse->action.relative = set->action.relative;
+		break;
+	case ACTION_SET_NEXTHOP_BLACKHOLE:
+	case ACTION_SET_NEXTHOP_REJECT:
+	case ACTION_SET_NEXTHOP_NOMODIFY:
+	case ACTION_SET_NEXTHOP_SELF:
+		break;
+	case ACTION_DEL_COMMUNITY:
+	case ACTION_SET_COMMUNITY:
+		rfse->action.community = set->action.community;
+		break;
+	case ACTION_SET_ORIGIN:
+		rfse->action.origin = set->action.origin;
+		break;
 	case ACTION_SET_NEXTHOP:
-		s->action.nh_ref = nexthop_get(&s->action.nexthop);
-		s->type = ACTION_SET_NEXTHOP_REF;
+		rfse->action.nh_ref = nexthop_get(&set->action.nexthop);
 		break;
 	case ACTION_RTLABEL:
-		/* convert the route label to an id for faster access */
-		s->action.id = rtlabel_name2id(s->action.rtlabel);
-		s->type = ACTION_RTLABEL_ID;
+		rfse->action.id = rtlabel_name2id(set->action.rtlabel);
 		break;
 	case ACTION_PFTABLE:
-		/* convert pftable name to an id */
-		s->action.id = pftable_name2id(s->action.pftable);
-		s->type = ACTION_PFTABLE_ID;
-		break;
-	default:
+		rfse->action.id = pftable_name2id(set->action.pftable);
 		break;
 	}
-	TAILQ_INSERT_TAIL(set, s, entry);
 }
+
+struct rde_filter_set *
+rde_filterset_imsg_recv(struct imsg *imsg)
+{
+	struct ibuf ibuf;
+	struct rde_filter_set *rfs = NULL, *nrfs;
+	struct rde_filter_set_elm *rfse;
+	uint16_t count, i;
+
+	if (imsg_get_ibuf(imsg, &ibuf) == -1)
+		goto fail;
+
+	if (ibuf_recv_filterset_count(&ibuf, &count) == -1)
+		goto fail;
+
+	if ((rfs = calloc(1, sizeof(*rfs) + count * sizeof(*rfse))) == NULL)
+		goto fail;
+
+	rdemem.filter_set_size += sizeof(*rfs) + count * sizeof(*rfse);
+	rdemem.filter_set_cnt++;
+
+	rfs->len = count;
+	rfse = rfs->set;
+
+	for (i = 0; i < count; i++, rfse++) {
+		struct filter_set set;
+		if (ibuf_recv_one_filterset(&ibuf, &set) == -1)
+			goto fail;
+		rde_filterset_conv(&set, rfse);
+	}
+
+	if (ibuf_size(&ibuf) != 0) {
+		errno = EBADMSG;
+		goto fail;
+	}
+
+	rfs->hash = rde_filterset_calc_hash(rfs);
+
+	if ((nrfs = CH_FIND(rde_filterset, &filterset, rfs)) == NULL) {
+		if (CH_INSERT(rde_filterset, &filterset, rfs, NULL) != 1)
+			fatalx("%s: already present set", __func__);
+	} else {
+		rde_filterset_free(rfs);
+		rfs = nrfs;
+	}
+	rde_filterset_ref(rfs);
+	return rfs;
+
+ fail:
+	log_warn("filter set receive");
+	rde_filterset_free(rfs);
+	return NULL;
+}
+
+CH_GENERATE(rde_filterset, rde_filter_set, rde_filterset_equal,
+    rde_filterset_hash);
 
 /*
  * Copyright (c) 2001 Daniel Hartmeier
@@ -851,14 +1080,6 @@ rde_filter_calc_skip_steps(struct filter_head *rules)
 
 }
 
-#define RDE_FILTER_TEST_ATTRIB(t, a)				\
-	do {							\
-		if (t) {					\
-			f = a;					\
-			goto nextrule;				\
-		}						\
-	} while (0)
-
 enum filter_actions
 rde_filter(struct filter_head *rules, struct rde_peer *peer,
     struct rde_peer *from, struct bgpd_addr *prefix, uint8_t plen,
@@ -882,28 +1103,72 @@ rde_filter(struct filter_head *rules, struct rde_peer *peer,
 
 	f = TAILQ_FIRST(rules);
 	while (f != NULL) {
-		RDE_FILTER_TEST_ATTRIB(
-		    (f->peer.peerid &&
-		     f->peer.peerid != peer->conf.id),
-		     f->skip[RDE_FILTER_SKIP_PEERID]);
-		RDE_FILTER_TEST_ATTRIB(
-		    (f->peer.groupid &&
-		     f->peer.groupid != peer->conf.groupid),
-		     f->skip[RDE_FILTER_SKIP_GROUPID]);
-		RDE_FILTER_TEST_ATTRIB(
-		    (f->peer.remote_as &&
-		     f->peer.remote_as != peer->conf.remote_as),
-		     f->skip[RDE_FILTER_SKIP_REMOTE_AS]);
+		if (f->peer.peerid && f->peer.peerid != peer->conf.id) {
+			f = f->skip[RDE_FILTER_SKIP_PEERID];
+			continue;
+		}
+		if (f->peer.groupid && f->peer.groupid != peer->conf.groupid) {
+			f = f->skip[RDE_FILTER_SKIP_GROUPID];
+			continue;
+		}
+		if (f->peer.remote_as &&
+		    f->peer.remote_as != peer->conf.remote_as) {
+			f = f->skip[RDE_FILTER_SKIP_REMOTE_AS];
+			continue;
+		}
+		if (f->peer.ebgp && !peer->conf.ebgp) {
+			f = TAILQ_NEXT(f, entry);
+			continue;
+		}
+		if (f->peer.ibgp && peer->conf.ebgp) {
+			f = TAILQ_NEXT(f, entry);
+			continue;
+		}
 
-		if (rde_filter_match(f, peer, from, state, prefix, plen)) {
-			rde_apply_set(&f->set, peer, from, state, prefix->aid);
+		if (rde_filter_match(&f->match, peer, from, state,
+		    prefix, plen)) {
+			rde_apply_set(f->rde_set, peer, from, state,
+			    prefix->aid);
 			if (f->action != ACTION_NONE)
 				action = f->action;
 			if (f->quick)
 				return (action);
 		}
 		f = TAILQ_NEXT(f, entry);
- nextrule: ;
+	}
+	return (action);
+}
+
+enum filter_actions
+rde_filter_out(struct rde_filter *rf, struct rde_peer *peer,
+    struct rde_peer *from, struct bgpd_addr *prefix, uint8_t plen,
+    struct filterstate *state)
+{
+	struct rde_filter_rule	*f;
+	enum filter_actions	 action = ACTION_DENY; /* default deny */
+	size_t			 i;
+
+	if (state->aspath.flags & F_ATTR_PARSE_ERR)
+		/*
+		 * don't try to filter bad updates just deny them
+		 * so they act as implicit withdraws
+		 */
+		return (ACTION_DENY);
+
+	if (prefix->aid == AID_FLOWSPECv4 || prefix->aid == AID_FLOWSPECv6)
+		return (ACTION_ALLOW);
+
+	for (i = 0; i < rf->len; i++) {
+		f = &rf->rules[i];
+		if (rde_filter_match(&f->match, peer, from, state,
+		    prefix, plen)) {
+			rde_apply_set(f->rde_set, peer, from, state,
+			    prefix->aid);
+			if (f->action != ACTION_NONE)
+				action = f->action;
+			if (f->quick)
+				return (action);
+		}
 	}
 	return (action);
 }

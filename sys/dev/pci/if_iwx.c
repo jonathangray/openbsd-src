@@ -1,4 +1,4 @@
-/*	$OpenBSD: if_iwx.c,v 1.194 2025/12/01 16:44:13 stsp Exp $	*/
+/*	$OpenBSD: if_iwx.c,v 1.197 2026/02/11 11:14:53 stsp Exp $	*/
 
 /*
  * Copyright (c) 2014, 2016 genua gmbh <info@genua.de>
@@ -481,6 +481,7 @@ int	iwx_send_temp_report_ths_cmd(struct iwx_softc *);
 int	iwx_init_hw(struct iwx_softc *);
 int	iwx_init(struct ifnet *);
 void	iwx_start(struct ifnet *);
+void	iwx_mfp_leave(struct iwx_softc *);
 void	iwx_stop(struct ifnet *);
 void	iwx_watchdog(struct ifnet *);
 int	iwx_ioctl(struct ifnet *, u_long, caddr_t);
@@ -6974,7 +6975,7 @@ iwx_mld_add_sta_cmd(struct iwx_softc *sc, struct iwx_node *in, int update)
 	sta_cmd.link_id = htole32(0);
 	IEEE80211_ADDR_COPY(sta_cmd.peer_mld_address, in->in_macaddr);
 	IEEE80211_ADDR_COPY(sta_cmd.peer_link_address, in->in_macaddr);
-	sta_cmd.assoc_id = htole32(in->in_ni.ni_associd);
+	sta_cmd.assoc_id = htole32(IEEE80211_AID(in->in_ni.ni_associd));
 
 	if (in->in_ni.ni_flags & IEEE80211_NODE_HT) {
 		if (iwx_mimo_enabled(sc))
@@ -7727,7 +7728,7 @@ iwx_mac_ctxt_cmd_fill_sta(struct iwx_softc *sc, struct iwx_node *in,
 	sta->dtim_interval = htole32(ni->ni_intval * ni->ni_dtimperiod);
 	sta->data_policy = htole32(0);
 	sta->listen_interval = htole32(10);
-	sta->assoc_id = htole32(ni->ni_associd);
+	sta->assoc_id = htole32(IEEE80211_AID(ni->ni_associd));
 }
 
 int
@@ -7799,7 +7800,8 @@ iwx_mld_mac_ctxt_cmd(struct iwx_softc *sc, struct iwx_node *in,
 	else
 		panic("unsupported operating mode %d", ic->ic_opmode);
 	IEEE80211_ADDR_COPY(cmd.local_mld_addr, ic->ic_myaddr);
-	cmd.client.assoc_id = htole32(ni->ni_associd);
+	cmd.client.assoc_id = htole32(IEEE80211_AID(ni->ni_associd));
+	cmd.client.is_assoc = assoc ? 1 : 0;
 
 	cmd.filter_flags = htole32(IWX_MAC_CFG_FILTER_ACCEPT_GRP);
 	if (ic->ic_opmode == IEEE80211_M_MONITOR) {
@@ -7982,6 +7984,43 @@ iwx_bgscan_done_task(void *arg)
 	}
 
 	/*
+	 * Remove installed crypto keys while we still have access to them.
+	 * Once iwx_newstate() is entered ic_bss will already contain
+	 * information about our next AP.
+	 */
+	if (ic->ic_flags & IEEE80211_F_RSNON) {
+		struct ieee80211_key *k;
+
+		if (ic->ic_bss->ni_flags & IEEE80211_NODE_MFP)
+			iwx_mfp_leave(sc);
+	
+		if (in->in_flags & IWX_NODE_FLAG_HAVE_PAIRWISE_KEY)
+			(*ic->ic_delete_key)(ic, ni, &ni->ni_pairwise_key);
+
+		if ((in->in_flags & IWX_NODE_FLAG_HAVE_GROUP_KEY) &&
+		    (ic->ic_def_txkey == 1 || ic->ic_def_txkey == 2)) {
+			k = &ic->ic_nw_keys[ic->ic_def_txkey];
+			if ((k->k_flags & IEEE80211_KEY_GROUP) &&
+			    k->k_cipher == IEEE80211_CIPHER_CCMP)
+				(*ic->ic_delete_key)(ic, ni, k);
+		}
+
+		if ((in->in_flags & IWX_NODE_FLAG_HAVE_INTEGRITY_GROUP_KEY) &&
+		    (ic->ic_igtk_kid == 4 || ic->ic_igtk_kid == 5)) {
+
+			k = &ic->ic_nw_keys[ic->ic_igtk_kid];
+			if (k->k_flags & IEEE80211_KEY_IGTK)
+				(*ic->ic_delete_key)(ic, ni, k);
+		}
+
+		ni->ni_port_valid = 0;
+		ni->ni_flags &= ~IEEE80211_NODE_TXRXPROT;
+		ni->ni_flags &= ~IEEE80211_NODE_TXMGMTPROT;
+		ni->ni_flags &= ~IEEE80211_NODE_RXMGMTPROT;
+		ni->ni_rsn_supp_state = RSNA_SUPP_INITIALIZE;
+	}
+
+	/*
 	 * Tx queues have been flushed and Tx agg has been stopped.
 	 * Allow roaming to proceed.
 	 */
@@ -7989,7 +8028,11 @@ iwx_bgscan_done_task(void *arg)
 	ni->ni_unref_arg_size = sc->bgscan_unref_arg_size;
 	sc->bgscan_unref_arg = NULL;
 	sc->bgscan_unref_arg_size = 0;
-	ieee80211_node_tx_stopped(ic, &in->in_ni);
+	if (ni->ni_flags & IEEE80211_NODE_MFP) {
+		/* Deauth frame already sent. */
+		ieee80211_node_switch_bss(ic, &in->in_ni);
+	} else
+		ieee80211_node_tx_stopped(ic, &in->in_ni);
 done:
 	if (err) {
 		free(sc->bgscan_unref_arg, M_DEVBUF, sc->bgscan_unref_arg_size);
@@ -8844,6 +8887,13 @@ iwx_mld_set_sta_key_cmd(struct iwx_softc *sc, int sta_id,
 		return err;
 	}
 
+	if (!remove_key) {
+		if (k->k_flags & IEEE80211_KEY_GROUP)
+			ic->ic_def_txkey = k->k_id;
+		if (k->k_flags & IEEE80211_KEY_IGTK)
+			ic->ic_igtk_kid = k->k_id;
+	}
+
 	return 0;
 }
 
@@ -8889,6 +8939,9 @@ iwx_add_sta_key_cmd(struct iwx_softc *sc, int sta_id,
 		ieee80211_new_state(ic, IEEE80211_S_SCAN, -1);
 		return err;
 	}
+
+	if (k->k_flags & IEEE80211_KEY_GROUP)
+		ic->ic_def_txkey = k->k_id;
 
 	return 0;
 }
@@ -8990,9 +9043,10 @@ iwx_add_sta_key(struct iwx_softc *sc, int sta_id, struct ieee80211_node *ni,
 	if (k->k_flags & IEEE80211_KEY_IGTK) {
 		in->in_flags |= IWX_NODE_FLAG_HAVE_INTEGRITY_GROUP_KEY;
 		ic->ic_igtk_kid = k->k_id;
-	} else if (k->k_flags & IEEE80211_KEY_GROUP)
+	} else if (k->k_flags & IEEE80211_KEY_GROUP) {
 		in->in_flags |= IWX_NODE_FLAG_HAVE_GROUP_KEY;
-	else
+		ic->ic_def_txkey = k->k_id;
+	} else
 		in->in_flags |= IWX_NODE_FLAG_HAVE_PAIRWISE_KEY;
 
 	if ((in->in_flags & want_keymask) == want_keymask) {

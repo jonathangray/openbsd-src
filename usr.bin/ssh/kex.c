@@ -1,4 +1,4 @@
-/* $OpenBSD: kex.c,v 1.189 2025/09/15 04:40:34 djm Exp $ */
+/* $OpenBSD: kex.c,v 1.191 2026/02/14 00:18:34 jsg Exp $ */
 /*
  * Copyright (c) 2000, 2001 Markus Friedl.  All rights reserved.
  *
@@ -27,14 +27,15 @@
 #include <sys/types.h>
 #include <errno.h>
 #include <signal.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <poll.h>
 
 #ifdef WITH_OPENSSL
 #include <openssl/crypto.h>
+#include <openssl/dh.h>
 #endif
 
 #include "ssh.h"
@@ -51,7 +52,6 @@
 #include "match.h"
 #include "misc.h"
 #include "dispatch.h"
-#include "monitor.h"
 #include "myproposal.h"
 
 #include "ssherr.h"
