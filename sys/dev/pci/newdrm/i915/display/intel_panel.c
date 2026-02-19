@@ -521,7 +521,6 @@ int intel_panel_register(struct intel_connector *connector)
 		struct drm_panel *base;
 
 #ifdef __OpenBSD__
-		STUB();
 		return 0;
 #endif
 
