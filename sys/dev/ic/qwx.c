@@ -1,4 +1,4 @@
-/*	$OpenBSD: qwx.c,v 1.99 2026/02/16 23:37:44 jsg Exp $	*/
+/*	$OpenBSD: qwx.c,v 1.102 2026/02/22 21:38:03 kettenis Exp $	*/
 
 /*
  * Copyright 2023 Stefan Sperling <stsp@openbsd.org>
@@ -22218,8 +22218,8 @@ qwx_ce_alloc_ring(struct qwx_softc *sc, int nentries, size_t desc_sz)
 		return NULL;
 	}
 
-	if (bus_dmamap_load(sc->sc_dmat, ce_ring->dmap, ce_ring->base_addr,
-	    dsize, NULL, BUS_DMA_NOWAIT)) {
+	if (bus_dmamap_load_raw(sc->sc_dmat, ce_ring->dmap, &ce_ring->dsegs,
+	    ce_ring->nsegs, dsize, BUS_DMA_NOWAIT)) {
 		qwx_ce_free_ring(sc, ce_ring);
 		return NULL;
 	}
@@ -26786,25 +26786,23 @@ qwx_dmamem_alloc(bus_dma_tag_t dmat, bus_size_t size, bus_size_t align)
 	struct qwx_dmamem *adm;
 	int nsegs;
 
-	adm = malloc(sizeof(*adm), M_DEVBUF, M_NOWAIT | M_ZERO);
-	if (adm == NULL)
-		return NULL;
+	adm = malloc(sizeof(*adm), M_DEVBUF, M_WAITOK | M_ZERO);
 	adm->size = size;
 
 	if (bus_dmamap_create(dmat, size, 1, size, 0,
-	    BUS_DMA_NOWAIT | BUS_DMA_ALLOCNOW, &adm->map) != 0)
+	    BUS_DMA_WAITOK | BUS_DMA_ALLOCNOW, &adm->map) != 0)
 		goto admfree;
 
 	if (bus_dmamem_alloc_range(dmat, size, align, 0, &adm->seg, 1,
-	    &nsegs, BUS_DMA_NOWAIT | BUS_DMA_ZERO, 0, 0xffffffff) != 0)
+	    &nsegs, BUS_DMA_WAITOK | BUS_DMA_ZERO, 0, 0xffffffff) != 0)
 		goto destroy;
 
 	if (bus_dmamem_map(dmat, &adm->seg, nsegs, size,
-	    &adm->kva, BUS_DMA_NOWAIT | BUS_DMA_COHERENT) != 0)
+	    &adm->kva, BUS_DMA_WAITOK | BUS_DMA_COHERENT) != 0)
 		goto free;
 
 	if (bus_dmamap_load_raw(dmat, adm->map, &adm->seg, nsegs, size,
-	    BUS_DMA_NOWAIT) != 0)
+	    BUS_DMA_WAITOK) != 0)
 		goto unmap;
 
 	bzero(adm->kva, size);
@@ -26826,6 +26824,7 @@ admfree:
 void
 qwx_dmamem_free(bus_dma_tag_t dmat, struct qwx_dmamem *adm)
 {
+	bus_dmamap_unload(dmat, adm->map);
 	bus_dmamem_unmap(dmat, adm->kva, adm->size);
 	bus_dmamem_free(dmat, &adm->seg, 1);
 	bus_dmamap_destroy(dmat, adm->map);

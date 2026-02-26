@@ -1,4 +1,4 @@
-/*	$Id: keyproc.c,v 1.18 2022/08/28 18:30:29 tb Exp $ */
+/*	$Id: keyproc.c,v 1.20 2026/02/23 10:27:49 sthen Exp $ */
 /*
  * Copyright (c) 2016 Kristaps Dzonsons <kristaps@bsd.lv>
  *
@@ -74,20 +74,20 @@ add_ext(STACK_OF(X509_EXTENSION) *sk, int nid, const char *value)
  * jail and, on success, ship it to "netsock" as an X509 request.
  */
 int
-keyproc(int netsock, const char *keyfile, const char **alts, size_t altsz,
-    enum keytype keytype)
+keyproc(int netsock, struct domain_c *domain)
 {
 	char		*der64 = NULL, *der = NULL, *dercp;
 	char		*sans = NULL, *san = NULL;
 	FILE		*f;
-	size_t		 i, sansz;
+	size_t		 sansz;
 	void		*pp;
 	EVP_PKEY	*pkey = NULL;
 	X509_REQ	*x = NULL;
-	X509_NAME	*name = NULL;
-	int		 len, rc = 0, cc, nid, newkey = 0;
+	int		 len, rc = 0, cc, nid, newkey = 0, first;
 	mode_t		 prev;
 	STACK_OF(X509_EXTENSION) *exts = NULL;
+	struct altname_c	 *ac;
+	const char	*keyfile = domain->key;
 
 	/*
 	 * First, open our private key file read-only or write-only if
@@ -117,7 +117,7 @@ keyproc(int netsock, const char *keyfile, const char **alts, size_t altsz,
 	}
 
 	if (newkey) {
-		switch (keytype) {
+		switch (domain->keytype) {
 		case KT_ECDSA:
 			if ((pkey = ec_key_create(f, keyfile)) == NULL)
 				goto out;
@@ -155,20 +155,6 @@ keyproc(int netsock, const char *keyfile, const char **alts, size_t altsz,
 		goto out;
 	}
 
-	/* Now specify the common name that we'll request. */
-
-	if ((name = X509_NAME_new()) == NULL) {
-		warnx("X509_NAME_new");
-		goto out;
-	} else if (!X509_NAME_add_entry_by_txt(name, "CN",
-		MBSTRING_ASC, (u_char *)alts[0], -1, -1, 0)) {
-		warnx("X509_NAME_add_entry_by_txt: CN=%s", alts[0]);
-		goto out;
-	} else if (!X509_REQ_set_subject_name(x, name)) {
-		warnx("X509_req_set_issuer_name");
-		goto out;
-	}
-
 	/*
 	 * Now add the SAN extensions.
 	 * This was lifted more or less directly from demos/x509/mkreq.c
@@ -195,9 +181,19 @@ keyproc(int netsock, const char *keyfile, const char **alts, size_t altsz,
 	 * domains: NOT an entry per domain!
 	 */
 
-	for (i = 0; i < altsz; i++) {
-		cc = asprintf(&san, "%sDNS:%s",
-		    i ? "," : "", alts[i]);
+	first = 1;
+	TAILQ_FOREACH(ac, &domain->altname_list, entry) {
+		switch (ac->idtype) {
+		case ID_DNS:
+			cc = asprintf(&san, "%sDNS:%s", first ? "" : ",",
+			    ac->domain);
+			break;
+		case ID_IP:
+			cc = asprintf(&san, "%sIP:%s", first ? "" : ",",
+			    ac->domain);
+			break;
+		}
+		first = 0;
 		if (cc == -1) {
 			warn("asprintf");
 			goto out;
@@ -267,7 +263,6 @@ out:
 	free(sans);
 	free(san);
 	X509_REQ_free(x);
-	X509_NAME_free(name);
 	EVP_PKEY_free(pkey);
 	ERR_print_errors_fp(stderr);
 	ERR_free_strings();

@@ -1,4 +1,4 @@
-/*	$OpenBSD: rde.c,v 1.684 2026/02/16 14:27:40 claudio Exp $ */
+/*	$OpenBSD: rde.c,v 1.686 2026/02/18 15:54:06 claudio Exp $ */
 
 /*
  * Copyright (c) 2003, 2004 Henning Brauer <henning@openbsd.org>
@@ -976,13 +976,14 @@ rde_dispatch_imsg_parent(struct imsgbuf *imsgbuf)
 			}
 			break;
 		case IMSG_FLOWSPEC_DONE:
+			rde_filterstate_init(&state);
+
 			if (curflow == NULL) {
 				log_warnx("rde_dispatch: "
 				    "unexpected flowspec done");
 				goto badflow;
 			}
 
-			rde_filterstate_init(&state);
 			asp = &state.aspath;
 			asp->aspath = aspath_get(NULL, 0);
 			asp->origin = ORIGIN_IGP;
@@ -2038,27 +2039,27 @@ rde_attr_parse(struct ibuf *buf, struct rde_peer *peer,
 	ibuf_from_ibuf(&attrbuf, buf);
 	if (ibuf_get_n8(&attrbuf, &flags) == -1 ||
 	    ibuf_get_n8(&attrbuf, &type) == -1)
-		goto bad_list;
+		goto bad_ibuf;
 
 	if (flags & ATTR_EXTLEN) {
 		uint16_t attr_len;
 		if (ibuf_get_n16(&attrbuf, &attr_len) == -1)
-			goto bad_list;
+			goto bad_ibuf;
 		alen = attr_len;
 		hlen = 4;
 	} else {
 		uint8_t attr_len;
 		if (ibuf_get_n8(&attrbuf, &attr_len) == -1)
-			goto bad_list;
+			goto bad_ibuf;
 		alen = attr_len;
 		hlen = 3;
 	}
 
 	if (ibuf_truncate(&attrbuf, alen) == -1)
-		goto bad_list;
+		goto bad_ibuf;
 	/* consume the attribute in buf before moving forward */
 	if (ibuf_skip(buf, hlen + alen) == -1)
-		goto bad_list;
+		goto bad_ibuf;
 
 	switch (type) {
 	case ATTR_UNDEF:
@@ -2204,7 +2205,7 @@ rde_attr_parse(struct ibuf *buf, struct rde_peer *peer,
 			u_char	t[8];
 			t[0] = t[1] = 0;
 			if (ibuf_get(&attrbuf, &t[2], 6) == -1)
-				goto bad_list;
+				goto bad_ibuf;
 			if (memcmp(t, &zero, sizeof(uint32_t)) == 0) {
 				/* As per RFC7606 use "attribute discard". */
 				log_peer_warnx(&peer->conf, "bad AGGREGATOR, "
@@ -2406,6 +2407,11 @@ rde_attr_parse(struct ibuf *buf, struct rde_peer *peer,
 	rde_update_err(peer, ERR_UPDATE, ERR_UPD_ATTRFLAGS, &attrbuf);
 	return (-1);
  bad_list:
+	log_peer_warnx(&peer->conf, "bad path, list error for type %d", type);
+	rde_update_err(peer, ERR_UPDATE, ERR_UPD_ATTRLIST, NULL);
+	return (-1);
+ bad_ibuf:
+	log_peer_warn(&peer->conf, "bad path, header parse error");
 	rde_update_err(peer, ERR_UPDATE, ERR_UPD_ATTRLIST, NULL);
 	return (-1);
 }

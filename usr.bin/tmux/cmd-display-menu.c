@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-display-menu.c,v 1.47 2025/11/12 13:47:51 nicm Exp $ */
+/* $OpenBSD: cmd-display-menu.c,v 1.49 2026/02/23 08:50:00 nicm Exp $ */
 
 /*
  * Copyright (c) 2019 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -295,7 +295,7 @@ cmd_display_menu_exec(struct cmd *self, struct cmdq_item *item)
 	const char		*border_style = args_get(args, 'S');
 	const char		*selected_style = args_get(args, 'H');
 	enum box_lines		 lines = BOX_LINES_DEFAULT;
-	char			*title, *cause;
+	char			*title, *cause = NULL;
 	int			 flags = 0, starting_choice = 0;
 	u_int			 px, py, i, count = args_count(args);
 	struct options		*o = target->s->curw->window->options;
@@ -313,8 +313,7 @@ cmd_display_menu_exec(struct cmd *self, struct cmdq_item *item)
 			    &cause);
 			if (cause != NULL) {
 				cmdq_error(item, "starting choice %s", cause);
-				free(cause);
-				return (CMD_RETURN_ERROR);
+				goto fail;
 			}
 		}
 	}
@@ -335,8 +334,7 @@ cmd_display_menu_exec(struct cmd *self, struct cmdq_item *item)
 
 		if (count - i < 2) {
 			cmdq_error(item, "not enough arguments");
-			menu_free(menu);
-			return (CMD_RETURN_ERROR);
+			goto fail;
 		}
 		key = args_string(args, i++);
 
@@ -348,17 +346,13 @@ cmd_display_menu_exec(struct cmd *self, struct cmdq_item *item)
 	}
 	if (menu == NULL) {
 		cmdq_error(item, "invalid menu arguments");
-		return (CMD_RETURN_ERROR);
+		goto fail;
 	}
-	if (menu->count == 0) {
-		menu_free(menu);
-		return (CMD_RETURN_NORMAL);
-	}
+	if (menu->count == 0)
+		goto out;
 	if (!cmd_display_menu_get_pos(tc, item, args, &px, &py, menu->width + 4,
-	    menu->count + 2)) {
-		menu_free(menu);
-		return (CMD_RETURN_NORMAL);
-	}
+	    menu->count + 2))
+		goto out;
 
 	value = args_get(args, 'b');
 	if (value != NULL) {
@@ -367,8 +361,7 @@ cmd_display_menu_exec(struct cmd *self, struct cmdq_item *item)
 		    &cause);
 		if (lines == -1) {
 			cmdq_error(item, "menu-border-lines %s", cause);
-			free(cause);
-			return (CMD_RETURN_ERROR);
+			goto fail;
 		}
 	}
 
@@ -380,6 +373,15 @@ cmd_display_menu_exec(struct cmd *self, struct cmdq_item *item)
 	    style, selected_style, border_style, target, NULL, NULL) != 0)
 		return (CMD_RETURN_NORMAL);
 	return (CMD_RETURN_WAIT);
+
+out:
+	menu_free(menu);
+	return (CMD_RETURN_NORMAL);
+
+fail:
+	free(cause);
+	menu_free(menu);
+	return (CMD_RETURN_ERROR);
 }
 
 static enum cmd_retval
@@ -394,7 +396,7 @@ cmd_display_popup_exec(struct cmd *self, struct cmdq_item *item)
 	const char		*style = args_get(args, 's');
 	const char		*border_style = args_get(args, 'S');
 	char			*cwd = NULL, *cause = NULL, **argv = NULL;
-	char			*title;
+	char			*title = NULL;
 	int			 modify = popup_present(tc);
 	int			 flags = -1, argc = 0;
 	enum box_lines		 lines = BOX_LINES_DEFAULT;
@@ -418,8 +420,7 @@ cmd_display_popup_exec(struct cmd *self, struct cmdq_item *item)
 			    &cause);
 			if (cause != NULL) {
 				cmdq_error(item, "height %s", cause);
-				free(cause);
-				return (CMD_RETURN_ERROR);
+				goto fail;
 			}
 		}
 
@@ -429,8 +430,7 @@ cmd_display_popup_exec(struct cmd *self, struct cmdq_item *item)
 			    &cause);
 			if (cause != NULL) {
 				cmdq_error(item, "width %s", cause);
-				free(cause);
-				return (CMD_RETURN_ERROR);
+				goto fail;
 			}
 		}
 
@@ -439,7 +439,7 @@ cmd_display_popup_exec(struct cmd *self, struct cmdq_item *item)
 		if (h > tty->sy)
 			h = tty->sy;
 		if (!cmd_display_menu_get_pos(tc, item, args, &px, &py, w, h))
-			return (CMD_RETURN_NORMAL);
+			goto out;
 
 		value = args_get(args, 'd');
 		if (value != NULL)
@@ -479,8 +479,7 @@ cmd_display_popup_exec(struct cmd *self, struct cmdq_item *item)
 		    &cause);
 		if (cause != NULL) {
 			cmdq_error(item, "popup-border-lines %s", cause);
-			free(cause);
-			return (CMD_RETURN_ERROR);
+			goto fail;
 		}
 	}
 
@@ -508,22 +507,29 @@ cmd_display_popup_exec(struct cmd *self, struct cmdq_item *item)
 
 	if (modify) {
 		popup_modify(tc, title, style, border_style, lines, flags);
-		free(title);
-		return (CMD_RETURN_NORMAL);
+		goto out;
 	}
 	if (popup_display(flags, lines, item, px, py, w, h, env, shellcmd, argc,
-	    argv, cwd, title, tc, s, style, border_style, NULL, NULL) != 0) {
-		cmd_free_argv(argc, argv);
-		if (env != NULL)
-			environ_free(env);
-		free(cwd);
-		free(title);
-		return (CMD_RETURN_NORMAL);
-	}
-	if (env != NULL)
-		environ_free(env);
+	    argv, cwd, title, tc, s, style, border_style, NULL, NULL) != 0)
+		goto out;
+	environ_free(env);
 	free(cwd);
 	free(title);
 	cmd_free_argv(argc, argv);
 	return (CMD_RETURN_WAIT);
+
+out:
+	cmd_free_argv(argc, argv);
+	environ_free(env);
+	free(cwd);
+	free(title);
+	return (CMD_RETURN_NORMAL);
+
+fail:
+	free(cause);
+	cmd_free_argv(argc, argv);
+	environ_free(env);
+	free(cwd);
+	free(title);
+	return (CMD_RETURN_ERROR);
 }

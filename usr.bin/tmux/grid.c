@@ -1,4 +1,4 @@
-/* $OpenBSD: grid.c,v 1.141 2026/02/16 08:02:04 nicm Exp $ */
+/* $OpenBSD: grid.c,v 1.143 2026/02/20 08:41:23 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -205,9 +205,17 @@ grid_clear_cell(struct grid *gd, u_int px, u_int py, u_int bg)
 	struct grid_line	*gl = &gd->linedata[py];
 	struct grid_cell_entry	*gce = &gl->celldata[px];
 	struct grid_extd_entry	*gee;
+	u_int			 old_offset = gce->offset;
+	int			 had_extd = (gce->flags & GRID_FLAG_EXTENDED);
 
 	memcpy(gce, &grid_cleared_entry, sizeof *gce);
-	if (bg != 8) {
+	if (had_extd && old_offset < gl->extdsize) {
+		gce->flags |= GRID_FLAG_EXTENDED;
+		gce->offset = old_offset;
+		gee = grid_extended_cell(gl, gce, &grid_cleared_cell);
+		if (bg != 8)
+			gee->bg = bg;
+	} else if (bg != 8) {
 		if (bg & COLOUR_FLAG_RGB) {
 			grid_get_extended_cell(gl, gce, gce->flags);
 			gee = grid_extended_cell(gl, gce, &grid_cleared_cell);
@@ -487,7 +495,7 @@ static void
 grid_expand_line(struct grid *gd, u_int py, u_int sx, u_int bg)
 {
 	struct grid_line	*gl;
-	u_int			 xx;
+	u_int			 xx, old_cellsize;
 
 	gl = &gd->linedata[py];
 	if (sx <= gl->cellsize)
@@ -500,8 +508,10 @@ grid_expand_line(struct grid *gd, u_int py, u_int sx, u_int bg)
 	else if (gd->sx > sx)
 		sx = gd->sx;
 
-	gl->celldata = xreallocarray(gl->celldata, sx, sizeof *gl->celldata);
-	for (xx = gl->cellsize; xx < sx; xx++)
+	old_cellsize = gl->cellsize;
+	gl->celldata = xrecallocarray(gl->celldata, old_cellsize, sx,
+	    sizeof *gl->celldata);
+	for (xx = old_cellsize; xx < sx; xx++)
 		grid_clear_cell(gd, xx, py, bg);
 	gl->cellsize = sx;
 }

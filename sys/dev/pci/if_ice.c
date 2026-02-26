@@ -1,4 +1,4 @@
-/*	$OpenBSD: if_ice.c,v 1.66 2025/11/18 09:13:55 jan Exp $	*/
+/*	$OpenBSD: if_ice.c,v 1.68 2026/02/24 20:14:29 bluhm Exp $	*/
 
 /*  Copyright (c) 2024, Intel Corporation
  *  All rights reserved.
@@ -1315,13 +1315,13 @@ ice_alloc_dma_mem(struct ice_hw *hw, struct ice_dma_mem *mem, uint64_t size)
 
 	mem->tag = sc->sc_dmat;
 
-	err = bus_dmamap_create(mem->tag, size, 1, size, 0, BUS_DMA_NOWAIT,
-	    &mem->map);
+	err = bus_dmamap_create(mem->tag, size, 1, size, 0,
+	    BUS_DMA_NOWAIT | BUS_DMA_64BIT, &mem->map);
 	if (err)
 		goto fail;
 
 	err = bus_dmamem_alloc(mem->tag, size, 1, 0, &mem->seg, 1, &nsegs,
-	    BUS_DMA_NOWAIT | BUS_DMA_ZERO);
+	    BUS_DMA_NOWAIT | BUS_DMA_ZERO | BUS_DMA_64BIT);
 	if (err || nsegs != 1)
 		goto fail_1;
 
@@ -30673,8 +30673,10 @@ ice_attach_hook(struct device *self)
 	    IFCAP_CSUM_TCPv4 | IFCAP_CSUM_UDPv4 |
 	    IFCAP_CSUM_TCPv6 | IFCAP_CSUM_UDPv6 |
 	    IFCAP_TSOv4 | IFCAP_TSOv6;
+#ifndef SMALL_KERNEL
 	ifp->if_capabilities |= IFCAP_LRO;
 	ifp->if_xflags |= IFXF_LRO;
+#endif
 
 	if_attach(ifp);
 	ether_ifattach(ifp);

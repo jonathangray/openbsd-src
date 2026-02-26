@@ -1,4 +1,4 @@
-/*	$OpenBSD: if_ixl.c,v 1.114 2025/12/04 16:51:29 denis Exp $ */
+/*	$OpenBSD: if_ixl.c,v 1.116 2026/02/25 23:40:49 bluhm Exp $ */
 
 /*
  * Copyright (c) 2013-2015, Intel Corporation
@@ -1931,10 +1931,12 @@ ixl_attach(struct device *parent, struct device *self, void *aux)
 	    IFCAP_CSUM_TCPv6 | IFCAP_CSUM_UDPv6;
 	ifp->if_capabilities |= IFCAP_TSOv4 | IFCAP_TSOv6;
 
+#ifndef SMALL_KERNEL
 	ifp->if_capabilities |= IFCAP_LRO;
 #if notyet
-	/* for now tcplro at ixl(4) is default off */	 
+	/* for now tcplro at ixl(4) is default off */
 	ifp->if_xflags |= IFXF_LRO;
+#endif
 #endif
 
 	ifmedia_init(&sc->sc_media, 0, ixl_media_change, ixl_media_status);
@@ -5181,7 +5183,7 @@ ixl_dmamem_alloc(struct ixl_softc *sc, struct ixl_dmamem *ixm,
 		return (1);
 	if (bus_dmamem_alloc(sc->sc_dmat, ixm->ixm_size,
 	    align, 0, &ixm->ixm_seg, 1, &ixm->ixm_nsegs,
-	    BUS_DMA_WAITOK | BUS_DMA_ZERO) != 0)
+	    BUS_DMA_WAITOK | BUS_DMA_ZERO | BUS_DMA_64BIT) != 0)
 		goto destroy;
 	if (bus_dmamem_map(sc->sc_dmat, &ixm->ixm_seg, ixm->ixm_nsegs,
 	    ixm->ixm_size, &ixm->ixm_kva, BUS_DMA_WAITOK) != 0)
