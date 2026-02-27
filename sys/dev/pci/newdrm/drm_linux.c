@@ -1853,6 +1853,28 @@ dma_fence_is_signaled_locked(struct dma_fence *fence)
 	return false;
 }
 
+int
+dma_fence_get_status_locked(struct dma_fence *fence)
+{
+	if (dma_fence_is_signaled_locked(fence) == false)
+		return 0;
+	if (fence->error == 0)
+		return 1;
+	return fence->error;
+}
+
+int
+dma_fence_get_status(struct dma_fence *fence)
+{
+	int r;
+
+	mtx_enter(fence->lock);
+	r = dma_fence_get_status_locked(fence);
+	mtx_leave(fence->lock);
+
+	return r;
+}
+
 ktime_t
 dma_fence_timestamp(struct dma_fence *fence)
 {

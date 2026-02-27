@@ -83,6 +83,8 @@ int dma_fence_add_callback(struct dma_fence *, struct dma_fence_cb *,
 bool dma_fence_remove_callback(struct dma_fence *, struct dma_fence_cb *);
 bool dma_fence_is_container(struct dma_fence *);
 void dma_fence_set_deadline(struct dma_fence *, ktime_t);
+int dma_fence_get_status(struct dma_fence *);
+int dma_fence_get_status_locked(struct dma_fence *);
 
 struct dma_fence *dma_fence_get_stub(void);
 struct dma_fence *dma_fence_allocate_private_stub(ktime_t);
