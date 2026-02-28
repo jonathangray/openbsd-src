@@ -196,9 +196,8 @@ int shmem_sg_alloc_table(struct drm_i915_private *i915, struct sg_table *st,
 
 	TAILQ_INIT(&plist);
 	if (uvm_obj_wire(obj->base.uao, 0, obj->base.size, &plist)) {
-		sg_free_table(st);
-		kfree(st);
-		return -ENOMEM;
+		ret = -ENOMEM;
+		goto err_sg;
 	}
 
 	i = 0;
@@ -217,11 +216,10 @@ int shmem_sg_alloc_table(struct drm_i915_private *i915, struct sg_table *st,
 	i915_sg_trim(st);
 
 	return 0;
-#ifdef notyet
 err_sg:
 	sg_mark_end(sg);
 	if (sg != st->sgl) {
-		shmem_sg_free_table(st, mapping, false, false);
+		shmem_sg_free_table(st, mapping, false, false, obj);
 	} else {
 		mapping_clear_unevictable(mapping);
 		sg_free_table(st);
@@ -240,7 +238,6 @@ err_sg:
 		ret = -ENOMEM;
 
 	return ret;
-#endif
 }
 
 static int shmem_get_pages(struct drm_i915_gem_object *obj)
