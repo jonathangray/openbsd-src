@@ -2393,7 +2393,7 @@ dma_fence_chain_init(struct dma_fence_chain *chain, struct dma_fence *prev,
 		context = dma_fence_context_alloc(1);
 	}
 
-	dma_fence_init(&chain->base, &dma_fence_chain_ops, &chain->lock,
+	dma_fence_init64(&chain->base, &dma_fence_chain_ops, &chain->lock,
 	    context, seqno);
 }
 
