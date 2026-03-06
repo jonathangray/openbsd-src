@@ -1497,8 +1497,6 @@ static bool amdgpu_ttm_bo_eviction_valuable(struct ttm_buffer_object *bo,
 static void amdgpu_ttm_vram_mm_access(struct amdgpu_device *adev, loff_t pos,
 				      void *buf, size_t size, bool write)
 {
-	STUB();
-#ifdef notyet
 	while (size) {
 		uint64_t aligned_pos = ALIGN_DOWN(pos, 4);
 		uint64_t bytes = 4 - (pos & 0x3);
@@ -1529,7 +1527,6 @@ static void amdgpu_ttm_vram_mm_access(struct amdgpu_device *adev, loff_t pos,
 		buf += bytes;
 		size -= bytes;
 	}
-#endif
 }
 
 static int amdgpu_ttm_access_memory_sdma(struct ttm_buffer_object *bo,
