@@ -35,6 +35,22 @@ vmalloc(unsigned long size)
 }
 
 static inline void *
+vmalloc_array(size_t n, size_t size)
+{
+	if (n != 0 && SIZE_MAX / n < size)
+		return NULL;
+	return malloc(n * size, M_DRM, M_WAITOK | M_CANFAIL);
+}
+
+static inline void *
+vcalloc(size_t n, size_t size)
+{
+	if (n != 0 && SIZE_MAX / n < size)
+		return NULL;
+	return malloc(n * size, M_DRM, M_WAITOK | M_CANFAIL | M_ZERO);
+}
+
+static inline void *
 vzalloc(unsigned long size)
 {
 	return malloc(size, M_DRM, M_WAITOK | M_CANFAIL | M_ZERO);

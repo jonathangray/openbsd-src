@@ -44,6 +44,16 @@ isprint(int c)
 }
 
 static inline int
+isgraph(int c)
+{
+	if (c == -1)
+		return (0);
+	if ((unsigned char)c >= 041 && (unsigned char)c <= 0176)
+		return (1);
+	return (0);
+}
+
+static inline int
 isspace(int c)
 {
 	return (c == ' ' || c == '\t');

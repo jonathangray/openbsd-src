@@ -45,6 +45,7 @@ __hash_empty(struct hlist_head *table, u_int size)
 	return true;
 }
 
+#define HASH_SIZE(table)	nitems(table)
 #define __hash(table, key)	&table[key % (nitems(table) - 1)]
 
 #define hash_init(table)	__hash_init(table, nitems(table))

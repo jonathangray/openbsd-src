@@ -1,4 +1,4 @@
-/*	$OpenBSD: idr.h,v 1.8 2026/03/08 23:31:50 jsg Exp $	*/
+/*	$OpenBSD: idr.h,v 1.7 2025/02/07 03:03:31 jsg Exp $	*/
 /*
  * Copyright (c) 2016 Mark Kettenis
  *

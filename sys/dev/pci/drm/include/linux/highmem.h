@@ -43,6 +43,12 @@ kmap_local_page(struct vm_page *pg)
 	return kmap_atomic(pg);
 }
 
+static inline void *
+kmap_local_page_try_from_panic(struct vm_page *pg)
+{
+	return kmap_atomic(pg);
+}
+
 static inline void
 kunmap_local(void *addr)
 {
