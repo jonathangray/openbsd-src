@@ -902,4 +902,4 @@ attach	ispi at pci with ispi_pci
 file	dev/pci/ispi_pci.c		ispi_pci
 
 include "dev/pci/files.agp"
-include "dev/pci/newdrm/files.drm"
+include "dev/pci/drm/files.drm"
