@@ -970,13 +970,13 @@ ida_alloc_range(struct ida *ida, unsigned int start, unsigned int end, gfp_t gfp
 int
 ida_alloc_min(struct ida *ida, unsigned int min, gfp_t gfp)
 {
-	return idr_alloc(&ida->idr, NULL, min, INT_MAX, gfp);
+	return ida_alloc_range(ida, min, INT_MAX, gfp);
 }
 
 int
 ida_alloc_max(struct ida *ida, unsigned int max, gfp_t gfp)
 {
-	return idr_alloc(&ida->idr, NULL, 0, max - 1, gfp);
+	return ida_alloc_range(ida, 0, max, gfp);
 }
 
 void
