@@ -1,4 +1,4 @@
-/*	$OpenBSD: var.c,v 1.74 2026/03/04 03:54:25 deraadt Exp $	*/
+/*	$OpenBSD: var.c,v 1.76 2026/03/05 05:40:37 deraadt Exp $	*/
 
 #include <sys/stat.h>
 #include <sys/time.h>
@@ -117,7 +117,6 @@ initvar(void)
 		{ "SECONDS",		V_SECONDS },
 		{ "TMOUT",		V_TMOUT },
 		{ "LINENO",		V_LINENO },
-		{ "TERM",		V_TERM },
 		{ NULL,	0 }
 	};
 	int i;
@@ -1070,18 +1069,6 @@ setspec(struct tbl *vp)
 		user_lineno = (unsigned int) intval(vp) - current_lineno - 1;
 		vp->flag |= SPECIAL;
 		break;
-	case V_TERM:
-#ifndef SMALL
-		if (Flag(FTALKING)) {
-			int ret;
-
-			vp->flag &= ~SPECIAL;
-			if (setupterm(str_val(vp), shl_out->fd, &ret) == ERR)
-				del_curterm(cur_term);
-			vp->flag |= SPECIAL;
-		}
-#endif
-		break;
 	}
 }
 
@@ -1242,3 +1229,18 @@ set_array(const char *var, int reset, char **vals)
 		setstr(vq, vals[i], KSH_RETURN_ERROR);
 	}
 }
+
+#ifndef SMALL
+void
+initcurses(void)
+{
+	struct tbl *vp = global("TERM");
+	int ret;
+
+	if (vp) {
+		if (setupterm(str_val(vp),
+		    shl_out->fd, &ret) == ERR)
+			del_curterm(cur_term);
+	}
+}
+#endif /* SMALL */
